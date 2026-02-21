@@ -68,6 +68,20 @@ scrapers:
 scraper-status:
 	npx tsx cli/index.ts scraper status
 
+# ── Pages ────────────────────────────────────────
+
+# Open dashboard in browser
+dashboard:
+	open http://localhost:3001/overzicht
+
+# Open opdrachten in browser
+opdrachten:
+	open http://localhost:3001/opdrachten
+
+# Open scraper dashboard in browser
+scraper:
+	open http://localhost:3001/scraper
+
 # ── Build & Deploy ───────────────────────────────
 
 # Build Next.js production bundle
