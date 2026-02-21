@@ -100,11 +100,17 @@ export default async function OpdrachtDetailPage({ params }: Props) {
     }
   }
 
-  // Extract jsonb fields with proper typing
-  const requirementsList = Array.isArray(job.requirements) ? (job.requirements as string[]) : [];
-  const wishesList = Array.isArray(job.wishes) ? (job.wishes as string[]) : [];
-  const competencesList = Array.isArray(job.competences) ? (job.competences as string[]) : [];
-  const conditionsList = Array.isArray(job.conditions) ? (job.conditions as string[]) : [];
+  // Extract jsonb fields — items can be strings or {isKnockout, description} objects
+  const toStrings = (arr: unknown): string[] => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map((item) =>
+      typeof item === "string" ? item : (item as { description?: string })?.description ?? String(item)
+    );
+  };
+  const requirementsList = toStrings(job.requirements);
+  const wishesList = toStrings(job.wishes);
+  const competencesList = toStrings(job.competences);
+  const conditionsList = toStrings(job.conditions);
 
   // Build AI summary preview from description
   const aiPreview = job.description
