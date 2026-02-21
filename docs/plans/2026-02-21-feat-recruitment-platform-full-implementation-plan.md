@@ -14,7 +14,7 @@ Build a full-stack recruitment operations platform that scrapes job listings fro
 
 **Stack:** Motia.dev (Steps framework) + Next.js 16 (App Router) + Drizzle ORM + Neon (PostgreSQL) + Stagehand/Browserbase + Firecrawl + Zod + Vitest + shadcn/ui + OpenAI Apps SDK UI
 
-**Architecture:** Agent-Native (every UI action = API endpoint) + Event-Driven (Motia emit/subscribes) + Vertical Slices + TDD
+**Architecture:** Agent-Native (every UI action = API + CLI + MCP tool) + Event-Driven (Motia emit/subscribes) + Vertical Slices + TDD
 
 **Language:** Dutch UI/logs/API paths, English code variables
 
@@ -33,15 +33,22 @@ Seven vertical slices, each delivering end-to-end functionality:
 5. **AI Matching** — Two-phase pgvector + LLM matching with human-in-the-loop
 6. **Application Pipeline** — Full application lifecycle tracking
 7. **Quality Harness** — Linting, testing, visual feedback tooling
+8. **Agent-Native Layer** — CLI (`motian`) + MCP Server for full agent parity
 
 ## Technical Approach
 
 ### Architecture
 
 ```
+Agent-Native Layer (CLI + MCP)
+  ├── motian CLI (TypeScript, Commander.js)
+  │     └── Full CRUD for all entities via subcommands
+  ├── MCP Server (stdio transport, Zod-validated tools)
+  │     └── Every CLI command = MCP tool (agents get parity)
+  └── Shared Service Layer (reused by CLI, MCP, API, UI)
+        ↓
 Motia Steps (Event-Driven Backend)
-  ├── CronConfig steps (scheduled scraping)
-  ├── EventConfig steps (normalize, grade, record)
+  ├── StepConfig steps (cron, queue, http triggers)
   └── ApiRouteConfig steps (REST endpoints)
         ↓
 Next.js 16 App Router (Frontend)
@@ -55,6 +62,21 @@ Neon PostgreSQL (Persistence)
   ├── tsvector (Dutch full-text search)
   └── pg_trgm (fuzzy search)
 ```
+
+### Agent-Native Parity Principle
+
+Every entity in the system must have full CRUD parity across all interfaces:
+
+| Entity | UI Page | REST API | CLI Command | MCP Tool |
+|--------|---------|----------|-------------|----------|
+| Jobs | /opdrachten | GET/POST /api/opdrachten | `motian jobs list\|get\|search` | `list_jobs`, `get_job`, `search_jobs` |
+| Scraper Configs | /scraper | GET/PATCH /api/scraper-configuraties | `motian scraper list\|toggle\|trigger` | `list_scrapers`, `toggle_scraper`, `trigger_scrape` |
+| Scrape Results | /scraper | GET /api/scrape-resultaten | `motian scraper history` | `list_scrape_results` |
+| Health | /scraper | GET /api/gezondheid | `motian health` | `get_health` |
+| Candidates | /kandidaten | GET/POST /api/kandidaten | `motian candidates list\|get\|create\|update\|delete` | `list_candidates`, `create_candidate`, etc. |
+| Matches | /matches | GET/PATCH /api/matches | `motian matches list\|approve\|reject` | `list_matches`, `approve_match`, `reject_match` |
+| Applications | /sollicitaties | GET/POST/PATCH /api/sollicitaties | `motian applications list\|create\|update-stage` | `list_applications`, `update_application_stage` |
+| Interviews | — | GET/POST/PATCH /api/interviews | `motian interviews list\|schedule\|cancel` | `list_interviews`, `schedule_interview` |
 
 ### Event Topology
 
@@ -620,6 +642,169 @@ The "harness" that makes both human and AI development reliable.
 
 ---
 
+### Phase 8: Agent-Native Layer (Slice 8)
+
+CLI (`motian`) + MCP Server — full agent parity so that anything a user can do through the UI, an AI agent can do through tools.
+
+**Prerequisites:** Phase 2 complete (API endpoints exist). Can start CLI scaffold earlier, but full tool coverage requires Phases 2-6 APIs.
+
+**Architectural Inspiration:**
+- [mcpli](https://github.com/cameroncooke/mcpli) — Daemon-per-server pattern, sub-100ms IPC, launchd socket activation
+- [mcporter](https://github.com/steipete/mcporter) — Pooled MCP runtime, TypeScript client generation, config auto-discovery
+- [Agent-Native Architecture](https://every.to/chain-of-thought/agent-native-architectures-how-to-build-apps-after-the-end-of-code) — Parity, granularity, composability principles
+
+#### Design Principles
+
+1. **Shared Service Layer** — CLI, MCP tools, API steps, and UI all call the same Drizzle queries. No duplicated business logic.
+2. **Atomic Primitives** — Tools are CRUD operations (`list_jobs`, `get_job`, `update_job`), not workflows. Agents compose primitives with their own judgment.
+3. **Parity Audit** — Every UI action must map to a CLI command AND an MCP tool. Tested via parity matrix.
+4. **Composability** — New workflows = new prompts, not new code. An agent can "screen all candidates for job X, schedule top 3 for interviews, reject the rest with personalized messages" using existing primitives.
+
+#### Tasks
+
+- [ ] **8.1 Shared service layer extraction**
+  - Extract Drizzle queries from Motia API steps into `src/services/` modules
+  - `src/services/jobs.ts` — listJobs, getJob, searchJobs, createJob, updateJob, deleteJob
+  - `src/services/scrapers.ts` — listConfigs, getConfig, updateConfig, triggerScrape, getHistory, getHealth
+  - `src/services/candidates.ts` — listCandidates, getCandidate, createCandidate, updateCandidate, deleteCandidate
+  - `src/services/matches.ts` — listMatches, getMatch, approveMatch, rejectMatch
+  - `src/services/applications.ts` — listApplications, getApplication, createApplication, updateStage
+  - `src/services/interviews.ts` — listInterviews, scheduleInterview, updateInterview, cancelInterview
+  - Motia API steps become thin wrappers around these services
+
+- [ ] **8.2 CLI scaffold (`motian`)**
+  - `cli/motian.ts` — Main entry point using Commander.js
+  - Subcommands: `jobs`, `scraper`, `candidates`, `matches`, `applications`, `interviews`, `health`
+  - Global flags: `--json` (machine-readable), `--format table|json|csv`, `--verbose`
+  - `bin/motian` symlink via package.json `"bin"` field
+  - Config: reads DATABASE_URL from `.env.local` or `MOTIAN_DATABASE_URL` env var
+
+- [ ] **8.3 CLI: Jobs commands**
+  - `motian jobs list [--platform striive|indeed|linkedin] [--zoek <query>] [--limiet <n>]`
+  - `motian jobs get <id>`
+  - `motian jobs search <query> [--platform <p>] [--locatie <loc>]`
+  - `motian jobs stats` — count per platform, per province, avg rate
+  - All output in table format (default) or JSON (`--json`)
+
+- [ ] **8.4 CLI: Scraper commands**
+  - `motian scraper list` — all configs with status
+  - `motian scraper toggle <platform> [--on|--off]` — toggle isActive
+  - `motian scraper trigger [<platform>]` — manual scrape (all or specific)
+  - `motian scraper history [--platform <p>] [--limiet <n>]` — recent results
+  - `motian health` — per-platform health (gezond/waarschuwing/kritiek)
+
+- [ ] **8.5 CLI: Candidates + Matches + Applications commands**
+  - `motian candidates list|get|create|update|delete`
+  - `motian matches list [--status pending|approved|rejected] [--job-id <id>]`
+  - `motian matches approve|reject <id> [--reason <text>]`
+  - `motian applications list|create|update-stage`
+  - `motian interviews list|schedule|cancel`
+
+- [ ] **8.6 MCP Server (stdio transport)**
+  - `mcp/server.ts` — MCP server using `@modelcontextprotocol/sdk`
+  - Stdio transport (standard for Claude Code, Cursor, etc.)
+  - Tools map 1:1 to CLI commands, backed by same service layer
+  - Zod schemas for all tool inputs (reuse from existing schemas)
+  - Rich tool descriptions in Dutch+English for agent discoverability
+
+  **MCP Tools (complete set):**
+  ```
+  # Jobs
+  list_jobs(platform?, zoek?, limiet?) → Job[]
+  get_job(id) → Job
+  search_jobs(query, platform?, locatie?) → Job[]
+
+  # Scraper
+  list_scrapers() → ScraperConfig[]
+  toggle_scraper(platform, active) → ScraperConfig
+  trigger_scrape(platform?) → { triggered: string[] }
+  list_scrape_results(platform?, limiet?) → ScrapeResult[]
+  get_health() → PlatformHealth[]
+
+  # Candidates
+  list_candidates(status?, zoek?) → Candidate[]
+  get_candidate(id) → Candidate
+  create_candidate(name, email, skills?, experience?) → Candidate
+  update_candidate(id, updates) → Candidate
+  delete_candidate(id) → void
+
+  # Matches
+  list_matches(jobId?, candidateId?, status?) → Match[]
+  approve_match(id, reason?) → Match
+  reject_match(id, reason?) → Match
+
+  # Applications
+  list_applications(candidateId?, jobId?, stage?) → Application[]
+  create_application(candidateId, jobId) → Application
+  update_application_stage(id, stage, notes?) → Application
+
+  # Interviews
+  list_interviews(applicationId?) → Interview[]
+  schedule_interview(applicationId, scheduledAt, type?) → Interview
+  cancel_interview(id, reason?) → void
+  ```
+
+- [ ] **8.7 MCP Server configuration**
+  - `mcp/config.json` — MCP server config for Claude Code / Cursor / Codex
+  - Installation instructions: `claude mcp add motian -- node mcp/server.ts`
+  - Auto-discovery support via `.mcp.json` in project root
+  - Environment variable passthrough for DATABASE_URL
+
+- [ ] **8.8 Agent system prompt**
+  - `mcp/AGENT_PROMPT.md` — System prompt for agents using this MCP
+  - Documents all tools with Dutch+English descriptions
+  - Includes workflow examples: screening pipeline, bulk operations, reporting
+  - Dynamic context injection: current job count, recent scrapes, pipeline status
+
+- [ ] **8.9 Parity audit tests**
+  - `tests/parity-audit.test.ts` — Automated check that every API endpoint has a CLI command AND MCP tool
+  - Tests the capability matrix: for each UI action, verify tool exists
+  - "Can Agent Do It?" tests: agent-simulated workflows using MCP tools
+  - Regression prevention: new API endpoints must add corresponding CLI+MCP
+
+- [ ] **8.10 CLI + MCP integration tests**
+  - `tests/cli-integration.test.ts` — End-to-end CLI command tests
+  - `tests/mcp-integration.test.ts` — MCP tool invocation tests
+  - Test JSON output format, error handling, help text
+  - Test that CLI and MCP return identical data for same queries
+
+**Acceptance Criteria:**
+- [ ] `motian jobs list` returns same data as GET /api/opdrachten
+- [ ] MCP `list_jobs` tool returns same data as CLI `motian jobs list --json`
+- [ ] Every UI action in the parity matrix has CLI + MCP + API coverage
+- [ ] `motian --help` shows all subcommands with descriptions
+- [ ] MCP server registers all tools when started via stdio
+- [ ] Parity audit test passes (no gaps)
+- [ ] Agent can compose tools to accomplish multi-step workflows
+
+**Files created:**
+- `src/services/jobs.ts`
+- `src/services/scrapers.ts`
+- `src/services/candidates.ts`
+- `src/services/matches.ts`
+- `src/services/applications.ts`
+- `src/services/interviews.ts`
+- `cli/motian.ts`
+- `cli/commands/jobs.ts`
+- `cli/commands/scraper.ts`
+- `cli/commands/candidates.ts`
+- `cli/commands/matches.ts`
+- `cli/commands/applications.ts`
+- `cli/commands/interviews.ts`
+- `mcp/server.ts`
+- `mcp/tools/*.ts` (one per entity)
+- `mcp/config.json`
+- `mcp/AGENT_PROMPT.md`
+- `tests/parity-audit.test.ts`
+- `tests/cli-integration.test.ts`
+- `tests/mcp-integration.test.ts`
+
+**Files modified:**
+- `steps/api/*.step.ts` (refactored to use shared service layer)
+- `package.json` (add `"bin": { "motian": "cli/motian.ts" }`, add `@modelcontextprotocol/sdk`, `commander`)
+
+---
+
 ## Alternative Approaches Considered
 
 | Approach | Why Rejected |
@@ -669,7 +854,9 @@ The "harness" that makes both human and AI development reliable.
 - [ ] Qlty check clean (`qlty check --fix --level=low`)
 - [ ] Biome formatting clean (`qlty fmt`)
 - [ ] Contract test exists for every scraper adapter
-- [ ] Agent-native: every UI action has API endpoint
+- [ ] Agent-native: every UI action has API endpoint + CLI command + MCP tool
+- [ ] Parity audit test passes (`tests/parity-audit.test.ts`)
+- [ ] MCP server registers all tools via stdio transport
 - [ ] No hardcoded credentials anywhere
 - [ ] Dutch text in all UI, logs, API responses
 
@@ -713,3 +900,6 @@ The "harness" that makes both human and AI development reliable.
 ### Architectural Inspiration
 - OpenAI Harness Engineering: https://openai.com/index/harness-engineering/
 - Agent-Native Architecture: https://every.to/chain-of-thought/agent-native-architectures-how-to-build-apps-after-the-end-of-code
+- mcpli (CLI from MCP): https://github.com/cameroncooke/mcpli
+- mcporter (MCP runtime + TypeScript client gen): https://github.com/steipete/mcporter/
+- MCP SDK: https://github.com/modelcontextprotocol/typescript-sdk
