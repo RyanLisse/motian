@@ -1,8 +1,6 @@
 import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
-import { db } from "../../src/db";
-import { scraperConfigs } from "../../src/db/schema";
-import { eq } from "drizzle-orm";
+import { updateConfig } from "../../src/services/scrapers";
 
 const updateSchema = z.object({
   isActive: z.boolean().optional(),
@@ -36,16 +34,9 @@ export const handler: Handlers<typeof config> = async (req, { logger }) => {
   }
 
   try {
-    const result = await db
-      .update(scraperConfigs)
-      .set({
-        ...parsed.data,
-        updatedAt: new Date(),
-      })
-      .where(eq(scraperConfigs.id, id))
-      .returning();
+    const updated = await updateConfig(id, parsed.data);
 
-    if (result.length === 0) {
+    if (!updated) {
       return {
         status: 404,
         body: { error: "Scraper configuratie niet gevonden" },
@@ -56,7 +47,7 @@ export const handler: Handlers<typeof config> = async (req, { logger }) => {
 
     return {
       status: 200,
-      body: { data: result[0] },
+      body: { data: updated },
     };
   } catch (err) {
     logger.error(`Fout bij bijwerken config ${id}: ${String(err)}`);

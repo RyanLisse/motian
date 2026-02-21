@@ -1,7 +1,5 @@
 import { StepConfig, Handlers } from "motia";
-import { db } from "../../src/db";
-import { scraperConfigs } from "../../src/db/schema";
-import { asc } from "drizzle-orm";
+import { getAllConfigs } from "../../src/services/scrapers";
 
 export const config = {
   name: "GetScraperConfigs",
@@ -12,10 +10,7 @@ export const config = {
 
 export const handler: Handlers<typeof config> = async (_req, { logger }) => {
   try {
-    const configs = await db
-      .select()
-      .from(scraperConfigs)
-      .orderBy(asc(scraperConfigs.platform));
+    const configs = await getAllConfigs();
 
     return {
       status: 200,

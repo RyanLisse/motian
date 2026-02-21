@@ -1,7 +1,5 @@
 import { StepConfig, Handlers } from "motia";
-import { db } from "../../src/db";
-import { scrapeResults } from "../../src/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { getHistory } from "../../src/services/scrape-results";
 
 export const config = {
   name: "GetScrapeHistory",
@@ -23,22 +21,13 @@ export const config = {
 export const handler: Handlers<typeof config> = async (req, { logger }) => {
   try {
     const rawLimit = req.queryParams?.limit;
-    const limit = Math.min(
-      Number(Array.isArray(rawLimit) ? rawLimit[0] : rawLimit) || 50,
-      100,
-    );
+    const limit = Number(Array.isArray(rawLimit) ? rawLimit[0] : rawLimit) || 50;
     const rawPlatform = req.queryParams?.platform;
     const platform = Array.isArray(rawPlatform)
       ? rawPlatform[0]
       : rawPlatform;
 
-    const baseQuery = db.select().from(scrapeResults);
-    const filtered = platform
-      ? baseQuery.where(eq(scrapeResults.platform, platform))
-      : baseQuery;
-    const results = await filtered
-      .orderBy(desc(scrapeResults.runAt))
-      .limit(limit);
+    const results = await getHistory({ platform, limit });
 
     return {
       status: 200,
