@@ -1,0 +1,31 @@
+import { StepConfig, Handlers } from "motia";
+import { db } from "../../src/db";
+import { scraperConfigs } from "../../src/db/schema";
+import { asc } from "drizzle-orm";
+
+export const config = {
+  name: "GetScraperConfigs",
+  description: "Alle scraper configuraties ophalen",
+  triggers: [{ type: "http", method: "GET", path: "/api/scraper-configuraties" }],
+  flows: ["recruitment-scraper"],
+} as const satisfies StepConfig;
+
+export const handler: Handlers<typeof config> = async (_req, { logger }) => {
+  try {
+    const configs = await db
+      .select()
+      .from(scraperConfigs)
+      .orderBy(asc(scraperConfigs.platform));
+
+    return {
+      status: 200,
+      body: { data: configs, total: configs.length },
+    };
+  } catch (err) {
+    logger.error(`Fout bij ophalen scraper configs: ${String(err)}`);
+    return {
+      status: 500,
+      body: { error: "Interne serverfout" },
+    };
+  }
+};
