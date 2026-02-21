@@ -20,6 +20,9 @@
   "dependencies": {
     "@browserbasehq/stagehand": "^2.0.0",
     "@mendable/firecrawl-js": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@sinclair/typebox": "^0.34.48",
+    "@steipete/sweet-cookie": "^0.1.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "chalk": "^5.6.2",
