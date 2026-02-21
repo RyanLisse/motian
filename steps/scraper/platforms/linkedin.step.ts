@@ -18,10 +18,13 @@ export const config = {
   flows: ["recruitment-scraper"],
 } as const satisfies StepConfig;
 
+type Input = { platform: string; url: string };
+
 export const handler: Handlers<typeof config> = async (
-  input,
+  rawInput,
   { enqueue, logger },
 ) => {
+  const input = rawInput as Input;
   if (input.platform !== "linkedin") return;
 
   logger.info(`LinkedIn scraping: ${input.url}`);
@@ -41,97 +44,99 @@ export const handler: Handlers<typeof config> = async (
   const MAX_RETRIES = 2;
   let attempt = 0;
 
-  while (attempt <= MAX_RETRIES) {
-    try {
-      // Step 1: Login to LinkedIn
-      await stagehand.page.goto("https://www.linkedin.com/login");
-      await stagehand.act({
-        action: "Enter the email address and click next",
-        variables: { email: process.env.LINKEDIN_USERNAME! },
-      });
-      await stagehand.act({
-        action: "Enter the password and click sign in",
-        variables: { password: process.env.LINKEDIN_PASSWORD! },
-      });
-
-      // Step 2: Navigate to job listings
-      await stagehand.page.goto(input.url);
-      await stagehand.page.waitForSelector(
-        '.jobs-search-results-list, .scaffold-layout__list, main',
-        { timeout: 15_000 },
-      );
-
-      // Step 3: Paginated extraction
-      const MAX_PAGES = 3;
-      const allListings: any[] = [];
-
-      for (let page = 1; page <= MAX_PAGES; page++) {
-        const result = await stagehand.extract({
-          instruction: `Extract all visible job listings from this LinkedIn page.
-            Per job listing extract:
-            - title: the job title/role
-            - company: the company name
-            - location: city and province (e.g. "Amsterdam - Noord-Holland")
-            - description: the full job description
-            - externalId: the LinkedIn job ID (numeric ID from the URL or listing)
-            - externalUrl: the full URL to the job posting`,
-          schema: z.object({
-            opdrachten: z.array(
-              z.object({
-                title: z.string(),
-                company: z.string().optional(),
-                location: z.string().optional(),
-                description: z.string(),
-                externalId: z.string(),
-                externalUrl: z.string(),
-              }),
-            ),
-          }),
+  try {
+    while (attempt <= MAX_RETRIES) {
+      try {
+        // Step 1: Login to LinkedIn
+        await stagehand.page.goto("https://www.linkedin.com/login");
+        await stagehand.act({
+          action: "Enter the email address and click next",
+          variables: { email: process.env.LINKEDIN_USERNAME! },
+        });
+        await stagehand.act({
+          action: "Enter the password and click sign in",
+          variables: { password: process.env.LINKEDIN_PASSWORD! },
         });
 
-        allListings.push(...(result.opdrachten ?? []));
-
-        const hasNext = await stagehand.page
-          .locator(
-            'button[aria-label="Next"], a:has-text("Next"), [aria-label="Page forward"]',
-          )
-          .isVisible()
-          .catch(() => false);
-        if (!hasNext) break;
-        await stagehand.act({ action: "Click the next page button" });
+        // Step 2: Navigate to job listings
+        await stagehand.page.goto(input.url);
         await stagehand.page.waitForSelector(
           '.jobs-search-results-list, .scaffold-layout__list, main',
-          { timeout: 10_000 },
+          { timeout: 15_000 },
         );
-      }
 
-      logger.info(`LinkedIn: ${allListings.length} job listings found`);
+        // Step 3: Paginated extraction
+        const MAX_PAGES = 3;
+        const allListings: any[] = [];
 
-      const enriched = allListings.map((l: any) => ({
-        ...l,
-        province:
-          l.province ??
-          (l.location?.includes(" - ")
-            ? l.location.split(" - ")[1]?.trim()
-            : undefined),
-      }));
+        for (let page = 1; page <= MAX_PAGES; page++) {
+          const result = await stagehand.extract({
+            instruction: `Extract all visible job listings from this LinkedIn page.
+              Per job listing extract:
+              - title: the job title/role
+              - company: the company name
+              - location: city and province (e.g. "Amsterdam - Noord-Holland")
+              - description: the full job description
+              - externalId: the LinkedIn job ID (numeric ID from the URL or listing)
+              - externalUrl: the full URL to the job posting`,
+            schema: z.object({
+              opdrachten: z.array(
+                z.object({
+                  title: z.string(),
+                  company: z.string().optional(),
+                  location: z.string().optional(),
+                  description: z.string(),
+                  externalId: z.string(),
+                  externalUrl: z.string(),
+                }),
+              ),
+            }),
+          });
 
-      await enqueue({
-        topic: "jobs.normalize",
-        data: { platform: "linkedin", listings: enriched },
-      });
-      break;
-    } catch (err) {
-      attempt++;
-      if (attempt > MAX_RETRIES) {
-        logger.error(
-          `LinkedIn scrape failed after ${MAX_RETRIES + 1} attempts: ${err}`,
-        );
+          allListings.push(...(result.opdrachten ?? []));
+
+          const hasNext = await stagehand.page
+            .locator(
+              'button[aria-label="Next"], a:has-text("Next"), [aria-label="Page forward"]',
+            )
+            .isVisible()
+            .catch(() => false);
+          if (!hasNext) break;
+          await stagehand.act({ action: "Click the next page button" });
+          await stagehand.page.waitForSelector(
+            '.jobs-search-results-list, .scaffold-layout__list, main',
+            { timeout: 10_000 },
+          );
+        }
+
+        logger.info(`LinkedIn: ${allListings.length} job listings found`);
+
+        const enriched = allListings.map((l: any) => ({
+          ...l,
+          province:
+            l.province ??
+            (l.location?.includes(" - ")
+              ? l.location.split(" - ")[1]?.trim()
+              : undefined),
+        }));
+
         await enqueue({
           topic: "jobs.normalize",
-          data: { platform: "linkedin", listings: [] },
+          data: { platform: "linkedin", listings: enriched },
         });
-      } else {
+        return;
+      } catch (err) {
+        attempt++;
+        if (attempt > MAX_RETRIES) {
+          logger.error(
+            `LinkedIn scrape failed after ${MAX_RETRIES + 1} attempts: ${err}`,
+          );
+          await enqueue({
+            topic: "jobs.normalize",
+            data: { platform: "linkedin", listings: [] },
+          });
+          return;
+        }
         const base = 1200 * Math.pow(2, attempt);
         const jitter = Math.floor(Math.random() * 500);
         const delay = base + jitter;
@@ -141,7 +146,7 @@ export const handler: Handlers<typeof config> = async (
         await new Promise((r) => setTimeout(r, delay));
       }
     }
+  } finally {
+    await stagehand.close();
   }
-
-  await stagehand.close();
 };
