@@ -224,28 +224,28 @@ The foundation: authenticated scraping, unified schema, dedup, and the full Moti
 
 #### Tasks
 
-- [ ] **1.1 Project scaffold** — `npx motia@latest create`, install deps with pnpm
+- [x] **1.1 Project scaffold** — `npx motia@latest create`, install deps with pnpm
   - `package.json` (pnpm)
   - `.env` with DATABASE_URL, BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, STRIIVE_USERNAME, STRIIVE_PASSWORD, ENCRYPTION_KEY
   - `.gitignore` (node_modules, .env, drizzle/)
   - `drizzle.config.ts`
 
-- [ ] **1.2 Database schema** — Drizzle + Neon
+- [x] **1.2 Database schema** — Drizzle + Neon
   - `src/db/schema.ts` — `jobs` table with 28 columns (Striive data model), composite indexes
   - `src/db/index.ts` — Connection pool (max:10, idle:30s, timeout:5s)
   - Run `drizzle-kit generate` + `drizzle-kit push`
 
-- [ ] **1.3 Unified Zod schema** — Cross-platform validation
+- [x] **1.3 Unified Zod schema** — Cross-platform validation
   - `src/schemas/job.ts` — `unifiedJobSchema` with structured requirements (union types), `extractProvince()` helper
   - Supports both `string[]` (Indeed) and `{description, isKnockout}[]` (Striive) requirements
 
-- [ ] **1.4 TDD: Schema tests** (RED → GREEN → REFACTOR)
+- [x] **1.4 TDD: Schema tests** (RED → GREEN → REFACTOR)
   - `tests/job-schema.test.ts` — Full Striive test case, simple Indeed case, date coercion, province extraction, default arrays
 
-- [ ] **1.5 Master Scrape cron step**
+- [x] **1.5 Master Scrape cron step**
   - `steps/scraper/master-scrape.step.ts` — CronConfig, emits `platform.scrape`
 
-- [ ] **1.6 Striive scraper step** — Authenticated via Stagehand
+- [x] **1.6 Striive scraper step** — Authenticated via Stagehand
   - `steps/scraper/platforms/striive.step.ts` — EventConfig, subscribes `platform.scrape`, emits `jobs.normalize`
   - Login flow via Stagehand act()
   - Paginated extraction (MAX_PAGES=5, "Volgende" button detection)
@@ -253,19 +253,19 @@ The foundation: authenticated scraping, unified schema, dedup, and the full Moti
   - Province enrichment before emit
   - Always-emit pattern (empty listings on total failure)
 
-- [ ] **1.7 Normalize + dedup step**
+- [x] **1.7 Normalize + dedup step**
   - `steps/jobs/normalize.step.ts` — EventConfig, subscribes `jobs.normalize`, emits `scrape.completed`
   - Zod validation → batch upsert (50 rows) → `onConflictDoUpdate` with all 28 fields
   - Soft-delete revival (`deletedAt: null`)
   - Metrics: jobsNew, duplicates, errors, durationMs, status (success/partial/failed)
 
-- [ ] **1.8 Integration test** — Manual trigger via Motia Workbench
+- [x] **1.8 Integration test** — Manual trigger via Motia Workbench
   - Verify flow: MasterScrape → ScrapeStriive → NormalizeJobs
   - Check Neon DB for job rows
   - Verify dedup on re-run
 
 **Acceptance Criteria:**
-- [ ] `pnpm test` passes all schema tests
+- [x] `pnpm test` passes all schema tests
 - [ ] Manual trigger in Workbench produces jobs in Neon DB
 - [ ] Re-run deduplicates (no duplicate rows for same externalId)
 - [ ] Failed scrapes still emit `scrape.completed` with status="failed"
