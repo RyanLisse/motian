@@ -1,7 +1,50 @@
 "use client"
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react"
-import { candidates as allCandidates, type Candidate } from "@/lib/data"
+import { candidates as mockCandidates, type Candidate } from "@/lib/data"
+
+// DB candidate shape from /api/candidates
+interface DbCandidate {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+  role: string | null
+  skills: string[]
+  experience: string | null
+  location: string | null
+  province: string | null
+  resumeUrl: string | null
+  tags: string[]
+  source: string | null
+  createdAt: string
+}
+
+function dbCandidateToUi(db: DbCandidate): Candidate {
+  return {
+    id: db.id,
+    name: db.name,
+    email: db.email ?? "",
+    role: db.role ?? "Onbekend",
+    avatar: db.name
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join(""),
+    score: 0,
+    skills: Array.isArray(db.skills) ? db.skills : [],
+    experience: db.experience ?? "Onbekend",
+    status: "new" as const,
+    appliedDate: db.createdAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+    source: db.source ?? "database",
+    resumeQuality: 0,
+    skillMatch: 0,
+    relevance: 0,
+    location: db.location ?? "Onbekend",
+    phone: db.phone ?? "",
+    tags: Array.isArray(db.tags) ? db.tags : [],
+  }
+}
 import { CVUpload, type UploadResult } from "@/components/cv-upload"
 import {
   Table,
@@ -54,13 +97,6 @@ import {
   Phone,
 } from "lucide-react"
 
-const ALL_SKILLS = Array.from(
-  new Set(allCandidates.flatMap((c) => c.skills))
-).sort()
-
-const ALL_LOCATIONS = Array.from(
-  new Set(allCandidates.map((c) => c.location))
-).sort()
 
 function parseExperienceYears(exp: string): number {
   const match = exp.match(/(\d+)/)
@@ -103,8 +139,44 @@ export default function ProfessionalsPage() {
   const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const [selectedExperience, setSelectedExperience] = useState<string>("all")
 
+  // Loading state for database fetch
+  const [isLoading, setIsLoading] = useState(true)
+
   // Local candidate list state for deletion
-  const [candidateList, setCandidateList] = useState<Candidate[]>(allCandidates)
+  const [candidateList, setCandidateList] = useState<Candidate[]>([])
+
+  // Fetch candidates from database, fall back to mock data
+  useEffect(() => {
+    setIsLoading(true)
+    fetch("/api/candidates?limit=100")
+      .then((res) => {
+        if (!res.ok) throw new Error("fetch failed")
+        return res.json()
+      })
+      .then((data: DbCandidate[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCandidateList(data.map(dbCandidateToUi))
+        } else {
+          // No DB candidates yet, use mock data
+          setCandidateList(mockCandidates)
+        }
+      })
+      .catch(() => {
+        // API error (e.g. no DB configured), use mock data
+        setCandidateList(mockCandidates)
+      })
+      .finally(() => setIsLoading(false))
+  }, [])
+
+  // Derived filter options from loaded candidates
+  const ALL_SKILLS = useMemo(
+    () => Array.from(new Set(candidateList.flatMap((c) => c.skills))).sort(),
+    [candidateList],
+  )
+  const ALL_LOCATIONS = useMemo(
+    () => Array.from(new Set(candidateList.map((c) => c.location))).sort(),
+    [candidateList],
+  )
 
   // Toast state
   const [toast, setToast] = useState<string | null>(null)
@@ -326,7 +398,7 @@ export default function ProfessionalsPage() {
           <div>
             <h1 className="text-2xl font-bold text-[#ececec]">Talent Pool</h1>
             <p className="text-sm text-[#6b6b6b] mt-1">
-              {candidateList.length} profielen ge&iuml;ndexeerd
+              {isLoading ? "Laden..." : `${candidateList.length} profielen ge\u00EFndexeerd`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -581,7 +653,13 @@ export default function ProfessionalsPage() {
 
         {/* Table */}
         <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl overflow-hidden">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-16 text-[#6b6b6b]">
+              <Users className="h-12 w-12 mb-3 animate-pulse" />
+              <p className="text-lg font-medium">Laden...</p>
+              <p className="text-sm mt-1">Kandidaten worden opgehaald</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-[#6b6b6b]">
               <Users className="h-12 w-12 mb-3" />
               <p className="text-lg font-medium">Geen resultaten</p>

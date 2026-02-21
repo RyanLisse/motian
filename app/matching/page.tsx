@@ -1,8 +1,26 @@
 "use client"
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react"
-import { candidates, positionsList, type Candidate } from "@/lib/data"
+import { candidates as mockCandidates, positionsList, type Candidate } from "@/lib/data"
 import type { Job } from "@/lib/data"
+
+// DB match shape from /api/matches
+interface DbMatch {
+  id: string
+  jobId: string
+  candidateId: string
+  vectorScore: number | null
+  llmScore: number | null
+  overallScore: number | null
+  status: string
+  knockOutPassed: boolean | null
+  matchData: Record<string, unknown> | null
+  reviewedBy: string | null
+  reviewedAt: string | null
+  createdAt: string
+  jobTitle: string | null
+  candidateName: string | null
+}
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -413,6 +431,10 @@ export default function MatchingPage() {
   const [sortBy, setSortBy] = useState("score")
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  // Database matches
+  const [dbMatches, setDbMatches] = useState<DbMatch[]>([])
+  const [dbMatchesLoading, setDbMatchesLoading] = useState(true)
+
   // Match dialog
   const [matchDialogOpen, setMatchDialogOpen] = useState(false)
   const [matchCandidate, setMatchCandidate] = useState<Candidate | null>(null)
@@ -434,6 +456,36 @@ export default function MatchingPage() {
       if (toastTimer.current) clearTimeout(toastTimer.current)
     }
   }, [])
+
+  // Fetch database matches
+  useEffect(() => {
+    setDbMatchesLoading(true)
+    fetch("/api/matches?limit=50")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: DbMatch[]) => setDbMatches(Array.isArray(data) ? data : []))
+      .catch(() => setDbMatches([]))
+      .finally(() => setDbMatchesLoading(false))
+  }, [])
+
+  const candidates = mockCandidates
+
+  // Handle approve/reject for DB matches
+  async function handleMatchAction(matchId: string, action: "approve" | "reject") {
+    try {
+      const res = await fetch(`/api/matches/${matchId}/${action}`, { method: "PATCH" })
+      if (res.ok) {
+        const updated = await res.json()
+        setDbMatches((prev) =>
+          prev.map((m) => (m.id === matchId ? { ...m, status: updated.status } : m))
+        )
+        showToast(`Match ${action === "approve" ? "goedgekeurd" : "afgewezen"}`)
+      } else {
+        showToast("Actie mislukt")
+      }
+    } catch {
+      showToast("Netwerkfout bij match actie")
+    }
+  }
 
   // Filtering & sorting
   const filtered = useMemo(() => {
@@ -632,6 +684,101 @@ export default function MatchingPage() {
             <p className="text-2xl font-bold text-red-400 mt-1">{onder}</p>
           </Card>
         </div>
+
+        {/* ---- Database Matches ---- */}
+        {dbMatchesLoading ? (
+          <Card className="bg-[#1e1e1e] border-[#2d2d2d] p-6">
+            <p className="text-sm text-[#6b6b6b]">Laden...</p>
+          </Card>
+        ) : dbMatches.length > 0 ? (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-[#ececec]">
+              Database Matches ({dbMatches.length})
+            </h2>
+            <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-[#2d2d2d] hover:bg-transparent">
+                    <TableHead className="text-[#8e8e8e] text-xs">Kandidaat</TableHead>
+                    <TableHead className="text-[#8e8e8e] text-xs">Opdracht</TableHead>
+                    <TableHead className="text-[#8e8e8e] text-xs">Score</TableHead>
+                    <TableHead className="text-[#8e8e8e] text-xs">Status</TableHead>
+                    <TableHead className="text-[#8e8e8e] text-xs">Acties</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dbMatches.map((m) => (
+                    <TableRow key={m.id} className="border-[#2d2d2d]">
+                      <TableCell className="text-sm text-[#ececec]">
+                        {m.candidateName ?? m.candidateId.slice(0, 8)}
+                      </TableCell>
+                      <TableCell className="text-sm text-[#ececec]">
+                        {m.jobTitle ?? m.jobId.slice(0, 8)}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className="text-sm font-mono font-bold"
+                          style={{
+                            color:
+                              (m.overallScore ?? 0) >= 80
+                                ? "#22c55e"
+                                : (m.overallScore ?? 0) >= 60
+                                  ? "#f59e0b"
+                                  : "#ef4444",
+                          }}
+                        >
+                          {m.overallScore != null ? `${Math.round(m.overallScore)}%` : "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            m.status === "approved"
+                              ? "border-[#22c55e]/30 text-[#22c55e] bg-[#22c55e]/10 text-[10px]"
+                              : m.status === "rejected"
+                                ? "border-red-400/30 text-red-400 bg-red-400/10 text-[10px]"
+                                : "border-[#2d2d2d] text-[#8e8e8e] text-[10px]"
+                          }
+                        >
+                          {m.status === "approved"
+                            ? "Goedgekeurd"
+                            : m.status === "rejected"
+                              ? "Afgewezen"
+                              : "In afwachting"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {m.status === "pending" && (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs border-[#22c55e]/30 text-[#22c55e] hover:bg-[#22c55e]/10 bg-transparent"
+                              onClick={() => handleMatchAction(m.id, "approve")}
+                            >
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Goedkeuren
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs border-red-400/30 text-red-400 hover:bg-red-400/10 bg-transparent"
+                              onClick={() => handleMatchAction(m.id, "reject")}
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Afwijzen
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        ) : null}
 
         {/* ---- Filters Row ---- */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
