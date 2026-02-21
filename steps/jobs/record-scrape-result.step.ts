@@ -30,40 +30,45 @@ export const handler: Handlers<typeof config> = async (
   input,
   { logger },
 ) => {
-  // Stap 1: Zoek config ID voor dit platform
-  const configs = await db
-    .select({ id: scraperConfigs.id })
-    .from(scraperConfigs)
-    .where(eq(scraperConfigs.platform, input.platform))
-    .limit(1);
+  try {
+    // Stap 1: Zoek config ID voor dit platform
+    const configs = await db
+      .select({ id: scraperConfigs.id })
+      .from(scraperConfigs)
+      .where(eq(scraperConfigs.platform, input.platform))
+      .limit(1);
 
-  const configId = configs[0]?.id ?? null;
+    const configId = configs[0]?.id ?? null;
 
-  // Stap 2: Schrijf scrape resultaat
-  await db.insert(scrapeResults).values({
-    configId,
-    platform: input.platform,
-    durationMs: input.durationMs,
-    jobsFound: input.jobsFound,
-    jobsNew: input.jobsNew,
-    duplicates: input.duplicates,
-    status: input.status,
-    errors: input.errors,
-  });
+    // Stap 2: Schrijf scrape resultaat
+    await db.insert(scrapeResults).values({
+      configId,
+      platform: input.platform,
+      durationMs: input.durationMs,
+      jobsFound: input.jobsFound,
+      jobsNew: input.jobsNew,
+      duplicates: input.duplicates,
+      status: input.status,
+      errors: input.errors,
+    });
 
-  // Stap 3: Update config lastRunAt + lastRunStatus
-  if (configId) {
-    await db
-      .update(scraperConfigs)
-      .set({
-        lastRunAt: new Date(),
-        lastRunStatus: input.status,
-        updatedAt: new Date(),
-      })
-      .where(eq(scraperConfigs.id, configId));
+    // Stap 3: Update config lastRunAt + lastRunStatus
+    if (configId) {
+      await db
+        .update(scraperConfigs)
+        .set({
+          lastRunAt: new Date(),
+          lastRunStatus: input.status,
+          updatedAt: new Date(),
+        })
+        .where(eq(scraperConfigs.id, configId));
+    }
+
+    logger.info(
+      `Scrape resultaat opgeslagen: ${input.platform} — ${input.status} (${input.jobsNew} nieuw, ${input.durationMs}ms)`,
+    );
+  } catch (err) {
+    logger.error(`Fout bij opslaan scrape resultaat: ${String(err)}`);
+    throw err;
   }
-
-  logger.info(
-    `Scrape resultaat opgeslagen: ${input.platform} — ${input.status} (${input.jobsNew} nieuw, ${input.durationMs}ms)`,
-  );
 };

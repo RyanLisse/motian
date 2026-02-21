@@ -1,4 +1,4 @@
-import { ApiRouteConfig, Handlers } from "motia";
+import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
 import { db } from "../../src/db";
 import { scraperConfigs } from "../../src/db/schema";
@@ -10,22 +10,22 @@ const updateSchema = z.object({
   parameters: z.record(z.unknown()).optional(),
 });
 
-export const config: ApiRouteConfig = {
-  type: "api",
+export const config = {
   name: "UpdateScraperConfig",
   description: "Scraper configuratie bijwerken (toggle, cron, parameters)",
-  path: "/api/scraper-configuraties/:id",
-  method: "PATCH",
-  bodySchema: updateSchema,
+  triggers: [
+    {
+      type: "http",
+      method: "PATCH",
+      path: "/api/scraper-configuraties/:id",
+      input: updateSchema,
+    },
+  ],
   flows: ["recruitment-scraper"],
-  emits: [],
-};
+} as const satisfies StepConfig;
 
-export const handler: Handlers["UpdateScraperConfig"] = async (
-  req,
-  { logger },
-) => {
-  const { id } = req.params;
+export const handler: Handlers<typeof config> = async (req, { logger }) => {
+  const { id } = req.pathParams;
 
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) {

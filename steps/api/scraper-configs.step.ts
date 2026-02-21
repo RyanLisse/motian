@@ -1,22 +1,16 @@
-import { ApiRouteConfig, Handlers } from "motia";
+import { StepConfig, Handlers } from "motia";
 import { db } from "../../src/db";
 import { scraperConfigs } from "../../src/db/schema";
 import { asc } from "drizzle-orm";
 
-export const config: ApiRouteConfig = {
-  type: "api",
+export const config = {
   name: "GetScraperConfigs",
   description: "Alle scraper configuraties ophalen",
-  path: "/api/scraper-configuraties",
-  method: "GET",
+  triggers: [{ type: "http", method: "GET", path: "/api/scraper-configuraties" }],
   flows: ["recruitment-scraper"],
-  emits: [],
-};
+} as const satisfies StepConfig;
 
-export const handler: Handlers["GetScraperConfigs"] = async (
-  _req,
-  { logger },
-) => {
+export const handler: Handlers<typeof config> = async (_req, { logger }) => {
   try {
     const configs = await db
       .select()

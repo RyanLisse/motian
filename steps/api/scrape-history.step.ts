@@ -1,41 +1,44 @@
-import { ApiRouteConfig, Handlers } from "motia";
+import { StepConfig, Handlers } from "motia";
 import { db } from "../../src/db";
 import { scrapeResults } from "../../src/db/schema";
 import { desc, eq } from "drizzle-orm";
 
-export const config: ApiRouteConfig = {
-  type: "api",
+export const config = {
   name: "GetScrapeHistory",
   description: "Laatste 50 scrape resultaten ophalen",
-  path: "/api/scrape-resultaten",
-  method: "GET",
-  flows: ["recruitment-scraper"],
-  emits: [],
-  queryParams: [
-    { name: "platform", description: "Filter op platform" },
-    { name: "limit", description: "Aantal resultaten (default: 50)" },
+  triggers: [
+    {
+      type: "http",
+      method: "GET",
+      path: "/api/scrape-resultaten",
+      queryParams: [
+        { name: "platform", description: "Filter op platform" },
+        { name: "limit", description: "Aantal resultaten (default: 50)" },
+      ],
+    },
   ],
-};
+  flows: ["recruitment-scraper"],
+} as const satisfies StepConfig;
 
-export const handler: Handlers["GetScrapeHistory"] = async (
-  req,
-  { logger },
-) => {
+export const handler: Handlers<typeof config> = async (req, { logger }) => {
   try {
-    const limit = Math.min(Number(req.query?.limit) || 50, 100);
-    const platform = req.query?.platform;
+    const rawLimit = req.queryParams?.limit;
+    const limit = Math.min(
+      Number(Array.isArray(rawLimit) ? rawLimit[0] : rawLimit) || 50,
+      100,
+    );
+    const rawPlatform = req.queryParams?.platform;
+    const platform = Array.isArray(rawPlatform)
+      ? rawPlatform[0]
+      : rawPlatform;
 
-    let query = db
-      .select()
-      .from(scrapeResults)
+    const baseQuery = db.select().from(scrapeResults);
+    const filtered = platform
+      ? baseQuery.where(eq(scrapeResults.platform, platform))
+      : baseQuery;
+    const results = await filtered
       .orderBy(desc(scrapeResults.runAt))
       .limit(limit);
-
-    if (platform) {
-      query = query.where(eq(scrapeResults.platform, platform)) as typeof query;
-    }
-
-    const results = await query;
 
     return {
       status: 200,

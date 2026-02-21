@@ -1,4 +1,4 @@
-import { ApiRouteConfig, Handlers } from "motia";
+import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
 import { db } from "../../src/db";
 import { scraperConfigs } from "../../src/db/schema";
@@ -8,21 +8,22 @@ const triggerSchema = z.object({
   platform: z.string().optional(),
 });
 
-export const config: ApiRouteConfig = {
-  type: "api",
+export const config = {
   name: "TriggerScrape",
   description: "Handmatig een scrape starten voor één of alle platformen",
-  path: "/api/scrape/starten",
-  method: "POST",
-  bodySchema: triggerSchema,
-  emits: ["platform.scrape"],
+  triggers: [
+    {
+      type: "http",
+      method: "POST",
+      path: "/api/scrape/starten",
+      input: triggerSchema,
+    },
+  ],
+  enqueues: [{ topic: "platform.scrape" }],
   flows: ["recruitment-scraper"],
-};
+} as const satisfies StepConfig;
 
-export const handler: Handlers["TriggerScrape"] = async (
-  req,
-  { emit, logger },
-) => {
+export const handler: Handlers<typeof config> = async (req, { enqueue, logger }) => {
   const parsed = triggerSchema.safeParse(req.body);
   if (!parsed.success) {
     return {
@@ -32,7 +33,6 @@ export const handler: Handlers["TriggerScrape"] = async (
   }
 
   try {
-    // Bepaal welke platformen te scrapen
     let configs;
     if (parsed.data.platform) {
       configs = await db
@@ -54,9 +54,8 @@ export const handler: Handlers["TriggerScrape"] = async (
       };
     }
 
-    // Emit scrape events voor elk platform
     for (const cfg of configs) {
-      await emit({
+      await enqueue({
         topic: "platform.scrape",
         data: {
           platform: cfg.platform,

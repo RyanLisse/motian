@@ -30,7 +30,6 @@ export const handler: Handlers<typeof config> = async (_input, { enqueue, logger
       data: {
         platform: cfg.platform,
         url: cfg.baseUrl,
-        parameters: cfg.parameters,
       },
     });
     logger.info(`Scrape opdracht verstuurd: ${cfg.platform} → ${cfg.baseUrl}`);

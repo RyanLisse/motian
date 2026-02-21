@@ -1,17 +1,14 @@
-import { ApiRouteConfig, Handlers } from "motia";
+import { StepConfig, Handlers } from "motia";
 import { db } from "../../src/db";
 import { scraperConfigs, scrapeResults } from "../../src/db/schema";
 import { eq, gte, and, sql } from "drizzle-orm";
 
-export const config: ApiRouteConfig = {
-  type: "api",
+export const config = {
   name: "GetGezondheid",
   description: "Platform gezondheid: status per scraper + 24-uurs failure rate",
-  path: "/api/gezondheid",
-  method: "GET",
+  triggers: [{ type: "http", method: "GET", path: "/api/gezondheid" }],
   flows: ["recruitment-scraper"],
-  emits: [],
-};
+} as const satisfies StepConfig;
 
 type PlatformHealth = {
   platform: string;
@@ -24,10 +21,7 @@ type PlatformHealth = {
   status: "gezond" | "waarschuwing" | "kritiek" | "inactief";
 };
 
-export const handler: Handlers["GetGezondheid"] = async (
-  _req,
-  { logger },
-) => {
+export const handler: Handlers<typeof config> = async (_req, { logger }) => {
   try {
     const configs = await db.select().from(scraperConfigs);
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -49,7 +43,6 @@ export const handler: Handlers["GetGezondheid"] = async (
         continue;
       }
 
-      // Tel runs en failures in laatste 24 uur
       const stats = await db
         .select({
           total: sql<number>`count(*)::int`,
