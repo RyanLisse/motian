@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { TopNav } from "@/components/top-nav";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { SidebarLayout } from "@/components/sidebar-layout";
 
 export const metadata: Metadata = {
   title: "Motian - Recruitment Platform",
@@ -15,11 +14,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="nl" className="dark">
-      <body className="min-h-screen bg-background antialiased flex flex-col">
-        <TooltipProvider>
-          <TopNav />
-          {children}
-        </TooltipProvider>
+      <body className="min-h-screen bg-background antialiased">
+        <SidebarLayout>{children}</SidebarLayout>
       </body>
     </html>
   );
