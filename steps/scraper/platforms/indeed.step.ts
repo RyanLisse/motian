@@ -34,6 +34,16 @@ const indeedJobSchema = z.object({
   ),
 });
 
+const detailSchema = z.object({
+  description: z.string().optional(),
+  qualifications: z.array(z.string()).optional(),
+  responsibilities: z.array(z.string()).optional(),
+  benefits: z.array(z.string()).optional(),
+  salary: z.string().optional(),
+  contractType: z.string().optional(),
+  workArrangement: z.string().optional(),
+});
+
 type Input = { platform: string; url: string };
 
 export const handler: Handlers<typeof config> = async (
@@ -80,18 +90,74 @@ export const handler: Handlers<typeof config> = async (
 
       logger.info(`Indeed: ${listings.length} vacatures gevonden`);
 
+      // Detail-pagina's bezoeken voor volledige inhoud
+      const detailListings: typeof listings = [];
+      for (const listing of listings) {
+        if (!listing.externalUrl) {
+          detailListings.push(listing);
+          continue;
+        }
+
+        try {
+          const detailResult = await firecrawl.scrapeUrl(listing.externalUrl, {
+            formats: ["extract"],
+            extract: {
+              schema: detailSchema,
+              prompt: "Extract the full job description, qualifications, responsibilities, benefits, and salary from this Indeed job page",
+            },
+          });
+
+          if (!detailResult.success) {
+            logger.warn(
+              `Detail-pagina mislukt voor ${listing.externalId}: ${detailResult.error}`,
+            );
+            detailListings.push(listing);
+            continue;
+          }
+
+          const detail = detailResult.extract as z.infer<typeof detailSchema>;
+
+          detailListings.push({
+            ...listing,
+            description: detail.description || listing.description,
+            salary: detail.salary || listing.salary,
+            contractType: detail.contractType || listing.contractType,
+            qualifications: detail.qualifications,
+            responsibilities: detail.responsibilities,
+            benefits: detail.benefits,
+            workArrangement: detail.workArrangement,
+          } as any);
+
+          logger.info(
+            `Detail verrijkt: ${listing.externalId} (${detail.qualifications?.length ?? 0} eisen, ${detail.responsibilities?.length ?? 0} taken)`,
+          );
+        } catch (detailErr) {
+          logger.warn(
+            `Detail-pagina mislukt voor ${listing.externalId}: ${detailErr}`,
+          );
+          detailListings.push(listing);
+        }
+      }
+
       // Map naar unified schema velden
-      const enriched = listings.map((l) => ({
-        title: l.title,
-        company: l.company,
-        location: l.location,
-        description: l.description,
-        externalId: l.externalId,
-        externalUrl: l.externalUrl,
-        contractType: mapContractType(l.contractType),
-        rateMin: parseSalary(l.salary)?.min,
-        rateMax: parseSalary(l.salary)?.max,
-      }));
+      const enriched = detailListings.map((l: any) => {
+        const salary = parseSalary(l.salary);
+        return {
+          title: l.title,
+          company: l.company,
+          location: l.location,
+          description: l.description,
+          externalId: l.externalId,
+          externalUrl: l.externalUrl,
+          contractType: mapContractType(l.contractType),
+          rateMin: salary?.min,
+          rateMax: salary?.max,
+          qualifications: l.qualifications,
+          responsibilities: l.responsibilities,
+          benefits: l.benefits,
+          workArrangement: l.workArrangement,
+        };
+      });
 
       await enqueue({
         topic: "jobs.normalize",

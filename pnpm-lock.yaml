@@ -29,9 +29,15 @@ importers:
       '@mendable/firecrawl-js':
         specifier: ^1.0.0
         version: 1.29.3
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.26.0
+        version: 1.26.0(zod@3.25.76)
       '@sinclair/typebox':
         specifier: ^0.34.48
         version: 0.34.48
+      '@steipete/sweet-cookie':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
@@ -2355,6 +2361,10 @@ packages:
 
   '@standard-schema/utils@0.3.0':
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
+
+  '@steipete/sweet-cookie@0.1.0':
+    resolution: {integrity: sha512-cF8hS6rTohAFI1NAm2/HM9omBlw6V1DpwF6q5e9FB+l274HjtyirCgCc6QK2Rtuh7uDoqWHshFQZPsceyJuVgw==}
+    engines: {node: '>=22'}
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -6935,6 +6945,8 @@ snapshots:
   '@standard-schema/spec@1.1.0': {}
 
   '@standard-schema/utils@0.3.0': {}
+
+  '@steipete/sweet-cookie@0.1.0': {}
 
   '@swc/helpers@0.5.15':
     dependencies:

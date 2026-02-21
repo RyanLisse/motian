@@ -27,6 +27,11 @@ export const handler: Handlers<typeof config> = async (
   const input = rawInput as Input;
   if (input.platform !== "linkedin") return;
 
+  if (!process.env.LINKEDIN_USERNAME || !process.env.LINKEDIN_PASSWORD) {
+    logger.error("LINKEDIN_USERNAME and LINKEDIN_PASSWORD must be set");
+    return;
+  }
+
   logger.info(`LinkedIn scraping: ${input.url}`);
 
   // Dynamic import to avoid esbuild bundling conflict with playwright-core
@@ -111,14 +116,71 @@ export const handler: Handlers<typeof config> = async (
 
         logger.info(`LinkedIn: ${allListings.length} job listings found`);
 
-        const enriched = allListings.map((l: any) => ({
-          ...l,
-          province:
-            l.province ??
-            (l.location?.includes(" - ")
-              ? l.location.split(" - ")[1]?.trim()
-              : undefined),
-        }));
+        // Stap 4: Detail-pagina's bezoeken voor volledige inhoud
+        const enriched: any[] = [];
+        for (const listing of allListings) {
+          const province =
+            listing.province ??
+            (listing.location?.includes(" - ")
+              ? listing.location.split(" - ")[1]?.trim()
+              : undefined);
+
+          if (!listing.externalUrl) {
+            enriched.push({ ...listing, province });
+            continue;
+          }
+
+          try {
+            await stagehand.page.goto(listing.externalUrl, {
+              waitUntil: "domcontentloaded",
+              timeout: 15_000,
+            });
+
+            const detail = await stagehand.extract({
+              instruction: `Extract the full details from this LinkedIn job page:
+                - description: the FULL job description (all text, not truncated)
+                - qualifications: ALL required qualifications as a list of strings
+                - responsibilities: ALL responsibilities/tasks as a list of strings
+                - skills: ALL required skills as a list of strings
+                - contractType: employment type ("fulltime", "parttime", "contract", "tijdelijk", "vast")
+                - workArrangement: work arrangement ("hybrid", "remote", "on-site")
+                - seniorityLevel: seniority level (e.g. "Mid-Senior level")
+                - salary: salary information if visible`,
+              schema: z.object({
+                description: z.string().optional(),
+                qualifications: z.array(z.string()).optional(),
+                responsibilities: z.array(z.string()).optional(),
+                skills: z.array(z.string()).optional(),
+                contractType: z.string().optional(),
+                workArrangement: z.string().optional(),
+                seniorityLevel: z.string().optional(),
+                salary: z.string().optional(),
+              }),
+            });
+
+            enriched.push({
+              ...listing,
+              description: detail.description || listing.description,
+              qualifications: detail.qualifications?.length ? detail.qualifications : listing.qualifications,
+              responsibilities: detail.responsibilities?.length ? detail.responsibilities : listing.responsibilities,
+              skills: detail.skills?.length ? detail.skills : listing.skills,
+              contractType: detail.contractType || listing.contractType,
+              workArrangement: detail.workArrangement ?? listing.workArrangement,
+              seniorityLevel: detail.seniorityLevel ?? listing.seniorityLevel,
+              salary: detail.salary ?? listing.salary,
+              province,
+            });
+
+            logger.info(
+              `Detail verrijkt: ${listing.externalId} (${detail.qualifications?.length ?? 0} eisen, ${detail.skills?.length ?? 0} skills)`,
+            );
+          } catch (detailErr) {
+            logger.warn(
+              `Detail-pagina mislukt voor ${listing.externalId}: ${detailErr}`,
+            );
+            enriched.push({ ...listing, province });
+          }
+        }
 
         await enqueue({
           topic: "jobs.normalize",
