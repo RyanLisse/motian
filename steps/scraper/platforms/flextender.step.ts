@@ -120,18 +120,14 @@ function parseFlextenderHtml(html: string): any[] {
     const fields = parseFieldPairs(cardHtml);
 
     const province = extractProvince(fields.Regio);
-    const location = fields.Regio
-      ? province
-        ? `${fields.Regio}`
-        : fields.Regio
-      : undefined;
+    const location = fields.Regio ?? undefined;
 
     listings.push({
       title,
       company,
       location,
       province,
-      description: title, // Placeholder, verrijkt in stap 3
+      description: `${title} — ${company ?? "Flextender"} opdracht`, // Fallback ≥10 chars voor schema validatie
       externalId,
       externalUrl: `${DETAIL_BASE}${externalId}`,
       startDate: parseDutchDate(fields.Start),
@@ -205,6 +201,14 @@ function parseDetailHtml(html: string): Record<string, any> {
   // Splits op <strong> tags om secties te identificeren
   const sections = extractSections(content);
 
+  // Helper: case-insensitive sectie lookup
+  const findSection = (needle: string): string | undefined => {
+    const key = Object.keys(sections).find((k) =>
+      k.toLowerCase().includes(needle.toLowerCase()),
+    );
+    return key ? sections[key] : undefined;
+  };
+
   // ── Beschrijving: combineer Organisatietekst + Opdracht secties ──
   const descParts: string[] = [];
   for (const key of ["Opdracht", "Organisatietekst", "Opdrachtgever"]) {
@@ -215,73 +219,58 @@ function parseDetailHtml(html: string): Record<string, any> {
   }
 
   // ── Vereisten / knock-outcriteria → requirements array ──
-  const reqKey = Object.keys(sections).find((k) =>
-    k.toLowerCase().includes("vereisten") || k.toLowerCase().includes("knock-out"),
-  );
-  if (reqKey && sections[reqKey]) {
-    result.requirements = parseNumberedList(sections[reqKey]).map((item) => ({
+  const reqText = findSection("vereisten") ?? findSection("knock-out");
+  if (reqText) {
+    result.requirements = parseNumberedList(reqText).map((item) => ({
       description: item,
       isKnockout: true,
     }));
   }
 
   // ── Selectiecriteria → wishes array ──
-  const selKey = Object.keys(sections).find((k) =>
-    k.toLowerCase().includes("selectiecriteria"),
-  );
-  if (selKey && sections[selKey]) {
-    result.wishes = parseNumberedList(sections[selKey]).map((item) => ({
+  const selText = findSection("selectiecriteria");
+  if (selText) {
+    result.wishes = parseNumberedList(selText).map((item) => ({
       description: item,
     }));
   }
 
   // ── Competenties → competences array ──
-  if (sections.Competenties) {
-    result.competences = parseBulletList(sections.Competenties);
+  const compText = findSection("competenties");
+  if (compText) {
+    result.competences = parseBulletList(compText);
   }
 
-  // ── Functieschaal → rateMin/rateMax (schaal nummer) ──
-  if (sections.Functieschaal) {
-    const scaleMatch = sections.Functieschaal.match(/schaal\s*(\d+)/i);
-    if (scaleMatch) {
-      result.conditions = result.conditions ?? [];
-      result.conditions.push(`Functieschaal ${scaleMatch[1]}`);
-    }
+  // ── Conditions: verzamel alle werkcondities ──
+  const conditions: string[] = [];
+
+  const funcText = findSection("functieschaal");
+  if (funcText) {
+    const scaleMatch = funcText.match(/schaal\s*(\d+)/i);
+    if (scaleMatch) conditions.push(`Functieschaal ${scaleMatch[1]}`);
   }
 
-  // ── Fee Flextender → conditions ──
-  const feeKey = Object.keys(sections).find((k) =>
-    k.toLowerCase().includes("fee"),
-  );
-  if (feeKey && sections[feeKey]) {
-    result.conditions = result.conditions ?? [];
-    result.conditions.push(`Fee: ${sections[feeKey].trim()}`);
-  }
+  const feeText = findSection("fee");
+  if (feeText) conditions.push(`Fee: ${feeText.trim()}`);
 
-  // ── Werkdagen → conditions ──
-  if (sections.Werkdagen) {
-    result.conditions = result.conditions ?? [];
-    result.conditions.push(`Werkdagen: ${sections.Werkdagen.trim()}`);
-  }
+  const werkText = findSection("werkdagen");
+  if (werkText) conditions.push(`Werkdagen: ${werkText.trim()}`);
 
-  // ── CV-eisen → conditions ──
-  const cvKey = Object.keys(sections).find((k) =>
-    k.toLowerCase().includes("cv-eisen"),
-  );
-  if (cvKey && sections[cvKey]) {
-    result.conditions = result.conditions ?? [];
-    result.conditions.push(`CV-eisen: ${sections[cvKey].trim()}`);
-  }
+  const cvText = findSection("cv-eisen");
+  if (cvText) conditions.push(`CV-eisen: ${cvText.trim()}`);
 
   // ── Detail summary velden (extra metadata) ──
-  const summaryFields = parseFieldPairs(
-    extractBetween(html, 'class="css-summary">', "</div><!--end summary-->") ??
-      extractBetween(html, 'class="css-summarybackground">', 'class="css-formattedjobdescription">') ?? "",
-  );
+  const summaryHtml = extractBetween(
+    html,
+    'class="css-summarybackground">',
+    'class="css-formattedjobdescription">',
+  ) ?? "";
+  const summaryFields = parseFieldPairs(summaryHtml);
   if (summaryFields["Opties verlenging"]) {
-    result.conditions = result.conditions ?? [];
-    result.conditions.push(`Verlenging: ${summaryFields["Opties verlenging"]}`);
+    conditions.push(`Verlenging: ${summaryFields["Opties verlenging"]}`);
   }
+
+  if (conditions.length > 0) result.conditions = conditions;
 
   return result;
 }
