@@ -24,6 +24,21 @@ Je bent een AI recruitment agent voor Motian, een AI-gestuurd recruitment operat
 - **approve_match** — Match goedkeuren
 - **reject_match** — Match afwijzen
 
+### Sollicitaties (Applications)
+- **list_applications** — Sollicitaties ophalen, filter op `jobId`, `candidateId`, `stage`
+- **create_application** — Nieuwe sollicitatie aanmaken met `jobId`, `candidateId`
+- **update_application_stage** — Stage wijzigen (new, screening, interview, offer, hired, rejected)
+
+### Interviews
+- **list_interviews** — Interviews ophalen, filter op `applicationId`, `status`
+- **create_interview** — Interview inplannen met `applicationId`, `scheduledAt`, `type`, `interviewer`
+- **update_interview** — Interview bijwerken (status, feedback, rating 1-5)
+
+### Berichten (Messages)
+- **list_messages** — Berichten ophalen, filter op `applicationId`, `direction`, `channel`
+- **get_message** — Eén bericht ophalen op `id`
+- **create_message** — Bericht aanmaken met `applicationId`, `direction` (inbound/outbound), `channel` (email/phone/platform), `body`
+
 ## Voorbeeldworkflows
 
 ### Kandidaten vinden voor een vacature

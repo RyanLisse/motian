@@ -302,6 +302,17 @@ const TOOLS = [
     },
   },
   {
+    name: "get_message",
+    description: "Eén bericht ophalen op basis van ID",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        id: { type: "string", description: "Bericht-ID" },
+      },
+      required: ["id"],
+    },
+  },
+  {
     name: "create_message",
     description: "Nieuw bericht aanmaken",
     inputSchema: {
@@ -484,6 +495,12 @@ async function handleTool(name: string, args: ToolInput) {
     }
 
     // ── Messages ────────────────────────────────────────
+    case "get_message": {
+      const message = await getMessageById(args.id as string);
+      if (!message) return err(`Bericht met ID '${args.id}' niet gevonden`);
+      return ok(message);
+    }
+
     case "list_messages":
       return ok(
         await listMessages({
@@ -494,16 +511,17 @@ async function handleTool(name: string, args: ToolInput) {
         }),
       );
 
-    case "create_message":
-      return ok(
-        await createMessage({
-          applicationId: args.applicationId as string,
-          direction: args.direction as string,
-          channel: args.channel as string,
-          subject: args.subject as string | undefined,
-          body: args.body as string,
-        }),
-      );
+    case "create_message": {
+      const msg = await createMessage({
+        applicationId: args.applicationId as string,
+        direction: args.direction as string,
+        channel: args.channel as string,
+        subject: args.subject as string | undefined,
+        body: args.body as string,
+      });
+      if (!msg) return err("Ongeldige direction, channel of applicationId");
+      return ok(msg);
+    }
 
     default:
       return err(`Onbekende tool: ${name}`);

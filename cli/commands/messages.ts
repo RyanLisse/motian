@@ -5,6 +5,8 @@ import {
   listMessages,
   getMessageById,
   createMessage,
+  VALID_DIRECTIONS,
+  VALID_CHANNELS,
 } from "../../src/services/messages.js";
 
 export function registerMessagesCommand(program: Command) {
@@ -122,6 +124,16 @@ export function registerMessagesCommand(program: Command) {
     .option("--subject <subject>", "Onderwerp")
     .requiredOption("--body <body>", "Berichttekst")
     .action(async (opts) => {
+      // Validate direction and channel before calling service
+      if (!VALID_DIRECTIONS.includes(opts.direction)) {
+        console.error(chalk.red(`Ongeldige richting: ${opts.direction}. Kies uit: ${VALID_DIRECTIONS.join(", ")}`));
+        process.exit(1);
+      }
+      if (!VALID_CHANNELS.includes(opts.channel)) {
+        console.error(chalk.red(`Ongeldig kanaal: ${opts.channel}. Kies uit: ${VALID_CHANNELS.join(", ")}`));
+        process.exit(1);
+      }
+
       const spinner = ora("Bericht versturen...").start();
       try {
         const result = await createMessage({
@@ -131,6 +143,11 @@ export function registerMessagesCommand(program: Command) {
           subject: opts.subject,
           body: opts.body,
         });
+
+        if (!result) {
+          spinner.fail(chalk.red("Sollicitatie niet gevonden of is verwijderd."));
+          process.exit(1);
+        }
 
         spinner.succeed(chalk.green(`Bericht ${result.id.slice(0, 8)} verstuurd.`));
         process.exit(0);

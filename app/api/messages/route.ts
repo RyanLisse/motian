@@ -56,6 +56,12 @@ export async function POST(req: NextRequest) {
       subject,
       body: messageBody,
     })
+    if (!message) {
+      return NextResponse.json(
+        { error: "Ongeldige direction, channel of applicationId" },
+        { status: 400 },
+      )
+    }
     return NextResponse.json(message, { status: 201 })
   } catch (error: unknown) {
     console.error("POST /api/messages error:", error)

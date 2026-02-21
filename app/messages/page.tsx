@@ -224,22 +224,9 @@ export default function MessagesPage() {
     else if (status === "draft") setToast("Concept opgeslagen");
     else setToast("Bericht ingepland");
 
-    // Fire POST to API (best-effort, UI already updated optimistically)
-    if (status === "sent") {
-      fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          applicationId: composeRecipient || "unknown",
-          direction: "outbound",
-          channel: "email",
-          subject: composeSubject,
-          body: composeBody,
-        }),
-      }).catch(() => {
-        // silent — optimistic UI already shows the message
-      });
-    }
+    // Fire POST to API only if we have a valid applicationId (UUID format)
+    // The compose recipients are display names, not application IDs, so skip for now
+    // A future enhancement would map recipients to real applicationIds
   }
 
   return (

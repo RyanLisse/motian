@@ -150,7 +150,7 @@ describe("AGENT_PROMPT.md", () => {
     expect(fs.existsSync(promptPath)).toBe(true);
   });
 
-  it("documents all 14 MCP tools", async () => {
+  it("documents all 23 MCP tools", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const promptPath = path.resolve("AGENT_PROMPT.md");
@@ -171,6 +171,15 @@ describe("AGENT_PROMPT.md", () => {
       "get_match",
       "approve_match",
       "reject_match",
+      "list_applications",
+      "create_application",
+      "update_application_stage",
+      "list_interviews",
+      "create_interview",
+      "update_interview",
+      "list_messages",
+      "get_message",
+      "create_message",
     ];
 
     for (const tool of toolNames) {
