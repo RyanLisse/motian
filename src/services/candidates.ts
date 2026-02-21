@@ -27,7 +27,6 @@ export type UpdateCandidateData = Partial<CreateCandidateData> & {
 
 export type SearchCandidatesOptions = {
   query?: string;
-  skill?: string;
   location?: string;
   limit?: number;
 };
@@ -110,9 +109,17 @@ export async function deleteCandidateWithGdpr(
       name: "[verwijderd]",
       email: null,
       phone: null,
+      role: null,
+      skills: [],
       experience: null,
+      location: null,
+      province: null,
       resumeUrl: null,
       embedding: null,
+      tags: [],
+      source: null,
+      gdprConsent: false,
+      gdprConsentAt: null,
       deletedAt: new Date(),
       updatedAt: new Date(),
     })

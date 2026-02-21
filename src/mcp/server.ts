@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 // ── Service imports ──────────────────────────────────────────────
-import { searchJobs } from "../services/jobs.js";
+import { searchJobs, getJobById, searchJobsByTitle } from "../services/jobs.js";
 import { getAllConfigs, getHealth, updateConfig } from "../services/scrapers.js";
 import {
   listCandidates,
@@ -22,29 +22,6 @@ import {
   getMatchById,
   updateMatchStatus,
 } from "../services/matches.js";
-
-// ── Inline helpers for jobs (not in service layer yet) ───────────
-import { db } from "../db/index.js";
-import { jobs } from "../db/schema.js";
-import { and, eq, ilike, isNull, desc } from "drizzle-orm";
-
-async function getJobById(id: string) {
-  const [result] = await db
-    .select()
-    .from(jobs)
-    .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
-    .limit(1);
-  return result ?? null;
-}
-
-async function searchJobsByTitle(query: string, limit = 50) {
-  return db
-    .select()
-    .from(jobs)
-    .where(and(ilike(jobs.title, `%${query}%`), isNull(jobs.deletedAt)))
-    .orderBy(desc(jobs.scrapedAt))
-    .limit(Math.min(limit, 100));
-}
 
 // ── Tool definitions ─────────────────────────────────────────────
 

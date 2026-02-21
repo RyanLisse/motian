@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -31,4 +31,25 @@ export async function searchJobs(
     .where(and(...conditions))
     .orderBy(desc(jobs.scrapedAt))
     .limit(limit);
+}
+
+export async function getJobById(id: string): Promise<Job | null> {
+  const [result] = await db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
+    .limit(1);
+  return result ?? null;
+}
+
+export async function searchJobsByTitle(
+  query: string,
+  limit = 50,
+): Promise<Job[]> {
+  return db
+    .select()
+    .from(jobs)
+    .where(and(ilike(jobs.title, `%${query}%`), isNull(jobs.deletedAt)))
+    .orderBy(desc(jobs.scrapedAt))
+    .limit(Math.min(limit, 100));
 }

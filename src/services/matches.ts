@@ -21,6 +21,25 @@ export type MatchWithDetails = JobMatch & {
   candidateName: string | null;
 };
 
+// ========== Shared Select Shape ==========
+
+const matchWithDetailsSelect = {
+  id: jobMatches.id,
+  jobId: jobMatches.jobId,
+  candidateId: jobMatches.candidateId,
+  vectorScore: jobMatches.vectorScore,
+  llmScore: jobMatches.llmScore,
+  overallScore: jobMatches.overallScore,
+  status: jobMatches.status,
+  knockOutPassed: jobMatches.knockOutPassed,
+  matchData: jobMatches.matchData,
+  reviewedBy: jobMatches.reviewedBy,
+  reviewedAt: jobMatches.reviewedAt,
+  createdAt: jobMatches.createdAt,
+  jobTitle: jobs.title,
+  candidateName: candidates.name,
+};
+
 // ========== Service Functions ==========
 
 export async function listMatches(opts: {
@@ -39,22 +58,7 @@ export async function listMatches(opts: {
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   return db
-    .select({
-      id: jobMatches.id,
-      jobId: jobMatches.jobId,
-      candidateId: jobMatches.candidateId,
-      vectorScore: jobMatches.vectorScore,
-      llmScore: jobMatches.llmScore,
-      overallScore: jobMatches.overallScore,
-      status: jobMatches.status,
-      knockOutPassed: jobMatches.knockOutPassed,
-      matchData: jobMatches.matchData,
-      reviewedBy: jobMatches.reviewedBy,
-      reviewedAt: jobMatches.reviewedAt,
-      createdAt: jobMatches.createdAt,
-      jobTitle: jobs.title,
-      candidateName: candidates.name,
-    })
+    .select(matchWithDetailsSelect)
     .from(jobMatches)
     .leftJoin(jobs, eq(jobMatches.jobId, jobs.id))
     .leftJoin(candidates, eq(jobMatches.candidateId, candidates.id))
@@ -65,22 +69,7 @@ export async function listMatches(opts: {
 
 export async function getMatchById(id: string): Promise<MatchWithDetails | null> {
   const [result] = await db
-    .select({
-      id: jobMatches.id,
-      jobId: jobMatches.jobId,
-      candidateId: jobMatches.candidateId,
-      vectorScore: jobMatches.vectorScore,
-      llmScore: jobMatches.llmScore,
-      overallScore: jobMatches.overallScore,
-      status: jobMatches.status,
-      knockOutPassed: jobMatches.knockOutPassed,
-      matchData: jobMatches.matchData,
-      reviewedBy: jobMatches.reviewedBy,
-      reviewedAt: jobMatches.reviewedAt,
-      createdAt: jobMatches.createdAt,
-      jobTitle: jobs.title,
-      candidateName: candidates.name,
-    })
+    .select(matchWithDetailsSelect)
     .from(jobMatches)
     .leftJoin(jobs, eq(jobMatches.jobId, jobs.id))
     .leftJoin(candidates, eq(jobMatches.candidateId, candidates.id))
