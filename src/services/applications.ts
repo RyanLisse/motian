@@ -2,6 +2,19 @@ import { db } from "../db";
 import { applications, jobs, candidates } from "../db/schema";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
+// ========== Constants ==========
+
+export const VALID_STAGES = [
+  "new",
+  "screening",
+  "interview",
+  "offer",
+  "hired",
+  "rejected",
+] as const;
+
+export type ApplicationStage = (typeof VALID_STAGES)[number];
+
 // ========== Types ==========
 
 export type Application = typeof applications.$inferSelect;
@@ -100,27 +113,36 @@ export async function updateApplicationStage(
   newStage: string,
   notes?: string,
 ): Promise<Application | null> {
-  // Get current stage for audit trail
-  const [current] = await db
-    .select({ stage: applications.stage })
-    .from(applications)
-    .where(and(eq(applications.id, id), isNull(applications.deletedAt)))
-    .limit(1);
+  if (!VALID_STAGES.includes(newStage as ApplicationStage)) return null;
 
-  if (!current) return null;
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ stage: applications.stage })
+      .from(applications)
+      .where(and(eq(applications.id, id), isNull(applications.deletedAt)))
+      .limit(1);
 
-  const [result] = await db
-    .update(applications)
-    .set({
-      previousStage: current.stage,
-      stage: newStage,
-      stageChangedAt: new Date(),
-      notes: notes ?? undefined,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(applications.id, id), isNull(applications.deletedAt)))
-    .returning();
-  return result ?? null;
+    if (!current) return null;
+
+    const [result] = await tx
+      .update(applications)
+      .set({
+        previousStage: current.stage,
+        stage: newStage,
+        stageChangedAt: new Date(),
+        notes: notes ?? undefined,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(applications.id, id),
+          eq(applications.stage, current.stage),
+          isNull(applications.deletedAt),
+        ),
+      )
+      .returning();
+    return result ?? null;
+  });
 }
 
 export async function deleteApplication(id: string): Promise<boolean> {

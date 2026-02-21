@@ -7,11 +7,15 @@ export async function GET(req: NextRequest) {
     const jobId = searchParams.get("jobId") ?? undefined
     const candidateId = searchParams.get("candidateId") ?? undefined
     const stage = searchParams.get("stage") ?? undefined
-    const limit = searchParams.get("limit")
-      ? parseInt(searchParams.get("limit")!, 10)
-      : undefined
+    const rawLimit = searchParams.get("limit")
+    const limit = rawLimit ? parseInt(rawLimit, 10) : undefined
 
-    const applications = await listApplications({ jobId, candidateId, stage, limit })
+    const applications = await listApplications({
+      jobId,
+      candidateId,
+      stage,
+      limit: Number.isNaN(limit) ? undefined : limit,
+    })
     return NextResponse.json(applications)
   } catch (error: unknown) {
     console.error("GET /api/sollicitaties error:", error)

@@ -439,12 +439,13 @@ async function handleTool(name: string, args: ToolInput) {
       );
 
     case "update_interview": {
-      const updatedInterview = await updateInterview(args.id as string, {
+      const { interview: updatedInterview, emptyUpdate } = await updateInterview(args.id as string, {
         status: args.status as string | undefined,
         feedback: args.feedback as string | undefined,
         rating: args.rating as number | undefined,
       });
-      if (!updatedInterview) return err(`Interview met ID '${args.id}' niet gevonden`);
+      if (emptyUpdate) return err("Geen geldige velden opgegeven");
+      if (!updatedInterview) return err(`Interview met ID '${args.id}' niet gevonden of ongeldige waarden`);
       return ok(updatedInterview);
     }
 
@@ -469,8 +470,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     return await handleTool(name, (args ?? {}) as ToolInput);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return err(message);
+    console.error("MCP tool error:", error);
+    return err("Er is een interne fout opgetreden");
   }
 });
 

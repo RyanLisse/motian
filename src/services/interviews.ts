@@ -2,6 +2,21 @@ import { db } from "../db";
 import { interviews, applications, jobs, candidates } from "../db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 
+// ========== Constants ==========
+
+export const VALID_INTERVIEW_TYPES = [
+  "phone",
+  "video",
+  "onsite",
+  "technical",
+] as const;
+
+export const VALID_INTERVIEW_STATUSES = [
+  "scheduled",
+  "completed",
+  "cancelled",
+] as const;
+
 // ========== Types ==========
 
 export type InterviewRecord = typeof interviews.$inferSelect;
@@ -107,20 +122,33 @@ export async function createInterview(
 export async function updateInterview(
   id: string,
   data: UpdateInterviewData,
-): Promise<InterviewRecord | null> {
+): Promise<{ interview: InterviewRecord | null; emptyUpdate: boolean }> {
   const updates: Record<string, unknown> = {};
-  if (data.status !== undefined) updates.status = data.status;
+  if (data.status !== undefined) {
+    if (
+      !VALID_INTERVIEW_STATUSES.includes(
+        data.status as (typeof VALID_INTERVIEW_STATUSES)[number],
+      )
+    )
+      return { interview: null, emptyUpdate: false };
+    updates.status = data.status;
+  }
   if (data.feedback !== undefined) updates.feedback = data.feedback;
-  if (data.rating !== undefined) updates.rating = data.rating;
+  if (data.rating !== undefined) {
+    if (data.rating < 1 || data.rating > 5)
+      return { interview: null, emptyUpdate: false };
+    updates.rating = data.rating;
+  }
 
-  if (Object.keys(updates).length === 0) return null;
+  if (Object.keys(updates).length === 0)
+    return { interview: null, emptyUpdate: true };
 
   const [result] = await db
     .update(interviews)
     .set(updates)
     .where(eq(interviews.id, id))
     .returning();
-  return result ?? null;
+  return { interview: result ?? null, emptyUpdate: false };
 }
 
 export async function getUpcomingInterviews(

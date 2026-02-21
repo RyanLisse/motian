@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getApplicationById, updateApplicationStage } from "../../../../src/services/applications"
+import { getApplicationById, updateApplicationStage, VALID_STAGES } from "../../../../src/services/applications"
 
 export async function GET(
   _req: NextRequest,
@@ -32,9 +32,9 @@ export async function PATCH(
     const body = await req.json()
     const { stage, notes } = body
 
-    if (!stage) {
+    if (!stage || !VALID_STAGES.includes(stage)) {
       return NextResponse.json(
-        { error: "stage is vereist" },
+        { error: "Ongeldige stage waarde" },
         { status: 400 },
       )
     }

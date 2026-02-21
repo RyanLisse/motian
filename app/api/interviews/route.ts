@@ -6,11 +6,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl
     const applicationId = searchParams.get("applicationId") ?? undefined
     const status = searchParams.get("status") ?? undefined
-    const limit = searchParams.get("limit")
-      ? parseInt(searchParams.get("limit")!, 10)
-      : undefined
+    const rawLimit = searchParams.get("limit")
+    const limit = rawLimit ? parseInt(rawLimit, 10) : undefined
 
-    const interviewRecords = await listInterviews({ applicationId, status, limit })
+    const interviewRecords = await listInterviews({
+      applicationId,
+      status,
+      limit: Number.isNaN(limit) ? undefined : limit,
+    })
     return NextResponse.json(interviewRecords)
   } catch (error: unknown) {
     console.error("GET /api/interviews error:", error)
@@ -30,9 +33,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const parsedDate = new Date(scheduledAt)
+    if (isNaN(parsedDate.getTime())) {
+      return NextResponse.json(
+        { error: "Ongeldige scheduledAt datum" },
+        { status: 400 },
+      )
+    }
+
     const interview = await createInterview({
       applicationId,
-      scheduledAt,
+      scheduledAt: parsedDate,
       type,
       interviewer,
       duration,
