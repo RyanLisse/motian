@@ -1,9 +1,32 @@
 import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
 
+const API_BASE = "https://kbenp-match-api.azurewebsites.net";
+const MAX_RESULTS = 1000;
+
+/** Categorie-ID → leesbare naam */
+const CATEGORY_MAP: Record<number, string> = {
+  11: "Beleid",
+  12: "Civiele Techniek",
+  13: "Communicatie",
+  14: "Financieel",
+  15: "ICT",
+  16: "Informatiemanagement",
+  18: "Juridisch",
+  19: "Organisatie en Personeel",
+  20: "Project- en Programmamanagement",
+  21: "Overig",
+  22: "Mobiliteit en Verkeer",
+  23: "Ruimtelijke Ordening",
+  24: "Sociaal Domein",
+  25: "Vergunning en Handhaving",
+  26: "Vastgoed en Grondzaken",
+};
+
 export const config = {
   name: "ScrapeOpdrachtoverheid",
-  description: "Scrapt Opdrachtoverheid.nl overheidsopdrachten via Stagehand (publiek)",
+  description:
+    "Scrapt Opdrachtoverheid.nl overheidsopdrachten via publieke JSON API (geen browser nodig)",
   triggers: [
     {
       type: "queue",
@@ -24,233 +47,174 @@ export const handler: Handlers<typeof config> = async (
 ) => {
   if (input.platform !== "opdrachtoverheid") return;
 
-  logger.info(`Opdrachtoverheid scrapen: ${input.url}`);
-
-  // Hostname allowlist — SSRF preventie
-  const allowedHosts = ["www.opdrachtoverheid.nl", "opdrachtoverheid.nl"];
-  const inputHost = new URL(input.url).hostname;
-  if (!allowedHosts.includes(inputHost)) {
-    logger.error(`Geblokkeerd: host ${inputHost} niet in allowlist`);
-    return;
-  }
-
-  if (!process.env.BROWSERBASE_API_KEY || !process.env.BROWSERBASE_PROJECT_ID) {
-    throw new Error("BROWSERBASE_API_KEY en BROWSERBASE_PROJECT_ID zijn vereist");
-  }
-
-  // Dynamic import om esbuild bundling conflict met playwright-core te voorkomen
-  const { Stagehand } = await import("@browserbasehq/stagehand");
-
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    apiKey: process.env.BROWSERBASE_API_KEY,
-    projectId: process.env.BROWSERBASE_PROJECT_ID,
-    enableCaching: true,
-  });
-
-  await stagehand.init();
+  logger.info(`Opdrachtoverheid scrapen via API: ${input.url}`);
 
   const MAX_RETRIES = 2;
   let attempt = 0;
 
-  try {
-    while (attempt <= MAX_RETRIES) {
-      try {
-        // Stap 1: Navigeer naar overzichtspagina (geen login nodig — publiek)
-        await stagehand.page.goto(input.url);
-        await stagehand.page.waitForSelector(
-          '.search-results, .opdracht-list, main',
-          { timeout: 15_000 },
-        );
+  while (attempt <= MAX_RETRIES) {
+    try {
+      // Stap 1: Haal alle actieve vacatures op in één verzoek (API ondersteunt limit=1000)
+      const res = await fetch(`${API_BASE}/search`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0 (compatible; MotianBot/1.0)",
+        },
+        body: JSON.stringify({
+          single: false,
+          limit: MAX_RESULTS,
+          offset: 0,
+          disjunction: 0,
+          user_coordinates: {},
+          filters: {
+            and_filters: [
+              {
+                filters: [
+                  {
+                    field_name: "tender_active",
+                    operator: "eq",
+                    value: true,
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      });
 
-        // Stap 2: Paginated extraction via ?page=N parameter
-        const MAX_PAGES = 10;
-        const allListings: any[] = [];
+      if (!res.ok) {
+        const errorBody = await res.text().catch(() => "");
+        throw new Error(`API ${res.status}: ${res.statusText} — ${errorBody.slice(0, 500)}`);
+      }
 
-        for (let page = 1; page <= MAX_PAGES; page++) {
-          if (page > 1) {
-            const pageUrl = new URL(input.url);
-            pageUrl.searchParams.set("page", String(page));
-            await stagehand.page.goto(pageUrl.toString());
-            await stagehand.page.waitForSelector(
-              '.search-results, .opdracht-list, main',
-              { timeout: 10_000 },
-            );
-          }
+      const data = await res.json();
+      const allTenders = data.negometrix_tenders ?? [];
 
-          const result = await stagehand.extract({
-            instruction: `Extraheer alle zichtbare opdrachten van deze Opdrachtoverheid overzichtspagina.
-              Per opdracht extraheer:
-              - title: de functietitel/rol
-              - company: de opdrachtgever (overheidsorganisatie)
-              - location: locatie (bijv. "Den Haag - Zuid-Holland")
-              - rateMax: het maximale uurtarief als het zichtbaar is (getal)
-              - hours: het aantal uren per week (getal)
-              - applicationDeadline: sluitingsdatum (YYYY-MM-DD)
-              - externalUrl: de volledige URL naar de opdracht detailpagina
-              - externalId: het UUID uit de URL van de opdracht`,
-            schema: z.object({
-              opdrachten: z.array(
-                z.object({
-                  title: z.string(),
-                  company: z.string().optional(),
-                  location: z.string().optional(),
-                  rateMax: z.number().optional(),
-                  hours: z.number().optional(),
-                  applicationDeadline: z.string().optional(),
-                  externalUrl: z.string(),
-                  externalId: z.string(),
-                }),
-              ),
-            }),
-          });
+      logger.info(`Opdrachtoverheid API: ${allTenders.length} actieve opdrachten`);
 
-          allListings.push(...(result.opdrachten ?? []));
+      // Stap 2: Map API response naar unified listing format
+      const listings = allTenders.map((t: any) => {
+        const loc = t.vacancies_location ?? {};
+        const empType = (t.contract_type ?? "").toLowerCase();
 
-          const hasNext = await stagehand.page
-            .locator(
-              'a:has-text("Volgende"), a:has-text("volgende"), [rel="next"], .pagination .next a',
-            )
-            .isVisible()
-            .catch(() => false);
-          if (!hasNext) break;
-        }
-
-        logger.info(`Opdrachtoverheid: ${allListings.length} opdrachten gevonden`);
-
-        // Stap 3: Detail-pagina's bezoeken voor volledige inhoud
-        const enriched: any[] = [];
-        for (const listing of allListings) {
-          const province = listing.location?.includes(" - ")
-            ? listing.location.split(" - ")[1]?.trim()
+        const contractType = empType.includes("freelance") || empType === "temporary"
+          ? "freelance"
+          : empType.includes("detachering") || empType.includes("loondienst")
+            ? "interim"
             : undefined;
 
-          if (!listing.externalUrl) {
-            enriched.push({ ...listing, province });
-            continue;
-          }
+        const allowsSubcontracting =
+          empType.includes("freelance") || empType === "temporary" ? true : undefined;
 
-          try {
-            // Valideer detail-URL hostname
-            const detailHost = new URL(listing.externalUrl).hostname;
-            if (!allowedHosts.includes(detailHost)) {
-              logger.warn(`Detail-URL geblokkeerd: ${detailHost} niet in allowlist`);
-              enriched.push({ ...listing, province });
-              continue;
-            }
+        // Parse HTML requirements/competences naar string arrays
+        const requirements = parseHtmlList(t.tender_requirements);
+        const competences = parseHtmlList(t.tender_competences);
 
-            await stagehand.page.goto(listing.externalUrl, {
-              waitUntil: "domcontentloaded",
-              timeout: 15_000,
-            });
+        return {
+          title: t.tender_name || t.tender_buying_organization,
+          company: t.tender_buying_organization,
+          location: loc.city
+            ? `${loc.city}${loc.province ? ` - ${loc.province}` : ""}`
+            : loc.province ?? undefined,
+          province: loc.province ?? undefined,
+          description: ensureMinLength(
+            stripHtml(t.tender_description_html) ||
+            t.tender_description ||
+            t.tender_name ||
+            "Geen beschrijving beschikbaar voor deze opdracht",
+          ),
+          externalId: t.web_key || t.tender_id?.toString() || "",
+          externalUrl: t.opdracht_overheid_url || `https://www.opdrachtoverheid.nl/`,
+          rateMax: t.tender_maximum_tariff && t.tender_maximum_tariff > 0
+            ? t.tender_maximum_tariff
+            : undefined,
+          startDate: t.tender_start_date ?? undefined,
+          endDate: t.tender_end_date ?? undefined,
+          applicationDeadline: t.tender_end_date ?? undefined,
+          contractType,
+          allowsSubcontracting,
+          contractLabel: CATEGORY_MAP[t.tender_category] ?? undefined,
+          positionsAvailable: parseInt(String(t.tender_number_of_professionals ?? 1), 10) || 1,
+          requirements: requirements.length > 0
+            ? requirements.map((r) => ({ description: r, isKnockout: true }))
+            : [],
+          competences: competences.length > 0 ? competences : [],
+        };
+      });
 
-            const detail = await stagehand.extract({
-              instruction: `Extraheer de volledige details van deze Opdrachtoverheid opdracht-pagina:
-                - description: de VOLLEDIGE tekst van de secties Organisatie, Beschrijving en Opdracht samengevoegd (alle tekst, niet afgekapt)
-                - requirements: ALLE knock-outcriteria als [{description, isKnockout: true}]
-                - wishes: ALLE selectiecriteria/wensen als [{description, evaluationCriteria}] (evaluationCriteria is bijv. "20 punten")
-                - competences: ALLE competenties/soft skills als strings
-                - conditions: ALLE voorwaarden (bijv. "WKA", "VOG", "G-rekening", screeningseis) als strings
-                - startDate: startdatum van de opdracht (YYYY-MM-DD)
-                - endDate: einddatum van de opdracht (YYYY-MM-DD)
-                - positionsAvailable: aantal posities (getal)
-                - rateMax: het maximale uurtarief (getal, exclusief BTW)
-                - employmentType: de dienstverband/inhuringsvorm (bijv. "Loondienst", "Freelance", "Freelance & Loondienst")`,
-              schema: z.object({
-                description: z.string().optional(),
-                requirements: z
-                  .array(
-                    z.object({
-                      description: z.string(),
-                      isKnockout: z.boolean().default(true),
-                    }),
-                  )
-                  .optional(),
-                wishes: z
-                  .array(
-                    z.object({
-                      description: z.string(),
-                      evaluationCriteria: z.string().optional(),
-                    }),
-                  )
-                  .optional(),
-                competences: z.array(z.string()).optional(),
-                conditions: z.array(z.string()).optional(),
-                startDate: z.string().optional(),
-                endDate: z.string().optional(),
-                positionsAvailable: z.number().optional(),
-                rateMax: z.number().optional(),
-                employmentType: z.string().optional(),
-              }),
-            });
+      // Filter out listings zonder externalId
+      const validListings = listings.filter(
+        (l: any) => l.externalId && l.externalId.length > 0,
+      );
 
-            // ContractType mapping op basis van dienstverband
-            const empType = detail.employmentType?.toLowerCase() ?? "";
-            const contractType = empType.includes("freelance")
-              ? "freelance"
-              : empType.includes("loondienst")
-                ? "interim"
-                : undefined;
+      logger.info(
+        `Opdrachtoverheid: ${validListings.length} geldige opdrachten naar normalize`,
+      );
 
-            const allowsSubcontracting = empType.includes("freelance") ? true : undefined;
-
-            enriched.push({
-              ...listing,
-              description: detail.description || listing.description,
-              rateMax: detail.rateMax ?? listing.rateMax,
-              startDate: detail.startDate ?? listing.startDate,
-              endDate: detail.endDate ?? listing.endDate,
-              positionsAvailable: detail.positionsAvailable ?? listing.positionsAvailable,
-              contractType,
-              allowsSubcontracting,
-              requirements:
-                detail.requirements?.length ? detail.requirements : listing.requirements,
-              wishes: detail.wishes?.length ? detail.wishes : listing.wishes,
-              competences:
-                detail.competences?.length ? detail.competences : listing.competences,
-              conditions:
-                detail.conditions?.length ? detail.conditions : listing.conditions,
-              province,
-            });
-
-            logger.info(
-              `Detail verrijkt: ${listing.externalId} (${detail.requirements?.length ?? 0} eisen, ${detail.wishes?.length ?? 0} wensen)`,
-            );
-          } catch (detailErr) {
-            logger.warn(
-              `Detail-pagina mislukt voor ${listing.externalId}: ${detailErr}`,
-            );
-            enriched.push({ ...listing, province });
-          }
-        }
-
+      await enqueue({
+        topic: "jobs.normalize",
+        data: { platform: "opdrachtoverheid", listings: validListings },
+      });
+      return;
+    } catch (err) {
+      attempt++;
+      if (attempt > MAX_RETRIES) {
+        logger.error(
+          `Opdrachtoverheid scrape mislukt na ${MAX_RETRIES + 1} pogingen: ${err}`,
+        );
         await enqueue({
           topic: "jobs.normalize",
-          data: { platform: "opdrachtoverheid", listings: enriched },
+          data: { platform: "opdrachtoverheid", listings: [] },
         });
-        break;
-      } catch (err) {
-        attempt++;
-        if (attempt > MAX_RETRIES) {
-          logger.error(
-            `Opdrachtoverheid scrape definitief mislukt na ${MAX_RETRIES + 1} pogingen: ${err}`,
-          );
-          await enqueue({
-            topic: "jobs.normalize",
-            data: { platform: "opdrachtoverheid", listings: [] },
-          });
-        } else {
-          const base = 1200 * Math.pow(2, attempt);
-          const jitter = Math.floor(Math.random() * 500);
-          const delay = base + jitter;
-          logger.warn(
-            `Opdrachtoverheid scrape poging ${attempt} mislukt, retry in ${delay}ms: ${err}`,
-          );
-          await new Promise((r) => setTimeout(r, delay));
-        }
+      } else {
+        const delay = 1200 * Math.pow(2, attempt) + Math.floor(Math.random() * 500);
+        logger.warn(`Opdrachtoverheid poging ${attempt} mislukt, retry in ${delay}ms: ${err}`);
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
-  } finally {
-    await stagehand.close();
   }
 };
+
+/** Zorg dat beschrijving minimaal 10 tekens is (schema eis) */
+function ensureMinLength(text: string): string {
+  if (text.length >= 10) return text;
+  return text + " — opdracht via Opdrachtoverheid";
+}
+
+/** Strip HTML tags en return plain text */
+function stripHtml(html: string | null | undefined): string {
+  if (!html) return "";
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Parse HTML <li> items naar string array */
+function parseHtmlList(html: string | null | undefined): string[] {
+  if (!html) return [];
+  const items: string[] = [];
+  const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = liRegex.exec(html)) !== null) {
+    const text = stripHtml(match[1]).trim();
+    if (text.length > 0) items.push(text);
+  }
+  // Fallback: als er geen <li> items zijn, split op newlines
+  if (items.length === 0) {
+    const plain = stripHtml(html);
+    if (plain.length > 0) {
+      items.push(...plain.split("\n").map((s) => s.trim()).filter((s) => s.length > 0));
+    }
+  }
+  return items;
+}
