@@ -6,6 +6,7 @@ const pool = new Pool({
   max: 10, // Neon free tier: max 10 connections
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
+  ssl: { rejectUnauthorized: false },
 });
 
 export const db = drizzle(pool);

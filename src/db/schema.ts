@@ -11,6 +11,54 @@ import {
   real,
 } from "drizzle-orm/pg-core";
 
+// ========== Scraper Configuratie ==========
+export const scraperConfigs = pgTable(
+  "scraper_configs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    platform: text("platform").notNull(),
+    baseUrl: text("base_url").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    parameters: jsonb("parameters").default({}),
+    authConfigEncrypted: text("auth_config_encrypted"),
+    cronExpression: text("cron_expression").default("0 0 */4 * * *"),
+    lastRunAt: timestamp("last_run_at"),
+    lastRunStatus: text("last_run_status"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    platformUniqueIdx: uniqueIndex("uq_scraper_configs_platform").on(
+      table.platform,
+    ),
+  }),
+);
+
+// ========== Scrape Resultaten ==========
+export const scrapeResults = pgTable(
+  "scrape_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    configId: uuid("config_id").references(() => scraperConfigs.id, {
+      onDelete: "set null",
+    }),
+    platform: text("platform").notNull(),
+    runAt: timestamp("run_at").defaultNow(),
+    durationMs: integer("duration_ms"),
+    jobsFound: integer("jobs_found").default(0),
+    jobsNew: integer("jobs_new").default(0),
+    duplicates: integer("duplicates").default(0),
+    status: text("status").notNull(), // "success" | "partial" | "failed"
+    errors: jsonb("errors").default([]),
+  },
+  (table) => ({
+    configIdIdx: index("idx_scrape_results_config_id").on(table.configId),
+    runAtIdx: index("idx_scrape_results_run_at").on(table.runAt),
+    platformIdx: index("idx_scrape_results_platform").on(table.platform),
+  }),
+);
+
+// ========== Opdrachten ==========
 export const jobs = pgTable(
   "jobs",
   {
