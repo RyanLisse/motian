@@ -1,7 +1,6 @@
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 import { desc, isNull, ilike, eq, and, sql } from "drizzle-orm";
-import { PageHeader } from "@/components/page-header";
 import { JobCard } from "@/components/job-card";
 import { OpdrachtenFilters } from "./filters";
 
@@ -64,12 +63,7 @@ export default async function OpdrachtenPage({ searchParams }: Props) {
   const platforms = platformRows.map((r) => r.platform);
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl">
-      <PageHeader
-        title="Opdrachten"
-        description={`${totalCount} opdrachten gevonden`}
-      />
-
+    <>
       <OpdrachtenFilters
         query={query}
         platform={platform}
@@ -78,18 +72,32 @@ export default async function OpdrachtenPage({ searchParams }: Props) {
         totalPages={totalPages}
       />
 
-      {jobRows.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-lg">Geen opdrachten gevonden</p>
-          <p className="text-sm mt-1">Pas je zoekopdracht of filters aan</p>
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 lg:px-8 py-6">
+        {/* Results count */}
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-[#8e8e8e]">
+            {totalCount} opdrachten gevonden
+          </p>
+          {totalPages > 1 && (
+            <p className="text-sm text-[#6b6b6b]">
+              Pagina {page} van {totalPages}
+            </p>
+          )}
         </div>
-      ) : (
-        <div className="grid gap-4 mt-6">
-          {jobRows.map((job) => (
-            <JobCard key={job.id} job={job} />
-          ))}
-        </div>
-      )}
-    </div>
+
+        {jobRows.length === 0 ? (
+          <div className="text-center py-16 text-[#6b6b6b]">
+            <p className="text-lg">Geen opdrachten gevonden</p>
+            <p className="text-sm mt-1">Pas je zoekopdracht of filters aan</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {jobRows.map((job) => (
+              <JobCard key={job.id} job={job} />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

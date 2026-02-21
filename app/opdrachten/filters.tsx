@@ -11,7 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface FiltersProps {
   query: string;
@@ -42,7 +43,6 @@ export function OpdrachtenFilters({
           params.delete(key);
         }
       }
-      // Reset to page 1 when filters change (unless pagina is being set)
       if (!("pagina" in updates)) {
         params.delete("pagina");
       }
@@ -50,74 +50,85 @@ export function OpdrachtenFilters({
         router.push(`/opdrachten?${params.toString()}`);
       });
     },
-    [router, searchParams, startTransition]
+    [router, searchParams]
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Zoeken op titel..."
-            defaultValue={query}
-            className="pl-9 bg-card border-border"
-            onChange={(e) => {
-              const value = e.target.value;
-              // Debounce: only update after user stops typing
-              const timeout = setTimeout(() => {
-                updateParams({ q: value });
-              }, 400);
-              return () => clearTimeout(timeout);
-            }}
-          />
+    <div className="w-full bg-[#171717] border-b border-[#2d2d2d] px-4 md:px-6 lg:px-8 py-3">
+      <div className="flex flex-col lg:flex-row items-center gap-3">
+
+        {/* Search input group */}
+        <div className="flex w-full lg:w-auto flex-1 items-center gap-0 border border-[#2d2d2d] rounded-lg bg-[#1e1e1e] overflow-hidden h-9">
+          <div className="relative flex-1 h-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6b6b6b]" />
+            <Input
+              placeholder="Zoek op functietitel..."
+              defaultValue={query}
+              className="pl-9 h-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent rounded-none shadow-none text-sm text-[#ececec] placeholder:text-[#6b6b6b]"
+              onChange={(e) => {
+                const value = e.target.value;
+                const timeout = setTimeout(() => {
+                  updateParams({ q: value });
+                }, 400);
+                return () => clearTimeout(timeout);
+              }}
+            />
+          </div>
+          <Button size="icon" className="h-full rounded-none px-4 bg-[#10a37f] hover:bg-[#10a37f]/90 border-0">
+            <Search className="h-4 w-4 text-white" />
+          </Button>
         </div>
-        <Select
-          value={platform || "all"}
-          onValueChange={(value) =>
-            updateParams({ platform: value === "all" ? "" : value })
-          }
-        >
-          <SelectTrigger className="w-full sm:w-48 bg-card border-border">
-            <SelectValue placeholder="Platform" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle platformen</SelectItem>
-            {platforms.map((p) => (
-              <SelectItem key={p} value={p} className="capitalize">
-                {p}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+        {/* Dropdowns */}
+        <div className="flex w-full lg:w-auto gap-2 items-center shrink-0 overflow-x-auto no-scrollbar">
+          <Select
+            value={platform || "all"}
+            onValueChange={(value) =>
+              updateParams({ platform: value === "all" ? "" : value })
+            }
+          >
+            <SelectTrigger className="w-[150px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm">
+              <SelectValue placeholder="Opdrachtgever" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
+              <SelectItem value="all" className="text-[#ececec]">Alle opdrachtgevers</SelectItem>
+              {platforms.map((p) => (
+                <SelectItem key={p} value={p} className="capitalize text-[#ececec]">{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button variant="outline" className="h-9 border-[#2d2d2d] bg-[#1e1e1e] font-normal text-[#8e8e8e] hover:bg-[#2a2a2a] hover:text-[#ececec] justify-between min-w-[110px] text-sm">
+            Locatie <ChevronDown className="h-3.5 w-3.5 opacity-50 ml-2" />
+          </Button>
+
+          <Button variant="outline" className="h-9 border-[#2d2d2d] bg-[#1e1e1e] font-normal text-[#8e8e8e] hover:bg-[#2a2a2a] hover:text-[#ececec] justify-between min-w-[130px] text-sm">
+            Type opdracht <ChevronDown className="h-3.5 w-3.5 opacity-50 ml-2" />
+          </Button>
+
+          {/* Toggle */}
+          <div className="flex items-center gap-2 px-2 border-l border-[#2d2d2d] ml-1">
+            <Switch id="save-search" className="data-[state=checked]:bg-[#10a37f]" />
+            <label htmlFor="save-search" className="text-sm font-medium text-[#8e8e8e] cursor-pointer whitespace-nowrap">
+              Zoekopdracht opslaan
+            </label>
+          </div>
+        </div>
+
+        {/* Alle filters button */}
+        <Button variant="ghost" className="h-9 shrink-0 font-medium whitespace-nowrap hidden sm:flex text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] text-sm">
+          <SlidersHorizontal className="h-4 w-4 mr-2" />
+          Alle filters
+        </Button>
       </div>
 
+      {/* Pagination controls (mobile/bottom) */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Pagina {page} van {totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1 || isPending}
-              onClick={() => updateParams({ pagina: String(page - 1) })}
-              className="border-border"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Vorige
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages || isPending}
-              onClick={() => updateParams({ pagina: String(page + 1) })}
-              className="border-border"
-            >
-              Volgende
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+        <div className="flex items-center justify-between mt-3 border-t border-[#2d2d2d] pt-3 lg:hidden">
+          <p className="text-sm text-[#6b6b6b]">Pagina {page} van {totalPages}</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="border-[#2d2d2d] bg-[#1e1e1e] text-[#8e8e8e]" disabled={page <= 1 || isPending} onClick={() => updateParams({ pagina: String(page - 1) })}>Vorige</Button>
+            <Button variant="outline" size="sm" className="border-[#2d2d2d] bg-[#1e1e1e] text-[#8e8e8e]" disabled={page >= totalPages || isPending} onClick={() => updateParams({ pagina: String(page + 1) })}>Volgende</Button>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Sidebar } from "@/components/sidebar";
+import { TopNav } from "@/components/top-nav";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const metadata: Metadata = {
@@ -15,12 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="nl" className="dark">
-      <body className="min-h-screen bg-background antialiased">
+      <body className="min-h-screen bg-background antialiased flex flex-col">
         <TooltipProvider>
-          <div className="flex min-h-screen">
-            <Sidebar />
-            <main className="flex-1 ml-0 md:ml-64">{children}</main>
-          </div>
+          <TopNav />
+          {children}
         </TooltipProvider>
       </body>
     </html>

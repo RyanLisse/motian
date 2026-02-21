@@ -14,7 +14,8 @@
     "db:push": "drizzle-kit push",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "track:ai-costs": "npx ccusage"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "^2.0.0",
