@@ -67,7 +67,7 @@ export const jobs = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
 
     // === Identificatie ===
-    platform: text("platform").notNull(), // "striive", "indeed", "linkedin"
+    platform: text("platform").notNull(), // "striive", "indeed", "linkedin", "opdrachtoverheid", "flextender"
     externalId: text("external_id").notNull(), // Striive: referentiecode (bijv. "BTBDN000695")
     externalUrl: text("external_url"), // Volledige URL naar opdracht detail pagina
     clientReferenceCode: text("client_reference_code"), // Striive: referentiecode opdrachtgever

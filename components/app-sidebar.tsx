@@ -70,6 +70,14 @@ const data = {
           title: "Nieuw",
           url: "/opdrachten?platform=striive",
         },
+        {
+          title: "Opdrachtoverheid",
+          url: "/opdrachten?platform=opdrachtoverheid",
+        },
+        {
+          title: "Flextender",
+          url: "/opdrachten?platform=flextender",
+        },
       ],
     },
     {

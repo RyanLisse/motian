@@ -20,6 +20,8 @@ export const config = {
         durationMs: z.number(),
         status: z.string(),
         errors: z.array(z.string()),
+        provider: z.string().optional(),
+        costCredits: z.number().optional(),
       }),
     },
   ],
@@ -27,9 +29,20 @@ export const config = {
 } as const satisfies StepConfig;
 
 export const handler: Handlers<typeof config> = async (
-  input,
+  rawInput,
   { logger },
 ) => {
+  const input = rawInput as {
+    platform: string;
+    jobsFound: number;
+    jobsNew: number;
+    duplicates: number;
+    durationMs: number;
+    status: string;
+    errors: string[];
+    provider?: string;
+    costCredits?: number;
+  };
   try {
     // Stap 1: Zoek config ID voor dit platform
     const configs = await db
@@ -45,6 +58,8 @@ export const handler: Handlers<typeof config> = async (
       configId,
       platform: input.platform,
       durationMs: input.durationMs,
+      costCredits: input.costCredits,
+      provider: input.provider,
       jobsFound: input.jobsFound,
       jobsNew: input.jobsNew,
       duplicates: input.duplicates,

@@ -16,6 +16,8 @@ export const config = {
       input: z.object({
         platform: z.string(),
         listings: z.array(z.any()),
+        provider: z.string().optional(),
+        costCredits: z.number().optional(),
       }),
     },
   ],
@@ -24,9 +26,15 @@ export const config = {
 } as const satisfies StepConfig;
 
 export const handler: Handlers<typeof config> = async (
-  input,
+  rawInput,
   { enqueue, logger },
 ) => {
+  const input = rawInput as {
+    platform: string;
+    listings: any[];
+    provider?: string;
+    costCredits?: number;
+  };
   const startTime = Date.now();
   let jobsNew = 0;
   let duplicates = 0;
@@ -117,6 +125,8 @@ export const handler: Handlers<typeof config> = async (
       jobsNew,
       duplicates,
       durationMs,
+      provider: input.provider,
+      costCredits: input.costCredits,
       status,
       errors,
     },

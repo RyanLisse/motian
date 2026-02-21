@@ -52,7 +52,7 @@ const TOOLS = [
     inputSchema: {
       type: "object" as const,
       properties: {
-        platform: { type: "string", description: "Filter op platform (bijv. 'striive', 'linkedin')" },
+        platform: { type: "string", description: "Filter op platform (bijv. 'striive', 'linkedin', 'opdrachtoverheid', 'flextender')" },
         limit: { type: "number", description: "Max aantal resultaten (standaard 50, max 100)" },
       },
     },
