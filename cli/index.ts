@@ -6,6 +6,8 @@ import { createRequire } from "node:module";
 import { Command } from "commander";
 import { registerJobsCommand } from "./commands/jobs.js";
 import { registerScraperCommand } from "./commands/scrapers.js";
+import { registerCandidatesCommand } from "./commands/candidates.js";
+import { registerMatchesCommand } from "./commands/matches.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json");
@@ -19,5 +21,7 @@ program
 
 registerJobsCommand(program);
 registerScraperCommand(program);
+registerCandidatesCommand(program);
+registerMatchesCommand(program);
 
 program.parse();

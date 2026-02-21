@@ -10,6 +10,7 @@ import {
   boolean,
   real,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ========== Scraper Configuratie ==========
 export const scraperConfigs = pgTable(
@@ -106,7 +107,7 @@ export const jobs = pgTable(
     scrapedAt: timestamp("scraped_at").defaultNow(),
     deletedAt: timestamp("deleted_at"), // PRD 7.2: soft-delete
     rawPayload: jsonb("raw_payload"),
-    embedding: text("embedding"), // pgvector placeholder (Slice 5)
+    embedding: text("embedding"), // Serialized float[] (pgvector when available)
   },
   (table) => ({
     platformExternalIdx: uniqueIndex("uq_platform_external_id").on(
@@ -121,6 +122,74 @@ export const jobs = pgTable(
     platformUrlIdx: uniqueIndex("uq_platform_external_url").on(
       table.platform,
       table.externalUrl,
+    ),
+  }),
+);
+
+// ========== Kandidaten ==========
+export const candidates = pgTable(
+  "candidates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    role: text("role"), // "Senior Java Developer", "DevOps Engineer"
+    skills: jsonb("skills").default([]), // ["Java", "Spring Boot", "Kubernetes"]
+    experience: text("experience"), // "8 jaar ervaring in backend development"
+    location: text("location"),
+    province: text("province"),
+    resumeUrl: text("resume_url"),
+    embedding: text("embedding"), // Serialized float[] for vector search
+    tags: jsonb("tags").default([]), // ["beschikbaar", "senior", "remote"]
+    gdprConsent: boolean("gdpr_consent").default(false),
+    gdprConsentAt: timestamp("gdpr_consent_at"),
+    source: text("source"), // "linkedin", "indeed", "cv_upload", "manual"
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    deletedAt: timestamp("deleted_at"), // soft-delete
+  },
+  (table) => ({
+    emailIdx: uniqueIndex("uq_candidates_email")
+      .on(table.email)
+      .where(sql`${table.email} IS NOT NULL AND ${table.deletedAt} IS NULL`),
+    nameIdx: index("idx_candidates_name").on(table.name),
+    roleIdx: index("idx_candidates_role").on(table.role),
+    deletedAtIdx: index("idx_candidates_deleted_at").on(table.deletedAt),
+  }),
+);
+
+// ========== Match Resultaten ==========
+export const jobMatches = pgTable(
+  "job_matches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    vectorScore: real("vector_score"), // Cosine similarity 0-1
+    llmScore: real("llm_score"), // LLM reranking score 0-100
+    overallScore: real("overall_score"), // Weighted final score 0-100
+    status: text("status").notNull().default("pending"), // "pending" | "approved" | "rejected"
+    knockOutPassed: boolean("knock_out_passed"),
+    matchData: jsonb("match_data").default({}), // Full AI analysis (criteria, skills, etc.)
+    reviewedBy: text("reviewed_by"),
+    reviewedAt: timestamp("reviewed_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    jobCandidateIdx: uniqueIndex("uq_job_matches_job_candidate").on(
+      table.jobId,
+      table.candidateId,
+    ),
+    jobIdIdx: index("idx_job_matches_job_id").on(table.jobId),
+    candidateIdIdx: index("idx_job_matches_candidate_id").on(table.candidateId),
+    statusIdx: index("idx_job_matches_status").on(table.status),
+    overallScoreIdx: index("idx_job_matches_overall_score").on(
+      table.overallScore,
     ),
   }),
 );
