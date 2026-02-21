@@ -10,6 +10,7 @@ import {
   boolean,
   real,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ========== Scraper Configuratie ==========
 export const scraperConfigs = pgTable(
@@ -121,6 +122,72 @@ export const jobs = pgTable(
     platformUrlIdx: uniqueIndex("uq_platform_external_url").on(
       table.platform,
       table.externalUrl,
+    ),
+  }),
+);
+
+// ========== Kandidaten ==========
+export const candidates = pgTable(
+  "candidates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    role: text("role"), // gewenste functie
+    location: text("location"),
+    province: text("province"),
+    skills: jsonb("skills").default([]),
+    experience: jsonb("experience").default([]),
+    preferences: jsonb("preferences").default({}),
+    resumeUrl: text("resume_url"),
+    source: text("source"), // "linkedin", "manual", "import", "mcp"
+    notes: text("notes"),
+    hourlyRate: integer("hourly_rate"),
+    availability: text("availability"), // "direct", "1_maand", "3_maanden"
+    embedding: text("embedding"), // pgvector placeholder
+    consentGranted: boolean("consent_granted").default(false),
+    dataRetentionUntil: timestamp("data_retention_until"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    emailUniqueIdx: uniqueIndex("uq_candidates_email")
+      .on(table.email)
+      .where(sql`email IS NOT NULL`),
+    nameIdx: index("idx_candidates_name").on(table.name),
+    provinceIdx: index("idx_candidates_province").on(table.province),
+    deletedAtIdx: index("idx_candidates_deleted_at").on(table.deletedAt),
+  }),
+);
+
+// ========== Job Matches ==========
+export const jobMatches = pgTable(
+  "job_matches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    candidateId: uuid("candidate_id").references(() => candidates.id, {
+      onDelete: "set null",
+    }),
+    matchScore: real("match_score").notNull(), // 0-100
+    confidence: real("confidence"), // 0-100
+    reasoning: text("reasoning"),
+    model: text("model"), // "gpt-4o", etc.
+    promptVersion: text("prompt_version"),
+    status: text("status").notNull().default("pending"), // "pending" | "approved" | "rejected"
+    reviewedBy: text("reviewed_by"),
+    reviewedAt: timestamp("reviewed_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    jobIdIdx: index("idx_job_matches_job_id").on(table.jobId),
+    candidateIdIdx: index("idx_job_matches_candidate_id").on(table.candidateId),
+    statusIdx: index("idx_job_matches_status").on(table.status),
+    jobCandidateUniqueIdx: uniqueIndex("uq_job_matches_job_candidate").on(
+      table.jobId,
+      table.candidateId,
     ),
   }),
 );
