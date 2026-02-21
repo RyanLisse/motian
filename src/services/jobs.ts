@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -19,14 +19,16 @@ export async function searchJobs(
 ): Promise<Job[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
 
-  const baseQuery = db
+  const conditions = [isNull(jobs.deletedAt)];
+
+  if (opts.platform) {
+    conditions.push(eq(jobs.platform, opts.platform));
+  }
+
+  return db
     .select()
     .from(jobs)
-    .where(isNull(jobs.deletedAt));
-
-  const filtered = opts.platform
-    ? baseQuery.where(eq(jobs.platform, opts.platform))
-    : baseQuery;
-
-  return filtered.orderBy(desc(jobs.scrapedAt)).limit(limit);
+    .where(and(...conditions))
+    .orderBy(desc(jobs.scrapedAt))
+    .limit(limit);
 }

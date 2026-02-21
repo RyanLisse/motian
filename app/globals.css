@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: #0d0d0d;
+  --color-foreground: #ececec;
+  --color-card: #1e1e1e;
+  --color-card-foreground: #ececec;
+  --color-popover: #1e1e1e;
+  --color-popover-foreground: #ececec;
+  --color-primary: #10a37f;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #2a2a2a;
+  --color-secondary-foreground: #ececec;
+  --color-muted: #171717;
+  --color-muted-foreground: #9b9b9b;
+  --color-accent: #2a2a2a;
+  --color-accent-foreground: #ececec;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #2e2e2e;
+  --color-input: #2e2e2e;
+  --color-ring: #10a37f;
+  --color-chart-1: #10a37f;
+  --color-chart-2: #3b82f6;
+  --color-chart-3: #f59e0b;
+  --color-chart-4: #ef4444;
+  --color-chart-5: #8b5cf6;
+  --radius: 0.5rem;
+  --color-sidebar: #171717;
+  --color-sidebar-foreground: #ececec;
+  --color-sidebar-primary: #10a37f;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #2a2a2a;
+  --color-sidebar-accent-foreground: #ececec;
+  --color-sidebar-border: #2e2e2e;
+  --color-sidebar-ring: #10a37f;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+}

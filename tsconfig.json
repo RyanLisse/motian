@@ -1,6 +1,12 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
@@ -9,13 +15,35 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "outDir": "./dist",
-    "rootDir": ".",
+    "jsx": "react-jsx",
+    "incremental": true,
+    "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
-    }
+      "@/*": [
+        "./*"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
-  "include": ["src/**/*", "steps/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "dist", "drizzle"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "drizzle",
+    "steps",
+    "tests",
+    "agent-browsers-steps",
+    "cli"
+  ]
 }
