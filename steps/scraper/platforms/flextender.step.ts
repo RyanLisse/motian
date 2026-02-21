@@ -1,9 +1,12 @@
 import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
 
+const AJAX_URL = "https://www.flextender.nl/wp-admin/admin-ajax.php";
+
 export const config = {
   name: "ScrapeFlextender",
-  description: "Scrapt Flextender opdrachten via Stagehand (publiek)",
+  description:
+    "Scrapt Flextender opdrachten via publieke AJAX API + HTML parsing (geen browser nodig)",
   triggers: [
     {
       type: "queue",
@@ -24,223 +27,159 @@ export const handler: Handlers<typeof config> = async (
 ) => {
   if (input.platform !== "flextender") return;
 
-  logger.info(`Flextender scrapen: ${input.url}`);
-
-  // Hostname allowlist — SSRF preventie
-  const allowedHosts = ["www.flextender.nl", "flextender.nl"];
-  const inputHost = new URL(input.url).hostname;
-  if (!allowedHosts.includes(inputHost)) {
-    logger.error(`Geblokkeerd: host ${inputHost} niet in allowlist`);
-    return;
-  }
-
-  if (!process.env.BROWSERBASE_API_KEY || !process.env.BROWSERBASE_PROJECT_ID) {
-    throw new Error("BROWSERBASE_API_KEY en BROWSERBASE_PROJECT_ID zijn vereist");
-  }
-
-  // Dynamic import om esbuild bundling conflict met playwright-core te voorkomen
-  const { Stagehand } = await import("@browserbasehq/stagehand");
-
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    apiKey: process.env.BROWSERBASE_API_KEY,
-    projectId: process.env.BROWSERBASE_PROJECT_ID,
-    enableCaching: true,
-  });
-
-  await stagehand.init();
+  logger.info(`Flextender scrapen via AJAX API: ${input.url}`);
 
   const MAX_RETRIES = 2;
   let attempt = 0;
 
-  try {
-    while (attempt <= MAX_RETRIES) {
-      try {
-        // Stap 1: Navigeer naar Flextender opdrachten (geen login nodig)
-        await stagehand.page.goto(input.url);
-        await stagehand.page.waitForSelector(
-          'table, .opdrachten, .search-results, main',
-          { timeout: 15_000 },
-        );
+  while (attempt <= MAX_RETRIES) {
+    try {
+      // Stap 1: Haal alle opdrachten op via WordPress AJAX endpoint
+      const res = await fetch(AJAX_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "action=kbs_flx_searchjobs",
+      });
 
-        // Stap 2: Paginated extraction (client-side JS paginatie)
-        const MAX_PAGES = 5;
-        const allListings: any[] = [];
+      if (!res.ok) {
+        throw new Error(`AJAX ${res.status}: ${res.statusText}`);
+      }
 
-        for (let page = 1; page <= MAX_PAGES; page++) {
-          const result = await stagehand.extract({
-            instruction: `Extraheer alle zichtbare opdrachten van deze Flextender overzichtspagina.
-              Per opdracht extraheer:
-              - title: de functietitel/rol
-              - company: de organisatie (opdrachtgever)
-              - location: de regio/locatie
-              - externalId: het aanvraagnummer (bijv. "2026-12345")
-              - hours: uren per week als tekst (bijv. "36 uur")
-              - startDate: de startdatum (YYYY-MM-DD)
-              - applicationDeadline: einde inschrijfdatum (YYYY-MM-DD)`,
-            schema: z.object({
-              opdrachten: z.array(
-                z.object({
-                  title: z.string(),
-                  company: z.string().optional(),
-                  location: z.string().optional(),
-                  externalId: z.string(),
-                  hours: z.string().optional(),
-                  startDate: z.string().optional(),
-                  applicationDeadline: z.string().optional(),
-                }),
-              ),
-            }),
-          });
+      const data = await res.json();
+      const html: string = data.resultHtml ?? "";
 
-          allListings.push(...(result.opdrachten ?? []));
-
-          // Client-side paginatie: controleer of "Volgende" knop zichtbaar is
-          const hasNext = await stagehand.page
-            .locator(
-              'a:has-text("Volgende"), button:has-text("Volgende"), [aria-label="Volgende"], .pagination .next:not(.disabled)',
-            )
-            .isVisible()
-            .catch(() => false);
-          if (!hasNext) break;
-          await stagehand.act({ action: "Klik op de Volgende knop om naar de volgende pagina te gaan" });
-          await stagehand.page.waitForSelector(
-            'table, .opdrachten, .search-results, main',
-            { timeout: 10_000 },
-          );
-        }
-
-        logger.info(`Flextender: ${allListings.length} opdrachten gevonden`);
-
-        // Stap 3: Detail-pagina's bezoeken voor volledige inhoud
-        const enriched: any[] = [];
-        for (const listing of allListings) {
-          const externalUrl = `https://www.flextender.nl/opdracht?aanvraagnr=${listing.externalId}`;
-
-          // Provincie afleiden uit regio-veld
-          const province = extractProvince(listing.location);
-
-          try {
-            await stagehand.page.goto(externalUrl, {
-              waitUntil: "domcontentloaded",
-              timeout: 15_000,
-            });
-
-            const detail = await stagehand.extract({
-              instruction: `Extraheer de volledige details van deze Flextender opdracht-pagina:
-                - description: de VOLLEDIGE omschrijving (Functieomschrijving + Functie-inhoud gecombineerd, alle tekst, niet afgekapt)
-                - rateMax: het maximale uurtarief (getal, exclusief BTW) indien zichtbaar
-                - startDate: startdatum (YYYY-MM-DD)
-                - endDate: einddatum (YYYY-MM-DD), afgeleid uit duur/looptijd indien nodig
-                - positionsAvailable: benodigd aantal professionals (getal)
-                - requirements: ALLE knock-outcriteria / harde eisen als [{description, isKnockout: true}]
-                - wishes: ALLE gunningscriteria / wensen als [{description, evaluationCriteria}] — neem het puntenaantal mee (bijv. "20 punten")
-                - competences: ALLE competenties als strings
-                - conditions: ALLE voorwaarden als strings (bijv. "VOG vereist", "Waadi-registratie", "Inhuurfeevergoeding")`,
-              schema: z.object({
-                description: z.string().optional(),
-                rateMax: z.number().optional(),
-                startDate: z.string().optional(),
-                endDate: z.string().optional(),
-                positionsAvailable: z.number().optional(),
-                requirements: z
-                  .array(
-                    z.object({
-                      description: z.string(),
-                      isKnockout: z.boolean().default(true),
-                    }),
-                  )
-                  .optional(),
-                wishes: z
-                  .array(
-                    z.object({
-                      description: z.string(),
-                      evaluationCriteria: z.string().optional(),
-                    }),
-                  )
-                  .optional(),
-                competences: z.array(z.string()).optional(),
-                conditions: z.array(z.string()).optional(),
-              }),
-            });
-
-            enriched.push({
-              title: listing.title,
-              company: listing.company,
-              location: listing.location,
-              province,
-              description: detail.description || listing.title,
-              externalId: listing.externalId,
-              externalUrl,
-              rateMax: detail.rateMax,
-              startDate: detail.startDate ?? listing.startDate,
-              endDate: detail.endDate,
-              applicationDeadline: listing.applicationDeadline,
-              contractType: "opdracht",
-              positionsAvailable: detail.positionsAvailable,
-              hours: listing.hours,
-              requirements:
-                detail.requirements?.length ? detail.requirements : undefined,
-              wishes: detail.wishes?.length ? detail.wishes : undefined,
-              competences:
-                detail.competences?.length ? detail.competences : undefined,
-              conditions:
-                detail.conditions?.length ? detail.conditions : undefined,
-            });
-
-            logger.info(
-              `Detail verrijkt: ${listing.externalId} (${detail.requirements?.length ?? 0} eisen, ${detail.wishes?.length ?? 0} wensen)`,
-            );
-          } catch (detailErr) {
-            logger.warn(
-              `Detail-pagina mislukt voor ${listing.externalId}: ${detailErr}`,
-            );
-            enriched.push({
-              title: listing.title,
-              company: listing.company,
-              location: listing.location,
-              province,
-              description: listing.title,
-              externalId: listing.externalId,
-              externalUrl,
-              startDate: listing.startDate,
-              applicationDeadline: listing.applicationDeadline,
-              contractType: "opdracht",
-              hours: listing.hours,
-            });
-          }
-        }
-
+      if (!html) {
+        logger.warn("Flextender: lege HTML response");
         await enqueue({
           topic: "jobs.normalize",
-          data: { platform: "flextender", listings: enriched },
+          data: { platform: "flextender", listings: [] },
         });
-        break;
-      } catch (err) {
-        attempt++;
-        if (attempt > MAX_RETRIES) {
-          logger.error(
-            `Flextender scrape definitief mislukt na ${MAX_RETRIES + 1} pogingen: ${err}`,
-          );
-          await enqueue({
-            topic: "jobs.normalize",
-            data: { platform: "flextender", listings: [] },
-          });
-        } else {
-          const base = 1200 * Math.pow(2, attempt);
-          const jitter = Math.floor(Math.random() * 500);
-          const delay = base + jitter;
-          logger.warn(
-            `Flextender scrape poging ${attempt} mislukt, retry in ${delay}ms: ${err}`,
-          );
-          await new Promise((r) => setTimeout(r, delay));
-        }
+        return;
+      }
+
+      // Stap 2: Parse HTML job cards met regex (Cheerio-achtig maar zero-dep)
+      const listings = parseFlextenderHtml(html);
+      logger.info(`Flextender: ${listings.length} opdrachten geparsed`);
+
+      await enqueue({
+        topic: "jobs.normalize",
+        data: { platform: "flextender", listings },
+      });
+      return;
+    } catch (err) {
+      attempt++;
+      if (attempt > MAX_RETRIES) {
+        logger.error(
+          `Flextender scrape mislukt na ${MAX_RETRIES + 1} pogingen: ${err}`,
+        );
+        await enqueue({
+          topic: "jobs.normalize",
+          data: { platform: "flextender", listings: [] },
+        });
+      } else {
+        const delay = 1200 * Math.pow(2, attempt) + Math.floor(Math.random() * 500);
+        logger.warn(`Flextender poging ${attempt} mislukt, retry in ${delay}ms: ${err}`);
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
-  } finally {
-    await stagehand.close();
   }
 };
+
+/** Parse Flextender AJAX HTML response naar listing array */
+function parseFlextenderHtml(html: string): any[] {
+  const listings: any[] = [];
+
+  // Split HTML op job card boundaries: <div class="css-foundjob ...
+  const cardRegex =
+    /<div\s+class="css-foundjob[^"]*"\s+data-kbslinkurl="([^"]*)"[^>]*>([\s\S]*?)(?=<div\s+class="css-foundjob|<div\s+class="flx-register-panel|$)/gi;
+
+  let cardMatch: RegExpExecArray | null;
+  while ((cardMatch = cardRegex.exec(html)) !== null) {
+    const detailPath = cardMatch[1];
+    const cardHtml = cardMatch[2];
+
+    // Titel
+    const titleMatch = cardHtml.match(/class="css-jobtitle">([^<]+)/);
+    const title = titleMatch?.[1]?.trim();
+    if (!title) continue;
+
+    // Bedrijf
+    const companyMatch = cardHtml.match(/class="css-customer">([^<]+)/);
+    const company = companyMatch?.[1]?.trim();
+
+    // Aanvraagnummer uit detailPath (bijv. /nologin/jobdetails/27794)
+    const idMatch = detailPath.match(/\/(\d+)$/);
+    const externalId = idMatch?.[1] ?? "";
+
+    // Parse caption-value paren
+    const fields = parseFieldPairs(cardHtml);
+
+    const province = extractProvince(fields.Regio);
+    const location = fields.Regio
+      ? province
+        ? `${fields.Regio}`
+        : fields.Regio
+      : undefined;
+
+    listings.push({
+      title,
+      company,
+      location,
+      province,
+      description: title, // Alleen titel beschikbaar vanuit listings
+      externalId,
+      externalUrl: `https://www.flextender.nl${detailPath}`,
+      startDate: parseDutchDate(fields.Start),
+      applicationDeadline: parseDutchDate(fields["Einde inschrijfdatum"]),
+      contractType: "opdracht" as const,
+      hours: fields["Uren per week"] ?? undefined,
+    });
+  }
+
+  return listings;
+}
+
+/** Parse alle caption-value paren uit een card HTML */
+function parseFieldPairs(cardHtml: string): Record<string, string> {
+  const fields: Record<string, string> = {};
+  const pairRegex =
+    /class="css-caption">([^<]+)<[\s\S]*?class="css-value">([^<]+)</gi;
+  let pairMatch: RegExpExecArray | null;
+  while ((pairMatch = pairRegex.exec(cardHtml)) !== null) {
+    const key = pairMatch[1].trim();
+    const value = pairMatch[2].trim();
+    if (!fields[key]) fields[key] = value; // Eerste waarde wint (geen duplicaten)
+  }
+  return fields;
+}
+
+/** Parse Nederlandse datum (bijv. "16 maart 2026") naar ISO string of undefined */
+function parseDutchDate(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const s = raw.trim();
+  // Skip non-dates
+  if (s === "Z.s.m." || s.includes("uur") || s.length < 6) return undefined;
+
+  const months: Record<string, string> = {
+    januari: "01", februari: "02", maart: "03", april: "04",
+    mei: "05", juni: "06", juli: "07", augustus: "08",
+    september: "09", oktober: "10", november: "11", december: "12",
+  };
+
+  // Try "DD maand YYYY" format
+  const match = s.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
+  if (match) {
+    const month = months[match[2].toLowerCase()];
+    if (month) {
+      return `${match[3]}-${month}-${match[1].padStart(2, "0")}`;
+    }
+  }
+
+  // Try ISO-ish format (already YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+
+  return undefined;
+}
 
 /** Map regio/locatie naar Nederlandse provincie */
 function extractProvince(location: string | undefined): string | undefined {
