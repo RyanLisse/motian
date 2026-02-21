@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react"
-import { candidates as mockCandidates, positionsList, type Candidate } from "@/lib/data"
-import type { Job } from "@/lib/data"
+import type { Candidate, Job } from "@/lib/data"
 
 // DB match shape from /api/matches
 interface DbMatch {
@@ -431,6 +430,9 @@ export default function MatchingPage() {
   const [sortBy, setSortBy] = useState("score")
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  // Jobs list (fetched from API, no mock data)
+  const [positionsList, setPositionsList] = useState<Job[]>([])
+
   // Database matches
   const [dbMatches, setDbMatches] = useState<DbMatch[]>([])
   const [dbMatchesLoading, setDbMatchesLoading] = useState(true)
@@ -457,7 +459,7 @@ export default function MatchingPage() {
     }
   }, [])
 
-  // Fetch database matches
+  // Fetch database matches and jobs
   useEffect(() => {
     setDbMatchesLoading(true)
     fetch("/api/matches?limit=50")
@@ -465,9 +467,14 @@ export default function MatchingPage() {
       .then((data: DbMatch[]) => setDbMatches(Array.isArray(data) ? data : []))
       .catch(() => setDbMatches([]))
       .finally(() => setDbMatchesLoading(false))
+
+    fetch("/api/jobs?limit=50")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Job[]) => setPositionsList(Array.isArray(data) ? data : []))
+      .catch(() => setPositionsList([]))
   }, [])
 
-  const candidates = mockCandidates
+  const candidates: Candidate[] = []
 
   // Handle approve/reject for DB matches
   async function handleMatchAction(matchId: string, action: "approve" | "reject") {

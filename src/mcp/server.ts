@@ -36,6 +36,11 @@ import {
   updateInterview,
   getUpcomingInterviews,
 } from "../services/interviews.js";
+import {
+  listMessages,
+  getMessageById,
+  createMessage,
+} from "../services/messages.js";
 
 // ── Tool definitions ─────────────────────────────────────────────
 
@@ -282,6 +287,35 @@ const TOOLS = [
       required: ["id"],
     },
   },
+  // Messages
+  {
+    name: "list_messages",
+    description: "Lijst van berichten ophalen, optioneel gefilterd",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        applicationId: { type: "string", description: "Filter op sollicitatie-ID" },
+        direction: { type: "string", description: "Filter op richting (inbound, outbound)" },
+        channel: { type: "string", description: "Filter op kanaal (email, phone, platform)" },
+        limit: { type: "number", description: "Max aantal resultaten (standaard 50, max 100)" },
+      },
+    },
+  },
+  {
+    name: "create_message",
+    description: "Nieuw bericht aanmaken",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        applicationId: { type: "string", description: "Sollicitatie-ID" },
+        direction: { type: "string", description: "Richting (inbound, outbound)" },
+        channel: { type: "string", description: "Kanaal (email, phone, platform)" },
+        subject: { type: "string", description: "Onderwerp (optioneel)" },
+        body: { type: "string", description: "Berichttekst" },
+      },
+      required: ["applicationId", "direction", "channel", "body"],
+    },
+  },
 ] as const;
 
 // ── Tool handler ─────────────────────────────────────────────────
@@ -448,6 +482,28 @@ async function handleTool(name: string, args: ToolInput) {
       if (!updatedInterview) return err(`Interview met ID '${args.id}' niet gevonden of ongeldige waarden`);
       return ok(updatedInterview);
     }
+
+    // ── Messages ────────────────────────────────────────
+    case "list_messages":
+      return ok(
+        await listMessages({
+          applicationId: args.applicationId as string | undefined,
+          direction: args.direction as string | undefined,
+          channel: args.channel as string | undefined,
+          limit: args.limit as number | undefined,
+        }),
+      );
+
+    case "create_message":
+      return ok(
+        await createMessage({
+          applicationId: args.applicationId as string,
+          direction: args.direction as string,
+          channel: args.channel as string,
+          subject: args.subject as string | undefined,
+          body: args.body as string,
+        }),
+      );
 
     default:
       return err(`Onbekende tool: ${name}`);

@@ -100,6 +100,35 @@ export default function MessagesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [copiedTemplate, setCopiedTemplate] = useState<string | null>(null);
 
+  // Fetch messages from API on mount
+  useEffect(() => {
+    async function fetchMessages() {
+      try {
+        const res = await fetch("/api/messages?limit=100");
+        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) return; // keep mock data
+        const mapped: MessageItem[] = data.map((r: Record<string, unknown>) => ({
+          id: r.id as string,
+          subject: (r.subject as string) || "(geen onderwerp)",
+          recipients: 1,
+          sentDate: r.sentAt
+            ? new Date(r.sentAt as string).toISOString().split("T")[0]
+            : r.createdAt
+              ? new Date(r.createdAt as string).toISOString().split("T")[0]
+              : "",
+          status: (r.direction === "outbound" ? "sent" : "draft") as "sent" | "draft" | "scheduled",
+          openRate: r.direction === "outbound" ? 0 : undefined,
+          template: (r.channel as string) || "email",
+        }));
+        setMessageList(mapped);
+      } catch {
+        // API failed — keep mock data as fallback
+      }
+    }
+    fetchMessages();
+  }, []);
+
   // Toast state
   const [toast, setToast] = useState<string | null>(null);
   useEffect(() => {
@@ -194,6 +223,23 @@ export default function MessagesPage() {
     if (status === "sent") setToast("Bericht verzonden");
     else if (status === "draft") setToast("Concept opgeslagen");
     else setToast("Bericht ingepland");
+
+    // Fire POST to API (best-effort, UI already updated optimistically)
+    if (status === "sent") {
+      fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: composeRecipient || "unknown",
+          direction: "outbound",
+          channel: "email",
+          subject: composeSubject,
+          body: composeBody,
+        }),
+      }).catch(() => {
+        // silent — optimistic UI already shows the message
+      });
+    }
   }
 
   return (

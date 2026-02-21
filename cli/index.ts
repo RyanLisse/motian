@@ -10,6 +10,7 @@ import { registerCandidatesCommand } from "./commands/candidates.js";
 import { registerMatchesCommand } from "./commands/matches.js";
 import { registerApplicationsCommand } from "./commands/applications.js";
 import { registerInterviewsCommand } from "./commands/interviews.js";
+import { registerMessagesCommand } from "./commands/messages.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json");
@@ -27,5 +28,6 @@ registerCandidatesCommand(program);
 registerMatchesCommand(program);
 registerApplicationsCommand(program);
 registerInterviewsCommand(program);
+registerMessagesCommand(program);
 
 program.parse();

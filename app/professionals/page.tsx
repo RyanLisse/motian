@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react"
-import { candidates as mockCandidates, type Candidate } from "@/lib/data"
+import type { Candidate } from "@/lib/data"
 
 // DB candidate shape from /api/candidates
 interface DbCandidate {
@@ -157,13 +157,11 @@ export default function ProfessionalsPage() {
         if (Array.isArray(data) && data.length > 0) {
           setCandidateList(data.map(dbCandidateToUi))
         } else {
-          // No DB candidates yet, use mock data
-          setCandidateList(mockCandidates)
+          setCandidateList([])
         }
       })
       .catch(() => {
-        // API error (e.g. no DB configured), use mock data
-        setCandidateList(mockCandidates)
+        setCandidateList([])
       })
       .finally(() => setIsLoading(false))
   }, [])
