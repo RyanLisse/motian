@@ -13,14 +13,8 @@ import {
   Activity,
   Zap,
   BarChart3,
-  Users,
-  PieChart as PieChartIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  ApplicationTrendsChart,
-  PlatformDistributionChart,
-} from "@/components/dashboard-charts";
 
 export const dynamic = "force-dynamic";
 
@@ -113,16 +107,6 @@ export default async function OverzichtPage() {
   const totalJobs = totalJobsResult[0]?.count ?? 0;
   const weeklyNew = weeklyNewResult[0]?.count ?? 0;
 
-  // Pipeline stages
-  const pipelineStages = [
-    { name: "Nieuw", count: 24, color: "bg-[#10a37f]" },
-    { name: "Screening", count: 18, color: "bg-[#3b82f6]" },
-    { name: "Interview", count: 12, color: "bg-[#f59e0b]" },
-    { name: "Aanbieding", count: 5, color: "bg-[#a855f7]" },
-    { name: "Geplaatst", count: 3, color: "bg-[#10a37f]" },
-  ];
-  const pipelineMax = Math.max(...pipelineStages.map((s) => s.count));
-
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
@@ -161,46 +145,6 @@ export default async function OverzichtPage() {
             accent={false}
           />
         </div>
-
-        {/* Charts row: Area chart (2/3) + Donut chart (1/3) */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          <DashboardCard
-            title="Opdracht trends"
-            icon={<TrendingUp className="h-4 w-4" />}
-            className="lg:col-span-2"
-          >
-            <ApplicationTrendsChart />
-          </DashboardCard>
-
-          <DashboardCard
-            title="Platform verdeling"
-            icon={<PieChartIcon className="h-4 w-4" />}
-          >
-            <PlatformDistributionChart />
-          </DashboardCard>
-        </div>
-
-        {/* Pipeline progress */}
-        <DashboardCard title="Hiring pipeline" icon={<Users className="h-4 w-4" />}>
-          <div className="grid gap-4 sm:grid-cols-5">
-            {pipelineStages.map((stage) => (
-              <div key={stage.name} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#ececec]">{stage.name}</span>
-                  <span className="text-sm font-bold text-[#ececec]">{stage.count}</span>
-                </div>
-                <div
-                  className={`h-2 w-full rounded-full overflow-hidden bg-[#2d2d2d]`}
-                >
-                  <div
-                    className={`h-full rounded-full transition-all ${stage.color}`}
-                    style={{ width: `${Math.round((stage.count / pipelineMax) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </DashboardCard>
 
         {/* Main grid: 2 columns */}
         <div className="grid gap-6 lg:grid-cols-3">
@@ -447,16 +391,14 @@ function DashboardCard({
   icon,
   action,
   children,
-  className,
 }: {
   title: string;
   icon: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;
-  className?: string;
 }) {
   return (
-    <div className={`bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4 ${className ?? ""}`}>
+    <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2 text-[#8e8e8e]">
           {icon}
