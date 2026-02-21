@@ -1,19 +1,17 @@
-import { CronConfig, Handlers } from "motia";
+import { StepConfig, Handlers } from "motia";
 
-export const config: CronConfig = {
-  type: "cron",
+export const config = {
   name: "MasterScrape",
   description: "Elke 4 uur alle actieve platformen scrapen",
-  cron: "0 */4 * * *",
-  emits: ["platform.scrape"],
+  triggers: [{ type: "cron", expression: "0 0 */4 * * *" }],
+  enqueues: [{ topic: "platform.scrape" }],
   flows: ["recruitment-scraper"],
-};
+} as const satisfies StepConfig;
 
-export const handler: Handlers["MasterScrape"] = async ({ emit, logger }) => {
+export const handler: Handlers<typeof config> = async (_input, { enqueue, logger }) => {
   logger.info("Master scrape gestart");
 
-  // Slice 1: Striive als eerste platform
-  await emit({
+  await enqueue({
     topic: "platform.scrape",
     data: {
       platform: "striive",
@@ -21,5 +19,5 @@ export const handler: Handlers["MasterScrape"] = async ({ emit, logger }) => {
     },
   });
 
-  logger.info("Striive scrape opdracht geemit");
+  logger.info("Striive scrape opdracht verstuurd");
 };

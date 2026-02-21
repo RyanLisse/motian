@@ -1,27 +1,31 @@
-import { EventConfig, Handlers } from "motia";
+import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
 import { db } from "../../src/db";
 import { jobs } from "../../src/db/schema";
 import { sql } from "drizzle-orm";
 import { unifiedJobSchema } from "../../src/schemas/job";
 
-export const config: EventConfig = {
-  type: "event",
+export const config = {
   name: "NormalizeJobs",
   description:
     "Normaliseert en slaat jobs op met deduplicatie, emits scrape result metrics",
-  subscribes: ["jobs.normalize"],
-  emits: ["scrape.completed"],
-  input: z.object({
-    platform: z.string(),
-    listings: z.array(z.any()),
-  }),
+  triggers: [
+    {
+      type: "queue",
+      topic: "jobs.normalize",
+      input: z.object({
+        platform: z.string(),
+        listings: z.array(z.any()),
+      }),
+    },
+  ],
+  enqueues: [{ topic: "scrape.completed" }],
   flows: ["recruitment-scraper"],
-};
+} as const satisfies StepConfig;
 
-export const handler: Handlers["NormalizeJobs"] = async (
+export const handler: Handlers<typeof config> = async (
   input,
-  { emit, logger },
+  { enqueue, logger },
 ) => {
   const startTime = Date.now();
   let jobsNew = 0;
@@ -39,7 +43,7 @@ export const handler: Handlers["NormalizeJobs"] = async (
     }
   }
 
-  // Stap 2: Batch upsert (25-50x sneller dan per-row)
+  // Stap 2: Batch upsert
   if (validItems.length > 0) {
     const BATCH_SIZE = 50;
     for (let i = 0; i < validItems.length; i += BATCH_SIZE) {
@@ -80,7 +84,7 @@ export const handler: Handlers["NormalizeJobs"] = async (
               competences: sql`excluded.competences`,
               conditions: sql`excluded.conditions`,
               scrapedAt: sql`now()`,
-              deletedAt: sql`null`, // Revive soft-deleted jobs
+              deletedAt: sql`null`,
               rawPayload: sql`excluded.raw_payload`,
             },
           })
@@ -98,8 +102,7 @@ export const handler: Handlers["NormalizeJobs"] = async (
   const status =
     errors.length === 0 ? "success" : jobsNew > 0 ? "partial" : "failed";
 
-  // Emit metrics for ScrapeResult recording
-  await emit({
+  await enqueue({
     topic: "scrape.completed",
     data: {
       platform: input.platform,

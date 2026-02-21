@@ -10,10 +10,13 @@ importers:
     dependencies:
       '@browserbasehq/stagehand':
         specifier: ^2.0.0
-        version: 2.5.8(deepmerge@4.3.1)(dotenv@16.6.1)(react@19.2.4)(zod@3.25.76)
+        version: 2.5.8(deepmerge@4.3.1)(dotenv@17.3.1)(react@19.2.4)(zod@3.25.76)
       '@mendable/firecrawl-js':
         specifier: ^1.0.0
         version: 1.29.3
+      chromium-bidi:
+        specifier: ^15.0.0
+        version: 15.0.0(devtools-protocol@0.0.1464554)
       drizzle-orm:
         specifier: ^0.38.0
         version: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0)(react@19.2.4)
@@ -33,6 +36,9 @@ importers:
       '@types/pg':
         specifier: ^8.11.0
         version: 8.16.0
+      dotenv:
+        specifier: ^17.3.1
+        version: 17.3.1
       drizzle-kit:
         specifier: ^0.30.0
         version: 0.30.6
@@ -1081,6 +1087,11 @@ packages:
     resolution: {integrity: sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA==}
     engines: {node: '>= 16'}
 
+  chromium-bidi@15.0.0:
+    resolution: {integrity: sha512-ESWZM1u85CoeSozBXXG9M73S5tH0EjkqnFJoQ6F3MHs2YGe0CLVMaRvhGxetLP6w4GVR59+/cpWvDLUpLvJXLQ==}
+    peerDependencies:
+      devtools-protocol: '*'
+
   cjs-module-lexer@1.4.3:
     resolution: {integrity: sha512-9z8TZaGM1pfswYeXrUpzPrkx8UnWYdhJclsiYMm6x/w5+nN+8Tf/LnAgfLGQCm59qAOxU8WwHEq2vNwF6i4j+Q==}
 
@@ -1164,8 +1175,8 @@ packages:
   diff-match-patch@1.0.5:
     resolution: {integrity: sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw==}
 
-  dotenv@16.6.1:
-    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
+  dotenv@17.3.1:
+    resolution: {integrity: sha512-IO8C/dzEb6O3F9/twg6ZLXz164a2fhTnEWb95H23Dm4OuN+92NmEAlTrupP9VW6Jm3sO26tQlqyvyi4CsnY9GA==}
     engines: {node: '>=12'}
 
   drizzle-kit@0.30.6:
@@ -1669,6 +1680,9 @@ packages:
   minipass@7.1.3:
     resolution: {integrity: sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==}
     engines: {node: '>=16 || 14 >=14.17'}
+
+  mitt@3.0.1:
+    resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
 
   module-details-from-path@1.0.4:
     resolution: {integrity: sha512-EGWKgxALGMgzvxYF1UyGTy0HXX/2vHLkw6+NvDKW2jypWbHpjQuj4UMcqQWXHERJhVGKikolT06G3bcKe4fi7w==}
@@ -2459,7 +2473,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@browserbasehq/stagehand@2.5.8(deepmerge@4.3.1)(dotenv@16.6.1)(react@19.2.4)(zod@3.25.76)':
+  '@browserbasehq/stagehand@2.5.8(deepmerge@4.3.1)(dotenv@17.3.1)(react@19.2.4)(zod@3.25.76)':
     dependencies:
       '@anthropic-ai/sdk': 0.39.0
       '@browserbasehq/sdk': 2.6.0
@@ -2468,7 +2482,7 @@ snapshots:
       ai: 4.3.19(react@19.2.4)(zod@3.25.76)
       deepmerge: 4.3.1
       devtools-protocol: 0.0.1464554
-      dotenv: 16.6.1
+      dotenv: 17.3.1
       fetch-cookie: 3.2.0
       openai: 4.104.0(ws@8.19.0)(zod@3.25.76)
       pino: 9.14.0
@@ -3181,6 +3195,12 @@ snapshots:
 
   check-error@2.1.3: {}
 
+  chromium-bidi@15.0.0(devtools-protocol@0.0.1464554):
+    dependencies:
+      devtools-protocol: 0.0.1464554
+      mitt: 3.0.1
+      zod: 3.25.76
+
   cjs-module-lexer@1.4.3: {}
 
   color-convert@2.0.1:
@@ -3236,7 +3256,7 @@ snapshots:
 
   diff-match-patch@1.0.5: {}
 
-  dotenv@16.6.1: {}
+  dotenv@17.3.1: {}
 
   drizzle-kit@0.30.6:
     dependencies:
@@ -3768,6 +3788,8 @@ snapshots:
   minimist@1.2.8: {}
 
   minipass@7.1.3: {}
+
+  mitt@3.0.1: {}
 
   module-details-from-path@1.0.4: {}
 

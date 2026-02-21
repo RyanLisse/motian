@@ -1,27 +1,33 @@
-import { EventConfig, Handlers } from "motia";
+import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
-import { Stagehand } from "@browserbasehq/stagehand";
 
-export const config: EventConfig = {
-  type: "event",
+export const config = {
   name: "ScrapeStriive",
   description: "Scrapt Striive opdrachten via Stagehand (ingelogd)",
-  subscribes: ["platform.scrape"],
-  emits: ["jobs.normalize"],
-  input: z.object({
-    platform: z.string(),
-    url: z.string().url(),
-  }),
+  triggers: [
+    {
+      type: "queue",
+      topic: "platform.scrape",
+      input: z.object({
+        platform: z.string(),
+        url: z.string().url(),
+      }),
+    },
+  ],
+  enqueues: [{ topic: "jobs.normalize" }],
   flows: ["recruitment-scraper"],
-};
+} as const satisfies StepConfig;
 
-export const handler: Handlers["ScrapeStriive"] = async (
+export const handler: Handlers<typeof config> = async (
   input,
-  { emit, logger },
+  { enqueue, logger },
 ) => {
   if (input.platform !== "striive") return;
 
   logger.info(`Striive scrapen: ${input.url}`);
+
+  // Dynamic import om esbuild bundling conflict met playwright-core te voorkomen
+  const { Stagehand } = await import("@browserbasehq/stagehand");
 
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
@@ -55,7 +61,7 @@ export const handler: Handlers["ScrapeStriive"] = async (
         { timeout: 15_000 },
       );
 
-      // Stap 3: Paginated extraction met echte Striive veldnamen
+      // Stap 3: Paginated extraction
       const MAX_PAGES = 5;
       const allListings: any[] = [];
 
@@ -74,14 +80,14 @@ export const handler: Handlers["ScrapeStriive"] = async (
             - endDate: einddatum (YYYY-MM-DD)
             - applicationDeadline: "reageren kan t/m" datum (YYYY-MM-DD)
             - workArrangement: thuiswerken beleid ("hybride", "op_locatie", of "remote")
-            - allowsSubcontracting: doorleenconstructie toegestaan (ja/nee → true/false)
+            - allowsSubcontracting: doorleenconstructie toegestaan (true/false)
             - externalId: de referentiecode (bijv. "BTBDN000695")
             - clientReferenceCode: referentiecode opdrachtgever
             - externalUrl: de volledige URL naar de opdracht
-            - requirements: lijst van harde eisen als [{description, isKnockout: true}]
-            - wishes: lijst van wensen als [{description, evaluationCriteria}]
-            - competences: lijst van competenties/soft skills
-            - conditions: lijst van voorwaarden (bijv. "WKA", "G-rekening")`,
+            - requirements: harde eisen als [{description, isKnockout: true}]
+            - wishes: wensen als [{description, evaluationCriteria}]
+            - competences: competenties/soft skills
+            - conditions: voorwaarden (bijv. "WKA", "G-rekening")`,
           schema: z.object({
             opdrachten: z.array(
               z.object({
@@ -125,7 +131,6 @@ export const handler: Handlers["ScrapeStriive"] = async (
 
         allListings.push(...(result.opdrachten ?? []));
 
-        // Probeer volgende pagina
         const hasNext = await stagehand.page
           .locator(
             'a:has-text("Volgende"), button:has-text("Volgende"), [aria-label="Volgende"]',
@@ -140,11 +145,8 @@ export const handler: Handlers["ScrapeStriive"] = async (
         );
       }
 
-      logger.info(
-        `Striive: ${allListings.length} opdrachten gevonden`,
-      );
+      logger.info(`Striive: ${allListings.length} opdrachten gevonden`);
 
-      // Verrijk listings met province extractie
       const enriched = allListings.map((l: any) => ({
         ...l,
         province:
@@ -154,18 +156,18 @@ export const handler: Handlers["ScrapeStriive"] = async (
             : undefined),
       }));
 
-      await emit({
+      await enqueue({
         topic: "jobs.normalize",
         data: { platform: "striive", listings: enriched },
       });
-      break; // Succes → uit retry loop
+      break;
     } catch (err) {
       attempt++;
       if (attempt > MAX_RETRIES) {
         logger.error(
           `Striive scrape definitief mislukt na ${MAX_RETRIES + 1} pogingen: ${err}`,
         );
-        await emit({
+        await enqueue({
           topic: "jobs.normalize",
           data: { platform: "striive", listings: [] },
         });
