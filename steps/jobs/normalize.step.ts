@@ -2,7 +2,7 @@ import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
 import { db } from "../../src/db";
 import { jobs } from "../../src/db/schema";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { unifiedJobSchema } from "../../src/schemas/job";
 
 export const config = {
@@ -49,6 +49,8 @@ export const handler: Handlers<typeof config> = async (
     for (let i = 0; i < validItems.length; i += BATCH_SIZE) {
       const batch = validItems.slice(i, i + BATCH_SIZE);
       try {
+        // Use xmax system column to distinguish inserts from updates
+        // xmax = 0 means freshly inserted, xmax > 0 means updated (duplicate)
         const result = await db
           .insert(jobs)
           .values(
@@ -88,10 +90,15 @@ export const handler: Handlers<typeof config> = async (
               rawPayload: sql`excluded.raw_payload`,
             },
           })
-          .returning({ id: jobs.id });
+          .returning({
+            id: jobs.id,
+            isNew: sql<boolean>`xmax = 0`.as("is_new"),
+          });
 
-        jobsNew += result.length;
-        duplicates += batch.length - result.length;
+        const inserted = result.filter((r) => r.isNew).length;
+        const updated = result.length - inserted;
+        jobsNew += inserted;
+        duplicates += updated;
       } catch (err) {
         errors.push(`DB batch ${i}-${i + batch.length}: ${String(err)}`);
       }

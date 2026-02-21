@@ -9,5 +9,10 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
+// Prevent silent crashes on dropped connections
+pool.on("error", (err) => {
+  console.error("Onverwachte pool fout:", err.message);
+});
+
 export const db = drizzle(pool);
 export * from "./schema";

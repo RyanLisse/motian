@@ -2,7 +2,7 @@ import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
 import { db } from "../../src/db";
 import { scrapeResults, scraperConfigs } from "../../src/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export const config = {
   name: "RecordScrapeResult",
@@ -52,13 +52,18 @@ export const handler: Handlers<typeof config> = async (
       errors: input.errors,
     });
 
-    // Stap 3: Update config lastRunAt + lastRunStatus
+    // Stap 3: Update config lastRunAt + lastRunStatus + circuit breaker
     if (configId) {
+      const isFailed = input.status === "failed";
       await db
         .update(scraperConfigs)
         .set({
           lastRunAt: new Date(),
           lastRunStatus: input.status,
+          // Circuit breaker: increment on failure, reset to 0 on success
+          consecutiveFailures: isFailed
+            ? sql`${scraperConfigs.consecutiveFailures} + 1`
+            : 0,
           updatedAt: new Date(),
         })
         .where(eq(scraperConfigs.id, configId));

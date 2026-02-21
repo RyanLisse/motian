@@ -11,6 +11,8 @@ export const config = {
   flows: ["recruitment-scraper"],
 } as const satisfies StepConfig;
 
+const CIRCUIT_BREAKER_THRESHOLD = 5;
+
 export const handler: Handlers<typeof config> = async (_input, { enqueue, logger }) => {
   logger.info("Master scrape gestart — configs laden uit database");
 
@@ -24,7 +26,19 @@ export const handler: Handlers<typeof config> = async (_input, { enqueue, logger
     return;
   }
 
+  let dispatched = 0;
+  let tripped = 0;
+
   for (const cfg of activeConfigs) {
+    // Circuit breaker: skip platforms with too many consecutive failures
+    if ((cfg.consecutiveFailures ?? 0) >= CIRCUIT_BREAKER_THRESHOLD) {
+      logger.warn(
+        `Circuit breaker open: ${cfg.platform} (${cfg.consecutiveFailures} opeenvolgende fouten) — overgeslagen`,
+      );
+      tripped++;
+      continue;
+    }
+
     await enqueue({
       topic: "platform.scrape",
       data: {
@@ -32,8 +46,11 @@ export const handler: Handlers<typeof config> = async (_input, { enqueue, logger
         url: cfg.baseUrl,
       },
     });
+    dispatched++;
     logger.info(`Scrape opdracht verstuurd: ${cfg.platform} → ${cfg.baseUrl}`);
   }
 
-  logger.info(`${activeConfigs.length} platform(en) gestart`);
+  logger.info(
+    `${dispatched} platform(en) gestart, ${tripped} overgeslagen (circuit breaker)`,
+  );
 };

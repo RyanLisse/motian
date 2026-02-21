@@ -23,14 +23,25 @@ type PlatformHealth = {
 
 export const handler: Handlers<typeof config> = async (_req, { logger }) => {
   try {
-    const configs = await db.select().from(scraperConfigs);
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const health: PlatformHealth[] = [];
+    // Single query: join configs with aggregated results (fixes N+1)
+    const configs = await db.select().from(scraperConfigs);
+    const statsRows = await db
+      .select({
+        platform: scrapeResults.platform,
+        total: sql<number>`count(*)::int`,
+        failures: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
+      })
+      .from(scrapeResults)
+      .where(gte(scrapeResults.runAt, twentyFourHoursAgo))
+      .groupBy(scrapeResults.platform);
 
-    for (const cfg of configs) {
+    const statsMap = new Map(statsRows.map((s) => [s.platform, s]));
+
+    const health: PlatformHealth[] = configs.map((cfg) => {
       if (!cfg.isActive) {
-        health.push({
+        return {
           platform: cfg.platform,
           isActive: false,
           lastRunAt: cfg.lastRunAt,
@@ -38,26 +49,13 @@ export const handler: Handlers<typeof config> = async (_req, { logger }) => {
           runs24h: 0,
           failures24h: 0,
           failureRate: 0,
-          status: "inactief",
-        });
-        continue;
+          status: "inactief" as const,
+        };
       }
 
-      const stats = await db
-        .select({
-          total: sql<number>`count(*)::int`,
-          failures: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
-        })
-        .from(scrapeResults)
-        .where(
-          and(
-            eq(scrapeResults.platform, cfg.platform),
-            gte(scrapeResults.runAt, twentyFourHoursAgo),
-          ),
-        );
-
-      const runs24h = stats[0]?.total ?? 0;
-      const failures24h = stats[0]?.failures ?? 0;
+      const stats = statsMap.get(cfg.platform);
+      const runs24h = stats?.total ?? 0;
+      const failures24h = stats?.failures ?? 0;
       const failureRate = runs24h > 0 ? failures24h / runs24h : 0;
 
       let status: PlatformHealth["status"] = "gezond";
@@ -67,7 +65,7 @@ export const handler: Handlers<typeof config> = async (_req, { logger }) => {
         status = "waarschuwing";
       }
 
-      health.push({
+      return {
         platform: cfg.platform,
         isActive: cfg.isActive,
         lastRunAt: cfg.lastRunAt,
@@ -76,8 +74,8 @@ export const handler: Handlers<typeof config> = async (_req, { logger }) => {
         failures24h,
         failureRate: Math.round(failureRate * 100) / 100,
         status,
-      });
-    }
+      };
+    });
 
     return {
       status: 200,

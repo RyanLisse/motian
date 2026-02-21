@@ -24,6 +24,7 @@ export const scraperConfigs = pgTable(
     cronExpression: text("cron_expression").default("0 0 */4 * * *"),
     lastRunAt: timestamp("last_run_at"),
     lastRunStatus: text("last_run_status"),
+    consecutiveFailures: integer("consecutive_failures").default(0),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
