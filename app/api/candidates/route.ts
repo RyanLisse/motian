@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(candidates)
   } catch (error: unknown) {
     console.error("GET /api/candidates error:", error)
-    const message = error instanceof Error ? error.message : "Onbekende fout"
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: "Er is een interne fout opgetreden" }, { status: 500 })
   }
 }

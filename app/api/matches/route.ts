@@ -15,8 +15,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(matches)
   } catch (error: unknown) {
     console.error("GET /api/matches error:", error)
-    const message = error instanceof Error ? error.message : "Onbekende fout"
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: "Er is een interne fout opgetreden" }, { status: 500 })
   }
 }
 
@@ -36,7 +35,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(matches)
   } catch (error: unknown) {
     console.error("POST /api/matches error:", error)
-    const message = error instanceof Error ? error.message : "Onbekende fout"
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: "Er is een interne fout opgetreden" }, { status: 500 })
   }
 }

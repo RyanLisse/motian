@@ -19,7 +19,6 @@ export async function PATCH(
     return NextResponse.json(result)
   } catch (error: unknown) {
     console.error("PATCH /api/matches/[id]/reject error:", error)
-    const message = error instanceof Error ? error.message : "Onbekende fout"
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: "Er is een interne fout opgetreden" }, { status: 500 })
   }
 }

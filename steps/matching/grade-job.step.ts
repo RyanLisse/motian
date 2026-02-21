@@ -1,15 +1,13 @@
 import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
-import { getMatchById, type CreateMatchData } from "../../src/services/matches";
+import { getMatchById } from "../../src/services/matches";
 import { getCandidateById } from "../../src/services/candidates";
 import { getJobById } from "../../src/services/jobs";
+import { getAIModel, type MatchResult } from "../../src/services/ai";
 import { db } from "../../src/db";
 import { jobMatches } from "../../src/db/schema";
 import { eq } from "drizzle-orm";
-import { getModel, complete, getOAuthApiKey } from "@mariozechner/pi-ai";
-import type { OAuthCredentials } from "@mariozechner/pi-ai";
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import { join } from "path";
+import { complete } from "@mariozechner/pi-ai";
 
 export const config = {
   name: "GradeJob",
@@ -28,73 +26,6 @@ export const config = {
   enqueues: [{ topic: "match.completed" }],
   flows: ["recruitment-matching"],
 } as const satisfies StepConfig;
-
-// ========== AI Model Resolution (same pattern as app/api/match/route.ts) ==========
-
-interface MatchResult {
-  overallScore: number;
-  knockOutCriteria: {
-    criterion: string;
-    required: boolean;
-    met: boolean;
-    evidence: string;
-  }[];
-  scoringCriteria: {
-    criterion: string;
-    weight: number;
-    score: number;
-    explanation: string;
-  }[];
-  riskLevel: "Laag" | "Gemiddeld" | "Hoog";
-  riskExplanation: string;
-  recommendations: string[];
-  matchedSkills: string[];
-  missingSkills: string[];
-  summary: string;
-}
-
-const AUTH_PATH = join(process.cwd(), "auth.json");
-
-async function getAIModel() {
-  // 1. Try OAuth (subscription)
-  if (existsSync(AUTH_PATH)) {
-    try {
-      const auth = JSON.parse(
-        readFileSync(AUTH_PATH, "utf-8"),
-      ) as Record<string, OAuthCredentials>;
-      if (auth.anthropic) {
-        const result = await getOAuthApiKey("anthropic", auth);
-        if (result) {
-          auth.anthropic = result.newCredentials;
-          writeFileSync(AUTH_PATH, JSON.stringify(auth, null, 2));
-          return {
-            model: getModel("anthropic", "claude-sonnet-4-6"),
-            provider: "anthropic-oauth",
-            apiKey: result.apiKey,
-          };
-        }
-      }
-    } catch {
-      /* fall through */
-    }
-  }
-  // 2. API keys
-  if (process.env.ANTHROPIC_API_KEY) {
-    return {
-      model: getModel("anthropic", "claude-sonnet-4-6"),
-      provider: "anthropic",
-      apiKey: undefined,
-    };
-  }
-  if (process.env.OPENAI_API_KEY) {
-    return {
-      model: getModel("openai", "gpt-5"),
-      provider: "openai",
-      apiKey: undefined,
-    };
-  }
-  return null;
-}
 
 // ========== Handler ==========
 
@@ -214,12 +145,10 @@ Antwoord ALLEEN met een geldig JSON object in exact dit formaat (geen markdown, 
       const result: MatchResult = JSON.parse(jsonStr);
 
       // Calculate weighted llmScore from scoringCriteria
-      const llmScore =
-        result.scoringCriteria.reduce(
-          (sum, c) => sum + c.weight * c.score,
-          0,
-        ) /
-        result.scoringCriteria.reduce((sum, c) => sum + c.weight, 0);
+      const totalWeight = result.scoringCriteria.reduce((sum, c) => sum + c.weight, 0);
+      const llmScore = totalWeight > 0
+        ? result.scoringCriteria.reduce((sum, c) => sum + c.weight * c.score, 0) / totalWeight
+        : 0;
       const llmScoreNormalized = (llmScore / 5) * 100; // Normalize 1-5 scale to 0-100
 
       // Check if all required knock-out criteria are met
