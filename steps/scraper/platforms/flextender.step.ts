@@ -2,11 +2,12 @@ import { StepConfig, Handlers } from "motia";
 import { z } from "zod";
 
 const AJAX_URL = "https://www.flextender.nl/wp-admin/admin-ajax.php";
+const DETAIL_BASE = "https://www.flextender.nl/opdracht/?aanvraagnr=";
 
 export const config = {
   name: "ScrapeFlextender",
   description:
-    "Scrapt Flextender opdrachten via publieke AJAX API + HTML parsing (geen browser nodig)",
+    "Scrapt Flextender opdrachten via publieke AJAX API + detail-pagina verrijking (geen browser nodig)",
   triggers: [
     {
       type: "queue",
@@ -57,13 +58,17 @@ export const handler: Handlers<typeof config> = async (
         return;
       }
 
-      // Stap 2: Parse HTML job cards met regex (Cheerio-achtig maar zero-dep)
+      // Stap 2: Parse HTML job cards uit AJAX response
       const listings = parseFlextenderHtml(html);
-      logger.info(`Flextender: ${listings.length} opdrachten geparsed`);
+      logger.info(`Flextender: ${listings.length} opdrachten geparsed uit listings`);
+
+      // Stap 3: Verrijk elke listing met detail-pagina content
+      const enriched = await enrichListings(listings, logger);
+      logger.info(`Flextender: ${enriched.length} opdrachten verrijkt met detail-pagina`);
 
       await enqueue({
         topic: "jobs.normalize",
-        data: { platform: "flextender", listings },
+        data: { platform: "flextender", listings: enriched },
       });
       return;
     } catch (err) {
@@ -126,9 +131,9 @@ function parseFlextenderHtml(html: string): any[] {
       company,
       location,
       province,
-      description: title, // Alleen titel beschikbaar vanuit listings
+      description: title, // Placeholder, verrijkt in stap 3
       externalId,
-      externalUrl: `https://www.flextender.nl${detailPath}`,
+      externalUrl: `${DETAIL_BASE}${externalId}`,
       startDate: parseDutchDate(fields.Start),
       applicationDeadline: parseDutchDate(fields["Einde inschrijfdatum"]),
       contractType: "opdracht" as const,
@@ -137,6 +142,219 @@ function parseFlextenderHtml(html: string): any[] {
   }
 
   return listings;
+}
+
+// ── Detail-pagina verrijking ──────────────────────────────────────
+
+/** Verrijk listings met content van hun detail-pagina's (parallel, max 5 tegelijk) */
+async function enrichListings(
+  listings: any[],
+  logger: { info: (m: string) => void; warn: (m: string) => void },
+): Promise<any[]> {
+  const CONCURRENCY = 5;
+  const results: any[] = [];
+
+  for (let i = 0; i < listings.length; i += CONCURRENCY) {
+    const batch = listings.slice(i, i + CONCURRENCY);
+    const enrichedBatch = await Promise.all(
+      batch.map(async (listing) => {
+        try {
+          const detail = await fetchDetailPage(listing.externalId);
+          return { ...listing, ...detail };
+        } catch (err) {
+          logger.warn(`Detail ophalen mislukt voor ${listing.externalId}: ${err}`);
+          return listing; // Terugvallen op listing-only data
+        }
+      }),
+    );
+    results.push(...enrichedBatch);
+
+    // Respecteer rate-limiting: korte pauze tussen batches
+    if (i + CONCURRENCY < listings.length) {
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+
+  return results;
+}
+
+/** Haal detail-pagina op en parse gestructureerde secties */
+async function fetchDetailPage(
+  aanvraagnr: string,
+): Promise<Record<string, any>> {
+  const url = `${DETAIL_BASE}${aanvraagnr}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Detail ${res.status}: ${res.statusText}`);
+
+  const html = await res.text();
+  return parseDetailHtml(html);
+}
+
+/** Parse detail-pagina HTML naar gestructureerde velden */
+function parseDetailHtml(html: string): Record<string, any> {
+  const result: Record<string, any> = {};
+
+  // Zoek de formatted description container
+  const descMatch = html.match(
+    /class="css-formattedjobdescription">([\s\S]*?)(?:<\/div>\s*<div\s+(?:style|class="css-navigation))/,
+  );
+  if (!descMatch) return result;
+
+  const content = descMatch[1];
+
+  // Splits op <strong> tags om secties te identificeren
+  const sections = extractSections(content);
+
+  // ── Beschrijving: combineer Organisatietekst + Opdracht secties ──
+  const descParts: string[] = [];
+  for (const key of ["Opdracht", "Organisatietekst", "Opdrachtgever"]) {
+    if (sections[key]) descParts.push(sections[key]);
+  }
+  if (descParts.length > 0) {
+    result.description = descParts.join("\n\n").substring(0, 8000);
+  }
+
+  // ── Vereisten / knock-outcriteria → requirements array ──
+  const reqKey = Object.keys(sections).find((k) =>
+    k.toLowerCase().includes("vereisten") || k.toLowerCase().includes("knock-out"),
+  );
+  if (reqKey && sections[reqKey]) {
+    result.requirements = parseNumberedList(sections[reqKey]).map((item) => ({
+      description: item,
+      isKnockout: true,
+    }));
+  }
+
+  // ── Selectiecriteria → wishes array ──
+  const selKey = Object.keys(sections).find((k) =>
+    k.toLowerCase().includes("selectiecriteria"),
+  );
+  if (selKey && sections[selKey]) {
+    result.wishes = parseNumberedList(sections[selKey]).map((item) => ({
+      description: item,
+    }));
+  }
+
+  // ── Competenties → competences array ──
+  if (sections.Competenties) {
+    result.competences = parseBulletList(sections.Competenties);
+  }
+
+  // ── Functieschaal → rateMin/rateMax (schaal nummer) ──
+  if (sections.Functieschaal) {
+    const scaleMatch = sections.Functieschaal.match(/schaal\s*(\d+)/i);
+    if (scaleMatch) {
+      result.conditions = result.conditions ?? [];
+      result.conditions.push(`Functieschaal ${scaleMatch[1]}`);
+    }
+  }
+
+  // ── Fee Flextender → conditions ──
+  const feeKey = Object.keys(sections).find((k) =>
+    k.toLowerCase().includes("fee"),
+  );
+  if (feeKey && sections[feeKey]) {
+    result.conditions = result.conditions ?? [];
+    result.conditions.push(`Fee: ${sections[feeKey].trim()}`);
+  }
+
+  // ── Werkdagen → conditions ──
+  if (sections.Werkdagen) {
+    result.conditions = result.conditions ?? [];
+    result.conditions.push(`Werkdagen: ${sections.Werkdagen.trim()}`);
+  }
+
+  // ── CV-eisen → conditions ──
+  const cvKey = Object.keys(sections).find((k) =>
+    k.toLowerCase().includes("cv-eisen"),
+  );
+  if (cvKey && sections[cvKey]) {
+    result.conditions = result.conditions ?? [];
+    result.conditions.push(`CV-eisen: ${sections[cvKey].trim()}`);
+  }
+
+  // ── Detail summary velden (extra metadata) ──
+  const summaryFields = parseFieldPairs(
+    extractBetween(html, 'class="css-summary">', "</div><!--end summary-->") ??
+      extractBetween(html, 'class="css-summarybackground">', 'class="css-formattedjobdescription">') ?? "",
+  );
+  if (summaryFields["Opties verlenging"]) {
+    result.conditions = result.conditions ?? [];
+    result.conditions.push(`Verlenging: ${summaryFields["Opties verlenging"]}`);
+  }
+
+  return result;
+}
+
+/** Extract text between two markers in HTML */
+function extractBetween(html: string, start: string, end: string): string | null {
+  const startIdx = html.indexOf(start);
+  if (startIdx === -1) return null;
+  const endIdx = html.indexOf(end, startIdx + start.length);
+  if (endIdx === -1) return null;
+  return html.substring(startIdx + start.length, endIdx);
+}
+
+/** Splits HTML content op <strong> secties, retourneert header→body map */
+function extractSections(html: string): Record<string, string> {
+  const sections: Record<string, string> = {};
+  // Match: <strong>Header</strong> followed by body content until next <strong>
+  const parts = html.split(/<(?:strong|b)>/i);
+
+  for (let i = 1; i < parts.length; i++) {
+    const closeIdx = parts[i].search(/<\/(?:strong|b)>/i);
+    if (closeIdx === -1) continue;
+
+    const header = stripHtml(parts[i].substring(0, closeIdx)).trim();
+    const body = stripHtml(parts[i].substring(closeIdx)).trim();
+
+    if (header && body && header.length < 100) {
+      sections[header] = body;
+    }
+  }
+  return sections;
+}
+
+/** Verwijder HTML tags en decode entities */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|li|div)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Parse genummerde lijst (1. item; 2. item) naar string array */
+function parseNumberedList(text: string): string[] {
+  const items = text.split(/\n/).filter((l) => l.trim());
+  const result: string[] = [];
+  for (const line of items) {
+    const cleaned = line.replace(/^\d+[\.\)]\s*/, "").trim();
+    if (cleaned.length > 5) result.push(cleaned);
+  }
+  // Als geen genummerde items gevonden, split op ; of newlines
+  if (result.length === 0) {
+    return text
+      .split(/[;\n]/)
+      .map((s) => s.replace(/^\d+[\.\)]\s*/, "").trim())
+      .filter((s) => s.length > 5);
+  }
+  return result;
+}
+
+/** Parse bullet list (- item; - item) naar string array */
+function parseBulletList(text: string): string[] {
+  return text
+    .split(/[;\n]/)
+    .map((s) => s.replace(/^[-•–]\s*/, "").trim())
+    .filter((s) => s.length > 2);
 }
 
 /** Parse alle caption-value paren uit een card HTML */

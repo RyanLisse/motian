@@ -138,6 +138,33 @@ describe("Flextender scraper", () => {
     expect(content).not.toContain("STRIIVE_USERNAME");
     expect(content).not.toContain("LINKEDIN_USERNAME");
   });
+
+  it("step file enriches listings via detail page", async () => {
+    const fs = await import("fs/promises");
+    const content = await fs.readFile(
+      resolve(__dirname, "../steps/scraper/platforms/flextender.step.ts"),
+      "utf-8",
+    );
+    expect(content).toContain("enrichListings");
+    expect(content).toContain("fetchDetailPage");
+    expect(content).toContain("parseDetailHtml");
+    expect(content).toContain("css-formattedjobdescription");
+    expect(content).toContain("/opdracht/?aanvraagnr=");
+  });
+
+  it("step file extracts structured sections from detail", async () => {
+    const fs = await import("fs/promises");
+    const content = await fs.readFile(
+      resolve(__dirname, "../steps/scraper/platforms/flextender.step.ts"),
+      "utf-8",
+    );
+    expect(content).toContain("requirements");
+    expect(content).toContain("competences");
+    expect(content).toContain("wishes");
+    expect(content).toContain("conditions");
+    expect(content).toContain("isKnockout");
+    expect(content).toContain("Functieschaal");
+  });
 });
 
 // ===== Seed Script =====
