@@ -22,6 +22,20 @@ import {
   getMatchById,
   updateMatchStatus,
 } from "../services/matches.js";
+import {
+  listApplications,
+  getApplicationById,
+  createApplication,
+  updateApplicationStage,
+  getApplicationStats,
+} from "../services/applications.js";
+import {
+  listInterviews,
+  getInterviewById,
+  createInterview,
+  updateInterview,
+  getUpcomingInterviews,
+} from "../services/interviews.js";
 
 // ── Tool definitions ─────────────────────────────────────────────
 
@@ -183,6 +197,91 @@ const TOOLS = [
       required: ["id"],
     },
   },
+  // Applications
+  {
+    name: "list_applications",
+    description: "Lijst van sollicitaties ophalen, optioneel gefilterd",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        jobId: { type: "string", description: "Filter op vacature-ID" },
+        candidateId: { type: "string", description: "Filter op kandidaat-ID" },
+        stage: { type: "string", description: "Filter op stage (new, screening, interview, offer, hired, rejected)" },
+        limit: { type: "number", description: "Max aantal resultaten (standaard 50, max 100)" },
+      },
+    },
+  },
+  {
+    name: "create_application",
+    description: "Nieuwe sollicitatie aanmaken",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        jobId: { type: "string", description: "Vacature-ID" },
+        candidateId: { type: "string", description: "Kandidaat-ID" },
+        matchId: { type: "string", description: "Match-ID (optioneel, als vanuit match)" },
+        source: { type: "string", description: "Bron (match, manual, import)" },
+        notes: { type: "string", description: "Recruiter notities" },
+      },
+      required: ["jobId", "candidateId"],
+    },
+  },
+  {
+    name: "update_application_stage",
+    description: "Sollicitatie stage wijzigen",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        id: { type: "string", description: "Sollicitatie-ID" },
+        stage: { type: "string", description: "Nieuwe stage (new, screening, interview, offer, hired, rejected)" },
+        notes: { type: "string", description: "Notities bij de wijziging" },
+      },
+      required: ["id", "stage"],
+    },
+  },
+  // Interviews
+  {
+    name: "list_interviews",
+    description: "Lijst van interviews ophalen",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        applicationId: { type: "string", description: "Filter op sollicitatie-ID" },
+        status: { type: "string", description: "Filter op status (scheduled, completed, cancelled)" },
+        limit: { type: "number", description: "Max aantal resultaten (standaard 50, max 100)" },
+      },
+    },
+  },
+  {
+    name: "create_interview",
+    description: "Interview inplannen",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        applicationId: { type: "string", description: "Sollicitatie-ID" },
+        scheduledAt: { type: "string", description: "Datum en tijd (ISO 8601)" },
+        type: { type: "string", description: "Type: phone, video, onsite, technical" },
+        interviewer: { type: "string", description: "Naam van de interviewer" },
+        duration: { type: "number", description: "Duur in minuten (standaard 60)" },
+        location: { type: "string", description: "Locatie (voor onsite)" },
+      },
+      required: ["applicationId", "scheduledAt", "type", "interviewer"],
+    },
+  },
+  {
+    name: "update_interview",
+    description: "Interview bijwerken (status, feedback, beoordeling)",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        id: { type: "string", description: "Interview-ID" },
+        status: { type: "string", description: "Nieuwe status (scheduled, completed, cancelled)" },
+        feedback: { type: "string", description: "Feedback tekst" },
+        rating: { type: "number", description: "Beoordeling (1-5)" },
+      },
+      required: ["id"],
+    },
+  },
 ] as const;
 
 // ── Tool handler ─────────────────────────────────────────────────
@@ -283,6 +382,70 @@ async function handleTool(name: string, args: ToolInput) {
       const rejected = await updateMatchStatus(args.id as string, "rejected", args.reviewedBy as string | undefined);
       if (!rejected) return err(`Match met ID '${args.id}' niet gevonden`);
       return ok(rejected);
+    }
+
+    // ── Applications ────────────────────────────────────
+    case "list_applications":
+      return ok(
+        await listApplications({
+          jobId: args.jobId as string | undefined,
+          candidateId: args.candidateId as string | undefined,
+          stage: args.stage as string | undefined,
+          limit: args.limit as number | undefined,
+        }),
+      );
+
+    case "create_application":
+      return ok(
+        await createApplication({
+          jobId: args.jobId as string,
+          candidateId: args.candidateId as string,
+          matchId: args.matchId as string | undefined,
+          source: (args.source as string) ?? "manual",
+          notes: args.notes as string | undefined,
+        }),
+      );
+
+    case "update_application_stage": {
+      const updated = await updateApplicationStage(
+        args.id as string,
+        args.stage as string,
+        args.notes as string | undefined,
+      );
+      if (!updated) return err(`Sollicitatie met ID '${args.id}' niet gevonden`);
+      return ok(updated);
+    }
+
+    // ── Interviews ──────────────────────────────────────
+    case "list_interviews":
+      return ok(
+        await listInterviews({
+          applicationId: args.applicationId as string | undefined,
+          status: args.status as string | undefined,
+          limit: args.limit as number | undefined,
+        }),
+      );
+
+    case "create_interview":
+      return ok(
+        await createInterview({
+          applicationId: args.applicationId as string,
+          scheduledAt: new Date(args.scheduledAt as string),
+          type: args.type as string,
+          interviewer: args.interviewer as string,
+          duration: args.duration as number | undefined,
+          location: args.location as string | undefined,
+        }),
+      );
+
+    case "update_interview": {
+      const updatedInterview = await updateInterview(args.id as string, {
+        status: args.status as string | undefined,
+        feedback: args.feedback as string | undefined,
+        rating: args.rating as number | undefined,
+      });
+      if (!updatedInterview) return err(`Interview met ID '${args.id}' niet gevonden`);
+      return ok(updatedInterview);
     }
 
     default:

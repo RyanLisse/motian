@@ -128,6 +128,56 @@ export default function PipelinePage() {
     }
   )
 
+  // Fetch real data on mount
+  useEffect(() => {
+    async function loadApplications() {
+      try {
+        const res = await fetch("/api/sollicitaties?limit=100")
+        if (!res.ok) return // fall back to mock data
+        const data = await res.json()
+        if (!Array.isArray(data) || data.length === 0) return
+
+        // Map DB records to Candidate type for the kanban
+        const mapped: Candidate[] = data.map((app: Record<string, unknown>) => ({
+          id: app.id as string,
+          name: (app.candidateName as string) ?? "Onbekend",
+          email: "",
+          role: (app.jobTitle as string) ?? "",
+          avatar: ((app.candidateName as string) ?? "?")[0],
+          score: (app.overallScore as number) ?? 0,
+          skills: [],
+          experience: "",
+          status: app.stage as Candidate["status"],
+          appliedDate: ((app.createdAt as string) ?? "").split("T")[0] ?? "",
+          source: (app.source as string) ?? "",
+          resumeQuality: 0,
+          skillMatch: 0,
+          relevance: 0,
+          location: "",
+          phone: "",
+          tags: [],
+        }))
+
+        // Rebuild pipeline from mapped data
+        const newPipeline: Record<StageId, Candidate[]> = {
+          new: [],
+          screening: [],
+          interview: [],
+          offer: [],
+          hired: [],
+        }
+        for (const c of mapped) {
+          const stage = STATUS_TO_STAGE[c.status] ?? "new"
+          newPipeline[stage].push(c)
+        }
+        setPipeline(newPipeline)
+      } catch {
+        /* keep mock data */
+      }
+    }
+    loadApplications()
+  }, [])
+
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -197,6 +247,13 @@ export default function PipelinePage() {
         [overContainer]: overItems,
       }
     })
+
+    // Fire-and-forget stage update
+    fetch(`/api/sollicitaties/${active.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage: overContainer }),
+    }).catch(() => {})
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -241,6 +298,14 @@ export default function PipelinePage() {
 
       return { ...prev, [fromStage]: fromItems, [toStage]: toItems }
     })
+
+    // Fire-and-forget stage update
+    fetch(`/api/sollicitaties/${candidateId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage: toStage }),
+    }).catch(() => {})
+
     setDialogOpen(false)
   }
 

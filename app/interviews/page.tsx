@@ -153,6 +153,44 @@ export default function InterviewsPage() {
     }
   }, [toast]);
 
+  // Fetch real interview data on mount
+  useEffect(() => {
+    async function loadInterviews() {
+      try {
+        const res = await fetch("/api/interviews?limit=100");
+        if (!res.ok) return; // fall back to mock data
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) return;
+
+        // Map DB records to the Interview type used by the UI
+        const mapped: Interview[] = data.map((rec: Record<string, unknown>) => {
+          const scheduledAt = (rec.scheduledAt as string) ?? "";
+          const [datePart, timePart] = scheduledAt.includes("T")
+            ? scheduledAt.split("T")
+            : [scheduledAt, ""];
+          return {
+            id: rec.id as string,
+            candidateId: (rec.applicationId as string) ?? "",
+            candidateName: (rec.candidateName as string) ?? (rec.applicationId as string) ?? "Onbekend",
+            role: (rec.role as string) ?? "",
+            date: datePart,
+            time: timePart ? timePart.slice(0, 5) : "",
+            type: (rec.type as Interview["type"]) ?? "video",
+            interviewer: (rec.interviewer as string) ?? "",
+            status: (rec.status as Interview["status"]) ?? "scheduled",
+            feedback: rec.feedback as string | undefined,
+            rating: rec.rating as number | undefined,
+          };
+        });
+
+        setInterviewList(mapped);
+      } catch {
+        /* keep mock data */
+      }
+    }
+    loadInterviews();
+  }, []);
+
   // Form state for "Gesprek Plannen"
   const [candidateSelect, setCandidateSelect] = useState("");
   const [interviewerSelect, setInterviewerSelect] = useState("");
@@ -233,6 +271,18 @@ export default function InterviewsPage() {
     setDialogOpen(false);
     resetForm();
     setToast(`Gesprek gepland met ${candidate.label}`);
+
+    // Fire-and-forget API call to persist the interview
+    fetch("/api/interviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        applicationId: candidateSelect,
+        scheduledAt: `${dateInput}T${timeInput}:00`,
+        type: typeSelect,
+        interviewer: interviewer.label,
+      }),
+    }).catch(() => {});
   }
 
   function handleCancelInterview(interview: Interview) {
@@ -240,6 +290,13 @@ export default function InterviewsPage() {
       prev.map((i) => (i.id === interview.id ? { ...i, status: "cancelled" as const } : i))
     );
     setToast(`Interview geannuleerd voor ${interview.candidateName}`);
+
+    // Fire-and-forget API call to persist cancellation
+    fetch(`/api/interviews/${interview.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "cancelled" }),
+    }).catch(() => {});
   }
 
   function handleOpenFeedback(interviewId: string) {
@@ -261,6 +318,13 @@ export default function InterviewsPage() {
           : i
       )
     );
+    // Fire-and-forget API call to persist feedback
+    fetch(`/api/interviews/${feedbackInterviewId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedback: feedbackText, rating: feedbackRating * 2 }),
+    }).catch(() => {});
+
     setFeedbackDialogOpen(false);
     setFeedbackInterviewId(null);
     setToast("Feedback toegevoegd");

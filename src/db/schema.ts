@@ -159,6 +159,92 @@ export const candidates = pgTable(
   }),
 );
 
+// ========== Sollicitaties ==========
+export const applications = pgTable(
+  "applications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id").references(() => jobMatches.id, {
+      onDelete: "set null",
+    }),
+    stage: text("stage").notNull().default("new"), // new, screening, interview, offer, hired, rejected
+    previousStage: text("previous_stage"),
+    stageChangedAt: timestamp("stage_changed_at").defaultNow(),
+    notes: text("notes"),
+    source: text("source").notNull().default("manual"), // match, manual, import
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => ({
+    jobIdIdx: index("idx_applications_job_id").on(table.jobId),
+    candidateIdIdx: index("idx_applications_candidate_id").on(
+      table.candidateId,
+    ),
+    stageIdx: index("idx_applications_stage").on(table.stage),
+    deletedAtIdx: index("idx_applications_deleted_at").on(table.deletedAt),
+    jobCandidateUniqueIdx: uniqueIndex("uq_applications_job_candidate")
+      .on(table.jobId, table.candidateId)
+      .where(sql`${table.deletedAt} IS NULL`),
+  }),
+);
+
+// ========== Interviews ==========
+export const interviews = pgTable(
+  "interviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    scheduledAt: timestamp("scheduled_at").notNull(),
+    duration: integer("duration").notNull().default(60), // minutes
+    type: text("type").notNull(), // phone, video, onsite, technical
+    interviewer: text("interviewer").notNull(),
+    location: text("location"),
+    status: text("status").notNull().default("scheduled"), // scheduled, completed, cancelled
+    feedback: text("feedback"),
+    rating: integer("rating"), // 1-5
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    applicationIdIdx: index("idx_interviews_application_id").on(
+      table.applicationId,
+    ),
+    scheduledAtIdx: index("idx_interviews_scheduled_at").on(table.scheduledAt),
+    statusIdx: index("idx_interviews_status").on(table.status),
+  }),
+);
+
+// ========== Berichten ==========
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    direction: text("direction").notNull(), // inbound, outbound
+    channel: text("channel").notNull(), // email, phone, platform
+    subject: text("subject"),
+    body: text("body").notNull(),
+    sentAt: timestamp("sent_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    applicationIdIdx: index("idx_messages_application_id").on(
+      table.applicationId,
+    ),
+    sentAtIdx: index("idx_messages_sent_at").on(table.sentAt),
+  }),
+);
+
 // ========== Match Resultaten ==========
 export const jobMatches = pgTable(
   "job_matches",
