@@ -1,0 +1,45 @@
+"use client";
+
+import {
+  createContext,
+  useContext,
+  useMemo,
+  type ReactNode,
+} from "react";
+import { usePathname, useParams } from "next/navigation";
+
+type ChatContext = {
+  route: string;
+  entityType: "opdracht" | "kandidaat" | null;
+  entityId: string | null;
+};
+
+const ChatCtx = createContext<ChatContext>({
+  route: "/",
+  entityType: null,
+  entityId: null,
+});
+
+export function useChatContext() {
+  return useContext(ChatCtx);
+}
+
+export function ChatContextProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const params = useParams<{ id?: string }>();
+
+  const value = useMemo<ChatContext>(() => {
+    const id = params?.id ?? null;
+
+    if (pathname.startsWith("/opdrachten/") && id) {
+      return { route: pathname, entityType: "opdracht", entityId: id };
+    }
+    if (pathname.startsWith("/professionals/") && id) {
+      return { route: pathname, entityType: "kandidaat", entityId: id };
+    }
+
+    return { route: pathname, entityType: null, entityId: null };
+  }, [pathname, params?.id]);
+
+  return <ChatCtx.Provider value={value}>{children}</ChatCtx.Provider>;
+}

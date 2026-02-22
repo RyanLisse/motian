@@ -17,8 +17,10 @@
     "track:ai-costs": "npx ccusage"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.46",
     "@ai-sdk/google": "^3.0.30",
     "@ai-sdk/openai": "^3.0.30",
+    "@ai-sdk/react": "^3.0.99",
     "@tanstack/react-query": "^5.90.21",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
