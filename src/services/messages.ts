@@ -29,6 +29,11 @@ export async function getMessageById(id: string): Promise<Message | null> {
   return rows[0] ?? null;
 }
 
+export async function deleteMessage(id: string): Promise<boolean> {
+  const result = await db.delete(messages).where(eq(messages.id, id));
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function createMessage(data: {
   applicationId: string;
   direction: string;

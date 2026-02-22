@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { scraperConfigs, scrapeResults } from "../db/schema";
 import { asc, eq, gte, sql } from "drizzle-orm";
+import { encrypt, decrypt } from "../lib/crypto";
 
 // ========== Types ==========
 
@@ -119,4 +120,36 @@ export async function getHealth(): Promise<HealthReport> {
       : "gezond";
 
   return { data: health, overall };
+}
+
+// ========== Auth Config Encryption ==========
+
+/** Encrypt een auth config object naar een versleutelde string */
+export function encryptAuthConfig(config: Record<string, string>): string {
+  return encrypt(JSON.stringify(config));
+}
+
+/** Decrypt een versleutelde string terug naar auth config object */
+export function decryptAuthConfig(encoded: string): Record<string, string> {
+  return JSON.parse(decrypt(encoded));
+}
+
+/**
+ * Detecteer of een waarde al versleuteld is.
+ * Encrypted waarden zijn base64 en minimaal 32 bytes (IV + tag).
+ * Plaintext JSON begint altijd met '{'.
+ */
+export function isEncrypted(value: string | null | undefined): boolean {
+  if (!value || value.length === 0) return false;
+  // Plaintext JSON begint met '{' of '['
+  if (value.startsWith("{") || value.startsWith("[")) return false;
+  // Controleer of het geldige base64 is met minimale lengte (IV + tag = 32 bytes = 44 base64 chars)
+  if (value.length < 44) return false;
+  try {
+    const buf = Buffer.from(value, "base64");
+    // Re-encode en vergelijk — ongeldige base64 geeft een ander resultaat
+    return buf.toString("base64") === value;
+  } catch {
+    return false;
+  }
 }

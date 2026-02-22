@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { and, desc, eq, isNull, ilike } from "drizzle-orm";
+import { and, desc, eq, isNull, ilike, sql } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -55,4 +55,75 @@ export async function searchJobs(
     .where(and(...conditions))
     .orderBy(desc(jobs.scrapedAt))
     .limit(limit);
+}
+
+/** Alle opdrachten ophalen met paginering. */
+export async function listJobs(
+  opts: { limit?: number; offset?: number; platform?: string; q?: string } = {},
+): Promise<{ data: Job[]; total: number }> {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = opts.offset ?? 0;
+
+  const conditions = [isNull(jobs.deletedAt)];
+
+  if (opts.platform) {
+    conditions.push(eq(jobs.platform, opts.platform));
+  }
+
+  if (opts.q) {
+    conditions.push(ilike(jobs.title, `%${opts.q}%`));
+  }
+
+  const whereClause = and(...conditions);
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(jobs)
+    .where(whereClause);
+
+  const data = await db
+    .select()
+    .from(jobs)
+    .where(whereClause)
+    .orderBy(desc(jobs.scrapedAt))
+    .limit(limit)
+    .offset(offset);
+
+  return { data, total: count };
+}
+
+/** Opdracht bijwerken. Retourneert bijgewerkte job of null. */
+export async function updateJob(
+  id: string,
+  data: Partial<
+    Pick<
+      Job,
+      | "title"
+      | "description"
+      | "location"
+      | "rateMin"
+      | "rateMax"
+      | "contractType"
+      | "workArrangement"
+    >
+  >,
+): Promise<Job | null> {
+  const rows = await db
+    .update(jobs)
+    .set(data)
+    .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
+    .returning();
+
+  return rows[0] ?? null;
+}
+
+/** Opdracht soft-deleten. Retourneert true als gevonden en verwijderd. */
+export async function deleteJob(id: string): Promise<boolean> {
+  const rows = await db
+    .update(jobs)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
+    .returning();
+
+  return rows.length > 0;
 }
