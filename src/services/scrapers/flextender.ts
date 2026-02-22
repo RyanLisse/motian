@@ -96,7 +96,8 @@ function parseFlextenderHtml(html: string): any[] {
     const company = companyMatch?.[1]?.trim();
 
     const idMatch = detailPath.match(/\/(\d+)$/);
-    const externalId = idMatch?.[1] ?? "";
+    const externalId = idMatch?.[1] || detailPath.replace(/\//g, "-").replace(/^-/, "") || `flx-${listings.length}`;
+    if (!externalId) continue;
 
     const fields = parseFieldPairs(cardHtml);
 
