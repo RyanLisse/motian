@@ -22,7 +22,9 @@ Antwoord altijd in het Nederlands, tenzij de gebruiker in het Engels schrijft.
 Gebruik tools om data op te halen — gok nooit over opdrachten of data.
 Geef beknopte maar informatieve antwoorden. Gebruik nummers en tabellen waar nuttig.
 
-Beschikbare platforms: flextender, striive, opdrachtoverheid.`;
+Beschikbare platforms: flextender, striive, opdrachtoverheid.
+
+Zoektips: queryOpdrachten zoekt op losse woorden in de titel. Gebruik korte termen (bijv. "jurist" i.p.v. "juridische functies"). Voor semantisch zoeken gebruik matchKandidaten met een beschrijving.`;
 
   if (context?.route) {
     prompt += `\n\nHuidige pagina: ${context.route}`;

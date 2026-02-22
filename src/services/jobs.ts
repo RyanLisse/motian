@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { and, desc, eq, gte, lte, isNull, isNotNull, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, isNull, isNotNull, ilike, or, sql } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -23,16 +23,20 @@ export async function getJobById(id: string): Promise<Job | null> {
   return rows[0] ?? null;
 }
 
-/** Opdrachten zoeken op titel. */
+/** Opdrachten zoeken op titel. Splits multi-word queries into OR conditions. */
 export async function searchJobsByTitle(
   query: string,
   limit?: number,
 ): Promise<Job[]> {
   const safeLimit = Math.min(limit ?? 50, 100);
+  const words = query.trim().split(/\s+/).filter(Boolean);
+  const titleConditions = words.length > 1
+    ? or(...words.map((w) => ilike(jobs.title, `%${w}%`)))
+    : ilike(jobs.title, `%${query}%`);
   return db
     .select()
     .from(jobs)
-    .where(and(isNull(jobs.deletedAt), ilike(jobs.title, `%${query}%`)))
+    .where(and(isNull(jobs.deletedAt), titleConditions))
     .orderBy(desc(jobs.scrapedAt))
     .limit(safeLimit);
 }
