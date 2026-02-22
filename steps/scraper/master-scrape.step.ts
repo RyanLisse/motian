@@ -2,6 +2,7 @@ import { StepConfig, Handlers } from "motia";
 import { db } from "../../src/db";
 import { scraperConfigs } from "../../src/db/schema";
 import { eq } from "drizzle-orm";
+import { generateCorrelationId } from "../../src/lib/correlation";
 
 export const config = {
   name: "MasterScrape",
@@ -14,7 +15,8 @@ export const config = {
 const CIRCUIT_BREAKER_THRESHOLD = 5;
 
 export const handler: Handlers<typeof config> = async (_input, { enqueue, logger }) => {
-  logger.info("Master scrape gestart — configs laden uit database");
+  const correlationId = generateCorrelationId();
+  logger.info(`Master scrape gestart [${correlationId}] — configs laden uit database`);
 
   const activeConfigs = await db
     .select()
@@ -44,6 +46,7 @@ export const handler: Handlers<typeof config> = async (_input, { enqueue, logger
       data: {
         platform: cfg.platform,
         url: cfg.baseUrl,
+        correlationId,
       },
     });
     dispatched++;

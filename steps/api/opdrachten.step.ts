@@ -12,6 +12,10 @@ export const config = {
       queryParams: [
         { name: "q", description: "Zoekterm op titel" },
         { name: "platform", description: "Platform filter" },
+        { name: "provincie", description: "Filter op provincie" },
+        { name: "tariefMin", description: "Minimaal uurtarief" },
+        { name: "tariefMax", description: "Maximaal uurtarief" },
+        { name: "contractType", description: "Contract type (freelance, interim, vast)" },
         { name: "limit", description: "Aantal resultaten (default: 50)" },
         { name: "offset", description: "Offset voor paginering (default: 0)" },
       ],
@@ -38,7 +42,19 @@ export const handler: Handlers<typeof config> = async (req, { logger }) => {
     const rawQ = req.queryParams?.q;
     const q = Array.isArray(rawQ) ? rawQ[0] : rawQ;
 
-    const result = await listJobs({ limit, offset, platform, q });
+    const rawProvincie = req.queryParams?.provincie;
+    const province = Array.isArray(rawProvincie) ? rawProvincie[0] : rawProvincie;
+
+    const rawTariefMin = req.queryParams?.tariefMin;
+    const rateMin = Number(Array.isArray(rawTariefMin) ? rawTariefMin[0] : rawTariefMin) || undefined;
+
+    const rawTariefMax = req.queryParams?.tariefMax;
+    const rateMax = Number(Array.isArray(rawTariefMax) ? rawTariefMax[0] : rawTariefMax) || undefined;
+
+    const rawContractType = req.queryParams?.contractType;
+    const contractType = Array.isArray(rawContractType) ? rawContractType[0] : rawContractType;
+
+    const result = await listJobs({ limit, offset, platform, q, province, rateMin, rateMax, contractType });
     return { status: 200, body: result };
   } catch (err) {
     logger.error(`Fout bij ophalen opdrachten: ${String(err)}`);

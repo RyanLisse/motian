@@ -1,6 +1,6 @@
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
-import { desc, isNull, ilike, eq, and, sql } from "drizzle-orm";
+import { desc, isNull, isNotNull, ilike, eq, gte, lte, and, sql } from "drizzle-orm";
 import { JobCard } from "@/components/job-card";
 import { OpdrachtenFilters } from "./filters";
 
@@ -10,6 +10,10 @@ interface Props {
   searchParams: Promise<{
     q?: string;
     platform?: string;
+    provincie?: string;
+    tariefMin?: string;
+    tariefMax?: string;
+    contractType?: string;
     pagina?: string;
   }>;
 }
@@ -20,6 +24,10 @@ export default async function OpdrachtenPage({ searchParams }: Props) {
   const params = await searchParams;
   const query = params.q ?? "";
   const platform = params.platform ?? "";
+  const provincie = params.provincie ?? "";
+  const tariefMin = params.tariefMin ? parseInt(params.tariefMin, 10) : null;
+  const tariefMax = params.tariefMax ? parseInt(params.tariefMax, 10) : null;
+  const contractType = params.contractType ?? "";
   const page = Math.max(1, parseInt(params.pagina ?? "1", 10));
   const offset = (page - 1) * PER_PAGE;
 
@@ -31,6 +39,18 @@ export default async function OpdrachtenPage({ searchParams }: Props) {
   }
   if (platform) {
     conditions.push(eq(jobs.platform, platform));
+  }
+  if (provincie) {
+    conditions.push(eq(jobs.province, provincie));
+  }
+  if (tariefMin != null) {
+    conditions.push(gte(jobs.rateMax, tariefMin));
+  }
+  if (tariefMax != null) {
+    conditions.push(lte(jobs.rateMin, tariefMax));
+  }
+  if (contractType) {
+    conditions.push(eq(jobs.contractType, contractType));
   }
 
   const whereClause = and(...conditions);
@@ -68,6 +88,10 @@ export default async function OpdrachtenPage({ searchParams }: Props) {
         query={query}
         platform={platform}
         platforms={platforms}
+        provincie={provincie}
+        tariefMin={params.tariefMin ?? ""}
+        tariefMax={params.tariefMax ?? ""}
+        contractType={contractType}
         page={page}
         totalPages={totalPages}
       />

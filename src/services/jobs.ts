@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { and, desc, eq, isNull, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, isNull, isNotNull, ilike, sql } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -59,7 +59,17 @@ export async function searchJobs(
 
 /** Alle opdrachten ophalen met paginering. */
 export async function listJobs(
-  opts: { limit?: number; offset?: number; platform?: string; q?: string } = {},
+  opts: {
+    limit?: number;
+    offset?: number;
+    platform?: string;
+    q?: string;
+    province?: string;
+    rateMin?: number;
+    rateMax?: number;
+    contractType?: string;
+    hasDescription?: boolean;
+  } = {},
 ): Promise<{ data: Job[]; total: number }> {
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = opts.offset ?? 0;
@@ -72,6 +82,26 @@ export async function listJobs(
 
   if (opts.q) {
     conditions.push(ilike(jobs.title, `%${opts.q}%`));
+  }
+
+  if (opts.province) {
+    conditions.push(eq(jobs.province, opts.province));
+  }
+
+  if (opts.rateMin != null) {
+    conditions.push(gte(jobs.rateMax, opts.rateMin));
+  }
+
+  if (opts.rateMax != null) {
+    conditions.push(lte(jobs.rateMin, opts.rateMax));
+  }
+
+  if (opts.contractType) {
+    conditions.push(eq(jobs.contractType, opts.contractType));
+  }
+
+  if (opts.hasDescription) {
+    conditions.push(isNotNull(jobs.description));
   }
 
   const whereClause = and(...conditions);
