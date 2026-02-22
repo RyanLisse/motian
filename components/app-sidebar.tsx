@@ -3,17 +3,11 @@
 import * as React from "react"
 import {
   Briefcase,
-  Calendar,
-  DatabaseZap,
-  FileUp,
   GalleryVerticalEnd,
   LayoutDashboard,
-  MessageSquare,
   Settings,
-  Sparkles,
   Users,
   Zap,
-  Eye,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -48,37 +42,9 @@ const data = {
       isActive: true,
     },
     {
-      title: "AI Grading",
-      url: "/ai-grading",
-      icon: Sparkles,
-      badge: {
-        text: "AI",
-        variant: "blue" as const,
-      },
-      isActive: true,
-    },
-    {
       title: "Opdrachten",
       url: "/opdrachten",
       icon: Briefcase,
-      items: [
-        {
-          title: "Alle opdrachten",
-          url: "/opdrachten",
-        },
-        {
-          title: "Nieuw",
-          url: "/opdrachten?platform=striive",
-        },
-        {
-          title: "Opdrachtoverheid",
-          url: "/opdrachten?platform=opdrachtoverheid",
-        },
-        {
-          title: "Flextender",
-          url: "/opdrachten?platform=flextender",
-        },
-      ],
     },
     {
       title: "Professionals",
@@ -99,40 +65,31 @@ const data = {
       title: "Matching",
       url: "/matching",
       icon: Zap,
-    },
-    {
-      title: "CV Beheer",
-      url: "/cv",
-      icon: FileUp,
-    },
-    {
-      title: "Visual Explainer",
-      url: "/visual-explainer",
-      icon: Eye,
-    },
-    {
-      title: "Gesprekken",
-      url: "/interviews",
-      icon: Calendar,
-      badge: {
-        text: "3",
-        variant: "default" as const,
-      },
-    },
-    {
-      title: "Berichten",
-      url: "/messages",
-      icon: MessageSquare,
-    },
-    {
-      title: "Scraper",
-      url: "/scraper",
-      icon: DatabaseZap,
+      items: [
+        {
+          title: "AI Matching",
+          url: "/matching",
+        },
+        {
+          title: "AI Grading",
+          url: "/matching?tab=grading",
+        },
+        {
+          title: "CV Beheer",
+          url: "/matching?tab=cv",
+        },
+      ],
     },
     {
       title: "Instellingen",
       url: "/settings",
       icon: Settings,
+      items: [
+        {
+          title: "Scraper",
+          url: "/scraper",
+        },
+      ],
     },
   ],
 }
