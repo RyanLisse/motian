@@ -1,8 +1,20 @@
 "use client";
 
+import { useState, useDeferredValue } from "react";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { JobListItem } from "@/components/job-list-item";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SidebarJob {
   id: string;
@@ -14,34 +26,214 @@ interface SidebarJob {
   contractType: string | null;
 }
 
+interface SearchResponse {
+  jobs: SidebarJob[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
 interface OpdrachtenSidebarProps {
   jobs: SidebarJob[];
   totalCount: number;
+  platforms: string[];
 }
 
-export function OpdrachtenSidebar({ jobs, totalCount }: OpdrachtenSidebarProps) {
-  const pathname = usePathname();
+const PROVINCES = [
+  "Noord-Holland",
+  "Zuid-Holland",
+  "Utrecht",
+  "Noord-Brabant",
+  "Gelderland",
+  "Overijssel",
+  "Limburg",
+  "Friesland",
+  "Groningen",
+  "Drenthe",
+  "Flevoland",
+  "Zeeland",
+];
 
-  // Extract the active job ID from the pathname
+async function searchJobs(
+  q: string,
+  platform: string,
+  provincie: string,
+  page: number
+): Promise<SearchResponse> {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (platform) params.set("platform", platform);
+  if (provincie) params.set("provincie", provincie);
+  if (page > 1) params.set("pagina", String(page));
+
+  const res = await fetch(`/api/opdrachten/zoeken?${params.toString()}`);
+  if (!res.ok) throw new Error("Search failed");
+  return res.json();
+}
+
+export function OpdrachtenSidebar({
+  jobs: initialJobs,
+  totalCount: initialTotal,
+  platforms,
+}: OpdrachtenSidebarProps) {
+  const pathname = usePathname();
   const match = pathname.match(/^\/opdrachten\/(.+)$/);
   const activeId = match?.[1] ?? null;
 
+  const [query, setQuery] = useState("");
+  const [platform, setPlatform] = useState("");
+  const [provincie, setProvincie] = useState("");
+  const [page, setPage] = useState(1);
+
+  const deferredQuery = useDeferredValue(query);
+
+  // Always fetch from API — enables pagination from the start
+  const { data, isFetching } = useQuery({
+    queryKey: ["opdrachten-search", deferredQuery, platform, provincie, page],
+    queryFn: () => searchJobs(deferredQuery, platform, provincie, page),
+    placeholderData: (prev) => prev,
+    initialData: page === 1 && !deferredQuery && !platform && !provincie
+      ? { jobs: initialJobs, total: initialTotal, page: 1, totalPages: Math.ceil(initialTotal / 10) }
+      : undefined,
+  });
+
+  const displayJobs = data?.jobs ?? initialJobs;
+  const displayTotal = data?.total ?? initialTotal;
+  const totalPages = data?.totalPages ?? 1;
+
+  // Reset page when filters change
+  const handleFilterChange = (
+    setter: (v: string) => void,
+    value: string
+  ) => {
+    setter(value);
+    setPage(1);
+  };
+
   return (
     <aside className="w-[300px] border-r border-[#2d2d2d] bg-[#171717] shrink-0 hidden lg:flex lg:flex-col">
-      <div className="px-4 py-3 border-b border-[#2d2d2d] shrink-0">
-        <p className="text-xs font-medium text-[#6b6b6b] uppercase tracking-wider">
-          {totalCount} opdrachten
-        </p>
-      </div>
-      <ScrollArea className="flex-1">
-        {jobs.map((job) => (
-          <JobListItem
-            key={job.id}
-            job={job}
-            isActive={job.id === activeId}
+      {/* Search */}
+      <div className="px-3 pt-3 pb-2 shrink-0">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#6b6b6b]" />
+          <Input
+            placeholder="Zoek opdrachten..."
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
+            className="pl-8 h-8 bg-[#1e1e1e] border-[#2d2d2d] text-xs text-[#ececec] placeholder:text-[#6b6b6b] focus-visible:ring-1 focus-visible:ring-[#10a37f] focus-visible:ring-offset-0"
           />
-        ))}
+          {isFetching && (
+            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#6b6b6b] animate-spin" />
+          )}
+        </div>
+      </div>
+
+      {/* Inline filters */}
+      <div className="px-3 pb-2 flex items-center gap-1.5 shrink-0">
+        <Select
+          value={platform || undefined}
+          onValueChange={(v) =>
+            handleFilterChange(setPlatform, v === "__all__" ? "" : v)
+          }
+        >
+          <SelectTrigger className="flex-1 h-7 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-[10px] px-2">
+            <SelectValue placeholder="Opdrachtgever" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
+            <SelectItem value="__all__" className="text-[#ececec] text-xs">
+              Alle opdrachtgevers
+            </SelectItem>
+            {platforms.map((p) => (
+              <SelectItem
+                key={p}
+                value={p}
+                className="capitalize text-[#ececec] text-xs"
+              >
+                {p}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={provincie || undefined}
+          onValueChange={(v) =>
+            handleFilterChange(setProvincie, v === "__all__" ? "" : v)
+          }
+        >
+          <SelectTrigger className="flex-1 h-7 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-[10px] px-2">
+            <SelectValue placeholder="Provincie" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
+            <SelectItem value="__all__" className="text-[#ececec] text-xs">
+              Alle provincies
+            </SelectItem>
+            {PROVINCES.map((p) => (
+              <SelectItem key={p} value={p} className="text-[#ececec] text-xs">
+                {p}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Count */}
+      <div className="px-4 py-2 border-t border-b border-[#2d2d2d] shrink-0 flex items-center justify-between">
+        <p className="text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider">
+          {displayTotal} opdrachten
+        </p>
+        {totalPages > 1 && (
+          <p className="text-[10px] text-[#6b6b6b]">
+            {page}/{totalPages}
+          </p>
+        )}
+      </div>
+
+      {/* Job list */}
+      <ScrollArea className="flex-1">
+        {displayJobs.length === 0 ? (
+          <div className="px-4 py-8 text-center text-xs text-[#6b6b6b]">
+            Geen opdrachten gevonden
+          </div>
+        ) : (
+          displayJobs.map((job) => (
+            <JobListItem
+              key={job.id}
+              job={job}
+              isActive={job.id === activeId}
+            />
+          ))
+        )}
       </ScrollArea>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="px-3 py-2 border-t border-[#2d2d2d] shrink-0 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] text-xs"
+            disabled={page <= 1 || isFetching}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+            Vorige
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] text-xs"
+            disabled={page >= totalPages || isFetching}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Volgende
+            <ChevronRight className="h-3.5 w-3.5 ml-1" />
+          </Button>
+        </div>
+      )}
     </aside>
   );
 }

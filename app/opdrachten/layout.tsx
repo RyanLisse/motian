@@ -10,8 +10,8 @@ export default async function OpdrachtenLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Fetch sidebar jobs + total count
-  const [sidebarJobs, countResult] = await Promise.all([
+  // Fetch sidebar jobs, total count, and distinct platforms in parallel
+  const [sidebarJobs, countResult, platformRows] = await Promise.all([
     db
       .select({
         id: jobs.id,
@@ -25,18 +25,28 @@ export default async function OpdrachtenLayout({
       .from(jobs)
       .where(isNull(jobs.deletedAt))
       .orderBy(desc(jobs.scrapedAt))
-      .limit(100),
+      .limit(10),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(jobs)
       .where(isNull(jobs.deletedAt)),
+    db
+      .selectDistinct({ platform: jobs.platform })
+      .from(jobs)
+      .where(isNull(jobs.deletedAt))
+      .orderBy(jobs.platform),
   ]);
 
   const totalCount = countResult[0]?.count ?? 0;
+  const platforms = platformRows.map((r) => r.platform);
 
   return (
     <div className="flex h-[calc(100vh-57px)]">
-      <OpdrachtenSidebar jobs={sidebarJobs} totalCount={totalCount} />
+      <OpdrachtenSidebar
+        jobs={sidebarJobs}
+        totalCount={totalCount}
+        platforms={platforms}
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
         {children}
       </div>
