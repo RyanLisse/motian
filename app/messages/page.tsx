@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 interface Props {
   searchParams: Promise<{

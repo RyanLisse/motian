@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function OverzichtPage() {
   const sevenDaysAgo = new Date();
@@ -157,7 +157,7 @@ export default async function OverzichtPage() {
                   const percentage = totalJobs > 0 ? Math.round((p.count / totalJobs) * 100) : 0;
                   return (
                     <div key={p.platform} className="flex items-center gap-3">
-                      <span className="text-sm text-[#ececec] capitalize w-20 shrink-0">
+                      <span className="text-sm text-[#ececec] capitalize w-36 shrink-0 truncate" title={p.platform}>
                         {p.platform}
                       </span>
                       <div className="flex-1 h-2 bg-[#2d2d2d] rounded-full overflow-hidden">
@@ -335,18 +335,13 @@ export default async function OverzichtPage() {
               <div className="space-y-3">
                 <StatusRow label="Database" status="online" />
                 <StatusRow label="Scraper engine" status="online" />
-                <StatusRow
-                  label="Indeed scraper"
-                  status={activeScrapers.some((s) => s.platform === "indeed") ? "online" : "offline"}
-                />
-                <StatusRow
-                  label="LinkedIn scraper"
-                  status={activeScrapers.some((s) => s.platform === "linkedin") ? "online" : "offline"}
-                />
-                <StatusRow
-                  label="Striive scraper"
-                  status={activeScrapers.some((s) => s.platform === "striive") ? "online" : "offline"}
-                />
+                {activeScrapers.map((s) => (
+                  <StatusRow
+                    key={s.platform}
+                    label={`${s.platform.charAt(0).toUpperCase()}${s.platform.slice(1)} scraper`}
+                    status="online"
+                  />
+                ))}
               </div>
             </DashboardCard>
           </div>

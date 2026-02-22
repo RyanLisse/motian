@@ -5,7 +5,7 @@ import Link from "next/link";
 import { MapPin, Euro, Search, Users, Zap, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 interface Props {
   searchParams: Promise<{

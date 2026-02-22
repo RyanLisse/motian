@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { JsonViewer } from "./json-viewer";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 interface Props {
   params: Promise<{ id: string }>;

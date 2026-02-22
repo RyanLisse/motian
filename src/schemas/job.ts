@@ -30,7 +30,10 @@ export const unifiedJobSchema = z.object({
   rateMin: z.number().positive().optional(),
   rateMax: z.number().positive().optional(),
   currency: z.string().default("EUR"),
-  positionsAvailable: z.number().int().positive().default(1),
+  positionsAvailable: z.preprocess(
+    (v) => (typeof v === "string" ? parseInt(v, 10) : typeof v === "number" ? Math.round(v) : v),
+    z.number().int().positive().default(1),
+  ),
 
   // === Data & Deadlines ===
   startDate: z.coerce.date().optional(),

@@ -3,7 +3,7 @@ import { jobs } from "@/src/db/schema";
 import { desc, isNull, sql } from "drizzle-orm";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function OpdrachtenLayout({
   children,

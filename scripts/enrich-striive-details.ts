@@ -6,17 +6,16 @@
  * conditions, and rate information.
  *
  * Usage:
- *   npx tsx scripts/enrich-striive-details.ts
+ *   STRIIVE_SESSION_COOKIE="your-cookie" npx tsx scripts/enrich-striive-details.ts
  *
- * Cookie extraction is automatic via sweet-cookie (reads from your browser).
- * Just make sure you're logged into https://supplier.striive.com in Chrome/Safari/Firefox.
- *
- * Fallback: STRIIVE_SESSION_COOKIE="your-cookie" npx tsx scripts/enrich-striive-details.ts
+ * To get the cookie:
+ *   1. Log into https://supplier.striive.com in your browser
+ *   2. DevTools → Network → any API request → copy Cookie header value
+ *   3. Set as STRIIVE_SESSION_COOKIE env var
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { getCookies, toCookieHeader } from "@steipete/sweet-cookie";
 import { db } from "../src/db";
 import { jobs } from "../src/db/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
@@ -65,50 +64,22 @@ function mapWorkArrangement(
 }
 
 /**
- * Get session cookie — tries sweet-cookie auto-extraction first,
- * falls back to env var.
+ * Get session cookie from env var.
  */
 async function getSessionCookie(): Promise<string> {
-  // 1. Check env var override
   if (process.env.STRIIVE_SESSION_COOKIE) {
     console.log("Using STRIIVE_SESSION_COOKIE from environment\n");
     return process.env.STRIIVE_SESSION_COOKIE;
   }
 
-  // 2. Auto-extract from browser via sweet-cookie
-  console.log("Extracting Striive cookies from browser via sweet-cookie...");
-  try {
-    const { cookies, warnings } = await getCookies({
-      url: "https://supplier.striive.com/",
-      browsers: ["chrome", "edge", "firefox", "safari"],
-    });
-
-    if (warnings?.length) {
-      for (const w of warnings) console.log(`  ⚠ ${w}`);
-    }
-
-    if (!cookies.length) {
-      throw new Error(
-        "No cookies found. Log into https://supplier.striive.com in your browser first.",
-      );
-    }
-
-    const header = toCookieHeader(cookies, { dedupeByName: true });
-    console.log(
-      `  Found ${cookies.length} cookies for supplier.striive.com\n`,
-    );
-    return header;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(
-      `Cookie extraction failed: ${msg}\n\n` +
-        "Fallback: set STRIIVE_SESSION_COOKIE env var manually.\n" +
-        "  1. Log into https://supplier.striive.com\n" +
-        "  2. DevTools → Network → copy Cookie header\n" +
-        "  3. STRIIVE_SESSION_COOKIE='...' npx tsx scripts/enrich-striive-details.ts",
-    );
-    process.exit(1);
-  }
+  console.error(
+    "STRIIVE_SESSION_COOKIE is required.\n\n" +
+      "To get the cookie:\n" +
+      "  1. Log into https://supplier.striive.com in your browser\n" +
+      "  2. DevTools → Network → any API request → copy Cookie header value\n" +
+      "  3. STRIIVE_SESSION_COOKIE='...' npx tsx scripts/enrich-striive-details.ts",
+  );
+  process.exit(1);
 }
 
 async function fetchJobDetail(

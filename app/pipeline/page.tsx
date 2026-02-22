@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 interface Props {
   searchParams: Promise<{
@@ -144,7 +144,7 @@ export default async function PipelinePage({ searchParams }: Props) {
         </div>
 
         {/* KPI row */}
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
             <div className="flex items-center gap-2 text-[#6b6b6b] mb-1">
               <Briefcase className="h-4 w-4" />

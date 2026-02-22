@@ -6,17 +6,13 @@ default:
 
 # ── Development ──────────────────────────────────
 
+# Clean up ports
+cleanup-ports:
+	-npx -y kill-port 3001
+
 # Start the Next.js development server
-dev:
+dev: cleanup-ports
 	pnpm next dev --port 3001
-
-# Start the Motia workflow engine
-motia:
-	pnpm motia dev
-
-# Start both Next.js and Motia in parallel
-dev-all:
-	just dev & just motia & wait
 
 # ── Testing ──────────────────────────────────────
 
@@ -36,37 +32,25 @@ typecheck:
 
 # Generate Drizzle database migrations
 db-generate:
-	pnpm run db:generate
+	pnpm drizzle-kit generate
 
 # Push database schema changes to the database
 db-push:
-	pnpm run db:push
+	pnpm drizzle-kit push
 
-# Import Striive jobs from API export
-db-import-striive:
-	npx tsx scripts/import-striive-api.ts
+# ── Scraping ─────────────────────────────────────
 
-# Seed Indeed + LinkedIn scraper configs
-db-seed-configs:
-	npx tsx scripts/seed-indeed-linkedin-configs.ts
+# Trigger a manual scrape for all platforms
+scrape:
+	curl -s -X POST http://localhost:3001/api/scrape/starten | jq .
 
-# ── CLI ──────────────────────────────────────────
+# Trigger a manual scrape for a specific platform
+scrape-platform platform:
+	curl -s -X POST http://localhost:3001/api/scrape/starten -H "Content-Type: application/json" -d '{"platform":"{{platform}}"}' | jq .
 
-# List all jobs via CLI
-jobs:
-	npx tsx cli/index.ts jobs list
-
-# Show job statistics via CLI
-jobs-stats:
-	npx tsx cli/index.ts jobs stats
-
-# List scraper configs via CLI
-scrapers:
-	npx tsx cli/index.ts scraper list
-
-# Show scraper status via CLI
-scraper-status:
-	npx tsx cli/index.ts scraper status
+# Check platform health
+health:
+	curl -s http://localhost:3001/api/gezondheid | jq .
 
 # ── Pages ────────────────────────────────────────
 
@@ -78,16 +62,12 @@ dashboard:
 opdrachten:
 	open http://localhost:3001/opdrachten
 
-# Open scraper dashboard in browser
-scraper:
-	open http://localhost:3001/scraper
-
 # ── Build & Deploy ───────────────────────────────
 
 # Build Next.js production bundle
 build:
 	pnpm next build
 
-# Install dependencies
+# Install all dependencies
 install:
 	pnpm install
