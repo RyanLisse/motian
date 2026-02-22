@@ -114,7 +114,7 @@ function parseDetailHtml(html: string): Record<string, any> {
     if (sections[key]) descParts.push(sections[key]);
   }
   if (descParts.length > 0) {
-    result.description = descParts.join("\n\n").substring(0, 8000);
+    result.description = decodeEntities(descParts.join("\n\n")).substring(0, 8000);
   }
 
   // Requirements (knock-out)
@@ -165,11 +165,18 @@ function parseDetailHtml(html: string): Record<string, any> {
     'class="css-formattedjobdescription">',
   ) ?? "";
   const summaryFields = parseFieldPairs(summaryHtml);
-  if (summaryFields["Opties verlenging"]) {
-    conditions.push(`Verlenging: ${summaryFields["Opties verlenging"]}`);
+  // Fields already mapped to dedicated columns — skip to avoid duplication
+  const skipKeys = new Set(["Start", "Regio", "Einde inschrijfdatum"]);
+  for (const [key, value] of Object.entries(summaryFields)) {
+    if (!value || skipKeys.has(key)) continue;
+    const label = key === "Opties verlenging" ? "Verlenging" : key;
+    conditions.push(`${label}: ${value}`);
   }
 
-  if (conditions.length > 0) result.conditions = conditions;
+  // Decode HTML entities in all conditions
+  if (conditions.length > 0) {
+    result.conditions = conditions.map(decodeEntities);
+  }
 
   return result;
 }
@@ -215,6 +222,28 @@ function stripHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&euro;/gi, "€")
+    .replace(/&rsquo;/gi, "\u2019")
+    .replace(/&lsquo;/gi, "\u2018")
+    .replace(/&rdquo;/gi, "\u201D")
+    .replace(/&ldquo;/gi, "\u201C")
+    .replace(/&eacute;/gi, "é")
+    .replace(/&euml;/gi, "ë")
+    .replace(/&uuml;/gi, "ü")
+    .replace(/&iuml;/gi, "ï")
+    .replace(/&ouml;/gi, "ö")
+    .replace(/&auml;/gi, "ä")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#\d+;/g, (m) => String.fromCharCode(Number(m.slice(2, -1))));
 }
 
 function parseFieldPairs(cardHtml: string): Record<string, string> {
