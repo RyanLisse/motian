@@ -6,14 +6,19 @@ import { DefaultChatTransport } from "ai";
 import { MessageSquare, X } from "lucide-react";
 import { useChatContext } from "./chat-context-provider";
 import { ChatMessages } from "./chat-messages";
-import { ChatInput } from "./chat-input";
+import {
+  PromptInput,
+  PromptInputTextarea,
+  PromptInputFooter,
+  PromptInputSubmit,
+  type PromptInputMessage,
+} from "@/src/components/ai-elements/prompt-input";
 
 export function ChatPanel() {
   const [open, setOpen] = useState(false);
-  const [input, setInput] = useState("");
   const ctx = useChatContext();
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, stop } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
       body: {
@@ -25,17 +30,13 @@ export function ChatPanel() {
     }),
   });
 
-  const isLoading = status === "streaming" || status === "submitted";
-
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      const text = input.trim();
-      if (!text || isLoading) return;
-      setInput("");
+    (message: PromptInputMessage) => {
+      const text = message.text.trim();
+      if (!text) return;
       sendMessage({ text });
     },
-    [input, isLoading, sendMessage],
+    [sendMessage],
   );
 
   // Cmd+J / Ctrl+J toggle
@@ -64,7 +65,7 @@ export function ChatPanel() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#10a37f] text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+          className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
           title="Open AI Chat (⌘J)"
         >
           <MessageSquare className="h-5 w-5" />
@@ -73,16 +74,16 @@ export function ChatPanel() {
 
       {/* Slide-in panel */}
       <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-[400px] flex-col border-l border-[#2d2d2d] bg-[#0d0d0d] shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 right-0 z-50 flex w-[400px] flex-col border-l border-border bg-background shadow-2xl transition-transform duration-300 ease-in-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-[#2d2d2d] px-4">
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-[#eee]">Motian AI</span>
+            <span className="text-sm font-semibold text-foreground">Motian AI</span>
             {ctx.entityId && (
-              <span className="rounded bg-[#1a1a1a] px-1.5 py-0.5 text-[10px] text-[#8e8e8e]">
+              <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
                 {ctx.entityType}
               </span>
             )}
@@ -90,7 +91,7 @@ export function ChatPanel() {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="rounded-md p-1.5 text-[#8e8e8e] transition-colors hover:bg-[#222] hover:text-[#eee]"
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             title="Sluiten (Esc)"
           >
             <X className="h-4 w-4" />
@@ -102,19 +103,20 @@ export function ChatPanel() {
           messages={messages}
           status={status}
           onSuggestion={(text) => {
-            if (!isLoading) {
-              sendMessage({ text });
-            }
+            sendMessage({ text });
           }}
         />
 
-        {/* Input */}
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          onSubmit={handleSubmit}
-          isLoading={isLoading}
-        />
+        {/* Input — AI Elements PromptInput */}
+        <div className="border-t border-border p-3">
+          <PromptInput onSubmit={handleSubmit}>
+            <PromptInputTextarea placeholder="Stel een vraag..." />
+            <PromptInputFooter>
+              <div />
+              <PromptInputSubmit status={status} onStop={stop} />
+            </PromptInputFooter>
+          </PromptInput>
+        </div>
       </div>
     </>
   );

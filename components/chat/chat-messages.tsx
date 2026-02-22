@@ -1,8 +1,23 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { isToolUIPart, getToolName, type UIMessage } from "ai";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from "@/src/components/ai-elements/conversation";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/src/components/ai-elements/message";
+import {
+  Suggestions,
+  Suggestion,
+} from "@/src/components/ai-elements/suggestion";
 import { ChatToolCall } from "./chat-tool-call";
+import { Bot } from "lucide-react";
 
 type Props = {
   messages: UIMessage[];
@@ -18,97 +33,83 @@ const EXAMPLE_PROMPTS = [
 ];
 
 export function ChatMessages({ messages, status, onSuggestion }: Props) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, status]);
-
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-        <div className="text-2xl">🤖</div>
-        <p className="text-sm text-[#8e8e8e]">
-          Stel een vraag over opdrachten, kandidaten of data.
-        </p>
-        <div className="flex flex-wrap justify-center gap-2">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
+        <ConversationEmptyState
+          icon={<Bot className="h-8 w-8" />}
+          title="Motian AI"
+          description="Stel een vraag over opdrachten, kandidaten of data."
+        />
+        <Suggestions className="justify-center">
           {EXAMPLE_PROMPTS.map((prompt) => (
-            <button
+            <Suggestion
               key={prompt}
-              type="button"
-              onClick={() => onSuggestion?.(prompt)}
-              className="rounded-full border border-[#2d2d2d] px-3 py-1.5 text-xs text-[#999] transition-colors hover:border-[#10a37f] hover:text-[#ccc] hover:bg-[#10a37f]/10"
-            >
-              {prompt}
-            </button>
+              suggestion={prompt}
+              onClick={(s) => onSuggestion?.(s)}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            />
           ))}
-        </div>
+        </Suggestions>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-      {messages.map((message) => (
-        <div
-          key={message.id}
-          className={
-            message.role === "user" ? "flex justify-end" : "flex justify-start"
-          }
-        >
-          <div
-            className={
-              message.role === "user"
-                ? "max-w-[85%] rounded-2xl rounded-br-md bg-[#10a37f] px-3.5 py-2.5 text-sm text-white"
-                : "max-w-[95%] text-sm text-[#ddd]"
-            }
-          >
-            {message.parts.map((part, i) => {
-              if (part.type === "text") {
-                return (
-                  <p key={i} className="whitespace-pre-wrap leading-relaxed">
-                    {part.text}
-                  </p>
-                );
-              }
+    <Conversation className="flex-1">
+      <ConversationContent className="gap-4 px-4 py-3">
+        {messages.map((message) => (
+          <Message key={message.id} from={message.role}>
+            <MessageContent>
+              {message.parts.map((part, i) => {
+                if (part.type === "text") {
+                  if (message.role === "user") {
+                    return (
+                      <p key={i} className="whitespace-pre-wrap leading-relaxed">
+                        {part.text}
+                      </p>
+                    );
+                  }
+                  return <MessageResponse key={i}>{part.text}</MessageResponse>;
+                }
 
-              if (isToolUIPart(part)) {
-                const toolPart = part as {
-                  type: string;
-                  toolName?: string;
-                  state: string;
-                  input?: unknown;
-                  output?: unknown;
-                };
-                const name =
-                  toolPart.toolName ?? getToolName(part as any);
-                return (
-                  <ChatToolCall
-                    key={i}
-                    toolName={name}
-                    state={toolPart.state}
-                    input={toolPart.input}
-                    output={toolPart.output}
-                  />
-                );
-              }
+                if (isToolUIPart(part)) {
+                  const toolPart = part as {
+                    type: string;
+                    toolName?: string;
+                    state: string;
+                    input?: unknown;
+                    output?: unknown;
+                  };
+                  const name = toolPart.toolName ?? getToolName(part as any);
+                  return (
+                    <ChatToolCall
+                      key={i}
+                      toolName={name}
+                      state={toolPart.state}
+                      input={toolPart.input}
+                      output={toolPart.output}
+                    />
+                  );
+                }
 
-              return null;
-            })}
-          </div>
-        </div>
-      ))}
+                return null;
+              })}
+            </MessageContent>
+          </Message>
+        ))}
 
-      {(status === "streaming" || status === "submitted") && (
-        <div className="flex justify-start">
-          <div className="flex items-center gap-1.5 text-sm text-[#8e8e8e]">
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#10a37f]" />
-            Denkt na...
-          </div>
-        </div>
-      )}
-
-      <div ref={bottomRef} />
-    </div>
+        {(status === "streaming" || status === "submitted") &&
+          messages.at(-1)?.role !== "assistant" && (
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
+              Denkt na...
+            </div>
+          )}
+      </ConversationContent>
+      <ConversationScrollButton />
+    </Conversation>
   );
 }
