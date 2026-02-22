@@ -9,7 +9,8 @@ import "dotenv/config";
 import { db } from "../src/db";
 import { scraperConfigs } from "../src/db/schema";
 import { isNotNull } from "drizzle-orm";
-import { encrypt, decrypt } from "../src/lib/crypto";
+import { encrypt } from "../src/lib/crypto";
+import { isEncrypted } from "../src/services/scrapers";
 
 async function main() {
   console.log("=== Encrypt Auth Configs Migratie ===\n");
@@ -41,14 +42,11 @@ async function main() {
       continue;
     }
 
-    // Probeer eerst te decrypten — als dat lukt is het al versleuteld
-    try {
-      decrypt(value);
+    // Check of het al versleuteld is
+    if (isEncrypted(value)) {
       console.log(`  [SKIP] ${cfg.platform} (${cfg.id}) — al versleuteld`);
       skipped++;
       continue;
-    } catch {
-      // Niet versleuteld — ga door met encryptie
     }
 
     // Controleer of het geldige JSON is (plaintext)

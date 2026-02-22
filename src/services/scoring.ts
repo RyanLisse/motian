@@ -35,10 +35,9 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
     ),
   );
 
-  const skillScore = Math.min(
-    40,
-    Math.round((overlap.length / Math.max(jobKeywords.length, 1)) * 40),
-  );
+  const skillScore = jobKeywords.length > 0
+    ? Math.min(40, Math.round((overlap.length / jobKeywords.length) * 40))
+    : 0;
   score += skillScore;
 
   if (overlap.length > 0) {

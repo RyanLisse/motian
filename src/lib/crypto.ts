@@ -13,8 +13,8 @@ const TAG_LENGTH = 16;
 function getKey(): Buffer {
   const secret = process.env.ENCRYPTION_SECRET;
   if (!secret) throw new Error("ENCRYPTION_SECRET env var is required");
-  // Deterministic key derivation from secret — static salt zodat dezelfde secret altijd dezelfde key geeft
-  const salt = Buffer.from("motian-scraper-config-v1");
+  // Deterministic key derivation — salt includes secret length to reduce rainbow table risk
+  const salt = Buffer.from(`motian-v1-${secret.length}`);
   return scryptSync(secret, salt, KEY_LENGTH);
 }
 

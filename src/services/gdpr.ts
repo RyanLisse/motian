@@ -6,7 +6,7 @@ import {
   messages,
   jobMatches,
 } from "../db/schema";
-import { eq, inArray, and, isNotNull, sql } from "drizzle-orm";
+import { eq, inArray, and, isNotNull, isNull, sql } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -32,11 +32,11 @@ export type ErasureResult = {
 export async function exportCandidateData(
   candidateId: string,
 ): Promise<CandidateExport | null> {
-  // Kandidaat ophalen (inclusief soft-deleted — GDPR-verzoek geldt altijd)
+  // Kandidaat ophalen (GDPR-verzoek geldt altijd, maar exporteer geen soft-deleted data tenzij specifiek gevraagd)
   const candidateRows = await db
     .select()
     .from(candidates)
-    .where(eq(candidates.id, candidateId))
+    .where(and(eq(candidates.id, candidateId), isNull(candidates.deletedAt)))
     .limit(1);
 
   const candidate = candidateRows[0];
@@ -89,62 +89,64 @@ export async function exportCandidateData(
 export async function eraseCandidateData(
   candidateId: string,
 ): Promise<ErasureResult> {
-  // Eerst sollicitatie-IDs ophalen (nodig voor cascading deletes)
-  const applicationRows = await db
-    .select({ id: applications.id })
-    .from(applications)
-    .where(eq(applications.candidateId, candidateId));
+  return await db.transaction(async (tx) => {
+    // Eerst sollicitatie-IDs ophalen (nodig voor cascading deletes)
+    const applicationRows = await tx
+      .select({ id: applications.id })
+      .from(applications)
+      .where(eq(applications.candidateId, candidateId));
 
-  const applicationIds = applicationRows.map((a) => a.id);
+    const applicationIds = applicationRows.map((a) => a.id);
 
-  // 1. Berichten verwijderen (via sollicitatie-IDs)
-  let deletedMessages = 0;
-  if (applicationIds.length > 0) {
-    const msgResult = await db
-      .delete(messages)
-      .where(inArray(messages.applicationId, applicationIds))
-      .returning({ id: messages.id });
-    deletedMessages = msgResult.length;
-  }
+    // 1. Berichten verwijderen (via sollicitatie-IDs)
+    let deletedMessages = 0;
+    if (applicationIds.length > 0) {
+      const msgResult = await tx
+        .delete(messages)
+        .where(inArray(messages.applicationId, applicationIds))
+        .returning({ id: messages.id });
+      deletedMessages = msgResult.length;
+    }
 
-  // 2. Interviews verwijderen (via sollicitatie-IDs)
-  let deletedInterviews = 0;
-  if (applicationIds.length > 0) {
-    const intResult = await db
-      .delete(interviews)
-      .where(inArray(interviews.applicationId, applicationIds))
-      .returning({ id: interviews.id });
-    deletedInterviews = intResult.length;
-  }
+    // 2. Interviews verwijderen (via sollicitatie-IDs)
+    let deletedInterviews = 0;
+    if (applicationIds.length > 0) {
+      const intResult = await tx
+        .delete(interviews)
+        .where(inArray(interviews.applicationId, applicationIds))
+        .returning({ id: interviews.id });
+      deletedInterviews = intResult.length;
+    }
 
-  // 3. Sollicitaties verwijderen
-  const appResult = await db
-    .delete(applications)
-    .where(eq(applications.candidateId, candidateId))
-    .returning({ id: applications.id });
-  const deletedApplications = appResult.length;
+    // 3. Sollicitaties verwijderen
+    const appResult = await tx
+      .delete(applications)
+      .where(eq(applications.candidateId, candidateId))
+      .returning({ id: applications.id });
+    const deletedApplications = appResult.length;
 
-  // 4. Matches verwijderen
-  const matchResult = await db
-    .delete(jobMatches)
-    .where(eq(jobMatches.candidateId, candidateId))
-    .returning({ id: jobMatches.id });
-  const deletedMatches = matchResult.length;
+    // 4. Matches verwijderen
+    const matchResult = await tx
+      .delete(jobMatches)
+      .where(eq(jobMatches.candidateId, candidateId))
+      .returning({ id: jobMatches.id });
+    const deletedMatches = matchResult.length;
 
-  // 5. Kandidaat hard-deleten (NIET soft-delete)
-  const candidateResult = await db
-    .delete(candidates)
-    .where(eq(candidates.id, candidateId))
-    .returning({ id: candidates.id });
-  const deletedCandidate = candidateResult.length > 0;
+    // 5. Kandidaat hard-deleten (NIET soft-delete)
+    const candidateResult = await tx
+      .delete(candidates)
+      .where(eq(candidates.id, candidateId))
+      .returning({ id: candidates.id });
+    const deletedCandidate = candidateResult.length > 0;
 
-  return {
-    deletedMessages,
-    deletedInterviews,
-    deletedApplications,
-    deletedMatches,
-    deletedCandidate,
-  };
+    return {
+      deletedMessages,
+      deletedInterviews,
+      deletedApplications,
+      deletedMatches,
+      deletedCandidate,
+    };
+  });
 }
 
 // ========== Data Retention Helpers ==========

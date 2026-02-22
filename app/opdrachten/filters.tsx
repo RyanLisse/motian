@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useTransition } from "react";
+import { useCallback, useRef, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -62,6 +62,7 @@ export function OpdrachtenFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -97,10 +98,10 @@ export function OpdrachtenFilters({
               className="pl-9 h-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent rounded-none shadow-none text-sm text-[#ececec] placeholder:text-[#6b6b6b]"
               onChange={(e) => {
                 const value = e.target.value;
-                const timeout = setTimeout(() => {
+                clearTimeout(debounceTimers.current.q);
+                debounceTimers.current.q = setTimeout(() => {
                   updateParams({ q: value });
                 }, 400);
-                return () => clearTimeout(timeout);
               }}
             />
           </div>
@@ -172,10 +173,10 @@ export function OpdrachtenFilters({
               className="w-[70px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               onChange={(e) => {
                 const value = e.target.value;
-                const timeout = setTimeout(() => {
+                clearTimeout(debounceTimers.current.tariefMin);
+                debounceTimers.current.tariefMin = setTimeout(() => {
                   updateParams({ tariefMin: value });
                 }, 600);
-                return () => clearTimeout(timeout);
               }}
             />
             <span className="text-xs text-[#6b6b6b]">-</span>
@@ -186,10 +187,10 @@ export function OpdrachtenFilters({
               className="w-[70px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               onChange={(e) => {
                 const value = e.target.value;
-                const timeout = setTimeout(() => {
+                clearTimeout(debounceTimers.current.tariefMax);
+                debounceTimers.current.tariefMax = setTimeout(() => {
                   updateParams({ tariefMax: value });
                 }, 600);
-                return () => clearTimeout(timeout);
               }}
             />
           </div>

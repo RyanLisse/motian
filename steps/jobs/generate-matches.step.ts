@@ -87,10 +87,13 @@ export const handler: Handlers<typeof config> = async (
       });
       matchesCreated++;
     } catch (err) {
-      // Waarschijnlijk duplicate unique constraint — overslaan
-      errors.push(
-        `Kandidaat ${match.candidate.id}: ${String(err)}`,
-      );
+      // Duplicate unique constraint — overslaan, andere fouten loggen
+      const errMsg = String(err);
+      if (errMsg.includes("unique") || errMsg.includes("duplicate")) {
+        logger.warn(`Duplicate match overgeslagen: kandidaat ${match.candidate.id}`);
+      } else {
+        errors.push(`Kandidaat ${match.candidate.id}: ${errMsg}`);
+      }
     }
   }
 
