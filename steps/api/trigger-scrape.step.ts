@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "../../src/db";
 import { scraperConfigs } from "../../src/db/schema";
 import { eq } from "drizzle-orm";
+import { generateCorrelationId } from "../../src/lib/correlation";
 
 const triggerSchema = z.object({
   platform: z.string().optional(),
@@ -33,6 +34,9 @@ export const handler: Handlers<typeof config> = async (req, { enqueue, logger })
   }
 
   try {
+    const correlationId = generateCorrelationId();
+    logger.info(`Handmatige scrape triggered [${correlationId}]`);
+
     let configs;
     if (parsed.data.platform) {
       configs = await db
@@ -60,9 +64,10 @@ export const handler: Handlers<typeof config> = async (req, { enqueue, logger })
         data: {
           platform: cfg.platform,
           url: cfg.baseUrl,
+          correlationId,
         },
       });
-      logger.info(`Handmatige scrape gestart: ${cfg.platform}`);
+      logger.info(`Handmatige scrape gestart: ${cfg.platform} [${correlationId}]`);
     }
 
     return {

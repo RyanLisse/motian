@@ -69,6 +69,11 @@ export async function updateInterview(
   return { interview: rows[0] ?? null, emptyUpdate: false };
 }
 
+export async function deleteInterview(id: string): Promise<boolean> {
+  const result = await db.delete(interviews).where(eq(interviews.id, id));
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function getUpcomingInterviews(): Promise<Interview[]> {
   return db.select().from(interviews).where(and(eq(interviews.status, "scheduled"), gte(interviews.scheduledAt, new Date()))).orderBy(interviews.scheduledAt).limit(20);
 }

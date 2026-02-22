@@ -42,7 +42,9 @@ export const handler: Handlers<typeof config> = async (
     errors: string[];
     provider?: string;
     costCredits?: number;
+    correlationId?: string;
   };
+  const correlationId = input.correlationId ?? "unknown";
   try {
     // Stap 1: Zoek config ID voor dit platform
     const configs = await db
@@ -85,7 +87,7 @@ export const handler: Handlers<typeof config> = async (
     }
 
     logger.info(
-      `Scrape resultaat opgeslagen: ${input.platform} — ${input.status} (${input.jobsNew} nieuw, ${input.durationMs}ms)`,
+      `Scrape resultaat opgeslagen [${correlationId}]: ${input.platform} — ${input.status} (${input.jobsNew} nieuw, ${input.durationMs}ms)`,
     );
   } catch (err) {
     logger.error(`Fout bij opslaan scrape resultaat: ${String(err)}`);

@@ -34,7 +34,9 @@ export const handler: Handlers<typeof config> = async (
     listings: any[];
     provider?: string;
     costCredits?: number;
+    correlationId?: string;
   };
+  const correlationId = input.correlationId ?? "unknown";
   const startTime = Date.now();
   let jobsNew = 0;
   let duplicates = 0;
@@ -129,10 +131,11 @@ export const handler: Handlers<typeof config> = async (
       costCredits: input.costCredits,
       status,
       errors,
+      correlationId,
     },
   });
 
   logger.info(
-    `Normalize klaar: ${jobsNew} nieuw, ${duplicates} dupes, ${errors.length} fouten (${durationMs}ms)`,
+    `Normalize klaar [${correlationId}]: ${jobsNew} nieuw, ${duplicates} dupes, ${errors.length} fouten (${durationMs}ms)`,
   );
 };

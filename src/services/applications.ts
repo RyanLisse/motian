@@ -53,6 +53,11 @@ export async function updateApplicationStage(id: string, stage: string, notes?: 
   return rows[0] ?? null;
 }
 
+export async function deleteApplication(id: string): Promise<boolean> {
+  const result = await db.update(applications).set({ deletedAt: new Date() }).where(and(eq(applications.id, id), isNull(applications.deletedAt)));
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function getApplicationStats(): Promise<{ total: number; byStage: Record<string, number> }> {
   const rows = await db.select({
     stage: applications.stage,

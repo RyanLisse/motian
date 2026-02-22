@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { candidates } from "../db/schema";
-import { and, desc, eq, ilike, isNull } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -106,6 +106,32 @@ export async function updateCandidate(
     .returning();
 
   return rows[0] ?? null;
+}
+
+/** Alle actieve (niet-verwijderde) kandidaten ophalen. Hogere limiet voor batch matching. */
+export async function listActiveCandidates(
+  limit?: number,
+): Promise<Candidate[]> {
+  const safeLimit = Math.min(limit ?? 200, 500);
+
+  return db
+    .select()
+    .from(candidates)
+    .where(isNull(candidates.deletedAt))
+    .orderBy(desc(candidates.createdAt))
+    .limit(safeLimit);
+}
+
+/** Meerdere kandidaten ophalen op ID. Soft-deleted rijen worden uitgesloten. */
+export async function getCandidatesByIds(
+  ids: string[],
+): Promise<Candidate[]> {
+  if (ids.length === 0) return [];
+
+  return db
+    .select()
+    .from(candidates)
+    .where(and(inArray(candidates.id, ids), isNull(candidates.deletedAt)));
 }
 
 /** Kandidaat soft-deleten. Retourneert true als de rij is bijgewerkt. */

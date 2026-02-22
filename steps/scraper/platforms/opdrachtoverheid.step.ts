@@ -129,9 +129,9 @@ export const handler: Handlers<typeof config> = async (
           rateMax: t.tender_maximum_tariff && t.tender_maximum_tariff > 0
             ? t.tender_maximum_tariff
             : undefined,
-          startDate: t.tender_start_date ?? undefined,
-          endDate: t.tender_end_date ?? undefined,
-          applicationDeadline: t.tender_end_date ?? undefined,
+          startDate: validDate(t.tender_start_date),
+          endDate: validDate(t.tender_end_date),
+          applicationDeadline: validDate(t.tender_end_date),
           contractType,
           allowsSubcontracting,
           contractLabel: CATEGORY_MAP[t.tender_category] ?? undefined,
@@ -175,6 +175,14 @@ export const handler: Handlers<typeof config> = async (
     }
   }
 };
+
+/** Filter out API sentinel dates (pre-2020) that mean "unknown/TBD" */
+function validDate(raw: string | null | undefined): string | undefined {
+  if (!raw) return undefined;
+  const year = parseInt(raw.slice(0, 4), 10);
+  if (isNaN(year) || year < 2020) return undefined;
+  return raw;
+}
 
 /** Zorg dat beschrijving minimaal 10 tekens is (schema eis) */
 function ensureMinLength(text: string): string {

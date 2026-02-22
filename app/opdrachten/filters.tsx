@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useTransition } from "react";
+import { useCallback, useRef, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -11,13 +11,39 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+
+const PROVINCES = [
+  "Noord-Holland",
+  "Zuid-Holland",
+  "Utrecht",
+  "Noord-Brabant",
+  "Gelderland",
+  "Overijssel",
+  "Limburg",
+  "Friesland",
+  "Groningen",
+  "Drenthe",
+  "Flevoland",
+  "Zeeland",
+];
+
+const CONTRACT_TYPES = [
+  { value: "freelance", label: "Freelance" },
+  { value: "interim", label: "Interim" },
+  { value: "vast", label: "Vast" },
+  { value: "opdracht", label: "Opdracht" },
+];
 
 interface FiltersProps {
   query: string;
   platform: string;
   platforms: string[];
+  provincie: string;
+  tariefMin: string;
+  tariefMax: string;
+  contractType: string;
   page: number;
   totalPages: number;
 }
@@ -26,12 +52,17 @@ export function OpdrachtenFilters({
   query,
   platform,
   platforms,
+  provincie,
+  tariefMin,
+  tariefMax,
+  contractType,
   page,
   totalPages,
 }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -67,10 +98,10 @@ export function OpdrachtenFilters({
               className="pl-9 h-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent rounded-none shadow-none text-sm text-[#ececec] placeholder:text-[#6b6b6b]"
               onChange={(e) => {
                 const value = e.target.value;
-                const timeout = setTimeout(() => {
+                clearTimeout(debounceTimers.current.q);
+                debounceTimers.current.q = setTimeout(() => {
                   updateParams({ q: value });
                 }, 400);
-                return () => clearTimeout(timeout);
               }}
             />
           </div>
@@ -98,13 +129,71 @@ export function OpdrachtenFilters({
             </SelectContent>
           </Select>
 
-          <Button variant="outline" className="h-9 border-[#2d2d2d] bg-[#1e1e1e] font-normal text-[#8e8e8e] hover:bg-[#2a2a2a] hover:text-[#ececec] justify-between min-w-[110px] text-sm">
-            Locatie <ChevronDown className="h-3.5 w-3.5 opacity-50 ml-2" />
-          </Button>
+          <Select
+            value={provincie || "all"}
+            onValueChange={(value) =>
+              updateParams({ provincie: value === "all" ? "" : value })
+            }
+          >
+            <SelectTrigger className="w-[160px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm">
+              <SelectValue placeholder="Provincie" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
+              <SelectItem value="all" className="text-[#ececec]">Alle provincies</SelectItem>
+              {PROVINCES.map((p) => (
+                <SelectItem key={p} value={p} className="text-[#ececec]">{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <Button variant="outline" className="h-9 border-[#2d2d2d] bg-[#1e1e1e] font-normal text-[#8e8e8e] hover:bg-[#2a2a2a] hover:text-[#ececec] justify-between min-w-[130px] text-sm">
-            Type opdracht <ChevronDown className="h-3.5 w-3.5 opacity-50 ml-2" />
-          </Button>
+          <Select
+            value={contractType || "all"}
+            onValueChange={(value) =>
+              updateParams({ contractType: value === "all" ? "" : value })
+            }
+          >
+            <SelectTrigger className="w-[140px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm">
+              <SelectValue placeholder="Contract type" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
+              <SelectItem value="all" className="text-[#ececec]">Alle types</SelectItem>
+              {CONTRACT_TYPES.map((ct) => (
+                <SelectItem key={ct.value} value={ct.value} className="text-[#ececec]">{ct.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Rate range inputs */}
+          <div className="flex items-center gap-1.5 px-2 border-l border-[#2d2d2d] ml-1">
+            <span className="text-xs text-[#6b6b6b] whitespace-nowrap">&euro;/uur</span>
+            <Input
+              type="number"
+              placeholder="Min"
+              defaultValue={tariefMin}
+              className="w-[70px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              onChange={(e) => {
+                const value = e.target.value;
+                clearTimeout(debounceTimers.current.tariefMin);
+                debounceTimers.current.tariefMin = setTimeout(() => {
+                  updateParams({ tariefMin: value });
+                }, 600);
+              }}
+            />
+            <span className="text-xs text-[#6b6b6b]">-</span>
+            <Input
+              type="number"
+              placeholder="Max"
+              defaultValue={tariefMax}
+              className="w-[70px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              onChange={(e) => {
+                const value = e.target.value;
+                clearTimeout(debounceTimers.current.tariefMax);
+                debounceTimers.current.tariefMax = setTimeout(() => {
+                  updateParams({ tariefMax: value });
+                }, 600);
+              }}
+            />
+          </div>
 
           {/* Toggle */}
           <div className="flex items-center gap-2 px-2 border-l border-[#2d2d2d] ml-1">

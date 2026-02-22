@@ -20,6 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { JsonViewer } from "./json-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,13 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   const wishesList = toStrings(job.wishes);
   const competencesList = toStrings(job.competences);
   const conditionsList = toStrings(job.conditions);
+
+  // Parse "Label: Value" conditions for sidebar display
+  const metaFields = conditionsList
+    .map(c => { const i = c.indexOf(": "); return i > 0 ? [c.slice(0, i), c.slice(i + 2)] as [string, string] : null; })
+    .filter(Boolean) as [string, string][];
+  // Conditions that are NOT key-value pairs stay in the bullet list
+  const plainConditions = conditionsList.filter(c => c.indexOf(": ") <= 0);
 
   // Build AI summary preview from description
   const aiPreview = job.description
@@ -255,7 +263,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
           <SectionBlock title="Functie-eisen" items={requirementsList} />
           <SectionBlock title="Wensen" items={wishesList} />
           <SectionBlock title="Competenties" items={competencesList} />
-          <SectionBlock title="Wat bieden we" items={conditionsList} />
+          <SectionBlock title="Wat bieden we" items={plainConditions} />
 
           {/* External link */}
           {job.externalUrl && (
@@ -299,6 +307,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               </div>
             </div>
           )}
+
+          {/* Raw JSON debug viewer */}
+          <JsonViewer data={job as unknown as Record<string, unknown>} />
 
           <div className="h-8" />
         </div>
@@ -430,6 +441,14 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 </dd>
               </div>
             )}
+            {metaFields.map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" /> {label}
+                </dt>
+                <dd className="text-[#ececec]">{value}</dd>
+              </div>
+            ))}
           </dl>
 
           <Separator className="bg-[#2d2d2d]" />
