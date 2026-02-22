@@ -57,6 +57,36 @@ export const unifiedJobSchema = z.object({
   wishes: z.array(z.union([z.string(), wishSchema])).default([]),
   competences: z.array(z.string()).default([]),
   conditions: z.array(z.string()).default([]),
+
+  // === Verrijkte Data ===
+  hoursPerWeek: z.number().int().positive().optional(),
+  minHoursPerWeek: z.number().int().positive().optional(),
+  extensionPossible: z.boolean().optional(),
+  countryCode: z.string().optional(),
+  remunerationType: z.string().optional(),
+  workExperienceYears: z.number().int().min(0).optional(),
+  numberOfViews: z.number().int().min(0).optional(),
+  attachments: z.array(z.object({ url: z.string(), description: z.string() })).default([]),
+  questions: z.array(z.object({ question: z.string(), type: z.string(), options: z.array(z.any()).default([]) })).default([]),
+  languages: z.array(z.string()).default([]),
+  descriptionSummary: z.any().optional(),
+  faqAnswers: z.array(z.object({ category: z.string(), question: z.string(), answer: z.string() })).default([]),
+  agentContact: z.object({ name: z.string(), email: z.string(), phone: z.string() }).optional(),
+  recruiterContact: z.object({ name: z.string(), email: z.string(), phone: z.string() }).optional(),
+
+  // === Locatie & Organisatie ===
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  postcode: z.string().optional(),
+  companyLogoUrl: z.string().optional(),
+
+  // === Opdracht Kenmerken ===
+  educationLevel: z.string().optional(),
+  durationMonths: z.number().int().positive().optional(),
+  sourceUrl: z.string().optional(),
+  sourcePlatform: z.string().optional(),
+  categories: z.array(z.string()).default([]),
+  companyAddress: z.string().optional(),
 });
 
 export type UnifiedJob = z.infer<typeof unifiedJobSchema>;

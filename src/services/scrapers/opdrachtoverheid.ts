@@ -82,6 +82,39 @@ export async function scrapeOpdrachtoverheid(): Promise<any[]> {
         const requirements = parseHtmlList(t.tender_requirements);
         const competences = parseHtmlList(t.tender_competences);
 
+        // === Rate logic: tariff = indicative, maximum_tariff = ceiling ===
+        const maxTariff = (t.tender_maximum_tariff > 0) ? Math.round(t.tender_maximum_tariff) : undefined;
+        const baseTariff = (t.tender_tariff && parseFloat(t.tender_tariff) > 0) ? Math.round(parseFloat(t.tender_tariff)) : undefined;
+        const rateMax = maxTariff ?? baseTariff;
+        const rateMin = maxTariff && baseTariff && baseTariff < maxTariff ? baseTariff : undefined;
+
+        // === Hours: tender_hours_week (100%), with optional min/max range ===
+        const hoursPerWeek = (t.tender_max_hours > 0)
+          ? Math.round(t.tender_max_hours)
+          : (t.tender_hours_week > 0) ? Math.round(t.tender_hours_week) : undefined;
+        const minHoursPerWeek = (t.tender_min_hours > 0 && t.tender_min_hours < (hoursPerWeek ?? Infinity))
+          ? Math.round(t.tender_min_hours)
+          : undefined;
+
+        // === Extension from tender_other_information ===
+        const otherInfo = stripHtml(t.tender_other_information);
+        let extensionPossible: boolean | undefined;
+        if (otherInfo) {
+          const lower = otherInfo.toLowerCase();
+          if (lower.includes("verleng")) {
+            extensionPossible = !lower.includes("geen verlenging") && !lower.includes("niet verleng");
+          }
+        }
+
+        // === Work arrangement from tender_hybrid_working ===
+        const workArrangement = t.tender_hybrid_working === true ? "hybride" as const : undefined;
+
+        // === Attachments from tender_document ===
+        const attachments: Array<{ url: string; description: string }> = [];
+        if (t.tender_document) {
+          attachments.push({ url: t.tender_document, description: t.tender_document });
+        }
+
         return {
           title: t.tender_name || t.tender_buying_organization,
           company: t.tender_buying_organization,
@@ -93,28 +126,49 @@ export async function scrapeOpdrachtoverheid(): Promise<any[]> {
             stripHtml(t.tender_description_html) ||
             stripHtml(t.tender_overview) ||
             t.tender_description ||
-            [stripHtml(t.tender_team), stripHtml(t.tender_interview), stripHtml(t.tender_other_information)].filter(Boolean).join("\n\n") ||
+            [stripHtml(t.tender_team), stripHtml(t.tender_interview), otherInfo].filter(Boolean).join("\n\n") ||
             t.tender_name ||
             "Geen beschrijving beschikbaar voor deze opdracht",
           ),
           externalId: t.web_key || t.tender_id?.toString() || "",
           externalUrl: t.opdracht_overheid_url || `https://www.opdrachtoverheid.nl/`,
-          rateMax: (t.tender_maximum_tariff > 0)
-            ? Math.round(t.tender_maximum_tariff)
-            : (t.tender_tariff && parseFloat(t.tender_tariff) > 0)
-              ? Math.round(parseFloat(t.tender_tariff))
-              : undefined,
+          rateMax,
+          rateMin,
           startDate: validDate(t.tender_start_date),
           endDate: validDate(t.tender_end_date),
-          applicationDeadline: validDate(t.tender_end_date),
+          applicationDeadline: validDate(t.tender_date) ?? validDate(t.tender_end_date),
+          postedAt: validDate(t.tender_first_seen),
           contractType,
           allowsSubcontracting,
+          workArrangement,
           contractLabel: CATEGORY_MAP[t.tender_category] ?? undefined,
           positionsAvailable: parseInt(String(t.tender_number_of_professionals ?? 1), 10) || 1,
           requirements: requirements.length > 0
             ? requirements.map((r) => ({ description: r, isKnockout: true }))
             : [],
           competences: competences.length > 0 ? competences : [],
+
+          // === Verrijkte Data (new columns) ===
+          hoursPerWeek,
+          minHoursPerWeek,
+          extensionPossible,
+          countryCode: "NL",
+          attachments,
+
+          // === Locatie & Organisatie ===
+          latitude: loc.latitude ? parseFloat(loc.latitude) : undefined,
+          longitude: loc.longitude ? parseFloat(loc.longitude) : undefined,
+          postcode: loc.postcode ?? undefined,
+          companyLogoUrl: loc.avatar ? `https://kbenp-match-api.azurewebsites.net/images/${loc.avatar}` : undefined,
+
+          // === Opdracht Kenmerken ===
+          sourceUrl: t.tender_url ?? undefined,
+          sourcePlatform: t.tender_source ?? undefined,
+          durationMonths: computeDurationMonths(t.tender_start_date, t.tender_end_date),
+          categories: (t.tender_categories ?? [])
+            .map((c: any) => c.tender_category_obj?.type)
+            .filter(Boolean),
+          companyAddress: loc.company_address ?? undefined,
         };
       });
 
@@ -143,6 +197,17 @@ export async function scrapeOpdrachtoverheid(): Promise<any[]> {
   }
 
   return [];
+}
+
+/** Compute duration in months from start/end date strings */
+function computeDurationMonths(start: string | null | undefined, end: string | null | undefined): number | undefined {
+  if (!start || !end) return undefined;
+  const s = new Date(start);
+  const e = new Date(end);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return undefined;
+  if (s.getFullYear() < 2020 || e.getFullYear() < 2020) return undefined;
+  const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+  return months > 0 ? months : undefined;
 }
 
 /** Filter out API sentinel dates (pre-2020) that mean "unknown/TBD" */

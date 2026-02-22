@@ -11,3 +11,5 @@ scripts/striive-jobs.json
 .next/
 auth.json
 tsconfig.tsbuildinfo
+.vercel
+.env*.local

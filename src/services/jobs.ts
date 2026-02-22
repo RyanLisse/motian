@@ -147,6 +147,32 @@ export async function updateJob(
   return rows[0] ?? null;
 }
 
+/** Opdracht verrijken met AI-geëxtraheerde data. Retourneert bijgewerkte job of null. */
+export async function updateJobEnrichment(
+  id: string,
+  data: Partial<
+    Pick<
+      Job,
+      | "educationLevel"
+      | "workExperienceYears"
+      | "workArrangement"
+      | "languages"
+      | "durationMonths"
+      | "extensionPossible"
+      | "descriptionSummary"
+      | "categories"
+    >
+  >,
+): Promise<Job | null> {
+  const rows = await db
+    .update(jobs)
+    .set(data)
+    .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
+    .returning();
+
+  return rows[0] ?? null;
+}
+
 /** Opdracht soft-deleten. Retourneert true als gevonden en verwijderd. */
 export async function deleteJob(id: string): Promise<boolean> {
   const rows = await db

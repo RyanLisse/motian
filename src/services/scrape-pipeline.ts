@@ -1,6 +1,7 @@
 import { scrapeOpdrachtoverheid, scrapeFlextender, scrapeStriive } from "./scrapers/index";
 import { normalizeAndSaveJobs } from "./normalize";
 import { recordScrapeResult } from "./record-scrape-result";
+import { enrichJobsBatch } from "./ai-enrichment";
 
 export async function runScrapePipeline(
   platform: string,
@@ -59,6 +60,13 @@ export async function runScrapePipeline(
       errors: result.errors,
     });
   } catch {}
+
+  // Fire-and-forget AI enrichment for new jobs
+  if (result.jobsNew > 0) {
+    enrichJobsBatch({ platform }).catch((err) =>
+      console.error(`[AI Enrichment] Failed for ${platform}:`, err),
+    );
+  }
 
   return result;
 }

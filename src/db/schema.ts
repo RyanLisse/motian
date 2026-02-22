@@ -9,8 +9,33 @@ import {
   index,
   boolean,
   real,
+  customType,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+
+// pgvector custom column type for Drizzle
+const vector = customType<{
+  data: number[];
+  driverParam: string;
+  config: { dimensions: number };
+}>({
+  dataType(config) {
+    return `vector(${config?.dimensions ?? 512})`;
+  },
+  fromDriver(value: unknown): number[] {
+    if (typeof value === "string") {
+      return value
+        .replace(/^\[/, "")
+        .replace(/\]$/, "")
+        .split(",")
+        .map(Number);
+    }
+    return value as number[];
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(",")}]`;
+  },
+});
 
 // ========== Scraper Configuratie ==========
 export const scraperConfigs = pgTable(
@@ -103,11 +128,41 @@ export const jobs = pgTable(
     competences: jsonb("competences").default([]),
     conditions: jsonb("conditions").default([]),
 
+    // === Verrijkte Data ===
+    hoursPerWeek: integer("hours_per_week"),
+    minHoursPerWeek: integer("min_hours_per_week"),
+    extensionPossible: boolean("extension_possible"),
+    countryCode: text("country_code"),
+    remunerationType: text("remuneration_type"),
+    workExperienceYears: integer("work_experience_years"),
+    numberOfViews: integer("number_of_views"),
+    attachments: jsonb("attachments").default([]),
+    questions: jsonb("questions").default([]),
+    languages: jsonb("languages").default([]),
+    descriptionSummary: jsonb("description_summary"),
+    faqAnswers: jsonb("faq_answers").default([]),
+    agentContact: jsonb("agent_contact"),
+    recruiterContact: jsonb("recruiter_contact"),
+
+    // === Locatie & Organisatie ===
+    latitude: real("latitude"),
+    longitude: real("longitude"),
+    postcode: text("postcode"),
+    companyLogoUrl: text("company_logo_url"),
+
+    // === Opdracht Kenmerken ===
+    educationLevel: text("education_level"),
+    durationMonths: integer("duration_months"),
+    sourceUrl: text("source_url"),
+    sourcePlatform: text("source_platform"),
+    categories: jsonb("categories").default([]),
+    companyAddress: text("company_address"),
+
     // === Metadata ===
     scrapedAt: timestamp("scraped_at").defaultNow(),
     deletedAt: timestamp("deleted_at"), // PRD 7.2: soft-delete
     rawPayload: jsonb("raw_payload"),
-    embedding: text("embedding"), // pgvector placeholder (Slice 5)
+    embedding: vector("embedding", { dimensions: 512 }),
   },
   (table) => ({
     platformExternalIdx: uniqueIndex("uq_platform_external_id").on(
@@ -145,7 +200,7 @@ export const candidates = pgTable(
     notes: text("notes"),
     hourlyRate: integer("hourly_rate"),
     availability: text("availability"), // "direct", "1_maand", "3_maanden"
-    embedding: text("embedding"), // pgvector placeholder
+    embedding: vector("embedding", { dimensions: 512 }),
     consentGranted: boolean("consent_granted").default(false),
     dataRetentionUntil: timestamp("data_retention_until"),
     createdAt: timestamp("created_at").defaultNow(),

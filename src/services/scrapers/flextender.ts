@@ -79,6 +79,20 @@ function parseFlextenderHtml(html: string): any[] {
     const province = extractProvince(fields.Regio);
     const location = fields.Regio ?? undefined;
 
+    // Parse "Uren per week": "36 uur" → 36, "24 tot 32 uur" → min=24, max=32
+    const { hoursPerWeek, minHoursPerWeek } = parseHoursPerWeek(fields["Uren per week"]);
+
+    // Extract company logo URL
+    const logoMatch = cardHtml.match(/class="flx-client-logo"[^>]*src="([^"]+)"/i)
+      ?? cardHtml.match(/src="([^"]+)"[^>]*class="flx-client-logo"/i);
+    const companyLogoUrl = logoMatch?.[1] ?? undefined;
+
+    // Opleidingsniveau from listing card
+    const educationLevel = fields.Opleidingsniveau ?? undefined;
+
+    // Duration from "Duur" field: "6 maanden" → 6
+    const durationMonths = parseDurationMonths(fields.Duur);
+
     listings.push({
       title,
       company,
@@ -90,7 +104,13 @@ function parseFlextenderHtml(html: string): any[] {
       startDate: parseDutchDate(fields.Start),
       applicationDeadline: parseDutchDate(fields["Einde inschrijfdatum"]),
       contractType: "opdracht" as const,
-      hours: fields["Uren per week"] ?? undefined,
+      countryCode: "NL",
+      hoursPerWeek,
+      minHoursPerWeek,
+      companyLogoUrl,
+      educationLevel,
+      durationMonths,
+      _rawHours: fields["Uren per week"] ?? undefined, // kept for conditions fallback
     });
   }
 
@@ -113,10 +133,11 @@ async function enrichListings(
       batch.map(async (listing) => {
         try {
           const detail = await fetchDetailPage(listing.externalId);
-          if (listing.hours && !detail.conditions?.some((c: string) => c.includes("Uren per week"))) {
-            detail.conditions = [...(detail.conditions ?? []), `Uren per week: ${listing.hours}`];
+          if (listing._rawHours && !detail.conditions?.some((c: string) => c.includes("Uren per week"))) {
+            detail.conditions = [...(detail.conditions ?? []), `Uren per week: ${listing._rawHours}`];
           }
-          return { ...listing, ...detail };
+          const { _rawHours, ...listingClean } = listing;
+          return { ...listingClean, ...detail };
         } catch (err) {
           (logger?.warn ?? console.warn)(`Detail ophalen mislukt voor ${listing.externalId}: ${err}`);
           return listing;
@@ -210,22 +231,75 @@ function parseDetailHtml(html: string): Record<string, any> {
   const cvText = findSection("cv-eisen");
   if (cvText) conditions.push(`CV-eisen: ${cvText.trim()}`);
 
+  // === Extract workArrangement from Werkdagen section ===
+  if (werkText) {
+    const lower = werkText.toLowerCase();
+    if (lower.includes("hybride") || lower.includes("in overleg") || lower.includes("onderlinge afstemming")) {
+      result.workArrangement = "hybride";
+    } else if (lower.includes("remote") || lower.includes("thuiswerk")) {
+      result.workArrangement = "remote";
+    } else {
+      result.workArrangement = "op_locatie";
+    }
+  }
+
+  // === Extract positionsAvailable from "Benodigd aantal professionals" ===
+  const profText = findSection("benodigd aantal");
+  if (profText) {
+    const numMatch = profText.match(/(\d+)/);
+    if (numMatch) result.positionsAvailable = parseInt(numMatch[1], 10);
+  }
+
+  // === Parse summary fields for structured data + conditions ===
   const summaryHtml = extractBetween(
     html,
     'class="css-summarybackground">',
     'class="css-formattedjobdescription">',
   ) ?? "";
   const summaryFields = parseFieldPairs(summaryHtml);
-  const skipKeys = new Set(["Start", "Regio", "Einde inschrijfdatum"]);
+
+  // extensionPossible from "Opties verlenging"
+  const extensionRaw = summaryFields["Opties verlenging"];
+  if (extensionRaw) {
+    const lower = extensionRaw.toLowerCase();
+    if (lower.includes("niet") || lower === "nee" || lower === "geen") {
+      result.extensionPossible = false;
+    } else {
+      result.extensionPossible = true;
+    }
+  }
+
+  // hoursPerWeek from summary (may override listing-level if detail has it)
+  const summaryHours = parseHoursPerWeek(summaryFields["Uren per week"]);
+  if (summaryHours.hoursPerWeek) {
+    result.hoursPerWeek = summaryHours.hoursPerWeek;
+    if (summaryHours.minHoursPerWeek) result.minHoursPerWeek = summaryHours.minHoursPerWeek;
+  }
+
+  // educationLevel from summary "Opleidingsniveau"
+  if (summaryFields.Opleidingsniveau) {
+    result.educationLevel = summaryFields.Opleidingsniveau;
+  }
+
+  // durationMonths from summary "Duur"
+  if (summaryFields.Duur) {
+    const dm = parseDurationMonths(summaryFields.Duur);
+    if (dm) result.durationMonths = dm;
+  }
+
+  // Remaining summary fields → conditions (keep existing behavior)
+  const skipKeys = new Set(["Start", "Regio", "Einde inschrijfdatum", "Uren per week", "Opties verlenging", "Opleidingsniveau", "Duur"]);
   for (const [key, value] of Object.entries(summaryFields)) {
     if (!value || skipKeys.has(key)) continue;
-    const label = key === "Opties verlenging" ? "Verlenging" : key;
-    conditions.push(`${label}: ${value}`);
+    conditions.push(`${key}: ${value}`);
   }
 
   if (conditions.length > 0) {
     result.conditions = conditions.map(decodeEntities);
   }
+
+  // Always set countryCode for Flextender (Dutch government platform)
+  result.countryCode = "NL";
 
   return result;
 }
@@ -359,6 +433,40 @@ function parseDutchDate(raw: string | undefined): string | undefined {
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
 
   return undefined;
+}
+
+/** Parse Dutch duration "6 maanden" → 6, "12 weken" → 3, "1 jaar" → 12 */
+function parseDurationMonths(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const lower = raw.toLowerCase().trim();
+
+  const maandenMatch = lower.match(/(\d+)\s*maand/);
+  if (maandenMatch) return parseInt(maandenMatch[1], 10);
+
+  const wekenMatch = lower.match(/(\d+)\s*we[ek]/);
+  if (wekenMatch) return Math.round(parseInt(wekenMatch[1], 10) / 4.33);
+
+  const jaarMatch = lower.match(/(\d+)\s*jaar/);
+  if (jaarMatch) return parseInt(jaarMatch[1], 10) * 12;
+
+  return undefined;
+}
+
+/** Parse "Uren per week" field: "36 uur" → {max:36}, "24 tot 32 uur" → {min:24, max:32} */
+function parseHoursPerWeek(raw: string | undefined): { hoursPerWeek?: number; minHoursPerWeek?: number } {
+  if (!raw) return {};
+  const rangeMatch = raw.match(/(\d+)\s*tot\s*(\d+)/);
+  if (rangeMatch) {
+    return {
+      minHoursPerWeek: parseInt(rangeMatch[1], 10),
+      hoursPerWeek: parseInt(rangeMatch[2], 10),
+    };
+  }
+  const singleMatch = raw.match(/(\d+)/);
+  if (singleMatch) {
+    return { hoursPerWeek: parseInt(singleMatch[1], 10) };
+  }
+  return {};
 }
 
 /** Map regio/locatie naar Nederlandse provincie */
