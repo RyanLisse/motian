@@ -1,18 +1,42 @@
+const PAGE_URL = "https://www.flextender.nl/opdrachten/";
 const AJAX_URL = "https://www.flextender.nl/wp-admin/admin-ajax.php";
 const DETAIL_BASE = "https://www.flextender.nl/opdracht/?aanvraagnr=";
 
+/** Haal de widget_config token op uit de Flextender pagina HTML */
+async function fetchWidgetConfig(): Promise<string | null> {
+  const res = await fetch(PAGE_URL);
+  if (!res.ok) throw new Error(`Pagina laden mislukt: ${res.status}`);
+  const html = await res.text();
+  const match = html.match(/name="kbs_flx_widget_config"\s+value="([^"]+)"/);
+  return match?.[1] ?? null;
+}
+
 export async function scrapeFlextender(): Promise<any[]> {
-  console.log("Flextender scrapen via AJAX API");
+  console.log("Flextender scrapen via AJAX API (two-step met widget_config)");
 
   const MAX_RETRIES = 2;
   let attempt = 0;
 
   while (attempt <= MAX_RETRIES) {
     try {
+      // Stap 1: Haal widget_config token op uit de pagina
+      const widgetConfig = await fetchWidgetConfig();
+      if (!widgetConfig) {
+        console.warn("Flextender: widget_config niet gevonden op pagina, fallback zonder config");
+      }
+
+      // Stap 2: POST als multipart/form-data met widget_config
+      const formData = new FormData();
+      if (widgetConfig) {
+        formData.append("kbs_flx_widget_config", widgetConfig);
+      }
+      formData.append("action", "kbs_flx_searchjobs");
+      formData.append("kbs_flx_joblsrc_freetext", "");
+      formData.append("StackOverflow1370021", "Fix autosubmit bug");
+
       const res = await fetch(AJAX_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: "action=kbs_flx_searchjobs",
+        body: formData,
       });
 
       if (!res.ok) {
@@ -119,12 +143,12 @@ function parseFlextenderHtml(html: string): any[] {
 
 // ── Detail-pagina verrijking ──────────────────────────────────────
 
-/** Verrijk listings met content van hun detail-pagina's (parallel, max 5 tegelijk) */
+/** Verrijk listings met content van hun detail-pagina's (parallel, max 10 tegelijk) */
 async function enrichListings(
   listings: any[],
   logger?: { info: (m: string) => void; warn: (m: string) => void },
 ): Promise<any[]> {
-  const CONCURRENCY = 5;
+  const CONCURRENCY = 10;
   const results: any[] = [];
 
   for (let i = 0; i < listings.length; i += CONCURRENCY) {
