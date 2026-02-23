@@ -1,5 +1,5 @@
-export { queryOpdrachten } from "./query-opdrachten";
+export { analyseData } from "./analyse-data";
 export { getOpdrachtDetail } from "./get-opdracht-detail";
 export { matchKandidaten } from "./match-kandidaten";
-export { analyseData } from "./analyse-data";
+export { queryOpdrachten } from "./query-opdrachten";
 export { triggerScraper } from "./trigger-scraper";

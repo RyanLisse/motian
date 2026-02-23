@@ -1,7 +1,9 @@
 "use client";
 
+import { Search, SlidersHorizontal } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useRef, useTransition } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -10,8 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Search, SlidersHorizontal } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 const PROVINCES = [
@@ -81,13 +81,12 @@ export function OpdrachtenFilters({
         router.push(`/opdrachten?${params.toString()}`);
       });
     },
-    [router, searchParams]
+    [router, searchParams],
   );
 
   return (
     <div className="w-full bg-secondary border-b border-border px-4 md:px-6 lg:px-8 py-3">
       <div className="flex flex-col lg:flex-row items-center gap-3">
-
         {/* Search input group */}
         <div className="flex w-full lg:w-auto flex-1 items-center gap-0 border border-border rounded-lg bg-card overflow-hidden h-9">
           <div className="relative flex-1 h-full">
@@ -105,7 +104,10 @@ export function OpdrachtenFilters({
               }}
             />
           </div>
-          <Button size="icon" className="h-full rounded-none px-4 bg-primary hover:bg-primary/90 border-0">
+          <Button
+            size="icon"
+            className="h-full rounded-none px-4 bg-primary hover:bg-primary/90 border-0"
+          >
             <Search className="h-4 w-4 text-primary-foreground" />
           </Button>
         </div>
@@ -114,51 +116,57 @@ export function OpdrachtenFilters({
         <div className="flex w-full lg:w-auto gap-2 items-center shrink-0 overflow-x-auto no-scrollbar">
           <Select
             value={platform || "all"}
-            onValueChange={(value) =>
-              updateParams({ platform: value === "all" ? "" : value })
-            }
+            onValueChange={(value) => updateParams({ platform: value === "all" ? "" : value })}
           >
             <SelectTrigger className="w-[150px] h-9 bg-card border-border text-foreground text-sm">
               <SelectValue placeholder="Opdrachtgever" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border">
-              <SelectItem value="all" className="text-foreground">Alle opdrachtgevers</SelectItem>
+              <SelectItem value="all" className="text-foreground">
+                Alle opdrachtgevers
+              </SelectItem>
               {platforms.map((p) => (
-                <SelectItem key={p} value={p} className="capitalize text-foreground">{p}</SelectItem>
+                <SelectItem key={p} value={p} className="capitalize text-foreground">
+                  {p}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <Select
             value={provincie || "all"}
-            onValueChange={(value) =>
-              updateParams({ provincie: value === "all" ? "" : value })
-            }
+            onValueChange={(value) => updateParams({ provincie: value === "all" ? "" : value })}
           >
             <SelectTrigger className="w-[160px] h-9 bg-card border-border text-foreground text-sm">
               <SelectValue placeholder="Provincie" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border">
-              <SelectItem value="all" className="text-foreground">Alle provincies</SelectItem>
+              <SelectItem value="all" className="text-foreground">
+                Alle provincies
+              </SelectItem>
               {PROVINCES.map((p) => (
-                <SelectItem key={p} value={p} className="text-foreground">{p}</SelectItem>
+                <SelectItem key={p} value={p} className="text-foreground">
+                  {p}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <Select
             value={contractType || "all"}
-            onValueChange={(value) =>
-              updateParams({ contractType: value === "all" ? "" : value })
-            }
+            onValueChange={(value) => updateParams({ contractType: value === "all" ? "" : value })}
           >
             <SelectTrigger className="w-[140px] h-9 bg-card border-border text-foreground text-sm">
               <SelectValue placeholder="Contract type" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border">
-              <SelectItem value="all" className="text-foreground">Alle types</SelectItem>
+              <SelectItem value="all" className="text-foreground">
+                Alle types
+              </SelectItem>
               {CONTRACT_TYPES.map((ct) => (
-                <SelectItem key={ct.value} value={ct.value} className="text-foreground">{ct.label}</SelectItem>
+                <SelectItem key={ct.value} value={ct.value} className="text-foreground">
+                  {ct.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -198,14 +206,20 @@ export function OpdrachtenFilters({
           {/* Toggle */}
           <div className="flex items-center gap-2 px-2 border-l border-border ml-1">
             <Switch id="save-search" className="data-[state=checked]:bg-primary" />
-            <label htmlFor="save-search" className="text-sm font-medium text-muted-foreground cursor-pointer whitespace-nowrap">
+            <label
+              htmlFor="save-search"
+              className="text-sm font-medium text-muted-foreground cursor-pointer whitespace-nowrap"
+            >
               Zoekopdracht opslaan
             </label>
           </div>
         </div>
 
         {/* Alle filters button */}
-        <Button variant="ghost" className="h-9 shrink-0 font-medium whitespace-nowrap hidden sm:flex text-muted-foreground hover:text-foreground hover:bg-accent text-sm">
+        <Button
+          variant="ghost"
+          className="h-9 shrink-0 font-medium whitespace-nowrap hidden sm:flex text-muted-foreground hover:text-foreground hover:bg-accent text-sm"
+        >
           <SlidersHorizontal className="h-4 w-4 mr-2" />
           Alle filters
         </Button>
@@ -214,10 +228,28 @@ export function OpdrachtenFilters({
       {/* Pagination controls (mobile/bottom) */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-3 border-t border-border pt-3 lg:hidden">
-          <p className="text-sm text-muted-foreground">Pagina {page} van {totalPages}</p>
+          <p className="text-sm text-muted-foreground">
+            Pagina {page} van {totalPages}
+          </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="border-border bg-card text-muted-foreground" disabled={page <= 1 || isPending} onClick={() => updateParams({ pagina: String(page - 1) })}>Vorige</Button>
-            <Button variant="outline" size="sm" className="border-border bg-card text-muted-foreground" disabled={page >= totalPages || isPending} onClick={() => updateParams({ pagina: String(page + 1) })}>Volgende</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border bg-card text-muted-foreground"
+              disabled={page <= 1 || isPending}
+              onClick={() => updateParams({ pagina: String(page - 1) })}
+            >
+              Vorige
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border bg-card text-muted-foreground"
+              disabled={page >= totalPages || isPending}
+              onClick={() => updateParams({ pagina: String(page + 1) })}
+            >
+              Volgende
+            </Button>
           </div>
         </div>
       )}

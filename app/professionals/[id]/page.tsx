@@ -1,18 +1,10 @@
+import { desc, eq } from "drizzle-orm";
+import { ArrowLeft, Briefcase, Euro, Mail, MapPin, Phone, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
-import { eq, desc } from "drizzle-orm";
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import {
-  MapPin,
-  Euro,
-  Mail,
-  Phone,
-  ArrowLeft,
-  Briefcase,
-  Sparkles,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +19,9 @@ const availabilityLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  pending:
-    "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  approved:
-    "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
-  rejected:
-    "bg-red-500/10 text-red-500 border-red-500/20",
+  pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  approved: "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
+  rejected: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
 const statusLabels: Record<string, string> = {
@@ -68,9 +57,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
     notFound();
   }
 
-  const skills = Array.isArray(candidate.skills)
-    ? (candidate.skills as string[])
-    : [];
+  const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -86,9 +73,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-[#ececec] mb-2">
-            {candidate.name}
-          </h1>
+          <h1 className="text-xl font-bold text-[#ececec] mb-2">{candidate.name}</h1>
           <div className="flex items-center gap-2 flex-wrap">
             {candidate.role && (
               <Badge
@@ -107,8 +92,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                     : "border-[#2d2d2d] text-[#8e8e8e] bg-transparent text-xs"
                 }
               >
-                {availabilityLabels[candidate.availability] ??
-                  candidate.availability}
+                {availabilityLabels[candidate.availability] ?? candidate.availability}
               </Badge>
             )}
             {candidate.source && (
@@ -124,9 +108,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
         {/* Contact info */}
         <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-[#ececec] mb-3">
-            Contactgegevens
-          </h3>
+          <h3 className="text-sm font-semibold text-[#ececec] mb-3">Contactgegevens</h3>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#8e8e8e]">
             {candidate.email && (
               <span className="flex items-center gap-1.5">
@@ -158,9 +140,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         {/* Skills */}
         {skills.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-[#ececec] mb-3">
-              Vaardigheden
-            </h3>
+            <h3 className="text-sm font-semibold text-[#ececec] mb-3">Vaardigheden</h3>
             <div className="flex flex-wrap gap-2">
               {skills.map((skill, i) => (
                 <Badge
@@ -178,9 +158,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         {/* Notes */}
         {candidate.notes && (
           <div>
-            <h3 className="text-sm font-semibold text-[#ececec] mb-3">
-              Notities
-            </h3>
+            <h3 className="text-sm font-semibold text-[#ececec] mb-3">Notities</h3>
             <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
               <p className="text-sm text-[#8e8e8e] whitespace-pre-wrap leading-relaxed">
                 {candidate.notes}
@@ -193,16 +171,12 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         <div>
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="h-4 w-4 text-[#10a37f]" />
-            <h3 className="text-sm font-semibold text-[#ececec]">
-              Matches ({matchRows.length})
-            </h3>
+            <h3 className="text-sm font-semibold text-[#ececec]">Matches ({matchRows.length})</h3>
           </div>
 
           {matchRows.length === 0 ? (
             <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-6 text-center">
-              <p className="text-sm text-[#6b6b6b]">
-                Nog geen matches voor deze professional
-              </p>
+              <p className="text-sm text-[#6b6b6b]">Nog geen matches voor deze professional</p>
             </div>
           ) : (
             <div className="space-y-3">

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { encrypt, decrypt } from "../src/lib/crypto";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { decrypt, encrypt } from "../src/lib/crypto";
 
 describe("crypto — encrypt/decrypt", () => {
   const ORIGINAL_ENV = process.env;
@@ -48,7 +48,8 @@ describe("crypto — encrypt/decrypt", () => {
   });
 
   it("verwerkt unicode/emoji correct", () => {
-    const text = "Nederlandse tekst met accenten: e\u0301e\u0301n, twee\u0308, co\u00f6rdinatie \u{1f1f3}\u{1f1f1}";
+    const text =
+      "Nederlandse tekst met accenten: e\u0301e\u0301n, twee\u0308, co\u00f6rdinatie \u{1f1f3}\u{1f1f1}";
     const encrypted = encrypt(text);
     expect(decrypt(encrypted)).toBe(text);
   });

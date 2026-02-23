@@ -1,5 +1,5 @@
-import { NextRequest } from "next/server";
-import { findExpiredRetentionCandidates, eraseCandidateData } from "@/src/services/gdpr";
+import type { NextRequest } from "next/server";
+import { eraseCandidateData, findExpiredRetentionCandidates } from "@/src/services/gdpr";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       totalErased,
       errors: errors.length > 0 ? errors : undefined,
     });
-  } catch (err) {
+  } catch (_err) {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }
 }

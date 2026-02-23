@@ -1,6 +1,6 @@
+import { eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { scrapeResults, scraperConfigs } from "../db/schema";
-import { eq, sql } from "drizzle-orm";
 
 export async function recordScrapeResult(data: {
   platform: string;
@@ -40,9 +40,7 @@ export async function recordScrapeResult(data: {
       .set({
         lastRunAt: new Date(),
         lastRunStatus: data.status,
-        consecutiveFailures: isFailed
-          ? sql`${scraperConfigs.consecutiveFailures} + 1`
-          : 0,
+        consecutiveFailures: isFailed ? sql`${scraperConfigs.consecutiveFailures} + 1` : 0,
         updatedAt: new Date(),
       })
       .where(eq(scraperConfigs.id, configId));

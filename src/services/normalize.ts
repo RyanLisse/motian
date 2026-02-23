@@ -1,6 +1,6 @@
+import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { sql } from "drizzle-orm";
 import { unifiedJobSchema } from "../schemas/job";
 
 export async function normalizeAndSaveJobs(

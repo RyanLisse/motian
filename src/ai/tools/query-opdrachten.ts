@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { listJobs, hybridSearch } from "@/src/services/jobs";
+import { hybridSearch, listJobs } from "@/src/services/jobs";
 
 const VALID_CONTRACT_TYPES = ["freelance", "interim", "vast", "opdracht"];
 const VALID_PLATFORMS = ["flextender", "striive", "opdrachtoverheid"];
@@ -14,13 +14,9 @@ function normalizeParams(params: Record<string, unknown>) {
     ? (params.contractType as string)
     : undefined;
   const rateMin =
-    typeof params.rateMin === "number" && params.rateMin > 0
-      ? params.rateMin
-      : undefined;
+    typeof params.rateMin === "number" && params.rateMin > 0 ? params.rateMin : undefined;
   const rateMax =
-    typeof params.rateMax === "number" && params.rateMax < 500
-      ? params.rateMax
-      : undefined;
+    typeof params.rateMax === "number" && params.rateMax < 500 ? params.rateMax : undefined;
   const province =
     typeof params.province === "string" &&
     params.province.length > 0 &&
@@ -28,9 +24,7 @@ function normalizeParams(params: Record<string, unknown>) {
       ? params.province
       : undefined;
   const q =
-    typeof params.q === "string" && params.q.trim().length > 0
-      ? params.q.trim()
-      : undefined;
+    typeof params.q === "string" && params.q.trim().length > 0 ? params.q.trim() : undefined;
 
   return { q, platform, province, rateMin, rateMax, contractType };
 }
@@ -43,14 +37,27 @@ export const queryOpdrachten = tool({
     platform: z
       .string()
       .optional()
-      .describe("Platform filter: flextender, striive, opdrachtoverheid. Laat leeg voor alle platforms."),
-    province: z.string().optional().describe("Provincie, bijv. Utrecht, Noord-Holland. Laat leeg voor heel NL."),
-    rateMin: z.number().optional().describe("Minimum uurtarief in EUR. Alleen als de gebruiker dit expliciet noemt."),
-    rateMax: z.number().optional().describe("Maximum uurtarief in EUR. Alleen als de gebruiker dit expliciet noemt."),
+      .describe(
+        "Platform filter: flextender, striive, opdrachtoverheid. Laat leeg voor alle platforms.",
+      ),
+    province: z
+      .string()
+      .optional()
+      .describe("Provincie, bijv. Utrecht, Noord-Holland. Laat leeg voor heel NL."),
+    rateMin: z
+      .number()
+      .optional()
+      .describe("Minimum uurtarief in EUR. Alleen als de gebruiker dit expliciet noemt."),
+    rateMax: z
+      .number()
+      .optional()
+      .describe("Maximum uurtarief in EUR. Alleen als de gebruiker dit expliciet noemt."),
     contractType: z
       .string()
       .optional()
-      .describe("Contract type: freelance, interim, vast, opdracht. Alleen als de gebruiker dit expliciet noemt."),
+      .describe(
+        "Contract type: freelance, interim, vast, opdracht. Alleen als de gebruiker dit expliciet noemt.",
+      ),
     limit: z.number().optional().default(20).describe("Max resultaten (standaard 20)"),
   }),
   execute: async (params) => {

@@ -1,0 +1,103 @@
+name: Risk Policy Gate (standalone)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base-ref:
+        description: "Base ref to diff against (e.g. main). Leave blank to diff HEAD~1."
+        required: false
+        default: ""
+
+env:
+  PNPM_VERSION: "9.15.0"
+  NODE_VERSION: "22"
+
+jobs:
+  risk-policy-gate:
+    name: Risk Policy Gate
+    runs-on: ubuntu-latest
+    outputs:
+      risk-tier: ${{ steps.gate.outputs.risk-tier }}
+      required-checks: ${{ steps.gate.outputs.required-checks }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Compute changed files
+        id: changed
+        run: |
+          BASE="${{ github.event.inputs.base-ref }}"
+          if [ -n "$BASE" ]; then
+            CHANGED=$(git diff --name-only "origin/${BASE}...HEAD")
+          else
+            CHANGED=$(git diff --name-only HEAD~1)
+          fi
+          echo "files<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$CHANGED" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Run risk policy gate
+        id: gate
+        run: |
+          OUTPUT=$(echo "${{ steps.changed.outputs.files }}" \
+            | pnpm tsx scripts/harness/risk-policy-gate.ts --json 2>/dev/null \
+            || echo "${{ steps.changed.outputs.files }}" \
+            | pnpm tsx scripts/harness/risk-policy-gate.ts)
+
+          # If the script emits JSON, parse tier and required-checks from it.
+          # Otherwise treat the raw output as the tier string.
+          if echo "$OUTPUT" | pnpm exec node -e \
+            "const d=require('fs').readFileSync('/dev/stdin','utf8').trim(); JSON.parse(d); process.exit(0);" \
+            2>/dev/null; then
+            TIER=$(echo "$OUTPUT" | pnpm exec node -e \
+              "const d=require('fs').readFileSync('/dev/stdin','utf8'); const p=JSON.parse(d); console.log(p.tier||p['risk-tier']||'unknown');")
+            CHECKS=$(echo "$OUTPUT" | pnpm exec node -e \
+              "const d=require('fs').readFileSync('/dev/stdin','utf8'); const p=JSON.parse(d); console.log(JSON.stringify(p.requiredChecks||p['required-checks']||[]));")
+          else
+            TIER=$(echo "$OUTPUT" | tr -d '[:space:]')
+            CHECKS="[]"
+          fi
+
+          echo "risk-tier=$TIER" >> "$GITHUB_OUTPUT"
+          echo "required-checks=$CHECKS" >> "$GITHUB_OUTPUT"
+
+          echo ""
+          echo "======================================="
+          echo "  Risk Tier   : $TIER"
+          echo "  Req. Checks : $CHECKS"
+          echo "======================================="
+
+      - name: Annotate summary
+        if: always()
+        run: |
+          echo "## Risk Policy Gate Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Risk Tier | \`${{ steps.gate.outputs.risk-tier }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Required Checks | \`${{ steps.gate.outputs.required-checks }}\` |" >> "$GITHUB_STEP_SUMMARY"

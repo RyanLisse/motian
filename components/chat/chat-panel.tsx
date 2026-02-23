@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { MessageSquare, X } from "lucide-react";
-import { useChatContext } from "./chat-context-provider";
-import { ChatMessages } from "./chat-messages";
+import { useCallback, useEffect, useState } from "react";
 import {
   PromptInput,
-  PromptInputTextarea,
   PromptInputFooter,
-  PromptInputSubmit,
   type PromptInputMessage,
+  PromptInputSubmit,
+  PromptInputTextarea,
 } from "@/src/components/ai-elements/prompt-input";
+import { useChatContext } from "./chat-context-provider";
+import { ChatMessages } from "./chat-messages";
 
 export function ChatPanel() {
   const [open, setOpen] = useState(false);

@@ -22,11 +22,17 @@ async function seed() {
   console.log("Seeding new platform configs...");
   for (const p of platforms) {
     // Use upsert to be idempotent
-    await db.insert(scraperConfigs).values(p).onConflictDoNothing({ target: scraperConfigs.platform });
+    await db
+      .insert(scraperConfigs)
+      .values(p)
+      .onConflictDoNothing({ target: scraperConfigs.platform });
     console.log(`  ✓ ${p.platform}: ${p.baseUrl}`);
   }
   console.log("Done!");
   process.exit(0);
 }
 
-seed().catch((err) => { console.error(err); process.exit(1); });
+seed().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

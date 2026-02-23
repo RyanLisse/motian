@@ -1,16 +1,12 @@
+import { desc, isNull, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
-import { desc, isNull, sql } from "drizzle-orm";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 
 export const revalidate = 60;
 
-export default async function OpdrachtenLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
   // Fetch sidebar jobs, total count, and distinct platforms in parallel
   const [sidebarJobs, countResult, platformRows] = await Promise.all([
     db
@@ -27,10 +23,7 @@ export default async function OpdrachtenLayout({
       .where(isNull(jobs.deletedAt))
       .orderBy(desc(jobs.scrapedAt))
       .limit(10),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt)),
+    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(isNull(jobs.deletedAt)),
     db
       .selectDistinct({ platform: jobs.platform })
       .from(jobs)

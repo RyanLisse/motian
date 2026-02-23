@@ -1,7 +1,7 @@
 "use client";
 
+import { CheckCircle2, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Loader2, CheckCircle2 } from "lucide-react";
 
 const TOOL_LABELS: Record<string, string> = {
   queryOpdrachten: "Opdrachten zoeken",

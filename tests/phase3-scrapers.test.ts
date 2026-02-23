@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 // ===== Indeed Step Config Tests =====
@@ -104,9 +104,7 @@ describe("unified job schema (Indeed/LinkedIn)", () => {
     description: z.string().min(1),
     externalId: z.string().min(1),
     externalUrl: z.string().url(),
-    contractType: z
-      .enum(["freelance", "interim", "vast", "opdracht"])
-      .optional(),
+    contractType: z.enum(["freelance", "interim", "vast", "opdracht"]).optional(),
     rateMin: z.number().optional(),
     rateMax: z.number().optional(),
   });
@@ -133,8 +131,7 @@ describe("unified job schema (Indeed/LinkedIn)", () => {
       location: "Den Haag, Zuid-Holland",
       description: "Als DevOps Engineer ben je verantwoordelijk voor...",
       externalId: "3847291056",
-      externalUrl:
-        "https://www.linkedin.com/jobs/view/3847291056",
+      externalUrl: "https://www.linkedin.com/jobs/view/3847291056",
       contractType: "interim",
     });
     expect(result.success).toBe(true);

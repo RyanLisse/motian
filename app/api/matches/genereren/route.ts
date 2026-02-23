@@ -1,7 +1,7 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { getCandidatesByIds, listActiveCandidates } from "@/src/services/candidates";
 import { getJobById } from "@/src/services/jobs";
-import { listActiveCandidates, getCandidatesByIds } from "@/src/services/candidates";
 import { createMatch } from "@/src/services/matches";
 import { computeMatchScore } from "@/src/services/scoring";
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return Response.json(
         { error: "Ongeldige invoer", details: parsed.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       topScore: topMatches[0]?.score ?? 0,
       ...(errors.length > 0 ? { errors } : {}),
     });
-  } catch (err) {
+  } catch (_err) {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }
 }

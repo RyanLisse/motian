@@ -1,26 +1,21 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { type LucideIcon } from "lucide-react"
+import type { LucideIcon } from "lucide-react";
 
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 export function TeamSwitcher({
   teams,
 }: {
   teams: {
-    name: string
-    logo: LucideIcon
-    plan: string
-  }[]
+    name: string;
+    logo: LucideIcon;
+    plan: string;
+  }[];
 }) {
-  const activeTeam = teams[0]
+  const activeTeam = teams[0];
 
-  if (!activeTeam) return null
+  if (!activeTeam) return null;
 
   return (
     <SidebarMenu>
@@ -34,12 +29,10 @@ export function TeamSwitcher({
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold">{activeTeam.name}</span>
-            <span className="truncate text-xs text-muted-foreground">
-              {activeTeam.plan}
-            </span>
+            <span className="truncate text-xs text-muted-foreground">{activeTeam.plan}</span>
           </div>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

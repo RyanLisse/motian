@@ -1,18 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // ── Service imports ──────────────────────────────────────────────
 import {
-  listCandidates,
-  getCandidateById,
-  searchCandidates,
   createCandidate,
+  getCandidateById,
+  listCandidates,
+  searchCandidates,
 } from "../src/services/candidates.js";
 
-import {
-  listMatches,
-  getMatchById,
-  updateMatchStatus,
-} from "../src/services/matches.js";
+import { getMatchById, listMatches, updateMatchStatus } from "../src/services/matches.js";
 
 // Phase 13 service imports removed — see tests/phase13-pipeline-communication.test.ts
 

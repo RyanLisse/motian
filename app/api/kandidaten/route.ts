@@ -1,10 +1,6 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
-import {
-  listCandidates,
-  searchCandidates,
-  createCandidate,
-} from "@/src/services/candidates";
+import { createCandidate, listCandidates, searchCandidates } from "@/src/services/candidates";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +19,7 @@ export async function GET(request: NextRequest) {
     const q = params.get("q") ?? undefined;
     const limit = parseInt(params.get("limit") ?? "50", 10);
 
-    const data = q
-      ? await searchCandidates({ query: q, limit })
-      : await listCandidates(limit);
+    const data = q ? await searchCandidates({ query: q, limit }) : await listCandidates(limit);
 
     return Response.json({ data, total: data.length });
   } catch (error) {

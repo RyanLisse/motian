@@ -1,9 +1,5 @@
-import { streamText, stepCountIs, convertToModelMessages } from "ai";
-import {
-  chatModel,
-  recruitmentTools,
-  buildSystemPrompt,
-} from "@/src/ai/agent";
+import { convertToModelMessages, stepCountIs, streamText } from "ai";
+import { buildSystemPrompt, chatModel, recruitmentTools } from "@/src/ai/agent";
 
 export async function POST(req: Request) {
   const { messages, context } = await req.json();

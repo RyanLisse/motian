@@ -10,11 +10,12 @@
  *   4. Updates the job row in the database
  */
 import { config } from "dotenv";
+
 config({ path: ".env.local" });
 
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../src/db";
 import { jobs } from "../src/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
 
 const DETAIL_BASE = "https://www.flextender.nl/opdracht/?aanvraagnr=";
 const CONCURRENCY = 5;
@@ -59,14 +60,14 @@ async function main() {
 
           enriched++;
           console.log(
-            `  ✓ ${job.externalId} "${job.title}" — desc=${(detail.description?.length ?? 0)} chars, ` +
-              `reqs=${detail.requirements?.length ?? 0}, comps=${detail.competences?.length ?? 0}`
+            `  ✓ ${job.externalId} "${job.title}" — desc=${detail.description?.length ?? 0} chars, ` +
+              `reqs=${detail.requirements?.length ?? 0}, comps=${detail.competences?.length ?? 0}`,
           );
         } catch (err) {
           failed++;
           console.log(`  ✗ ${job.externalId}: ${err}`);
         }
-      })
+      }),
     );
 
     // Rate-limit pauze
@@ -102,9 +103,7 @@ function parseDetailHtml(html: string): Record<string, any> {
   const sections = extractSections(content);
 
   const findSection = (needle: string): string | undefined => {
-    const key = Object.keys(sections).find((k) =>
-      k.toLowerCase().includes(needle.toLowerCase()),
-    );
+    const key = Object.keys(sections).find((k) => k.toLowerCase().includes(needle.toLowerCase()));
     return key ? sections[key] : undefined;
   };
 
@@ -159,11 +158,12 @@ function parseDetailHtml(html: string): Record<string, any> {
   if (cvText) conditions.push(`CV-eisen: ${cvText.trim()}`);
 
   // Summary fields
-  const summaryHtml = extractBetween(
-    html,
-    'class="css-summarybackground">',
-    'class="css-formattedjobdescription">',
-  ) ?? "";
+  const summaryHtml =
+    extractBetween(
+      html,
+      'class="css-summarybackground">',
+      'class="css-formattedjobdescription">',
+    ) ?? "";
   const summaryFields = parseFieldPairs(summaryHtml);
   // Fields already mapped to dedicated columns — skip to avoid duplication
   const skipKeys = new Set(["Start", "Regio", "Einde inschrijfdatum"]);
@@ -248,8 +248,7 @@ function decodeEntities(s: string): string {
 
 function parseFieldPairs(cardHtml: string): Record<string, string> {
   const fields: Record<string, string> = {};
-  const pairRegex =
-    /class="css-caption">([^<]+)<[\s\S]*?class="css-value">([^<]+)</gi;
+  const pairRegex = /class="css-caption">([^<]+)<[\s\S]*?class="css-value">([^<]+)</gi;
   let pairMatch: RegExpExecArray | null;
   while ((pairMatch = pairRegex.exec(cardHtml)) !== null) {
     const key = pairMatch[1].trim();
@@ -263,13 +262,13 @@ function parseNumberedList(text: string): string[] {
   const items = text.split(/\n/).filter((l) => l.trim());
   const result: string[] = [];
   for (const line of items) {
-    const cleaned = line.replace(/^\d+[\.\)]\s*/, "").trim();
+    const cleaned = line.replace(/^\d+[.)]\s*/, "").trim();
     if (cleaned.length > 5) result.push(cleaned);
   }
   if (result.length === 0) {
     return text
       .split(/[;\n]/)
-      .map((s) => s.replace(/^\d+[\.\)]\s*/, "").trim())
+      .map((s) => s.replace(/^\d+[.)]\s*/, "").trim())
       .filter((s) => s.length > 5);
   }
   return result;

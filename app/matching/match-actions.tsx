@@ -1,7 +1,7 @@
 "use client";
 
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useTransition } from "react";
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { updateMatchStatus } from "./actions";
 
 export function MatchActions({ matchId }: { matchId: string }) {

@@ -1,9 +1,9 @@
+import { and, desc, eq, gte, ilike, isNull, sql } from "drizzle-orm";
+import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates } from "@/src/db/schema";
-import { desc, isNull, ilike, eq, and, sql, gte } from "drizzle-orm";
-import Link from "next/link";
-import { MapPin, Euro, Search, Users, Zap, UserPlus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 export const revalidate = 60;
 
@@ -46,35 +46,24 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-  const [candidateRows, countResult, availableCount, newThisWeekCount] =
-    await Promise.all([
-      db
-        .select()
-        .from(candidates)
-        .where(whereClause)
-        .orderBy(desc(candidates.createdAt))
-        .limit(PER_PAGE)
-        .offset(offset),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(candidates)
-        .where(whereClause),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(candidates)
-        .where(
-          and(isNull(candidates.deletedAt), eq(candidates.availability, "direct"))
-        ),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(candidates)
-        .where(
-          and(
-            isNull(candidates.deletedAt),
-            gte(candidates.createdAt, oneWeekAgo)
-          )
-        ),
-    ]);
+  const [candidateRows, countResult, availableCount, newThisWeekCount] = await Promise.all([
+    db
+      .select()
+      .from(candidates)
+      .where(whereClause)
+      .orderBy(desc(candidates.createdAt))
+      .limit(PER_PAGE)
+      .offset(offset),
+    db.select({ count: sql<number>`count(*)::int` }).from(candidates).where(whereClause),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(candidates)
+      .where(and(isNull(candidates.deletedAt), eq(candidates.availability, "direct"))),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(candidates)
+      .where(and(isNull(candidates.deletedAt), gte(candidates.createdAt, oneWeekAgo))),
+  ]);
 
   const totalCount = countResult[0]?.count ?? 0;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
@@ -87,9 +76,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
         {/* Header */}
         <div>
           <h1 className="text-xl font-bold text-[#ececec]">Professionals</h1>
-          <p className="text-sm text-[#8e8e8e] mt-1">
-            Talent pool — overzicht van alle kandidaten
-          </p>
+          <p className="text-sm text-[#8e8e8e] mt-1">Talent pool — overzicht van alle kandidaten</p>
         </div>
 
         {/* KPI row */}
@@ -149,9 +136,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
 
         {/* Results count */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[#8e8e8e]">
-            {totalCount} professionals gevonden
-          </p>
+          <p className="text-sm text-[#8e8e8e]">{totalCount} professionals gevonden</p>
           {totalPages > 1 && (
             <p className="text-sm text-[#6b6b6b]">
               Pagina {page} van {totalPages}
@@ -163,22 +148,15 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
         {candidateRows.length === 0 ? (
           <div className="text-center py-16 text-[#6b6b6b]">
             <p className="text-lg">Geen professionals gevonden</p>
-            <p className="text-sm mt-1">
-              Pas je zoekopdracht of filters aan
-            </p>
+            <p className="text-sm mt-1">Pas je zoekopdracht of filters aan</p>
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {candidateRows.map((candidate) => {
-              const skills = Array.isArray(candidate.skills)
-                ? (candidate.skills as string[])
-                : [];
+              const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
 
               return (
-                <Link
-                  key={candidate.id}
-                  href={`/professionals/${candidate.id}`}
-                >
+                <Link key={candidate.id} href={`/professionals/${candidate.id}`}>
                   <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-4 hover:border-[#10a37f]/40 hover:bg-[#232323] transition-colors cursor-pointer">
                     {/* Name + source */}
                     <div className="flex items-start justify-between gap-2 mb-3">
@@ -187,9 +165,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
                           {candidate.name}
                         </h3>
                         {candidate.role && (
-                          <p className="text-xs text-[#8e8e8e] mt-0.5">
-                            {candidate.role}
-                          </p>
+                          <p className="text-xs text-[#8e8e8e] mt-0.5">{candidate.role}</p>
                         )}
                       </div>
                       {candidate.source && (
@@ -251,8 +227,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
                             : "text-[10px] border-[#2d2d2d] text-[#6b6b6b] bg-transparent"
                         }
                       >
-                        {availabilityLabels[candidate.availability] ??
-                          candidate.availability}
+                        {availabilityLabels[candidate.availability] ?? candidate.availability}
                       </Badge>
                     )}
                   </div>

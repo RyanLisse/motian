@@ -4,11 +4,12 @@
  * Usage: npx tsx scripts/fix-1900-dates.ts
  */
 import { config } from "dotenv";
+
 config({ path: ".env.local" });
 
+import { sql } from "drizzle-orm";
 import { db } from "../src/db";
 import { jobs } from "../src/db/schema";
-import { sql } from "drizzle-orm";
 
 async function main() {
   // Null out startDate where it's a 1900 sentinel

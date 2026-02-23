@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { getJobById, updateJob, deleteJob } from "@/src/services/jobs";
+import { deleteJob, getJobById, updateJob } from "@/src/services/jobs";
 
 export const dynamic = "force-dynamic";
 
@@ -14,18 +14,12 @@ const updateJobSchema = z.object({
   workArrangement: z.string().optional(),
 });
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const job = await getJobById(id);
     if (!job) {
-      return Response.json(
-        { error: "Opdracht niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: job });
   } catch (error) {
@@ -34,10 +28,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await request.json();
@@ -50,10 +41,7 @@ export async function PATCH(
     }
     const job = await updateJob(id, parsed.data);
     if (!job) {
-      return Response.json(
-        { error: "Opdracht niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: job });
   } catch (error) {
@@ -63,17 +51,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const deleted = await deleteJob(id);
     if (!deleted) {
-      return Response.json(
-        { error: "Opdracht niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: { id, deleted: true } });
   } catch (error) {

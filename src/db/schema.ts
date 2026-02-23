@@ -1,17 +1,17 @@
+import { sql } from "drizzle-orm";
 import {
+  boolean,
+  customType,
+  index,
+  integer,
+  jsonb,
   pgTable,
+  real,
   text,
   timestamp,
-  jsonb,
-  integer,
-  uuid,
   uniqueIndex,
-  index,
-  boolean,
-  real,
-  customType,
+  uuid,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 
 // pgvector custom column type for Drizzle
 const vector = customType<{
@@ -24,11 +24,7 @@ const vector = customType<{
   },
   fromDriver(value: unknown): number[] {
     if (typeof value === "string") {
-      return value
-        .replace(/^\[/, "")
-        .replace(/\]$/, "")
-        .split(",")
-        .map(Number);
+      return value.replace(/^\[/, "").replace(/\]$/, "").split(",").map(Number);
     }
     return value as number[];
   },
@@ -55,9 +51,7 @@ export const scraperConfigs = pgTable(
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => ({
-    platformUniqueIdx: uniqueIndex("uq_scraper_configs_platform").on(
-      table.platform,
-    ),
+    platformUniqueIdx: uniqueIndex("uq_scraper_configs_platform").on(table.platform),
   }),
 );
 
@@ -174,10 +168,7 @@ export const jobs = pgTable(
     scrapedAtIdx: index("idx_jobs_scraped_at").on(table.scrapedAt),
     deletedAtIdx: index("idx_jobs_deleted_at").on(table.deletedAt),
     deadlineIdx: index("idx_jobs_deadline").on(table.applicationDeadline),
-    platformUrlIdx: uniqueIndex("uq_platform_external_url").on(
-      table.platform,
-      table.externalUrl,
-    ),
+    platformUrlIdx: uniqueIndex("uq_platform_external_url").on(table.platform, table.externalUrl),
   }),
 );
 
@@ -252,12 +243,9 @@ export const applications = pgTable(
   "applications",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    jobId: uuid("job_id")
-      .references(() => jobs.id, { onDelete: "set null" }),
-    candidateId: uuid("candidate_id")
-      .references(() => candidates.id, { onDelete: "set null" }),
-    matchId: uuid("match_id")
-      .references(() => jobMatches.id, { onDelete: "set null" }),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    candidateId: uuid("candidate_id").references(() => candidates.id, { onDelete: "set null" }),
+    matchId: uuid("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
     stage: text("stage").notNull().default("new"), // "new" | "screening" | "interview" | "offer" | "hired" | "rejected"
     source: text("source").default("manual"), // "match" | "manual" | "import"
     notes: text("notes"),

@@ -1,30 +1,26 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // ── Schema imports ───────────────────────────────────────────────
 import { applications, interviews, messages } from "../src/db/schema.js";
 
 // ── Service imports ──────────────────────────────────────────────
 import {
-  listApplications,
-  getApplicationById,
   createApplication,
-  updateApplicationStage,
+  getApplicationById,
   getApplicationStats,
+  listApplications,
+  updateApplicationStage,
 } from "../src/services/applications.js";
 
 import {
-  listInterviews,
-  getInterviewById,
   createInterview,
-  updateInterview,
+  getInterviewById,
   getUpcomingInterviews,
+  listInterviews,
+  updateInterview,
 } from "../src/services/interviews.js";
 
-import {
-  listMessages,
-  getMessageById,
-  createMessage,
-} from "../src/services/messages.js";
+import { createMessage, getMessageById, listMessages } from "../src/services/messages.js";
 
 // ── Tests ────────────────────────────────────────────────────────
 

@@ -1,15 +1,12 @@
-import { describe, it, expect } from "vitest";
-import { existsSync } from "fs";
-import { resolve } from "path";
-import { z } from "zod";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
 
 // ===== Striive Scraper Detail Enrichment =====
 
 describe("Striive scraper detail enrichment", () => {
   it("step config has correct structure", async () => {
-    const { config } = await import(
-      "../steps/scraper/platforms/striive.step.ts"
-    );
+    const { config } = await import("../steps/scraper/platforms/striive.step.ts");
     expect(config.name).toBe("ScrapeStriive");
     expect(config.triggers[0].type).toBe("queue");
     expect(config.triggers[0].topic).toBe("platform.scrape");
@@ -17,14 +14,12 @@ describe("Striive scraper detail enrichment", () => {
   });
 
   it("handler exports a function", async () => {
-    const { handler } = await import(
-      "../steps/scraper/platforms/striive.step.ts"
-    );
+    const { handler } = await import("../steps/scraper/platforms/striive.step.ts");
     expect(typeof handler).toBe("function");
   });
 
   it("step file contains detail extraction logic", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/striive.step.ts"),
       "utf-8",
@@ -45,9 +40,7 @@ describe("Striive scraper detail enrichment", () => {
 
 describe("Indeed scraper detail enrichment", () => {
   it("step config has correct structure", async () => {
-    const { config } = await import(
-      "../steps/scraper/platforms/indeed.step.ts"
-    );
+    const { config } = await import("../steps/scraper/platforms/indeed.step.ts");
     expect(config.name).toBe("ScrapeIndeed");
     expect(config.triggers[0].type).toBe("queue");
     expect(config.triggers[0].topic).toBe("platform.scrape");
@@ -55,14 +48,12 @@ describe("Indeed scraper detail enrichment", () => {
   });
 
   it("handler exports a function", async () => {
-    const { handler } = await import(
-      "../steps/scraper/platforms/indeed.step.ts"
-    );
+    const { handler } = await import("../steps/scraper/platforms/indeed.step.ts");
     expect(typeof handler).toBe("function");
   });
 
   it("step file contains detail extraction logic", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/indeed.step.ts"),
       "utf-8",
@@ -79,9 +70,7 @@ describe("Indeed scraper detail enrichment", () => {
 
 describe("LinkedIn scraper detail enrichment", () => {
   it("step config has correct structure", async () => {
-    const { config } = await import(
-      "../steps/scraper/platforms/linkedin.step.ts"
-    );
+    const { config } = await import("../steps/scraper/platforms/linkedin.step.ts");
     expect(config.name).toBe("ScrapeLinkedIn");
     expect(config.triggers[0].type).toBe("queue");
     expect(config.triggers[0].topic).toBe("platform.scrape");
@@ -89,14 +78,12 @@ describe("LinkedIn scraper detail enrichment", () => {
   });
 
   it("handler exports a function", async () => {
-    const { handler } = await import(
-      "../steps/scraper/platforms/linkedin.step.ts"
-    );
+    const { handler } = await import("../steps/scraper/platforms/linkedin.step.ts");
     expect(typeof handler).toBe("function");
   });
 
   it("step file contains detail extraction logic", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/linkedin.step.ts"),
       "utf-8",
@@ -114,13 +101,11 @@ describe("LinkedIn scraper detail enrichment", () => {
 
 describe("Striive enrichment script", () => {
   it("script file exists", () => {
-    expect(
-      existsSync(resolve(__dirname, "../scripts/enrich-striive-details.ts")),
-    ).toBe(true);
+    expect(existsSync(resolve(__dirname, "../scripts/enrich-striive-details.ts"))).toBe(true);
   });
 
   it("script imports sweet-cookie", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../scripts/enrich-striive-details.ts"),
       "utf-8",
@@ -131,7 +116,7 @@ describe("Striive enrichment script", () => {
   });
 
   it("script has fallback to env var", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../scripts/enrich-striive-details.ts"),
       "utf-8",
@@ -140,7 +125,7 @@ describe("Striive enrichment script", () => {
   });
 
   it("script targets sparse jobs only", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../scripts/enrich-striive-details.ts"),
       "utf-8",
@@ -154,10 +139,8 @@ describe("Striive enrichment script", () => {
 
 describe("sweet-cookie dependency", () => {
   it("is listed in package.json", async () => {
-    const fs = await import("fs/promises");
-    const pkg = JSON.parse(
-      await fs.readFile(resolve(__dirname, "../package.json"), "utf-8"),
-    );
+    const fs = await import("node:fs/promises");
+    const pkg = JSON.parse(await fs.readFile(resolve(__dirname, "../package.json"), "utf-8"));
     expect(pkg.dependencies["@steipete/sweet-cookie"]).toBeDefined();
   });
 });
@@ -182,9 +165,7 @@ describe("detail merge logic", () => {
     const merged = {
       ...listing,
       description: detail.description || listing.description,
-      requirements: detail.requirements?.length
-        ? detail.requirements
-        : listing.requirements,
+      requirements: detail.requirements?.length ? detail.requirements : listing.requirements,
       wishes: detail.wishes?.length ? detail.wishes : listing.wishes,
     };
 
@@ -209,9 +190,7 @@ describe("detail merge logic", () => {
     const merged = {
       ...listing,
       description: detail.description || listing.description,
-      requirements: detail.requirements?.length
-        ? detail.requirements
-        : listing.requirements,
+      requirements: detail.requirements?.length ? detail.requirements : listing.requirements,
     };
 
     expect(merged.description).toBe("Listing description");
@@ -222,9 +201,7 @@ describe("detail merge logic", () => {
 // ===== Work Arrangement Mapping =====
 
 describe("work arrangement mapping (Striive pattern)", () => {
-  function mapWorkArrangement(
-    remote?: string,
-  ): "remote" | "hybride" | "op_locatie" | undefined {
+  function mapWorkArrangement(remote?: string): "remote" | "hybride" | "op_locatie" | undefined {
     if (!remote) return undefined;
     switch (remote) {
       case "HYBRID":

@@ -1,8 +1,8 @@
 import { tool } from "ai";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
-import { eq } from "drizzle-orm";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
 
 export const triggerScraper = tool({

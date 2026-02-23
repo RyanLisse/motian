@@ -1,9 +1,9 @@
 "use client";
 
+import { Search, UserCircle2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Search, UserCircle2 } from "lucide-react";
 
 const navItems = [
   { href: "/overzicht", label: "Overzicht" },
@@ -43,7 +43,7 @@ export function TopNav() {
                   "px-3 py-2 rounded-md transition-colors whitespace-nowrap relative",
                   isActive
                     ? "text-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
                 )}
               >
                 {item.label}

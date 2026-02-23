@@ -3,6 +3,7 @@
  * Gebruik: pnpm tsx scripts/seed-indeed-linkedin-configs.ts
  */
 import { config as dotenvConfig } from "dotenv";
+
 dotenvConfig({ path: ".env.local" });
 
 import { db } from "../src/db";
@@ -15,8 +16,7 @@ async function seed() {
     .insert(scraperConfigs)
     .values({
       platform: "indeed",
-      baseUrl:
-        "https://nl.indeed.com/jobs?q=ICT+freelance&l=Nederland",
+      baseUrl: "https://nl.indeed.com/jobs?q=ICT+freelance&l=Nederland",
       isActive: true,
       parameters: {
         maxPages: 5,
@@ -27,8 +27,7 @@ async function seed() {
     .onConflictDoUpdate({
       target: [scraperConfigs.platform],
       set: {
-        baseUrl:
-          "https://nl.indeed.com/jobs?q=ICT+freelance&l=Nederland",
+        baseUrl: "https://nl.indeed.com/jobs?q=ICT+freelance&l=Nederland",
         isActive: true,
         parameters: {
           maxPages: 5,

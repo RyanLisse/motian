@@ -1,7 +1,7 @@
-import { scrapeOpdrachtoverheid, scrapeFlextender, scrapeStriive } from "./scrapers/index";
+import { enrichJobsBatch } from "./ai-enrichment";
 import { normalizeAndSaveJobs } from "./normalize";
 import { recordScrapeResult } from "./record-scrape-result";
-import { enrichJobsBatch } from "./ai-enrichment";
+import { scrapeFlextender, scrapeOpdrachtoverheid, scrapeStriive } from "./scrapers/index";
 
 export async function runScrapePipeline(
   platform: string,
@@ -42,12 +42,7 @@ export async function runScrapePipeline(
 
   const result = await normalizeAndSaveJobs(platform, listings);
   const durationMs = Date.now() - startTime;
-  const status =
-    result.errors.length === 0
-      ? "success"
-      : result.jobsNew > 0
-        ? "partial"
-        : "failed";
+  const status = result.errors.length === 0 ? "success" : result.jobsNew > 0 ? "partial" : "failed";
 
   try {
     await recordScrapeResult({

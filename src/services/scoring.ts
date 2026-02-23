@@ -1,5 +1,5 @@
-import type { Job } from "./jobs";
 import type { Candidate } from "./candidates";
+import type { Job } from "./jobs";
 
 // ========== Types ==========
 
@@ -29,21 +29,18 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
 
   const overlap = candidateSkills.filter((s) =>
     jobKeywords.some(
-      (k) =>
-        k.toLowerCase().includes(s.toLowerCase()) ||
-        s.toLowerCase().includes(k.toLowerCase()),
+      (k) => k.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(k.toLowerCase()),
     ),
   );
 
-  const skillScore = jobKeywords.length > 0
-    ? Math.min(40, Math.round((overlap.length / jobKeywords.length) * 40))
-    : 0;
+  const skillScore =
+    jobKeywords.length > 0
+      ? Math.min(40, Math.round((overlap.length / jobKeywords.length) * 40))
+      : 0;
   score += skillScore;
 
   if (overlap.length > 0) {
-    reasons.push(
-      `${overlap.length} skills match: ${overlap.slice(0, 3).join(", ")}`,
-    );
+    reasons.push(`${overlap.length} skills match: ${overlap.slice(0, 3).join(", ")}`);
   }
 
   // ── 2. Location match (0-20) ───────────────────────────────────
@@ -98,8 +95,7 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
   return {
     score: Math.round(Math.min(100, score)),
     confidence: Math.round(Math.min(100, score * 1.2)),
-    reasoning:
-      reasons.join("; ") || "Geen specifieke match criteria gevonden",
+    reasoning: reasons.join("; ") || "Geen specifieke match criteria gevonden",
   };
 }
 
@@ -113,9 +109,7 @@ export function extractKeywords(job: Job): string[] {
   const reqs = (job.requirements as Array<{ description?: string }>) || [];
   for (const r of reqs) {
     if (r.description) {
-      keywords.push(
-        ...r.description.split(/\s+/).filter((w) => w.length > 3),
-      );
+      keywords.push(...r.description.split(/\s+/).filter((w) => w.length > 3));
     }
   }
 

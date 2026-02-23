@@ -1,7 +1,7 @@
-import { db } from "../db";
-import { scraperConfigs, scrapeResults } from "../db/schema";
 import { asc, eq, gte, sql } from "drizzle-orm";
-import { encrypt, decrypt } from "../lib/crypto";
+import { db } from "../db";
+import { scrapeResults, scraperConfigs } from "../db/schema";
+import { decrypt, encrypt } from "../lib/crypto";
 
 // ========== Types ==========
 
@@ -33,10 +33,7 @@ export type UpdateConfigData = {
 
 /** Alle scraper configuraties ophalen, gesorteerd op platform */
 export async function getAllConfigs(): Promise<ScraperConfig[]> {
-  return db
-    .select()
-    .from(scraperConfigs)
-    .orderBy(asc(scraperConfigs.platform));
+  return db.select().from(scraperConfigs).orderBy(asc(scraperConfigs.platform));
 }
 
 /** Eén scraper configuratie bijwerken op ID. Geeft de bijgewerkte rij terug, of null als niet gevonden. */
@@ -111,9 +108,7 @@ export async function getHealth(): Promise<HealthReport> {
     };
   });
 
-  const overall: HealthReport["overall"] = health.some(
-    (h) => h.status === "kritiek",
-  )
+  const overall: HealthReport["overall"] = health.some((h) => h.status === "kritiek")
     ? "kritiek"
     : health.some((h) => h.status === "waarschuwing")
       ? "waarschuwing"

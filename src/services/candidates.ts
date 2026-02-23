@@ -1,6 +1,6 @@
+import { and, desc, eq, ilike, inArray, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { candidates } from "../db/schema";
-import { and, desc, eq, ilike, inArray, isNull } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -36,9 +36,7 @@ export async function listCandidates(limit?: number): Promise<Candidate[]> {
 }
 
 /** Enkele kandidaat ophalen op ID, of null als niet gevonden. */
-export async function getCandidateById(
-  id: string,
-): Promise<Candidate | null> {
+export async function getCandidateById(id: string): Promise<Candidate | null> {
   const rows = await db
     .select()
     .from(candidates)
@@ -49,9 +47,7 @@ export async function getCandidateById(
 }
 
 /** Kandidaten zoeken op naam en/of locatie (ilike). Soft-deleted rijen worden uitgesloten. */
-export async function searchCandidates(
-  opts: SearchCandidatesOptions = {},
-): Promise<Candidate[]> {
+export async function searchCandidates(opts: SearchCandidatesOptions = {}): Promise<Candidate[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
 
   const conditions = [isNull(candidates.deletedAt)];
@@ -73,9 +69,7 @@ export async function searchCandidates(
 }
 
 /** Nieuwe kandidaat aanmaken en teruggeven. */
-export async function createCandidate(
-  data: CreateCandidateData,
-): Promise<Candidate> {
+export async function createCandidate(data: CreateCandidateData): Promise<Candidate> {
   const rows = await db
     .insert(candidates)
     .values({
@@ -109,9 +103,7 @@ export async function updateCandidate(
 }
 
 /** Alle actieve (niet-verwijderde) kandidaten ophalen. Hogere limiet voor batch matching. */
-export async function listActiveCandidates(
-  limit?: number,
-): Promise<Candidate[]> {
+export async function listActiveCandidates(limit?: number): Promise<Candidate[]> {
   const safeLimit = Math.min(limit ?? 200, 500);
 
   return db
@@ -123,9 +115,7 @@ export async function listActiveCandidates(
 }
 
 /** Meerdere kandidaten ophalen op ID. Soft-deleted rijen worden uitgesloten. */
-export async function getCandidatesByIds(
-  ids: string[],
-): Promise<Candidate[]> {
+export async function getCandidatesByIds(ids: string[]): Promise<Candidate[]> {
   if (ids.length === 0) return [];
 
   return db

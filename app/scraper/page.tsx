@@ -1,5 +1,3 @@
-import { db } from "@/src/db";
-import { scraperConfigs, scrapeResults } from "@/src/db/schema";
 import { desc } from "drizzle-orm";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -12,6 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { db } from "@/src/db";
+import { scrapeResults, scraperConfigs } from "@/src/db/schema";
 import { ScraperActions } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -19,16 +19,15 @@ export const dynamic = "force-dynamic";
 export default async function ScraperPage() {
   const [configs, results] = await Promise.all([
     db.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
-    db
-      .select()
-      .from(scrapeResults)
-      .orderBy(desc(scrapeResults.runAt))
-      .limit(20),
+    db.select().from(scrapeResults).orderBy(desc(scrapeResults.runAt)).limit(20),
   ]);
 
   return (
     <div className="p-6 md:p-8 max-w-6xl">
-      <PageHeader title="Scraper Dashboard" description="Beheer scraper configuraties en bekijk resultaten">
+      <PageHeader
+        title="Scraper Dashboard"
+        description="Beheer scraper configuraties en bekijk resultaten"
+      >
         <ScraperActions />
       </PageHeader>
 
@@ -38,9 +37,7 @@ export default async function ScraperPage() {
           <Card key={config.id} className="bg-card border-border">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base capitalize">
-                  {config.platform}
-                </CardTitle>
+                <CardTitle className="text-base capitalize">{config.platform}</CardTitle>
                 <StatusBadge
                   status={
                     !config.isActive
@@ -87,9 +84,7 @@ export default async function ScraperPage() {
                 )}
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-border">
-                <span className="text-xs text-muted-foreground">
-                  Cron: {config.cronExpression}
-                </span>
+                <span className="text-xs text-muted-foreground">Cron: {config.cronExpression}</span>
                 <span
                   className={`text-xs font-medium ${
                     config.isActive ? "text-emerald-400" : "text-muted-foreground"
@@ -110,9 +105,7 @@ export default async function ScraperPage() {
         </CardHeader>
         <CardContent>
           {results.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Nog geen resultaten
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-8">Nog geen resultaten</p>
           ) : (
             <Table>
               <TableHeader>
@@ -129,9 +122,7 @@ export default async function ScraperPage() {
               <TableBody>
                 {results.map((result) => (
                   <TableRow key={result.id} className="border-border">
-                    <TableCell className="capitalize font-medium">
-                      {result.platform}
-                    </TableCell>
+                    <TableCell className="capitalize font-medium">{result.platform}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {result.runAt
                         ? new Date(result.runAt).toLocaleString("nl-NL", {
@@ -145,19 +136,13 @@ export default async function ScraperPage() {
                     <TableCell>
                       <StatusBadge status={result.status} />
                     </TableCell>
-                    <TableCell className="text-right">
-                      {result.jobsFound}
-                    </TableCell>
-                    <TableCell className="text-right text-emerald-400">
-                      {result.jobsNew}
-                    </TableCell>
+                    <TableCell className="text-right">{result.jobsFound}</TableCell>
+                    <TableCell className="text-right text-emerald-400">{result.jobsNew}</TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {result.duplicates}
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
-                      {result.durationMs
-                        ? `${(result.durationMs / 1000).toFixed(1)}s`
-                        : "-"}
+                      {result.durationMs ? `${(result.durationMs / 1000).toFixed(1)}s` : "-"}
                     </TableCell>
                   </TableRow>
                 ))}

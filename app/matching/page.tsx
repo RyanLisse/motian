@@ -1,18 +1,18 @@
-import { db } from "@/src/db";
-import { jobMatches, jobs, candidates } from "@/src/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
-import Link from "next/link";
 import {
-  Sparkles,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  BarChart3,
   ArrowRight,
-  User,
+  BarChart3,
   Briefcase,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  User,
+  XCircle,
 } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { db } from "@/src/db";
+import { candidates, jobMatches, jobs } from "@/src/db/schema";
 import { MatchActions } from "./match-actions";
 
 export const revalidate = 60;
@@ -45,13 +45,11 @@ export default async function MatchingPage({ searchParams }: Props) {
   const offset = (page - 1) * PER_PAGE;
 
   // Build where clause for status filter
-  const statusCondition = statusFilter
-    ? eq(jobMatches.status, statusFilter)
-    : undefined;
+  const statusCondition = statusFilter ? eq(jobMatches.status, statusFilter) : undefined;
 
   // Fetch matches + KPIs in parallel
-  const [matchRows, totalResult, pendingResult, approvedResult, rejectedResult] =
-    await Promise.all([
+  const [matchRows, totalResult, pendingResult, approvedResult, rejectedResult] = await Promise.all(
+    [
       db
         .select({
           match: jobMatches,
@@ -69,10 +67,7 @@ export default async function MatchingPage({ searchParams }: Props) {
         .orderBy(desc(jobMatches.matchScore))
         .limit(PER_PAGE)
         .offset(offset),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(jobMatches)
-        .where(statusCondition),
+      db.select({ count: sql<number>`count(*)::int` }).from(jobMatches).where(statusCondition),
       db
         .select({ count: sql<number>`count(*)::int` })
         .from(jobMatches)
@@ -85,7 +80,8 @@ export default async function MatchingPage({ searchParams }: Props) {
         .select({ count: sql<number>`count(*)::int` })
         .from(jobMatches)
         .where(eq(jobMatches.status, "rejected")),
-    ]);
+    ],
+  );
 
   const totalCount = totalResult[0]?.count ?? 0;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
@@ -126,9 +122,7 @@ export default async function MatchingPage({ searchParams }: Props) {
               <CheckCircle2 className="h-4 w-4" />
               <span className="text-xs text-[#6b6b6b]">Goedgekeurd</span>
             </div>
-            <p className="text-2xl font-bold text-[#10a37f]">
-              {approvedCount}
-            </p>
+            <p className="text-2xl font-bold text-[#10a37f]">{approvedCount}</p>
           </div>
           <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
             <div className="flex items-center gap-2 text-red-500/60 mb-1">
@@ -163,9 +157,7 @@ export default async function MatchingPage({ searchParams }: Props) {
 
         {/* Results count */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[#8e8e8e]">
-            {totalCount} matches gevonden
-          </p>
+          <p className="text-sm text-[#8e8e8e]">{totalCount} matches gevonden</p>
           {totalPages > 1 && (
             <p className="text-sm text-[#6b6b6b]">
               Pagina {page} van {totalPages}
@@ -188,9 +180,7 @@ export default async function MatchingPage({ searchParams }: Props) {
           <div className="space-y-3">
             {matchRows.map((row) => {
               const score = Math.round(row.match.matchScore);
-              const confidence = row.match.confidence
-                ? Math.round(row.match.confidence)
-                : null;
+              const confidence = row.match.confidence ? Math.round(row.match.confidence) : null;
 
               return (
                 <div
@@ -215,14 +205,10 @@ export default async function MatchingPage({ searchParams }: Props) {
                           {row.candidate.name}
                         </Link>
                       ) : (
-                        <span className="text-sm text-[#6b6b6b]">
-                          Kandidaat verwijderd
-                        </span>
+                        <span className="text-sm text-[#6b6b6b]">Kandidaat verwijderd</span>
                       )}
                       {row.candidate?.role && (
-                        <p className="text-xs text-[#8e8e8e]">
-                          {row.candidate.role}
-                        </p>
+                        <p className="text-xs text-[#8e8e8e]">{row.candidate.role}</p>
                       )}
                     </div>
 
@@ -245,14 +231,10 @@ export default async function MatchingPage({ searchParams }: Props) {
                           {row.job.title}
                         </Link>
                       ) : (
-                        <span className="text-sm text-[#6b6b6b]">
-                          Opdracht verwijderd
-                        </span>
+                        <span className="text-sm text-[#6b6b6b]">Opdracht verwijderd</span>
                       )}
                       {row.job?.company && (
-                        <p className="text-xs text-[#8e8e8e]">
-                          {row.job.company}
-                        </p>
+                        <p className="text-xs text-[#8e8e8e]">{row.job.company}</p>
                       )}
                     </div>
                   </div>
@@ -289,12 +271,8 @@ export default async function MatchingPage({ searchParams }: Props) {
                     </div>
                     {confidence !== null && (
                       <div className="text-right shrink-0">
-                        <span className="text-xs text-[#6b6b6b]">
-                          Betrouwbaarheid
-                        </span>
-                        <p className="text-sm font-medium text-[#8e8e8e]">
-                          {confidence}%
-                        </p>
+                        <span className="text-xs text-[#6b6b6b]">Betrouwbaarheid</span>
+                        <p className="text-sm font-medium text-[#8e8e8e]">{confidence}%</p>
                       </div>
                     )}
                   </div>
@@ -316,16 +294,14 @@ export default async function MatchingPage({ searchParams }: Props) {
                       {statusLabels[row.match.status] ?? row.match.status}
                     </Badge>
 
-                    {row.match.status === "pending" && (
-                      <MatchActions matchId={row.match.id} />
-                    )}
+                    {row.match.status === "pending" && <MatchActions matchId={row.match.id} />}
 
                     {row.match.reviewedAt && (
                       <span className="text-xs text-[#6b6b6b]">
-                        {new Date(row.match.reviewedAt).toLocaleDateString(
-                          "nl-NL",
-                          { day: "numeric", month: "short" }
-                        )}
+                        {new Date(row.match.reviewedAt).toLocaleDateString("nl-NL", {
+                          day: "numeric",
+                          month: "short",
+                        })}
                       </span>
                     )}
                   </div>

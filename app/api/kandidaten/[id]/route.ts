@@ -1,10 +1,6 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
-import {
-  getCandidateById,
-  updateCandidate,
-  deleteCandidate,
-} from "@/src/services/candidates";
+import { deleteCandidate, getCandidateById, updateCandidate } from "@/src/services/candidates";
 
 export const dynamic = "force-dynamic";
 
@@ -17,18 +13,12 @@ const updateCandidateSchema = z.object({
   source: z.string().optional(),
 });
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const candidate = await getCandidateById(id);
     if (!candidate) {
-      return Response.json(
-        { error: "Kandidaat niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: candidate });
   } catch (error) {
@@ -37,10 +27,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await request.json();
@@ -53,10 +40,7 @@ export async function PATCH(
     }
     const candidate = await updateCandidate(id, parsed.data);
     if (!candidate) {
-      return Response.json(
-        { error: "Kandidaat niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: candidate });
   } catch (error) {
@@ -66,17 +50,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const deleted = await deleteCandidate(id);
     if (!deleted) {
-      return Response.json(
-        { error: "Kandidaat niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: { id, deleted: true } });
   } catch (error) {

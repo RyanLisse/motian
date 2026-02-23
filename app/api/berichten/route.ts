@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { listMessages, createMessage } from "@/src/services/messages";
+import { createMessage, listMessages } from "@/src/services/messages";
 
 export const dynamic = "force-dynamic";
 
