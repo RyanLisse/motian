@@ -4,15 +4,13 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
+import { PLATFORMS } from "@/src/lib/helpers";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
 
 export const triggerScraper = tool({
-  description:
-    "Start een scraper voor een specifiek platform. Beschikbare platforms: flextender, striive, opdrachtoverheid. Dit kan even duren (30s-2min).",
+  description: `Start een scraper voor een specifiek platform. Beschikbare platforms: ${PLATFORMS.join(", ")}. Dit kan even duren (30s-2min).`,
   inputSchema: z.object({
-    platform: z
-      .enum(["flextender", "striive", "opdrachtoverheid"])
-      .describe("Het platform om te scrapen"),
+    platform: z.enum(PLATFORMS).describe("Het platform om te scrapen"),
   }),
   execute: async ({ platform }) => {
     // Look up the config to get the base URL

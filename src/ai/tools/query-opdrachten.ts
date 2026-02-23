@@ -1,13 +1,13 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { PLATFORMS } from "@/src/lib/helpers";
 import { hybridSearch, listJobs } from "@/src/services/jobs";
 
 const VALID_CONTRACT_TYPES = ["freelance", "interim", "vast", "opdracht"];
-const VALID_PLATFORMS = ["flextender", "striive", "opdrachtoverheid"];
 
 /** Normalize model inputs: strip "alle"/"all", zero rates, invalid values. */
 function normalizeParams(params: Record<string, unknown>) {
-  const platform = VALID_PLATFORMS.includes(params.platform as string)
+  const platform = PLATFORMS.includes(params.platform as string)
     ? (params.platform as string)
     : undefined;
   const contractType = VALID_CONTRACT_TYPES.includes(params.contractType as string)
@@ -37,9 +37,7 @@ export const queryOpdrachten = tool({
     platform: z
       .string()
       .optional()
-      .describe(
-        "Platform filter: flextender, striive, opdrachtoverheid. Laat leeg voor alle platforms.",
-      ),
+      .describe(`Platform filter: ${PLATFORMS.join(", ")}. Laat leeg voor alle platforms.`),
     province: z
       .string()
       .optional()

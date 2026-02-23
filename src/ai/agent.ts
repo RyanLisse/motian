@@ -1,4 +1,5 @@
 import { openai } from "@ai-sdk/openai";
+import { PLATFORMS } from "@/src/lib/helpers";
 import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
 
@@ -93,7 +94,7 @@ Geef beknopte maar informatieve antwoorden. Gebruik nummers en tabellen waar nut
 
 Vandaag is ${now}.
 
-Beschikbare platforms: flextender, striive, opdrachtoverheid.
+Beschikbare platforms: ${PLATFORMS.join(", ")}.
 
 Je kunt helpen met:
 - Opdrachten zoeken, filteren en bekijken
