@@ -4,6 +4,7 @@ export default defineConfig({
   project: "proj_nqihauooanbnqnbpoybp",
   dirs: ["./trigger"],
   runtime: "node-22",
+  maxDuration: 600, // 10 min global default (scrape pipeline needs ~5 min)
   logLevel: "info",
   enableConsoleLogging: true,
   retries: {
