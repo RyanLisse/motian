@@ -242,7 +242,7 @@ export async function enrichCandidateFromCV(
   // Only overwrite null fields — never clobber manually-entered data
   if (!existing.role && parsed.role) updates.role = parsed.role;
   if (!existing.location && parsed.location) updates.location = parsed.location;
-  if (!existing.skills || existing.skills.length === 0) {
+  if (!existing.skills || !Array.isArray(existing.skills) || existing.skills.length === 0) {
     updates.skills = [
       ...parsed.skills.hard.map((s) => s.name),
       ...parsed.skills.soft.map((s) => s.name),
