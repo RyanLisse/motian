@@ -180,7 +180,7 @@ const API_DETAIL = "${STRIIVE_API_DETAIL}";
 ${MAPPING_FUNCTIONS_AS_STRING}
 
 async function run() {
-  const { chromium } = require("playwright");
+  const { chromium } = require("playwright-core");
   const username = process.env.STRIIVE_USERNAME;
   const password = process.env.STRIIVE_PASSWORD;
 
@@ -332,8 +332,8 @@ async function scrapeViaModal(
       .fromRegistry("node:22-slim")
       .dockerfileCommands([
         "RUN apt-get update && apt-get install -y wget gnupg ca-certificates",
-        "RUN npm cache clean --force && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --no-package-lock playwright",
-        "RUN npx playwright install --with-deps chromium",
+        "RUN npm install --no-package-lock playwright-core",
+        "RUN npx --yes playwright install --with-deps chromium",
       ]);
 
     const sandbox = await modal.sandboxes.create(app, image, {
