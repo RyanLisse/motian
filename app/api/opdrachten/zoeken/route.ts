@@ -3,18 +3,16 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
+import { parsePagination } from "@/src/lib/pagination";
 
 export const dynamic = "force-dynamic";
-
-const PER_PAGE = 10;
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   const q = params.get("q")?.trim() ?? "";
   const platform = params.get("platform") ?? "";
   const provincie = params.get("provincie") ?? "";
-  const page = Math.max(1, parseInt(params.get("pagina") ?? "1", 10));
-  const offset = (page - 1) * PER_PAGE;
+  const { page, limit, offset } = parsePagination(params, { limit: 10 });
 
   const conditions = [isNull(jobs.deletedAt)];
 
@@ -28,7 +26,7 @@ export async function GET(req: NextRequest) {
         ilike(jobs.description, pattern),
         ilike(jobs.location, pattern),
         ilike(jobs.platform, pattern),
-      )!,
+      ),
     );
   }
 
@@ -56,7 +54,7 @@ export async function GET(req: NextRequest) {
       .from(jobs)
       .where(whereClause)
       .orderBy(desc(jobs.scrapedAt))
-      .limit(PER_PAGE)
+      .limit(limit)
       .offset(offset),
     db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(whereClause),
   ]);
@@ -67,6 +65,7 @@ export async function GET(req: NextRequest) {
     jobs: rows,
     total,
     page,
-    totalPages: Math.ceil(total / PER_PAGE),
+    perPage: limit,
+    totalPages: Math.ceil(total / limit),
   });
 }

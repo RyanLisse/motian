@@ -16,6 +16,15 @@ config({ path: ".env.local" });
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../src/db";
 import { jobs } from "../src/db/schema";
+import { stripHtml } from "../src/lib/html";
+
+interface FlextenderJobDetail {
+  description?: string;
+  requirements?: Array<{ description: string; isKnockout: boolean }>;
+  wishes?: Array<{ description: string }>;
+  competences?: string[];
+  conditions?: string[];
+}
 
 const DETAIL_BASE = "https://www.flextender.nl/opdracht/?aanvraagnr=";
 const CONCURRENCY = 5;
@@ -82,7 +91,7 @@ async function main() {
 
 // ── Detail-pagina ophalen en parsen ──
 
-async function fetchAndParse(aanvraagnr: string): Promise<Record<string, any>> {
+async function fetchAndParse(aanvraagnr: string): Promise<FlextenderJobDetail> {
   const url = `${DETAIL_BASE}${aanvraagnr}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -91,8 +100,8 @@ async function fetchAndParse(aanvraagnr: string): Promise<Record<string, any>> {
   return parseDetailHtml(html);
 }
 
-function parseDetailHtml(html: string): Record<string, any> {
-  const result: Record<string, any> = {};
+function parseDetailHtml(html: string): FlextenderJobDetail {
+  const result: FlextenderJobDetail = {};
 
   const descMatch = html.match(
     /class="css-formattedjobdescription">([\s\S]*?)(?:<\/div>\s*<div\s+(?:style|class="css-navigation))/,
@@ -207,21 +216,6 @@ function extractSections(html: string): Record<string, string> {
     }
   }
   return sections;
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(?:p|li|div)>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
 }
 
 function decodeEntities(s: string): string {
