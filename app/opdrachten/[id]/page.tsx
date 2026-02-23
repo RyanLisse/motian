@@ -165,16 +165,6 @@ export default async function OpdrachtDetailPage({ params }: Props) {
     const blocks: string[] = [];
     let i = 0;
 
-    // Check if a line looks like a bullet (starts with space-indented text, dash, dot-prefix, or letter-o sub-bullet)
-    const _isBullet = (l: string) =>
-      /^[-\u2022]\s/.test(l.trim()) ||
-      /^o\s+\S/.test(l.trim()) ||
-      (/^\s{1,4}\S/.test(l) &&
-        !l.trim().startsWith("(") &&
-        l.trim().length > 10 &&
-        l.trim().length < 200 &&
-        !/^\d+\.\s/.test(l.trim()));
-
     // Check if a line is a heading
     const isHeadingLine = (line: string, idx: number): boolean => {
       if (line.length > 100 || line.endsWith(",") || line.endsWith(";") || /^\d+\.\s/.test(line))
@@ -387,19 +377,6 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 })}
               </span>
             )}
-          </div>
-
-          {/* Mobile action buttons (visible below xl) */}
-          <div className="flex gap-2 xl:hidden">
-            <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
-              Reageren
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1 border-primary text-primary hover:bg-primary/10 font-semibold h-10"
-            >
-              Interesse
-            </Button>
           </div>
 
           {/* AI Summary */}
