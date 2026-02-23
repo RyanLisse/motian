@@ -150,7 +150,108 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       .trim();
   };
 
-  const cleanDescription = job.description ? sanitizeHtml(job.description) : null;
+  // Convert plain text with section patterns into structured HTML
+  const isHtml = (s: string) => /<\/?[a-z][\s\S]*>/i.test(s);
+
+  // Strip trailing metadata blob (OpdrachtgeverXxx...Referentiecode...)
+  const stripTrailingMeta = (text: string): string =>
+    text.replace(/Opdrachtgever[A-Z][^\n]*?(Referentiecode(?:code)?\s*\w+)\s*$/, '').trim();
+
+  const formatPlainText = (text: string): string => {
+    const cleaned = stripTrailingMeta(text);
+    const lines = cleaned.split('\n');
+    const blocks: string[] = [];
+    let i = 0;
+
+    // Check if a line looks like a bullet (starts with space-indented text, dash, dot-prefix, or letter-o sub-bullet)
+    const isBullet = (l: string) => /^[-•]\s/.test(l.trim()) || /^o\s+\S/.test(l.trim()) || (/^\s{1,4}\S/.test(l) && !l.trim().startsWith('(') && l.trim().length > 10 && l.trim().length < 200 && !/^\d+\.\s/.test(l.trim()));
+
+    // Check if a line is a heading
+    const isHeadingLine = (line: string, idx: number): boolean => {
+      if (line.length > 100 || line.endsWith(',') || line.endsWith(';') || /^\d+\.\s/.test(line)) return false;
+      // Known Dutch heading patterns
+      if (/^(uitvoeringsvoorwaarde|opdracht(gever|omschrijving)?|vereisten|gunningscriteria|competenties|overige?\s*(informatie)?|beoordeling|functieschaal|fee flextender|cv-eisen|werkdagen|taken|profiel|algemeen|probleem|benodigd aantal|stap \d|geen zzp|overig)/i.test(line)) return true;
+      // Line ending with colon is a heading (e.g. "Taken:", "Profiel:")
+      if (/^[A-Z].*:$/.test(line) && line.length < 80) return true;
+      // Short line, no period, starts with capital — check next line is longer
+      if (line.length < 70 && !line.endsWith('.') && /^[A-Z]/.test(line)) {
+        let j = idx + 1;
+        while (j < lines.length && !lines[j].trim()) j++;
+        const next = lines[j]?.trim() ?? '';
+        return next.length > line.length || j >= lines.length;
+      }
+      return false;
+    };
+
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      if (!line) { i++; continue; }
+
+      // Collect consecutive numbered list items (1. 2. 3. ...)
+      if (/^\d+\.\s/.test(line)) {
+        const items: string[] = [];
+        while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+          items.push(lines[i].trim().replace(/^\d+\.\s*/, ''));
+          i++;
+        }
+        blocks.push(`<ol class="list-decimal pl-5 mb-3 space-y-1">${items.map(it => `<li>${it}</li>`).join('')}</ol>`);
+        continue;
+      }
+
+      // Collect consecutive bullet items (- ..., • ..., or space-indented lines, or o sub-bullets)
+      if (/^[-•]\s/.test(line) || /^o\s+\S/.test(line)) {
+        const items: string[] = [];
+        while (i < lines.length && (/^[-•]\s/.test(lines[i].trim()) || /^o\s+\S/.test(lines[i].trim()))) {
+          items.push(lines[i].trim().replace(/^[-•o]\s*/, ''));
+          i++;
+        }
+        blocks.push(`<ul class="list-disc pl-5 mb-3 space-y-1">${items.map(it => `<li>${it}</li>`).join('')}</ul>`);
+        continue;
+      }
+
+      // Space-indented lines (common in Opdrachtoverheid for task/profile lists)
+      if (/^\s{1,4}\S/.test(lines[i]) && lines[i].trim().length > 10) {
+        const items: string[] = [];
+        while (i < lines.length && /^\s{1,4}\S/.test(lines[i]) && lines[i].trim().length > 10 && !isHeadingLine(lines[i].trim(), i)) {
+          items.push(lines[i].trim());
+          i++;
+        }
+        if (items.length > 0) {
+          blocks.push(`<ul class="list-disc pl-5 mb-3 space-y-1">${items.map(it => `<li>${it}</li>`).join('')}</ul>`);
+          continue;
+        }
+      }
+
+      // Section heading detection
+      if (isHeadingLine(line, i)) {
+        blocks.push(`<h3 class="text-sm font-semibold text-[#ececec] mt-5 mb-2">${line}</h3>`);
+        i++;
+        continue;
+      }
+
+      // Regular paragraph — collect consecutive non-empty, non-special lines
+      const pLines: string[] = [line];
+      i++;
+      while (i < lines.length && lines[i].trim()
+        && !/^\d+\.\s/.test(lines[i].trim())
+        && !/^[-•]\s/.test(lines[i].trim())
+        && !/^o\s+\S/.test(lines[i].trim())
+        && !/^\s{1,4}\S/.test(lines[i])
+        && !isHeadingLine(lines[i].trim(), i)) {
+        pLines.push(lines[i].trim());
+        i++;
+      }
+      blocks.push(`<p class="mb-3">${pLines.join(' ')}</p>`);
+    }
+
+    return blocks.join('');
+  };
+
+  const cleanDescription = job.description
+    ? isHtml(job.description)
+      ? sanitizeHtml(job.description)
+      : formatPlainText(job.description)
+    : null;
 
   const aiPreview = extractSummaryText(job.descriptionSummary)
     ?? (cleanDescription
