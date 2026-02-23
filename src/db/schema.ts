@@ -192,6 +192,12 @@ export const candidates = pgTable(
     hourlyRate: integer("hourly_rate"),
     availability: text("availability"), // "direct", "1_maand", "3_maanden"
     embedding: vector("embedding", { dimensions: 512 }),
+    resumeRaw: text("resume_raw"),
+    resumeParsedAt: timestamp("resume_parsed_at", { withTimezone: true }),
+    skillsStructured: jsonb("skills_structured"),
+    education: jsonb("education"),
+    certifications: jsonb("certifications"),
+    languageSkills: jsonb("language_skills"),
     consentGranted: boolean("consent_granted").default(false),
     dataRetentionUntil: timestamp("data_retention_until"),
     createdAt: timestamp("created_at").defaultNow(),
@@ -225,6 +231,12 @@ export const jobMatches = pgTable(
     status: text("status").notNull().default("pending"), // "pending" | "approved" | "rejected"
     reviewedBy: text("reviewed_by"),
     reviewedAt: timestamp("reviewed_at"),
+    criteriaBreakdown: jsonb("criteria_breakdown"),
+    riskProfile: jsonb("risk_profile"),
+    enrichmentSuggestions: jsonb("enrichment_suggestions"),
+    recommendation: text("recommendation"),
+    recommendationConfidence: real("recommendation_confidence"),
+    assessmentModel: text("assessment_model"),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => ({
