@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { messages } from "../db/schema";
 
@@ -16,11 +16,11 @@ export type ListMessagesOpts = {
 };
 
 function buildMessageWhere(opts: ListMessagesOpts) {
-  const conditions = [];
+  const conditions = [isNull(messages.deletedAt)];
   if (opts.applicationId) conditions.push(eq(messages.applicationId, opts.applicationId));
   if (opts.direction) conditions.push(eq(messages.direction, opts.direction));
   if (opts.channel) conditions.push(eq(messages.channel, opts.channel));
-  return conditions.length > 0 ? and(...conditions) : undefined;
+  return and(...conditions);
 }
 
 export async function listMessages(opts: ListMessagesOpts = {}): Promise<Message[]> {
@@ -48,12 +48,19 @@ export async function countMessages(
 }
 
 export async function getMessageById(id: string): Promise<Message | null> {
-  const rows = await db.select().from(messages).where(eq(messages.id, id)).limit(1);
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(and(eq(messages.id, id), isNull(messages.deletedAt)))
+    .limit(1);
   return rows[0] ?? null;
 }
 
 export async function deleteMessage(id: string): Promise<boolean> {
-  const result = await db.delete(messages).where(eq(messages.id, id));
+  const result = await db
+    .update(messages)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(messages.id, id), isNull(messages.deletedAt)));
   return (result.rowCount ?? 0) > 0;
 }
 

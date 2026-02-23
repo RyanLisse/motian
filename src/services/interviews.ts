@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { interviews } from "../db/schema";
 
@@ -15,10 +15,10 @@ export type ListInterviewsOpts = {
 };
 
 function buildInterviewWhere(opts: ListInterviewsOpts) {
-  const conditions = [];
+  const conditions = [isNull(interviews.deletedAt)];
   if (opts.applicationId) conditions.push(eq(interviews.applicationId, opts.applicationId));
   if (opts.status) conditions.push(eq(interviews.status, opts.status));
-  return conditions.length > 0 ? and(...conditions) : undefined;
+  return and(...conditions);
 }
 
 export async function listInterviews(opts: ListInterviewsOpts = {}): Promise<Interview[]> {
@@ -46,7 +46,11 @@ export async function countInterviews(
 }
 
 export async function getInterviewById(id: string): Promise<Interview | null> {
-  const rows = await db.select().from(interviews).where(eq(interviews.id, id)).limit(1);
+  const rows = await db
+    .select()
+    .from(interviews)
+    .where(and(eq(interviews.id, id), isNull(interviews.deletedAt)))
+    .limit(1);
   return rows[0] ?? null;
 }
 
@@ -91,12 +95,19 @@ export async function updateInterview(
     if (data.rating < 1 || data.rating > 5) return { interview: null, emptyUpdate: false };
     updates.rating = data.rating;
   }
-  const rows = await db.update(interviews).set(updates).where(eq(interviews.id, id)).returning();
+  const rows = await db
+    .update(interviews)
+    .set(updates)
+    .where(and(eq(interviews.id, id), isNull(interviews.deletedAt)))
+    .returning();
   return { interview: rows[0] ?? null, emptyUpdate: false };
 }
 
 export async function deleteInterview(id: string): Promise<boolean> {
-  const result = await db.delete(interviews).where(eq(interviews.id, id));
+  const result = await db
+    .update(interviews)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(interviews.id, id), isNull(interviews.deletedAt)));
   return (result.rowCount ?? 0) > 0;
 }
 
@@ -104,7 +115,13 @@ export async function getUpcomingInterviews(): Promise<Interview[]> {
   return db
     .select()
     .from(interviews)
-    .where(and(eq(interviews.status, "scheduled"), gte(interviews.scheduledAt, new Date())))
+    .where(
+      and(
+        isNull(interviews.deletedAt),
+        eq(interviews.status, "scheduled"),
+        gte(interviews.scheduledAt, new Date()),
+      ),
+    )
     .orderBy(interviews.scheduledAt)
     .limit(20);
 }

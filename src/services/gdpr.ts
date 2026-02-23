@@ -88,10 +88,18 @@ export async function exportCandidateData(
 
   const [interviewRows, messageRows, relatedContacts] = await Promise.all([
     applicationIds.length > 0
-      ? db.select().from(interviews).where(inArray(interviews.applicationId, applicationIds))
+      ? db
+          .select()
+          .from(interviews)
+          .where(
+            and(inArray(interviews.applicationId, applicationIds), isNull(interviews.deletedAt)),
+          )
       : Promise.resolve([]),
     applicationIds.length > 0
-      ? db.select().from(messages).where(inArray(messages.applicationId, applicationIds))
+      ? db
+          .select()
+          .from(messages)
+          .where(and(inArray(messages.applicationId, applicationIds), isNull(messages.deletedAt)))
       : Promise.resolve([]),
     jobIds.length > 0
       ? db

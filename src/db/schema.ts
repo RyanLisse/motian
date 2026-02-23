@@ -282,11 +282,13 @@ export const interviews = pgTable(
     rating: integer("rating"), // 1-5
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   (table) => ({
     applicationIdIdx: index("idx_interviews_application_id").on(table.applicationId),
     scheduledAtIdx: index("idx_interviews_scheduled_at").on(table.scheduledAt),
     statusIdx: index("idx_interviews_status").on(table.status),
+    deletedAtIdx: index("idx_interviews_deleted_at").on(table.deletedAt),
   }),
 );
 
@@ -323,9 +325,11 @@ export const messages = pgTable(
     subject: text("subject"),
     body: text("body").notNull(),
     sentAt: timestamp("sent_at").defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   (table) => ({
     applicationIdIdx: index("idx_messages_application_id").on(table.applicationId),
     directionIdx: index("idx_messages_direction").on(table.direction),
+    deletedAtIdx: index("idx_messages_deleted_at").on(table.deletedAt),
   }),
 );

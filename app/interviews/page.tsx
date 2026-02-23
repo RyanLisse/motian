@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { Calendar, Clock, Code2, Filter, MapPin, Monitor, Phone, Star, Video } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
@@ -66,26 +66,33 @@ export default async function InterviewsPage({ searchParams }: Props) {
         count: sql<number>`count(*)::int`,
       })
       .from(interviews)
+      .where(isNull(interviews.deletedAt))
       .groupBy(interviews.status),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(interviews)
-      .where(and(eq(interviews.status, "scheduled"), gte(interviews.scheduledAt, now))),
+      .where(
+        and(
+          isNull(interviews.deletedAt),
+          eq(interviews.status, "scheduled"),
+          gte(interviews.scheduledAt, now),
+        ),
+      ),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(interviews)
-      .where(gte(interviews.scheduledAt, weekStart)),
+      .where(and(isNull(interviews.deletedAt), gte(interviews.scheduledAt, weekStart))),
   ]);
 
   const countMap: Record<string, number> = {};
   for (const row of statusCounts) countMap[row.status] = row.count;
 
   // Query interviews with joins
-  const conditions = [];
+  const conditions = [isNull(interviews.deletedAt)];
   if (statusFilter && STATUSES.includes(statusFilter)) {
     conditions.push(eq(interviews.status, statusFilter));
   }
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const where = and(...conditions);
 
   const [rows, countRows] = await Promise.all([
     db

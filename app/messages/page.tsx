@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -65,6 +65,7 @@ export default async function MessagesPage({ searchParams }: Props) {
       count: sql<number>`count(*)::int`,
     })
     .from(messages)
+    .where(isNull(messages.deletedAt))
     .groupBy(messages.direction);
 
   let totalMessages = 0;
@@ -75,14 +76,14 @@ export default async function MessagesPage({ searchParams }: Props) {
   }
 
   // Query messages with joins
-  const conditions = [];
+  const conditions = [isNull(messages.deletedAt)];
   if (directionFilter && ["inbound", "outbound"].includes(directionFilter)) {
     conditions.push(eq(messages.direction, directionFilter));
   }
   if (channelFilter && ["email", "phone", "platform"].includes(channelFilter)) {
     conditions.push(eq(messages.channel, channelFilter));
   }
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const where = and(...conditions);
 
   const [rows, countRows] = await Promise.all([
     db
