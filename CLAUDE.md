@@ -51,17 +51,17 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 
 ## Motian Recruitment Platform Quality Rules
 
-- All Motia step files must export `config` and `handler`
+- **Next.js 16** App Router with Server Components (NO Motia framework)
 - Dutch UI strings, English code variables
 - API paths use Dutch naming: `/api/scraper-configuraties`, `/api/gezondheid`
 - Tests use `.test.ts` extension in `/tests/` directory
-- Event steps use `StepConfig` with `triggers[]` + `enqueues[]`
-- API steps use `ApiRouteConfig` with `type: 'api'`, `path`, `method`, `emits[]`
+- Next.js API routes in `app/api/**/route.ts` with Zod validation
 - Drizzle schema lives in `src/db/schema.ts`, connection in `src/db/index.ts`
 - Zod schemas in `src/schemas/`
+- Biome for linting/formatting (NOT eslint/prettier)
 
 ## Build Commands
-- `pnpm dev` - Start Motia dev server
+- `pnpm dev` - Start Next.js dev server (port 3001)
 - `pnpm test` - Run tests
 - `pnpm test:coverage` - Run tests with coverage
 - `pnpm lint` - Biome lint check
