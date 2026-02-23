@@ -3,6 +3,7 @@
 import { Check, Loader2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { AutoMatchResults } from "./auto-match-results";
 
 interface CvDropZoneProps {
   candidateId: string;
@@ -12,16 +13,20 @@ interface CvDropZoneProps {
 export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
   const router = useRouter();
   const [isDragging, setIsDragging] = useState(false);
-  const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "uploading" | "matching" | "success" | "error">(
+    "idle",
+  );
   const [message, setMessage] = useState<string | null>(null);
+  const [matchCandidateId, setMatchCandidateId] = useState<string | null>(null);
 
-  // Auto-dismiss success/error messages
+  // Auto-dismiss success/error messages (but not matching)
   useEffect(() => {
     if (status === "success" || status === "error") {
       const timer = setTimeout(() => {
         setStatus("idle");
         setMessage(null);
-      }, 3000);
+        setMatchCandidateId(null);
+      }, 30000);
       return () => clearTimeout(timer);
     }
   }, [status]);
@@ -47,6 +52,7 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
       setMessage("CV wordt verwerkt...");
 
       try {
+        // Phase 1: Upload & parse
         const formData = new FormData();
         formData.append("cv", file);
         const uploadRes = await fetch("/api/cv-upload", {
@@ -59,16 +65,23 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
         }
         const { parsed, fileUrl } = await uploadRes.json();
 
+        // Phase 2: Save candidate
+        setMessage("Profiel wordt bijgewerkt...");
         const saveRes = await fetch("/api/cv-upload/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ parsed, fileUrl, existingCandidateId: candidateId }),
         });
         if (!saveRes.ok) throw new Error("Opslaan mislukt");
+        const saveData = await saveRes.json();
 
-        setStatus("success");
-        setMessage("CV succesvol opgeslagen!");
         router.refresh();
+
+        // Phase 3: Auto-matching
+        const resolvedCandidateId = saveData.candidateId ?? candidateId;
+        setStatus("matching");
+        setMessage("Vacatures worden gescand...");
+        setMatchCandidateId(resolvedCandidateId);
       } catch (err) {
         setStatus("error");
         setMessage(err instanceof Error ? err.message : "Onbekende fout");
@@ -96,10 +109,11 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
+      if (status !== "idle") return;
       const droppedFile = e.dataTransfer.files[0];
       if (droppedFile) processFile(droppedFile);
     },
-    [processFile],
+    [processFile, status],
   );
 
   return (
@@ -121,8 +135,28 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
         </div>
       )}
 
-      {/* Status toast */}
-      {status !== "idle" && message && (
+      {/* Auto-match results panel (shown after CV upload) */}
+      {status === "matching" && matchCandidateId && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg animate-in fade-in slide-in-from-bottom-4">
+          <div className="rounded-xl border bg-card p-4 shadow-xl">
+            <AutoMatchResults candidateId={matchCandidateId} />
+            <button
+              type="button"
+              onClick={() => {
+                setStatus("idle");
+                setMessage(null);
+                setMatchCandidateId(null);
+              }}
+              className="mt-3 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Sluiten
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Status toast (for uploading/error states only) */}
+      {status !== "idle" && status !== "matching" && message && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4">
           <div
             className={`flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg text-sm font-medium ${

@@ -19,6 +19,8 @@ export const recruitmentTools = {
   maakKandidaatAan: tools.maakKandidaatAan,
   updateKandidaat: tools.updateKandidaat,
   verwijderKandidaat: tools.verwijderKandidaat,
+  voegNotitieToe: tools.voegNotitieToe,
+  autoMatchKandidaat: tools.autoMatchKandidaat,
 
   // Matches
   zoekMatches: tools.zoekMatches,
@@ -99,6 +101,9 @@ Beschikbare platforms: ${PLATFORMS.join(", ")}.
 Je kunt helpen met:
 - Opdrachten zoeken, filteren en bekijken
 - Kandidaten beheren (zoeken, aanmaken, bijwerken, verwijderen)
+- Notities toevoegen aan kandidaatprofielen
+- Kandidaten zoeken op vaardigheden, rol, naam of locatie
+- Automatisch matchen van kandidaten met vacatures (top 3 met gedetailleerde beoordeling)
 - Matches bekijken, goedkeuren of afwijzen
 - Sollicitaties aanmaken en door de pipeline verplaatsen
 - Interviews plannen en bijwerken

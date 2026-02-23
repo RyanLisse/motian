@@ -304,6 +304,18 @@ export async function hybridSearch(
     }));
 }
 
+/** Alle actieve (niet-verwijderde) jobs ophalen. Hogere limiet voor batch matching. */
+export async function listActiveJobs(limit?: number): Promise<Job[]> {
+  const safeLimit = Math.min(limit ?? 200, 500);
+
+  return db
+    .select()
+    .from(jobs)
+    .where(isNull(jobs.deletedAt))
+    .orderBy(desc(jobs.scrapedAt))
+    .limit(safeLimit);
+}
+
 /** Opdracht soft-deleten. Retourneert true als gevonden en verwijderd. */
 export async function deleteJob(id: string): Promise<boolean> {
   const rows = await db
