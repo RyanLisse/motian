@@ -33,9 +33,9 @@ export const triggerScraper = tool({
     const result = await runScrapePipeline(platform, config.baseUrl);
 
     // Revalidate cached pages so UI reflects new data
-    revalidateTag("jobs", "page");
-    revalidateTag("scrape-results", "page");
-    revalidateTag("scrapers", "page");
+    revalidateTag("jobs", "default");
+    revalidateTag("scrape-results", "default");
+    revalidateTag("scrapers", "default");
 
     return {
       platform,

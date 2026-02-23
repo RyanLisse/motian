@@ -9,6 +9,9 @@ import {
   updateInterview,
 } from "@/src/services/interviews";
 
+const VALID_STATUSES = ["scheduled", "completed", "cancelled"] as const;
+const VALID_TYPES = ["phone", "video", "onsite", "technical"] as const;
+
 export const zoekInterviews = tool({
   description:
     "Zoek en filter interviews (sollicitatiegesprekken). Filter op sollicitatie-ID, status, of toon alleen aankomende interviews.",
@@ -18,7 +21,10 @@ export const zoekInterviews = tool({
       .uuid()
       .optional()
       .describe("UUID van de sollicitatie om interviews voor op te halen"),
-    status: z.string().optional().describe("Status filter, bijv. gepland, afgerond, geannuleerd"),
+    status: z
+      .enum(VALID_STATUSES)
+      .optional()
+      .describe("Status filter: scheduled, completed, cancelled"),
     upcomingOnly: z
       .boolean()
       .optional()
@@ -57,8 +63,9 @@ export const planInterview = tool({
     applicationId: z.string().uuid().describe("UUID van de sollicitatie"),
     scheduledAt: z
       .string()
+      .datetime({ offset: true })
       .describe("Geplande datum en tijd in ISO 8601 formaat, bijv. 2026-03-01T14:00:00Z"),
-    type: z.string().describe("Type gesprek, bijv. telefonisch, video, op locatie, technisch"),
+    type: z.enum(VALID_TYPES).describe("Type gesprek: phone, video, onsite, technical"),
     interviewer: z.string().describe("Naam van de interviewer"),
     duration: z.number().optional().describe("Duur van het gesprek in minuten"),
     location: z.string().optional().describe("Locatie of videolink voor het gesprek"),
@@ -80,14 +87,17 @@ export const updateInterviewTool = tool({
   description: "Werk een bestaand interview bij. Pas status, feedback of beoordeling aan.",
   inputSchema: z.object({
     id: z.string().uuid().describe("UUID van het interview"),
-    status: z.string().optional().describe("Nieuwe status, bijv. afgerond, geannuleerd, no-show"),
+    status: z
+      .enum(VALID_STATUSES)
+      .optional()
+      .describe("Nieuwe status: scheduled, completed, cancelled"),
     feedback: z.string().optional().describe("Feedback of notities over het gesprek"),
-    rating: z.number().optional().describe("Beoordeling van de kandidaat (1-5)"),
+    rating: z.number().min(1).max(5).optional().describe("Beoordeling van de kandidaat (1-5)"),
   }),
   execute: async ({ id, status, feedback, rating }) => {
     const result = await updateInterview(id, { status, feedback, rating });
     if (result.emptyUpdate) return { error: "Geen velden opgegeven om bij te werken" };
-    if (!result.interview) return { error: "Interview niet gevonden" };
+    if (!result.interview) return { error: "Interview niet gevonden of ongeldige waarden" };
     return result.interview;
   },
 });

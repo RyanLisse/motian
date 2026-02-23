@@ -62,16 +62,20 @@ export const maakKandidaatAan = tool({
 
 export const updateKandidaat = tool({
   description:
-    "Werk een bestaande kandidaat bij. Geef het ID en de velden die gewijzigd moeten worden.",
-  inputSchema: z.object({
-    id: z.string().uuid().describe("UUID van de kandidaat"),
-    name: z.string().optional().describe("Nieuwe naam van de kandidaat"),
-    email: z.string().email().optional().describe("Nieuw e-mailadres"),
-    role: z.string().optional().describe("Nieuwe functie of rol"),
-    skills: z.array(z.string()).optional().describe("Bijgewerkte lijst van vaardigheden"),
-    location: z.string().optional().describe("Nieuwe locatie of woonplaats"),
-    source: z.string().optional().describe("Bijgewerkte bron"),
-  }),
+    "Werk een bestaande kandidaat bij. Geef het ID en minimaal één veld dat gewijzigd moet worden.",
+  inputSchema: z
+    .object({
+      id: z.string().uuid().describe("UUID van de kandidaat"),
+      name: z.string().optional().describe("Nieuwe naam van de kandidaat"),
+      email: z.string().email().optional().describe("Nieuw e-mailadres"),
+      role: z.string().optional().describe("Nieuwe functie of rol"),
+      skills: z.array(z.string()).optional().describe("Bijgewerkte lijst van vaardigheden"),
+      location: z.string().optional().describe("Nieuwe locatie of woonplaats"),
+      source: z.string().optional().describe("Bijgewerkte bron"),
+    })
+    .refine(({ id: _id, ...rest }) => Object.values(rest).some((v) => v !== undefined), {
+      message: "Minimaal één veld om bij te werken is vereist",
+    }),
   execute: async ({ id, ...data }) => {
     const candidate = await updateCandidate(id, data);
     if (!candidate) return { error: "Kandidaat niet gevonden" };
