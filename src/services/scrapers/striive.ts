@@ -332,6 +332,7 @@ async function scrapeViaModal(
       .fromRegistry("node:22-slim")
       .dockerfileCommands([
         "RUN apt-get update && apt-get install -y wget gnupg ca-certificates",
+        "RUN npm install playwright",
         "RUN npx playwright install --with-deps chromium",
       ]);
 
@@ -364,10 +365,11 @@ async function scrapeViaModal(
     await sandbox.terminate().catch(() => {});
 
     if (exitCode !== 0) {
+      const stderrSnippet = stderr ? stderr.substring(0, 500) : "(no stderr)";
       console.error(`[striive] Modal sandbox exited with code ${exitCode}`);
       if (stdout) console.error(`[striive] stdout: ${stdout.substring(0, 500)}`);
-      if (stderr) console.error(`[striive] stderr: ${stderr.substring(0, 500)}`);
-      return [];
+      if (stderr) console.error(`[striive] stderr: ${stderrSnippet}`);
+      throw new Error(`Modal sandbox exited with code ${exitCode}: ${stderrSnippet}`);
     }
 
     // Extract JSON results from the sentinel marker in stdout
