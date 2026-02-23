@@ -20,8 +20,11 @@ import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
+import type { CriterionResult } from "@/src/schemas/matching";
 import { CandidateLinker } from "./candidate-linker";
 import { MatchActions } from "./match-actions";
+import { MatchDetail } from "./match-detail";
+import { ReportButton } from "./report-button";
 
 export const revalidate = 60;
 
@@ -404,6 +407,29 @@ export default async function MatchingPage({ searchParams }: Props) {
                     </p>
                   )}
 
+                  {row.match.assessmentModel === "marienne-v1" && row.match.criteriaBreakdown ? (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <MatchDetail
+                        criteriaBreakdown={row.match.criteriaBreakdown as CriterionResult[]}
+                        overallScore={row.match.matchScore}
+                        knockoutsPassed={
+                          !((row.match.riskProfile as string[] | null) ?? []).some((r) =>
+                            r.toLowerCase().includes("knock"),
+                          )
+                        }
+                        riskProfile={(row.match.riskProfile as string[] | null) ?? []}
+                        enrichmentSuggestions={
+                          (row.match.enrichmentSuggestions as string[] | null) ?? []
+                        }
+                        recommendation={(row.match.recommendation as string) ?? "conditional"}
+                        recommendationReasoning={row.match.reasoning ?? ""}
+                        recommendationConfidence={
+                          (row.match.recommendationConfidence as number) ?? 0
+                        }
+                      />
+                    </div>
+                  ) : null}
+
                   <div className="flex items-center justify-between pt-2 border-t border-border">
                     <Badge
                       variant="outline"
@@ -412,7 +438,11 @@ export default async function MatchingPage({ searchParams }: Props) {
                       {statusLabels[row.match.status] ?? row.match.status}
                     </Badge>
 
-                    {row.match.status === "pending" && <MatchActions matchId={row.match.id} />}
+                    <div className="flex items-center gap-2">
+                      {row.match.assessmentModel === "marienne-v1" &&
+                        row.match.criteriaBreakdown && <ReportButton matchId={row.match.id} />}
+                      {row.match.status === "pending" && <MatchActions matchId={row.match.id} />}
+                    </div>
 
                     {row.match.reviewedAt && (
                       <span className="text-xs text-muted-foreground">

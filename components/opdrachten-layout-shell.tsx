@@ -14,7 +14,7 @@ export function OpdrachtenLayoutShell({
   const isDetailPage = pathname !== "/opdrachten";
 
   return (
-    <div className="flex h-[calc(100vh-57px)]">
+    <div className="flex h-full min-h-0">
       {/* Sidebar: full-width on mobile when no detail selected, fixed sidebar on desktop */}
       <div
         className={cn(
