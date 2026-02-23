@@ -261,8 +261,8 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* Center: Job detail */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
+      <main className="flex-1 overflow-y-auto pb-[72px] xl:pb-0">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
           {/* Back link (visible on mobile when sidebar is hidden) */}
           <Link
             href="/opdrachten"
@@ -309,7 +309,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 </Badge>
               )}
             </div>
-            <h1 className="text-xl font-bold text-foreground mb-1">{job.title}</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-foreground mb-1">{job.title}</h1>
             {job.company && (
               <p className="text-sm text-muted-foreground">{job.company}</p>
             )}
@@ -319,19 +319,19 @@ export default async function OpdrachtDetailPage({ params }: Props) {
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
             {job.location && (
               <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                 {job.location}
               </span>
             )}
             {job.workArrangement && (
               <span className="flex items-center gap-1.5">
-                <Monitor className="h-4 w-4 text-muted-foreground" />
+                <Monitor className="h-4 w-4 text-muted-foreground shrink-0" />
                 {arrangementLabels[job.workArrangement] ?? job.workArrangement}
               </span>
             )}
             {(job.rateMin || job.rateMax) && (
               <span className="flex items-center gap-1.5">
-                <Euro className="h-4 w-4 text-muted-foreground" />
+                <Euro className="h-4 w-4 text-muted-foreground shrink-0" />
                 {job.rateMin && job.rateMax
                   ? `EUR ${job.rateMin} - ${job.rateMax} per uur`
                   : job.rateMax
@@ -341,7 +341,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             )}
             {job.startDate && (
               <span className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                 {"Start "}
                 {new Date(job.startDate).toLocaleDateString("nl-NL", {
                   day: "numeric",
@@ -350,6 +350,19 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 })}
               </span>
             )}
+          </div>
+
+          {/* Mobile action buttons (visible below xl) */}
+          <div className="flex gap-2 xl:hidden">
+            <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
+              Reageren
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 border-primary text-primary hover:bg-primary/10 font-semibold h-10"
+            >
+              Interesse
+            </Button>
           </div>
 
           {/* AI Summary */}
@@ -363,6 +376,159 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             ) : (
               <p className="text-sm text-muted-foreground italic">Samenvatting wordt gegenereerd...</p>
             )}
+          </div>
+
+          {/* Mobile opdrachtdetails (visible below xl) */}
+          <div className="bg-card border border-border rounded-lg p-4 xl:hidden">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">
+              Opdrachtdetails
+            </h3>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              {job.company && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Building2 className="h-3 w-3 shrink-0" /> Opdrachtgever
+                  </dt>
+                  <dd className="text-foreground font-medium text-xs">{job.company}</dd>
+                </div>
+              )}
+              {(job.rateMin || job.rateMax) && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Euro className="h-3 w-3 shrink-0" /> Uurtarief
+                  </dt>
+                  <dd className="text-foreground text-xs">
+                    {job.rateMin && job.rateMax
+                      ? `EUR ${job.rateMin} - ${job.rateMax}`
+                      : job.rateMax
+                        ? `max EUR ${job.rateMax}`
+                        : `min EUR ${job.rateMin}`}
+                  </dd>
+                </div>
+              )}
+              {job.startDate && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Calendar className="h-3 w-3 shrink-0" /> Startdatum
+                  </dt>
+                  <dd className="text-foreground text-xs">
+                    {new Date(job.startDate).toLocaleDateString("nl-NL", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </dd>
+                </div>
+              )}
+              {job.endDate && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Calendar className="h-3 w-3 shrink-0" /> Einddatum
+                  </dt>
+                  <dd className="text-foreground text-xs">
+                    {new Date(job.endDate).toLocaleDateString("nl-NL", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </dd>
+                </div>
+              )}
+              {(job.hoursPerWeek || job.minHoursPerWeek) && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Clock className="h-3 w-3 shrink-0" /> Uren per week
+                  </dt>
+                  <dd className="text-foreground text-xs">
+                    {job.minHoursPerWeek && job.hoursPerWeek
+                      ? `${job.minHoursPerWeek} - ${job.hoursPerWeek} uur`
+                      : job.hoursPerWeek
+                        ? `${job.hoursPerWeek} uur`
+                        : `${job.minHoursPerWeek} uur (min)`}
+                  </dd>
+                </div>
+              )}
+              {job.durationMonths && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Calendar className="h-3 w-3 shrink-0" /> Looptijd
+                  </dt>
+                  <dd className="text-foreground text-xs">{job.durationMonths} maanden</dd>
+                </div>
+              )}
+              {job.location && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <MapPin className="h-3 w-3 shrink-0" /> Locatie
+                  </dt>
+                  <dd className="text-foreground text-xs">{job.location}</dd>
+                </div>
+              )}
+              {job.workArrangement && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Monitor className="h-3 w-3 shrink-0" /> Werkwijze
+                  </dt>
+                  <dd className="text-foreground text-xs">
+                    {arrangementLabels[job.workArrangement] ?? job.workArrangement}
+                  </dd>
+                </div>
+              )}
+              {job.educationLevel && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <GraduationCap className="h-3 w-3 shrink-0" /> Opleidingsniveau
+                  </dt>
+                  <dd className="text-foreground text-xs">{job.educationLevel}</dd>
+                </div>
+              )}
+              {job.workExperienceYears && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Briefcase className="h-3 w-3 shrink-0" /> Werkervaring
+                  </dt>
+                  <dd className="text-foreground text-xs">{job.workExperienceYears} jaar</dd>
+                </div>
+              )}
+              {job.extensionPossible !== null && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Calendar className="h-3 w-3 shrink-0" /> Verlenging
+                  </dt>
+                  <dd className="text-foreground text-xs">{job.extensionPossible ? "Ja" : "Nee"}</dd>
+                </div>
+              )}
+              {job.applicationDeadline && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Clock className="h-3 w-3 shrink-0" /> Deadline
+                  </dt>
+                  <dd className="text-foreground text-xs">
+                    {new Date(job.applicationDeadline).toLocaleDateString("nl-NL", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </dd>
+                </div>
+              )}
+              {job.contractLabel && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Briefcase className="h-3 w-3 shrink-0" /> Contract
+                  </dt>
+                  <dd className="text-foreground text-xs">{job.contractLabel}</dd>
+                </div>
+              )}
+              {job.positionsAvailable && (
+                <div>
+                  <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                    <Users className="h-3 w-3 shrink-0" /> Posities
+                  </dt>
+                  <dd className="text-foreground text-xs">{job.positionsAvailable}</dd>
+                </div>
+              )}
+            </dl>
           </div>
 
           {/* Tags / key requirements badges (short competences only) */}
@@ -449,7 +615,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
         </div>
       </main>
 
-      {/* Right sidebar: Opdrachtdetails */}
+      {/* Right sidebar: Opdrachtdetails (desktop xl+ only) */}
       <aside className="w-[300px] border-l border-border bg-sidebar overflow-y-auto shrink-0 hidden xl:block">
         <div className="p-5 space-y-5">
           <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
@@ -647,6 +813,19 @@ export default async function OpdrachtDetailPage({ params }: Props) {
           </div>
         </div>
       </aside>
+
+      {/* Mobile sticky bottom action bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 flex gap-2 xl:hidden z-50">
+        <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
+          Reageren
+        </Button>
+        <Button
+          variant="outline"
+          className="flex-1 border-primary text-primary hover:bg-primary/10 font-semibold h-11"
+        >
+          Interesse
+        </Button>
+      </div>
     </div>
   );
 }
