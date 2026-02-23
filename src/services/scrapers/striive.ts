@@ -332,7 +332,7 @@ async function scrapeViaModal(
       .fromRegistry("node:22-slim")
       .dockerfileCommands([
         "RUN apt-get update && apt-get install -y wget gnupg ca-certificates",
-        "RUN npm install --no-package-lock playwright-core",
+        "RUN cd /root && npm init -y && npm install playwright-core",
         "RUN npx --yes playwright install --with-deps chromium",
       ]);
 
