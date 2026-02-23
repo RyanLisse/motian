@@ -2,6 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { ArrowLeft, Briefcase, Euro, Mail, MapPin, Phone, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CvDropZone } from "@/components/cv-drop-zone";
 import { SkillsRadar } from "@/components/skills-radar";
 import { SkillsTags } from "@/components/skills-tags";
 import { Badge } from "@/components/ui/badge";
@@ -63,248 +64,252 @@ export default async function ProfessionalDetailPage({ params }: Props) {
   const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
-        {/* Back link */}
-        <Link
-          href="/professionals"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Terug naar professionals
-        </Link>
+    <CvDropZone candidateId={candidate.id}>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
+          {/* Back link */}
+          <Link
+            href="/professionals"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Terug naar professionals
+          </Link>
 
-        {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold text-foreground mb-2">{candidate.name}</h1>
-          <div className="flex items-center gap-2 flex-wrap">
-            {candidate.role && (
-              <Badge
-                variant="outline"
-                className="border-border text-muted-foreground bg-transparent text-xs"
-              >
-                {candidate.role}
-              </Badge>
-            )}
-            {candidate.availability && (
-              <Badge
-                variant="outline"
-                className={
-                  candidate.availability === "direct"
-                    ? "bg-primary/10 text-primary border-primary/20 text-xs"
-                    : "border-border text-muted-foreground bg-transparent text-xs"
-                }
-              >
-                {availabilityLabels[candidate.availability] ?? candidate.availability}
-              </Badge>
-            )}
-            {candidate.source && (
-              <Badge
-                variant="outline"
-                className="capitalize border-border text-muted-foreground bg-transparent text-xs"
-              >
-                {candidate.source}
-              </Badge>
-            )}
+          {/* Header */}
+          <div>
+            <h1 className="text-xl font-bold text-foreground mb-2">{candidate.name}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              {candidate.role && (
+                <Badge
+                  variant="outline"
+                  className="border-border text-muted-foreground bg-transparent text-xs"
+                >
+                  {candidate.role}
+                </Badge>
+              )}
+              {candidate.availability && (
+                <Badge
+                  variant="outline"
+                  className={
+                    candidate.availability === "direct"
+                      ? "bg-primary/10 text-primary border-primary/20 text-xs"
+                      : "border-border text-muted-foreground bg-transparent text-xs"
+                  }
+                >
+                  {availabilityLabels[candidate.availability] ?? candidate.availability}
+                </Badge>
+              )}
+              {candidate.source && (
+                <Badge
+                  variant="outline"
+                  className="capitalize border-border text-muted-foreground bg-transparent text-xs"
+                >
+                  {candidate.source}
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Contact info */}
-        <div className="bg-card border border-border rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Contactgegevens</h3>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-            {candidate.email && (
-              <span className="flex items-center gap-1.5">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                {candidate.email}
-              </span>
-            )}
-            {candidate.phone && (
-              <span className="flex items-center gap-1.5">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                {candidate.phone}
-              </span>
-            )}
-            {candidate.location && (
-              <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                {candidate.location}
-              </span>
-            )}
-            {candidate.hourlyRate && (
-              <span className="flex items-center gap-1.5">
-                <Euro className="h-4 w-4 text-muted-foreground" />
-                EUR {candidate.hourlyRate} per uur
-              </span>
-            )}
+          {/* Contact info */}
+          <div className="bg-card border border-border rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Contactgegevens</h3>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+              {candidate.email && (
+                <span className="flex items-center gap-1.5">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  {candidate.email}
+                </span>
+              )}
+              {candidate.phone && (
+                <span className="flex items-center gap-1.5">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  {candidate.phone}
+                </span>
+              )}
+              {candidate.location && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  {candidate.location}
+                </span>
+              )}
+              {candidate.hourlyRate && (
+                <span className="flex items-center gap-1.5">
+                  <Euro className="h-4 w-4 text-muted-foreground" />
+                  EUR {candidate.hourlyRate} per uur
+                </span>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Vaardigheden — structured or legacy */}
-        {(() => {
-          const structuredSkills = candidate.skillsStructured as StructuredSkills | null;
+          {/* Vaardigheden — structured or legacy */}
+          {(() => {
+            const structuredSkills = candidate.skillsStructured as StructuredSkills | null;
 
-          if (
-            structuredSkills &&
-            (structuredSkills.hard.length > 0 || structuredSkills.soft.length > 0)
-          ) {
-            return (
-              <div>
-                <h3 className="text-sm font-semibold text-foreground mb-4">Vaardigheden</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-card border border-border rounded-xl p-4">
-                    <SkillsRadar skills={structuredSkills} />
-                  </div>
-                  <div className="bg-card border border-border rounded-xl p-4">
-                    <SkillsTags skills={structuredSkills} />
+            if (
+              structuredSkills &&
+              (structuredSkills.hard.length > 0 || structuredSkills.soft.length > 0)
+            ) {
+              return (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-4">Vaardigheden</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-card border border-border rounded-xl p-4">
+                      <SkillsRadar skills={structuredSkills} />
+                    </div>
+                    <div className="bg-card border border-border rounded-xl p-4">
+                      <SkillsTags skills={structuredSkills} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          }
+              );
+            }
 
-          // Legacy fallback: flat skills[] array
-          if (skills.length > 0) {
+            // Legacy fallback: flat skills[] array
+            if (skills.length > 0) {
+              return (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {skills.map((skill) => (
+                      <Badge
+                        key={skill}
+                        variant="outline"
+                        className="bg-primary/10 text-primary border-primary/20 text-xs"
+                      >
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Upload een CV om vaardigheden met proficiency-scores te extraheren
+                  </p>
+                </div>
+              );
+            }
+
             return (
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill) => (
-                    <Badge
-                      key={skill}
-                      variant="outline"
-                      className="bg-primary/10 text-primary border-primary/20 text-xs"
-                    >
-                      {skill}
-                    </Badge>
-                  ))}
+                <div className="bg-card border border-border rounded-xl p-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Nog geen vaardigheden — upload een CV om vaardigheden te extraheren
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-3">
-                  Upload een CV om vaardigheden met proficiency-scores te extraheren
-                </p>
               </div>
             );
-          }
+          })()}
 
-          return (
+          {/* Notes */}
+          {candidate.notes && (
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
-              <div className="bg-card border border-border rounded-xl p-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Nog geen vaardigheden — upload een CV om vaardigheden te extraheren
+              <h3 className="text-sm font-semibold text-foreground mb-3">Notities</h3>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                  {candidate.notes}
                 </p>
               </div>
             </div>
-          );
-        })()}
-
-        {/* Notes */}
-        {candidate.notes && (
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">Notities</h3>
-            <div className="bg-card border border-border rounded-xl p-4">
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                {candidate.notes}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Matches */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Matches ({matchRows.length})</h3>
-          </div>
-
-          {matchRows.length === 0 ? (
-            <div className="bg-card border border-border rounded-xl p-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Nog geen matches voor deze professional
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {matchRows.map((row) => (
-                <div
-                  key={row.match.id}
-                  className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-accent transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex-1 min-w-0">
-                      {row.job ? (
-                        <Link
-                          href={`/opdrachten/${row.job.id}`}
-                          className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
-                        >
-                          {row.job.title}
-                        </Link>
-                      ) : (
-                        <span className="text-sm font-semibold text-muted-foreground">
-                          Opdracht verwijderd
-                        </span>
-                      )}
-                      {row.job?.company && (
-                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                          <Briefcase className="h-3 w-3" />
-                          {row.job.company}
-                        </p>
-                      )}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] shrink-0 ${statusColors[row.match.status] ?? "border-border text-muted-foreground"}`}
-                    >
-                      {statusLabels[row.match.status] ?? row.match.status}
-                    </Badge>
-                  </div>
-
-                  {/* Score bar */}
-                  <div className="mb-2">
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">Match score</span>
-                      <span
-                        className={
-                          row.match.matchScore >= 80
-                            ? "text-primary font-medium"
-                            : row.match.matchScore >= 60
-                              ? "text-yellow-500 font-medium"
-                              : "text-red-500 font-medium"
-                        }
-                      >
-                        {Math.round(row.match.matchScore)}%
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          row.match.matchScore >= 80
-                            ? "bg-primary"
-                            : row.match.matchScore >= 60
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
-                        }`}
-                        style={{
-                          width: `${Math.min(100, Math.round(row.match.matchScore))}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Reasoning */}
-                  {row.match.reasoning && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
-                      {row.match.reasoning}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
           )}
-        </div>
 
-        <div className="h-8" />
+          {/* Matches */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">
+                Matches ({matchRows.length})
+              </h3>
+            </div>
+
+            {matchRows.length === 0 ? (
+              <div className="bg-card border border-border rounded-xl p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nog geen matches voor deze professional
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {matchRows.map((row) => (
+                  <div
+                    key={row.match.id}
+                    className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-accent transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex-1 min-w-0">
+                        {row.job ? (
+                          <Link
+                            href={`/opdrachten/${row.job.id}`}
+                            className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                          >
+                            {row.job.title}
+                          </Link>
+                        ) : (
+                          <span className="text-sm font-semibold text-muted-foreground">
+                            Opdracht verwijderd
+                          </span>
+                        )}
+                        {row.job?.company && (
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <Briefcase className="h-3 w-3" />
+                            {row.job.company}
+                          </p>
+                        )}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] shrink-0 ${statusColors[row.match.status] ?? "border-border text-muted-foreground"}`}
+                      >
+                        {statusLabels[row.match.status] ?? row.match.status}
+                      </Badge>
+                    </div>
+
+                    {/* Score bar */}
+                    <div className="mb-2">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Match score</span>
+                        <span
+                          className={
+                            row.match.matchScore >= 80
+                              ? "text-primary font-medium"
+                              : row.match.matchScore >= 60
+                                ? "text-yellow-500 font-medium"
+                                : "text-red-500 font-medium"
+                          }
+                        >
+                          {Math.round(row.match.matchScore)}%
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            row.match.matchScore >= 80
+                              ? "bg-primary"
+                              : row.match.matchScore >= 60
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                          }`}
+                          style={{
+                            width: `${Math.min(100, Math.round(row.match.matchScore))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Reasoning */}
+                    {row.match.reasoning && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
+                        {row.match.reasoning}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="h-8" />
+        </div>
       </div>
-    </div>
+    </CvDropZone>
   );
 }

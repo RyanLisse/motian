@@ -19,15 +19,14 @@ export async function GET(req: NextRequest) {
   // Multi-field search with ILIKE across title, company, description, location
   if (q.length >= 2) {
     const pattern = `%${escapeLike(q)}%`;
-    conditions.push(
-      or(
-        ilike(jobs.title, pattern),
-        ilike(jobs.company, pattern),
-        ilike(jobs.description, pattern),
-        ilike(jobs.location, pattern),
-        ilike(jobs.platform, pattern),
-      ),
+    const searchCondition = or(
+      ilike(jobs.title, pattern),
+      ilike(jobs.company, pattern),
+      ilike(jobs.description, pattern),
+      ilike(jobs.location, pattern),
+      ilike(jobs.platform, pattern),
     );
+    if (searchCondition) conditions.push(searchCondition);
   }
 
   if (platform) {

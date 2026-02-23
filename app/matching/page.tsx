@@ -440,7 +440,9 @@ export default async function MatchingPage({ searchParams }: Props) {
 
                     <div className="flex items-center gap-2">
                       {row.match.assessmentModel === "marienne-v1" &&
-                        Boolean(row.match.criteriaBreakdown) && <ReportButton matchId={row.match.id} />}
+                        Boolean(row.match.criteriaBreakdown) && (
+                          <ReportButton matchId={row.match.id} />
+                        )}
                       {row.match.status === "pending" && <MatchActions matchId={row.match.id} />}
                     </div>
 
