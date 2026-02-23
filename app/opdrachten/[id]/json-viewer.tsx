@@ -13,13 +13,13 @@ export function JsonViewer({ data }: { data: Record<string, unknown> }) {
         variant="outline"
         size="sm"
         onClick={() => setOpen(!open)}
-        className="border-[#2d2d2d] bg-[#1e1e1e] text-[#6b6b6b] hover:text-[#ececec] hover:bg-[#2a2a2a] text-xs"
+        className="border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent text-xs"
       >
         <Code className="h-3.5 w-3.5 mr-1.5" />
         {open ? "Verberg JSON" : "Toon JSON"}
       </Button>
       {open && (
-        <pre className="mt-3 p-4 bg-[#0d0d0d] border border-[#2d2d2d] rounded-lg text-xs text-[#8e8e8e] overflow-x-auto max-h-[500px] overflow-y-auto">
+        <pre className="mt-3 p-4 bg-background border border-border rounded-lg text-xs text-muted-foreground overflow-x-auto max-h-[500px] overflow-y-auto">
           {JSON.stringify(data, null, 2)}
         </pre>
       )}

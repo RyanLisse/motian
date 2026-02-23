@@ -27,20 +27,20 @@ const arrangementLabels: Record<string, string> = {
 export function JobCard({ job }: JobCardProps) {
   return (
     <Link href={`/opdrachten/${job.id}`}>
-      <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-4 hover:border-[#10a37f]/40 hover:bg-[#232323] transition-colors cursor-pointer">
+      <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer">
         <div className="flex items-start justify-between gap-2 mb-3">
-          <h3 className="text-sm font-semibold text-[#ececec] line-clamp-2 leading-snug">
+          <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
             {job.title}
           </h3>
           <Badge
             variant="outline"
-            className="shrink-0 text-[10px] capitalize border-[#2d2d2d] text-[#6b6b6b] bg-transparent"
+            className="shrink-0 text-[10px] capitalize border-border text-muted-foreground bg-transparent"
           >
             {job.platform}
           </Badge>
         </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-[#8e8e8e] mb-3">
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-3">
           {job.company && (
             <span className="flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5" />
@@ -71,8 +71,8 @@ export function JobCard({ job }: JobCardProps) {
               variant="outline"
               className={
                 job.workArrangement === "remote"
-                  ? "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20 text-[10px]"
-                  : "text-[10px] border-[#2d2d2d] text-[#6b6b6b] bg-transparent"
+                  ? "bg-primary/10 text-primary border-primary/20 text-[10px]"
+                  : "text-[10px] border-border text-muted-foreground bg-transparent"
               }
             >
               {arrangementLabels[job.workArrangement] ?? job.workArrangement}
@@ -81,14 +81,14 @@ export function JobCard({ job }: JobCardProps) {
           {job.contractType && (
             <Badge
               variant="outline"
-              className="text-[10px] border-[#2d2d2d] text-[#6b6b6b] capitalize bg-transparent"
+              className="text-[10px] border-border text-muted-foreground capitalize bg-transparent"
             >
               {job.contractType}
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-[#6b6b6b] pt-1">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
           {job.applicationDeadline && (
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />

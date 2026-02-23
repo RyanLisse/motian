@@ -74,7 +74,7 @@ export function ChatPanel() {
 
       {/* Slide-in panel */}
       <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-[400px] flex-col border-l border-border bg-background shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 right-0 z-50 flex w-full sm:w-[400px] flex-col border-l border-border bg-background shadow-2xl transition-transform duration-300 ease-in-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >

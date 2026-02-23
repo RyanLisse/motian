@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="nl" className="dark">
+    <html lang="nl" suppressHydrationWarning>
       <body className="min-h-screen bg-background antialiased">
         <Providers>
           <ChatContextProvider>

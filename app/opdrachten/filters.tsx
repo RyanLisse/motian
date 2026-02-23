@@ -85,17 +85,17 @@ export function OpdrachtenFilters({
   );
 
   return (
-    <div className="w-full bg-[#171717] border-b border-[#2d2d2d] px-4 md:px-6 lg:px-8 py-3">
+    <div className="w-full bg-secondary border-b border-border px-4 md:px-6 lg:px-8 py-3">
       <div className="flex flex-col lg:flex-row items-center gap-3">
 
         {/* Search input group */}
-        <div className="flex w-full lg:w-auto flex-1 items-center gap-0 border border-[#2d2d2d] rounded-lg bg-[#1e1e1e] overflow-hidden h-9">
+        <div className="flex w-full lg:w-auto flex-1 items-center gap-0 border border-border rounded-lg bg-card overflow-hidden h-9">
           <div className="relative flex-1 h-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6b6b6b]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Zoek op functietitel..."
               defaultValue={query}
-              className="pl-9 h-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent rounded-none shadow-none text-sm text-[#ececec] placeholder:text-[#6b6b6b]"
+              className="pl-9 h-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent rounded-none shadow-none text-sm text-foreground placeholder:text-muted-foreground"
               onChange={(e) => {
                 const value = e.target.value;
                 clearTimeout(debounceTimers.current.q);
@@ -105,8 +105,8 @@ export function OpdrachtenFilters({
               }}
             />
           </div>
-          <Button size="icon" className="h-full rounded-none px-4 bg-[#10a37f] hover:bg-[#10a37f]/90 border-0">
-            <Search className="h-4 w-4 text-white" />
+          <Button size="icon" className="h-full rounded-none px-4 bg-primary hover:bg-primary/90 border-0">
+            <Search className="h-4 w-4 text-primary-foreground" />
           </Button>
         </div>
 
@@ -118,13 +118,13 @@ export function OpdrachtenFilters({
               updateParams({ platform: value === "all" ? "" : value })
             }
           >
-            <SelectTrigger className="w-[150px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm">
+            <SelectTrigger className="w-[150px] h-9 bg-card border-border text-foreground text-sm">
               <SelectValue placeholder="Opdrachtgever" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
-              <SelectItem value="all" className="text-[#ececec]">Alle opdrachtgevers</SelectItem>
+            <SelectContent className="bg-card border-border">
+              <SelectItem value="all" className="text-foreground">Alle opdrachtgevers</SelectItem>
               {platforms.map((p) => (
-                <SelectItem key={p} value={p} className="capitalize text-[#ececec]">{p}</SelectItem>
+                <SelectItem key={p} value={p} className="capitalize text-foreground">{p}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -135,13 +135,13 @@ export function OpdrachtenFilters({
               updateParams({ provincie: value === "all" ? "" : value })
             }
           >
-            <SelectTrigger className="w-[160px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm">
+            <SelectTrigger className="w-[160px] h-9 bg-card border-border text-foreground text-sm">
               <SelectValue placeholder="Provincie" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
-              <SelectItem value="all" className="text-[#ececec]">Alle provincies</SelectItem>
+            <SelectContent className="bg-card border-border">
+              <SelectItem value="all" className="text-foreground">Alle provincies</SelectItem>
               {PROVINCES.map((p) => (
-                <SelectItem key={p} value={p} className="text-[#ececec]">{p}</SelectItem>
+                <SelectItem key={p} value={p} className="text-foreground">{p}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -152,25 +152,25 @@ export function OpdrachtenFilters({
               updateParams({ contractType: value === "all" ? "" : value })
             }
           >
-            <SelectTrigger className="w-[140px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm">
+            <SelectTrigger className="w-[140px] h-9 bg-card border-border text-foreground text-sm">
               <SelectValue placeholder="Contract type" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
-              <SelectItem value="all" className="text-[#ececec]">Alle types</SelectItem>
+            <SelectContent className="bg-card border-border">
+              <SelectItem value="all" className="text-foreground">Alle types</SelectItem>
               {CONTRACT_TYPES.map((ct) => (
-                <SelectItem key={ct.value} value={ct.value} className="text-[#ececec]">{ct.label}</SelectItem>
+                <SelectItem key={ct.value} value={ct.value} className="text-foreground">{ct.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           {/* Rate range inputs */}
-          <div className="flex items-center gap-1.5 px-2 border-l border-[#2d2d2d] ml-1">
-            <span className="text-xs text-[#6b6b6b] whitespace-nowrap">&euro;/uur</span>
+          <div className="flex items-center gap-1.5 px-2 border-l border-border ml-1">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">&euro;/uur</span>
             <Input
               type="number"
               placeholder="Min"
               defaultValue={tariefMin}
-              className="w-[70px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-[70px] h-9 bg-card border-border text-foreground text-sm px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               onChange={(e) => {
                 const value = e.target.value;
                 clearTimeout(debounceTimers.current.tariefMin);
@@ -179,12 +179,12 @@ export function OpdrachtenFilters({
                 }, 600);
               }}
             />
-            <span className="text-xs text-[#6b6b6b]">-</span>
+            <span className="text-xs text-muted-foreground">-</span>
             <Input
               type="number"
               placeholder="Max"
               defaultValue={tariefMax}
-              className="w-[70px] h-9 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-sm px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-[70px] h-9 bg-card border-border text-foreground text-sm px-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               onChange={(e) => {
                 const value = e.target.value;
                 clearTimeout(debounceTimers.current.tariefMax);
@@ -196,16 +196,16 @@ export function OpdrachtenFilters({
           </div>
 
           {/* Toggle */}
-          <div className="flex items-center gap-2 px-2 border-l border-[#2d2d2d] ml-1">
-            <Switch id="save-search" className="data-[state=checked]:bg-[#10a37f]" />
-            <label htmlFor="save-search" className="text-sm font-medium text-[#8e8e8e] cursor-pointer whitespace-nowrap">
+          <div className="flex items-center gap-2 px-2 border-l border-border ml-1">
+            <Switch id="save-search" className="data-[state=checked]:bg-primary" />
+            <label htmlFor="save-search" className="text-sm font-medium text-muted-foreground cursor-pointer whitespace-nowrap">
               Zoekopdracht opslaan
             </label>
           </div>
         </div>
 
         {/* Alle filters button */}
-        <Button variant="ghost" className="h-9 shrink-0 font-medium whitespace-nowrap hidden sm:flex text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] text-sm">
+        <Button variant="ghost" className="h-9 shrink-0 font-medium whitespace-nowrap hidden sm:flex text-muted-foreground hover:text-foreground hover:bg-accent text-sm">
           <SlidersHorizontal className="h-4 w-4 mr-2" />
           Alle filters
         </Button>
@@ -213,11 +213,11 @@ export function OpdrachtenFilters({
 
       {/* Pagination controls (mobile/bottom) */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-3 border-t border-[#2d2d2d] pt-3 lg:hidden">
-          <p className="text-sm text-[#6b6b6b]">Pagina {page} van {totalPages}</p>
+        <div className="flex items-center justify-between mt-3 border-t border-border pt-3 lg:hidden">
+          <p className="text-sm text-muted-foreground">Pagina {page} van {totalPages}</p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="border-[#2d2d2d] bg-[#1e1e1e] text-[#8e8e8e]" disabled={page <= 1 || isPending} onClick={() => updateParams({ pagina: String(page - 1) })}>Vorige</Button>
-            <Button variant="outline" size="sm" className="border-[#2d2d2d] bg-[#1e1e1e] text-[#8e8e8e]" disabled={page >= totalPages || isPending} onClick={() => updateParams({ pagina: String(page + 1) })}>Volgende</Button>
+            <Button variant="outline" size="sm" className="border-border bg-card text-muted-foreground" disabled={page <= 1 || isPending} onClick={() => updateParams({ pagina: String(page - 1) })}>Vorige</Button>
+            <Button variant="outline" size="sm" className="border-border bg-card text-muted-foreground" disabled={page >= totalPages || isPending} onClick={() => updateParams({ pagina: String(page + 1) })}>Volgende</Button>
           </div>
         </div>
       )}

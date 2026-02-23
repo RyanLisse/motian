@@ -46,14 +46,14 @@ function SectionBlock({
 
   return (
     <div>
-      <h3 className="text-base font-semibold text-[#ececec] mb-3">{title}</h3>
+      <h3 className="text-base font-semibold text-foreground mb-3">{title}</h3>
       <ul className="space-y-2">
         {items.map((item, i) => (
           <li
             key={i}
-            className="text-sm text-[#8e8e8e] flex items-start gap-2"
+            className="text-sm text-muted-foreground flex items-start gap-2"
           >
-            <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#10a37f] shrink-0" />
+            <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
             <span>{item}</span>
           </li>
         ))}
@@ -164,7 +164,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
     let i = 0;
 
     // Check if a line looks like a bullet (starts with space-indented text, dash, dot-prefix, or letter-o sub-bullet)
-    const isBullet = (l: string) => /^[-•]\s/.test(l.trim()) || /^o\s+\S/.test(l.trim()) || (/^\s{1,4}\S/.test(l) && !l.trim().startsWith('(') && l.trim().length > 10 && l.trim().length < 200 && !/^\d+\.\s/.test(l.trim()));
+    const isBullet = (l: string) => /^[-\u2022]\s/.test(l.trim()) || /^o\s+\S/.test(l.trim()) || (/^\s{1,4}\S/.test(l) && !l.trim().startsWith('(') && l.trim().length > 10 && l.trim().length < 200 && !/^\d+\.\s/.test(l.trim()));
 
     // Check if a line is a heading
     const isHeadingLine = (line: string, idx: number): boolean => {
@@ -198,11 +198,11 @@ export default async function OpdrachtDetailPage({ params }: Props) {
         continue;
       }
 
-      // Collect consecutive bullet items (- ..., • ..., or space-indented lines, or o sub-bullets)
-      if (/^[-•]\s/.test(line) || /^o\s+\S/.test(line)) {
+      // Collect consecutive bullet items (- ..., bullet ..., or space-indented lines, or o sub-bullets)
+      if (/^[-\u2022]\s/.test(line) || /^o\s+\S/.test(line)) {
         const items: string[] = [];
-        while (i < lines.length && (/^[-•]\s/.test(lines[i].trim()) || /^o\s+\S/.test(lines[i].trim()))) {
-          items.push(lines[i].trim().replace(/^[-•o]\s*/, ''));
+        while (i < lines.length && (/^[-\u2022]\s/.test(lines[i].trim()) || /^o\s+\S/.test(lines[i].trim()))) {
+          items.push(lines[i].trim().replace(/^[-\u2022o]\s*/, ''));
           i++;
         }
         blocks.push(`<ul class="list-disc pl-5 mb-3 space-y-1">${items.map(it => `<li>${it}</li>`).join('')}</ul>`);
@@ -224,7 +224,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
       // Section heading detection
       if (isHeadingLine(line, i)) {
-        blocks.push(`<h3 class="text-sm font-semibold text-[#ececec] mt-5 mb-2">${line}</h3>`);
+        blocks.push(`<h3 class="text-sm font-semibold text-foreground mt-5 mb-2">${line}</h3>`);
         i++;
         continue;
       }
@@ -234,7 +234,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       i++;
       while (i < lines.length && lines[i].trim()
         && !/^\d+\.\s/.test(lines[i].trim())
-        && !/^[-•]\s/.test(lines[i].trim())
+        && !/^[-\u2022]\s/.test(lines[i].trim())
         && !/^o\s+\S/.test(lines[i].trim())
         && !/^\s{1,4}\S/.test(lines[i])
         && !isHeadingLine(lines[i].trim(), i)) {
@@ -266,9 +266,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
           {/* Back link (visible on mobile when sidebar is hidden) */}
           <Link
             href="/opdrachten"
-            className="inline-flex items-center gap-1.5 text-sm text-[#8e8e8e] hover:text-[#ececec] transition-colors lg:hidden"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors lg:hidden"
           >
-            ← Terug naar opdrachten
+            &larr; Terug naar opdrachten
           </Link>
 
           {/* Header */}
@@ -276,7 +276,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             <div className="flex items-center gap-2 flex-wrap mb-3">
               <Badge
                 variant="outline"
-                className="capitalize border-[#2d2d2d] text-[#8e8e8e] bg-transparent text-xs"
+                className="capitalize border-border text-muted-foreground bg-transparent text-xs"
               >
                 {job.platform}
               </Badge>
@@ -285,8 +285,8 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                   variant="outline"
                   className={
                     job.workArrangement === "remote"
-                      ? "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20 text-xs"
-                      : "border-[#2d2d2d] text-[#8e8e8e] bg-transparent text-xs"
+                      ? "bg-primary/10 text-primary border-primary/20 text-xs"
+                      : "border-border text-muted-foreground bg-transparent text-xs"
                   }
                 >
                   {arrangementLabels[job.workArrangement] ?? job.workArrangement}
@@ -295,7 +295,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               {job.contractType && (
                 <Badge
                   variant="outline"
-                  className="capitalize border-[#2d2d2d] text-[#8e8e8e] bg-transparent text-xs"
+                  className="capitalize border-border text-muted-foreground bg-transparent text-xs"
                 >
                   {job.contractType}
                 </Badge>
@@ -303,35 +303,35 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               {job.contractLabel && (
                 <Badge
                   variant="outline"
-                  className="border-[#2d2d2d] text-[#8e8e8e] bg-transparent text-xs"
+                  className="border-border text-muted-foreground bg-transparent text-xs"
                 >
                   {job.contractLabel}
                 </Badge>
               )}
             </div>
-            <h1 className="text-xl font-bold text-[#ececec] mb-1">{job.title}</h1>
+            <h1 className="text-xl font-bold text-foreground mb-1">{job.title}</h1>
             {job.company && (
-              <p className="text-sm text-[#8e8e8e]">{job.company}</p>
+              <p className="text-sm text-muted-foreground">{job.company}</p>
             )}
           </div>
 
           {/* Meta row with icons */}
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#8e8e8e]">
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
             {job.location && (
               <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-[#6b6b6b]" />
+                <MapPin className="h-4 w-4 text-muted-foreground" />
                 {job.location}
               </span>
             )}
             {job.workArrangement && (
               <span className="flex items-center gap-1.5">
-                <Monitor className="h-4 w-4 text-[#6b6b6b]" />
+                <Monitor className="h-4 w-4 text-muted-foreground" />
                 {arrangementLabels[job.workArrangement] ?? job.workArrangement}
               </span>
             )}
             {(job.rateMin || job.rateMax) && (
               <span className="flex items-center gap-1.5">
-                <Euro className="h-4 w-4 text-[#6b6b6b]" />
+                <Euro className="h-4 w-4 text-muted-foreground" />
                 {job.rateMin && job.rateMax
                   ? `EUR ${job.rateMin} - ${job.rateMax} per uur`
                   : job.rateMax
@@ -341,7 +341,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             )}
             {job.startDate && (
               <span className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-[#6b6b6b]" />
+                <Calendar className="h-4 w-4 text-muted-foreground" />
                 {"Start "}
                 {new Date(job.startDate).toLocaleDateString("nl-NL", {
                   day: "numeric",
@@ -353,15 +353,15 @@ export default async function OpdrachtDetailPage({ params }: Props) {
           </div>
 
           {/* AI Summary */}
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-4">
+          <div className="bg-card border border-border rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="h-4 w-4 text-[#10a37f]" />
-              <h3 className="text-sm font-semibold text-[#ececec]">AI Samenvatting</h3>
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">AI Samenvatting</h3>
             </div>
             {aiPreview ? (
-              <p className="text-sm text-[#8e8e8e] leading-relaxed">{aiPreview}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{aiPreview}</p>
             ) : (
-              <p className="text-sm text-[#6b6b6b] italic">Samenvatting wordt gegenereerd...</p>
+              <p className="text-sm text-muted-foreground italic">Samenvatting wordt gegenereerd...</p>
             )}
           </div>
 
@@ -372,7 +372,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 <Badge
                   key={i}
                   variant="outline"
-                  className="bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20 text-xs"
+                  className="bg-primary/10 text-primary border-primary/20 text-xs"
                 >
                   {stripHtml(comp)}
                 </Badge>
@@ -380,14 +380,14 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             </div>
           )}
 
-          <Separator className="bg-[#2d2d2d]" />
+          <Separator className="bg-border" />
 
           {/* Description */}
           {cleanDescription && (
             <div>
-              <h3 className="text-base font-semibold text-[#ececec] mb-3">Functiebeschrijving</h3>
-              <div 
-                className="text-sm text-[#8e8e8e] leading-relaxed max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-[#ececec] [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-[#ececec] [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-[#ececec] [&_h3]:mt-3 [&_h3]:mb-1 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-[#ececec] [&_b]:font-semibold [&_b]:text-[#ececec] [&_a]:text-[#10a37f] [&_a]:underline [&_span]:inline"
+              <h3 className="text-base font-semibold text-foreground mb-3">Functiebeschrijving</h3>
+              <div
+                className="text-sm text-muted-foreground leading-relaxed max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-foreground [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-3 [&_h3]:mb-1 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-foreground [&_b]:font-semibold [&_b]:text-foreground [&_a]:text-primary [&_a]:underline [&_span]:inline"
                 dangerouslySetInnerHTML={{ __html: cleanDescription }}
               />
             </div>
@@ -405,7 +405,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-[#2d2d2d] bg-[#1e1e1e] text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a]"
+                className="border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Bekijk op {job.platform}
@@ -413,24 +413,24 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             </a>
           )}
 
-          <Separator className="bg-[#2d2d2d]" />
+          <Separator className="bg-border" />
 
           {/* Related jobs */}
           {related.length > 0 && (
             <div>
-              <h3 className="text-base font-semibold text-[#ececec] mb-4">
+              <h3 className="text-base font-semibold text-foreground mb-4">
                 Vergelijkbare opdrachten
               </h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 {related.map((rJob) => (
                   <Link key={rJob.id} href={`/opdrachten/${rJob.id}`}>
-                    <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-3 hover:border-[#10a37f]/30 hover:bg-[#232323] transition-colors cursor-pointer">
-                      <h4 className="text-sm font-semibold text-[#ececec] line-clamp-2 mb-1">
+                    <div className="bg-card border border-border rounded-lg p-3 hover:border-primary/30 hover:bg-accent transition-colors cursor-pointer">
+                      <h4 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
                         {rJob.title}
                       </h4>
-                      <p className="text-xs text-[#8e8e8e]">{rJob.company || rJob.platform}</p>
+                      <p className="text-xs text-muted-foreground">{rJob.company || rJob.platform}</p>
                       {rJob.location && (
-                        <p className="text-xs text-[#6b6b6b] flex items-center gap-1 mt-1">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                           <MapPin className="h-3 w-3" />
                           {rJob.location}
                         </p>
@@ -450,27 +450,27 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       </main>
 
       {/* Right sidebar: Opdrachtdetails */}
-      <aside className="w-[300px] border-l border-[#2d2d2d] bg-[#171717] overflow-y-auto shrink-0 hidden xl:block">
+      <aside className="w-[300px] border-l border-border bg-sidebar overflow-y-auto shrink-0 hidden xl:block">
         <div className="p-5 space-y-5">
-          <h3 className="text-sm font-semibold text-[#ececec] uppercase tracking-wider">
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
             Opdrachtdetails
           </h3>
 
           <dl className="space-y-4 text-sm">
             {job.company && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Building2 className="h-3.5 w-3.5" /> Opdrachtgever
                 </dt>
-                <dd className="text-[#ececec] font-medium">{job.company}</dd>
+                <dd className="text-foreground font-medium">{job.company}</dd>
               </div>
             )}
             {job.startDate && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Startdatum
                 </dt>
-                <dd className="text-[#ececec]">
+                <dd className="text-foreground">
                   {new Date(job.startDate).toLocaleDateString("nl-NL", {
                     day: "numeric",
                     month: "long",
@@ -481,10 +481,10 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             )}
             {job.endDate && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Einddatum
                 </dt>
-                <dd className="text-[#ececec]">
+                <dd className="text-foreground">
                   {new Date(job.endDate).toLocaleDateString("nl-NL", {
                     day: "numeric",
                     month: "long",
@@ -495,10 +495,10 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             )}
             {(job.rateMin || job.rateMax) && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Euro className="h-3.5 w-3.5" /> Uurtarief
                 </dt>
-                <dd className="text-[#ececec]">
+                <dd className="text-foreground">
                   {job.rateMin && job.rateMax
                     ? `EUR ${job.rateMin} - ${job.rateMax}`
                     : job.rateMax
@@ -509,10 +509,10 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             )}
             {(job.hoursPerWeek || job.minHoursPerWeek) && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" /> Uren per week
                 </dt>
-                <dd className="text-[#ececec]">
+                <dd className="text-foreground">
                   {job.minHoursPerWeek && job.hoursPerWeek
                     ? `${job.minHoursPerWeek} - ${job.hoursPerWeek} uur`
                     : job.hoursPerWeek
@@ -523,86 +523,86 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             )}
             {job.durationMonths && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Looptijd
                 </dt>
-                <dd className="text-[#ececec]">{job.durationMonths} maanden</dd>
+                <dd className="text-foreground">{job.durationMonths} maanden</dd>
               </div>
             )}
             {job.extensionPossible !== null && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Verlenging mogelijk
                 </dt>
-                <dd className="text-[#ececec]">{job.extensionPossible ? "Ja" : "Nee"}</dd>
+                <dd className="text-foreground">{job.extensionPossible ? "Ja" : "Nee"}</dd>
               </div>
             )}
             {job.educationLevel && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <GraduationCap className="h-3.5 w-3.5" /> Opleidingsniveau
                 </dt>
-                <dd className="text-[#ececec]">{job.educationLevel}</dd>
+                <dd className="text-foreground">{job.educationLevel}</dd>
               </div>
             )}
             {job.workExperienceYears && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Briefcase className="h-3.5 w-3.5" /> Werkervaring
                 </dt>
-                <dd className="text-[#ececec]">{job.workExperienceYears} jaar</dd>
+                <dd className="text-foreground">{job.workExperienceYears} jaar</dd>
               </div>
             )}
             {job.location && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" /> Locatie
                 </dt>
-                <dd className="text-[#ececec]">{job.location}</dd>
+                <dd className="text-foreground">{job.location}</dd>
               </div>
             )}
             {job.workArrangement && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Monitor className="h-3.5 w-3.5" /> Werkwijze
                 </dt>
-                <dd className="text-[#ececec]">
+                <dd className="text-foreground">
                   {arrangementLabels[job.workArrangement] ?? job.workArrangement}
                 </dd>
               </div>
             )}
             {job.positionsAvailable && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5" /> Posities
                 </dt>
-                <dd className="text-[#ececec]">{job.positionsAvailable}</dd>
+                <dd className="text-foreground">{job.positionsAvailable}</dd>
               </div>
             )}
             {job.contractLabel && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Briefcase className="h-3.5 w-3.5" /> Contract
                 </dt>
-                <dd className="text-[#ececec]">{job.contractLabel}</dd>
+                <dd className="text-foreground">{job.contractLabel}</dd>
               </div>
             )}
             {(job.externalId || job.clientReferenceCode) && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Hash className="h-3.5 w-3.5" /> Referentiecode
                 </dt>
-                <dd className="text-[#ececec] font-mono text-xs">
+                <dd className="text-foreground font-mono text-xs">
                   {job.clientReferenceCode || job.externalId}
                 </dd>
               </div>
             )}
             {job.applicationDeadline && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" /> Deadline
                 </dt>
-                <dd className="text-[#ececec]">
+                <dd className="text-foreground">
                   {new Date(job.applicationDeadline).toLocaleDateString("nl-NL", {
                     day: "numeric",
                     month: "long",
@@ -613,34 +613,34 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             )}
             {job.allowsSubcontracting !== null && (
               <div>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <FileText className="h-3.5 w-3.5" /> Onderaanneming
                 </dt>
-                <dd className="text-[#ececec]">
+                <dd className="text-foreground">
                   {job.allowsSubcontracting ? "Toegestaan" : "Niet toegestaan"}
                 </dd>
               </div>
             )}
             {metaFields.map(([label, value]) => (
               <div key={label}>
-                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <FileText className="h-3.5 w-3.5" /> {label}
                 </dt>
-                <dd className="text-[#ececec]">{value}</dd>
+                <dd className="text-foreground">{value}</dd>
               </div>
             ))}
           </dl>
 
-          <Separator className="bg-[#2d2d2d]" />
+          <Separator className="bg-border" />
 
           {/* Action buttons */}
           <div className="space-y-2">
-            <Button className="w-full bg-[#10a37f] hover:bg-[#10a37f]/90 text-white font-semibold h-10">
+            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
               Reageren
             </Button>
             <Button
               variant="outline"
-              className="w-full border-[#10a37f] text-[#10a37f] hover:bg-[#10a37f]/10 font-semibold h-10"
+              className="w-full border-primary text-primary hover:bg-primary/10 font-semibold h-10"
             >
               Interesse
             </Button>

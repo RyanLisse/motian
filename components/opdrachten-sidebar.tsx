@@ -111,11 +111,11 @@ export function OpdrachtenSidebar({
   };
 
   return (
-    <aside className="w-[300px] border-r border-[#2d2d2d] bg-[#171717] shrink-0 hidden lg:flex lg:flex-col">
+    <aside className="w-[300px] border-r border-border bg-sidebar shrink-0 hidden lg:flex lg:flex-col">
       {/* Search */}
       <div className="px-3 pt-3 pb-2 shrink-0">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#6b6b6b]" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Zoek opdrachten..."
             value={query}
@@ -123,10 +123,10 @@ export function OpdrachtenSidebar({
               setQuery(e.target.value);
               setPage(1);
             }}
-            className="pl-8 h-8 bg-[#1e1e1e] border-[#2d2d2d] text-xs text-[#ececec] placeholder:text-[#6b6b6b] focus-visible:ring-1 focus-visible:ring-[#10a37f] focus-visible:ring-offset-0"
+            className="pl-8 h-8 bg-card border-border text-xs text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
           />
           {isFetching && (
-            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#6b6b6b] animate-spin" />
+            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground animate-spin" />
           )}
         </div>
       </div>
@@ -139,18 +139,18 @@ export function OpdrachtenSidebar({
             handleFilterChange(setPlatform, v === "__all__" ? "" : v)
           }
         >
-          <SelectTrigger className="flex-1 h-7 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-[10px] px-2">
+          <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
             <SelectValue placeholder="Opdrachtgever" />
           </SelectTrigger>
-          <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
-            <SelectItem value="__all__" className="text-[#ececec] text-xs">
+          <SelectContent className="bg-card border-border">
+            <SelectItem value="__all__" className="text-foreground text-xs">
               Alle opdrachtgevers
             </SelectItem>
             {platforms.map((p) => (
               <SelectItem
                 key={p}
                 value={p}
-                className="capitalize text-[#ececec] text-xs"
+                className="capitalize text-foreground text-xs"
               >
                 {p}
               </SelectItem>
@@ -164,15 +164,15 @@ export function OpdrachtenSidebar({
             handleFilterChange(setProvincie, v === "__all__" ? "" : v)
           }
         >
-          <SelectTrigger className="flex-1 h-7 bg-[#1e1e1e] border-[#2d2d2d] text-[#ececec] text-[10px] px-2">
+          <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
             <SelectValue placeholder="Provincie" />
           </SelectTrigger>
-          <SelectContent className="bg-[#1e1e1e] border-[#2d2d2d]">
-            <SelectItem value="__all__" className="text-[#ececec] text-xs">
+          <SelectContent className="bg-card border-border">
+            <SelectItem value="__all__" className="text-foreground text-xs">
               Alle provincies
             </SelectItem>
             {PROVINCES.map((p) => (
-              <SelectItem key={p} value={p} className="text-[#ececec] text-xs">
+              <SelectItem key={p} value={p} className="text-foreground text-xs">
                 {p}
               </SelectItem>
             ))}
@@ -181,12 +181,12 @@ export function OpdrachtenSidebar({
       </div>
 
       {/* Count */}
-      <div className="px-4 py-2 border-t border-b border-[#2d2d2d] shrink-0 flex items-center justify-between">
-        <p className="text-[10px] font-medium text-[#6b6b6b] uppercase tracking-wider">
+      <div className="px-4 py-2 border-t border-b border-border shrink-0 flex items-center justify-between">
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
           {displayTotal} opdrachten
         </p>
         {totalPages > 1 && (
-          <p className="text-[10px] text-[#6b6b6b]">
+          <p className="text-[10px] text-muted-foreground">
             {page}/{totalPages}
           </p>
         )}
@@ -195,7 +195,7 @@ export function OpdrachtenSidebar({
       {/* Job list */}
       <ScrollArea className="flex-1">
         {displayJobs.length === 0 ? (
-          <div className="px-4 py-8 text-center text-xs text-[#6b6b6b]">
+          <div className="px-4 py-8 text-center text-xs text-muted-foreground">
             Geen opdrachten gevonden
           </div>
         ) : (
@@ -211,11 +211,11 @@ export function OpdrachtenSidebar({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-3 py-2 border-t border-[#2d2d2d] shrink-0 flex items-center justify-between">
+        <div className="px-3 py-2 border-t border-border shrink-0 flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] text-xs"
+            className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-accent text-xs"
             disabled={page <= 1 || isFetching}
             onClick={() => setPage((p) => p - 1)}
           >
@@ -225,7 +225,7 @@ export function OpdrachtenSidebar({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] text-xs"
+            className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-accent text-xs"
             disabled={page >= totalPages || isFetching}
             onClick={() => setPage((p) => p + 1)}
           >

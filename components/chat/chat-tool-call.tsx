@@ -24,39 +24,39 @@ export function ChatToolCall({ toolName, state, input, output }: ToolCallProps) 
   const isDone = state === "output-available";
 
   return (
-    <div className="my-1.5 rounded-md border border-[#2d2d2d] bg-[#1a1a1a] text-xs">
+    <div className="my-1.5 rounded-md border border-border bg-secondary text-xs">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-[#222]"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-accent"
       >
         {isDone ? (
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
         ) : (
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#8e8e8e]" />
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
         )}
-        <span className="flex-1 font-medium text-[#ccc]">{label}</span>
+        <span className="flex-1 font-medium text-foreground">{label}</span>
         {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 text-[#666]" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-[#666]" />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
         )}
       </button>
 
       {expanded && (
-        <div className="border-t border-[#2d2d2d] px-3 py-2 space-y-2">
+        <div className="border-t border-border px-3 py-2 space-y-2">
           {input != null && (
             <div>
-              <span className="text-[#666]">Input:</span>
-              <pre className="mt-1 overflow-auto rounded bg-[#111] p-2 text-[#999]">
+              <span className="text-muted-foreground">Input:</span>
+              <pre className="mt-1 overflow-auto rounded bg-background p-2 text-muted-foreground">
                 {JSON.stringify(input, null, 2)}
               </pre>
             </div>
           )}
           {output != null && (
             <div>
-              <span className="text-[#666]">Output:</span>
-              <pre className="mt-1 max-h-60 overflow-auto rounded bg-[#111] p-2 text-[#999]">
+              <span className="text-muted-foreground">Output:</span>
+              <pre className="mt-1 max-h-60 overflow-auto rounded bg-background p-2 text-muted-foreground">
                 {JSON.stringify(output, null, 2)}
               </pre>
             </div>
