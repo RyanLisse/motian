@@ -20,7 +20,7 @@ const availabilityLabels: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  approved: "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
+  approved: "bg-primary/10 text-primary border-primary/20",
   rejected: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
@@ -65,7 +65,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         {/* Back link */}
         <Link
           href="/professionals"
-          className="inline-flex items-center gap-1.5 text-sm text-[#8e8e8e] hover:text-[#ececec] transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Terug naar professionals
@@ -73,12 +73,12 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-[#ececec] mb-2">{candidate.name}</h1>
+          <h1 className="text-xl font-bold text-foreground mb-2">{candidate.name}</h1>
           <div className="flex items-center gap-2 flex-wrap">
             {candidate.role && (
               <Badge
                 variant="outline"
-                className="border-[#2d2d2d] text-[#8e8e8e] bg-transparent text-xs"
+                className="border-border text-muted-foreground bg-transparent text-xs"
               >
                 {candidate.role}
               </Badge>
@@ -88,8 +88,8 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 variant="outline"
                 className={
                   candidate.availability === "direct"
-                    ? "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20 text-xs"
-                    : "border-[#2d2d2d] text-[#8e8e8e] bg-transparent text-xs"
+                    ? "bg-primary/10 text-primary border-primary/20 text-xs"
+                    : "border-border text-muted-foreground bg-transparent text-xs"
                 }
               >
                 {availabilityLabels[candidate.availability] ?? candidate.availability}
@@ -98,7 +98,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
             {candidate.source && (
               <Badge
                 variant="outline"
-                className="capitalize border-[#2d2d2d] text-[#6b6b6b] bg-transparent text-xs"
+                className="capitalize border-border text-muted-foreground bg-transparent text-xs"
               >
                 {candidate.source}
               </Badge>
@@ -107,30 +107,30 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         </div>
 
         {/* Contact info */}
-        <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-[#ececec] mb-3">Contactgegevens</h3>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#8e8e8e]">
+        <div className="bg-card border border-border rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Contactgegevens</h3>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
             {candidate.email && (
               <span className="flex items-center gap-1.5">
-                <Mail className="h-4 w-4 text-[#6b6b6b]" />
+                <Mail className="h-4 w-4 text-muted-foreground" />
                 {candidate.email}
               </span>
             )}
             {candidate.phone && (
               <span className="flex items-center gap-1.5">
-                <Phone className="h-4 w-4 text-[#6b6b6b]" />
+                <Phone className="h-4 w-4 text-muted-foreground" />
                 {candidate.phone}
               </span>
             )}
             {candidate.location && (
               <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-[#6b6b6b]" />
+                <MapPin className="h-4 w-4 text-muted-foreground" />
                 {candidate.location}
               </span>
             )}
             {candidate.hourlyRate && (
               <span className="flex items-center gap-1.5">
-                <Euro className="h-4 w-4 text-[#6b6b6b]" />
+                <Euro className="h-4 w-4 text-muted-foreground" />
                 EUR {candidate.hourlyRate} per uur
               </span>
             )}
@@ -140,13 +140,13 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         {/* Skills */}
         {skills.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-[#ececec] mb-3">Vaardigheden</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
             <div className="flex flex-wrap gap-2">
-              {skills.map((skill, i) => (
+              {skills.map((skill) => (
                 <Badge
-                  key={i}
+                  key={skill}
                   variant="outline"
-                  className="bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20 text-xs"
+                  className="bg-primary/10 text-primary border-primary/20 text-xs"
                 >
                   {skill}
                 </Badge>
@@ -158,9 +158,9 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         {/* Notes */}
         {candidate.notes && (
           <div>
-            <h3 className="text-sm font-semibold text-[#ececec] mb-3">Notities</h3>
-            <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-              <p className="text-sm text-[#8e8e8e] whitespace-pre-wrap leading-relaxed">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Notities</h3>
+            <div className="bg-card border border-border rounded-xl p-4">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                 {candidate.notes}
               </p>
             </div>
@@ -170,37 +170,39 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         {/* Matches */}
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="h-4 w-4 text-[#10a37f]" />
-            <h3 className="text-sm font-semibold text-[#ececec]">Matches ({matchRows.length})</h3>
+            <Sparkles className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Matches ({matchRows.length})</h3>
           </div>
 
           {matchRows.length === 0 ? (
-            <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-6 text-center">
-              <p className="text-sm text-[#6b6b6b]">Nog geen matches voor deze professional</p>
+            <div className="bg-card border border-border rounded-xl p-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Nog geen matches voor deze professional
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
               {matchRows.map((row) => (
                 <div
                   key={row.match.id}
-                  className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4 hover:border-[#10a37f]/40 hover:bg-[#232323] transition-colors"
+                  className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-accent transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">
                       {row.job ? (
                         <Link
                           href={`/opdrachten/${row.job.id}`}
-                          className="text-sm font-semibold text-[#ececec] hover:text-[#10a37f] transition-colors"
+                          className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
                         >
                           {row.job.title}
                         </Link>
                       ) : (
-                        <span className="text-sm font-semibold text-[#6b6b6b]">
+                        <span className="text-sm font-semibold text-muted-foreground">
                           Opdracht verwijderd
                         </span>
                       )}
                       {row.job?.company && (
-                        <p className="text-xs text-[#8e8e8e] mt-0.5 flex items-center gap-1">
+                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                           <Briefcase className="h-3 w-3" />
                           {row.job.company}
                         </p>
@@ -208,7 +210,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                     </div>
                     <Badge
                       variant="outline"
-                      className={`text-[10px] shrink-0 ${statusColors[row.match.status] ?? "border-[#2d2d2d] text-[#6b6b6b]"}`}
+                      className={`text-[10px] shrink-0 ${statusColors[row.match.status] ?? "border-border text-muted-foreground"}`}
                     >
                       {statusLabels[row.match.status] ?? row.match.status}
                     </Badge>
@@ -217,11 +219,11 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                   {/* Score bar */}
                   <div className="mb-2">
                     <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-[#6b6b6b]">Match score</span>
+                      <span className="text-muted-foreground">Match score</span>
                       <span
                         className={
                           row.match.matchScore >= 80
-                            ? "text-[#10a37f] font-medium"
+                            ? "text-primary font-medium"
                             : row.match.matchScore >= 60
                               ? "text-yellow-500 font-medium"
                               : "text-red-500 font-medium"
@@ -230,11 +232,11 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                         {Math.round(row.match.matchScore)}%
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-[#2d2d2d] rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${
                           row.match.matchScore >= 80
-                            ? "bg-[#10a37f]"
+                            ? "bg-primary"
                             : row.match.matchScore >= 60
                               ? "bg-yellow-500"
                               : "bg-red-500"
@@ -248,7 +250,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
                   {/* Reasoning */}
                   {row.match.reasoning && (
-                    <p className="text-xs text-[#6b6b6b] line-clamp-2 mt-2">
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
                       {row.match.reasoning}
                     </p>
                   )}

@@ -110,8 +110,8 @@ export default async function MessagesPage({ searchParams }: Props) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-[#ececec]">Berichten</h1>
-          <p className="text-sm text-[#8e8e8e] mt-1">Communicatie met kandidaten</p>
+          <h1 className="text-xl font-bold text-foreground">Berichten</h1>
+          <p className="text-sm text-muted-foreground mt-1">Communicatie met kandidaten</p>
         </div>
 
         {/* KPI row */}
@@ -153,7 +153,7 @@ export default async function MessagesPage({ searchParams }: Props) {
               return `/messages${qs ? `?${qs}` : ""}`;
             }}
             variant="subtle"
-            icon={<Filter className="h-4 w-4 text-[#6b6b6b]" />}
+            icon={<Filter className="h-4 w-4 text-muted-foreground" />}
           />
           <FilterTabs
             options={[
@@ -182,7 +182,7 @@ export default async function MessagesPage({ searchParams }: Props) {
           />
         ) : (
           <>
-            <p className="text-sm text-[#8e8e8e]">
+            <p className="text-sm text-muted-foreground">
               {totalFiltered} bericht{totalFiltered !== 1 ? "en" : ""} gevonden — Pagina {page} van{" "}
               {totalPages}
             </p>
@@ -193,7 +193,7 @@ export default async function MessagesPage({ searchParams }: Props) {
                 return (
                   <div
                     key={row.message.id}
-                    className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-4 hover:border-[#10a37f]/30 transition-colors"
+                    className="bg-card border border-border rounded-lg p-4 hover:border-primary/30 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -201,15 +201,15 @@ export default async function MessagesPage({ searchParams }: Props) {
                           {isInbound ? (
                             <ArrowDownLeft className="h-4 w-4 text-blue-500 shrink-0" />
                           ) : (
-                            <ArrowUpRight className="h-4 w-4 text-[#10a37f] shrink-0" />
+                            <ArrowUpRight className="h-4 w-4 text-primary shrink-0" />
                           )}
-                          <span className="text-sm font-semibold text-[#ececec] truncate">
+                          <span className="text-sm font-semibold text-foreground truncate">
                             {row.message.subject ??
                               row.message.body.substring(0, 80) +
                                 (row.message.body.length > 80 ? "..." : "")}
                           </span>
                         </div>
-                        <p className="text-xs text-[#6b6b6b] ml-6">
+                        <p className="text-xs text-muted-foreground ml-6">
                           {row.candidateName ?? "Onbekend"}{" "}
                           {row.jobTitle ? `· ${row.jobTitle}` : ""}
                         </p>
@@ -225,12 +225,12 @@ export default async function MessagesPage({ searchParams }: Props) {
                       </div>
                     </div>
                     {row.message.subject && (
-                      <p className="mt-2 text-xs text-[#8e8e8e] ml-6 line-clamp-2">
+                      <p className="mt-2 text-xs text-muted-foreground ml-6 line-clamp-2">
                         {row.message.body.substring(0, 120)}
                         {row.message.body.length > 120 ? "..." : ""}
                       </p>
                     )}
-                    <div className="mt-2 text-xs text-[#6b6b6b] ml-6">
+                    <div className="mt-2 text-xs text-muted-foreground ml-6">
                       {row.message.sentAt &&
                         new Date(row.message.sentAt).toLocaleDateString("nl-NL", {
                           day: "numeric",

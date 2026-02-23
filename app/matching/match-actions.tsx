@@ -12,7 +12,7 @@ export function MatchActions({ matchId }: { matchId: string }) {
   };
 
   if (isPending) {
-    return <Loader2 className="h-4 w-4 text-[#6b6b6b] animate-spin" />;
+    return <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />;
   }
 
   return (
@@ -20,7 +20,7 @@ export function MatchActions({ matchId }: { matchId: string }) {
       <button
         type="button"
         onClick={() => handleAction("approved")}
-        className="h-7 px-3 flex items-center gap-1 bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/20 rounded-lg text-xs font-medium hover:bg-[#10a37f]/20 transition-colors cursor-pointer"
+        className="h-7 px-3 flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors cursor-pointer"
       >
         <CheckCircle2 className="h-3 w-3" />
         Goedkeuren

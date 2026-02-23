@@ -57,7 +57,10 @@ export function TopNav() {
 
         {/* Right side icons */}
         <div className="flex items-center space-x-3 shrink-0">
-          <button className="text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors"
+          >
             <Search className="h-4.5 w-4.5" />
           </button>
           <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center text-muted-foreground">

@@ -51,11 +51,11 @@ export function ScraperActions() {
 
   return (
     <div className="flex items-center gap-3">
-      {message && <span className="text-sm text-[#8e8e8e]">{message}</span>}
+      {message && <span className="text-sm text-muted-foreground">{message}</span>}
       <Button
         onClick={handleScrapeAll}
         disabled={loading}
-        className="bg-[#10a37f] text-white hover:bg-[#10a37f]/90"
+        className="bg-primary text-white hover:bg-primary/90"
       >
         <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
         {loading ? "Bezig..." : "Alles Scrapen"}

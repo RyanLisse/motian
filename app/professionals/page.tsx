@@ -79,8 +79,10 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-[#ececec]">Professionals</h1>
-          <p className="text-sm text-[#8e8e8e] mt-1">Talent pool — overzicht van alle kandidaten</p>
+          <h1 className="text-xl font-bold text-foreground">Professionals</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Talent pool — overzicht van alle kandidaten
+          </p>
         </div>
 
         {/* KPI row */}
@@ -90,7 +92,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
             icon={<Zap className="h-4 w-4" />}
             label="Direct beschikbaar"
             value={directCount}
-            valueClassName="text-[#10a37f]"
+            valueClassName="text-primary"
           />
           <KPICard
             icon={<UserPlus className="h-4 w-4" />}
@@ -102,19 +104,19 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
         {/* Search + filters */}
         <form className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6b6b6b]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               name="q"
               defaultValue={query}
               placeholder="Zoek op naam..."
-              className="w-full h-9 pl-9 pr-3 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#ececec] placeholder:text-[#6b6b6b] focus:outline-none focus:border-[#10a37f]/40"
+              className="w-full h-9 pl-9 pr-3 bg-card border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
             />
           </div>
           <select
             name="beschikbaarheid"
             defaultValue={availability}
-            className="h-9 px-3 bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#8e8e8e] focus:outline-none focus:border-[#10a37f]/40"
+            className="h-9 px-3 bg-card border border-border rounded-lg text-sm text-muted-foreground focus:outline-none focus:border-primary/40"
           >
             <option value="">Alle beschikbaarheid</option>
             <option value="direct">Direct beschikbaar</option>
@@ -123,7 +125,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
           </select>
           <button
             type="submit"
-            className="h-9 px-4 bg-[#10a37f] hover:bg-[#10a37f]/90 text-white text-sm font-medium rounded-lg transition-colors"
+            className="h-9 px-4 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-colors"
           >
             Zoeken
           </button>
@@ -131,9 +133,9 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
 
         {/* Results count */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[#8e8e8e]">{totalCount} professionals gevonden</p>
+          <p className="text-sm text-muted-foreground">{totalCount} professionals gevonden</p>
           {totalPages > 1 && (
-            <p className="text-sm text-[#6b6b6b]">
+            <p className="text-sm text-muted-foreground">
               Pagina {page} van {totalPages}
             </p>
           )}
@@ -153,21 +155,21 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
 
               return (
                 <Link key={candidate.id} href={`/professionals/${candidate.id}`}>
-                  <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-4 hover:border-[#10a37f]/40 hover:bg-[#232323] transition-colors cursor-pointer">
+                  <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer">
                     {/* Name + source */}
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div>
-                        <h3 className="text-sm font-semibold text-[#ececec] leading-snug">
+                        <h3 className="text-sm font-semibold text-foreground leading-snug">
                           {candidate.name}
                         </h3>
                         {candidate.role && (
-                          <p className="text-xs text-[#8e8e8e] mt-0.5">{candidate.role}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{candidate.role}</p>
                         )}
                       </div>
                       {candidate.source && (
                         <Badge
                           variant="outline"
-                          className="shrink-0 text-[10px] capitalize border-[#2d2d2d] text-[#6b6b6b] bg-transparent"
+                          className="shrink-0 text-[10px] capitalize border-border text-muted-foreground bg-transparent"
                         >
                           {candidate.source}
                         </Badge>
@@ -175,7 +177,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
                     </div>
 
                     {/* Meta */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-[#8e8e8e] mb-3">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-3">
                       {candidate.location && (
                         <span className="flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5" />
@@ -197,7 +199,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
                           <Badge
                             key={`${candidate.id}-${skill}`}
                             variant="outline"
-                            className="bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20 text-[10px]"
+                            className="bg-primary/10 text-primary border-primary/20 text-[10px]"
                           >
                             {skill}
                           </Badge>
@@ -205,7 +207,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
                         {skills.length > 5 && (
                           <Badge
                             variant="outline"
-                            className="text-[10px] border-[#2d2d2d] text-[#6b6b6b] bg-transparent"
+                            className="text-[10px] border-border text-muted-foreground bg-transparent"
                           >
                             +{skills.length - 5}
                           </Badge>
@@ -219,8 +221,8 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
                         variant="outline"
                         className={
                           candidate.availability === "direct"
-                            ? "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20 text-[10px]"
-                            : "text-[10px] border-[#2d2d2d] text-[#6b6b6b] bg-transparent"
+                            ? "bg-primary/10 text-primary border-primary/20 text-[10px]"
+                            : "text-[10px] border-border text-muted-foreground bg-transparent"
                         }
                       >
                         {availabilityLabels[candidate.availability] ?? candidate.availability}

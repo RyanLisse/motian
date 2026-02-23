@@ -101,8 +101,8 @@ export default async function OverzichtPage() {
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Page header */}
         <div>
-          <h1 className="text-2xl font-bold text-[#ececec]">Overzicht</h1>
-          <p className="text-sm text-[#6b6b6b] mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Overzicht</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Dashboard — realtime inzicht in opdrachten en scrapers
           </p>
         </div>
@@ -118,8 +118,8 @@ export default async function OverzichtPage() {
             icon={<TrendingUp className="h-5 w-5" />}
             label="Nieuw deze week"
             value={weeklyNew}
-            iconClassName="text-[#10a37f]/60"
-            valueClassName="text-[#10a37f]"
+            iconClassName="text-primary/60"
+            valueClassName="text-primary"
           />
           <KPICard
             icon={<RefreshCw className="h-5 w-5" />}
@@ -145,18 +145,18 @@ export default async function OverzichtPage() {
                   return (
                     <div key={p.platform} className="flex items-center gap-3">
                       <span
-                        className="text-sm text-[#ececec] capitalize w-36 shrink-0 truncate"
+                        className="text-sm text-foreground capitalize w-36 shrink-0 truncate"
                         title={p.platform}
                       >
                         {p.platform}
                       </span>
-                      <div className="flex-1 h-2 bg-[#2d2d2d] rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-[#10a37f] rounded-full transition-all"
+                          className="h-full bg-primary rounded-full transition-all"
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
-                      <span className="text-xs text-[#6b6b6b] w-16 text-right">
+                      <span className="text-xs text-muted-foreground w-16 text-right">
                         {p.count} ({percentage}%)
                       </span>
                     </div>
@@ -172,22 +172,22 @@ export default async function OverzichtPage() {
               action={
                 <Link
                   href="/opdrachten"
-                  className="text-xs text-[#10a37f] hover:underline flex items-center gap-1"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
                 >
                   Alle opdrachten <ArrowRight className="h-3 w-3" />
                 </Link>
               }
             >
-              <div className="divide-y divide-[#2d2d2d]">
+              <div className="divide-y divide-border">
                 {recentJobs.map((job) => (
                   <Link
                     key={job.id}
                     href={`/opdrachten/${job.id}`}
-                    className="flex items-start justify-between py-3 first:pt-0 last:pb-0 hover:bg-[#1e1e1e] -mx-4 px-4 transition-colors"
+                    className="flex items-start justify-between py-3 first:pt-0 last:pb-0 hover:bg-card -mx-4 px-4 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-[#ececec] truncate">{job.title}</p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-[#6b6b6b]">
+                      <p className="text-sm font-medium text-foreground truncate">{job.title}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                         {job.company && (
                           <span className="flex items-center gap-1">
                             <Building2 className="h-3 w-3" />
@@ -204,7 +204,7 @@ export default async function OverzichtPage() {
                     </div>
                     <Badge
                       variant="outline"
-                      className="shrink-0 ml-3 text-[9px] border-[#2d2d2d] text-[#6b6b6b] capitalize"
+                      className="shrink-0 ml-3 text-[9px] border-border text-muted-foreground capitalize"
                     >
                       {job.platform}
                     </Badge>
@@ -220,18 +220,18 @@ export default async function OverzichtPage() {
               action={
                 <Link
                   href="/scraper"
-                  className="text-xs text-[#10a37f] hover:underline flex items-center gap-1"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
                 >
                   Scraper dashboard <ArrowRight className="h-3 w-3" />
                 </Link>
               }
             >
               {recentScrapes.length === 0 ? (
-                <p className="text-sm text-[#6b6b6b] text-center py-4">
+                <p className="text-sm text-muted-foreground text-center py-4">
                   Nog geen scrape resultaten
                 </p>
               ) : (
-                <div className="divide-y divide-[#2d2d2d]">
+                <div className="divide-y divide-border">
                   {recentScrapes.map((s) => (
                     <div
                       key={s.id}
@@ -241,15 +241,15 @@ export default async function OverzichtPage() {
                         <div
                           className={`h-2 w-2 rounded-full ${
                             s.status === "success"
-                              ? "bg-[#10a37f]"
+                              ? "bg-primary"
                               : s.status === "failed"
                                 ? "bg-red-500"
                                 : "bg-yellow-500"
                           }`}
                         />
-                        <span className="text-sm text-[#ececec] capitalize">{s.platform}</span>
+                        <span className="text-sm text-foreground capitalize">{s.platform}</span>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-[#6b6b6b]">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span>{s.jobsNew ?? 0} nieuw</span>
                         <span>{s.jobsFound ?? 0} gevonden</span>
                         {s.runAt && (
@@ -278,12 +278,12 @@ export default async function OverzichtPage() {
                 {topCompanies.map((c, i) => (
                   <div key={c.company} className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs text-[#6b6b6b] w-4">{i + 1}.</span>
-                      <span className="text-sm text-[#ececec] truncate">{c.company}</span>
+                      <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
+                      <span className="text-sm text-foreground truncate">{c.company}</span>
                     </div>
                     <Badge
                       variant="outline"
-                      className="shrink-0 ml-2 text-[10px] border-[#2d2d2d] text-[#8e8e8e]"
+                      className="shrink-0 ml-2 text-[10px] border-border text-muted-foreground"
                     >
                       {c.count}
                     </Badge>
@@ -298,12 +298,12 @@ export default async function OverzichtPage() {
                 {locationCounts.map((l, i) => (
                   <div key={l.province} className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs text-[#6b6b6b] w-4">{i + 1}.</span>
-                      <span className="text-sm text-[#ececec] truncate">{l.province}</span>
+                      <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
+                      <span className="text-sm text-foreground truncate">{l.province}</span>
                     </div>
                     <Badge
                       variant="outline"
-                      className="shrink-0 ml-2 text-[10px] border-[#2d2d2d] text-[#8e8e8e]"
+                      className="shrink-0 ml-2 text-[10px] border-border text-muted-foreground"
                     >
                       {l.count}
                     </Badge>
@@ -347,11 +347,11 @@ function DashboardCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
+    <div className="bg-card border border-border rounded-xl p-4">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2 text-[#8e8e8e]">
+        <div className="flex items-center gap-2 text-muted-foreground">
           {icon}
-          <h3 className="text-sm font-semibold text-[#ececec]">{title}</h3>
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         </div>
         {action}
       </div>
@@ -363,16 +363,16 @@ function DashboardCard({
 function StatusRow({ label, status }: { label: string; status: "online" | "offline" }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-[#8e8e8e]">{label}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
       <div className="flex items-center gap-1.5">
         <div
           className={`h-1.5 w-1.5 rounded-full ${
-            status === "online" ? "bg-[#10a37f] animate-pulse" : "bg-[#6b6b6b]"
+            status === "online" ? "bg-primary animate-pulse" : "bg-muted-foreground"
           }`}
         />
         <span
           className={`text-xs font-mono ${
-            status === "online" ? "text-[#10a37f]" : "text-[#6b6b6b]"
+            status === "online" ? "text-primary" : "text-muted-foreground"
           }`}
         >
           {status === "online" ? "Online" : "Offline"}

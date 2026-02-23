@@ -24,7 +24,7 @@ const stageColors: Record<string, string> = {
   screening: "bg-blue-500/10 text-blue-500 border-blue-500/20",
   interview: "bg-purple-500/10 text-purple-500 border-purple-500/20",
   offer: "bg-orange-500/10 text-orange-500 border-orange-500/20",
-  hired: "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
+  hired: "bg-primary/10 text-primary border-primary/20",
   rejected: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
@@ -114,8 +114,8 @@ export default async function PipelinePage({ searchParams }: Props) {
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-[#ececec]">Pipeline</h1>
-          <p className="text-sm text-[#8e8e8e] mt-1">
+          <h1 className="text-xl font-bold text-foreground">Pipeline</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Sollicitatiepipeline — volg kandidaten door elke fase
           </p>
         </div>
@@ -155,8 +155,8 @@ export default async function PipelinePage({ searchParams }: Props) {
             icon={<CheckCircle2 className="h-4 w-4" />}
             label="Geplaatst"
             value={hiredCount}
-            iconClassName="text-[#10a37f]/60"
-            valueClassName="text-[#10a37f]"
+            iconClassName="text-primary/60"
+            valueClassName="text-primary"
           />
         </div>
 
@@ -177,9 +177,9 @@ export default async function PipelinePage({ searchParams }: Props) {
 
         {/* Results count */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[#8e8e8e]">{totalCount} sollicitaties gevonden</p>
+          <p className="text-sm text-muted-foreground">{totalCount} sollicitaties gevonden</p>
           {totalPages > 1 && (
-            <p className="text-sm text-[#6b6b6b]">
+            <p className="text-sm text-muted-foreground">
               Pagina {page} van {totalPages}
             </p>
           )}
@@ -205,29 +205,29 @@ export default async function PipelinePage({ searchParams }: Props) {
               return (
                 <div
                   key={row.application.id}
-                  className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4 hover:border-[#10a37f]/40 hover:bg-[#232323] transition-colors"
+                  className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-accent transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
                     {/* Left: candidate + job info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Users className="h-3.5 w-3.5 text-[#6b6b6b]" />
-                        <span className="text-sm font-semibold text-[#ececec]">
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm font-semibold text-foreground">
                           {row.candidateName ?? "Kandidaat verwijderd"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mb-2">
-                        <Briefcase className="h-3.5 w-3.5 text-[#6b6b6b]" />
-                        <span className="text-sm text-[#8e8e8e]">
+                        <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
                           {row.jobTitle ?? "Vacature verwijderd"}
                           {row.jobCompany && (
-                            <span className="text-[#6b6b6b]"> bij {row.jobCompany}</span>
+                            <span className="text-muted-foreground"> bij {row.jobCompany}</span>
                           )}
                         </span>
                       </div>
 
                       {/* Meta row */}
-                      <div className="flex items-center gap-3 text-xs text-[#6b6b6b]">
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         {row.application.source && (
                           <span className="capitalize">{row.application.source}</span>
                         )}
@@ -247,7 +247,7 @@ export default async function PipelinePage({ searchParams }: Props) {
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge
                         variant="outline"
-                        className={`text-[10px] flex items-center gap-1 ${stageColors[stage] ?? "border-[#2d2d2d] text-[#6b6b6b]"}`}
+                        className={`text-[10px] flex items-center gap-1 ${stageColors[stage] ?? "border-border text-muted-foreground"}`}
                       >
                         <StageIcon className="h-3 w-3" />
                         {stageLabels[stage] ?? stage}

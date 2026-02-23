@@ -35,7 +35,7 @@ export default async function ScraperPage() {
         {/* Configs */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {configs.map((config) => (
-            <Card key={config.id} className="bg-[#1e1e1e] border-[#2d2d2d]">
+            <Card key={config.id} className="bg-card border-border">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base capitalize">{config.platform}</CardTitle>
@@ -53,17 +53,17 @@ export default async function ScraperPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-sm text-[#8e8e8e] space-y-1">
+                <div className="text-sm text-muted-foreground space-y-1">
                   <p>
                     URL:{" "}
-                    <span className="font-mono text-xs text-[#ececec] truncate block">
+                    <span className="font-mono text-xs text-foreground truncate block">
                       {config.baseUrl}
                     </span>
                   </p>
                   {config.lastRunAt && (
                     <p>
                       Laatste run:{" "}
-                      <span className="text-[#ececec]">
+                      <span className="text-foreground">
                         {new Date(config.lastRunAt).toLocaleString("nl-NL", {
                           day: "numeric",
                           month: "short",
@@ -92,11 +92,13 @@ export default async function ScraperPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t border-[#2d2d2d]">
-                  <span className="text-xs text-[#8e8e8e]">Cron: {config.cronExpression}</span>
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <span className="text-xs text-muted-foreground">
+                    Cron: {config.cronExpression}
+                  </span>
                   <span
                     className={`text-xs font-medium ${
-                      config.isActive ? "text-[#10a37f]" : "text-[#8e8e8e]"
+                      config.isActive ? "text-primary" : "text-muted-foreground"
                     }`}
                   >
                     {config.isActive ? "Actief" : "Inactief"}
@@ -108,17 +110,17 @@ export default async function ScraperPage() {
         </div>
 
         {/* History */}
-        <Card className="bg-[#1e1e1e] border-[#2d2d2d]">
+        <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-base">Recente Scrape Resultaten</CardTitle>
           </CardHeader>
           <CardContent>
             {results.length === 0 ? (
-              <p className="text-sm text-[#8e8e8e] text-center py-8">Nog geen resultaten</p>
+              <p className="text-sm text-muted-foreground text-center py-8">Nog geen resultaten</p>
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="border-[#2d2d2d] hover:bg-transparent">
+                  <TableRow className="border-border hover:bg-transparent">
                     <TableHead>Platform</TableHead>
                     <TableHead>Datum</TableHead>
                     <TableHead>Status</TableHead>
@@ -130,9 +132,9 @@ export default async function ScraperPage() {
                 </TableHeader>
                 <TableBody>
                   {results.map((result) => (
-                    <TableRow key={result.id} className="border-[#2d2d2d]">
+                    <TableRow key={result.id} className="border-border">
                       <TableCell className="capitalize font-medium">{result.platform}</TableCell>
-                      <TableCell className="text-[#8e8e8e]">
+                      <TableCell className="text-muted-foreground">
                         {result.runAt
                           ? new Date(result.runAt).toLocaleString("nl-NL", {
                               day: "numeric",
@@ -146,11 +148,11 @@ export default async function ScraperPage() {
                         <StatusBadge status={result.status} />
                       </TableCell>
                       <TableCell className="text-right">{result.jobsFound}</TableCell>
-                      <TableCell className="text-right text-[#10a37f]">{result.jobsNew}</TableCell>
-                      <TableCell className="text-right text-[#8e8e8e]">
+                      <TableCell className="text-right text-primary">{result.jobsNew}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">
                         {result.duplicates}
                       </TableCell>
-                      <TableCell className="text-right text-[#8e8e8e]">
+                      <TableCell className="text-right text-muted-foreground">
                         {result.durationMs ? `${(result.durationMs / 1000).toFixed(1)}s` : "-"}
                       </TableCell>
                     </TableRow>

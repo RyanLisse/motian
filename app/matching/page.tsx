@@ -35,7 +35,7 @@ const PER_PAGE = 20;
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  approved: "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
+  approved: "bg-primary/10 text-primary border-primary/20",
   rejected: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
@@ -62,8 +62,8 @@ export default async function MatchingPage({ searchParams }: Props) {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
           <div>
-            <h1 className="text-xl font-bold text-[#ececec]">Matching</h1>
-            <p className="text-sm text-[#8e8e8e] mt-1">
+            <h1 className="text-xl font-bold text-foreground">Matching</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               AI-gestuurde matching — beoordeel kandidaat-vacature matches
             </p>
           </div>
@@ -141,8 +141,8 @@ export default async function MatchingPage({ searchParams }: Props) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-[#ececec]">Matching</h1>
-          <p className="text-sm text-[#8e8e8e] mt-1">
+          <h1 className="text-xl font-bold text-foreground">Matching</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             AI-gestuurde matching — beoordeel kandidaat-vacature matches
           </p>
         </div>
@@ -167,8 +167,8 @@ export default async function MatchingPage({ searchParams }: Props) {
             icon={<CheckCircle2 className="h-4 w-4" />}
             label="Goedgekeurd"
             value={approvedCount}
-            iconClassName="text-[#10a37f]/60"
-            valueClassName="text-[#10a37f]"
+            iconClassName="text-primary/60"
+            valueClassName="text-primary"
           />
           <KPICard
             icon={<XCircle className="h-4 w-4" />}
@@ -191,9 +191,9 @@ export default async function MatchingPage({ searchParams }: Props) {
         />
 
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[#8e8e8e]">{totalCount} matches gevonden</p>
+          <p className="text-sm text-muted-foreground">{totalCount} matches gevonden</p>
           {totalPages > 1 && (
-            <p className="text-sm text-[#6b6b6b]">
+            <p className="text-sm text-muted-foreground">
               Pagina {page} van {totalPages}
             </p>
           )}
@@ -218,52 +218,52 @@ export default async function MatchingPage({ searchParams }: Props) {
               return (
                 <div
                   key={row.match.id}
-                  className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4 hover:border-[#10a37f]/40 hover:bg-[#232323] transition-colors"
+                  className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-accent transition-colors"
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <User className="h-3.5 w-3.5 text-[#6b6b6b]" />
-                        <span className="text-xs text-[#6b6b6b] uppercase tracking-wider">
+                        <User className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider">
                           Kandidaat
                         </span>
                       </div>
                       {row.candidate ? (
                         <Link
                           href={`/professionals/${row.candidate.id}`}
-                          className="text-sm font-semibold text-[#ececec] hover:text-[#10a37f] transition-colors"
+                          className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
                         >
                           {row.candidate.name}
                         </Link>
                       ) : (
-                        <span className="text-sm text-[#6b6b6b]">Kandidaat verwijderd</span>
+                        <span className="text-sm text-muted-foreground">Kandidaat verwijderd</span>
                       )}
                       {row.candidate?.role && (
-                        <p className="text-xs text-[#8e8e8e]">{row.candidate.role}</p>
+                        <p className="text-xs text-muted-foreground">{row.candidate.role}</p>
                       )}
                     </div>
 
-                    <ArrowRight className="h-4 w-4 text-[#2d2d2d] shrink-0" />
+                    <ArrowRight className="h-4 w-4 text-border shrink-0" />
 
                     <div className="flex-1 min-w-0 text-right">
                       <div className="flex items-center justify-end gap-1.5 mb-0.5">
-                        <span className="text-xs text-[#6b6b6b] uppercase tracking-wider">
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider">
                           Vacature
                         </span>
-                        <Briefcase className="h-3.5 w-3.5 text-[#6b6b6b]" />
+                        <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
                       </div>
                       {row.job ? (
                         <Link
                           href={`/opdrachten/${row.job.id}`}
-                          className="text-sm font-semibold text-[#ececec] hover:text-[#10a37f] transition-colors"
+                          className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
                         >
                           {row.job.title}
                         </Link>
                       ) : (
-                        <span className="text-sm text-[#6b6b6b]">Opdracht verwijderd</span>
+                        <span className="text-sm text-muted-foreground">Opdracht verwijderd</span>
                       )}
                       {row.job?.company && (
-                        <p className="text-xs text-[#8e8e8e]">{row.job.company}</p>
+                        <p className="text-xs text-muted-foreground">{row.job.company}</p>
                       )}
                     </div>
                   </div>
@@ -271,11 +271,11 @@ export default async function MatchingPage({ searchParams }: Props) {
                   <div className="flex items-center gap-4 mb-3">
                     <div className="flex-1">
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-[#6b6b6b]">Match score</span>
+                        <span className="text-muted-foreground">Match score</span>
                         <span
                           className={
                             score >= 80
-                              ? "text-[#10a37f] font-medium"
+                              ? "text-primary font-medium"
                               : score >= 60
                                 ? "text-yellow-500 font-medium"
                                 : "text-red-500 font-medium"
@@ -284,11 +284,11 @@ export default async function MatchingPage({ searchParams }: Props) {
                           {score}%
                         </span>
                       </div>
-                      <div className="w-full h-2 bg-[#2d2d2d] rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${
                             score >= 80
-                              ? "bg-[#10a37f]"
+                              ? "bg-primary"
                               : score >= 60
                                 ? "bg-yellow-500"
                                 : "bg-red-500"
@@ -299,23 +299,23 @@ export default async function MatchingPage({ searchParams }: Props) {
                     </div>
                     {confidence !== null && (
                       <div className="text-right shrink-0">
-                        <span className="text-xs text-[#6b6b6b]">Betrouwbaarheid</span>
-                        <p className="text-sm font-medium text-[#8e8e8e]">{confidence}%</p>
+                        <span className="text-xs text-muted-foreground">Betrouwbaarheid</span>
+                        <p className="text-sm font-medium text-muted-foreground">{confidence}%</p>
                       </div>
                     )}
                   </div>
 
                   {row.match.reasoning && (
-                    <p className="text-xs text-[#6b6b6b] line-clamp-2 mb-3">
-                      <Sparkles className="h-3 w-3 inline mr-1 text-[#10a37f]/60" />
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                      <Sparkles className="h-3 w-3 inline mr-1 text-primary/60" />
                       {row.match.reasoning}
                     </p>
                   )}
 
-                  <div className="flex items-center justify-between pt-2 border-t border-[#2d2d2d]">
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
                     <Badge
                       variant="outline"
-                      className={`text-[10px] ${statusColors[row.match.status] ?? "border-[#2d2d2d] text-[#6b6b6b]"}`}
+                      className={`text-[10px] ${statusColors[row.match.status] ?? "border-border text-muted-foreground"}`}
                     >
                       {statusLabels[row.match.status] ?? row.match.status}
                     </Badge>
@@ -323,7 +323,7 @@ export default async function MatchingPage({ searchParams }: Props) {
                     {row.match.status === "pending" && <MatchActions matchId={row.match.id} />}
 
                     {row.match.reviewedAt && (
-                      <span className="text-xs text-[#6b6b6b]">
+                      <span className="text-xs text-muted-foreground">
                         {new Date(row.match.reviewedAt).toLocaleDateString("nl-NL", {
                           day: "numeric",
                           month: "short",

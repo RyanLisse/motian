@@ -35,7 +35,7 @@ describe("Hybrid scoring — rule + vector blend", () => {
   };
 
   it("uses rule-based-v1 model when no embeddings present", () => {
-    const result = computeMatchScore(job as any, candidate as any);
+    const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate);
     expect(result.model).toBe("rule-based-v1");
   });
 
@@ -45,7 +45,10 @@ describe("Hybrid scoring — rule + vector blend", () => {
     const jobWithEmb = { ...job, embedding };
     const candWithEmb = { ...candidate, embedding: embedding.map((v) => v + 0.05) };
 
-    const result = computeMatchScore(jobWithEmb as any, candWithEmb as any);
+    const result = computeMatchScore(
+      jobWithEmb as unknown as Job,
+      candWithEmb as unknown as Candidate,
+    );
     expect(result.model).toBe("hybrid-v1");
     expect(result.reasoning).toContain("Semantische match");
   });
@@ -54,7 +57,10 @@ describe("Hybrid scoring — rule + vector blend", () => {
     const embedding = Array.from({ length: 512 }, () => Math.random());
     const jobWithEmb = { ...job, embedding };
 
-    const result = computeMatchScore(jobWithEmb as any, candidate as any);
+    const result = computeMatchScore(
+      jobWithEmb as unknown as Job,
+      candidate as unknown as Candidate,
+    );
     expect(result.model).toBe("rule-based-v1");
   });
 
@@ -63,7 +69,10 @@ describe("Hybrid scoring — rule + vector blend", () => {
     const jobWithEmb = { ...job, embedding };
     const candWithEmb = { ...candidate, embedding };
 
-    const result = computeMatchScore(jobWithEmb as any, candWithEmb as any);
+    const result = computeMatchScore(
+      jobWithEmb as unknown as Job,
+      candWithEmb as unknown as Candidate,
+    );
     expect(result.score).toBeGreaterThanOrEqual(0);
     expect(result.score).toBeLessThanOrEqual(100);
     expect(result.confidence).toBeLessThanOrEqual(100);

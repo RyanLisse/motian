@@ -58,16 +58,17 @@ export function ChatMessages({ messages, status, onSuggestion }: Props) {
         {messages.map((message) => (
           <Message key={message.id} from={message.role}>
             <MessageContent>
-              {message.parts.map((part, i) => {
+              {message.parts.map((part, partIndex) => {
+                const partKey = `${message.id}-${partIndex}`;
                 if (part.type === "text") {
                   if (message.role === "user") {
                     return (
-                      <p key={i} className="whitespace-pre-wrap leading-relaxed">
+                      <p key={partKey} className="whitespace-pre-wrap leading-relaxed">
                         {part.text}
                       </p>
                     );
                   }
-                  return <MessageResponse key={i}>{part.text}</MessageResponse>;
+                  return <MessageResponse key={partKey}>{part.text}</MessageResponse>;
                 }
 
                 if (isToolUIPart(part)) {
@@ -81,7 +82,7 @@ export function ChatMessages({ messages, status, onSuggestion }: Props) {
                   const name = toolPart.toolName ?? getToolName(part);
                   return (
                     <ChatToolCall
-                      key={i}
+                      key={partKey}
                       toolName={name}
                       state={toolPart.state}
                       input={toolPart.input}

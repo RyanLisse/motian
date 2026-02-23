@@ -21,7 +21,7 @@ const PER_PAGE = 20;
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  completed: "bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20",
+  completed: "bg-primary/10 text-primary border-primary/20",
   cancelled: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
@@ -120,8 +120,8 @@ export default async function InterviewsPage({ searchParams }: Props) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-[#ececec]">Interviews</h1>
-          <p className="text-sm text-[#8e8e8e] mt-1">Gesprekken plannen en bijhouden</p>
+          <h1 className="text-xl font-bold text-foreground">Interviews</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gesprekken plannen en bijhouden</p>
         </div>
 
         {/* KPI row */}
@@ -161,7 +161,7 @@ export default async function InterviewsPage({ searchParams }: Props) {
           activeValue={statusFilter}
           buildHref={(v) => `/interviews${v ? `?status=${v}` : ""}`}
           variant="subtle"
-          icon={<Filter className="h-4 w-4 text-[#6b6b6b]" />}
+          icon={<Filter className="h-4 w-4 text-muted-foreground" />}
         />
 
         {/* Results */}
@@ -173,7 +173,7 @@ export default async function InterviewsPage({ searchParams }: Props) {
           />
         ) : (
           <>
-            <p className="text-sm text-[#8e8e8e]">
+            <p className="text-sm text-muted-foreground">
               {totalFiltered} interview{totalFiltered !== 1 ? "s" : ""} gevonden — Pagina {page} van{" "}
               {totalPages}
             </p>
@@ -183,21 +183,21 @@ export default async function InterviewsPage({ searchParams }: Props) {
                 return (
                   <div
                     key={row.interview.id}
-                    className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-4 hover:border-[#10a37f]/30 transition-colors"
+                    className="bg-card border border-border rounded-lg p-4 hover:border-primary/30 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold text-[#ececec] truncate">
+                          <span className="text-sm font-semibold text-foreground truncate">
                             {row.candidateName ?? "Onbekend"}
                           </span>
-                          <span className="text-xs text-[#6b6b6b]">→</span>
-                          <span className="text-sm text-[#8e8e8e] truncate">
+                          <span className="text-xs text-muted-foreground">→</span>
+                          <span className="text-sm text-muted-foreground truncate">
                             {row.jobTitle ?? "Onbekend"}
                           </span>
                         </div>
                         {row.jobCompany && (
-                          <p className="text-xs text-[#6b6b6b]">{row.jobCompany}</p>
+                          <p className="text-xs text-muted-foreground">{row.jobCompany}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -216,7 +216,7 @@ export default async function InterviewsPage({ searchParams }: Props) {
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-[#6b6b6b]">
+                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {new Date(row.interview.scheduledAt).toLocaleDateString("nl-NL", {
@@ -242,7 +242,7 @@ export default async function InterviewsPage({ searchParams }: Props) {
                       )}
                     </div>
                     {row.interview.feedback && (
-                      <p className="mt-2 text-xs text-[#8e8e8e] line-clamp-2">
+                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
                         {row.interview.feedback}
                       </p>
                     )}

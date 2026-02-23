@@ -30,8 +30,8 @@ function SectionBlock({ title, items }: { title: string; items: string[] }) {
     <div>
       <h3 className="text-base font-semibold text-foreground mb-3">{title}</h3>
       <ul className="space-y-2">
-        {items.map((item, i) => (
-          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+        {items.map((item) => (
+          <li key={item} className="text-sm text-muted-foreground flex items-start gap-2">
             <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
             <span>{item}</span>
           </li>
@@ -388,9 +388,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               {competencesList
                 .filter((c) => stripHtml(c).length < 60)
                 .slice(0, 8)
-                .map((comp, i) => (
+                .map((comp) => (
                   <Badge
-                    key={i}
+                    key={comp}
                     variant="outline"
                     className="bg-primary/10 text-primary border-primary/20 text-xs"
                   >
@@ -408,6 +408,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               <h3 className="text-base font-semibold text-foreground mb-3">Functiebeschrijving</h3>
               <div
                 className="text-sm text-muted-foreground leading-relaxed max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-foreground [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-3 [&_h3]:mb-1 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-foreground [&_b]:font-semibold [&_b]:text-foreground [&_a]:text-primary [&_a]:underline [&_span]:inline"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: Job descriptions from scrapers contain formatted HTML that must be rendered; content is sanitized by stripHtml in the scraper pipeline
                 dangerouslySetInnerHTML={{ __html: cleanDescription }}
               />
             </div>
