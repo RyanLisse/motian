@@ -89,7 +89,12 @@ export async function listJobs(
   }
 
   if (opts.province) {
-    conditions.push(eq(jobs.province, opts.province));
+    // Province partial match: "Utrecht" matches "Utrecht - Utrecht" and "Utrecht"
+    const provinceMatch = or(
+      ilike(jobs.province, `%${opts.province}%`),
+      ilike(jobs.location, `%${opts.province}%`),
+    );
+    if (provinceMatch) conditions.push(provinceMatch);
   }
 
   if (opts.rateMin != null) {
@@ -180,18 +185,28 @@ export async function updateJobEnrichment(
 /** Hybrid zoeken: combineert tekst (ILIKE) + vector (pgvector) met Reciprocal Rank Fusion. */
 export async function hybridSearch(
   query: string,
-  opts: { limit?: number; platform?: string } = {},
+  opts: {
+    limit?: number;
+    platform?: string;
+    province?: string;
+    rateMin?: number;
+    rateMax?: number;
+    contractType?: string;
+  } = {},
 ): Promise<Array<Job & { score: number }>> {
   const limit = Math.min(opts.limit ?? 20, 100);
   const k = 60; // RRF constant — higher = more weight to lower-ranked results
 
+  // Fetch more candidates to allow for post-filtering
+  const fetchSize = Math.min(limit * 3, 100);
+
   // Run text search + vector search in parallel
   const [textResults, vectorResults] = await Promise.all([
-    searchJobsByTitle(query, 50),
+    searchJobsByTitle(query, fetchSize),
     (async () => {
       try {
         const { findSimilarJobs } = await import("./embedding");
-        return await findSimilarJobs(query, { limit: 50, minScore: 0.3 });
+        return await findSimilarJobs(query, { limit: fetchSize, minScore: 0.3 });
       } catch {
         return []; // No embeddings available — fallback to text-only
       }
@@ -213,24 +228,20 @@ export async function hybridSearch(
     const id = match.id;
     const entry = scoreMap.get(id) ?? { rrfScore: 0 };
     entry.rrfScore += 1 / (k + rank + 1);
-    // If we don't have the full job object yet, we'll need to fetch it
     scoreMap.set(id, entry);
   });
 
-  // Sort by combined RRF score descending
-  const sorted = [...scoreMap.entries()]
-    .sort((a, b) => b[1].rrfScore - a[1].rrfScore)
-    .slice(0, limit);
-
   // Fetch full job objects for any vector-only results
-  const needFetch = sorted.filter(([, v]) => !v.job).map(([id]) => id);
-  if (needFetch.length > 0) {
+  const vectorOnlyIds = [...scoreMap.entries()]
+    .filter(([, v]) => !v.job)
+    .map(([id]) => id);
+  if (vectorOnlyIds.length > 0) {
     const fetched = await db
       .select()
       .from(jobs)
       .where(and(
         isNull(jobs.deletedAt),
-        or(...needFetch.map((id) => eq(jobs.id, id))),
+        or(...vectorOnlyIds.map((id) => eq(jobs.id, id))),
       ));
     const fetchMap = new Map(fetched.map((j) => [j.id, j]));
     for (const [id, entry] of scoreMap) {
@@ -240,9 +251,24 @@ export async function hybridSearch(
     }
   }
 
-  // Filter by platform if requested, and only return entries with job data
-  return sorted
-    .filter(([, v]) => v.job && (!opts.platform || v.job.platform === opts.platform))
+  // Sort by combined RRF score descending, then post-filter
+  const provinceLower = opts.province?.toLowerCase();
+
+  return [...scoreMap.entries()]
+    .sort((a, b) => b[1].rrfScore - a[1].rrfScore)
+    .filter(([, v]) => {
+      const job = v.job;
+      if (!job) return false;
+      if (opts.platform && job.platform !== opts.platform) return false;
+      // Province: case-insensitive partial match (DB stores "Utrecht - Utrecht" or "Utrecht")
+      if (provinceLower && !(job.province?.toLowerCase().includes(provinceLower) ||
+        job.location?.toLowerCase().includes(provinceLower))) return false;
+      if (opts.rateMin != null && (job.rateMax == null || job.rateMax < opts.rateMin)) return false;
+      if (opts.rateMax != null && (job.rateMin == null || job.rateMin > opts.rateMax)) return false;
+      if (opts.contractType && job.contractType !== opts.contractType) return false;
+      return true;
+    })
+    .slice(0, limit)
     .map(([, v]) => ({ ...v.job!, score: Math.round(v.rrfScore * 10000) / 10000 }));
 }
 
