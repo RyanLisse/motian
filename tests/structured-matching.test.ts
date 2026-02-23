@@ -14,14 +14,15 @@ describe("Structured matching service", () => {
     expect(source).toContain("export async function runStructuredMatch");
   });
 
-  it("uses Gemini 3.1 Pro model", () => {
+  it("uses Gemini model for structured output", () => {
     const source = readFile("src/services/structured-matching.ts");
-    expect(source).toContain("gemini-3.1-pro");
+    expect(source).toContain("gemini-");
+    expect(source).toContain("generateText");
   });
 
-  it("uses generateObject with structuredMatchOutputSchema", () => {
+  it("uses generateText with structuredMatchOutputSchema", () => {
     const source = readFile("src/services/structured-matching.ts");
-    expect(source).toContain("generateObject");
+    expect(source).toContain("generateText");
     expect(source).toContain("structuredMatchOutputSchema");
   });
 

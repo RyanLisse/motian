@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, ilike, isNull, sql } from "drizzle-orm";
 import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
+import { AddCandidateDialog } from "@/components/add-candidate-dialog";
 import { DraggableCandidate } from "@/components/draggable-candidate";
 import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -79,11 +80,14 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Professionals</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Talent pool — overzicht van alle kandidaten
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Professionals</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Talent pool — overzicht van alle kandidaten
+            </p>
+          </div>
+          <AddCandidateDialog />
         </div>
 
         {/* KPI row */}

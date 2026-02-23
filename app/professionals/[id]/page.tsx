@@ -1,8 +1,10 @@
 import { desc, eq } from "drizzle-orm";
-import { ArrowLeft, Briefcase, Euro, Mail, MapPin, Phone, Sparkles } from "lucide-react";
+import { ArrowLeft, Briefcase, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CandidateNotes } from "@/components/candidate-notes";
 import { CvDropZone } from "@/components/cv-drop-zone";
+import { EditCandidateFields } from "@/components/edit-candidate-fields";
 import { SkillsRadar } from "@/components/skills-radar";
 import { SkillsTags } from "@/components/skills-tags";
 import { Badge } from "@/components/ui/badge";
@@ -111,36 +113,20 @@ export default async function ProfessionalDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Contact info */}
-          <div className="bg-card border border-border rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Contactgegevens</h3>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              {candidate.email && (
-                <span className="flex items-center gap-1.5">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  {candidate.email}
-                </span>
-              )}
-              {candidate.phone && (
-                <span className="flex items-center gap-1.5">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  {candidate.phone}
-                </span>
-              )}
-              {candidate.location && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  {candidate.location}
-                </span>
-              )}
-              {candidate.hourlyRate && (
-                <span className="flex items-center gap-1.5">
-                  <Euro className="h-4 w-4 text-muted-foreground" />
-                  EUR {candidate.hourlyRate} per uur
-                </span>
-              )}
-            </div>
-          </div>
+          {/* Editable profile fields */}
+          <EditCandidateFields
+            candidateId={candidate.id}
+            initialData={{
+              name: candidate.name,
+              email: candidate.email,
+              phone: candidate.phone,
+              role: candidate.role,
+              location: candidate.location,
+              hourlyRate: candidate.hourlyRate,
+              availability: candidate.availability,
+              linkedinUrl: candidate.linkedinUrl,
+            }}
+          />
 
           {/* Vaardigheden — structured or legacy */}
           {(() => {
@@ -200,17 +186,8 @@ export default async function ProfessionalDetailPage({ params }: Props) {
             );
           })()}
 
-          {/* Notes */}
-          {candidate.notes && (
-            <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">Notities</h3>
-              <div className="bg-card border border-border rounded-xl p-4">
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {candidate.notes}
-                </p>
-              </div>
-            </div>
-          )}
+          {/* Notes with append form */}
+          <CandidateNotes candidateId={candidate.id} initialNotes={candidate.notes} />
 
           {/* Matches */}
           <div>

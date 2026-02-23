@@ -187,6 +187,8 @@ export const candidates = pgTable(
     experience: jsonb("experience").default([]),
     preferences: jsonb("preferences").default({}),
     resumeUrl: text("resume_url"),
+    linkedinUrl: text("linkedin_url"),
+    headline: text("headline"),
     source: text("source"), // "linkedin", "manual", "import", "mcp"
     notes: text("notes"),
     hourlyRate: integer("hourly_rate"),

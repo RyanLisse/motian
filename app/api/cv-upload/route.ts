@@ -14,6 +14,15 @@ const MAX_SIZE_MB = 20;
 
 export async function POST(request: NextRequest) {
   try {
+    // Early check for required env vars
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.error("[CV Upload] BLOB_READ_WRITE_TOKEN is not configured");
+      return Response.json(
+        { error: "Bestandsopslag is niet geconfigureerd. Stel BLOB_READ_WRITE_TOKEN in." },
+        { status: 503 },
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("cv") as File | null;
 
@@ -62,7 +71,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("[CV Upload]", err);
-    return Response.json({ error: "CV verwerking mislukt" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Onbekende fout";
+    console.error("[CV Upload] Error:", message, err);
+    return Response.json({ error: `CV verwerking mislukt: ${message}` }, { status: 500 });
   }
 }

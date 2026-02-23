@@ -69,7 +69,7 @@ function NavContent({ pathname }: { pathname: string }) {
       </nav>
 
       <div className="p-4 border-t border-border">
-        <p className="text-xs text-muted-foreground">Motia.dev + Next.js</p>
+        <p className="text-xs text-muted-foreground">Next.js + Drizzle + Neon</p>
       </div>
     </div>
   );

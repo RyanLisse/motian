@@ -1,5 +1,5 @@
 import { google } from "@ai-sdk/google";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { withRetry } from "../lib/retry";
 import {
   type ClassifiedRequirement,
@@ -61,11 +61,11 @@ export async function runStructuredMatch(input: {
 
   const prompt = `## Kandidaat: ${input.candidateName}\n\n## CV:\n${input.cvText}\n\n## Te beoordelen eisen:\n${JSON.stringify(input.requirements, null, 2)}`;
 
-  const { object } = await withRetry(
+  const { output } = await withRetry(
     () =>
-      generateObject({
-        model: google("gemini-3.1-pro"),
-        schema: structuredMatchOutputSchema,
+      generateText({
+        model: google("gemini-3-flash-preview"),
+        output: Output.object({ schema: structuredMatchOutputSchema }),
         system: SYSTEM_PROMPT,
         prompt,
         providerOptions: { google: { structuredOutputs: true } },
@@ -73,5 +73,5 @@ export async function runStructuredMatch(input: {
     { label: "Structured Matching" },
   );
 
-  return object;
+  return output as StructuredMatchOutput;
 }

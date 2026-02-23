@@ -2,7 +2,7 @@ import { del, put } from "@vercel/blob";
 
 /**
  * Upload a file to blob storage.
- * Returns the public URL and pathname.
+ * Returns the URL and pathname. Uses the store's configured access level.
  */
 export async function uploadFile(
   buffer: Buffer,
@@ -10,7 +10,7 @@ export async function uploadFile(
   contentType: string,
 ): Promise<{ url: string; pathname: string }> {
   const blob = await put(filename, buffer, {
-    access: "public",
+    access: "private",
     contentType,
   });
   return { url: blob.url, pathname: blob.pathname };

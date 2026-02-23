@@ -14,14 +14,15 @@ describe("Requirement extraction service", () => {
     expect(source).toContain("export async function extractRequirements");
   });
 
-  it("uses Gemini 3.1 Pro model", () => {
+  it("uses Gemini model for structured output", () => {
     const source = readFile("src/services/requirement-extraction.ts");
-    expect(source).toContain("gemini-3.1-pro");
+    expect(source).toContain("gemini-");
+    expect(source).toContain("generateText");
   });
 
-  it("uses generateObject with classifiedRequirementSchema", () => {
+  it("uses generateText with classifiedRequirementSchema", () => {
     const source = readFile("src/services/requirement-extraction.ts");
-    expect(source).toContain("generateObject");
+    expect(source).toContain("generateText");
     expect(source).toContain("classifiedRequirementSchema");
   });
 

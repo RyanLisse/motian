@@ -14,10 +14,22 @@ export const dynamic = "force-dynamic";
 const createCandidateSchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional(),
+  phone: z.string().optional(),
   role: z.string().optional(),
   skills: z.array(z.string()).optional(),
   location: z.string().optional(),
   source: z.string().optional(),
+  linkedinUrl: z.string().url().optional(),
+  headline: z.string().optional(),
+  hourlyRate: z.number().int().positive().optional(),
+  availability: z.enum(["direct", "1_maand", "3_maanden"]).optional(),
+  notes: z.string().optional(),
+  experience: z
+    .array(z.object({ title: z.string(), company: z.string(), duration: z.string() }))
+    .optional(),
+  education: z
+    .array(z.object({ school: z.string(), degree: z.string(), duration: z.string() }))
+    .optional(),
 });
 
 export const GET = withApiHandler(async (request: Request) => {

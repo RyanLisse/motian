@@ -1,5 +1,5 @@
 import { google } from "@ai-sdk/google";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
@@ -76,11 +76,11 @@ export async function enrichJobWithAI(job: {
     contextParts.push(`Eisen: ${JSON.stringify(job.requirements)}`);
   }
 
-  const { object } = await withRetry(
+  const { output } = await withRetry(
     () =>
-      generateObject({
+      generateText({
         model: google("gemini-2.5-flash-lite"),
-        schema: enrichmentOutputSchema,
+        output: Output.object({ schema: enrichmentOutputSchema }),
         system: SYSTEM_PROMPT,
         prompt: contextParts.join("\n\n"),
         providerOptions: { google: { structuredOutputs: true } },
@@ -88,7 +88,7 @@ export async function enrichJobWithAI(job: {
     { label: "AI Enrichment" },
   );
 
-  return object;
+  return output as EnrichmentOutput;
 }
 
 // ========== Batch Enrichment ==========
