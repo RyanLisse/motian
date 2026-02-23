@@ -1,9 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import * as tools from "./tools";
 
-// Uses OPENAI_API_KEY from env. Swap to anthropic("claude-sonnet-4-20250514")
-// when ANTHROPIC_API_KEY is available.
-export const chatModel = openai("gpt-4o");
+export const chatModel = openai("gpt-5-nano-2025-08-07");
 
 export const recruitmentTools = {
   queryOpdrachten: tools.queryOpdrachten,
