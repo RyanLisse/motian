@@ -1,6 +1,6 @@
-import { google } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { geminiFlash } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 import { type ClassifiedRequirement, classifiedRequirementSchema } from "../schemas/matching";
 
@@ -53,7 +53,7 @@ export async function extractRequirements(job: {
   const { output } = await withRetry(
     () =>
       generateText({
-        model: google("gemini-3-flash-preview"),
+        model: geminiFlash,
         output: Output.object({ schema: extractionOutputSchema }),
         system: SYSTEM_PROMPT,
         prompt: contextParts.join("\n\n"),

@@ -1,12 +1,8 @@
-import { xai } from "@ai-sdk/xai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { grok } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 import type { StructuredMatchOutput } from "../schemas/matching";
-
-// ========== Config ==========
-
-const JUDGE_MODEL = xai("grok-4-1-fast-reasoning");
 
 // ========== Schema ==========
 
@@ -69,7 +65,7 @@ export async function judgeMatch(input: {
     const { output } = await withRetry(
       () =>
         generateText({
-          model: JUDGE_MODEL,
+          model: grok,
           output: Output.object({ schema: judgeVerdictSchema }),
           system: JUDGE_SYSTEM_PROMPT,
           prompt,

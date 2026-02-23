@@ -1,5 +1,5 @@
-import { google } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
+import { geminiFlash } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 import {
   type ClassifiedRequirement,
@@ -64,7 +64,7 @@ export async function runStructuredMatch(input: {
   const { output } = await withRetry(
     () =>
       generateText({
-        model: google("gemini-3-flash-preview"),
+        model: geminiFlash,
         output: Output.object({ schema: structuredMatchOutputSchema }),
         system: SYSTEM_PROMPT,
         prompt,

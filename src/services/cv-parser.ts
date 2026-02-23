@@ -1,6 +1,6 @@
-import { google } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
 import mammoth from "mammoth";
+import { geminiFlash } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 import { type ParsedCV, parsedCVSchema } from "../schemas/candidate-intelligence";
 
@@ -69,7 +69,7 @@ export async function parseCV(
     const { output } = await withRetry(
       () =>
         generateText({
-          model: google("gemini-3-flash-preview"),
+          model: geminiFlash,
           output: Output.object({ schema: parsedCVSchema }),
           system: SYSTEM_PROMPT,
           messages: [
@@ -95,7 +95,7 @@ export async function parseCV(
   const { output } = await withRetry(
     () =>
       generateText({
-        model: google("gemini-3-flash-preview"),
+        model: geminiFlash,
         output: Output.object({ schema: parsedCVSchema }),
         system: SYSTEM_PROMPT,
         prompt: `Analyseer dit CV en extraheer alle informatie.\n\n${text}`,

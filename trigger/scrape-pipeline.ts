@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
 import { publish } from "@/src/lib/event-bus";
 import { CIRCUIT_BREAKER_THRESHOLD } from "@/src/lib/helpers";
+import { trackServerEvent } from "@/src/lib/posthog";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
 
 // ========== Helpers ==========
@@ -77,6 +78,11 @@ export const scrapePipelineTask = schedules.task({
         logger.warn(`Circuit breaker open for ${cfg.platform}`, {
           consecutiveFailures: cfg.consecutiveFailures,
         });
+        trackServerEvent("system", "scrape_circuit_breaker_open", {
+          platform: cfg.platform,
+          consecutiveFailures: cfg.consecutiveFailures ?? 0,
+          threshold: CIRCUIT_BREAKER_THRESHOLD,
+        });
         results.push({ platform: cfg.platform, status: "circuit_breaker_open" });
         return false;
       }
@@ -98,12 +104,20 @@ export const scrapePipelineTask = schedules.task({
     for (let i = 0; i < eligible.length; i++) {
       const r = settled[i];
       dispatched++;
-      results.push({
-        platform: eligible[i].platform,
-        ...(r.status === "fulfilled"
-          ? { status: "success", ...r.value }
-          : { status: "failed", error: String(r.reason) }),
-      });
+      const platform = eligible[i].platform;
+      if (r.status === "fulfilled") {
+        results.push({ platform, status: "success", ...r.value });
+        trackServerEvent("system", "scrape_completed", {
+          platform,
+          ...r.value,
+        });
+      } else {
+        results.push({ platform, status: "failed", error: String(r.reason) });
+        trackServerEvent("system", "scrape_failed", {
+          platform,
+          error: String(r.reason),
+        });
+      }
     }
 
     if (tripped > 0) {
@@ -112,9 +126,15 @@ export const scrapePipelineTask = schedules.task({
         type: "circuit_breaker_open",
         tripped,
       });
+      trackServerEvent("system", "scrape_circuit_breaker", { tripped });
     }
 
     logger.info("Scrape pipeline voltooid", {
+      dispatched,
+      tripped,
+      skippedSchedule,
+    });
+    trackServerEvent("system", "scrape_pipeline_completed", {
       dispatched,
       tripped,
       skippedSchedule,

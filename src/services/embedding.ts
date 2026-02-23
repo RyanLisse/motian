@@ -1,13 +1,13 @@
-import { openai } from "@ai-sdk/openai";
 import { embed, embedMany } from "ai";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { candidates, jobs } from "../db/schema";
+import { embeddingModel } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 
 // ========== Config ==========
 
-const EMBEDDING_MODEL = openai.textEmbeddingModel("text-embedding-3-small");
+const EMBEDDING_MODEL = embeddingModel;
 const EMBEDDING_OPTIONS = { openai: { dimensions: 512 } };
 
 const BATCH_SIZE = 100;

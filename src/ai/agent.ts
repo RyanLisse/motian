@@ -1,9 +1,9 @@
-import { openai } from "@ai-sdk/openai";
+import { gpt5Nano } from "@/src/lib/ai-models";
 import { PLATFORMS } from "@/src/lib/helpers";
 import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
 
-export const chatModel = openai("gpt-5-nano-2025-08-07");
+export const chatModel = gpt5Nano;
 
 export const recruitmentTools = {
   // Opdrachten

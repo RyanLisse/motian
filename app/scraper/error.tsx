@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { AlertCircle } from "lucide-react";
 import { useEffect } from "react";
 
@@ -11,6 +12,7 @@ interface Props {
 export default function ScraperError({ error, reset }: Props) {
   useEffect(() => {
     console.error("Scraper error boundary:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

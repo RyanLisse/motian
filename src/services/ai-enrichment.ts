@@ -1,9 +1,9 @@
-import { google } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import { jobs } from "../db/schema";
+import { geminiFlashLite } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 
 // ========== Schema ==========
@@ -79,7 +79,7 @@ export async function enrichJobWithAI(job: {
   const { output } = await withRetry(
     () =>
       generateText({
-        model: google("gemini-2.5-flash-lite"),
+        model: geminiFlashLite,
         output: Output.object({ schema: enrichmentOutputSchema }),
         system: SYSTEM_PROMPT,
         prompt: contextParts.join("\n\n"),

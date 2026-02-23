@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 type ApiHandler<TArgs extends unknown[]> = (...args: TArgs) => Response | Promise<Response>;
 
 type ApiHandlerOptions = {
@@ -21,6 +23,7 @@ export function withApiHandler<TArgs extends unknown[]>(
       return await handler(...args);
     } catch (error) {
       console.error(`${logPrefix}:`, error);
+      Sentry.captureException(error, { tags: { source: "api-handler" } });
       return Response.json({ error: errorMessage }, { status });
     }
   };

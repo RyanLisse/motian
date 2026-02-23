@@ -14,8 +14,8 @@ import { getGradeLabel, ScoreRing } from "@/components/score-ring";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import type { GradedCandidate } from "@/src/services/grading";
-import { computeGradeBuckets, extractRadarData } from "@/src/services/grading";
+import type { GradedCandidate } from "@/src/lib/grading-utils";
+import { computeGradeBuckets, extractRadarData } from "@/src/lib/grading-utils";
 
 interface AIGradingProps {
   candidates: GradedCandidate[];
