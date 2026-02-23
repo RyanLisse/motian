@@ -21,7 +21,9 @@ type Props = {
 const EXAMPLE_PROMPTS = [
   "Hoeveel opdrachten per platform?",
   "Zoek Java opdrachten in Utrecht",
+  "Toon alle kandidaten",
   "Wat zijn de gemiddelde tarieven?",
+  "Hoeveel pending matches zijn er?",
   "Start de Flextender scraper",
 ];
 
@@ -32,7 +34,7 @@ export function ChatMessages({ messages, status, onSuggestion }: Props) {
         <ConversationEmptyState
           icon={<Bot className="h-8 w-8" />}
           title="Motian AI"
-          description="Stel een vraag over opdrachten, kandidaten of data."
+          description="Beheer opdrachten, kandidaten, matches, sollicitaties, interviews en berichten. Analyseer data en start scrapers."
         />
         <Suggestions className="justify-center">
           {EXAMPLE_PROMPTS.map((prompt) => (

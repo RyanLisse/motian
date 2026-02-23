@@ -4,11 +4,41 @@ import { CheckCircle2, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 const TOOL_LABELS: Record<string, string> = {
+  // Opdrachten
   queryOpdrachten: "Opdrachten zoeken",
   getOpdrachtDetail: "Opdracht details ophalen",
   matchKandidaten: "Kandidaten matchen",
   analyseData: "Data analyseren",
   triggerScraper: "Scraper starten",
+  // Kandidaten
+  zoekKandidaten: "Kandidaten zoeken",
+  getKandidaatDetail: "Kandidaat details ophalen",
+  maakKandidaatAan: "Kandidaat aanmaken",
+  updateKandidaat: "Kandidaat bijwerken",
+  verwijderKandidaat: "Kandidaat verwijderen",
+  // Matches
+  zoekMatches: "Matches zoeken",
+  getMatchDetail: "Match details ophalen",
+  keurMatchGoed: "Match goedkeuren",
+  wijsMatchAf: "Match afwijzen",
+  // Sollicitaties
+  zoekSollicitaties: "Sollicitaties zoeken",
+  getSollicitatieDetail: "Sollicitatie details ophalen",
+  maakSollicitatieAan: "Sollicitatie aanmaken",
+  updateSollicitatieFase: "Sollicitatie fase bijwerken",
+  verwijderSollicitatie: "Sollicitatie verwijderen",
+  getSollicitatieStats: "Pipeline statistieken",
+  // Interviews
+  zoekInterviews: "Interviews zoeken",
+  getInterviewDetail: "Interview details ophalen",
+  planInterview: "Interview inplannen",
+  updateInterview: "Interview bijwerken",
+  verwijderInterview: "Interview verwijderen",
+  // Berichten
+  zoekBerichten: "Berichten zoeken",
+  getBerichtDetail: "Bericht details ophalen",
+  stuurBericht: "Bericht versturen",
+  verwijderBericht: "Bericht verwijderen",
 };
 
 type ToolCallProps = {

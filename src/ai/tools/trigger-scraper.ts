@@ -1,5 +1,6 @@
 import { tool } from "ai";
 import { eq } from "drizzle-orm";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
@@ -30,6 +31,12 @@ export const triggerScraper = tool({
     }
 
     const result = await runScrapePipeline(platform, config.baseUrl);
+
+    // Revalidate cached pages so UI reflects new data
+    revalidateTag("jobs", "page");
+    revalidateTag("scrape-results", "page");
+    revalidateTag("scrapers", "page");
+
     return {
       platform,
       jobsNew: result.jobsNew,

@@ -25,6 +25,7 @@ export function ChatPanel() {
         context: {
           route: ctx.route,
           entityId: ctx.entityId,
+          entityType: ctx.entityType,
         },
       },
     }),
