@@ -168,7 +168,7 @@ export const jobs = pgTable(
     scrapedAtIdx: index("idx_jobs_scraped_at").on(table.scrapedAt),
     deletedAtIdx: index("idx_jobs_deleted_at").on(table.deletedAt),
     deadlineIdx: index("idx_jobs_deadline").on(table.applicationDeadline),
-    platformUrlIdx: uniqueIndex("uq_platform_external_url").on(table.platform, table.externalUrl),
+    platformUrlIdx: index("idx_platform_external_url").on(table.platform, table.externalUrl),
   }),
 );
 
