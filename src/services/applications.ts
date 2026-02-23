@@ -11,20 +11,39 @@ export type ListApplicationsOpts = {
   candidateId?: string;
   stage?: string;
   limit?: number;
+  offset?: number;
 };
 
-export async function listApplications(opts: ListApplicationsOpts): Promise<Application[]> {
-  const limit = Math.min(opts.limit ?? 50, 100);
+function buildListConditions(opts: ListApplicationsOpts) {
   const conditions = [isNull(applications.deletedAt)];
   if (opts.jobId) conditions.push(eq(applications.jobId, opts.jobId));
   if (opts.candidateId) conditions.push(eq(applications.candidateId, opts.candidateId));
   if (opts.stage) conditions.push(eq(applications.stage, opts.stage));
+  return conditions;
+}
+
+export async function listApplications(opts: ListApplicationsOpts = {}): Promise<Application[]> {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
+  const conditions = buildListConditions(opts);
   return db
     .select()
     .from(applications)
     .where(and(...conditions))
     .orderBy(desc(applications.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function countApplications(
+  opts: Omit<ListApplicationsOpts, "limit" | "offset"> = {},
+): Promise<number> {
+  const conditions = buildListConditions(opts);
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(applications)
+    .where(and(...conditions));
+  return count ?? 0;
 }
 
 export async function getApplicationById(id: string): Promise<Application | null> {

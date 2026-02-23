@@ -1,10 +1,10 @@
 /**
  * Striive scraper — uses Playwright for login, then the Striive supplier API.
  *
- * Local mode:  runs Playwright directly (for dev/testing)
- * Modal mode:  runs inside a Modal sandbox (for production/Vercel)
+ * Local mode:   runs Playwright directly (for dev/testing)
+ * Webhook mode: calls a remote endpoint that runs Playwright (for production/Vercel)
  *
- * Set STRIIVE_USE_MODAL=true to use Modal sandbox.
+ * Set STRIIVE_USE_MODAL=true + STRIIVE_WEBHOOK_URL to use remote webhook.
  */
 
 const API_LIST = "https://supplier.striive.com/api/v2/job-requests";
@@ -361,14 +361,64 @@ function mapContractType(type?: string): "freelance" | "interim" | "vast" | "opd
   }
 }
 
-// === Modal sandbox version (for production/Vercel) ===
+// === Webhook-based remote scraper (for production/Vercel) ===
+//
+// Calls an external endpoint that runs Playwright + Chromium in a serverful
+// environment (Modal, dedicated server, etc.) and returns JSON listings.
+//
+// Required env vars:
+//   STRIIVE_WEBHOOK_URL  — URL of the remote scraper endpoint
+//   STRIIVE_WEBHOOK_AUTH — Optional Bearer token for the webhook
 
-async function scrapeViaModal(username: string, password: string): Promise<any[]> {
-  const { ModalClient } = await import("modal");
-  console.log("[striive] Starting Modal sandbox scrape...");
+async function scrapeViaWebhook(username: string, password: string): Promise<any[]> {
+  const webhookUrl = process.env.STRIIVE_WEBHOOK_URL;
+  const authToken = process.env.STRIIVE_WEBHOOK_AUTH;
 
-  // This will be implemented once local scraping is proven
-  // For now, fall back to local
-  console.warn("[striive] Modal mode not yet implemented, falling back to local");
-  return scrapeLocal(username, password);
+  if (!webhookUrl) {
+    console.error(
+      "[striive] STRIIVE_WEBHOOK_URL not set. Striive requires a remote browser " +
+        "service — Playwright cannot run on Vercel. Deploy the webhook scraper first.",
+    );
+    return [];
+  }
+
+  console.log("[striive] Calling remote webhook scraper...");
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      body: JSON.stringify({ username, password }),
+      signal: AbortSignal.timeout(300_000), // 5 min timeout
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[striive] Webhook failed: ${res.status} ${body}`);
+      return [];
+    }
+
+    const data = await res.json();
+    const rawResults = Array.isArray(data) ? data : (data.listings ?? []);
+
+    // Map raw results through our mapping functions
+    const mapped: any[] = [];
+    for (const item of rawResults) {
+      if (item._detail) {
+        const { _detail, ...job } = item;
+        mapped.push(mapDetailListing(job, _detail));
+      } else {
+        mapped.push(mapBasicListing(item));
+      }
+    }
+
+    console.log(`[striive] Webhook returned ${mapped.length} listings`);
+    return mapped;
+  } catch (err) {
+    console.error(`[striive] Webhook scrape failed: ${err}`);
+    return [];
+  }
 }

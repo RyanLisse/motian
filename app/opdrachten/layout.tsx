@@ -1,8 +1,8 @@
 import { desc, isNull, sql } from "drizzle-orm";
+import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
+import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
-import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
-import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 
 export const revalidate = 60;
 
@@ -37,11 +37,7 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
   return (
     <OpdrachtenLayoutShell
       sidebar={
-        <OpdrachtenSidebar
-          jobs={sidebarJobs}
-          totalCount={totalCount}
-          platforms={platforms}
-        />
+        <OpdrachtenSidebar jobs={sidebarJobs} totalCount={totalCount} platforms={platforms} />
       }
     >
       {children}

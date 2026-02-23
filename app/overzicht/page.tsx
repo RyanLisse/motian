@@ -12,6 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { jobs, scrapeResults, scraperConfigs } from "@/src/db/schema";
@@ -112,25 +113,23 @@ export default async function OverzichtPage() {
             icon={<Briefcase className="h-5 w-5" />}
             label="Totaal opdrachten"
             value={totalJobs}
-            accent={false}
           />
           <KPICard
             icon={<TrendingUp className="h-5 w-5" />}
             label="Nieuw deze week"
             value={weeklyNew}
-            accent
+            iconClassName="text-[#10a37f]/60"
+            valueClassName="text-[#10a37f]"
           />
           <KPICard
             icon={<RefreshCw className="h-5 w-5" />}
             label="Actieve scrapers"
             value={activeScrapers.length}
-            accent={false}
           />
           <KPICard
             icon={<Zap className="h-5 w-5" />}
             label="Platforms"
             value={platformCounts.length}
-            accent={false}
           />
         </div>
 
@@ -335,34 +334,6 @@ export default async function OverzichtPage() {
 }
 
 // ── Sub-components ──────────────────────────────
-
-function KPICard({
-  icon,
-  label,
-  value,
-  accent,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  accent: boolean;
-}) {
-  return (
-    <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4 flex items-center gap-4">
-      <div
-        className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-          accent ? "bg-[#10a37f]/10 text-[#10a37f]" : "bg-[#2a2a2a] text-[#8e8e8e]"
-        }`}
-      >
-        {icon}
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-[#ececec]">{value}</p>
-        <p className="text-xs text-[#6b6b6b]">{label}</p>
-      </div>
-    </div>
-  );
-}
 
 function DashboardCard({
   title,

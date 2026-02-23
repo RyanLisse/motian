@@ -1,4 +1,4 @@
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "../db";
 import { interviews } from "../db/schema";
 
@@ -11,20 +11,38 @@ export type ListInterviewsOpts = {
   applicationId?: string;
   status?: string;
   limit?: number;
+  offset?: number;
 };
 
-export async function listInterviews(opts: ListInterviewsOpts): Promise<Interview[]> {
-  const limit = Math.min(opts.limit ?? 50, 100);
+function buildInterviewWhere(opts: ListInterviewsOpts) {
   const conditions = [];
   if (opts.applicationId) conditions.push(eq(interviews.applicationId, opts.applicationId));
   if (opts.status) conditions.push(eq(interviews.status, opts.status));
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+export async function listInterviews(opts: ListInterviewsOpts = {}): Promise<Interview[]> {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
+  const where = buildInterviewWhere(opts);
   return db
     .select()
     .from(interviews)
     .where(where)
     .orderBy(desc(interviews.scheduledAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function countInterviews(
+  opts: Omit<ListInterviewsOpts, "limit" | "offset"> = {},
+): Promise<number> {
+  const where = buildInterviewWhere(opts);
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(interviews)
+    .where(where);
+  return count ?? 0;
 }
 
 export async function getInterviewById(id: string): Promise<Interview | null> {

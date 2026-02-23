@@ -192,9 +192,9 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
                     {/* Skills */}
                     {skills.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
-                        {skills.slice(0, 5).map((skill, i) => (
+                        {skills.slice(0, 5).map((skill) => (
                           <Badge
-                            key={i}
+                            key={`${candidate.id}-${skill}`}
                             variant="outline"
                             className="bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20 text-[10px]"
                           >

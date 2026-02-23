@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { candidates } from "../db/schema";
 
@@ -10,6 +10,12 @@ export type SearchCandidatesOptions = {
   query?: string;
   location?: string;
   limit?: number;
+  offset?: number;
+};
+
+export type ListCandidatesOptions = {
+  limit?: number;
+  offset?: number;
 };
 
 export type CreateCandidateData = {
@@ -24,15 +30,20 @@ export type CreateCandidateData = {
 // ========== Service Functions ==========
 
 /** Actieve kandidaten ophalen, geordend op aanmaakdatum. Soft-deleted rijen worden uitgesloten. */
-export async function listCandidates(limit?: number): Promise<Candidate[]> {
-  const safeLimit = Math.min(limit ?? 50, 100);
+export async function listCandidates(
+  limitOrOpts?: number | ListCandidatesOptions,
+): Promise<Candidate[]> {
+  const opts = typeof limitOrOpts === "number" ? { limit: limitOrOpts } : (limitOrOpts ?? {});
+  const safeLimit = Math.min(opts.limit ?? 50, 100);
+  const safeOffset = Math.max(0, opts.offset ?? 0);
 
   return db
     .select()
     .from(candidates)
     .where(isNull(candidates.deletedAt))
     .orderBy(desc(candidates.createdAt))
-    .limit(safeLimit);
+    .limit(safeLimit)
+    .offset(safeOffset);
 }
 
 /** Enkele kandidaat ophalen op ID, of null als niet gevonden. */
@@ -49,6 +60,7 @@ export async function getCandidateById(id: string): Promise<Candidate | null> {
 /** Kandidaten zoeken op naam en/of locatie (ilike). Soft-deleted rijen worden uitgesloten. */
 export async function searchCandidates(opts: SearchCandidatesOptions = {}): Promise<Candidate[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
 
   const conditions = [isNull(candidates.deletedAt)];
 
@@ -65,7 +77,28 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
     .from(candidates)
     .where(and(...conditions))
     .orderBy(desc(candidates.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
+}
+
+/** Aantal actieve kandidaten met optionele filters. */
+export async function countCandidates(opts: Omit<SearchCandidatesOptions, "limit" | "offset"> = {}): Promise<number> {
+  const conditions = [isNull(candidates.deletedAt)];
+
+  if (opts.query) {
+    conditions.push(ilike(candidates.name, `%${opts.query}%`));
+  }
+
+  if (opts.location) {
+    conditions.push(ilike(candidates.location, `%${opts.location}%`));
+  }
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(candidates)
+    .where(and(...conditions));
+
+  return count ?? 0;
 }
 
 /** Nieuwe kandidaat aanmaken en teruggeven. */
