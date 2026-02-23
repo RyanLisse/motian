@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { escapeLike } from "../lib/helpers";
+import { escapeLike, toTsQueryInput } from "../lib/helpers";
 
 // ========== Types ==========
 
@@ -24,9 +24,32 @@ export async function getJobById(id: string): Promise<Job | null> {
   return rows[0] ?? null;
 }
 
-/** Opdrachten zoeken op titel. Splits multi-word queries into OR conditions. */
+/** Opdrachten zoeken op titel/omschrijving met full-text search (tsvector/GIN).
+ *  Falls back to ILIKE if the FTS query produces no results. */
 export async function searchJobsByTitle(query: string, limit?: number): Promise<Job[]> {
   const safeLimit = Math.min(limit ?? 50, 100);
+  const tsInput = toTsQueryInput(query);
+
+  // Try full-text search first (uses GIN index)
+  if (tsInput) {
+    const ftsResults = await db
+      .select()
+      .from(jobs)
+      .where(
+        and(
+          isNull(jobs.deletedAt),
+          sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, '')) @@ to_tsquery('dutch', ${tsInput})`,
+        ),
+      )
+      .orderBy(
+        sql`ts_rank(to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, '')), to_tsquery('dutch', ${tsInput})) DESC`,
+      )
+      .limit(safeLimit);
+
+    if (ftsResults.length > 0) return ftsResults;
+  }
+
+  // Fallback: ILIKE for short/unusual queries
   const words = query.trim().split(/\s+/).filter(Boolean);
   const titleConditions =
     words.length > 1
@@ -82,7 +105,14 @@ export async function listJobs(
   }
 
   if (opts.q) {
-    conditions.push(ilike(jobs.title, `%${escapeLike(opts.q)}%`));
+    const tsInput = toTsQueryInput(opts.q);
+    if (tsInput) {
+      conditions.push(
+        sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, '')) @@ to_tsquery('dutch', ${tsInput})`,
+      );
+    } else {
+      conditions.push(ilike(jobs.title, `%${escapeLike(opts.q)}%`));
+    }
   }
 
   if (opts.province) {

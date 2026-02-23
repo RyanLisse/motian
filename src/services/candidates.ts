@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { candidates } from "../db/schema";
-import { escapeLike } from "../lib/helpers";
+import { escapeLike, toTsQueryInput } from "../lib/helpers";
 
 // ========== Types ==========
 
@@ -58,7 +58,16 @@ export async function getCandidateById(id: string): Promise<Candidate | null> {
   return rows[0] ?? null;
 }
 
-/** Kandidaten zoeken op naam en/of locatie (ilike). Soft-deleted rijen worden uitgesloten. */
+/** Build FTS or ILIKE condition for candidate name search. */
+function candidateNameCondition(query: string) {
+  const tsInput = toTsQueryInput(query);
+  if (tsInput) {
+    return sql`to_tsvector('dutch', coalesce(${candidates.name}, '') || ' ' || coalesce(${candidates.role}, '') || ' ' || coalesce(${candidates.location}, '')) @@ to_tsquery('dutch', ${tsInput})`;
+  }
+  return ilike(candidates.name, `%${escapeLike(query)}%`);
+}
+
+/** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
 export async function searchCandidates(opts: SearchCandidatesOptions = {}): Promise<Candidate[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = Math.max(0, opts.offset ?? 0);
@@ -66,7 +75,7 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   const conditions = [isNull(candidates.deletedAt)];
 
   if (opts.query) {
-    conditions.push(ilike(candidates.name, `%${escapeLike(opts.query)}%`));
+    conditions.push(candidateNameCondition(opts.query));
   }
 
   if (opts.location) {
@@ -89,7 +98,7 @@ export async function countCandidates(
   const conditions = [isNull(candidates.deletedAt)];
 
   if (opts.query) {
-    conditions.push(ilike(candidates.name, `%${escapeLike(opts.query)}%`));
+    conditions.push(candidateNameCondition(opts.query));
   }
 
   if (opts.location) {
