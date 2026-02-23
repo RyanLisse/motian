@@ -114,7 +114,7 @@ export function OpdrachtenSidebar({
   };
 
   return (
-    <aside className="w-[300px] border-r border-border bg-sidebar shrink-0 hidden lg:flex lg:flex-col">
+    <aside className="flex flex-col w-full h-full">
       {/* Search */}
       <div className="px-3 pt-3 pb-2 shrink-0">
         <div className="relative">
