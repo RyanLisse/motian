@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import {
+  countApplications,
   createApplication,
   getApplicationStats,
   listApplications,
@@ -29,10 +30,22 @@ export async function GET(request: NextRequest) {
     const jobId = params.get("jobId") ?? undefined;
     const candidateId = params.get("candidateId") ?? undefined;
     const stage = params.get("stage") ?? undefined;
-    const limit = parseInt(params.get("limit") ?? "50", 10);
+    const page = Math.max(1, parseInt(params.get("pagina") ?? params.get("page") ?? "1", 10));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(params.get("limit") ?? params.get("perPage") ?? "50", 10)),
+    );
+    const offset = (page - 1) * limit;
 
-    const data = await listApplications({ jobId, candidateId, stage, limit });
-    return Response.json({ data, total: data.length });
+    const data = await listApplications({ jobId, candidateId, stage, limit, offset });
+    const total = await countApplications({ jobId, candidateId, stage });
+    return Response.json({
+      data,
+      total,
+      page,
+      perPage: limit,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error) {
     console.error("GET /api/sollicitaties error:", error);
     return Response.json({ error: "Interne serverfout" }, { status: 500 });

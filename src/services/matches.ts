@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobMatches } from "../db/schema";
 
@@ -11,6 +11,7 @@ export type ListMatchesOptions = {
   candidateId?: string;
   status?: string;
   limit?: number;
+  offset?: number;
 };
 
 export type CreateMatchData = {
@@ -27,6 +28,7 @@ export type CreateMatchData = {
 /** Matches ophalen met optionele filters. Geordend op matchScore aflopend. */
 export async function listMatches(opts: ListMatchesOptions = {}): Promise<Match[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
 
   const conditions: ReturnType<typeof eq>[] = [];
 
@@ -47,7 +49,23 @@ export async function listMatches(opts: ListMatchesOptions = {}): Promise<Match[
     .from(jobMatches)
     .where(and(...conditions))
     .orderBy(desc(jobMatches.matchScore))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function countMatches(
+  opts: Omit<ListMatchesOptions, "limit" | "offset"> = {},
+): Promise<number> {
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (opts.jobId) conditions.push(eq(jobMatches.jobId, opts.jobId));
+  if (opts.candidateId) conditions.push(eq(jobMatches.candidateId, opts.candidateId));
+  if (opts.status) conditions.push(eq(jobMatches.status, opts.status));
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(jobMatches)
+    .where(and(...conditions));
+  return count ?? 0;
 }
 
 /** Enkele match ophalen op ID, of null als niet gevonden. */

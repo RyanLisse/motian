@@ -82,7 +82,9 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
 }
 
 /** Aantal actieve kandidaten met optionele filters. */
-export async function countCandidates(opts: Omit<SearchCandidatesOptions, "limit" | "offset"> = {}): Promise<number> {
+export async function countCandidates(
+  opts: Omit<SearchCandidatesOptions, "limit" | "offset"> = {},
+): Promise<number> {
   const conditions = [isNull(candidates.deletedAt)];
 
   if (opts.query) {

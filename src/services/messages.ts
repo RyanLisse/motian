@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { messages } from "../db/schema";
 
@@ -12,16 +12,39 @@ export type ListMessagesOpts = {
   direction?: string;
   channel?: string;
   limit?: number;
+  offset?: number;
 };
 
-export async function listMessages(opts: ListMessagesOpts): Promise<Message[]> {
-  const limit = Math.min(opts.limit ?? 50, 100);
+function buildMessageWhere(opts: ListMessagesOpts) {
   const conditions = [];
   if (opts.applicationId) conditions.push(eq(messages.applicationId, opts.applicationId));
   if (opts.direction) conditions.push(eq(messages.direction, opts.direction));
   if (opts.channel) conditions.push(eq(messages.channel, opts.channel));
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-  return db.select().from(messages).where(where).orderBy(desc(messages.sentAt)).limit(limit);
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+export async function listMessages(opts: ListMessagesOpts = {}): Promise<Message[]> {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
+  const where = buildMessageWhere(opts);
+  return db
+    .select()
+    .from(messages)
+    .where(where)
+    .orderBy(desc(messages.sentAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function countMessages(
+  opts: Omit<ListMessagesOpts, "limit" | "offset"> = {},
+): Promise<number> {
+  const where = buildMessageWhere(opts);
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(messages)
+    .where(where);
+  return count ?? 0;
 }
 
 export async function getMessageById(id: string): Promise<Message | null> {

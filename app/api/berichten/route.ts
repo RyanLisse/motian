@@ -1,18 +1,39 @@
 import { z } from "zod";
-import { createMessage, listMessages } from "@/src/services/messages";
+import { countMessages, createMessage, listMessages } from "@/src/services/messages";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+    const page = Math.max(
+      1,
+      parseInt(searchParams.get("pagina") ?? searchParams.get("page") ?? "1", 10),
+    );
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get("limit") ?? searchParams.get("perPage") ?? "50", 10)),
+    );
+    const offset = (page - 1) * limit;
+    const applicationId = searchParams.get("applicationId") ?? undefined;
+    const direction = searchParams.get("direction") ?? undefined;
+    const channel = searchParams.get("channel") ?? undefined;
+
     const data = await listMessages({
-      applicationId: searchParams.get("applicationId") ?? undefined,
-      direction: searchParams.get("direction") ?? undefined,
-      channel: searchParams.get("channel") ?? undefined,
-      limit: searchParams.has("limit") ? Number(searchParams.get("limit")) : undefined,
+      applicationId,
+      direction,
+      channel,
+      limit,
+      offset,
     });
-    return Response.json({ data, total: data.length });
+    const total = await countMessages({ applicationId, direction, channel });
+    return Response.json({
+      data,
+      total,
+      page,
+      perPage: limit,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }

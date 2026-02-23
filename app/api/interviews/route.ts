@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { createInterview, getUpcomingInterviews, listInterviews } from "@/src/services/interviews";
+import {
+  countInterviews,
+  createInterview,
+  getUpcomingInterviews,
+  listInterviews,
+} from "@/src/services/interviews";
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +14,41 @@ export async function GET(req: Request) {
 
     if (searchParams.get("upcoming") === "true") {
       const data = await getUpcomingInterviews();
-      return Response.json({ data, total: data.length });
+      return Response.json({
+        data,
+        total: data.length,
+        page: 1,
+        perPage: data.length,
+        totalPages: 1,
+      });
     }
 
+    const page = Math.max(
+      1,
+      parseInt(searchParams.get("pagina") ?? searchParams.get("page") ?? "1", 10),
+    );
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get("limit") ?? searchParams.get("perPage") ?? "50", 10)),
+    );
+    const offset = (page - 1) * limit;
+    const applicationId = searchParams.get("applicationId") ?? undefined;
+    const status = searchParams.get("status") ?? undefined;
+
     const data = await listInterviews({
-      applicationId: searchParams.get("applicationId") ?? undefined,
-      status: searchParams.get("status") ?? undefined,
-      limit: searchParams.has("limit") ? Number(searchParams.get("limit")) : undefined,
+      applicationId,
+      status,
+      limit,
+      offset,
     });
-    return Response.json({ data, total: data.length });
+    const total = await countInterviews({ applicationId, status });
+    return Response.json({
+      data,
+      total,
+      page,
+      perPage: limit,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }

@@ -361,48 +361,158 @@ function mapContractType(type?: string): "freelance" | "interim" | "vast" | "opd
   }
 }
 
-// === Webhook-based remote scraper (for production/Vercel) ===
+// === Modal sandbox scraper (for production/Vercel) ===
 //
-// Calls an external endpoint that runs Playwright + Chromium in a serverful
-// environment (Modal, dedicated server, etc.) and returns JSON listings.
+// Uses the Modal JS SDK to spin up a container with Playwright + Chromium,
+// run the scraping script inside it, and capture the results via stdout.
 //
 // Required env vars:
-//   STRIIVE_WEBHOOK_URL  — URL of the remote scraper endpoint
-//   STRIIVE_WEBHOOK_AUTH — Optional Bearer token for the webhook
+//   MODAL_TOKEN_ID     — Modal API token ID
+//   MODAL_TOKEN_SECRET — Modal API token secret
 
-async function scrapeViaWebhook(username: string, password: string): Promise<any[]> {
-  const webhookUrl = process.env.STRIIVE_WEBHOOK_URL;
-  const authToken = process.env.STRIIVE_WEBHOOK_AUTH;
+const MODAL_SCRAPE_SCRIPT = `
+const API_LIST = "https://supplier.striive.com/api/v2/job-requests";
+const API_DETAIL = "https://supplier.striive.com/api/job-requests";
 
-  if (!webhookUrl) {
-    console.error(
-      "[striive] STRIIVE_WEBHOOK_URL not set. Striive requires a remote browser " +
-        "service — Playwright cannot run on Vercel. Deploy the webhook scraper first.",
-    );
-    return [];
-  }
+async function run() {
+  const { chromium } = require("playwright");
+  const username = process.env.STRIIVE_USERNAME;
+  const password = process.env.STRIIVE_PASSWORD;
 
-  console.log("[striive] Calling remote webhook scraper...");
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   try {
-    const res = await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    await page.goto("https://login.striive.com", { waitUntil: "domcontentloaded", timeout: 30000 });
+    await new Promise(r => setTimeout(r, 3000));
+    await page.locator("#email").fill(username);
+    await new Promise(r => setTimeout(r, 300));
+    await page.locator("#password").fill(password);
+    await new Promise(r => setTimeout(r, 300));
+    await page.locator('[data-testid="login"]').click({ timeout: 10000 });
+    await page.waitForURL("**/supplier.striive.com/**", { timeout: 30000 }).catch(() => {});
+    await new Promise(r => setTimeout(r, 3000));
+
+    const cookies = await context.cookies();
+    let cookie = cookies.map(c => c.name + "=" + c.value).join("; ");
+
+    let testRes = await fetch(API_LIST + "?page=0&size=1", {
+      headers: { Cookie: cookie, Accept: "application/json" },
+    });
+    if (!testRes.ok) {
+      await page.goto("https://supplier.striive.com/jobrequests/list", {
+        waitUntil: "domcontentloaded", timeout: 20000,
+      });
+      await new Promise(r => setTimeout(r, 2000));
+      const cookies2 = await context.cookies();
+      cookie = cookies2.map(c => c.name + "=" + c.value).join("; ");
+    }
+    await browser.close();
+
+    const allJobs = [];
+    let pageNum = 0;
+    while (true) {
+      const res = await fetch(API_LIST + "?page=" + pageNum + "&size=50&status=OPEN", {
+        headers: { Cookie: cookie, Accept: "application/json" },
+      });
+      if (!res.ok) break;
+      const data = await res.json();
+      const jobs = Array.isArray(data) ? data : (data.content || data.items || []);
+      if (!Array.isArray(jobs) || jobs.length === 0) break;
+      allJobs.push(...jobs);
+      if (jobs.length < 50) break;
+      pageNum++;
+      if (pageNum > 20) break;
+    }
+
+    const results = [];
+    for (const job of allJobs) {
+      const jobId = job.id || job.externalId || "";
+      if (!jobId) { results.push(job); continue; }
+      try {
+        const dRes = await fetch(API_DETAIL + "/" + encodeURIComponent(jobId), {
+          headers: { Cookie: cookie, Accept: "application/json" },
+        });
+        if (dRes.ok) {
+          const detail = await dRes.json();
+          results.push({ ...job, _detail: detail });
+        } else {
+          if (dRes.status === 401 || dRes.status === 403) break;
+          results.push(job);
+        }
+      } catch { results.push(job); }
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    console.log("__MODAL_RESULT__" + JSON.stringify(results));
+  } catch (err) {
+    await browser.close().catch(() => {});
+    console.error("Scrape failed:", err);
+    process.exit(1);
+  }
+}
+run();
+`;
+
+async function scrapeViaModal(username: string, password: string): Promise<any[]> {
+  const { ModalClient } = await import("modal");
+  console.log("[striive] Starting Modal sandbox scrape...");
+
+  try {
+    const modal = new ModalClient();
+    const app = await modal.apps.fromName("motian-scraper", { createIfMissing: true });
+
+    const image = modal.images
+      .fromRegistry("node:22-slim")
+      .dockerfileCommands([
+        "RUN apt-get update && apt-get install -y wget gnupg ca-certificates",
+        "RUN npx playwright install --with-deps chromium",
+      ]);
+
+    const sandbox = await modal.sandboxes.create(app, image, {
+      env: {
+        STRIIVE_USERNAME: username,
+        STRIIVE_PASSWORD: password,
       },
-      body: JSON.stringify({ username, password }),
-      signal: AbortSignal.timeout(300_000), // 5 min timeout
+      timeoutMs: 10 * 60 * 1000,
+      workdir: "/root",
     });
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.error(`[striive] Webhook failed: ${res.status} ${body}`);
+    console.log("[striive] Modal sandbox created, executing scrape script...");
+
+    // Write the scraping script into the sandbox
+    await sandbox.exec(
+      ["bash", "-c", `cat > /root/scrape.js << 'SCRIPT_EOF'\n${MODAL_SCRAPE_SCRIPT}\nSCRIPT_EOF`],
+      { timeoutMs: 10_000 },
+    );
+
+    // Execute the script
+    const proc = await sandbox.exec(["node", "/root/scrape.js"], {
+      timeoutMs: 8 * 60 * 1000,
+    });
+
+    const exitCode = await proc.wait();
+    const stdout = await proc.stdout.readText();
+    const stderr = await proc.stderr.readText();
+
+    await sandbox.terminate().catch(() => {});
+
+    if (exitCode !== 0) {
+      console.error(`[striive] Modal sandbox exited with code ${exitCode}`);
+      if (stderr) console.error(`[striive] stderr: ${stderr.substring(0, 500)}`);
       return [];
     }
 
-    const data = await res.json();
-    const rawResults = Array.isArray(data) ? data : (data.listings ?? []);
+    // Extract JSON results from the sentinel marker in stdout
+    const marker = "__MODAL_RESULT__";
+    const markerIdx = stdout.indexOf(marker);
+    if (markerIdx === -1) {
+      console.error("[striive] No result marker found in Modal sandbox output");
+      return [];
+    }
+
+    const rawResults = JSON.parse(stdout.substring(markerIdx + marker.length));
 
     // Map raw results through our mapping functions
     const mapped: any[] = [];
@@ -415,10 +525,10 @@ async function scrapeViaWebhook(username: string, password: string): Promise<any
       }
     }
 
-    console.log(`[striive] Webhook returned ${mapped.length} listings`);
+    console.log(`[striive] Modal sandbox returned ${mapped.length} listings`);
     return mapped;
   } catch (err) {
-    console.error(`[striive] Webhook scrape failed: ${err}`);
+    console.error(`[striive] Modal scrape failed: ${err}`);
     return [];
   }
 }
