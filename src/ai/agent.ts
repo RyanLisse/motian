@@ -1,8 +1,5 @@
 import { openai } from "@ai-sdk/openai";
-import { isNull, sql } from "drizzle-orm";
-import { db } from "@/src/db";
-import { candidates, jobMatches, jobs } from "@/src/db/schema";
-import { getHealth } from "@/src/services/scrapers";
+import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
 
 export const chatModel = openai("gpt-5-nano-2025-08-07");
@@ -50,32 +47,12 @@ export const recruitmentTools = {
   verwijderBericht: tools.verwijderBericht,
 };
 
-/** Fetch lightweight workspace context for prompt injection. */
+/** Build workspace context string for prompt injection. */
 async function getWorkspaceContext(): Promise<string> {
   try {
-    const [jobCounts, matchCounts, health] = await Promise.all([
-      db
-        .select({
-          total: sql<number>`count(*)::int`,
-          withEmbedding: sql<number>`count(embedding)::int`,
-        })
-        .from(jobs)
-        .where(isNull(jobs.deletedAt)),
-      db
-        .select({
-          pending: sql<number>`count(*) filter (where status = 'pending')::int`,
-          total: sql<number>`count(*)::int`,
-        })
-        .from(jobMatches),
-      getHealth(),
-    ]);
+    const summary = await getWorkspaceSummary();
 
-    const candidateCount = await db
-      .select({ total: sql<number>`count(*)::int` })
-      .from(candidates)
-      .where(isNull(candidates.deletedAt));
-
-    const scraperLines = health.data
+    const scraperLines = summary.scraperHealth.platforms
       .map(
         (h) =>
           `  ${h.platform}: ${h.status}${h.lastRunAt ? ` (laatste run: ${new Date(h.lastRunAt).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" })})` : ""}`,
@@ -84,10 +61,10 @@ async function getWorkspaceContext(): Promise<string> {
 
     return `
 Werkruimte overzicht:
-- Opdrachten: ${jobCounts[0]?.total ?? 0} actief (${jobCounts[0]?.withEmbedding ?? 0} met embeddings)
-- Kandidaten: ${candidateCount[0]?.total ?? 0} actief
-- Matches: ${matchCounts[0]?.total ?? 0} totaal (${matchCounts[0]?.pending ?? 0} pending review)
-- Scraper gezondheid: ${health.overall}
+- Opdrachten: ${summary.jobs.total} actief (${summary.jobs.withEmbedding} met embeddings)
+- Kandidaten: ${summary.candidates.total} actief
+- Matches: ${summary.matches.total} totaal (${summary.matches.pending} pending review)
+- Scraper gezondheid: ${summary.scraperHealth.overall}
 ${scraperLines}`;
   } catch {
     return "";
