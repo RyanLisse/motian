@@ -1,0 +1,40 @@
+import type { Meta, StoryObj } from "@storybook/react";
+import { JobListItem } from "@/components/job-list-item";
+
+const meta: Meta<typeof JobListItem> = {
+  title: "Components/JobListItem",
+  component: JobListItem,
+};
+
+export default meta;
+type Story = StoryObj<typeof JobListItem>;
+
+export const Active: Story = {
+  args: {
+    isActive: true,
+    job: {
+      id: "1",
+      title: "Senior React Developer — Cloud Platform",
+      company: "ING Bank",
+      location: "Amsterdam",
+      platform: "striive",
+      workArrangement: "hybride",
+      contractType: "freelance",
+    },
+  },
+};
+
+export const Inactive: Story = {
+  args: {
+    isActive: false,
+    job: {
+      id: "2",
+      title: "Java Backend Engineer",
+      company: "Rabobank",
+      location: "Utrecht",
+      platform: "huxley",
+      workArrangement: "remote",
+      contractType: "interim",
+    },
+  },
+};

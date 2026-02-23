@@ -12,7 +12,7 @@ export async function runScrapePipeline(
 
   publish("scrape:start", { platform });
 
-  let listings: any[];
+  let listings: Record<string, unknown>[];
   try {
     switch (platform) {
       case "opdrachtoverheid":

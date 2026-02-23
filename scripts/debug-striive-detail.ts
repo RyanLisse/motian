@@ -81,7 +81,7 @@ async function main() {
   process.exit(0);
 }
 
-function flatKeys(obj: Record<string, any>, prefix: string, set: Set<string>) {
+function flatKeys(obj: Record<string, unknown>, prefix: string, set: Set<string>) {
   for (const [key, val] of Object.entries(obj)) {
     const path = prefix ? `${prefix}.${key}` : key;
     set.add(path);

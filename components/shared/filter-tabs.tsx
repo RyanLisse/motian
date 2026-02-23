@@ -18,14 +18,14 @@ interface FilterTabsProps {
 }
 
 const pillStyles = {
-  active: "bg-[#10a37f] text-white",
+  active: "bg-primary text-primary-foreground",
   inactive:
-    "bg-[#1e1e1e] border border-[#2d2d2d] text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323]",
+    "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent",
 };
 
 const subtleStyles = {
-  active: "bg-[#10a37f]/10 text-[#10a37f] font-medium",
-  inactive: "text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a]",
+  active: "bg-primary/10 text-primary font-medium",
+  inactive: "text-muted-foreground hover:text-foreground hover:bg-accent",
 };
 
 export function FilterTabs({

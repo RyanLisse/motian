@@ -64,21 +64,20 @@ function extractImports(source: string): string[] {
 
   // Static import declarations: import X from '...'  /  import '...'
   const staticImportRe = /from\s+['"]([^'"]+)['"]/g;
-  let m: RegExpExecArray | null;
-  while ((m = staticImportRe.exec(source)) !== null) {
-    imports.push(m[1]);
+  for (const match of source.matchAll(staticImportRe)) {
+    imports.push(match[1]);
   }
 
   // Dynamic imports: import('...')
   const dynamicImportRe = /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
-  while ((m = dynamicImportRe.exec(source)) !== null) {
-    imports.push(m[1]);
+  for (const match of source.matchAll(dynamicImportRe)) {
+    imports.push(match[1]);
   }
 
   // require('...')
   const requireRe = /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
-  while ((m = requireRe.exec(source)) !== null) {
-    imports.push(m[1]);
+  for (const match of source.matchAll(requireRe)) {
+    imports.push(match[1]);
   }
 
   return imports;

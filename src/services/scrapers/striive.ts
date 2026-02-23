@@ -302,7 +302,7 @@ run();
 /**
  * Main entry point — scrapes Striive listings via Modal sandbox.
  */
-export async function scrapeStriive(_url: string): Promise<any[]> {
+export async function scrapeStriive(_url: string): Promise<Record<string, unknown>[]> {
   const username = process.env.STRIIVE_USERNAME;
   const password = process.env.STRIIVE_PASSWORD;
 
@@ -314,7 +314,10 @@ export async function scrapeStriive(_url: string): Promise<any[]> {
   return scrapeViaModal(username, password);
 }
 
-async function scrapeViaModal(username: string, password: string): Promise<any[]> {
+async function scrapeViaModal(
+  username: string,
+  password: string,
+): Promise<Record<string, unknown>[]> {
   const { ModalClient } = await import("modal");
   console.log("[striive] Starting Modal sandbox scrape...");
 

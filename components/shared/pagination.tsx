@@ -15,18 +15,18 @@ export function Pagination({ page, totalPages, buildHref }: PaginationProps) {
       {page > 1 && (
         <Link
           href={buildHref(page - 1)}
-          className="h-9 px-4 flex items-center bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323] transition-colors"
+          className="h-9 px-4 flex items-center bg-card border border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
           Vorige
         </Link>
       )}
-      <span className="text-sm text-[#6b6b6b] px-2">
+      <span className="text-sm text-muted-foreground px-2">
         {page} / {totalPages}
       </span>
       {page < totalPages && (
         <Link
           href={buildHref(page + 1)}
-          className="h-9 px-4 flex items-center bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323] transition-colors"
+          className="h-9 px-4 flex items-center bg-card border border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
           Volgende
         </Link>

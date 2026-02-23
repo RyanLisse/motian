@@ -55,9 +55,7 @@ function checkStaleDocs(): CheckResult {
 
   // Match references like `src/services/foo.ts` or `src/db/schema.ts`
   const fileRefPattern = /`(src\/[^\s`]+\.[a-z]+)`/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = fileRefPattern.exec(content)) !== null) {
+  for (const match of content.matchAll(fileRefPattern)) {
     const refPath = join(ROOT, match[1]);
     if (!existsSync(refPath)) {
       issues.push({
@@ -179,9 +177,8 @@ function checkSchemaDrift(): CheckResult {
   // Extract table names from pgTable('table_name', ...) calls
   const tablePattern = /pgTable\s*\(\s*['"]([^'"]+)['"]/g;
   const tables: string[] = [];
-  let match: RegExpExecArray | null;
 
-  while ((match = tablePattern.exec(schemaContent)) !== null) {
+  for (const match of schemaContent.matchAll(tablePattern)) {
     tables.push(match[1]);
   }
 

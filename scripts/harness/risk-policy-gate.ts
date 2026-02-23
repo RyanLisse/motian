@@ -54,13 +54,13 @@ interface GateResult {
 
 function globMatch(pattern: string, filePath: string): boolean {
   // Escape special regex chars except * and ?
-  const escape = (s: string) => s.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  const escapeRegex = (s: string) => s.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 
   // Split on ** first, preserving the separator intent
   const segments = pattern.split("**");
   const regexParts = segments.map((seg) => {
     // Within a segment, replace * with [^/]* and ? with [^/]
-    return escape(seg).replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]");
+    return escapeRegex(seg).replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]");
   });
 
   // Join segments with .*  (** matches any path including slashes)

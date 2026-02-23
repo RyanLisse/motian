@@ -51,10 +51,11 @@ async function test() {
     console.log("6. Terminating sandbox...");
     await sandbox.terminate().catch(() => {});
     console.log("   Done! Modal sandbox works correctly.");
-  } catch (err: any) {
-    console.error("ERROR:", err.message || err);
-    if (err.stack) {
-      console.error(err.stack.split("\n").slice(0, 8).join("\n"));
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    console.error("ERROR:", error.message);
+    if (error.stack) {
+      console.error(error.stack.split("\n").slice(0, 8).join("\n"));
     }
   }
 }

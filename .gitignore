@@ -17,3 +17,6 @@ harness-evidence/
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# qlty local tooling cache
+.qlty/

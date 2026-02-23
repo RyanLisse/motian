@@ -27,10 +27,16 @@ async function main() {
     console.log(JSON.stringify(listings[0], null, 2));
 
     // Check data quality
-    const withDesc = listings.filter((l: any) => l.description?.length > 50);
-    const withReqs = listings.filter((l: any) => l.requirements?.length > 0);
-    const withWishes = listings.filter((l: any) => l.wishes?.length > 0);
-    const withRate = listings.filter((l: any) => l.rateMax > 0);
+    const withDesc = listings.filter(
+      (l: Record<string, unknown>) => (l.description as string)?.length > 50,
+    );
+    const withReqs = listings.filter(
+      (l: Record<string, unknown>) => (l.requirements as unknown[])?.length > 0,
+    );
+    const withWishes = listings.filter(
+      (l: Record<string, unknown>) => (l.wishes as unknown[])?.length > 0,
+    );
+    const withRate = listings.filter((l: Record<string, unknown>) => (l.rateMax as number) > 0);
     console.log(`\nData quality:`);
     console.log(`  With description (>50ch): ${withDesc.length}/${listings.length}`);
     console.log(`  With requirements: ${withReqs.length}/${listings.length}`);

@@ -267,8 +267,9 @@ export async function hybridSearch(
       .where(and(isNull(jobs.deletedAt), or(...vectorOnlyIds.map((id) => eq(jobs.id, id)))));
     const fetchMap = new Map(fetched.map((j) => [j.id, j]));
     for (const [id, entry] of scoreMap) {
-      if (!entry.job && fetchMap.has(id)) {
-        entry.job = fetchMap.get(id)!;
+      const fetched = fetchMap.get(id);
+      if (!entry.job && fetched) {
+        entry.job = fetched;
       }
     }
   }
@@ -297,7 +298,10 @@ export async function hybridSearch(
       return true;
     })
     .slice(0, limit)
-    .map(([, v]) => ({ ...v.job!, score: Math.round(v.rrfScore * 10000) / 10000 }));
+    .map(([, v]) => ({
+      ...(v.job as NonNullable<typeof v.job>),
+      score: Math.round(v.rrfScore * 10000) / 10000,
+    }));
 }
 
 /** Opdracht soft-deleten. Retourneert true als gevonden en verwijderd. */

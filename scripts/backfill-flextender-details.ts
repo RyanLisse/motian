@@ -243,8 +243,7 @@ function decodeEntities(s: string): string {
 function parseFieldPairs(cardHtml: string): Record<string, string> {
   const fields: Record<string, string> = {};
   const pairRegex = /class="css-caption">([^<]+)<[\s\S]*?class="css-value">([^<]+)</gi;
-  let pairMatch: RegExpExecArray | null;
-  while ((pairMatch = pairRegex.exec(cardHtml)) !== null) {
+  for (const pairMatch of cardHtml.matchAll(pairRegex)) {
     const key = pairMatch[1].trim();
     const value = pairMatch[2].trim();
     if (!fields[key]) fields[key] = value;

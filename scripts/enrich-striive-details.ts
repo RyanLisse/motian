@@ -44,8 +44,8 @@ interface StriiveDetail {
   competencies?: Array<{ name: string }>;
   competences?: string[];
   conditions?: string[];
-  qualificationRequirements?: any[];
-  selectionCriteria?: any[];
+  qualificationRequirements?: unknown[];
+  selectionCriteria?: unknown[];
 }
 
 function mapWorkArrangement(remote?: string): "remote" | "hybride" | "op_locatie" | undefined {
