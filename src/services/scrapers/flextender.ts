@@ -1,3 +1,4 @@
+import { stripHtml } from "../../lib/html";
 import type { RawScrapedListing } from "../normalize";
 
 const PAGE_URL = "https://www.flextender.nl/opdrachten/";
@@ -391,21 +392,6 @@ function extractSections(html: string): Record<string, string> {
   return sections;
 }
 
-/** Verwijder HTML tags en decode entities */
-function stripHtml(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(?:p|li|div)>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
 
 /** Parse genummerde lijst (1. item; 2. item) naar string array */
 function parseNumberedList(text: string): string[] {

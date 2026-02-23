@@ -1,3 +1,4 @@
+import { stripHtml } from "../../lib/html";
 import type { RawScrapedListing } from "../normalize";
 
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
@@ -292,22 +293,6 @@ function ensureMinLength(text: string): string {
   return `${text} — opdracht via Opdrachtoverheid`;
 }
 
-/** Strip HTML tags en return plain text */
-function stripHtml(html: string | null | undefined): string {
-  if (!html) return "";
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
 
 /** Parse HTML <li> items naar string array */
 function parseHtmlList(html: string | null | undefined): string[] {

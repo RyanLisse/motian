@@ -102,10 +102,13 @@ jobs:
 
       - name: Annotate summary
         if: always()
+        env:
+          RISK_TIER: ${{ steps.gate.outputs.risk-tier }}
+          REQUIRED_CHECKS: ${{ steps.gate.outputs.required-checks }}
         run: |
           echo "## Risk Policy Gate Results" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Risk Tier | \`${{ steps.gate.outputs.risk-tier }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Required Checks | \`${{ steps.gate.outputs.required-checks }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Risk Tier | \`${RISK_TIER}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Required Checks | \`${REQUIRED_CHECKS}\` |" >> "$GITHUB_STEP_SUMMARY"
