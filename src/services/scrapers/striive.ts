@@ -299,6 +299,21 @@ async function run() {
 run();
 `;
 
+/**
+ * Main entry point — scrapes Striive listings via Modal sandbox.
+ */
+export async function scrapeStriive(_url: string): Promise<any[]> {
+  const username = process.env.STRIIVE_USERNAME;
+  const password = process.env.STRIIVE_PASSWORD;
+
+  if (!username || !password) {
+    console.error("[striive] STRIIVE_USERNAME and STRIIVE_PASSWORD must be set");
+    return [];
+  }
+
+  return scrapeViaModal(username, password);
+}
+
 async function scrapeViaModal(username: string, password: string): Promise<any[]> {
   const { ModalClient } = await import("modal");
   console.log("[striive] Starting Modal sandbox scrape...");

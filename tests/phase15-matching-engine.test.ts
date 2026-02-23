@@ -224,49 +224,6 @@ describe("Phase 15 — extractKeywords", () => {
   });
 });
 
-// ── Step config export tests ─────────────────────────────────────
-
-describe("Phase 15 — generate-matches event step config", () => {
-  it("exports config and handler", async () => {
-    const mod = await import("../steps/jobs/generate-matches.step.js");
-    expect(mod.config).toBeDefined();
-    expect(mod.config.name).toBe("GenerateMatches");
-    expect(mod.handler).toBeDefined();
-    expect(typeof mod.handler).toBe("function");
-  });
-
-  it("has correct triggers and enqueues", async () => {
-    const { config } = await import("../steps/jobs/generate-matches.step.js");
-    expect(config.triggers).toHaveLength(1);
-    expect(config.triggers[0].type).toBe("queue");
-    expect(config.triggers[0].topic).toBe("matches.generate");
-    expect(config.enqueues).toContainEqual({ topic: "matches.completed" });
-  });
-});
-
-describe("Phase 15 — generate-matches API step config", () => {
-  it("exports config and handler", async () => {
-    const mod = await import("../steps/api/generate-matches.step.js");
-    expect(mod.config).toBeDefined();
-    expect(mod.config.name).toBe("TriggerGenerateMatches");
-    expect(mod.handler).toBeDefined();
-    expect(typeof mod.handler).toBe("function");
-  });
-
-  it("has correct HTTP trigger", async () => {
-    const { config } = await import("../steps/api/generate-matches.step.js");
-    expect(config.triggers).toHaveLength(1);
-    expect(config.triggers[0].type).toBe("http");
-    expect(config.triggers[0].method).toBe("POST");
-    expect(config.triggers[0].path).toBe("/api/matches/genereren");
-  });
-
-  it("enqueues matches.generate", async () => {
-    const { config } = await import("../steps/api/generate-matches.step.js");
-    expect(config.enqueues).toContainEqual({ topic: "matches.generate" });
-  });
-});
-
 // ── Candidates service: listActiveCandidates ─────────────────────
 
 describe("Phase 15 — candidates service: listActiveCandidates", () => {

@@ -2,9 +2,9 @@ import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { withRetry } from "@/src/lib/retry";
 import { db } from "../db";
 import { jobs } from "../db/schema";
+import { withRetry } from "../lib/retry";
 
 // ========== Schema ==========
 

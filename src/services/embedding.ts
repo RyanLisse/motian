@@ -1,9 +1,9 @@
 import { openai } from "@ai-sdk/openai";
 import { embed, embedMany } from "ai";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { withRetry } from "@/src/lib/retry";
 import { db } from "../db";
 import { candidates, jobs } from "../db/schema";
+import { withRetry } from "../lib/retry";
 
 // ========== Config ==========
 
