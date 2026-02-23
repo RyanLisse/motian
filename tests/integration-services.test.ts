@@ -150,22 +150,39 @@ describe("Database schema exports", () => {
 // ─── 5. Helpers ──────────────────────────────────────────────────────
 
 describe("Helpers module", () => {
-  it("calculateBackoff produces increasing values", async () => {
-    const { calculateBackoff } = await import("../src/lib/helpers");
-    const b0 = calculateBackoff(0);
-    const b1 = calculateBackoff(1);
-    const b2 = calculateBackoff(2);
-    // Base doubles: 1200, 2400, 4800 (plus jitter 0-500)
-    expect(b0).toBeGreaterThanOrEqual(1200);
-    expect(b0).toBeLessThanOrEqual(1700);
-    expect(b1).toBeGreaterThanOrEqual(2400);
-    expect(b2).toBeGreaterThanOrEqual(4800);
+  it("withRetry retries on retryable errors", async () => {
+    const { withRetry } = await import("../src/lib/retry");
+    let calls = 0;
+    const result = await withRetry(
+      async () => {
+        calls++;
+        if (calls < 3) {
+          const err = new Error("rate limited") as Error & { status: number };
+          err.status = 429;
+          throw err;
+        }
+        return "ok";
+      },
+      { maxAttempts: 3, baseDelayMs: 10, label: "test" },
+    );
+    expect(result).toBe("ok");
+    expect(calls).toBe(3);
   });
 
-  it("sleep resolves after delay", async () => {
-    const { sleep } = await import("../src/lib/helpers");
-    const start = Date.now();
-    await sleep(50);
-    expect(Date.now() - start).toBeGreaterThanOrEqual(40);
+  it("withRetry throws non-retryable errors immediately", async () => {
+    const { withRetry } = await import("../src/lib/retry");
+    let calls = 0;
+    await expect(
+      withRetry(
+        async () => {
+          calls++;
+          const err = new Error("not found") as Error & { status: number };
+          err.status = 404;
+          throw err;
+        },
+        { maxAttempts: 3, baseDelayMs: 10 },
+      ),
+    ).rejects.toThrow("not found");
+    expect(calls).toBe(1);
   });
 });

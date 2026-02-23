@@ -2,6 +2,7 @@ import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
+import { withRetry } from "@/src/lib/retry";
 import { db } from "../db";
 import { jobs } from "../db/schema";
 
@@ -45,33 +46,6 @@ const enrichmentOutputSchema = z.object({
 
 export type EnrichmentOutput = z.infer<typeof enrichmentOutputSchema>;
 
-// ========== Retry Helper ==========
-
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  { maxAttempts = 3, baseDelayMs = 1000 }: { maxAttempts?: number; baseDelayMs?: number } = {},
-): Promise<T> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err: unknown) {
-      const isLast = attempt === maxAttempts;
-      const status =
-        err instanceof Error && "status" in err ? (err as { status: number }).status : 0;
-      const isRetryable = status === 429 || status === 500 || status === 503 || status === 0;
-
-      if (isLast || !isRetryable) throw err;
-
-      const delay = baseDelayMs * 2 ** (attempt - 1) + Math.random() * 500;
-      console.log(
-        `[AI Enrichment] Retry ${attempt}/${maxAttempts} after ${Math.round(delay)}ms (status: ${status})`,
-      );
-      await new Promise((r) => setTimeout(r, delay));
-    }
-  }
-  throw new Error("Unreachable");
-}
-
 // ========== Single Job Enrichment ==========
 
 const SYSTEM_PROMPT = `Je bent een Nederlandse recruitment data-extractie assistent.
@@ -102,14 +76,16 @@ export async function enrichJobWithAI(job: {
     contextParts.push(`Eisen: ${JSON.stringify(job.requirements)}`);
   }
 
-  const { object } = await withRetry(() =>
-    generateObject({
-      model: google("gemini-2.5-flash-lite"),
-      schema: enrichmentOutputSchema,
-      system: SYSTEM_PROMPT,
-      prompt: contextParts.join("\n\n"),
-      providerOptions: { google: { structuredOutputs: true } },
-    }),
+  const { object } = await withRetry(
+    () =>
+      generateObject({
+        model: google("gemini-2.5-flash-lite"),
+        schema: enrichmentOutputSchema,
+        system: SYSTEM_PROMPT,
+        prompt: contextParts.join("\n\n"),
+        providerOptions: { google: { structuredOutputs: true } },
+      }),
+    { label: "AI Enrichment" },
   );
 
   return object;
@@ -217,7 +193,7 @@ export async function enrichJobsBatch(opts: {
         // Generate embedding after enrichment (non-fatal)
         try {
           const { embedJob } = await import("./embedding");
-          await withRetry(() => embedJob(job.id), { maxAttempts: 2 });
+          await withRetry(() => embedJob(job.id), { maxAttempts: 2, label: "AI Enrichment" });
         } catch (embErr) {
           console.error(`[AI Enrichment] Embedding error for ${job.id}:`, embErr);
         }

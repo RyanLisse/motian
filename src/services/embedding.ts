@@ -1,35 +1,9 @@
 import { openai } from "@ai-sdk/openai";
 import { embed, embedMany } from "ai";
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { withRetry } from "@/src/lib/retry";
 import { db } from "../db";
 import { candidates, jobs } from "../db/schema";
-
-// ========== Retry Helper ==========
-
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  { maxAttempts = 3, baseDelayMs = 1000 }: { maxAttempts?: number; baseDelayMs?: number } = {},
-): Promise<T> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err: unknown) {
-      const isLast = attempt === maxAttempts;
-      const status =
-        err instanceof Error && "status" in err ? (err as { status: number }).status : 0;
-      const isRetryable = status === 429 || status === 500 || status === 503 || status === 0;
-
-      if (isLast || !isRetryable) throw err;
-
-      const delay = baseDelayMs * 2 ** (attempt - 1) + Math.random() * 500;
-      console.log(
-        `[Embedding] Retry ${attempt}/${maxAttempts} after ${Math.round(delay)}ms (status: ${status})`,
-      );
-      await new Promise((r) => setTimeout(r, delay));
-    }
-  }
-  throw new Error("Unreachable");
-}
 
 // ========== Config ==========
 
@@ -81,12 +55,14 @@ export function buildJobEmbeddingText(job: {
 // ========== Single Embedding ==========
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const { embedding } = await withRetry(() =>
-    embed({
-      model: EMBEDDING_MODEL,
-      value: text,
-      providerOptions: EMBEDDING_OPTIONS,
-    }),
+  const { embedding } = await withRetry(
+    () =>
+      embed({
+        model: EMBEDDING_MODEL,
+        value: text,
+        providerOptions: EMBEDDING_OPTIONS,
+      }),
+    { label: "Embedding" },
   );
   return embedding;
 }
@@ -98,12 +74,14 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
 
   for (let i = 0; i < texts.length; i += BATCH_SIZE) {
     const batch = texts.slice(i, i + BATCH_SIZE);
-    const { embeddings } = await withRetry(() =>
-      embedMany({
-        model: EMBEDDING_MODEL,
-        values: batch,
-        providerOptions: EMBEDDING_OPTIONS,
-      }),
+    const { embeddings } = await withRetry(
+      () =>
+        embedMany({
+          model: EMBEDDING_MODEL,
+          values: batch,
+          providerOptions: EMBEDDING_OPTIONS,
+        }),
+      { label: "Embedding" },
     );
     allEmbeddings.push(...embeddings);
 
