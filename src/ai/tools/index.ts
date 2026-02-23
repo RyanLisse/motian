@@ -12,10 +12,12 @@ export {
 } from "./interviews";
 // Kandidaten tools
 export {
+  autoMatchKandidaat,
   getKandidaatDetail,
   maakKandidaatAan,
   updateKandidaat,
   verwijderKandidaat,
+  voegNotitieToe,
   zoekKandidaten,
 } from "./kandidaten";
 export { matchKandidaten } from "./match-kandidaten";

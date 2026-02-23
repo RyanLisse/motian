@@ -150,14 +150,22 @@ describe("parsedCVSchema — invalid input rejection", () => {
       name: "Jan de Vries",
       email: "not-an-email",
       phone: null,
+      dateOfBirth: null,
+      nationality: null,
       role: "Developer",
       location: null,
+      introduction: "A developer.",
       skills: { hard: [], soft: [] },
       experience: [],
       education: [],
+      courses: [],
       certifications: [],
       languages: [],
-      summary: "A developer.",
+      totalYearsExperience: null,
+      highestEducationLevel: null,
+      industries: [],
+      preferredContractType: null,
+      preferredWorkArrangement: null,
     });
     expect(result.success).toBe(false);
   });
@@ -166,30 +174,46 @@ describe("parsedCVSchema — invalid input rejection", () => {
     const result = parsedCVSchema.safeParse({
       email: null,
       phone: null,
+      dateOfBirth: null,
+      nationality: null,
       role: "Developer",
       location: null,
+      introduction: "A developer.",
       skills: { hard: [], soft: [] },
       experience: [],
       education: [],
+      courses: [],
       certifications: [],
       languages: [],
-      summary: "A developer.",
+      totalYearsExperience: null,
+      highestEducationLevel: null,
+      industries: [],
+      preferredContractType: null,
+      preferredWorkArrangement: null,
     });
     expect(result.success).toBe(false);
   });
 
-  it("rejects missing required summary field", () => {
+  it("rejects missing required introduction field", () => {
     const result = parsedCVSchema.safeParse({
       name: "Jan de Vries",
       email: null,
       phone: null,
+      dateOfBirth: null,
+      nationality: null,
       role: "Developer",
       location: null,
       skills: { hard: [], soft: [] },
       experience: [],
       education: [],
+      courses: [],
       certifications: [],
       languages: [],
+      totalYearsExperience: null,
+      highestEducationLevel: null,
+      industries: [],
+      preferredContractType: null,
+      preferredWorkArrangement: null,
     });
     expect(result.success).toBe(false);
   });
@@ -199,14 +223,22 @@ describe("parsedCVSchema — invalid input rejection", () => {
       name: "Anoniem Kandidaat",
       email: null,
       phone: null,
+      dateOfBirth: null,
+      nationality: null,
       role: "Consultant",
       location: null,
+      introduction: "Anonieme kandidaat zonder email.",
       skills: { hard: [], soft: [] },
       experience: [],
       education: [],
+      courses: [],
       certifications: [],
       languages: [],
-      summary: "Anonieme kandidaat zonder email.",
+      totalYearsExperience: 5,
+      highestEducationLevel: "HBO",
+      industries: ["IT"],
+      preferredContractType: null,
+      preferredWorkArrangement: null,
     });
     expect(result.success).toBe(true);
   });

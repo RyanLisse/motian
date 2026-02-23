@@ -2,6 +2,7 @@ import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { Calendar, Euro, ExternalLink, Link2, MapPin, Monitor, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -330,254 +331,258 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       : null);
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {/* Center: Job detail */}
-      <main className="flex-1 overflow-y-auto pb-[72px] xl:pb-0">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
-          {/* Back link (visible on mobile when sidebar is hidden) */}
-          <Link
-            href="/opdrachten"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors lg:hidden"
-          >
-            &larr; Terug naar opdrachten
-          </Link>
+    <DroppableVacancy jobId={job.id} jobTitle={job.title}>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Center: Job detail */}
+        <main className="flex-1 overflow-y-auto pb-[72px] xl:pb-0">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
+            {/* Back link (visible on mobile when sidebar is hidden) */}
+            <Link
+              href="/opdrachten"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors lg:hidden"
+            >
+              &larr; Terug naar opdrachten
+            </Link>
 
-          {/* Header */}
-          <div>
-            <div className="flex items-center gap-2 flex-wrap mb-3">
-              <Badge
-                variant="outline"
-                className="capitalize border-border text-muted-foreground bg-transparent text-xs"
-              >
-                {job.platform}
-              </Badge>
-              {job.workArrangement && (
-                <Badge
-                  variant="outline"
-                  className={
-                    job.workArrangement === "remote"
-                      ? "bg-primary/10 text-primary border-primary/20 text-xs"
-                      : "border-border text-muted-foreground bg-transparent text-xs"
-                  }
-                >
-                  {arrangementLabels[job.workArrangement] ?? job.workArrangement}
-                </Badge>
-              )}
-              {job.contractType && (
+            {/* Header */}
+            <div>
+              <div className="flex items-center gap-2 flex-wrap mb-3">
                 <Badge
                   variant="outline"
                   className="capitalize border-border text-muted-foreground bg-transparent text-xs"
                 >
-                  {job.contractType}
+                  {job.platform}
                 </Badge>
-              )}
-              {job.contractLabel && (
-                <Badge
-                  variant="outline"
-                  className="border-border text-muted-foreground bg-transparent text-xs"
-                >
-                  {job.contractLabel}
-                </Badge>
-              )}
-              <div className="ml-auto">
-                <JsonViewer data={job as unknown as Record<string, unknown>} />
+                {job.workArrangement && (
+                  <Badge
+                    variant="outline"
+                    className={
+                      job.workArrangement === "remote"
+                        ? "bg-primary/10 text-primary border-primary/20 text-xs"
+                        : "border-border text-muted-foreground bg-transparent text-xs"
+                    }
+                  >
+                    {arrangementLabels[job.workArrangement] ?? job.workArrangement}
+                  </Badge>
+                )}
+                {job.contractType && (
+                  <Badge
+                    variant="outline"
+                    className="capitalize border-border text-muted-foreground bg-transparent text-xs"
+                  >
+                    {job.contractType}
+                  </Badge>
+                )}
+                {job.contractLabel && (
+                  <Badge
+                    variant="outline"
+                    className="border-border text-muted-foreground bg-transparent text-xs"
+                  >
+                    {job.contractLabel}
+                  </Badge>
+                )}
+                <div className="ml-auto">
+                  <JsonViewer data={job as unknown as Record<string, unknown>} />
+                </div>
               </div>
+              <h1 className="text-lg sm:text-xl font-bold text-foreground mb-1">{job.title}</h1>
+              {job.company && <p className="text-sm text-muted-foreground">{job.company}</p>}
             </div>
-            <h1 className="text-lg sm:text-xl font-bold text-foreground mb-1">{job.title}</h1>
-            {job.company && <p className="text-sm text-muted-foreground">{job.company}</p>}
-          </div>
 
-          {/* Meta row with icons */}
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-            {job.location && (
-              <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                {job.location}
-              </span>
-            )}
-            {job.workArrangement && (
-              <span className="flex items-center gap-1.5">
-                <Monitor className="h-4 w-4 text-muted-foreground shrink-0" />
-                {arrangementLabels[job.workArrangement] ?? job.workArrangement}
-              </span>
-            )}
-            {(job.rateMin || job.rateMax) && (
-              <span className="flex items-center gap-1.5">
-                <Euro className="h-4 w-4 text-muted-foreground shrink-0" />
-                {job.rateMin && job.rateMax
-                  ? `EUR ${job.rateMin} - ${job.rateMax} per uur`
-                  : job.rateMax
-                    ? `max EUR ${job.rateMax} per uur`
-                    : `min EUR ${job.rateMin} per uur`}
-              </span>
-            )}
-            {job.startDate && (
-              <span className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                {"Start "}
-                {new Date(job.startDate).toLocaleDateString("nl-NL", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </span>
-            )}
-          </div>
-
-          {/* AI Summary */}
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">AI Samenvatting</h3>
+            {/* Meta row with icons */}
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+              {job.location && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                  {job.location}
+                </span>
+              )}
+              {job.workArrangement && (
+                <span className="flex items-center gap-1.5">
+                  <Monitor className="h-4 w-4 text-muted-foreground shrink-0" />
+                  {arrangementLabels[job.workArrangement] ?? job.workArrangement}
+                </span>
+              )}
+              {(job.rateMin || job.rateMax) && (
+                <span className="flex items-center gap-1.5">
+                  <Euro className="h-4 w-4 text-muted-foreground shrink-0" />
+                  {job.rateMin && job.rateMax
+                    ? `EUR ${job.rateMin} - ${job.rateMax} per uur`
+                    : job.rateMax
+                      ? `max EUR ${job.rateMax} per uur`
+                      : `min EUR ${job.rateMin} per uur`}
+                </span>
+              )}
+              {job.startDate && (
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                  {"Start "}
+                  {new Date(job.startDate).toLocaleDateString("nl-NL", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+              )}
             </div>
-            {aiPreview ? (
-              <p className="text-sm text-muted-foreground leading-relaxed">{aiPreview}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">
-                Samenvatting wordt gegenereerd...
-              </p>
-            )}
-          </div>
 
-          {/* Mobile opdrachtdetails (visible below xl) */}
-          <div className="bg-card border border-border rounded-lg p-4 xl:hidden">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">
+            {/* AI Summary */}
+            <div className="bg-card border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">AI Samenvatting</h3>
+              </div>
+              {aiPreview ? (
+                <p className="text-sm text-muted-foreground leading-relaxed">{aiPreview}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">
+                  Samenvatting wordt gegenereerd...
+                </p>
+              )}
+            </div>
+
+            {/* Mobile opdrachtdetails (visible below xl) */}
+            <div className="bg-card border border-border rounded-lg p-4 xl:hidden">
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">
+                Opdrachtdetails
+              </h3>
+              <JobDetailFields job={job} variant="mobile" />
+            </div>
+
+            {/* Tags / key requirements badges (short competences only) */}
+            {competencesList.filter((c) => stripHtml(c).length < 60).length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {competencesList
+                  .filter((c) => stripHtml(c).length < 60)
+                  .slice(0, 8)
+                  .map((comp) => (
+                    <Badge
+                      key={comp}
+                      variant="outline"
+                      className="bg-primary/10 text-primary border-primary/20 text-xs"
+                    >
+                      {stripHtml(comp)}
+                    </Badge>
+                  ))}
+              </div>
+            )}
+
+            <Separator className="bg-border" />
+
+            {/* Description */}
+            {cleanDescription && (
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-3">
+                  Functiebeschrijving
+                </h3>
+                <div
+                  className="text-sm text-muted-foreground leading-relaxed max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-foreground [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-3 [&_h3]:mb-1 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-foreground [&_b]:font-semibold [&_b]:text-foreground [&_a]:text-primary [&_a]:underline [&_span]:inline"
+                  // biome-ignore lint/security/noDangerouslySetInnerHtml: Job descriptions from scrapers contain formatted HTML that must be rendered; content is sanitized by stripHtml in the scraper pipeline
+                  dangerouslySetInnerHTML={{ __html: cleanDescription }}
+                />
+              </div>
+            )}
+
+            {/* Structured sections */}
+            <SectionBlock title="Functie-eisen" items={requirementsList} />
+            <SectionBlock title="Wensen" items={wishesList} />
+            <SectionBlock title="Competenties" items={competencesList} />
+            <SectionBlock title="Wat bieden we" items={plainConditions} />
+
+            {/* External link */}
+            {job.externalUrl && (
+              <a href={job.externalUrl} target="_blank" rel="noopener noreferrer">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Bekijk op {job.platform}
+                </Button>
+              </a>
+            )}
+
+            <Separator className="bg-border" />
+
+            {/* Related jobs */}
+            {related.length > 0 && (
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-4">
+                  Vergelijkbare opdrachten
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {related.map((rJob) => (
+                    <Link key={rJob.id} href={`/opdrachten/${rJob.id}`}>
+                      <div className="bg-card border border-border rounded-lg p-3 hover:border-primary/30 hover:bg-accent transition-colors cursor-pointer">
+                        <h4 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
+                          {rJob.title}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {rJob.company || rJob.platform}
+                        </p>
+                        {rJob.location && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin className="h-3 w-3" />
+                            {rJob.location}
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="h-8" />
+          </div>
+        </main>
+
+        {/* Right sidebar: Opdrachtdetails (desktop xl+ only) */}
+        <aside className="w-[300px] border-l border-border bg-sidebar overflow-y-auto shrink-0 hidden xl:block">
+          <div className="p-5 space-y-5">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
               Opdrachtdetails
             </h3>
-            <JobDetailFields job={job} variant="mobile" />
-          </div>
 
-          {/* Tags / key requirements badges (short competences only) */}
-          {competencesList.filter((c) => stripHtml(c).length < 60).length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {competencesList
-                .filter((c) => stripHtml(c).length < 60)
-                .slice(0, 8)
-                .map((comp) => (
-                  <Badge
-                    key={comp}
-                    variant="outline"
-                    className="bg-primary/10 text-primary border-primary/20 text-xs"
-                  >
-                    {stripHtml(comp)}
-                  </Badge>
-                ))}
-            </div>
-          )}
+            <JobDetailFields job={job} variant="desktop" metaFields={metaFields} />
 
-          <Separator className="bg-border" />
+            <Separator className="bg-border" />
 
-          {/* Description */}
-          {cleanDescription && (
-            <div>
-              <h3 className="text-base font-semibold text-foreground mb-3">Functiebeschrijving</h3>
-              <div
-                className="text-sm text-muted-foreground leading-relaxed max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-foreground [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-3 [&_h3]:mb-1 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-foreground [&_b]:font-semibold [&_b]:text-foreground [&_a]:text-primary [&_a]:underline [&_span]:inline"
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: Job descriptions from scrapers contain formatted HTML that must be rendered; content is sanitized by stripHtml in the scraper pipeline
-                dangerouslySetInnerHTML={{ __html: cleanDescription }}
-              />
-            </div>
-          )}
-
-          {/* Structured sections */}
-          <SectionBlock title="Functie-eisen" items={requirementsList} />
-          <SectionBlock title="Wensen" items={wishesList} />
-          <SectionBlock title="Competenties" items={competencesList} />
-          <SectionBlock title="Wat bieden we" items={plainConditions} />
-
-          {/* External link */}
-          {job.externalUrl && (
-            <a href={job.externalUrl} target="_blank" rel="noopener noreferrer">
+            {/* Action buttons */}
+            <div className="space-y-2">
+              <Link href={`/matching?jobId=${job.id}`}>
+                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Koppel aan kandidaat
+                </Button>
+              </Link>
               <Button
                 variant="outline"
-                size="sm"
-                className="border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent"
+                className="w-full border-primary text-primary hover:bg-primary/10 font-semibold h-10"
               >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Bekijk op {job.platform}
+                Interesse
               </Button>
-            </a>
-          )}
-
-          <Separator className="bg-border" />
-
-          {/* Related jobs */}
-          {related.length > 0 && (
-            <div>
-              <h3 className="text-base font-semibold text-foreground mb-4">
-                Vergelijkbare opdrachten
-              </h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {related.map((rJob) => (
-                  <Link key={rJob.id} href={`/opdrachten/${rJob.id}`}>
-                    <div className="bg-card border border-border rounded-lg p-3 hover:border-primary/30 hover:bg-accent transition-colors cursor-pointer">
-                      <h4 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
-                        {rJob.title}
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        {rJob.company || rJob.platform}
-                      </p>
-                      {rJob.location && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <MapPin className="h-3 w-3" />
-                          {rJob.location}
-                        </p>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
             </div>
-          )}
-
-          <div className="h-8" />
-        </div>
-      </main>
-
-      {/* Right sidebar: Opdrachtdetails (desktop xl+ only) */}
-      <aside className="w-[300px] border-l border-border bg-sidebar overflow-y-auto shrink-0 hidden xl:block">
-        <div className="p-5 space-y-5">
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-            Opdrachtdetails
-          </h3>
-
-          <JobDetailFields job={job} variant="desktop" metaFields={metaFields} />
-
-          <Separator className="bg-border" />
-
-          {/* Action buttons */}
-          <div className="space-y-2">
-            <Link href={`/matching?jobId=${job.id}`}>
-              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
-                <Link2 className="h-4 w-4 mr-2" />
-                Koppel aan kandidaat
-              </Button>
-            </Link>
-            <Button
-              variant="outline"
-              className="w-full border-primary text-primary hover:bg-primary/10 font-semibold h-10"
-            >
-              Interesse
-            </Button>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      {/* Mobile sticky bottom action bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 flex gap-2 xl:hidden z-50">
-        <Link href={`/matching?jobId=${job.id}`} className="flex-1">
-          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
-            <Link2 className="h-4 w-4 mr-2" />
-            Koppel aan kandidaat
+        {/* Mobile sticky bottom action bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 flex gap-2 xl:hidden z-50">
+          <Link href={`/matching?jobId=${job.id}`} className="flex-1">
+            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
+              <Link2 className="h-4 w-4 mr-2" />
+              Koppel aan kandidaat
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            className="flex-1 border-primary text-primary hover:bg-primary/10 font-semibold h-11"
+          >
+            Interesse
           </Button>
-        </Link>
-        <Button
-          variant="outline"
-          className="flex-1 border-primary text-primary hover:bg-primary/10 font-semibold h-11"
-        >
-          Interesse
-        </Button>
+        </div>
       </div>
-    </div>
+    </DroppableVacancy>
   );
 }

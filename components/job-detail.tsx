@@ -120,7 +120,7 @@ export function JobDetail({ job }: { job: Job }) {
         <div>
           <h2 className="text-lg font-bold text-foreground mb-3">Functiebeschrijving</h2>
           <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-            {job.description}
+            {String(job.description ?? "")}
           </div>
         </div>
 

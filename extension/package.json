@@ -1,8 +1,8 @@
 {
-  "name": "extension",
-  "version": "0.0.0",
+  "name": "motian-linkedin-importer",
+  "version": "1.0.0",
   "private": true,
-  "description": "manifest.json description",
+  "description": "Importeer LinkedIn profielen naar het Motian recruitment platform",
   "type": "module",
   "scripts": {
     "dev": "wxt --port 5555",

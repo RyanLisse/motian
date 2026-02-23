@@ -9,10 +9,16 @@ export const dynamic = "force-dynamic";
 const updateCandidateSchema = z.object({
   name: z.string().optional(),
   email: z.string().email().optional(),
+  phone: z.string().optional(),
   role: z.string().optional(),
   skills: z.array(z.string()).optional(),
   location: z.string().optional(),
   source: z.string().optional(),
+  linkedinUrl: z.string().url().optional(),
+  headline: z.string().optional(),
+  hourlyRate: z.number().optional(),
+  availability: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export const GET = withApiHandler(

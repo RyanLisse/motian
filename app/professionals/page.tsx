@@ -1,6 +1,8 @@
 import { and, desc, eq, gte, ilike, isNull, sql } from "drizzle-orm";
 import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
+import { AddCandidateDialog } from "@/components/add-candidate-dialog";
+import { DraggableCandidate } from "@/components/draggable-candidate";
 import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
@@ -78,11 +80,14 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Professionals</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Talent pool — overzicht van alle kandidaten
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Professionals</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Talent pool — overzicht van alle kandidaten
+            </p>
+          </div>
+          <AddCandidateDialog />
         </div>
 
         {/* KPI row */}
@@ -154,82 +159,88 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
               const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
 
               return (
-                <Link key={candidate.id} href={`/professionals/${candidate.id}`}>
-                  <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer">
-                    {/* Name + source */}
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground leading-snug">
-                          {candidate.name}
-                        </h3>
-                        {candidate.role && (
-                          <p className="text-xs text-muted-foreground mt-0.5">{candidate.role}</p>
+                <DraggableCandidate
+                  key={candidate.id}
+                  candidateId={candidate.id}
+                  candidateName={candidate.name}
+                >
+                  <Link href={`/professionals/${candidate.id}`}>
+                    <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer pl-6">
+                      {/* Name + source */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground leading-snug">
+                            {candidate.name}
+                          </h3>
+                          {candidate.role && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{candidate.role}</p>
+                          )}
+                        </div>
+                        {candidate.source && (
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 text-[10px] capitalize border-border text-muted-foreground bg-transparent"
+                          >
+                            {candidate.source}
+                          </Badge>
                         )}
                       </div>
-                      {candidate.source && (
+
+                      {/* Meta */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-3">
+                        {candidate.location && (
+                          <span className="flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {candidate.location}
+                          </span>
+                        )}
+                        {candidate.hourlyRate && (
+                          <span className="flex items-center gap-1.5">
+                            <Euro className="h-3.5 w-3.5" />
+                            {candidate.hourlyRate}/uur
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Skills */}
+                      {skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {skills.slice(0, 5).map((skill) => (
+                            <Badge
+                              key={`${candidate.id}-${skill}`}
+                              variant="outline"
+                              className="bg-primary/10 text-primary border-primary/20 text-[10px]"
+                            >
+                              {skill}
+                            </Badge>
+                          ))}
+                          {skills.length > 5 && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] border-border text-muted-foreground bg-transparent"
+                            >
+                              +{skills.length - 5}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Availability badge */}
+                      {candidate.availability && (
                         <Badge
                           variant="outline"
-                          className="shrink-0 text-[10px] capitalize border-border text-muted-foreground bg-transparent"
+                          className={
+                            candidate.availability === "direct"
+                              ? "bg-primary/10 text-primary border-primary/20 text-[10px]"
+                              : "text-[10px] border-border text-muted-foreground bg-transparent"
+                          }
                         >
-                          {candidate.source}
+                          {availabilityLabels[candidate.availability] ?? candidate.availability}
                         </Badge>
                       )}
                     </div>
-
-                    {/* Meta */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-3">
-                      {candidate.location && (
-                        <span className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {candidate.location}
-                        </span>
-                      )}
-                      {candidate.hourlyRate && (
-                        <span className="flex items-center gap-1.5">
-                          <Euro className="h-3.5 w-3.5" />
-                          {candidate.hourlyRate}/uur
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Skills */}
-                    {skills.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {skills.slice(0, 5).map((skill) => (
-                          <Badge
-                            key={`${candidate.id}-${skill}`}
-                            variant="outline"
-                            className="bg-primary/10 text-primary border-primary/20 text-[10px]"
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
-                        {skills.length > 5 && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] border-border text-muted-foreground bg-transparent"
-                          >
-                            +{skills.length - 5}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Availability badge */}
-                    {candidate.availability && (
-                      <Badge
-                        variant="outline"
-                        className={
-                          candidate.availability === "direct"
-                            ? "bg-primary/10 text-primary border-primary/20 text-[10px]"
-                            : "text-[10px] border-border text-muted-foreground bg-transparent"
-                        }
-                      >
-                        {availabilityLabels[candidate.availability] ?? candidate.availability}
-                      </Badge>
-                    )}
-                  </div>
-                </Link>
+                  </Link>
+                </DraggableCandidate>
               );
             })}
           </div>

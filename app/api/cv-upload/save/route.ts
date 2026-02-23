@@ -39,12 +39,14 @@ export async function POST(request: NextRequest) {
       candidate = await createCandidate({
         name: parsed.name,
         email: parsed.email ?? undefined,
+        phone: parsed.phone ?? undefined,
         role: parsed.role,
         skills: [
           ...parsed.skills.hard.map((s) => s.name),
           ...parsed.skills.soft.map((s) => s.name),
         ],
         location: parsed.location ?? undefined,
+        notes: parsed.introduction,
         source: "cv-upload",
       });
 
@@ -60,6 +62,7 @@ export async function POST(request: NextRequest) {
       message: existingCandidateId ? "Kandidaat verrijkt" : "Kandidaat aangemaakt",
       candidate,
       fileUrl,
+      candidateId: candidate?.id ?? null,
     });
   } catch (err) {
     console.error("[CV Save]", err);

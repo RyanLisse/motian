@@ -11,6 +11,8 @@ export type Candidate = typeof candidates.$inferSelect;
 export type SearchCandidatesOptions = {
   query?: string;
   location?: string;
+  skills?: string;
+  role?: string;
   limit?: number;
   offset?: number;
 };
@@ -23,10 +25,18 @@ export type ListCandidatesOptions = {
 export type CreateCandidateData = {
   name: string;
   email?: string;
+  phone?: string;
   role?: string;
   skills?: string[];
   location?: string;
   source?: string;
+  linkedinUrl?: string;
+  headline?: string;
+  hourlyRate?: number;
+  availability?: string;
+  notes?: string;
+  experience?: { title: string; company: string; duration: string }[];
+  education?: { school: string; degree: string; duration: string }[];
 };
 
 // ========== Service Functions ==========
@@ -83,6 +93,17 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
     conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
   }
 
+  if (opts.role) {
+    conditions.push(ilike(candidates.role, `%${escapeLike(opts.role)}%`));
+  }
+
+  if (opts.skills) {
+    // Search within the JSONB skills array for a case-insensitive match
+    conditions.push(
+      sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}) AS s WHERE s ILIKE ${`%${escapeLike(opts.skills)}%`})`,
+    );
+  }
+
   return db
     .select()
     .from(candidates)
@@ -121,10 +142,18 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     .values({
       name: data.name,
       email: data.email,
+      phone: data.phone,
       role: data.role,
       skills: data.skills,
       location: data.location,
       source: data.source,
+      linkedinUrl: data.linkedinUrl,
+      headline: data.headline,
+      hourlyRate: data.hourlyRate,
+      availability: data.availability,
+      notes: data.notes,
+      experience: data.experience,
+      education: data.education,
     })
     .returning();
 
@@ -191,6 +220,24 @@ export async function deleteCandidate(id: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+/** Notitie toevoegen aan een kandidaat met timestamp. Bestaande notities blijven behouden. */
+export async function addNoteToCandidate(id: string, note: string): Promise<Candidate | null> {
+  const existing = await getCandidateById(id);
+  if (!existing) return null;
+
+  const timestamp = new Date().toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" });
+  const newNote = `[${timestamp}] ${note}`;
+  const combined = existing.notes ? `${existing.notes}\n\n${newNote}` : newNote;
+
+  const rows = await db
+    .update(candidates)
+    .set({ notes: combined, updatedAt: new Date() })
+    .where(eq(candidates.id, id))
+    .returning();
+
+  return rows[0] ?? null;
+}
+
 /** Zoek duplicaat-kandidaten op basis van geparsed CV (email-match of naam-match). */
 export async function findDuplicateCandidate(
   parsed: ParsedCV,
@@ -232,9 +279,18 @@ export async function enrichCandidateFromCV(
   const updates: Record<string, unknown> = {
     resumeRaw,
     resumeParsedAt: new Date(),
-    skillsStructured: { hard: parsed.skills.hard, soft: parsed.skills.soft },
+    skillsStructured: {
+      hard: parsed.skills.hard,
+      soft: parsed.skills.soft,
+      totalYearsExperience: parsed.totalYearsExperience,
+      highestEducationLevel: parsed.highestEducationLevel,
+      industries: parsed.industries,
+      preferredContractType: parsed.preferredContractType,
+      preferredWorkArrangement: parsed.preferredWorkArrangement,
+    },
+    experience: parsed.experience,
     education: parsed.education,
-    certifications: parsed.certifications,
+    certifications: [...parsed.certifications, ...parsed.courses],
     languageSkills: parsed.languages,
     updatedAt: new Date(),
   };
@@ -242,6 +298,9 @@ export async function enrichCandidateFromCV(
   // Only overwrite null fields — never clobber manually-entered data
   if (!existing.role && parsed.role) updates.role = parsed.role;
   if (!existing.location && parsed.location) updates.location = parsed.location;
+  if (!existing.phone && parsed.phone) updates.phone = parsed.phone;
+  if (!existing.email && parsed.email) updates.email = parsed.email;
+  if (!existing.notes && parsed.introduction) updates.notes = parsed.introduction;
   if (!existing.skills || !Array.isArray(existing.skills) || existing.skills.length === 0) {
     updates.skills = [
       ...parsed.skills.hard.map((s) => s.name),

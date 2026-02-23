@@ -1,5 +1,5 @@
 import { google } from "@ai-sdk/google";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
 import { withRetry } from "../lib/retry";
 import { type ClassifiedRequirement, classifiedRequirementSchema } from "../schemas/matching";
@@ -50,11 +50,11 @@ export async function extractRequirements(job: {
     contextParts.push(`Competenties: ${JSON.stringify(job.competences)}`);
   }
 
-  const { object } = await withRetry(
+  const { output } = await withRetry(
     () =>
-      generateObject({
-        model: google("gemini-3.1-pro"),
-        schema: extractionOutputSchema,
+      generateText({
+        model: google("gemini-3-flash-preview"),
+        output: Output.object({ schema: extractionOutputSchema }),
         system: SYSTEM_PROMPT,
         prompt: contextParts.join("\n\n"),
         providerOptions: { google: { structuredOutputs: true } },
@@ -62,5 +62,5 @@ export async function extractRequirements(job: {
     { label: "Requirement Extraction" },
   );
 
-  return object.requirements;
+  return (output as { requirements: ClassifiedRequirement[] }).requirements;
 }

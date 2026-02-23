@@ -1,0 +1,75 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 2540 >>
+stream
+BT /F1 10 Tf 50 800 Td (CURRICULUM VITAE) Tj ET
+BT /F1 10 Tf 50 786 Td () Tj ET
+BT /F1 10 Tf 50 772 Td (Naam: Pieter van den Berg) Tj ET
+BT /F1 10 Tf 50 758 Td (Email: pieter.vandenberg@example.com) Tj ET
+BT /F1 10 Tf 50 744 Td (Telefoon: +31 6 98765432) Tj ET
+BT /F1 10 Tf 50 730 Td (Locatie: Amsterdam) Tj ET
+BT /F1 10 Tf 50 716 Td () Tj ET
+BT /F1 10 Tf 50 702 Td (PROFIEL) Tj ET
+BT /F1 10 Tf 50 688 Td (Ervaren Senior Java Developer met 12 jaar ervaring in enterprise software development.) Tj ET
+BT /F1 10 Tf 50 674 Td (Gespecialiseerd in microservices architectuur, Spring Boot en cloud-native applicaties.) Tj ET
+BT /F1 10 Tf 50 660 Td () Tj ET
+BT /F1 10 Tf 50 646 Td (WERKERVARING) Tj ET
+BT /F1 10 Tf 50 632 Td () Tj ET
+BT /F1 10 Tf 50 618 Td (Senior Java Developer  ING Bank) Tj ET
+BT /F1 10 Tf 50 604 Td (2019 - heden) Tj ET
+BT /F1 10 Tf 50 590 Td (Ontwikkeling van core banking microservices met Spring Boot en Kubernetes.) Tj ET
+BT /F1 10 Tf 50 576 Td (Leiding gegeven aan een team van 6 developers.) Tj ET
+BT /F1 10 Tf 50 562 Td () Tj ET
+BT /F1 10 Tf 50 548 Td (Java Developer  Rabobank) Tj ET
+BT /F1 10 Tf 50 534 Td (2014 - 2019) Tj ET
+BT /F1 10 Tf 50 520 Td (Backend development voor het online banking platform.) Tj ET
+BT /F1 10 Tf 50 506 Td (Migratie van monoliet naar microservices architectuur.) Tj ET
+BT /F1 10 Tf 50 492 Td () Tj ET
+BT /F1 10 Tf 50 478 Td (Junior Developer  Ordina) Tj ET
+BT /F1 10 Tf 50 464 Td (2012 - 2014) Tj ET
+BT /F1 10 Tf 50 450 Td (Full-stack development met Java EE en Angular.) Tj ET
+BT /F1 10 Tf 50 436 Td () Tj ET
+BT /F1 10 Tf 50 422 Td (OPLEIDING) Tj ET
+BT /F1 10 Tf 50 408 Td (MSc Computer Science  Universiteit van Amsterdam  2012) Tj ET
+BT /F1 10 Tf 50 394 Td (BSc Informatica  Universiteit van Amsterdam  2010) Tj ET
+BT /F1 10 Tf 50 380 Td () Tj ET
+BT /F1 10 Tf 50 366 Td (VAARDIGHEDEN) Tj ET
+BT /F1 10 Tf 50 352 Td (Java, Spring Boot, Kubernetes, Docker, PostgreSQL, Kafka, AWS, Terraform, Git) Tj ET
+BT /F1 10 Tf 50 338 Td (Agile/Scrum, Team Leadership, Architecture Design) Tj ET
+BT /F1 10 Tf 50 324 Td () Tj ET
+BT /F1 10 Tf 50 310 Td (CERTIFICERINGEN) Tj ET
+BT /F1 10 Tf 50 296 Td (AWS Solutions Architect Associate) Tj ET
+BT /F1 10 Tf 50 282 Td (Oracle Certified Professional Java SE 17) Tj ET
+BT /F1 10 Tf 50 268 Td (Certified Kubernetes Administrator \(CKA\)) Tj ET
+BT /F1 10 Tf 50 254 Td () Tj ET
+BT /F1 10 Tf 50 240 Td (TALEN) Tj ET
+BT /F1 10 Tf 50 226 Td (Nederlands  Moedertaal) Tj ET
+BT /F1 10 Tf 50 212 Td (Engels  C1) Tj ET
+BT /F1 10 Tf 50 198 Td (Duits  B1) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000018 00000 n 
+0000000067 00000 n 
+0000000124 00000 n 
+0000000250 00000 n 
+0000002842 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2912
+%%EOF
