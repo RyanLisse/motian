@@ -170,9 +170,12 @@ function mapContractType(type) {
 }
 `;
 
+const STRIIVE_API_LIST = "https://supplier.striive.com/api/v2/job-requests";
+const STRIIVE_API_DETAIL = "https://supplier.striive.com/api/job-requests";
+
 const MODAL_SCRAPE_SCRIPT = `
-const API_LIST = process.env.API_LIST;
-const API_DETAIL = process.env.API_DETAIL;
+const API_LIST = "${STRIIVE_API_LIST}";
+const API_DETAIL = "${STRIIVE_API_DETAIL}";
 
 ${MAPPING_FUNCTIONS_AS_STRING}
 
@@ -336,8 +339,6 @@ async function scrapeViaModal(
       env: {
         STRIIVE_USERNAME: username,
         STRIIVE_PASSWORD: password,
-        API_LIST: API_LIST,
-        API_DETAIL: API_DETAIL,
       },
       timeoutMs: 10 * 60 * 1000,
       workdir: "/root",

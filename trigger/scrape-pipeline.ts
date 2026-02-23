@@ -44,7 +44,7 @@ function isDue(
 export const scrapePipelineTask = schedules.task({
   id: "scrape-pipeline",
   cron: {
-    pattern: "0 * * * *", // Every hour
+    pattern: "0 */4 * * *", // Every 4 hours
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 600, // 10 minutes max

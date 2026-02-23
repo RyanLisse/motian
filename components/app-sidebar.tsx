@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   Briefcase,
   GalleryVerticalEnd,
   LayoutDashboard,
@@ -91,15 +92,14 @@ const data = {
       icon: MessageSquare,
     },
     {
+      title: "Scraper Analytics",
+      url: "/scraper",
+      icon: Activity,
+    },
+    {
       title: "Instellingen",
       url: "/settings",
       icon: Settings,
-      items: [
-        {
-          title: "Scraper",
-          url: "/scraper",
-        },
-      ],
     },
   ],
 };

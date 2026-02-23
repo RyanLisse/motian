@@ -6,13 +6,13 @@ import {
   CheckCircle2,
   Clock,
   FileText,
-  GraduationCap,
   Link2,
   Sparkles,
   User,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { AIGrading } from "@/components/ai-grading";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
 import type { CriterionResult } from "@/src/schemas/matching";
+import { getGradedCandidates } from "@/src/services/grading";
 import { CandidateLinker } from "./candidate-linker";
 import { MatchActions } from "./match-actions";
 import { MatchDetail } from "./match-detail";
@@ -83,7 +84,12 @@ export default async function MatchingPage({ searchParams }: Props) {
     jobContext = jobRows[0] ?? null;
   }
 
-  if (tab === "grading" || tab === "cv") {
+  if (tab === "grading") {
+    const gradedCandidates = await getGradedCandidates({
+      jobId: jobId || undefined,
+      limit: 50,
+    });
+
     return (
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
@@ -101,19 +107,35 @@ export default async function MatchingPage({ searchParams }: Props) {
             variant="subtle"
           />
 
-          {tab === "grading" ? (
-            <EmptyState
-              icon={<GraduationCap className="h-8 w-8 opacity-40" />}
-              title="AI Grading — Binnenkort beschikbaar"
-              subtitle="Automatische beoordeling van kandidaten op basis van vacature-eisen"
-            />
-          ) : (
-            <EmptyState
-              icon={<FileText className="h-8 w-8 opacity-40" />}
-              title="CV Beheer — Binnenkort beschikbaar"
-              subtitle="Upload en beheer CV's van kandidaten voor snellere matching"
-            />
-          )}
+          <AIGrading candidates={gradedCandidates} />
+        </div>
+      </div>
+    );
+  }
+
+  if (tab === "cv") {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Matching</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              AI-gestuurde matching — beoordeel kandidaat-vacature matches
+            </p>
+          </div>
+
+          <FilterTabs
+            options={tabOptions}
+            activeValue={tab}
+            buildHref={(v) => `/matching${buildQs(v ? { tab: v } : {}, jobId)}`}
+            variant="subtle"
+          />
+
+          <EmptyState
+            icon={<FileText className="h-8 w-8 opacity-40" />}
+            title="CV Beheer — Binnenkort beschikbaar"
+            subtitle="Upload en beheer CV's van kandidaten voor snellere matching"
+          />
         </div>
       </div>
     );
