@@ -2,6 +2,7 @@ import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { candidates } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
+import type { ParsedCV } from "../schemas/candidate-intelligence";
 
 // ========== Types ==========
 
@@ -188,4 +189,71 @@ export async function deleteCandidate(id: string): Promise<boolean> {
     .returning();
 
   return rows.length > 0;
+}
+
+/** Zoek duplicaat-kandidaten op basis van geparsed CV (email-match of naam-match). */
+export async function findDuplicateCandidate(
+  parsed: ParsedCV,
+): Promise<{ exact: Candidate | null; similar: Candidate[] }> {
+  // 1. Try exact match by email (unique index: uq_candidates_email)
+  if (parsed.email) {
+    const emailRows = await db
+      .select()
+      .from(candidates)
+      .where(and(eq(candidates.email, parsed.email), isNull(candidates.deletedAt)))
+      .limit(1);
+
+    if (emailRows.length > 0) {
+      return { exact: emailRows[0], similar: [] };
+    }
+  }
+
+  // 2. Fuzzy match by name (ILIKE)
+  const nameRows = await db
+    .select()
+    .from(candidates)
+    .where(
+      and(ilike(candidates.name, `%${escapeLike(parsed.name)}%`), isNull(candidates.deletedAt)),
+    )
+    .limit(5);
+
+  return { exact: null, similar: nameRows };
+}
+
+/** Verrijk een bestaande kandidaat met geparsede CV-data. Overschrijft alleen lege velden. */
+export async function enrichCandidateFromCV(
+  candidateId: string,
+  parsed: ParsedCV,
+  resumeRaw: string,
+): Promise<Candidate | null> {
+  const existing = await getCandidateById(candidateId);
+  if (!existing) return null;
+
+  const updates: Record<string, unknown> = {
+    resumeRaw,
+    resumeParsedAt: new Date(),
+    skillsStructured: { hard: parsed.skills.hard, soft: parsed.skills.soft },
+    education: parsed.education,
+    certifications: parsed.certifications,
+    languageSkills: parsed.languages,
+    updatedAt: new Date(),
+  };
+
+  // Only overwrite null fields — never clobber manually-entered data
+  if (!existing.role && parsed.role) updates.role = parsed.role;
+  if (!existing.location && parsed.location) updates.location = parsed.location;
+  if (!existing.skills || !Array.isArray(existing.skills) || existing.skills.length === 0) {
+    updates.skills = [
+      ...parsed.skills.hard.map((s) => s.name),
+      ...parsed.skills.soft.map((s) => s.name),
+    ];
+  }
+
+  const rows = await db
+    .update(candidates)
+    .set(updates)
+    .where(eq(candidates.id, candidateId))
+    .returning();
+
+  return rows[0] ?? null;
 }

@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { ChatContextProvider } from "@/components/chat/chat-context-provider";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { CvUploadSidebar } from "@/components/cv-upload-sidebar";
 import { SidebarLayout } from "@/components/sidebar-layout";
 import { Providers } from "./providers";
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ChatContextProvider>
             <SidebarLayout>{children}</SidebarLayout>
             <ChatPanel />
+            <CvUploadSidebar />
           </ChatContextProvider>
         </Providers>
       </body>

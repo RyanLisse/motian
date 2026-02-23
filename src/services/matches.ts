@@ -111,6 +111,20 @@ export async function createMatch(data: CreateMatchData): Promise<Match> {
   return rows[0];
 }
 
+/** Enkele match ophalen op jobId + candidateId combinatie, of null als niet gevonden. */
+export async function getMatchByJobAndCandidate(
+  jobId: string,
+  candidateId: string,
+): Promise<Match | null> {
+  const rows = await db
+    .select()
+    .from(jobMatches)
+    .where(and(eq(jobMatches.jobId, jobId), eq(jobMatches.candidateId, candidateId)))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
 /** Matches voor een specifieke opdracht ophalen. Geordend op matchScore aflopend. */
 export async function getMatchesForJob(jobId: string, limit?: number): Promise<Match[]> {
   const safeLimit = Math.min(limit ?? 50, 100);

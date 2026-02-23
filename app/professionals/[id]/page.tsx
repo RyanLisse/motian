@@ -2,9 +2,12 @@ import { desc, eq } from "drizzle-orm";
 import { ArrowLeft, Briefcase, Euro, Mail, MapPin, Phone, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SkillsRadar } from "@/components/skills-radar";
+import { SkillsTags } from "@/components/skills-tags";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
+import type { StructuredSkills } from "@/src/schemas/candidate-intelligence";
 
 export const dynamic = "force-dynamic";
 
@@ -137,23 +140,63 @@ export default async function ProfessionalDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Skills */}
-        {skills.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
-            <div className="flex flex-wrap gap-2">
-              {skills.map((skill) => (
-                <Badge
-                  key={skill}
-                  variant="outline"
-                  className="bg-primary/10 text-primary border-primary/20 text-xs"
-                >
-                  {skill}
-                </Badge>
-              ))}
+        {/* Vaardigheden — structured or legacy */}
+        {(() => {
+          const structuredSkills = candidate.skillsStructured as StructuredSkills | null;
+
+          if (
+            structuredSkills &&
+            (structuredSkills.hard.length > 0 || structuredSkills.soft.length > 0)
+          ) {
+            return (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-4">Vaardigheden</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-card border border-border rounded-xl p-4">
+                    <SkillsRadar skills={structuredSkills} />
+                  </div>
+                  <div className="bg-card border border-border rounded-xl p-4">
+                    <SkillsTags skills={structuredSkills} />
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // Legacy fallback: flat skills[] array
+          if (skills.length > 0) {
+            return (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
+                <div className="flex flex-wrap gap-2">
+                  {skills.map((skill) => (
+                    <Badge
+                      key={skill}
+                      variant="outline"
+                      className="bg-primary/10 text-primary border-primary/20 text-xs"
+                    >
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Upload een CV om vaardigheden met proficiency-scores te extraheren
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
+              <div className="bg-card border border-border rounded-xl p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nog geen vaardigheden — upload een CV om vaardigheden te extraheren
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Notes */}
         {candidate.notes && (

@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   ArrowRight,
   BarChart3,
@@ -7,6 +7,7 @@ import {
   Clock,
   FileText,
   GraduationCap,
+  Link2,
   Sparkles,
   User,
   XCircle,
@@ -19,7 +20,11 @@ import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
+import type { CriterionResult } from "@/src/schemas/matching";
+import { CandidateLinker } from "./candidate-linker";
 import { MatchActions } from "./match-actions";
+import { MatchDetail } from "./match-detail";
+import { ReportButton } from "./report-button";
 
 export const revalidate = 60;
 
@@ -28,6 +33,7 @@ interface Props {
     tab?: string;
     status?: string;
     pagina?: string;
+    jobId?: string;
   }>;
 }
 
@@ -45,17 +51,37 @@ const statusLabels: Record<string, string> = {
   rejected: "Afgewezen",
 };
 
+/** Build a query string that always preserves the jobId context. */
+function buildQs(base: Record<string, string>, jobId?: string): string {
+  const params = new URLSearchParams({ ...base, ...(jobId ? { jobId } : {}) });
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
 export default async function MatchingPage({ searchParams }: Props) {
   const params = await searchParams;
   const tab = params.tab ?? "";
   const statusFilter = params.status ?? "";
   const page = Math.max(1, parseInt(params.pagina ?? "1", 10));
   const offset = (page - 1) * PER_PAGE;
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const jobId = UUID_RE.test(params.jobId ?? "") ? (params.jobId ?? "") : "";
   const tabOptions = [
     { value: "", label: "AI Matching" },
     { value: "grading", label: "AI Grading" },
     { value: "cv", label: "CV Beheer" },
   ];
+
+  // Fetch job context when jobId is provided
+  let jobContext: { id: string; title: string; company: string | null } | null = null;
+  if (jobId) {
+    const jobRows = await db
+      .select({ id: jobs.id, title: jobs.title, company: jobs.company })
+      .from(jobs)
+      .where(eq(jobs.id, jobId))
+      .limit(1);
+    jobContext = jobRows[0] ?? null;
+  }
 
   if (tab === "grading" || tab === "cv") {
     return (
@@ -71,7 +97,7 @@ export default async function MatchingPage({ searchParams }: Props) {
           <FilterTabs
             options={tabOptions}
             activeValue={tab}
-            buildHref={(v) => `/matching${v ? `?tab=${v}` : ""}`}
+            buildHref={(v) => `/matching${buildQs(v ? { tab: v } : {}, jobId)}`}
             variant="subtle"
           />
 
@@ -93,7 +119,14 @@ export default async function MatchingPage({ searchParams }: Props) {
     );
   }
 
-  const statusCondition = statusFilter ? eq(jobMatches.status, statusFilter) : undefined;
+  // Build WHERE conditions: always filter by status, optionally by jobId
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (statusFilter) conditions.push(eq(jobMatches.status, statusFilter));
+  if (jobId) conditions.push(eq(jobMatches.jobId, jobId));
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Scoped count conditions (for KPI cards, scoped to jobId if present)
+  const scopeCondition = jobId ? eq(jobMatches.jobId, jobId) : undefined;
 
   const [matchRows, totalResult, pendingResult, approvedResult, rejectedResult] = await Promise.all(
     [
@@ -110,23 +143,35 @@ export default async function MatchingPage({ searchParams }: Props) {
         .from(jobMatches)
         .leftJoin(jobs, eq(jobMatches.jobId, jobs.id))
         .leftJoin(candidates, eq(jobMatches.candidateId, candidates.id))
-        .where(statusCondition)
+        .where(whereClause)
         .orderBy(desc(jobMatches.matchScore))
         .limit(PER_PAGE)
         .offset(offset),
-      db.select({ count: sql<number>`count(*)::int` }).from(jobMatches).where(statusCondition),
+      db.select({ count: sql<number>`count(*)::int` }).from(jobMatches).where(whereClause),
       db
         .select({ count: sql<number>`count(*)::int` })
         .from(jobMatches)
-        .where(eq(jobMatches.status, "pending")),
+        .where(
+          scopeCondition
+            ? and(eq(jobMatches.status, "pending"), scopeCondition)
+            : eq(jobMatches.status, "pending"),
+        ),
       db
         .select({ count: sql<number>`count(*)::int` })
         .from(jobMatches)
-        .where(eq(jobMatches.status, "approved")),
+        .where(
+          scopeCondition
+            ? and(eq(jobMatches.status, "approved"), scopeCondition)
+            : eq(jobMatches.status, "approved"),
+        ),
       db
         .select({ count: sql<number>`count(*)::int` })
         .from(jobMatches)
-        .where(eq(jobMatches.status, "rejected")),
+        .where(
+          scopeCondition
+            ? and(eq(jobMatches.status, "rejected"), scopeCondition)
+            : eq(jobMatches.status, "rejected"),
+        ),
     ],
   );
 
@@ -136,6 +181,15 @@ export default async function MatchingPage({ searchParams }: Props) {
   const approvedCount = approvedResult[0]?.count ?? 0;
   const rejectedCount = rejectedResult[0]?.count ?? 0;
   const allCount = pendingCount + approvedCount + rejectedCount;
+
+  // Collect ALL approved candidate IDs for this job (not just current page)
+  const linkedCandidateIds = jobId
+    ? await db
+        .select({ candidateId: jobMatches.candidateId })
+        .from(jobMatches)
+        .where(and(eq(jobMatches.jobId, jobId), eq(jobMatches.status, "approved")))
+        .then((rows) => rows.map((r) => r.candidateId).filter((id): id is string => Boolean(id)))
+    : [];
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -147,10 +201,46 @@ export default async function MatchingPage({ searchParams }: Props) {
           </p>
         </div>
 
+        {/* Job context banner */}
+        {jobContext && (
+          <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+            <Link2 className="h-4 w-4 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                Koppelen voor opdracht:{" "}
+                <Link
+                  href={`/opdrachten/${jobContext.id}`}
+                  className="text-primary hover:underline"
+                >
+                  {jobContext.title}
+                </Link>
+              </p>
+              {jobContext.company && (
+                <p className="text-xs text-muted-foreground">{jobContext.company}</p>
+              )}
+            </div>
+            <Link
+              href="/matching"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              Context wissen
+            </Link>
+          </div>
+        )}
+
+        {/* Show invalid jobId warning */}
+        {jobId && !jobContext && (
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+            <p className="text-sm text-yellow-600">
+              Opdracht niet gevonden. Je bekijkt alle matches.
+            </p>
+          </div>
+        )}
+
         <FilterTabs
           options={tabOptions}
           activeValue={tab}
-          buildHref={(v) => `/matching${v ? `?tab=${v}` : ""}`}
+          buildHref={(v) => `/matching${buildQs(v ? { tab: v } : {}, jobId)}`}
           variant="subtle"
         />
 
@@ -187,8 +277,11 @@ export default async function MatchingPage({ searchParams }: Props) {
             { value: "rejected", label: "Afgewezen" },
           ]}
           activeValue={statusFilter}
-          buildHref={(v) => `/matching${v ? `?status=${v}` : ""}`}
+          buildHref={(v) => `/matching${buildQs(v ? { status: v } : {}, jobId)}`}
         />
+
+        {/* Manual candidate linker (only when in job context) */}
+        {jobContext && <CandidateLinker jobId={jobId} linkedCandidateIds={linkedCandidateIds} />}
 
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{totalCount} matches gevonden</p>
@@ -206,7 +299,9 @@ export default async function MatchingPage({ searchParams }: Props) {
             subtitle={
               statusFilter
                 ? "Probeer een ander statusfilter"
-                : "Er zijn nog geen AI-matches gegenereerd"
+                : jobContext
+                  ? "Er zijn nog geen matches voor deze opdracht. Gebruik handmatig koppelen hierboven."
+                  : "Er zijn nog geen AI-matches gegenereerd"
             }
           />
         ) : (
@@ -312,6 +407,29 @@ export default async function MatchingPage({ searchParams }: Props) {
                     </p>
                   )}
 
+                  {row.match.assessmentModel === "marienne-v1" && row.match.criteriaBreakdown ? (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <MatchDetail
+                        criteriaBreakdown={row.match.criteriaBreakdown as CriterionResult[]}
+                        overallScore={row.match.matchScore}
+                        knockoutsPassed={
+                          !((row.match.riskProfile as string[] | null) ?? []).some((r) =>
+                            r.toLowerCase().includes("knock"),
+                          )
+                        }
+                        riskProfile={(row.match.riskProfile as string[] | null) ?? []}
+                        enrichmentSuggestions={
+                          (row.match.enrichmentSuggestions as string[] | null) ?? []
+                        }
+                        recommendation={(row.match.recommendation as string) ?? "conditional"}
+                        recommendationReasoning={row.match.reasoning ?? ""}
+                        recommendationConfidence={
+                          (row.match.recommendationConfidence as number) ?? 0
+                        }
+                      />
+                    </div>
+                  ) : null}
+
                   <div className="flex items-center justify-between pt-2 border-t border-border">
                     <Badge
                       variant="outline"
@@ -320,7 +438,11 @@ export default async function MatchingPage({ searchParams }: Props) {
                       {statusLabels[row.match.status] ?? row.match.status}
                     </Badge>
 
-                    {row.match.status === "pending" && <MatchActions matchId={row.match.id} />}
+                    <div className="flex items-center gap-2">
+                      {row.match.assessmentModel === "marienne-v1" &&
+                        Boolean(row.match.criteriaBreakdown) && <ReportButton matchId={row.match.id} />}
+                      {row.match.status === "pending" && <MatchActions matchId={row.match.id} />}
+                    </div>
 
                     {row.match.reviewedAt && (
                       <span className="text-xs text-muted-foreground">
@@ -341,10 +463,13 @@ export default async function MatchingPage({ searchParams }: Props) {
           page={page}
           totalPages={totalPages}
           buildHref={(p) =>
-            `/matching?${new URLSearchParams({
-              ...(statusFilter ? { status: statusFilter } : {}),
-              pagina: String(p),
-            }).toString()}`
+            `/matching${buildQs(
+              {
+                ...(statusFilter ? { status: statusFilter } : {}),
+                pagina: String(p),
+              },
+              jobId,
+            )}`
           }
         />
 

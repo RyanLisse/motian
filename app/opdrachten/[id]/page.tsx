@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
-import { Calendar, Euro, ExternalLink, MapPin, Monitor, Sparkles } from "lucide-react";
+import { Calendar, Euro, ExternalLink, Link2, MapPin, Monitor, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +132,68 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       .trim();
   };
 
+  // Visual scoring tier block renderer
+  const renderScoringTiers = (
+    tiers: { letter: string; desc: string; points: number }[],
+  ): string => {
+    const maxPoints = Math.max(...tiers.map((t) => t.points));
+    let html =
+      '<div style="display:grid;gap:8px;margin:12px 0 16px 0;padding:14px 16px;border-radius:10px;border:1px solid var(--border);background:var(--card);">';
+    for (const tier of tiers) {
+      const pct = maxPoints > 0 ? Math.round((tier.points / maxPoints) * 100) : 0;
+      const isMax = tier.points === maxPoints && tier.points > 0;
+      const isZero = tier.points === 0;
+      const color = isZero ? "#6b7280" : isMax ? "#10b981" : "#3b82f6";
+      html += `<div style="display:flex;align-items:center;gap:10px;${isMax ? `background:${color}0d;margin:0 -8px;padding:6px 8px;border-radius:8px;` : ""}">`;
+      html += `<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:${color}18;color:${color};font-size:11px;font-weight:700;flex-shrink:0;">${tier.letter}</span>`;
+      html += `<span style="flex:1;font-size:13px;color:${isMax ? "var(--foreground)" : "var(--muted-foreground)"};line-height:1.4;${isMax ? "font-weight:600;" : ""}">${tier.desc}</span>`;
+      html += `<div style="width:60px;height:6px;border-radius:99px;background:var(--border);overflow:hidden;flex-shrink:0;">`;
+      html += `<div style="width:${pct}%;height:100%;border-radius:99px;background:${color};"></div>`;
+      html += "</div>";
+      html += `<span style="font-size:12px;font-weight:700;color:${color};min-width:32px;text-align:right;">${tier.points}pt</span>`;
+      html += "</div>";
+    }
+    html += "</div>";
+    return html;
+  };
+
+  // Enhance scoring criteria sections visually
+  const enhanceScoringCriteria = (html: string): string => {
+    // 1. Enhance "Gunningscriteria" headings into gradient banners
+    let enhanced = html.replace(
+      /<h3([^>]*)>(Gunningscriteria[^<]*)<\/h3>/gi,
+      (_match, _attrs, text: string) => {
+        const totalMatch = text.match(/totaal\s+(\d+)\s*punten/i);
+        const total = totalMatch ? totalMatch[1] : null;
+        return `<div style="margin:20px 0 12px 0;padding:14px 16px;border-radius:10px;background:linear-gradient(135deg, var(--primary) 0%, color-mix(in oklch, var(--primary) 70%, #7c3aed) 100%);color:white;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+              <div style="font-size:14px;font-weight:700;">⚖️ Gunningscriteria</div>
+              <div style="font-size:12px;opacity:0.85;margin-top:2px;">Beoordeeld door Flextender</div>
+            </div>
+            ${total ? `<div style="text-align:center;background:rgba(255,255,255,0.2);padding:6px 14px;border-radius:8px;backdrop-filter:blur(4px);"><div style="font-size:20px;font-weight:800;">${total}</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;opacity:0.9;">punten</div></div>` : ""}
+          </div>
+        </div>`;
+      },
+    );
+
+    // 2. Enhance scoring tier lines (a. desc (N punten); b. desc (N punten); ...)
+    enhanced = enhanced.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (match, content: string) => {
+      if (!/[a-d]\.\s+.*?\(\d+\s*punten?\)/i.test(content)) return match;
+      const tierRegex = /([a-d])\.\s+(.+?)\s*\((\d+)\s*punten?\)/gi;
+      const tiers: { letter: string; desc: string; points: number }[] = [];
+      let m: RegExpExecArray | null = tierRegex.exec(content);
+      while (m !== null) {
+        tiers.push({ letter: m[1].toUpperCase(), desc: m[2].trim(), points: parseInt(m[3], 10) });
+        m = tierRegex.exec(content);
+      }
+      if (tiers.length < 2) return match;
+      return renderScoringTiers(tiers);
+    });
+
+    return enhanced;
+  };
+
   // Convert plain text with section patterns into structured HTML
   const isHtml = (s: string) => /<\/?[a-z][\s\S]*>/i.test(s);
 
@@ -253,9 +315,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   };
 
   const cleanDescription = job.description
-    ? isHtml(job.description)
-      ? sanitizeHtml(job.description)
-      : formatPlainText(job.description)
+    ? enhanceScoringCriteria(
+        isHtml(job.description) ? sanitizeHtml(job.description) : formatPlainText(job.description),
+      )
     : null;
 
   const aiPreview =
@@ -317,6 +379,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                   {job.contractLabel}
                 </Badge>
               )}
+              <div className="ml-auto">
+                <JsonViewer data={job as unknown as Record<string, unknown>} />
+              </div>
             </div>
             <h1 className="text-lg sm:text-xl font-bold text-foreground mb-1">{job.title}</h1>
             {job.company && <p className="text-sm text-muted-foreground">{job.company}</p>}
@@ -465,9 +530,6 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             </div>
           )}
 
-          {/* Raw JSON debug viewer */}
-          <JsonViewer data={job as unknown as Record<string, unknown>} />
-
           <div className="h-8" />
         </div>
       </main>
@@ -485,9 +547,12 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
           {/* Action buttons */}
           <div className="space-y-2">
-            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
-              Reageren
-            </Button>
+            <Link href={`/matching?jobId=${job.id}`}>
+              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
+                <Link2 className="h-4 w-4 mr-2" />
+                Koppel aan kandidaat
+              </Button>
+            </Link>
             <Button
               variant="outline"
               className="w-full border-primary text-primary hover:bg-primary/10 font-semibold h-10"
@@ -500,9 +565,12 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
       {/* Mobile sticky bottom action bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 flex gap-2 xl:hidden z-50">
-        <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
-          Reageren
-        </Button>
+        <Link href={`/matching?jobId=${job.id}`} className="flex-1">
+          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
+            <Link2 className="h-4 w-4 mr-2" />
+            Koppel aan kandidaat
+          </Button>
+        </Link>
         <Button
           variant="outline"
           className="flex-1 border-primary text-primary hover:bg-primary/10 font-semibold h-11"
