@@ -141,25 +141,26 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
         const competences = parseHtmlList(t.tender_competences);
 
         // === Rate logic: tariff = indicative, maximum_tariff = ceiling ===
-        const maxTariff =
-          (t.tender_maximum_tariff ?? 0) > 0 ? Math.round(t.tender_maximum_tariff!) : undefined;
-        const baseTariff =
-          t.tender_tariff && parseFloat(String(t.tender_tariff)) > 0
-            ? Math.round(parseFloat(String(t.tender_tariff)))
-            : undefined;
+        const rawMaxTariff = t.tender_maximum_tariff ?? 0;
+        const maxTariff = rawMaxTariff > 0 ? Math.round(rawMaxTariff) : undefined;
+        const rawBaseTariff = t.tender_tariff ? parseFloat(String(t.tender_tariff)) : 0;
+        const baseTariff = rawBaseTariff > 0 ? Math.round(rawBaseTariff) : undefined;
         const rateMax = maxTariff ?? baseTariff;
         const rateMin = maxTariff && baseTariff && baseTariff < maxTariff ? baseTariff : undefined;
 
         // === Hours: tender_hours_week (100%), with optional min/max range ===
+        const rawMaxHours = t.tender_max_hours ?? 0;
+        const rawHoursWeek = t.tender_hours_week ?? 0;
         const hoursPerWeek =
-          (t.tender_max_hours ?? 0) > 0
-            ? Math.round(t.tender_max_hours!)
-            : (t.tender_hours_week ?? 0) > 0
-              ? Math.round(t.tender_hours_week!)
+          rawMaxHours > 0
+            ? Math.round(rawMaxHours)
+            : rawHoursWeek > 0
+              ? Math.round(rawHoursWeek)
               : undefined;
+        const rawMinHours = t.tender_min_hours ?? 0;
         const minHoursPerWeek =
-          (t.tender_min_hours ?? 0) > 0 && t.tender_min_hours! < (hoursPerWeek ?? Infinity)
-            ? Math.round(t.tender_min_hours!)
+          rawMinHours > 0 && rawMinHours < (hoursPerWeek ?? Number.POSITIVE_INFINITY)
+            ? Math.round(rawMinHours)
             : undefined;
 
         // === Extension from tender_other_information ===
@@ -244,7 +245,9 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
         };
       });
 
-      const validListings = listings.filter((listing) => (listing.externalId as string)?.length > 0);
+      const validListings = listings.filter(
+        (listing) => (listing.externalId as string)?.length > 0,
+      );
 
       console.log(`Opdrachtoverheid: ${validListings.length} geldige opdrachten`);
 
@@ -292,7 +295,6 @@ function ensureMinLength(text: string): string {
   if (text.length >= 10) return text;
   return `${text} — opdracht via Opdrachtoverheid`;
 }
-
 
 /** Parse HTML <li> items naar string array */
 function parseHtmlList(html: string | null | undefined): string[] {

@@ -1,11 +1,27 @@
 "use client";
 
 import { Code } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { VisualJsonViewer } from "@/components/visual-json-viewer";
+import { zodToVisualJsonSchema } from "@/src/lib/zod-json-schema";
+import { unifiedJobSchema } from "@/src/schemas/job";
+
+const jobSchema = zodToVisualJsonSchema(unifiedJobSchema, "unifiedJob") as object;
 
 export function JsonViewer({ data }: { data: Record<string, unknown> }) {
   const [open, setOpen] = useState(false);
+
+  // Extract the definitions-unwrapped schema for visual-json
+  const schema = useMemo(() => {
+    const s = jobSchema as Record<string, unknown>;
+    // zod-to-json-schema wraps in { $ref, definitions } — extract the actual schema
+    if (s.definitions && s.$ref) {
+      const refKey = (s.$ref as string).replace("#/definitions/", "");
+      return (s.definitions as Record<string, unknown>)[refKey] as object;
+    }
+    return jobSchema;
+  }, []);
 
   return (
     <div>
@@ -19,9 +35,9 @@ export function JsonViewer({ data }: { data: Record<string, unknown> }) {
         {open ? "Verberg JSON" : "Toon JSON"}
       </Button>
       {open && (
-        <pre className="mt-3 p-4 bg-background border border-border rounded-lg text-xs text-muted-foreground overflow-x-auto max-h-[500px] overflow-y-auto">
-          {JSON.stringify(data, null, 2)}
-        </pre>
+        <div className="mt-3">
+          <VisualJsonViewer value={data} schema={schema} readOnly height={500} />
+        </div>
       )}
     </div>
   );

@@ -30,7 +30,12 @@ export async function POST(request: NextRequest) {
 
     if (existingCandidateId) {
       // Enrich existing candidate
-      candidate = await enrichCandidateFromCV(existingCandidateId, parsed, resumeRaw ?? "", fileUrl);
+      candidate = await enrichCandidateFromCV(
+        existingCandidateId,
+        parsed,
+        resumeRaw ?? "",
+        fileUrl,
+      );
       if (!candidate) {
         return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
       }

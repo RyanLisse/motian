@@ -392,7 +392,6 @@ function extractSections(html: string): Record<string, string> {
   return sections;
 }
 
-
 /** Parse genummerde lijst (1. item; 2. item) naar string array */
 function parseNumberedList(text: string): string[] {
   const items = text.split(/\n/).filter((l) => l.trim());
