@@ -96,7 +96,7 @@ export default async function MatchingPage({ searchParams }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-xl font-bold text-[#ececec]">Matching</h1>

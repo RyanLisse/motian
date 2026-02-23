@@ -1,3 +1,4 @@
+import { publish } from "../lib/event-bus";
 import { enrichJobsBatch } from "./ai-enrichment";
 import { normalizeAndSaveJobs } from "./normalize";
 import { recordScrapeResult } from "./record-scrape-result";
@@ -8,6 +9,8 @@ export async function runScrapePipeline(
   url: string,
 ): Promise<{ jobsNew: number; duplicates: number; errors: string[] }> {
   const startTime = Date.now();
+
+  publish("scrape:start", { platform });
 
   let listings: any[];
   try {
@@ -37,6 +40,7 @@ export async function runScrapePipeline(
         errors,
       });
     } catch {}
+    publish("scrape:error", { platform, errors });
     return { jobsNew: 0, duplicates: 0, errors };
   }
 
@@ -55,6 +59,15 @@ export async function runScrapePipeline(
       errors: result.errors,
     });
   } catch {}
+
+  publish("scrape:complete", {
+    platform,
+    jobsFound: listings.length,
+    jobsNew: result.jobsNew,
+    duplicates: result.duplicates,
+    durationMs,
+    status,
+  });
 
   // Fire-and-forget AI enrichment for new jobs
   if (result.jobsNew > 0) {

@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs } from "../db/schema";
+import { escapeLike } from "../lib/helpers";
 
 // ========== Types ==========
 
@@ -29,8 +30,8 @@ export async function searchJobsByTitle(query: string, limit?: number): Promise<
   const words = query.trim().split(/\s+/).filter(Boolean);
   const titleConditions =
     words.length > 1
-      ? or(...words.map((w) => ilike(jobs.title, `%${w}%`)))
-      : ilike(jobs.title, `%${query}%`);
+      ? or(...words.map((w) => ilike(jobs.title, `%${escapeLike(w)}%`)))
+      : ilike(jobs.title, `%${escapeLike(query)}%`);
   return db
     .select()
     .from(jobs)
@@ -81,14 +82,14 @@ export async function listJobs(
   }
 
   if (opts.q) {
-    conditions.push(ilike(jobs.title, `%${opts.q}%`));
+    conditions.push(ilike(jobs.title, `%${escapeLike(opts.q)}%`));
   }
 
   if (opts.province) {
     // Province partial match: "Utrecht" matches "Utrecht - Utrecht" and "Utrecht"
     const provinceMatch = or(
-      ilike(jobs.province, `%${opts.province}%`),
-      ilike(jobs.location, `%${opts.province}%`),
+      ilike(jobs.province, `%${escapeLike(opts.province)}%`),
+      ilike(jobs.location, `%${escapeLike(opts.province)}%`),
     );
     if (provinceMatch) conditions.push(provinceMatch);
   }

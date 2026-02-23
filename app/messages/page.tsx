@@ -106,8 +106,8 @@ export default async function MessagesPage({ searchParams }: Props) {
   const totalPages = Math.ceil(totalFiltered / PER_PAGE);
 
   return (
-    <main className="flex-1 overflow-y-auto bg-[#0d0d0d]">
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <div>
           <h1 className="text-xl font-bold text-[#ececec]">Berichten</h1>
           <p className="text-sm text-[#8e8e8e] mt-1">Communicatie met kandidaten</p>
@@ -259,6 +259,6 @@ export default async function MessagesPage({ searchParams }: Props) {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

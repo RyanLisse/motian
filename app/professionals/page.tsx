@@ -7,6 +7,7 @@ import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates } from "@/src/db/schema";
+import { escapeLike } from "@/src/lib/helpers";
 
 export const revalidate = 60;
 
@@ -37,7 +38,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   const conditions = [isNull(candidates.deletedAt)];
 
   if (query) {
-    conditions.push(ilike(candidates.name, `%${query}%`));
+    conditions.push(ilike(candidates.name, `%${escapeLike(query)}%`));
   }
   if (availability) {
     conditions.push(eq(candidates.availability, availability));
@@ -75,7 +76,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-xl font-bold text-[#ececec]">Professionals</h1>

@@ -1,6 +1,14 @@
 "use client";
 
-import { Briefcase, GalleryVerticalEnd, LayoutDashboard, Settings, Users, Zap } from "lucide-react";
+import {
+  Briefcase,
+  GalleryVerticalEnd,
+  LayoutDashboard,
+  MessageSquare,
+  Settings,
+  Users,
+  Zap,
+} from "lucide-react";
 import type * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
@@ -52,6 +60,10 @@ const data = {
           title: "Pipeline",
           url: "/pipeline",
         },
+        {
+          title: "Interviews",
+          url: "/interviews",
+        },
       ],
     },
     {
@@ -72,6 +84,11 @@ const data = {
           url: "/matching?tab=cv",
         },
       ],
+    },
+    {
+      title: "Berichten",
+      url: "/messages",
+      icon: MessageSquare,
     },
     {
       title: "Instellingen",

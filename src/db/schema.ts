@@ -290,6 +290,26 @@ export const interviews = pgTable(
   }),
 );
 
+// ========== GDPR Audit Log ==========
+export const gdprAuditLog = pgTable(
+  "gdpr_audit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    action: text("action").notNull(), // export_candidate | erase_candidate | scrub_contact | export_contact
+    subjectType: text("subject_type").notNull(), // candidate | contact
+    subjectId: text("subject_id").notNull(), // candidate ID or contact identifier
+    requestedBy: text("requested_by").notNull(), // actor who initiated the action
+    reason: text("reason"),
+    details: jsonb("details").default({}),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    subjectIdx: index("idx_gdpr_audit_subject").on(table.subjectType, table.subjectId),
+    actionIdx: index("idx_gdpr_audit_action").on(table.action),
+    createdAtIdx: index("idx_gdpr_audit_created_at").on(table.createdAt),
+  }),
+);
+
 // ========== Berichten (Messages) ==========
 export const messages = pgTable(
   "messages",
