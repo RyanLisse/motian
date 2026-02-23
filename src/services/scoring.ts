@@ -65,9 +65,7 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
   if (jobEmbedding?.length && candidateEmbedding?.length) {
     const similarity = cosineSimilarity(jobEmbedding, candidateEmbedding);
     const vectorScore = Math.round(similarity * 100);
-    const blended = Math.round(
-      RULE_WEIGHT * ruleResult.score + VECTOR_WEIGHT * vectorScore,
-    );
+    const blended = Math.round(RULE_WEIGHT * ruleResult.score + VECTOR_WEIGHT * vectorScore);
 
     reasons.push(`Semantische match: ${vectorScore}%`);
 
@@ -95,10 +93,7 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
  *   - Tarief passend:    0-{WEIGHT_RATE}
  *   - Rol aansluiting:   0-{WEIGHT_ROLE}
  */
-function computeRuleScore(
-  job: Job,
-  candidate: Candidate,
-): Omit<MatchResult, "model"> {
+function computeRuleScore(job: Job, candidate: Candidate): Omit<MatchResult, "model"> {
   let score = 0;
   const reasons: string[] = [];
 
@@ -108,25 +103,18 @@ function computeRuleScore(
 
   const overlap = candidateSkills.filter((s) =>
     jobKeywords.some(
-      (k) =>
-        k.toLowerCase().includes(s.toLowerCase()) ||
-        s.toLowerCase().includes(k.toLowerCase()),
+      (k) => k.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(k.toLowerCase()),
     ),
   );
 
   const skillScore =
     jobKeywords.length > 0
-      ? Math.min(
-          WEIGHT_SKILLS,
-          Math.round((overlap.length / jobKeywords.length) * WEIGHT_SKILLS),
-        )
+      ? Math.min(WEIGHT_SKILLS, Math.round((overlap.length / jobKeywords.length) * WEIGHT_SKILLS))
       : 0;
   score += skillScore;
 
   if (overlap.length > 0) {
-    reasons.push(
-      `${overlap.length} skills match: ${overlap.slice(0, 3).join(", ")}`,
-    );
+    reasons.push(`${overlap.length} skills match: ${overlap.slice(0, 3).join(", ")}`);
   }
 
   // ── 2. Location match (0-WEIGHT_LOCATION) ────────────────────────
@@ -181,8 +169,7 @@ function computeRuleScore(
   return {
     score: Math.round(Math.min(100, score)),
     confidence: Math.round(Math.min(100, score * 1.2)),
-    reasoning:
-      reasons.join("; ") || "Geen specifieke match criteria gevonden",
+    reasoning: reasons.join("; ") || "Geen specifieke match criteria gevonden",
   };
 }
 
@@ -196,9 +183,7 @@ export function extractKeywords(job: Job): string[] {
   const reqs = (job.requirements as Array<{ description?: string }>) || [];
   for (const r of reqs) {
     if (r.description) {
-      keywords.push(
-        ...r.description.split(/\s+/).filter((w) => w.length > 3),
-      );
+      keywords.push(...r.description.split(/\s+/).filter((w) => w.length > 3));
     }
   }
 

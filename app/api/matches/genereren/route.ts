@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
           matchScore: match.score,
           confidence: match.confidence,
           reasoning: match.reasoning,
-          model: "rule-based-v1",
+          model: match.model,
         });
         matchesCreated++;
       } catch (err) {
