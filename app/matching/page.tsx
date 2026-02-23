@@ -5,6 +5,8 @@ import {
   Briefcase,
   CheckCircle2,
   Clock,
+  FileText,
+  GraduationCap,
   Sparkles,
   User,
   XCircle,
@@ -23,6 +25,7 @@ export const revalidate = 60;
 
 interface Props {
   searchParams: Promise<{
+    tab?: string;
     status?: string;
     pagina?: string;
   }>;
@@ -44,14 +47,54 @@ const statusLabels: Record<string, string> = {
 
 export default async function MatchingPage({ searchParams }: Props) {
   const params = await searchParams;
+  const tab = params.tab ?? "";
   const statusFilter = params.status ?? "";
   const page = Math.max(1, parseInt(params.pagina ?? "1", 10));
   const offset = (page - 1) * PER_PAGE;
+  const tabOptions = [
+    { value: "", label: "AI Matching" },
+    { value: "grading", label: "AI Grading" },
+    { value: "cv", label: "CV Beheer" },
+  ];
 
-  // Build where clause for status filter
+  if (tab === "grading" || tab === "cv") {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+          <div>
+            <h1 className="text-xl font-bold text-[#ececec]">Matching</h1>
+            <p className="text-sm text-[#8e8e8e] mt-1">
+              AI-gestuurde matching — beoordeel kandidaat-vacature matches
+            </p>
+          </div>
+
+          <FilterTabs
+            options={tabOptions}
+            activeValue={tab}
+            buildHref={(v) => `/matching${v ? `?tab=${v}` : ""}`}
+            variant="subtle"
+          />
+
+          {tab === "grading" ? (
+            <EmptyState
+              icon={<GraduationCap className="h-8 w-8 opacity-40" />}
+              title="AI Grading — Binnenkort beschikbaar"
+              subtitle="Automatische beoordeling van kandidaten op basis van vacature-eisen"
+            />
+          ) : (
+            <EmptyState
+              icon={<FileText className="h-8 w-8 opacity-40" />}
+              title="CV Beheer — Binnenkort beschikbaar"
+              subtitle="Upload en beheer CV's van kandidaten voor snellere matching"
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const statusCondition = statusFilter ? eq(jobMatches.status, statusFilter) : undefined;
 
-  // Fetch matches + KPIs in parallel
   const [matchRows, totalResult, pendingResult, approvedResult, rejectedResult] = await Promise.all(
     [
       db
@@ -97,7 +140,6 @@ export default async function MatchingPage({ searchParams }: Props) {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-xl font-bold text-[#ececec]">Matching</h1>
           <p className="text-sm text-[#8e8e8e] mt-1">
@@ -105,7 +147,13 @@ export default async function MatchingPage({ searchParams }: Props) {
           </p>
         </div>
 
-        {/* KPI row */}
+        <FilterTabs
+          options={tabOptions}
+          activeValue={tab}
+          buildHref={(v) => `/matching${v ? `?tab=${v}` : ""}`}
+          variant="subtle"
+        />
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <KPICard icon={<BarChart3 className="h-4 w-4" />} label="Totaal" value={allCount} />
           <KPICard
@@ -131,7 +179,6 @@ export default async function MatchingPage({ searchParams }: Props) {
           />
         </div>
 
-        {/* Status filter */}
         <FilterTabs
           options={[
             { value: "", label: "Alle" },
@@ -143,7 +190,6 @@ export default async function MatchingPage({ searchParams }: Props) {
           buildHref={(v) => `/matching${v ? `?status=${v}` : ""}`}
         />
 
-        {/* Results count */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-[#8e8e8e]">{totalCount} matches gevonden</p>
           {totalPages > 1 && (
@@ -153,7 +199,6 @@ export default async function MatchingPage({ searchParams }: Props) {
           )}
         </div>
 
-        {/* Match cards */}
         {matchRows.length === 0 ? (
           <EmptyState
             icon={<Sparkles className="h-8 w-8 opacity-40" />}
@@ -175,9 +220,7 @@ export default async function MatchingPage({ searchParams }: Props) {
                   key={row.match.id}
                   className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4 hover:border-[#10a37f]/40 hover:bg-[#232323] transition-colors"
                 >
-                  {/* Top: candidate <-> job */}
                   <div className="flex items-center gap-3 mb-3">
-                    {/* Candidate side */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <User className="h-3.5 w-3.5 text-[#6b6b6b]" />
@@ -200,10 +243,8 @@ export default async function MatchingPage({ searchParams }: Props) {
                       )}
                     </div>
 
-                    {/* Arrow */}
                     <ArrowRight className="h-4 w-4 text-[#2d2d2d] shrink-0" />
 
-                    {/* Job side */}
                     <div className="flex-1 min-w-0 text-right">
                       <div className="flex items-center justify-end gap-1.5 mb-0.5">
                         <span className="text-xs text-[#6b6b6b] uppercase tracking-wider">
@@ -227,7 +268,6 @@ export default async function MatchingPage({ searchParams }: Props) {
                     </div>
                   </div>
 
-                  {/* Score bar + confidence */}
                   <div className="flex items-center gap-4 mb-3">
                     <div className="flex-1">
                       <div className="flex items-center justify-between text-xs mb-1">
@@ -265,7 +305,6 @@ export default async function MatchingPage({ searchParams }: Props) {
                     )}
                   </div>
 
-                  {/* AI reasoning */}
                   {row.match.reasoning && (
                     <p className="text-xs text-[#6b6b6b] line-clamp-2 mb-3">
                       <Sparkles className="h-3 w-3 inline mr-1 text-[#10a37f]/60" />
@@ -273,7 +312,6 @@ export default async function MatchingPage({ searchParams }: Props) {
                     </p>
                   )}
 
-                  {/* Bottom: status + action placeholders */}
                   <div className="flex items-center justify-between pt-2 border-t border-[#2d2d2d]">
                     <Badge
                       variant="outline"
@@ -299,7 +337,6 @@ export default async function MatchingPage({ searchParams }: Props) {
           </div>
         )}
 
-        {/* Pagination */}
         <Pagination
           page={page}
           totalPages={totalPages}

@@ -316,3 +316,12 @@ export async function findExpiredRetentionCandidates(): Promise<
   // isNotNull filter guarantees dataRetentionUntil is non-null
   return rows as { id: string; name: string; dataRetentionUntil: Date }[];
 }
+
+/** Retrieve GDPR audit log entries for a subject. */
+export async function getAuditLog(subjectRef: string) {
+  return db
+    .select()
+    .from(gdprAuditLog)
+    .where(eq(gdprAuditLog.subjectId, subjectRef))
+    .orderBy(gdprAuditLog.createdAt);
+}

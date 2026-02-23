@@ -79,8 +79,16 @@ export default async function ScraperPage() {
                     </p>
                   )}
                   {(config.consecutiveFailures ?? 0) > 0 && (
-                    <p className="text-yellow-400">
-                      Circuit breaker: {config.consecutiveFailures} opeenvolgende fouten
+                    <p
+                      className={
+                        (config.consecutiveFailures ?? 0) >= 5
+                          ? "text-red-500 font-medium"
+                          : "text-yellow-400"
+                      }
+                    >
+                      {(config.consecutiveFailures ?? 0) >= 5
+                        ? `Circuit breaker OPEN — ${config.consecutiveFailures} fouten`
+                        : `Circuit breaker: ${config.consecutiveFailures} opeenvolgende fouten`}
                     </p>
                   )}
                 </div>

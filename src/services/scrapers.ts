@@ -12,6 +12,8 @@ export type PlatformHealth = {
   isActive: boolean;
   lastRunAt: Date | null;
   lastRunStatus: string | null;
+  consecutiveFailures: number;
+  circuitBreakerOpen: boolean;
   runs24h: number;
   failures24h: number;
   failureRate: number;
@@ -71,12 +73,16 @@ export async function getHealth(): Promise<HealthReport> {
   const statsMap = new Map(statsRows.map((s) => [s.platform, s]));
 
   const health: PlatformHealth[] = configs.map((cfg) => {
+    const failures = cfg.consecutiveFailures ?? 0;
+
     if (!cfg.isActive) {
       return {
         platform: cfg.platform,
         isActive: false,
         lastRunAt: cfg.lastRunAt,
         lastRunStatus: cfg.lastRunStatus,
+        consecutiveFailures: failures,
+        circuitBreakerOpen: failures >= 5,
         runs24h: 0,
         failures24h: 0,
         failureRate: 0,
@@ -96,11 +102,18 @@ export async function getHealth(): Promise<HealthReport> {
       status = "waarschuwing";
     }
 
+    // Promote to kritiek if circuit breaker is open
+    if (failures >= 5) {
+      status = "kritiek";
+    }
+
     return {
       platform: cfg.platform,
       isActive: cfg.isActive,
       lastRunAt: cfg.lastRunAt,
       lastRunStatus: cfg.lastRunStatus,
+      consecutiveFailures: failures,
+      circuitBreakerOpen: failures >= 5,
       runs24h,
       failures24h,
       failureRate: Math.round(failureRate * 100) / 100,

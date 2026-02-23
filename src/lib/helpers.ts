@@ -4,6 +4,9 @@
 export const PLATFORMS = ["flextender", "striive", "opdrachtoverheid"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
+/** Number of consecutive failures before a scraper's circuit breaker opens. */
+export const CIRCUIT_BREAKER_THRESHOLD = 5;
+
 /**
  * Escape SQL LIKE/ILIKE special characters (%, _, \) in user input.
  * Prevents users from injecting wildcards into search patterns.

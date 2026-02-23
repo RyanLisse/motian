@@ -2,12 +2,12 @@ import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
+import { publish } from "@/src/lib/event-bus";
+import { CIRCUIT_BREAKER_THRESHOLD } from "@/src/lib/helpers";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min max for Vercel Pro
-
-const CIRCUIT_BREAKER_THRESHOLD = 5;
 
 /**
  * Parse a cron expression to extract the interval in milliseconds.
@@ -94,6 +94,15 @@ export async function GET(request: NextRequest) {
     const eligible = activeConfigs.filter((cfg) => {
       if ((cfg.consecutiveFailures ?? 0) >= CIRCUIT_BREAKER_THRESHOLD) {
         tripped++;
+        publish("scrape:circuit_breaker_open", {
+          platform: cfg.platform,
+          consecutiveFailures: cfg.consecutiveFailures ?? 0,
+          threshold: CIRCUIT_BREAKER_THRESHOLD,
+          source: "cron",
+        });
+        console.warn(
+          `[cron/scrape] Circuit breaker open for ${cfg.platform} (${cfg.consecutiveFailures ?? 0} failures)`,
+        );
         results.push({
           platform: cfg.platform,
           status: "circuit_breaker_open",
@@ -132,11 +141,24 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (tripped > 0) {
+      publish("scrape:alert", {
+        severity: "warning",
+        type: "circuit_breaker_open",
+        tripped,
+      });
+    }
+
     return Response.json({
       message: `${dispatched} verwerkt, ${tripped} circuit breaker, ${skippedSchedule} niet gepland`,
       results,
     });
-  } catch (_err) {
+  } catch (err) {
+    publish("scrape:alert", {
+      severity: "critical",
+      type: "cron_scrape_failed",
+      error: err instanceof Error ? err.message : String(err),
+    });
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }
 }
