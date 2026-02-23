@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/src/db";
@@ -15,7 +15,10 @@ const triggerSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "anonymous";
+  const ip =
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    "anonymous";
   const { success, reset } = limiter.check(ip);
   if (!success) {
     return Response.json(
@@ -37,7 +40,9 @@ export async function POST(request: NextRequest) {
       configs = await db
         .select()
         .from(scraperConfigs)
-        .where(eq(scraperConfigs.platform, parsed.data.platform))
+        .where(
+          and(eq(scraperConfigs.platform, parsed.data.platform), eq(scraperConfigs.isActive, true)),
+        )
         .limit(1);
     } else {
       configs = await db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true));

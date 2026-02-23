@@ -58,7 +58,11 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
   // Fetch current job + related jobs in parallel
   const [rows, relatedJobs] = await Promise.all([
-    db.select().from(jobs).where(eq(jobs.id, id)).limit(1),
+    db
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
+      .limit(1),
     db
       .select()
       .from(jobs)
@@ -347,9 +351,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               )}
             </div>
             <h1 className="text-lg sm:text-xl font-bold text-foreground mb-1">{job.title}</h1>
-            {job.company && (
-              <p className="text-sm text-muted-foreground">{job.company}</p>
-            )}
+            {job.company && <p className="text-sm text-muted-foreground">{job.company}</p>}
           </div>
 
           {/* Meta row with icons */}
@@ -534,7 +536,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                   <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
                     <Calendar className="h-3 w-3 shrink-0" /> Verlenging
                   </dt>
-                  <dd className="text-foreground text-xs">{job.extensionPossible ? "Ja" : "Nee"}</dd>
+                  <dd className="text-foreground text-xs">
+                    {job.extensionPossible ? "Ja" : "Nee"}
+                  </dd>
                 </div>
               )}
               {job.applicationDeadline && (
@@ -549,7 +553,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                       year: "numeric",
                     })}
                     {new Date(job.applicationDeadline) < new Date() && (
-                      <span className="text-[10px] font-semibold text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-950 px-1.5 py-0.5 rounded">Verlopen</span>
+                      <span className="text-[10px] font-semibold text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-950 px-1.5 py-0.5 rounded">
+                        Verlopen
+                      </span>
                     )}
                   </dd>
                 </div>
@@ -822,7 +828,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                     year: "numeric",
                   })}
                   {new Date(job.applicationDeadline) < new Date() && (
-                    <span className="text-[10px] font-semibold text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-950 px-1.5 py-0.5 rounded">Verlopen</span>
+                    <span className="text-[10px] font-semibold text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-950 px-1.5 py-0.5 rounded">
+                      Verlopen
+                    </span>
                   )}
                 </dd>
               </div>

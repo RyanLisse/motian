@@ -14,7 +14,10 @@ const contextSchema = z
   .optional();
 
 export async function POST(req: Request) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "anonymous";
+  const ip =
+    req.headers.get("x-real-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    "anonymous";
   const { success, reset } = limiter.check(ip);
   if (!success) {
     return Response.json(
@@ -23,10 +26,17 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = await req.json();
-  const context = contextSchema.parse(body.context);
+  const body = await req.json().catch(() => null);
+  if (!body || !Array.isArray(body.messages)) {
+    return Response.json({ error: "Ongeldige aanvraag" }, { status: 400 });
+  }
 
-  const system = await buildSystemPrompt(context ?? undefined);
+  const contextResult = contextSchema.safeParse(body.context);
+  if (!contextResult.success) {
+    return Response.json({ error: "Ongeldige context" }, { status: 400 });
+  }
+
+  const system = await buildSystemPrompt(contextResult.data ?? undefined);
 
   const result = streamText({
     model: chatModel,

@@ -6,6 +6,11 @@ type RateLimitConfig = {
 type RateLimitEntry = { count: number; resetTime: number };
 type RateLimitResult = { success: boolean; remaining: number; reset: number };
 
+/**
+ * In-memory sliding window rate limiter.
+ * Note: On serverless (Vercel), state resets on cold starts and is per-instance.
+ * For production, upgrade to @upstash/ratelimit with Redis for global enforcement.
+ */
 export function rateLimit(config: RateLimitConfig) {
   const store = new Map<string, RateLimitEntry>();
 
