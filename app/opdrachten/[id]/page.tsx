@@ -56,13 +56,29 @@ function SectionBlock({ title, items }: { title: string; items: string[] }) {
 export default async function OpdrachtDetailPage({ params }: Props) {
   const { id } = await params;
 
-  // Fetch current job + related jobs in parallel
-  const [rows, relatedJobs] = await Promise.all([
-    db
-      .select()
-      .from(jobs)
-      .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
-      .limit(1),
+  // Fetch current job
+  const rows = await db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
+    .limit(1);
+
+  const job = rows[0] as typeof jobs.$inferSelect | undefined;
+
+  if (!job) {
+    notFound();
+  }
+
+  // Fetch company-related and generic related jobs in parallel
+  const [companyRelated, genericRelated] = await Promise.all([
+    job.company
+      ? db
+          .select()
+          .from(jobs)
+          .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
+          .orderBy(desc(jobs.scrapedAt))
+          .limit(4)
+      : Promise.resolve([]),
     db
       .select()
       .from(jobs)
@@ -71,25 +87,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       .limit(4),
   ]);
 
-  const job = rows[0] as typeof jobs.$inferSelect | undefined;
-
-  if (!job) {
-    notFound();
-  }
-
-  // Fetch related from same company if available
-  let related = relatedJobs;
-  if (job.company) {
-    const companyRelated = await db
-      .select()
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
-      .orderBy(desc(jobs.scrapedAt))
-      .limit(4);
-    if (companyRelated.length > 0) {
-      related = companyRelated;
-    }
-  }
+  const related = companyRelated.length > 0 ? companyRelated : genericRelated;
 
   // Extract jsonb fields — items can be strings or {isKnockout, description} objects
   const stripHtml = (s: string) =>
