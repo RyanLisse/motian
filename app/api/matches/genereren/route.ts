@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { publish } from "@/src/lib/event-bus";
 import { getCandidatesByIds, listActiveCandidates } from "@/src/services/candidates";
 import { getJobById } from "@/src/services/jobs";
 import { createMatch } from "@/src/services/matches";
@@ -73,6 +75,10 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    revalidatePath("/matching");
+    revalidatePath("/overzicht");
+    publish("matches:generated", { jobId, matchesCreated });
 
     return Response.json({
       message: "Match generatie voltooid",

@@ -1,4 +1,6 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { publish } from "@/src/lib/event-bus";
 import { countMessages, createMessage, listMessages } from "@/src/services/messages";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +61,8 @@ export async function POST(req: Request) {
     if (!message) {
       return Response.json({ error: "Ongeldig kanaal of richting" }, { status: 400 });
     }
+    revalidatePath("/messages");
+    publish("message:created", { messageId: message.id, direction: result.data.direction });
     return Response.json({ data: message }, { status: 201 });
   } catch {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });

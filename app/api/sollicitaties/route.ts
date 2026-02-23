@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { publish } from "@/src/lib/event-bus";
 import {
   countApplications,
   createApplication,
@@ -63,6 +65,9 @@ export async function POST(request: NextRequest) {
       );
     }
     const application = await createApplication(parsed.data);
+    revalidatePath("/pipeline");
+    revalidatePath("/overzicht");
+    publish("application:created", { applicationId: application.id });
     return Response.json({ data: application }, { status: 201 });
   } catch (error) {
     console.error("POST /api/sollicitaties error:", error);

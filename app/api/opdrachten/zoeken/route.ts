@@ -2,6 +2,7 @@ import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
+import { escapeLike } from "@/src/lib/helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   // Multi-field search with ILIKE across title, company, description, location
   if (q.length >= 2) {
-    const pattern = `%${q}%`;
+    const pattern = `%${escapeLike(q)}%`;
     conditions.push(
       or(
         ilike(jobs.title, pattern),
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (provincie) {
-    conditions.push(ilike(jobs.location, `%${provincie}%`));
+    conditions.push(ilike(jobs.location, `%${escapeLike(provincie)}%`));
   }
 
   const whereClause = and(...conditions);

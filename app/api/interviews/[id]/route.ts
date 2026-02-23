@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { deleteInterview, getInterviewById, updateInterview } from "@/src/services/interviews";
 
@@ -38,6 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!interview) {
       return Response.json({ error: "Interview niet gevonden" }, { status: 404 });
     }
+    revalidatePath("/interviews");
     return Response.json({ data: interview });
   } catch {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
@@ -51,6 +53,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     if (!deleted) {
       return Response.json({ error: "Interview niet gevonden" }, { status: 404 });
     }
+    revalidatePath("/interviews");
     return Response.json({ data: { id } });
   } catch {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });

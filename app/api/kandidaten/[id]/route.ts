@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { deleteCandidate, getCandidateById, updateCandidate } from "@/src/services/candidates";
@@ -42,6 +43,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!candidate) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
+    revalidatePath("/professionals");
     return Response.json({ data: candidate });
   } catch (error) {
     console.error("PATCH /api/kandidaten/[id] error:", error);
@@ -59,6 +61,7 @@ export async function DELETE(
     if (!deleted) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
+    revalidatePath("/professionals");
     return Response.json({ data: { id, deleted: true } });
   } catch (error) {
     console.error("DELETE /api/kandidaten/[id] error:", error);

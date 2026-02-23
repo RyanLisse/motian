@@ -9,7 +9,8 @@ export async function DELETE(
 ) {
   try {
     const { kandidaatId } = await params;
-    const result = await eraseCandidateData(kandidaatId);
+    const requestedBy = _request.headers.get("x-requested-by") ?? "system";
+    const result = await eraseCandidateData(kandidaatId, requestedBy);
 
     if (!result.deletedCandidate) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });

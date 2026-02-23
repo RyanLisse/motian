@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { publish } from "@/src/lib/event-bus";
 import {
   deleteApplication,
   getApplicationById,
@@ -42,6 +44,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!application) {
       return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }
+    revalidatePath("/pipeline");
+    publish("application:updated", { applicationId: id, stage: parsed.data.stage });
     return Response.json({ data: application });
   } catch (error) {
     console.error("PATCH /api/sollicitaties/[id] error:", error);
@@ -59,6 +63,7 @@ export async function DELETE(
     if (!deleted) {
       return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }
+    revalidatePath("/pipeline");
     return Response.json({ data: { id, deleted: true } });
   } catch (error) {
     console.error("DELETE /api/sollicitaties/[id] error:", error);

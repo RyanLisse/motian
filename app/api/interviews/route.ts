@@ -1,4 +1,6 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { publish } from "@/src/lib/event-bus";
 import {
   countInterviews,
   createInterview,
@@ -76,6 +78,8 @@ export async function POST(req: Request) {
       ...rest,
       scheduledAt: new Date(scheduledAt),
     });
+    revalidatePath("/interviews");
+    publish("interview:created", { interviewId: interview.id });
     return Response.json({ data: interview }, { status: 201 });
   } catch {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });

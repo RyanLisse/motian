@@ -9,7 +9,8 @@ export async function GET(
 ) {
   try {
     const { kandidaatId } = await params;
-    const data = await exportCandidateData(kandidaatId);
+    const requestedBy = _request.headers.get("x-requested-by") ?? "system";
+    const data = await exportCandidateData(kandidaatId, requestedBy);
 
     if (!data) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });

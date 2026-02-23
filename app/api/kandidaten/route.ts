@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import {
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
     const candidate = await createCandidate(parsed.data);
+    revalidatePath("/professionals");
     return Response.json({ data: candidate }, { status: 201 });
   } catch (error) {
     console.error("POST /api/kandidaten error:", error);
