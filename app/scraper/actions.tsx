@@ -1,10 +1,12 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export function ScraperActions() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -12,21 +14,17 @@ export function ScraperActions() {
     setLoading(true);
     setMessage("");
     try {
-      // Call the Motia API master-scrape endpoint
-      const res = await fetch("http://localhost:3000/master-scrape", {
+      const res = await fetch("/api/scrape/starten", {
         method: "POST",
       });
       if (res.ok) {
         setMessage("Scrape gestart!");
-        // Revalidate after a delay
-        setTimeout(async () => {
-          await fetch("/api/revalidate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tags: ["scrapers", "scrape-results", "jobs"] }),
-          });
-          window.location.reload();
-        }, 3000);
+        await fetch("/api/revalidate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags: ["scrapers", "scrape-results", "jobs"] }),
+        });
+        router.refresh();
       } else {
         setMessage("Fout bij starten scrape");
       }

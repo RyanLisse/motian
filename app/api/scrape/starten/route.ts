@@ -3,7 +3,10 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
+import { rateLimit } from "@/src/lib/rate-limit";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
+
+const limiter = rateLimit({ interval: 300_000, limit: 5 });
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +15,15 @@ const triggerSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "anonymous";
+  const { success, reset } = limiter.check(ip);
+  if (!success) {
+    return Response.json(
+      { error: "Te veel verzoeken. Probeer het later opnieuw." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((reset - Date.now()) / 1000)) } },
+    );
+  }
+
   try {
     const body = await request.json().catch(() => ({}));
     const parsed = triggerSchema.safeParse(body);
@@ -20,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Load configs from DB
-    let configs;
+    let configs: (typeof scraperConfigs.$inferSelect)[];
     if (parsed.data.platform) {
       configs = await db
         .select()

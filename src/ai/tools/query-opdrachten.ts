@@ -31,7 +31,7 @@ function normalizeParams(params: Record<string, unknown>) {
 
 export const queryOpdrachten = tool({
   description:
-    "Zoek en filter opdrachten (vacatures). Gebruikt hybrid search (tekst + semantisch) voor slim zoeken. Gebruik dit om opdrachten te vinden op basis van zoekopdracht, platform, provincie, tarief, etc. Stuur GEEN rateMin/rateMax/contractType als de gebruiker daar niets specifieks over zegt.",
+    "Zoek en filter opdrachten (vacatures). Twee modi: (1) Met zoekopdracht → hybrid search (tekst + semantisch). (2) Zonder zoekopdracht → gefilterde lijst. Stuur GEEN rateMin/rateMax/contractType als de gebruiker daar niets specifieks over zegt.",
   inputSchema: z.object({
     q: z.string().optional().describe("Vrije tekst zoekterm (hybrid: titel + semantisch)"),
     platform: z

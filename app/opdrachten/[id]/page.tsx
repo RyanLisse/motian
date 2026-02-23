@@ -542,12 +542,15 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                   <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
                     <Clock className="h-3 w-3 shrink-0" /> Deadline
                   </dt>
-                  <dd className="text-foreground text-xs">
+                  <dd className="text-foreground text-xs flex items-center gap-1.5">
                     {new Date(job.applicationDeadline).toLocaleDateString("nl-NL", {
                       day: "numeric",
                       month: "short",
                       year: "numeric",
                     })}
+                    {new Date(job.applicationDeadline) < new Date() && (
+                      <span className="text-[10px] font-semibold text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-950 px-1.5 py-0.5 rounded">Verlopen</span>
+                    )}
                   </dd>
                 </div>
               )}
@@ -812,12 +815,15 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 <dt className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" /> Deadline
                 </dt>
-                <dd className="text-foreground">
+                <dd className="text-foreground flex items-center gap-2">
                   {new Date(job.applicationDeadline).toLocaleDateString("nl-NL", {
                     day: "numeric",
                     month: "long",
                     year: "numeric",
                   })}
+                  {new Date(job.applicationDeadline) < new Date() && (
+                    <span className="text-[10px] font-semibold text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-950 px-1.5 py-0.5 rounded">Verlopen</span>
+                  )}
                 </dd>
               </div>
             )}

@@ -9,21 +9,29 @@ export type MatchResult = {
   reasoning: string;
 };
 
+// ========== Scoring Rubric ==========
+
+/** Scoring rubric weights — total must equal 100 */
+const WEIGHT_SKILLS = 40;
+const WEIGHT_LOCATION = 20;
+const WEIGHT_RATE = 20;
+const WEIGHT_ROLE = 20;
+
 // ========== Scoring Algorithm ==========
 
 /**
  * Rule-based matching: kandidaat vs opdracht.
  * Maximaal 100 punten verdeeld over 4 dimensies:
- *   - Skills overlap:    0-40
- *   - Locatie match:     0-20
- *   - Tarief passend:    0-20
- *   - Rol aansluiting:   0-20
+ *   - Skills overlap:    0-{WEIGHT_SKILLS}
+ *   - Locatie match:     0-{WEIGHT_LOCATION}
+ *   - Tarief passend:    0-{WEIGHT_RATE}
+ *   - Rol aansluiting:   0-{WEIGHT_ROLE}
  */
 export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
   let score = 0;
   const reasons: string[] = [];
 
-  // ── 1. Skills overlap (0-40) ───────────────────────────────────
+  // ── 1. Skills overlap (0-WEIGHT_SKILLS) ──────────────────────────
   const jobKeywords = extractKeywords(job);
   const candidateSkills = (candidate.skills as string[]) || [];
 
@@ -35,7 +43,7 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
 
   const skillScore =
     jobKeywords.length > 0
-      ? Math.min(40, Math.round((overlap.length / jobKeywords.length) * 40))
+      ? Math.min(WEIGHT_SKILLS, Math.round((overlap.length / jobKeywords.length) * WEIGHT_SKILLS))
       : 0;
   score += skillScore;
 
@@ -43,35 +51,35 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
     reasons.push(`${overlap.length} skills match: ${overlap.slice(0, 3).join(", ")}`);
   }
 
-  // ── 2. Location match (0-20) ───────────────────────────────────
+  // ── 2. Location match (0-WEIGHT_LOCATION) ────────────────────────
   if (
     candidate.province &&
     job.province &&
     candidate.province.toLowerCase() === job.province.toLowerCase()
   ) {
-    score += 20;
+    score += WEIGHT_LOCATION;
     reasons.push("Provincie match");
   } else if (candidate.location && job.location) {
     const candidateCity = candidate.location.split(" - ")[0]?.toLowerCase();
     const jobCity = job.location?.split(" - ")[0]?.toLowerCase();
     if (candidateCity && jobCity && candidateCity === jobCity) {
-      score += 15;
+      score += WEIGHT_LOCATION * 0.75;
       reasons.push("Stad match");
     }
   }
 
-  // ── 3. Rate fit (0-20) ────────────────────────────────────────
+  // ── 3. Rate fit (0-WEIGHT_RATE) ────────────────────────────────
   if (candidate.hourlyRate && job.rateMax) {
     if (candidate.hourlyRate <= job.rateMax) {
-      score += 20;
+      score += WEIGHT_RATE;
       reasons.push("Tarief past binnen budget");
     } else if (candidate.hourlyRate <= job.rateMax * 1.1) {
-      score += 10;
+      score += WEIGHT_RATE * 0.5;
       reasons.push("Tarief iets boven budget");
     }
   }
 
-  // ── 4. Role alignment (0-20) ──────────────────────────────────
+  // ── 4. Role alignment (0-WEIGHT_ROLE) ──────────────────────────
   if (candidate.role && job.title) {
     const roleWords = candidate.role
       .toLowerCase()
@@ -87,7 +95,7 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
     );
 
     if (roleOverlap.length > 0) {
-      score += Math.min(20, roleOverlap.length * 10);
+      score += Math.min(WEIGHT_ROLE, roleOverlap.length * 10);
       reasons.push("Rol sluit aan bij functietitel");
     }
   }
