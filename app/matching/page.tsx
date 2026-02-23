@@ -10,6 +10,10 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { EmptyState } from "@/components/shared/empty-state";
+import { FilterTabs } from "@/components/shared/filter-tabs";
+import { KPICard } from "@/components/shared/kpi-card";
+import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
@@ -103,57 +107,41 @@ export default async function MatchingPage({ searchParams }: Props) {
 
         {/* KPI row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#6b6b6b] mb-1">
-              <BarChart3 className="h-4 w-4" />
-              <span className="text-xs">Totaal</span>
-            </div>
-            <p className="text-2xl font-bold text-[#ececec]">{allCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-yellow-500/60 mb-1">
-              <Clock className="h-4 w-4" />
-              <span className="text-xs text-[#6b6b6b]">In afwachting</span>
-            </div>
-            <p className="text-2xl font-bold text-yellow-500">{pendingCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#10a37f]/60 mb-1">
-              <CheckCircle2 className="h-4 w-4" />
-              <span className="text-xs text-[#6b6b6b]">Goedgekeurd</span>
-            </div>
-            <p className="text-2xl font-bold text-[#10a37f]">{approvedCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-red-500/60 mb-1">
-              <XCircle className="h-4 w-4" />
-              <span className="text-xs text-[#6b6b6b]">Afgewezen</span>
-            </div>
-            <p className="text-2xl font-bold text-red-500">{rejectedCount}</p>
-          </div>
+          <KPICard icon={<BarChart3 className="h-4 w-4" />} label="Totaal" value={allCount} />
+          <KPICard
+            icon={<Clock className="h-4 w-4" />}
+            label="In afwachting"
+            value={pendingCount}
+            iconClassName="text-yellow-500/60"
+            valueClassName="text-yellow-500"
+          />
+          <KPICard
+            icon={<CheckCircle2 className="h-4 w-4" />}
+            label="Goedgekeurd"
+            value={approvedCount}
+            iconClassName="text-[#10a37f]/60"
+            valueClassName="text-[#10a37f]"
+          />
+          <KPICard
+            icon={<XCircle className="h-4 w-4" />}
+            label="Afgewezen"
+            value={rejectedCount}
+            iconClassName="text-red-500/60"
+            valueClassName="text-red-500"
+          />
         </div>
 
         {/* Status filter */}
-        <div className="flex items-center gap-2">
-          {[
+        <FilterTabs
+          options={[
             { value: "", label: "Alle" },
             { value: "pending", label: "In afwachting" },
             { value: "approved", label: "Goedgekeurd" },
             { value: "rejected", label: "Afgewezen" },
-          ].map((opt) => (
-            <Link
-              key={opt.value}
-              href={`/matching${opt.value ? `?status=${opt.value}` : ""}`}
-              className={`h-8 px-3 flex items-center rounded-lg text-sm transition-colors ${
-                statusFilter === opt.value
-                  ? "bg-[#10a37f] text-white"
-                  : "bg-[#1e1e1e] border border-[#2d2d2d] text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323]"
-              }`}
-            >
-              {opt.label}
-            </Link>
-          ))}
-        </div>
+          ]}
+          activeValue={statusFilter}
+          buildHref={(v) => `/matching${v ? `?status=${v}` : ""}`}
+        />
 
         {/* Results count */}
         <div className="flex items-center justify-between">
@@ -167,15 +155,15 @@ export default async function MatchingPage({ searchParams }: Props) {
 
         {/* Match cards */}
         {matchRows.length === 0 ? (
-          <div className="text-center py-16 text-[#6b6b6b]">
-            <Sparkles className="h-8 w-8 mx-auto mb-3 opacity-40" />
-            <p className="text-lg">Geen matches gevonden</p>
-            <p className="text-sm mt-1">
-              {statusFilter
+          <EmptyState
+            icon={<Sparkles className="h-8 w-8 opacity-40" />}
+            title="Geen matches gevonden"
+            subtitle={
+              statusFilter
                 ? "Probeer een ander statusfilter"
-                : "Er zijn nog geen AI-matches gegenereerd"}
-            </p>
-          </div>
+                : "Er zijn nog geen AI-matches gegenereerd"
+            }
+          />
         ) : (
           <div className="space-y-3">
             {matchRows.map((row) => {
@@ -312,35 +300,16 @@ export default async function MatchingPage({ searchParams }: Props) {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4">
-            {page > 1 && (
-              <Link
-                href={`/matching?${new URLSearchParams({
-                  ...(statusFilter ? { status: statusFilter } : {}),
-                  pagina: String(page - 1),
-                }).toString()}`}
-                className="h-9 px-4 flex items-center bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323] transition-colors"
-              >
-                Vorige
-              </Link>
-            )}
-            <span className="text-sm text-[#6b6b6b] px-2">
-              {page} / {totalPages}
-            </span>
-            {page < totalPages && (
-              <Link
-                href={`/matching?${new URLSearchParams({
-                  ...(statusFilter ? { status: statusFilter } : {}),
-                  pagina: String(page + 1),
-                }).toString()}`}
-                className="h-9 px-4 flex items-center bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323] transition-colors"
-              >
-                Volgende
-              </Link>
-            )}
-          </div>
-        )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          buildHref={(p) =>
+            `/matching?${new URLSearchParams({
+              ...(statusFilter ? { status: statusFilter } : {}),
+              pagina: String(p),
+            }).toString()}`
+          }
+        />
 
         <div className="h-8" />
       </div>

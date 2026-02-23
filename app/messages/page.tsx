@@ -8,7 +8,10 @@ import {
   MessageSquare,
   Phone,
 } from "lucide-react";
-import Link from "next/link";
+import { EmptyState } from "@/components/shared/empty-state";
+import { FilterTabs } from "@/components/shared/filter-tabs";
+import { KPICard } from "@/components/shared/kpi-card";
+import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { applications, candidates, jobs, messages } from "@/src/db/schema";
@@ -112,75 +115,70 @@ export default async function MessagesPage({ searchParams }: Props) {
 
         {/* KPI row */}
         <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Totaal berichten", value: totalMessages, icon: MessageSquare },
-            { label: "Inkomend", value: dirMap.inbound ?? 0, icon: ArrowDownLeft },
-            { label: "Uitgaand", value: dirMap.outbound ?? 0, icon: ArrowUpRight },
-          ].map((kpi) => (
-            <div key={kpi.label} className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <kpi.icon className="h-4 w-4 text-[#6b6b6b]" />
-                <span className="text-xs text-[#8e8e8e]">{kpi.label}</span>
-              </div>
-              <p className="text-lg font-bold text-[#ececec]">{kpi.value}</p>
-            </div>
-          ))}
+          <KPICard
+            icon={<MessageSquare className="h-4 w-4" />}
+            label="Totaal berichten"
+            value={totalMessages}
+            compact
+          />
+          <KPICard
+            icon={<ArrowDownLeft className="h-4 w-4" />}
+            label="Inkomend"
+            value={dirMap.inbound ?? 0}
+            compact
+          />
+          <KPICard
+            icon={<ArrowUpRight className="h-4 w-4" />}
+            label="Uitgaand"
+            value={dirMap.outbound ?? 0}
+            compact
+          />
         </div>
 
         {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-[#6b6b6b]" />
-            <Link
-              href="/messages"
-              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                !directionFilter
-                  ? "bg-[#10a37f]/10 text-[#10a37f] font-medium"
-                  : "text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a]"
-              }`}
-            >
-              Alle
-            </Link>
-            {(["inbound", "outbound"] as const).map((d) => (
-              <Link
-                key={d}
-                href={`/messages?direction=${d}${channelFilter ? `&channel=${channelFilter}` : ""}`}
-                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  directionFilter === d
-                    ? "bg-[#10a37f]/10 text-[#10a37f] font-medium"
-                    : "text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a]"
-                }`}
-              >
-                {directionLabels[d]}
-              </Link>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            {(["email", "phone", "platform"] as const).map((c) => (
-              <Link
-                key={c}
-                href={`/messages?channel=${c}${directionFilter ? `&direction=${directionFilter}` : ""}`}
-                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  channelFilter === c
-                    ? "bg-[#10a37f]/10 text-[#10a37f] font-medium"
-                    : "text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a]"
-                }`}
-              >
-                {channelLabels[c]}
-              </Link>
-            ))}
-          </div>
+          <FilterTabs
+            options={[
+              { value: "", label: "Alle" },
+              { value: "inbound", label: directionLabels.inbound },
+              { value: "outbound", label: directionLabels.outbound },
+            ]}
+            activeValue={directionFilter}
+            buildHref={(v) => {
+              const p = new URLSearchParams();
+              if (v) p.set("direction", v);
+              if (channelFilter) p.set("channel", channelFilter);
+              const qs = p.toString();
+              return `/messages${qs ? `?${qs}` : ""}`;
+            }}
+            variant="subtle"
+            icon={<Filter className="h-4 w-4 text-[#6b6b6b]" />}
+          />
+          <FilterTabs
+            options={[
+              { value: "email", label: channelLabels.email },
+              { value: "phone", label: channelLabels.phone },
+              { value: "platform", label: channelLabels.platform },
+            ]}
+            activeValue={channelFilter}
+            buildHref={(v) => {
+              const p = new URLSearchParams();
+              if (directionFilter) p.set("direction", directionFilter);
+              if (v) p.set("channel", v);
+              const qs = p.toString();
+              return `/messages${qs ? `?${qs}` : ""}`;
+            }}
+            variant="subtle"
+          />
         </div>
 
         {/* Results */}
         {rows.length === 0 ? (
-          <div className="text-center py-16">
-            <MessageSquare className="h-12 w-12 text-[#2d2d2d] mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-[#ececec] mb-2">Geen berichten gevonden</h2>
-            <p className="text-sm text-[#8e8e8e]">
-              Berichten worden hier getoond zodra er communicatie plaatsvindt
-            </p>
-          </div>
+          <EmptyState
+            icon={<MessageSquare className="h-12 w-12" />}
+            title="Geen berichten gevonden"
+            subtitle="Berichten worden hier getoond zodra er communicatie plaatsvindt"
+          />
         ) : (
           <>
             <p className="text-sm text-[#8e8e8e]">
@@ -247,29 +245,17 @@ export default async function MessagesPage({ searchParams }: Props) {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-4">
-                {page > 1 && (
-                  <Link
-                    href={`/messages?${directionFilter ? `direction=${directionFilter}&` : ""}${channelFilter ? `channel=${channelFilter}&` : ""}pagina=${page - 1}`}
-                    className="px-3 py-1.5 rounded-md text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] transition-colors"
-                  >
-                    ← Vorige
-                  </Link>
-                )}
-                <span className="text-sm text-[#6b6b6b]">
-                  {page} / {totalPages}
-                </span>
-                {page < totalPages && (
-                  <Link
-                    href={`/messages?${directionFilter ? `direction=${directionFilter}&` : ""}${channelFilter ? `channel=${channelFilter}&` : ""}pagina=${page + 1}`}
-                    className="px-3 py-1.5 rounded-md text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] transition-colors"
-                  >
-                    Volgende →
-                  </Link>
-                )}
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              buildHref={(pg) => {
+                const p = new URLSearchParams();
+                if (directionFilter) p.set("direction", directionFilter);
+                if (channelFilter) p.set("channel", channelFilter);
+                p.set("pagina", String(pg));
+                return `/messages?${p.toString()}`;
+              }}
+            />
           </>
         )}
       </div>

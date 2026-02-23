@@ -1,6 +1,9 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { Briefcase, CheckCircle2, Filter, Inbox, Users, XCircle } from "lucide-react";
-import Link from "next/link";
+import { EmptyState } from "@/components/shared/empty-state";
+import { FilterTabs } from "@/components/shared/filter-tabs";
+import { KPICard } from "@/components/shared/kpi-card";
+import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { applications, candidates, jobs } from "@/src/db/schema";
@@ -119,53 +122,47 @@ export default async function PipelinePage({ searchParams }: Props) {
 
         {/* KPI row */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#6b6b6b] mb-1">
-              <Briefcase className="h-4 w-4" />
-              <span className="text-xs">Totaal</span>
-            </div>
-            <p className="text-2xl font-bold text-[#ececec]">{allCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-yellow-500/60 mb-1">
-              <Inbox className="h-4 w-4" />
-              <span className="text-xs text-[#6b6b6b]">Nieuw</span>
-            </div>
-            <p className="text-2xl font-bold text-yellow-500">{newCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-blue-500/60 mb-1">
-              <Filter className="h-4 w-4" />
-              <span className="text-xs text-[#6b6b6b]">Screening</span>
-            </div>
-            <p className="text-2xl font-bold text-blue-500">{screeningCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-purple-500/60 mb-1">
-              <Users className="h-4 w-4" />
-              <span className="text-xs text-[#6b6b6b]">Interview</span>
-            </div>
-            <p className="text-2xl font-bold text-purple-500">{interviewCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-orange-500/60 mb-1">
-              <Briefcase className="h-4 w-4" />
-              <span className="text-xs text-[#6b6b6b]">Aanbod</span>
-            </div>
-            <p className="text-2xl font-bold text-orange-500">{offerCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#10a37f]/60 mb-1">
-              <CheckCircle2 className="h-4 w-4" />
-              <span className="text-xs text-[#6b6b6b]">Geplaatst</span>
-            </div>
-            <p className="text-2xl font-bold text-[#10a37f]">{hiredCount}</p>
-          </div>
+          <KPICard icon={<Briefcase className="h-4 w-4" />} label="Totaal" value={allCount} />
+          <KPICard
+            icon={<Inbox className="h-4 w-4" />}
+            label="Nieuw"
+            value={newCount}
+            iconClassName="text-yellow-500/60"
+            valueClassName="text-yellow-500"
+          />
+          <KPICard
+            icon={<Filter className="h-4 w-4" />}
+            label="Screening"
+            value={screeningCount}
+            iconClassName="text-blue-500/60"
+            valueClassName="text-blue-500"
+          />
+          <KPICard
+            icon={<Users className="h-4 w-4" />}
+            label="Interview"
+            value={interviewCount}
+            iconClassName="text-purple-500/60"
+            valueClassName="text-purple-500"
+          />
+          <KPICard
+            icon={<Briefcase className="h-4 w-4" />}
+            label="Aanbod"
+            value={offerCount}
+            iconClassName="text-orange-500/60"
+            valueClassName="text-orange-500"
+          />
+          <KPICard
+            icon={<CheckCircle2 className="h-4 w-4" />}
+            label="Geplaatst"
+            value={hiredCount}
+            iconClassName="text-[#10a37f]/60"
+            valueClassName="text-[#10a37f]"
+          />
         </div>
 
         {/* Stage filter tabs */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {[
+        <FilterTabs
+          options={[
             { value: "", label: "Alle" },
             { value: "new", label: "Nieuw" },
             { value: "screening", label: "Screening" },
@@ -173,20 +170,10 @@ export default async function PipelinePage({ searchParams }: Props) {
             { value: "offer", label: "Aanbod" },
             { value: "hired", label: "Geplaatst" },
             { value: "rejected", label: "Afgewezen" },
-          ].map((opt) => (
-            <Link
-              key={opt.value}
-              href={`/pipeline${opt.value ? `?fase=${opt.value}` : ""}`}
-              className={`h-8 px-3 flex items-center rounded-lg text-sm transition-colors ${
-                stageFilter === opt.value
-                  ? "bg-[#10a37f] text-white"
-                  : "bg-[#1e1e1e] border border-[#2d2d2d] text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323]"
-              }`}
-            >
-              {opt.label}
-            </Link>
-          ))}
-        </div>
+          ]}
+          activeValue={stageFilter}
+          buildHref={(v) => `/pipeline${v ? `?fase=${v}` : ""}`}
+        />
 
         {/* Results count */}
         <div className="flex items-center justify-between">
@@ -200,15 +187,15 @@ export default async function PipelinePage({ searchParams }: Props) {
 
         {/* Application cards */}
         {rows.length === 0 ? (
-          <div className="text-center py-16 text-[#6b6b6b]">
-            <Inbox className="h-8 w-8 mx-auto mb-3 opacity-40" />
-            <p className="text-lg">Geen sollicitaties gevonden</p>
-            <p className="text-sm mt-1">
-              {stageFilter
+          <EmptyState
+            icon={<Inbox className="h-8 w-8 opacity-40" />}
+            title="Geen sollicitaties gevonden"
+            subtitle={
+              stageFilter
                 ? "Probeer een ander fasefilter"
-                : "Start met het matchen van kandidaten aan vacatures"}
-            </p>
-          </div>
+                : "Start met het matchen van kandidaten aan vacatures"
+            }
+          />
         ) : (
           <div className="space-y-3">
             {rows.map((row) => {
@@ -274,35 +261,16 @@ export default async function PipelinePage({ searchParams }: Props) {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4">
-            {page > 1 && (
-              <Link
-                href={`/pipeline?${new URLSearchParams({
-                  ...(stageFilter ? { fase: stageFilter } : {}),
-                  pagina: String(page - 1),
-                }).toString()}`}
-                className="h-9 px-4 flex items-center bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323] transition-colors"
-              >
-                Vorige
-              </Link>
-            )}
-            <span className="text-sm text-[#6b6b6b] px-2">
-              {page} / {totalPages}
-            </span>
-            {page < totalPages && (
-              <Link
-                href={`/pipeline?${new URLSearchParams({
-                  ...(stageFilter ? { fase: stageFilter } : {}),
-                  pagina: String(page + 1),
-                }).toString()}`}
-                className="h-9 px-4 flex items-center bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323] transition-colors"
-              >
-                Volgende
-              </Link>
-            )}
-          </div>
-        )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          buildHref={(p) =>
+            `/pipeline?${new URLSearchParams({
+              ...(stageFilter ? { fase: stageFilter } : {}),
+              pagina: String(p),
+            }).toString()}`
+          }
+        />
 
         <div className="h-8" />
       </div>

@@ -1,6 +1,9 @@
 import { and, desc, eq, gte, ilike, isNull, sql } from "drizzle-orm";
 import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
+import { EmptyState } from "@/components/shared/empty-state";
+import { KPICard } from "@/components/shared/kpi-card";
+import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates } from "@/src/db/schema";
@@ -81,27 +84,18 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
 
         {/* KPI row */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#6b6b6b] mb-1">
-              <Users className="h-4 w-4" />
-              <span className="text-xs">Totaal</span>
-            </div>
-            <p className="text-2xl font-bold text-[#ececec]">{totalCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#6b6b6b] mb-1">
-              <Zap className="h-4 w-4" />
-              <span className="text-xs">Direct beschikbaar</span>
-            </div>
-            <p className="text-2xl font-bold text-[#10a37f]">{directCount}</p>
-          </div>
-          <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#6b6b6b] mb-1">
-              <UserPlus className="h-4 w-4" />
-              <span className="text-xs">Nieuw deze week</span>
-            </div>
-            <p className="text-2xl font-bold text-[#ececec]">{weekCount}</p>
-          </div>
+          <KPICard icon={<Users className="h-4 w-4" />} label="Totaal" value={totalCount} />
+          <KPICard
+            icon={<Zap className="h-4 w-4" />}
+            label="Direct beschikbaar"
+            value={directCount}
+            valueClassName="text-[#10a37f]"
+          />
+          <KPICard
+            icon={<UserPlus className="h-4 w-4" />}
+            label="Nieuw deze week"
+            value={weekCount}
+          />
         </div>
 
         {/* Search + filters */}
@@ -146,10 +140,11 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
 
         {/* Grid */}
         {candidateRows.length === 0 ? (
-          <div className="text-center py-16 text-[#6b6b6b]">
-            <p className="text-lg">Geen professionals gevonden</p>
-            <p className="text-sm mt-1">Pas je zoekopdracht of filters aan</p>
-          </div>
+          <EmptyState
+            icon={<Users className="h-8 w-8" />}
+            title="Geen professionals gevonden"
+            subtitle="Pas je zoekopdracht of filters aan"
+          />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {candidateRows.map((candidate) => {
@@ -238,37 +233,17 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4">
-            {page > 1 && (
-              <Link
-                href={`/professionals?${new URLSearchParams({
-                  ...(query ? { q: query } : {}),
-                  ...(availability ? { beschikbaarheid: availability } : {}),
-                  pagina: String(page - 1),
-                }).toString()}`}
-                className="h-9 px-4 flex items-center bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323] transition-colors"
-              >
-                Vorige
-              </Link>
-            )}
-            <span className="text-sm text-[#6b6b6b] px-2">
-              {page} / {totalPages}
-            </span>
-            {page < totalPages && (
-              <Link
-                href={`/professionals?${new URLSearchParams({
-                  ...(query ? { q: query } : {}),
-                  ...(availability ? { beschikbaarheid: availability } : {}),
-                  pagina: String(page + 1),
-                }).toString()}`}
-                className="h-9 px-4 flex items-center bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#232323] transition-colors"
-              >
-                Volgende
-              </Link>
-            )}
-          </div>
-        )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          buildHref={(p) =>
+            `/professionals?${new URLSearchParams({
+              ...(query ? { q: query } : {}),
+              ...(availability ? { beschikbaarheid: availability } : {}),
+              pagina: String(p),
+            }).toString()}`
+          }
+        />
 
         <div className="h-8" />
       </div>

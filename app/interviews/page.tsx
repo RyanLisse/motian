@@ -1,6 +1,9 @@
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { Calendar, Clock, Code2, Filter, MapPin, Monitor, Phone, Star, Video } from "lucide-react";
-import Link from "next/link";
+import { EmptyState } from "@/components/shared/empty-state";
+import { FilterTabs } from "@/components/shared/filter-tabs";
+import { KPICard } from "@/components/shared/kpi-card";
+import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { applications, candidates, interviews, jobs } from "@/src/db/schema";
@@ -116,57 +119,51 @@ export default async function InterviewsPage({ searchParams }: Props) {
 
         {/* KPI row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Aankomende", value: upcomingCount[0]?.count ?? 0, icon: Calendar },
-            { label: "Afgerond", value: countMap.completed ?? 0, icon: Monitor },
-            { label: "Geannuleerd", value: countMap.cancelled ?? 0, icon: Clock },
-            { label: "Deze week", value: weekCount[0]?.count ?? 0, icon: Star },
-          ].map((kpi) => (
-            <div key={kpi.label} className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <kpi.icon className="h-4 w-4 text-[#6b6b6b]" />
-                <span className="text-xs text-[#8e8e8e]">{kpi.label}</span>
-              </div>
-              <p className="text-lg font-bold text-[#ececec]">{kpi.value}</p>
-            </div>
-          ))}
+          <KPICard
+            icon={<Calendar className="h-4 w-4" />}
+            label="Aankomende"
+            value={upcomingCount[0]?.count ?? 0}
+            compact
+          />
+          <KPICard
+            icon={<Monitor className="h-4 w-4" />}
+            label="Afgerond"
+            value={countMap.completed ?? 0}
+            compact
+          />
+          <KPICard
+            icon={<Clock className="h-4 w-4" />}
+            label="Geannuleerd"
+            value={countMap.cancelled ?? 0}
+            compact
+          />
+          <KPICard
+            icon={<Star className="h-4 w-4" />}
+            label="Deze week"
+            value={weekCount[0]?.count ?? 0}
+            compact
+          />
         </div>
 
         {/* Status filter tabs */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Filter className="h-4 w-4 text-[#6b6b6b]" />
-          <Link
-            href="/interviews"
-            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-              !statusFilter
-                ? "bg-[#10a37f]/10 text-[#10a37f] font-medium"
-                : "text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a]"
-            }`}
-          >
-            Alle
-          </Link>
-          {STATUSES.map((s) => (
-            <Link
-              key={s}
-              href={`/interviews?status=${s}`}
-              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                statusFilter === s
-                  ? "bg-[#10a37f]/10 text-[#10a37f] font-medium"
-                  : "text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a]"
-              }`}
-            >
-              {statusLabels[s]}
-            </Link>
-          ))}
-        </div>
+        <FilterTabs
+          options={[
+            { value: "", label: "Alle" },
+            ...STATUSES.map((s) => ({ value: s, label: statusLabels[s] })),
+          ]}
+          activeValue={statusFilter}
+          buildHref={(v) => `/interviews${v ? `?status=${v}` : ""}`}
+          variant="subtle"
+          icon={<Filter className="h-4 w-4 text-[#6b6b6b]" />}
+        />
 
         {/* Results */}
         {rows.length === 0 ? (
-          <div className="text-center py-16">
-            <Calendar className="h-12 w-12 text-[#2d2d2d] mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-[#ececec] mb-2">Geen interviews gevonden</h2>
-            <p className="text-sm text-[#8e8e8e]">Plan een interview in via de pipeline</p>
-          </div>
+          <EmptyState
+            icon={<Calendar className="h-12 w-12" />}
+            title="Geen interviews gevonden"
+            subtitle="Plan een interview in via de pipeline"
+          />
         ) : (
           <>
             <p className="text-sm text-[#8e8e8e]">
@@ -248,29 +245,16 @@ export default async function InterviewsPage({ searchParams }: Props) {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-4">
-                {page > 1 && (
-                  <Link
-                    href={`/interviews?${statusFilter ? `status=${statusFilter}&` : ""}pagina=${page - 1}`}
-                    className="px-3 py-1.5 rounded-md text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] transition-colors"
-                  >
-                    ← Vorige
-                  </Link>
-                )}
-                <span className="text-sm text-[#6b6b6b]">
-                  {page} / {totalPages}
-                </span>
-                {page < totalPages && (
-                  <Link
-                    href={`/interviews?${statusFilter ? `status=${statusFilter}&` : ""}pagina=${page + 1}`}
-                    className="px-3 py-1.5 rounded-md text-sm text-[#8e8e8e] hover:text-[#ececec] hover:bg-[#2a2a2a] transition-colors"
-                  >
-                    Volgende →
-                  </Link>
-                )}
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              buildHref={(p) =>
+                `/interviews?${new URLSearchParams({
+                  ...(statusFilter ? { status: statusFilter } : {}),
+                  pagina: String(p),
+                }).toString()}`
+              }
+            />
           </>
         )}
       </div>
