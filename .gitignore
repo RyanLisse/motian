@@ -21,3 +21,4 @@ harness-evidence/
 # qlty local tooling cache
 .qlty/
 FW_\ Custom\ GPT\ Mariënne/
+.trigger
