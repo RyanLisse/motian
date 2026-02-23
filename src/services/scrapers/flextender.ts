@@ -95,9 +95,15 @@ function parseFlextenderHtml(html: string): any[] {
     const companyMatch = cardHtml.match(/class="css-customer">([^<]+)/);
     const company = companyMatch?.[1]?.trim();
 
-    const idMatch = detailPath.match(/\/(\d+)$/);
-    const externalId = idMatch?.[1] || detailPath.replace(/\//g, "-").replace(/^-/, "") || `flx-${listings.length}`;
+    // Extract aanvraagnr from URL params or path
+    const aanvraagMatch = detailPath.match(/aanvraagnr=(\d+)/) ?? detailPath.match(/\/(\d+)$/);
+    const externalId = aanvraagMatch?.[1] || `flx-${listings.length}`;
     if (!externalId) continue;
+
+    // Build proper external URL from original detail path
+    const externalUrl = detailPath.startsWith("http")
+      ? detailPath
+      : `https://www.flextender.nl${detailPath.startsWith("/") ? "" : "/"}${detailPath}`;
 
     const fields = parseFieldPairs(cardHtml);
 
@@ -125,7 +131,7 @@ function parseFlextenderHtml(html: string): any[] {
       province,
       description: `${title} — ${company ?? "Flextender"} opdracht`,
       externalId,
-      externalUrl: `${DETAIL_BASE}${externalId}`,
+      externalUrl,
       startDate: parseDutchDate(fields.Start),
       applicationDeadline: parseDutchDate(fields["Einde inschrijfdatum"]),
       contractType: "opdracht" as const,

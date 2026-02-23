@@ -16,6 +16,7 @@ import {
   Users,
   Hash,
   FileText,
+  GraduationCap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -102,16 +103,18 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   }
 
   // Extract jsonb fields — items can be strings or {isKnockout, description} objects
-  const toStrings = (arr: unknown): string[] => {
+  const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+  const toStrings = (arr: unknown, clean = false): string[] => {
     if (!Array.isArray(arr)) return [];
-    return arr.map((item) =>
-      typeof item === "string" ? item : (item as { description?: string })?.description ?? String(item)
-    );
+    return arr.map((item) => {
+      const raw = typeof item === "string" ? item : (item as { description?: string })?.description ?? String(item);
+      return clean ? stripHtml(raw) : raw;
+    }).filter(Boolean);
   };
   const requirementsList = toStrings(job.requirements);
   const wishesList = toStrings(job.wishes);
-  const competencesList = toStrings(job.competences);
-  const conditionsList = toStrings(job.conditions);
+  const competencesList = toStrings(job.competences, true);
+  const conditionsList = toStrings(job.conditions, true);
 
   // Parse "Label: Value" conditions for sidebar display
   const metaFields = conditionsList
@@ -120,10 +123,39 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   // Conditions that are NOT key-value pairs stay in the bullet list
   const plainConditions = conditionsList.filter(c => c.indexOf(": ") <= 0);
 
-  // Build AI summary preview from description
-  const aiPreview = job.description
-    ? job.description.substring(0, 250).trim() + (job.description.length > 250 ? "..." : "")
-    : null;
+  // Build AI summary preview from descriptionSummary JSONB
+  const extractSummaryText = (summary: unknown): string | null => {
+    if (!summary) return null;
+    if (typeof summary === 'string') return summary;
+    if (typeof summary === 'object') {
+      const obj = summary as Record<string, unknown>;
+      // JSONB is stored as {en: "...", nl: "..."} — prefer Dutch
+      if (typeof obj.nl === 'string') return obj.nl;
+      if (typeof obj.en === 'string') return obj.en;
+      if (typeof obj.summary === 'string') return obj.summary;
+      if (typeof obj.text === 'string') return obj.text;
+      if (typeof obj.content === 'string') return obj.content;
+    }
+    return null;
+  };
+
+  // Sanitize HTML: remove empty paragraphs, consecutive <br> tags, etc.
+  const sanitizeHtml = (html: string): string => {
+    return html
+      .replace(/<p>\s*<br\s*\/?\s*>\s*<\/p>/gi, '')       // Remove <p><br></p>
+      .replace(/<p>\s*<\/p>/gi, '')                         // Remove empty <p></p>
+      .replace(/(<br\s*\/?\s*>){2,}/gi, '<br>')              // Collapse multiple <br> to one
+      .replace(/<p>\s*(<br\s*\/?\s*>\s*)+/gi, '<p>')        // Remove leading <br> in <p>
+      .replace(/(<br\s*\/?\s*>\s*)+<\/p>/gi, '</p>')        // Remove trailing <br> in <p>
+      .trim();
+  };
+
+  const cleanDescription = job.description ? sanitizeHtml(job.description) : null;
+
+  const aiPreview = extractSummaryText(job.descriptionSummary)
+    ?? (cleanDescription
+      ? cleanDescription.replace(/<[^>]*>?/gm, '').substring(0, 250).trim() + (cleanDescription.replace(/<[^>]*>?/gm, '').length > 250 ? '...' : '')
+      : null);
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -232,16 +264,16 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             )}
           </div>
 
-          {/* Tags / key requirements badges */}
-          {competencesList.length > 0 && (
+          {/* Tags / key requirements badges (short competences only) */}
+          {competencesList.filter(c => stripHtml(c).length < 60).length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {competencesList.slice(0, 8).map((comp, i) => (
+              {competencesList.filter(c => stripHtml(c).length < 60).slice(0, 8).map((comp, i) => (
                 <Badge
                   key={i}
                   variant="outline"
                   className="bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20 text-xs"
                 >
-                  {comp}
+                  {stripHtml(comp)}
                 </Badge>
               ))}
             </div>
@@ -250,12 +282,13 @@ export default async function OpdrachtDetailPage({ params }: Props) {
           <Separator className="bg-[#2d2d2d]" />
 
           {/* Description */}
-          {job.description && (
+          {cleanDescription && (
             <div>
               <h3 className="text-base font-semibold text-[#ececec] mb-3">Functiebeschrijving</h3>
-              <div className="text-sm text-[#8e8e8e] whitespace-pre-wrap leading-relaxed">
-                {job.description}
-              </div>
+              <div 
+                className="text-sm text-[#8e8e8e] leading-relaxed max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-[#ececec] [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-[#ececec] [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-[#ececec] [&_h3]:mt-3 [&_h3]:mb-1 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-[#ececec] [&_b]:font-semibold [&_b]:text-[#ececec] [&_a]:text-[#10a37f] [&_a]:underline [&_span]:inline"
+                dangerouslySetInnerHTML={{ __html: cleanDescription }}
+              />
             </div>
           )}
 
@@ -371,6 +404,52 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                       ? `max EUR ${job.rateMax}`
                       : `min EUR ${job.rateMin}`}
                 </dd>
+              </div>
+            )}
+            {(job.hoursPerWeek || job.minHoursPerWeek) && (
+              <div>
+                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" /> Uren per week
+                </dt>
+                <dd className="text-[#ececec]">
+                  {job.minHoursPerWeek && job.hoursPerWeek
+                    ? `${job.minHoursPerWeek} - ${job.hoursPerWeek} uur`
+                    : job.hoursPerWeek
+                      ? `${job.hoursPerWeek} uur`
+                      : `${job.minHoursPerWeek} uur (min)`}
+                </dd>
+              </div>
+            )}
+            {job.durationMonths && (
+              <div>
+                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" /> Looptijd
+                </dt>
+                <dd className="text-[#ececec]">{job.durationMonths} maanden</dd>
+              </div>
+            )}
+            {job.extensionPossible !== null && (
+              <div>
+                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" /> Verlenging mogelijk
+                </dt>
+                <dd className="text-[#ececec]">{job.extensionPossible ? "Ja" : "Nee"}</dd>
+              </div>
+            )}
+            {job.educationLevel && (
+              <div>
+                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                  <GraduationCap className="h-3.5 w-3.5" /> Opleidingsniveau
+                </dt>
+                <dd className="text-[#ececec]">{job.educationLevel}</dd>
+              </div>
+            )}
+            {job.workExperienceYears && (
+              <div>
+                <dt className="text-[#6b6b6b] text-xs mb-0.5 flex items-center gap-1.5">
+                  <Briefcase className="h-3.5 w-3.5" /> Werkervaring
+                </dt>
+                <dd className="text-[#ececec]">{job.workExperienceYears} jaar</dd>
               </div>
             )}
             {job.location && (
