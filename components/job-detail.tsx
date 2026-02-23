@@ -2,13 +2,15 @@ import { Calendar, Clock, Euro, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+import type { Job } from "@/src/services/jobs";
+
 const arrangementLabels: Record<string, string> = {
   hybride: "Hybride",
   op_locatie: "Op locatie",
   remote: "Remote",
 };
 
-export function JobDetail({ job }: { job: any }) {
+export function JobDetail({ job }: { job: Job }) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Top section */}
@@ -126,8 +128,8 @@ export function JobDetail({ job }: { job: any }) {
           <div>
             <h2 className="text-lg font-bold text-foreground mb-3">Functie-eisen</h2>
             <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-              {job.requirements.map((req: string, i: number) => (
-                <li key={i}>{req}</li>
+              {job.requirements.map((req: string) => (
+                <li key={`req-${req}`}>{req}</li>
               ))}
             </ul>
           </div>

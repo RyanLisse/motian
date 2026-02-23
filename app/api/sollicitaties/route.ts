@@ -1,7 +1,8 @@
 import { revalidatePath } from "next/cache";
-import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { withApiHandler } from "@/src/lib/api-handler";
 import { publish } from "@/src/lib/event-bus";
+import { paginatedResponse, parsePagination } from "@/src/lib/pagination";
 import {
   countApplications,
   createApplication,
@@ -19,58 +20,37 @@ const createApplicationSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function GET(request: NextRequest) {
-  try {
-    const params = request.nextUrl.searchParams;
-    const stats = params.get("stats");
+export const GET = withApiHandler(async (request: Request) => {
+  const params = new URL(request.url).searchParams;
+  const stats = params.get("stats");
 
-    if (stats === "true") {
-      const data = await getApplicationStats();
-      return Response.json({ data });
-    }
+  if (stats === "true") {
+    const data = await getApplicationStats();
+    return Response.json({ data });
+  }
 
-    const jobId = params.get("jobId") ?? undefined;
-    const candidateId = params.get("candidateId") ?? undefined;
-    const stage = params.get("stage") ?? undefined;
-    const page = Math.max(1, parseInt(params.get("pagina") ?? params.get("page") ?? "1", 10));
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(params.get("limit") ?? params.get("perPage") ?? "50", 10)),
+  const jobId = params.get("jobId") ?? undefined;
+  const candidateId = params.get("candidateId") ?? undefined;
+  const stage = params.get("stage") ?? undefined;
+  const { page, limit, offset } = parsePagination(params);
+
+  const data = await listApplications({ jobId, candidateId, stage, limit, offset });
+  const total = await countApplications({ jobId, candidateId, stage });
+  return Response.json(paginatedResponse(data, total, { page, limit, offset }));
+});
+
+export const POST = withApiHandler(async (request: Request) => {
+  const body = await request.json();
+  const parsed = createApplicationSchema.safeParse(body);
+  if (!parsed.success) {
+    return Response.json(
+      { error: "Ongeldige invoer", details: parsed.error.flatten() },
+      { status: 400 },
     );
-    const offset = (page - 1) * limit;
-
-    const data = await listApplications({ jobId, candidateId, stage, limit, offset });
-    const total = await countApplications({ jobId, candidateId, stage });
-    return Response.json({
-      data,
-      total,
-      page,
-      perPage: limit,
-      totalPages: Math.ceil(total / limit),
-    });
-  } catch (error) {
-    console.error("GET /api/sollicitaties error:", error);
-    return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const parsed = createApplicationSchema.safeParse(body);
-    if (!parsed.success) {
-      return Response.json(
-        { error: "Ongeldige invoer", details: parsed.error.flatten() },
-        { status: 400 },
-      );
-    }
-    const application = await createApplication(parsed.data);
-    revalidatePath("/pipeline");
-    revalidatePath("/overzicht");
-    publish("application:created", { applicationId: application.id });
-    return Response.json({ data: application }, { status: 201 });
-  } catch (error) {
-    console.error("POST /api/sollicitaties error:", error);
-    return Response.json({ error: "Interne serverfout" }, { status: 500 });
-  }
-}
+  const application = await createApplication(parsed.data);
+  revalidatePath("/pipeline");
+  revalidatePath("/overzicht");
+  publish("application:created", { applicationId: application.id });
+  return Response.json({ data: application }, { status: 201 });
+});

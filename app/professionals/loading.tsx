@@ -9,15 +9,17 @@ export default function ProfessionalsLoading() {
           <Skeleton className="h-4 w-64 mt-2 bg-[#2d2d2d]" />
         </div>
         <div className="grid grid-cols-3 gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-xl bg-[#1e1e1e]" />
-          ))}
+          {Array.from({ length: 3 }).map((_, i) => {
+            const uniqueKey = `skeleton-1-${i}`;
+            return <Skeleton key={uniqueKey} className="h-20 rounded-xl bg-[#1e1e1e]" />;
+          })}
         </div>
         <Skeleton className="h-9 w-full rounded-lg bg-[#1e1e1e]" />
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 rounded-lg bg-[#1e1e1e]" />
-          ))}
+          {Array.from({ length: 6 }).map((_, i) => {
+            const uniqueKey = `skeleton-2-${i}`;
+            return <Skeleton key={uniqueKey} className="h-40 rounded-lg bg-[#1e1e1e]" />;
+          })}
         </div>
       </div>
     </div>

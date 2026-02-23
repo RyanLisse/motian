@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
+import type { Candidate } from "../src/services/candidates";
 import { buildCandidateEmbeddingText, buildJobEmbeddingText } from "../src/services/embedding.js";
+
+import type { Job } from "../src/services/jobs";
 import { computeMatchScore } from "../src/services/scoring.js";
 
 // ── Hybrid Scoring Integration Tests ─────────────────────────────
 
 describe("Hybrid scoring — rule + vector blend", () => {
-  const job = {
+  const job: Partial<Job> = {
     id: "job-1",
     title: "Senior React Developer",
     platform: "striive",
@@ -20,7 +23,7 @@ describe("Hybrid scoring — rule + vector blend", () => {
     embedding: null as number[] | null,
   };
 
-  const candidate = {
+  const candidate: Partial<Candidate> = {
     id: "cand-1",
     name: "Lisa Jansen",
     role: "React Developer",

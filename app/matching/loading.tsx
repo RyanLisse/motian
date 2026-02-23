@@ -9,19 +9,22 @@ export default function MatchingLoading() {
           <Skeleton className="h-4 w-80 mt-2 bg-[#2d2d2d]" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-xl bg-[#1e1e1e]" />
-          ))}
+          {Array.from({ length: 4 }).map((_, i) => {
+            const uniqueKey = `skeleton-1-${i}`;
+            return <Skeleton key={uniqueKey} className="h-20 rounded-xl bg-[#1e1e1e]" />;
+          })}
         </div>
         <div className="flex items-center gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-28 rounded-lg bg-[#1e1e1e]" />
-          ))}
+          {Array.from({ length: 4 }).map((_, i) => {
+            const uniqueKey = `skeleton-2-${i}`;
+            return <Skeleton key={uniqueKey} className="h-8 w-28 rounded-lg bg-[#1e1e1e]" />;
+          })}
         </div>
         <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 rounded-xl bg-[#1e1e1e]" />
-          ))}
+          {Array.from({ length: 4 }).map((_, i) => {
+            const uniqueKey = `skeleton-3-${i}`;
+            return <Skeleton key={uniqueKey} className="h-44 rounded-xl bg-[#1e1e1e]" />;
+          })}
         </div>
       </div>
     </div>

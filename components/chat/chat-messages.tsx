@@ -78,7 +78,7 @@ export function ChatMessages({ messages, status, onSuggestion }: Props) {
                     input?: unknown;
                     output?: unknown;
                   };
-                  const name = toolPart.toolName ?? getToolName(part as any);
+                  const name = toolPart.toolName ?? getToolName(part);
                   return (
                     <ChatToolCall
                       key={i}

@@ -7,6 +7,14 @@ config({ path: ".env.local" });
 
 import { chromium } from "playwright";
 
+function getEnvOrThrow(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Environment variable ${name} is not set.`);
+  }
+  return value;
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
@@ -14,9 +22,9 @@ async function main() {
 
   await page.goto("https://login.striive.com", { waitUntil: "domcontentloaded", timeout: 30000 });
   await new Promise((r) => setTimeout(r, 3000));
-  await page.locator("#email").fill(process.env.STRIIVE_USERNAME!);
+  await page.locator("#email").fill(getEnvOrThrow("STRIIVE_USERNAME"));
   await new Promise((r) => setTimeout(r, 300));
-  await page.locator("#password").fill(process.env.STRIIVE_PASSWORD!);
+  await page.locator("#password").fill(getEnvOrThrow("STRIIVE_PASSWORD"));
   await new Promise((r) => setTimeout(r, 300));
   await page.locator('[data-testid="login"]').click();
   await new Promise((r) => setTimeout(r, 5000));
@@ -73,7 +81,7 @@ async function main() {
   process.exit(0);
 }
 
-function flatKeys(obj: any, prefix: string, set: Set<string>) {
+function flatKeys(obj: Record<string, any>, prefix: string, set: Set<string>) {
   for (const [key, val] of Object.entries(obj)) {
     const path = prefix ? `${prefix}.${key}` : key;
     set.add(path);

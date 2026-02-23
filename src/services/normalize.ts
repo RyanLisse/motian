@@ -1,18 +1,24 @@
 import { sql } from "drizzle-orm";
+import type { z } from "zod";
 import { db } from "../db";
 import { jobs } from "../db/schema";
 import { unifiedJobSchema } from "../schemas/job";
 
+export type RawScrapedListing = z.input<typeof unifiedJobSchema> & Record<string, unknown>;
+
 export async function normalizeAndSaveJobs(
   platform: string,
-  listings: any[],
+  listings: RawScrapedListing[],
 ): Promise<{ jobsNew: number; duplicates: number; errors: string[] }> {
   let jobsNew = 0;
   let duplicates = 0;
   const errors: string[] = [];
 
   // Stap 1: Valideer alle listings
-  const validItems: Array<{ parsed: any; raw: any }> = [];
+  const validItems: Array<{
+    parsed: z.output<typeof unifiedJobSchema>;
+    raw: RawScrapedListing;
+  }> = [];
   for (const raw of listings) {
     const parsed = unifiedJobSchema.safeParse(raw);
     if (!parsed.success) {

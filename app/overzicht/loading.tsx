@@ -9,9 +9,10 @@ export default function OverzichtLoading() {
           <Skeleton className="h-4 w-72 mt-2 bg-[#2d2d2d]" />
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-xl bg-[#1e1e1e]" />
-          ))}
+          {Array.from({ length: 4 }).map((_, i) => {
+            const uniqueKey = `skeleton-1-${i}`;
+            return <Skeleton key={uniqueKey} className="h-20 rounded-xl bg-[#1e1e1e]" />;
+          })}
         </div>
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">

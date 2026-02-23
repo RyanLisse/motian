@@ -1,6 +1,17 @@
+import type { RawScrapedListing } from "../normalize";
+
 const PAGE_URL = "https://www.flextender.nl/opdrachten/";
 const AJAX_URL = "https://www.flextender.nl/wp-admin/admin-ajax.php";
 const DETAIL_BASE = "https://www.flextender.nl/opdracht/?aanvraagnr=";
+
+type FlextenderListing = RawScrapedListing & {
+  externalId: string;
+  _rawHours?: string;
+};
+
+type FlextenderDetail = Partial<RawScrapedListing> & {
+  conditions?: string[];
+};
 
 /** Haal de widget_config token op uit de Flextender pagina HTML */
 async function fetchWidgetConfig(): Promise<string | null> {
@@ -11,7 +22,7 @@ async function fetchWidgetConfig(): Promise<string | null> {
   return match?.[1] ?? null;
 }
 
-export async function scrapeFlextender(): Promise<any[]> {
+export async function scrapeFlextender(): Promise<RawScrapedListing[]> {
   console.log("Flextender scrapen via AJAX API (two-step met widget_config)");
 
   const MAX_RETRIES = 2;
@@ -75,14 +86,14 @@ export async function scrapeFlextender(): Promise<any[]> {
 }
 
 /** Parse Flextender AJAX HTML response naar listing array */
-function parseFlextenderHtml(html: string): any[] {
-  const listings: any[] = [];
+function parseFlextenderHtml(html: string): FlextenderListing[] {
+  const listings: FlextenderListing[] = [];
 
   const cardRegex =
     /<div\s+class="css-foundjob[^"]*"\s+data-kbslinkurl="([^"]*)"[^>]*>([\s\S]*?)(?=<div\s+class="css-foundjob|<div\s+class="flx-register-panel|$)/gi;
 
-  let cardMatch: RegExpExecArray | null;
-  while ((cardMatch = cardRegex.exec(html)) !== null) {
+  let cardMatch = cardRegex.exec(html);
+  while (cardMatch !== null) {
     const detailPath = cardMatch[1];
     const cardHtml = cardMatch[2];
 
@@ -142,6 +153,7 @@ function parseFlextenderHtml(html: string): any[] {
       durationMonths,
       _rawHours: fields["Uren per week"] ?? undefined, // kept for conditions fallback
     });
+    cardMatch = cardRegex.exec(html);
   }
 
   return listings;
@@ -151,11 +163,11 @@ function parseFlextenderHtml(html: string): any[] {
 
 /** Verrijk listings met content van hun detail-pagina's (parallel, max 10 tegelijk) */
 async function enrichListings(
-  listings: any[],
+  listings: FlextenderListing[],
   logger?: { info: (m: string) => void; warn: (m: string) => void },
-): Promise<any[]> {
+): Promise<RawScrapedListing[]> {
   const CONCURRENCY = 10;
-  const results: any[] = [];
+  const results: RawScrapedListing[] = [];
 
   for (let i = 0; i < listings.length; i += CONCURRENCY) {
     const batch = listings.slice(i, i + CONCURRENCY);
@@ -165,7 +177,7 @@ async function enrichListings(
           const detail = await fetchDetailPage(listing.externalId);
           if (
             listing._rawHours &&
-            !detail.conditions?.some((c: string) => c.includes("Uren per week"))
+            !detail.conditions?.some((condition) => condition.includes("Uren per week"))
           ) {
             detail.conditions = [
               ...(detail.conditions ?? []),
@@ -193,7 +205,7 @@ async function enrichListings(
 }
 
 /** Haal detail-pagina op en parse gestructureerde secties */
-async function fetchDetailPage(aanvraagnr: string): Promise<Record<string, any>> {
+async function fetchDetailPage(aanvraagnr: string): Promise<FlextenderDetail> {
   const url = `${DETAIL_BASE}${aanvraagnr}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Detail ${res.status}: ${res.statusText}`);
@@ -203,8 +215,8 @@ async function fetchDetailPage(aanvraagnr: string): Promise<Record<string, any>>
 }
 
 /** Parse detail-pagina HTML naar gestructureerde velden */
-function parseDetailHtml(html: string): Record<string, any> {
-  const result: Record<string, any> = {};
+function parseDetailHtml(html: string): FlextenderDetail {
+  const result: FlextenderDetail = {};
 
   const descMatch = html.match(
     /class="css-formattedjobdescription">([\s\S]*?)(?:<\/div>\s*<div\s+(?:style|class="css-navigation))/,
@@ -447,11 +459,12 @@ function decodeEntities(s: string): string {
 function parseFieldPairs(cardHtml: string): Record<string, string> {
   const fields: Record<string, string> = {};
   const pairRegex = /class="css-caption">([^<]+)<[\s\S]*?class="css-value">([^<]+)</gi;
-  let pairMatch: RegExpExecArray | null;
-  while ((pairMatch = pairRegex.exec(cardHtml)) !== null) {
+  let pairMatch = pairRegex.exec(cardHtml);
+  while (pairMatch !== null) {
     const key = pairMatch[1].trim();
     const value = pairMatch[2].trim();
     if (!fields[key]) fields[key] = value;
+    pairMatch = pairRegex.exec(cardHtml);
   }
   return fields;
 }

@@ -1,5 +1,61 @@
+import type { RawScrapedListing } from "../normalize";
+
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
 const MAX_RESULTS = 1000;
+
+type OpdrachtoverheidCategory = {
+  tender_category_obj?: {
+    type?: string;
+  };
+};
+
+type OpdrachtoverheidLocation = {
+  city?: string;
+  province?: string;
+  latitude?: string;
+  longitude?: string;
+  postcode?: string;
+  avatar?: string;
+  company_address?: string;
+};
+
+type OpdrachtoverheidTender = {
+  vacancies_location?: OpdrachtoverheidLocation;
+  contract_type?: string;
+  tender_requirements?: string | null;
+  tender_competences?: string | null;
+  tender_maximum_tariff?: number;
+  tender_tariff?: string | number | null;
+  tender_max_hours?: number;
+  tender_hours_week?: number;
+  tender_min_hours?: number;
+  tender_other_information?: string | null;
+  tender_hybrid_working?: boolean;
+  tender_document?: string | null;
+  tender_name?: string;
+  tender_buying_organization?: string;
+  tender_description_html?: string | null;
+  tender_overview?: string | null;
+  tender_description?: string | null;
+  tender_team?: string | null;
+  tender_interview?: string | null;
+  web_key?: string;
+  tender_id?: number | string;
+  opdracht_overheid_url?: string;
+  tender_start_date?: string | null;
+  tender_end_date?: string | null;
+  tender_date?: string | null;
+  tender_first_seen?: string | null;
+  tender_category?: number;
+  tender_number_of_professionals?: number | string;
+  tender_url?: string;
+  tender_source?: string;
+  tender_categories?: OpdrachtoverheidCategory[];
+};
+
+type OpdrachtoverheidApiResponse = {
+  negometrix_tenders?: OpdrachtoverheidTender[];
+};
 
 /** Categorie-ID → leesbare naam */
 const CATEGORY_MAP: Record<number, string> = {
@@ -20,7 +76,7 @@ const CATEGORY_MAP: Record<number, string> = {
   26: "Vastgoed en Grondzaken",
 };
 
-export async function scrapeOpdrachtoverheid(): Promise<any[]> {
+export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
   console.log("Opdrachtoverheid scrapen via API");
 
   const MAX_RETRIES = 2;
@@ -61,12 +117,12 @@ export async function scrapeOpdrachtoverheid(): Promise<any[]> {
         throw new Error(`API ${res.status}: ${res.statusText} — ${errorBody.slice(0, 500)}`);
       }
 
-      const data = await res.json();
+      const data = (await res.json()) as OpdrachtoverheidApiResponse;
       const allTenders = data.negometrix_tenders ?? [];
 
       console.log(`Opdrachtoverheid API: ${allTenders.length} actieve opdrachten`);
 
-      const listings = allTenders.map((t: any) => {
+      const listings: RawScrapedListing[] = allTenders.map((t) => {
         const loc = t.vacancies_location ?? {};
         const empType = (t.contract_type ?? "").toLowerCase();
 
@@ -181,13 +237,13 @@ export async function scrapeOpdrachtoverheid(): Promise<any[]> {
           sourcePlatform: t.tender_source ?? undefined,
           durationMonths: computeDurationMonths(t.tender_start_date, t.tender_end_date),
           categories: (t.tender_categories ?? [])
-            .map((c: any) => c.tender_category_obj?.type)
+            .map((category) => category.tender_category_obj?.type)
             .filter(Boolean),
           companyAddress: loc.company_address ?? undefined,
         };
       });
 
-      const validListings = listings.filter((l: any) => l.externalId && l.externalId.length > 0);
+      const validListings = listings.filter((listing) => listing.externalId.length > 0);
 
       console.log(`Opdrachtoverheid: ${validListings.length} geldige opdrachten`);
 
@@ -258,10 +314,11 @@ function parseHtmlList(html: string | null | undefined): string[] {
   if (!html) return [];
   const items: string[] = [];
   const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-  let match: RegExpExecArray | null;
-  while ((match = liRegex.exec(html)) !== null) {
+  let match = liRegex.exec(html);
+  while (match !== null) {
     const text = stripHtml(match[1]).trim();
     if (text.length > 0) items.push(text);
+    match = liRegex.exec(html);
   }
   if (items.length === 0) {
     const plain = stripHtml(html);
