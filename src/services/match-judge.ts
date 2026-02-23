@@ -1,6 +1,6 @@
-import { generateText, Output } from "ai";
+import { Output } from "ai";
 import { z } from "zod";
-import { grok } from "../lib/ai-models";
+import { tracedGenerateText as generateText, grok } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 import type { StructuredMatchOutput } from "../schemas/matching";
 

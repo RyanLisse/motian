@@ -1,8 +1,11 @@
-import { embed, embedMany } from "ai";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { candidates, jobs } from "../db/schema";
-import { embeddingModel } from "../lib/ai-models";
+import {
+  tracedEmbed as embed,
+  embeddingModel,
+  tracedEmbedMany as embedMany,
+} from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 
 // ========== Config ==========

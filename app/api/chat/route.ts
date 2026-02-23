@@ -1,6 +1,7 @@
-import { convertToModelMessages, stepCountIs, streamText } from "ai";
+import { convertToModelMessages, stepCountIs } from "ai";
 import { z } from "zod";
 import { buildSystemPrompt, chatModel, recruitmentTools } from "@/src/ai/agent";
+import { tracedStreamText as streamText } from "@/src/lib/ai-models";
 import { rateLimit } from "@/src/lib/rate-limit";
 
 const limiter = rateLimit({ interval: 60_000, limit: 20 });

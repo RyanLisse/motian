@@ -1,6 +1,6 @@
-import { generateText, Output } from "ai";
+import { Output } from "ai";
 import { z } from "zod";
-import { geminiFlash } from "../lib/ai-models";
+import { geminiFlash, tracedGenerateText as generateText } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 import { type ClassifiedRequirement, classifiedRequirementSchema } from "../schemas/matching";
 

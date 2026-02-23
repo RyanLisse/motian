@@ -1,5 +1,5 @@
-import { generateText, Output } from "ai";
-import { geminiFlash } from "../lib/ai-models";
+import { Output } from "ai";
+import { geminiFlash, tracedGenerateText as generateText } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 import {
   type ClassifiedRequirement,

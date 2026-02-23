@@ -1,18 +1,89 @@
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { xai } from "@ai-sdk/xai";
-import { wrapAISDKModel } from "langsmith/wrappers/vercel";
+import * as ai from "ai";
 
-function maybeWrap<TModel>(model: TModel): TModel {
+// ── Centralized model instances ─────────────────────────────────────
+export const geminiFlashLite = google("gemini-2.5-flash-lite");
+export const geminiFlash = google("gemini-3-flash-preview");
+export const grok = xai("grok-4-1-fast-reasoning");
+export const gpt5Nano = openai("gpt-5-nano-2025-08-07");
+export const embeddingModel = openai.textEmbeddingModel("text-embedding-3-small");
+
+// ── LangSmith-traced AI SDK functions ───────────────────────────────
+// Uses `wrapAISDK` from `langsmith/experimental/vercel` to instrument
+// generateText, streamText, embed, embedMany with OpenTelemetry traces.
+// Gracefully falls back to raw `ai` functions when LANGCHAIN_API_KEY is absent.
+
+type WrappedAI = {
+  generateText: typeof ai.generateText;
+  streamText: typeof ai.streamText;
+  embed: typeof ai.embed;
+  embedMany: typeof ai.embedMany;
+};
+
+let _traced: WrappedAI | undefined;
+
+function getTraced(): WrappedAI {
+  if (_traced) return _traced;
+
   if (!process.env.LANGCHAIN_API_KEY) {
-    return model;
+    _traced = {
+      generateText: ai.generateText,
+      streamText: ai.streamText,
+      embed: ai.embed,
+      embedMany: ai.embedMany,
+    };
+    return _traced;
   }
 
-  return wrapAISDKModel(model);
+  try {
+    // Dynamic require to avoid build-time resolution of optional subpath.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { wrapAISDK } = require("langsmith/experimental/vercel") as {
+      wrapAISDK: (mod: typeof ai) => typeof ai;
+    };
+    const wrapped = wrapAISDK(ai);
+    _traced = {
+      generateText: wrapped.generateText,
+      streamText: wrapped.streamText,
+      embed: wrapped.embed,
+      embedMany: wrapped.embedMany,
+    };
+  } catch {
+    _traced = {
+      generateText: ai.generateText,
+      streamText: ai.streamText,
+      embed: ai.embed,
+      embedMany: ai.embedMany,
+    };
+  }
+
+  return _traced;
 }
 
-export const geminiFlashLite = maybeWrap(google("gemini-2.5-flash-lite"));
-export const geminiFlash = maybeWrap(google("gemini-3-flash-preview"));
-export const grok = maybeWrap(xai("grok-4-1-fast-reasoning"));
-export const gpt5Nano = maybeWrap(openai("gpt-5-nano-2025-08-07"));
-export const embeddingModel = openai.textEmbeddingModel("text-embedding-3-small");
+/** LangSmith-traced `generateText` — falls back to raw `ai.generateText` */
+export function tracedGenerateText(
+  ...args: Parameters<typeof ai.generateText>
+): ReturnType<typeof ai.generateText> {
+  return getTraced().generateText(...args);
+}
+
+/** LangSmith-traced `streamText` — falls back to raw `ai.streamText` */
+export function tracedStreamText(
+  ...args: Parameters<typeof ai.streamText>
+): ReturnType<typeof ai.streamText> {
+  return getTraced().streamText(...args);
+}
+
+/** LangSmith-traced `embed` — falls back to raw `ai.embed` */
+export function tracedEmbed(...args: Parameters<typeof ai.embed>): ReturnType<typeof ai.embed> {
+  return getTraced().embed(...args);
+}
+
+/** LangSmith-traced `embedMany` — falls back to raw `ai.embedMany` */
+export function tracedEmbedMany(
+  ...args: Parameters<typeof ai.embedMany>
+): ReturnType<typeof ai.embedMany> {
+  return getTraced().embedMany(...args);
+}

@@ -1,9 +1,9 @@
-import { generateText, Output } from "ai";
+import { Output } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { geminiFlashLite } from "../lib/ai-models";
+import { geminiFlashLite, tracedGenerateText as generateText } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
 
 // ========== Schema ==========
