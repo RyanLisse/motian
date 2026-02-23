@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     if (existingCandidateId) {
       // Enrich existing candidate
-      candidate = await enrichCandidateFromCV(existingCandidateId, parsed, resumeRaw ?? "");
+      candidate = await enrichCandidateFromCV(existingCandidateId, parsed, resumeRaw ?? "", fileUrl);
       if (!candidate) {
         return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
       }
@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
         source: "cv-upload",
       });
 
-      // Enrich with structured data
+      // Enrich with structured data + store CV file URL
       if (candidate) {
-        await enrichCandidateFromCV(candidate.id, parsed, resumeRaw ?? "");
+        await enrichCandidateFromCV(candidate.id, parsed, resumeRaw ?? "", fileUrl);
       }
     }
 

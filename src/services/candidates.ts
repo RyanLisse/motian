@@ -272,6 +272,7 @@ export async function enrichCandidateFromCV(
   candidateId: string,
   parsed: ParsedCV,
   resumeRaw: string,
+  resumeUrl?: string,
 ): Promise<Candidate | null> {
   const existing = await getCandidateById(candidateId);
   if (!existing) return null;
@@ -279,6 +280,7 @@ export async function enrichCandidateFromCV(
   const updates: Record<string, unknown> = {
     resumeRaw,
     resumeParsedAt: new Date(),
+    ...(resumeUrl ? { resumeUrl } : {}),
     skillsStructured: {
       hard: parsed.skills.hard,
       soft: parsed.skills.soft,

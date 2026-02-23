@@ -3,7 +3,9 @@ import { ArrowLeft, Briefcase, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CandidateNotes } from "@/components/candidate-notes";
+import { CvDocumentViewer } from "@/components/cv-document-viewer";
 import { CvDropZone } from "@/components/cv-drop-zone";
+import { DeleteCandidateButton } from "@/components/delete-candidate-button";
 import { EditCandidateFields } from "@/components/edit-candidate-fields";
 import { SkillsRadar } from "@/components/skills-radar";
 import { SkillsTags } from "@/components/skills-tags";
@@ -69,14 +71,17 @@ export default async function ProfessionalDetailPage({ params }: Props) {
     <CvDropZone candidateId={candidate.id}>
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
-          {/* Back link */}
-          <Link
-            href="/professionals"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Terug naar professionals
-          </Link>
+          {/* Back link + delete */}
+          <div className="flex items-center justify-between">
+            <Link
+              href="/professionals"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Terug naar professionals
+            </Link>
+            <DeleteCandidateButton candidateId={candidate.id} candidateName={candidate.name} />
+          </div>
 
           {/* Header */}
           <div>
@@ -127,6 +132,11 @@ export default async function ProfessionalDetailPage({ params }: Props) {
               linkedinUrl: candidate.linkedinUrl,
             }}
           />
+
+          {/* CV Document Viewer */}
+          {candidate.resumeUrl && (
+            <CvDocumentViewer url={candidate.resumeUrl} candidateName={candidate.name} />
+          )}
 
           {/* Vaardigheden — structured or legacy */}
           {(() => {
