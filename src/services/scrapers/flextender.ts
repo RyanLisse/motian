@@ -16,7 +16,7 @@ type FlextenderDetail = Partial<RawScrapedListing> & {
 
 /** Haal de widget_config token op uit de Flextender pagina HTML */
 async function fetchWidgetConfig(): Promise<string | null> {
-  const res = await fetch(PAGE_URL);
+  const res = await fetch(PAGE_URL, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`Pagina laden mislukt: ${res.status}`);
   const html = await res.text();
   const match = html.match(/name="kbs_flx_widget_config"\s+value="([^"]+)"/);
@@ -49,6 +49,7 @@ export async function scrapeFlextender(): Promise<RawScrapedListing[]> {
       const res = await fetch(AJAX_URL, {
         method: "POST",
         body: formData,
+        signal: AbortSignal.timeout(30_000),
       });
 
       if (!res.ok) {
@@ -162,13 +163,14 @@ function parseFlextenderHtml(html: string): FlextenderListing[] {
 
 // ── Detail-pagina verrijking ──────────────────────────────────────
 
-/** Verrijk listings met content van hun detail-pagina's (parallel, max 10 tegelijk) */
+/** Verrijk listings met content van hun detail-pagina's (parallel, max 5 tegelijk) */
 async function enrichListings(
   listings: FlextenderListing[],
   logger?: { info: (m: string) => void; warn: (m: string) => void },
 ): Promise<RawScrapedListing[]> {
-  const CONCURRENCY = 10;
+  const CONCURRENCY = 5;
   const results: RawScrapedListing[] = [];
+  let detailFailures = 0;
 
   for (let i = 0; i < listings.length; i += CONCURRENCY) {
     const batch = listings.slice(i, i + CONCURRENCY);
@@ -188,18 +190,29 @@ async function enrichListings(
           const { _rawHours, ...listingClean } = listing;
           return { ...listingClean, ...detail };
         } catch (err) {
+          detailFailures++;
           (logger?.warn ?? console.warn)(
             `Detail ophalen mislukt voor ${listing.externalId}: ${err}`,
           );
-          return listing;
+          // Return listing without detail enrichment — still usable
+          const { _rawHours, ...listingClean } = listing;
+          return listingClean;
         }
       }),
     );
     results.push(...enrichedBatch);
 
+    // Back-off between batches to avoid overwhelming Flextender
     if (i + CONCURRENCY < listings.length) {
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 500));
     }
+  }
+
+  if (detailFailures > 0) {
+    const log = logger?.warn ?? console.warn;
+    log(
+      `Flextender: ${detailFailures}/${listings.length} detail-pagina's mislukt (${Math.round((1 - detailFailures / listings.length) * 100)}% verrijkt)`,
+    );
   }
 
   return results;
@@ -208,7 +221,7 @@ async function enrichListings(
 /** Haal detail-pagina op en parse gestructureerde secties */
 async function fetchDetailPage(aanvraagnr: string): Promise<FlextenderDetail> {
   const url = `${DETAIL_BASE}${aanvraagnr}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`Detail ${res.status}: ${res.statusText}`);
 
   const html = await res.text();

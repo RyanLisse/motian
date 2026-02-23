@@ -2,10 +2,10 @@
 
 import { Code, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { zodToVisualJsonSchema } from "@/src/lib/zod-json-schema";
-import { unifiedJobSchema } from "@/src/schemas/job";
 import { Button } from "@/components/ui/button";
 import { VisualJsonViewer } from "@/components/visual-json-viewer";
+import { zodToVisualJsonSchema } from "@/src/lib/zod-json-schema";
+import { unifiedJobSchema } from "@/src/schemas/job";
 
 const jobSchema = zodToVisualJsonSchema(unifiedJobSchema, "unifiedJob") as object;
 
@@ -39,6 +39,7 @@ export function JsonViewer({ data }: { data: Record<string, unknown> }) {
       {open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           {/* Backdrop */}
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop overlay dismiss pattern */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setOpen(false)}
@@ -67,13 +68,7 @@ export function JsonViewer({ data }: { data: Record<string, unknown> }) {
 
             {/* Editor fills remaining space */}
             <div className="flex-1 min-h-0">
-              <VisualJsonViewer
-                value={data}
-                schema={schema}
-                readOnly
-                height="100%"
-                width="100%"
-              />
+              <VisualJsonViewer value={data} schema={schema} readOnly height="100%" width="100%" />
             </div>
           </div>
         </div>

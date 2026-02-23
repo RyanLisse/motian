@@ -1,6 +1,6 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
-import { scrapeResults } from "../db/schema";
+import { jobs, scrapeResults } from "../db/schema";
 
 // ========== Types ==========
 
@@ -28,6 +28,7 @@ export type ScrapeAnalytics = {
   totalJobsFound: number;
   totalJobsNew: number;
   totalDuplicates: number;
+  totalUniqueJobs: number;
   overallSuccessRate: number;
   avgDurationMs: number;
   byPlatform: PlatformStats[];
@@ -49,19 +50,22 @@ export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeRe
 
 /** Bereken analytics per platform over alle scrape resultaten */
 export async function getAnalytics(): Promise<ScrapeAnalytics> {
-  const rows = await db
-    .select({
-      platform: scrapeResults.platform,
-      totalRuns: sql<number>`count(*)::int`,
-      successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
-      failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
-      totalJobsFound: sql<number>`coalesce(sum(${scrapeResults.jobsFound}), 0)::int`,
-      totalJobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
-      totalDuplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
-      avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
-    })
-    .from(scrapeResults)
-    .groupBy(scrapeResults.platform);
+  const [rows, uniqueJobsResult] = await Promise.all([
+    db
+      .select({
+        platform: scrapeResults.platform,
+        totalRuns: sql<number>`count(*)::int`,
+        successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
+        failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
+        totalJobsFound: sql<number>`coalesce(sum(${scrapeResults.jobsFound}), 0)::int`,
+        totalJobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
+        totalDuplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
+        avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
+      })
+      .from(scrapeResults)
+      .groupBy(scrapeResults.platform),
+    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(isNull(jobs.deletedAt)),
+  ]);
 
   const byPlatform: PlatformStats[] = rows.map((r) => ({
     ...r,
@@ -76,6 +80,7 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
     totalJobsFound: byPlatform.reduce((s, p) => s + p.totalJobsFound, 0),
     totalJobsNew: byPlatform.reduce((s, p) => s + p.totalJobsNew, 0),
     totalDuplicates: byPlatform.reduce((s, p) => s + p.totalDuplicates, 0),
+    totalUniqueJobs: uniqueJobsResult[0]?.count ?? 0,
     overallSuccessRate: totalRuns > 0 ? Math.round((totalSuccess / totalRuns) * 100) : 0,
     avgDurationMs:
       byPlatform.length > 0

@@ -59,8 +59,8 @@ export default async function ScraperPage() {
           />
           <KPICard
             icon={<Search className="h-4 w-4" />}
-            label="Vacatures Gevonden"
-            value={analytics.totalJobsFound}
+            label="Actieve Vacatures"
+            value={analytics.totalUniqueJobs}
             iconClassName="text-blue-500/60"
             valueClassName="text-blue-500"
             compact
