@@ -1,8 +1,8 @@
 import { openai } from "@ai-sdk/openai";
 import { embed, embedMany } from "ai";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
-import { jobs } from "../db/schema";
+import { candidates, jobs } from "../db/schema";
 
 // ========== Config ==========
 
@@ -107,6 +107,129 @@ export async function embedJob(jobId: string): Promise<boolean> {
   await db.update(jobs).set({ embedding }).where(eq(jobs.id, jobId));
 
   return true;
+}
+
+// ========== Candidate Text Preparation ==========
+
+export function buildCandidateEmbeddingText(candidate: {
+  name: string;
+  role: string | null;
+  skills: unknown;
+  experience: unknown;
+  location: string | null;
+}): string {
+  const parts: string[] = [];
+
+  if (candidate.role) parts.push(candidate.role);
+
+  if (Array.isArray(candidate.skills) && candidate.skills.length > 0) {
+    parts.push(`Skills: ${candidate.skills.join(", ")}`);
+  }
+
+  if (Array.isArray(candidate.experience) && candidate.experience.length > 0) {
+    const expTexts = candidate.experience
+      .slice(0, 5)
+      .map((e: unknown) =>
+        typeof e === "string"
+          ? e
+          : typeof e === "object" && e !== null && "description" in e
+            ? (e as { description: string }).description
+            : typeof e === "object" && e !== null && "title" in e
+              ? (e as { title: string }).title
+              : "",
+      )
+      .filter(Boolean);
+    if (expTexts.length > 0) parts.push(`Ervaring: ${expTexts.join("; ")}`);
+  }
+
+  if (candidate.location) parts.push(candidate.location);
+
+  return parts.join("\n");
+}
+
+// ========== Embed Single Candidate ==========
+
+export async function embedCandidate(candidateId: string): Promise<boolean> {
+  const [row] = await db
+    .select({
+      id: candidates.id,
+      name: candidates.name,
+      role: candidates.role,
+      skills: candidates.skills,
+      experience: candidates.experience,
+      location: candidates.location,
+    })
+    .from(candidates)
+    .where(eq(candidates.id, candidateId))
+    .limit(1);
+
+  if (!row) return false;
+
+  const text = buildCandidateEmbeddingText(row);
+  if (text.length < 5) return false;
+
+  const embedding = await generateEmbedding(text);
+  await db.update(candidates).set({ embedding }).where(eq(candidates.id, candidateId));
+
+  return true;
+}
+
+// ========== Backfill Candidate Embeddings ==========
+
+export async function embedCandidatesBatch(opts: {
+  limit?: number;
+}): Promise<{ embedded: number; skipped: number; errors: string[] }> {
+  const limit = Math.min(opts.limit ?? 100, 500);
+  let embedded = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  const rows = await db
+    .select({
+      id: candidates.id,
+      name: candidates.name,
+      role: candidates.role,
+      skills: candidates.skills,
+      experience: candidates.experience,
+      location: candidates.location,
+    })
+    .from(candidates)
+    .where(and(isNull(candidates.deletedAt), isNull(candidates.embedding)))
+    .limit(limit);
+
+  if (rows.length === 0) return { embedded, skipped, errors };
+
+  const texts = rows.map((r) => buildCandidateEmbeddingText(r));
+  const validIndices: number[] = [];
+  const validTexts: string[] = [];
+
+  for (let i = 0; i < texts.length; i++) {
+    if (texts[i].length >= 5) {
+      validIndices.push(i);
+      validTexts.push(texts[i]);
+    } else {
+      skipped++;
+    }
+  }
+
+  if (validTexts.length === 0) return { embedded, skipped, errors };
+
+  const embeddings = await generateEmbeddings(validTexts);
+
+  for (let i = 0; i < validIndices.length; i++) {
+    try {
+      const row = rows[validIndices[i]];
+      await db
+        .update(candidates)
+        .set({ embedding: embeddings[i] })
+        .where(eq(candidates.id, row.id));
+      embedded++;
+    } catch (err) {
+      errors.push(`Candidate ${rows[validIndices[i]].id}: ${String(err)}`);
+    }
+  }
+
+  return { embedded, skipped, errors };
 }
 
 // ========== Similarity Search ==========

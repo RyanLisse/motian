@@ -1,6 +1,7 @@
 import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { candidates } from "../db/schema";
+import { escapeLike } from "../lib/helpers";
 
 // ========== Types ==========
 
@@ -65,11 +66,11 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   const conditions = [isNull(candidates.deletedAt)];
 
   if (opts.query) {
-    conditions.push(ilike(candidates.name, `%${opts.query}%`));
+    conditions.push(ilike(candidates.name, `%${escapeLike(opts.query)}%`));
   }
 
   if (opts.location) {
-    conditions.push(ilike(candidates.location, `%${opts.location}%`));
+    conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
   }
 
   return db
@@ -88,11 +89,11 @@ export async function countCandidates(
   const conditions = [isNull(candidates.deletedAt)];
 
   if (opts.query) {
-    conditions.push(ilike(candidates.name, `%${opts.query}%`));
+    conditions.push(ilike(candidates.name, `%${escapeLike(opts.query)}%`));
   }
 
   if (opts.location) {
-    conditions.push(ilike(candidates.location, `%${opts.location}%`));
+    conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
   }
 
   const [{ count }] = await db
@@ -103,7 +104,7 @@ export async function countCandidates(
   return count ?? 0;
 }
 
-/** Nieuwe kandidaat aanmaken en teruggeven. */
+/** Nieuwe kandidaat aanmaken en teruggeven. Genereert embedding op de achtergrond. */
 export async function createCandidate(data: CreateCandidateData): Promise<Candidate> {
   const rows = await db
     .insert(candidates)
@@ -117,7 +118,17 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     })
     .returning();
 
-  return rows[0];
+  const candidate = rows[0];
+
+  // Generate embedding (non-fatal, fire-and-forget)
+  try {
+    const { embedCandidate } = await import("./embedding");
+    await embedCandidate(candidate.id);
+  } catch (err) {
+    console.error(`[Candidates] Embedding error for ${candidate.id}:`, err);
+  }
+
+  return candidate;
 }
 
 /** Kandidaat bijwerken en teruggeven, of null als niet gevonden. */
