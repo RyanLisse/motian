@@ -1,21 +1,21 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { withApiHandler } from "@/src/lib/api-handler";
 import { deleteInterview, getInterviewById, updateInterview } from "@/src/services/interviews";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
+export const GET = withApiHandler(
+  async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
     const interview = await getInterviewById(id);
     if (!interview) {
       return Response.json({ error: "Interview niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: interview });
-  } catch {
-    return Response.json({ error: "Interne serverfout" }, { status: 500 });
-  }
-}
+  },
+  { logPrefix: "GET /api/interviews/[id] error" },
+);
 
 const PatchSchema = z.object({
   status: z.enum(["scheduled", "completed", "cancelled"]).optional(),
@@ -23,8 +23,8 @@ const PatchSchema = z.object({
   rating: z.number().int().min(1).max(5).optional(),
 });
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
+export const PATCH = withApiHandler(
+  async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
     const body = await req.json();
     const result = PatchSchema.safeParse(body);
@@ -41,13 +41,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     revalidatePath("/interviews");
     return Response.json({ data: interview });
-  } catch {
-    return Response.json({ error: "Interne serverfout" }, { status: 500 });
-  }
-}
+  },
+  { logPrefix: "PATCH /api/interviews/[id] error" },
+);
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
+export const DELETE = withApiHandler(
+  async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
     const deleted = await deleteInterview(id);
     if (!deleted) {
@@ -55,7 +54,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     }
     revalidatePath("/interviews");
     return Response.json({ data: { id } });
-  } catch {
-    return Response.json({ error: "Interne serverfout" }, { status: 500 });
-  }
-}
+  },
+  { logPrefix: "DELETE /api/interviews/[id] error" },
+);

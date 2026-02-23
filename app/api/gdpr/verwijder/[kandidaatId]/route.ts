@@ -1,13 +1,11 @@
 import type { NextRequest } from "next/server";
+import { withApiHandler } from "@/src/lib/api-handler";
 import { eraseCandidateData } from "@/src/services/gdpr";
 
 export const dynamic = "force-dynamic";
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ kandidaatId: string }> },
-) {
-  try {
+export const DELETE = withApiHandler(
+  async (_request: NextRequest, { params }: { params: Promise<{ kandidaatId: string }> }) => {
     const { kandidaatId } = await params;
     const requestedBy = _request.headers.get("x-requested-by") ?? "system";
     const result = await eraseCandidateData(kandidaatId, requestedBy);
@@ -17,8 +15,9 @@ export async function DELETE(
     }
 
     return Response.json({ data: result });
-  } catch (error) {
-    console.error("Fout bij verwijderen kandidaatgegevens:", error);
-    return Response.json({ error: "Kan kandidaatgegevens niet verwijderen" }, { status: 500 });
-  }
-}
+  },
+  {
+    logPrefix: "Fout bij verwijderen kandidaatgegevens",
+    errorMessage: "Kan kandidaatgegevens niet verwijderen",
+  },
+);

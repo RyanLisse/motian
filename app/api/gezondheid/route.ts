@@ -1,14 +1,16 @@
 import type { NextRequest } from "next/server";
+import { withApiHandler } from "@/src/lib/api-handler";
 import { getHealth } from "@/src/services/scrapers";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: NextRequest) {
-  try {
+export const GET = withApiHandler(
+  async (_request: NextRequest) => {
     const health = await getHealth();
     return Response.json(health);
-  } catch (error) {
-    console.error("Fout bij ophalen gezondheidsstatus:", error);
-    return Response.json({ error: "Kan gezondheidsstatus niet ophalen" }, { status: 500 });
-  }
-}
+  },
+  {
+    logPrefix: "Fout bij ophalen gezondheidsstatus",
+    errorMessage: "Kan gezondheidsstatus niet ophalen",
+  },
+);

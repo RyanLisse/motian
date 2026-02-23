@@ -1,10 +1,11 @@
 import type { NextRequest } from "next/server";
+import { withApiHandler } from "@/src/lib/api-handler";
 import { scrubContactData } from "@/src/services/gdpr";
 
 export const dynamic = "force-dynamic";
 
-export async function DELETE(request: NextRequest) {
-  try {
+export const DELETE = withApiHandler(
+  async (request: NextRequest) => {
     const identifier =
       request.nextUrl.searchParams.get("identifier") ?? request.nextUrl.searchParams.get("q");
 
@@ -18,8 +19,9 @@ export async function DELETE(request: NextRequest) {
     const requestedBy = request.headers.get("x-requested-by") ?? "system";
     const data = await scrubContactData(identifier, requestedBy);
     return Response.json({ data });
-  } catch (error) {
-    console.error("Fout bij verwijderen contactgegevens:", error);
-    return Response.json({ error: "Kan contactgegevens niet verwijderen" }, { status: 500 });
-  }
-}
+  },
+  {
+    logPrefix: "Fout bij verwijderen contactgegevens",
+    errorMessage: "Kan contactgegevens niet verwijderen",
+  },
+);

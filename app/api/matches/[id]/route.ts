@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { withApiHandler } from "@/src/lib/api-handler";
 import { publish } from "@/src/lib/event-bus";
 import { updateMatchStatus } from "@/src/services/matches";
 
@@ -10,8 +11,8 @@ const PatchSchema = z.object({
   reviewedBy: z.string().optional(),
 });
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
+export const PATCH = withApiHandler(
+  async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
     const body = await req.json();
     const result = PatchSchema.safeParse(body);
@@ -26,7 +27,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     revalidatePath("/matching");
     publish("match:updated", { matchId: id, status: result.data.status });
     return Response.json({ data: match });
-  } catch {
-    return Response.json({ error: "Interne serverfout" }, { status: 500 });
-  }
-}
+  },
+  { logPrefix: "PATCH /api/matches/[id] error" },
+);

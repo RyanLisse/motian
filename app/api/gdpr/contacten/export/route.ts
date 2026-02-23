@@ -1,10 +1,11 @@
 import type { NextRequest } from "next/server";
+import { withApiHandler } from "@/src/lib/api-handler";
 import { exportContactData } from "@/src/services/gdpr";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withApiHandler(
+  async (request: NextRequest) => {
     const identifier =
       request.nextUrl.searchParams.get("identifier") ?? request.nextUrl.searchParams.get("q");
 
@@ -18,8 +19,9 @@ export async function GET(request: NextRequest) {
     const requestedBy = request.headers.get("x-requested-by") ?? "system";
     const data = await exportContactData(identifier, requestedBy);
     return Response.json({ data });
-  } catch (error) {
-    console.error("Fout bij exporteren contactgegevens:", error);
-    return Response.json({ error: "Kan contactgegevens niet exporteren" }, { status: 500 });
-  }
-}
+  },
+  {
+    logPrefix: "Fout bij exporteren contactgegevens",
+    errorMessage: "Kan contactgegevens niet exporteren",
+  },
+);

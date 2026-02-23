@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { withApiHandler } from "@/src/lib/api-handler";
 import { updateConfig } from "@/src/services/scrapers";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +15,8 @@ const patchSchema = z
     message: "Minimaal één veld vereist",
   });
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
+export const PATCH = withApiHandler(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
     const body = await request.json();
 
@@ -33,8 +34,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     return Response.json({ data: config });
-  } catch (error) {
-    console.error("Fout bij bijwerken scraper configuratie:", error);
-    return Response.json({ error: "Kan scraper configuratie niet bijwerken" }, { status: 500 });
-  }
-}
+  },
+  {
+    logPrefix: "Fout bij bijwerken scraper configuratie",
+    errorMessage: "Kan scraper configuratie niet bijwerken",
+  },
+);
