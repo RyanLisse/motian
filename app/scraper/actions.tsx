@@ -1,8 +1,8 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
 
 export function ScraperActions() {
   const [loading, setLoading] = useState(false);
@@ -39,9 +39,7 @@ export function ScraperActions() {
 
   return (
     <div className="flex items-center gap-3">
-      {message && (
-        <span className="text-sm text-muted-foreground">{message}</span>
-      )}
+      {message && <span className="text-sm text-muted-foreground">{message}</span>}
       <Button
         onClick={handleScrapeAll}
         disabled={loading}

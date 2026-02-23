@@ -11,10 +11,7 @@ export const recruitmentTools = {
   triggerScraper: tools.triggerScraper,
 };
 
-export function buildSystemPrompt(context?: {
-  route?: string;
-  entityId?: string;
-}) {
+export function buildSystemPrompt(context?: { route?: string; entityId?: string }) {
   let prompt = `Je bent Motian AI, de slimme recruitment assistent voor het Motian platform.
 Antwoord altijd in het Nederlands, tenzij de gebruiker in het Engels schrijft.
 Gebruik tools om data op te halen — gok nooit over opdrachten of data.

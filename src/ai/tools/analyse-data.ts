@@ -1,8 +1,8 @@
 import { tool } from "ai";
+import { isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { jobs, scrapeResults } from "@/src/db/schema";
-import { sql, isNull, eq } from "drizzle-orm";
 
 export const analyseData = tool({
   description:

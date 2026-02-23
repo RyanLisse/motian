@@ -1,7 +1,7 @@
+import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
-import { desc, isNull, ilike, eq, and, or, sql } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +26,8 @@ export async function GET(req: NextRequest) {
         ilike(jobs.company, pattern),
         ilike(jobs.description, pattern),
         ilike(jobs.location, pattern),
-        ilike(jobs.platform, pattern)
-      )!
+        ilike(jobs.platform, pattern),
+      )!,
     );
   }
 
@@ -57,10 +57,7 @@ export async function GET(req: NextRequest) {
       .orderBy(desc(jobs.scrapedAt))
       .limit(PER_PAGE)
       .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(jobs)
-      .where(whereClause),
+    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(whereClause),
   ]);
 
   const total = countResult[0]?.count ?? 0;

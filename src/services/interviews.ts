@@ -1,6 +1,6 @@
+import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "../db";
 import { interviews } from "../db/schema";
-import { and, desc, eq, gte } from "drizzle-orm";
 
 export type Interview = typeof interviews.$inferSelect;
 
@@ -19,7 +19,12 @@ export async function listInterviews(opts: ListInterviewsOpts): Promise<Intervie
   if (opts.applicationId) conditions.push(eq(interviews.applicationId, opts.applicationId));
   if (opts.status) conditions.push(eq(interviews.status, opts.status));
   const where = conditions.length > 0 ? and(...conditions) : undefined;
-  return db.select().from(interviews).where(where).orderBy(desc(interviews.scheduledAt)).limit(limit);
+  return db
+    .select()
+    .from(interviews)
+    .where(where)
+    .orderBy(desc(interviews.scheduledAt))
+    .limit(limit);
 }
 
 export async function getInterviewById(id: string): Promise<Interview | null> {
@@ -36,15 +41,18 @@ export async function createInterview(data: {
   location?: string;
 }): Promise<Interview> {
   if (!VALID_TYPES.includes(data.type)) throw new Error(`Ongeldig interviewtype: ${data.type}`);
-  const rows = await db.insert(interviews).values({
-    applicationId: data.applicationId,
-    scheduledAt: data.scheduledAt,
-    type: data.type,
-    interviewer: data.interviewer,
-    duration: data.duration ?? 60,
-    location: data.location ?? null,
-    status: "scheduled",
-  }).returning();
+  const rows = await db
+    .insert(interviews)
+    .values({
+      applicationId: data.applicationId,
+      scheduledAt: data.scheduledAt,
+      type: data.type,
+      interviewer: data.interviewer,
+      duration: data.duration ?? 60,
+      location: data.location ?? null,
+      status: "scheduled",
+    })
+    .returning();
   return rows[0];
 }
 
@@ -75,5 +83,10 @@ export async function deleteInterview(id: string): Promise<boolean> {
 }
 
 export async function getUpcomingInterviews(): Promise<Interview[]> {
-  return db.select().from(interviews).where(and(eq(interviews.status, "scheduled"), gte(interviews.scheduledAt, new Date()))).orderBy(interviews.scheduledAt).limit(20);
+  return db
+    .select()
+    .from(interviews)
+    .where(and(eq(interviews.status, "scheduled"), gte(interviews.scheduledAt, new Date())))
+    .orderBy(interviews.scheduledAt)
+    .limit(20);
 }

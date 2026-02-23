@@ -1,12 +1,6 @@
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
-import {
-  candidates,
-  applications,
-  interviews,
-  messages,
-  jobMatches,
-} from "../db/schema";
-import { eq, inArray, and, isNotNull, isNull, sql } from "drizzle-orm";
+import { applications, candidates, interviews, jobMatches, messages } from "../db/schema";
 
 // ========== Types ==========
 
@@ -29,9 +23,7 @@ export type ErasureResult = {
 // ========== GDPR Art. 15 — Recht op inzage ==========
 
 /** Exporteer alle data voor een kandidaat (GDPR Art. 15 — Right of Access). */
-export async function exportCandidateData(
-  candidateId: string,
-): Promise<CandidateExport | null> {
+export async function exportCandidateData(candidateId: string): Promise<CandidateExport | null> {
   // Kandidaat ophalen (GDPR-verzoek geldt altijd, maar exporteer geen soft-deleted data tenzij specifiek gevraagd)
   const candidateRows = await db
     .select()
@@ -53,19 +45,13 @@ export async function exportCandidateData(
   // Interviews ophalen via sollicitatie-IDs
   const interviewRows =
     applicationIds.length > 0
-      ? await db
-          .select()
-          .from(interviews)
-          .where(inArray(interviews.applicationId, applicationIds))
+      ? await db.select().from(interviews).where(inArray(interviews.applicationId, applicationIds))
       : [];
 
   // Berichten ophalen via sollicitatie-IDs
   const messageRows =
     applicationIds.length > 0
-      ? await db
-          .select()
-          .from(messages)
-          .where(inArray(messages.applicationId, applicationIds))
+      ? await db.select().from(messages).where(inArray(messages.applicationId, applicationIds))
       : [];
 
   // Matches ophalen
@@ -86,9 +72,7 @@ export async function exportCandidateData(
 // ========== GDPR Art. 17 — Recht op vergetelheid ==========
 
 /** Hard-delete alle kandidaatdata (GDPR Art. 17 — Right to Erasure). */
-export async function eraseCandidateData(
-  candidateId: string,
-): Promise<ErasureResult> {
+export async function eraseCandidateData(candidateId: string): Promise<ErasureResult> {
   return await db.transaction(async (tx) => {
     // Eerst sollicitatie-IDs ophalen (nodig voor cascading deletes)
     const applicationRows = await tx
@@ -163,10 +147,7 @@ export async function findExpiredRetentionCandidates(): Promise<
     })
     .from(candidates)
     .where(
-      and(
-        isNotNull(candidates.dataRetentionUntil),
-        sql`${candidates.dataRetentionUntil} < NOW()`,
-      ),
+      and(isNotNull(candidates.dataRetentionUntil), sql`${candidates.dataRetentionUntil} < NOW()`),
     );
 
   // isNotNull filter guarantees dataRetentionUntil is non-null

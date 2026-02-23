@@ -1,6 +1,6 @@
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db";
 import { messages } from "../db/schema";
-import { and, desc, eq } from "drizzle-orm";
 
 export type Message = typeof messages.$inferSelect;
 
@@ -43,12 +43,15 @@ export async function createMessage(data: {
 }): Promise<Message | null> {
   if (!VALID_DIRECTIONS.includes(data.direction)) return null;
   if (!VALID_CHANNELS.includes(data.channel)) return null;
-  const rows = await db.insert(messages).values({
-    applicationId: data.applicationId,
-    direction: data.direction,
-    channel: data.channel,
-    subject: data.subject ?? null,
-    body: data.body,
-  }).returning();
+  const rows = await db
+    .insert(messages)
+    .values({
+      applicationId: data.applicationId,
+      direction: data.direction,
+      channel: data.channel,
+      subject: data.subject ?? null,
+      body: data.body,
+    })
+    .returning();
   return rows[0] ?? null;
 }

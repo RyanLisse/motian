@@ -2,10 +2,7 @@ import { deleteMessage } from "@/src/services/messages";
 
 export const dynamic = "force-dynamic";
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const deleted = await deleteMessage(id);

@@ -1,8 +1,8 @@
-import { NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
-import { eq } from "drizzle-orm";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
 
 export const dynamic = "force-dynamic";
@@ -28,22 +28,19 @@ export async function POST(request: NextRequest) {
         .where(eq(scraperConfigs.platform, parsed.data.platform))
         .limit(1);
     } else {
-      configs = await db
-        .select()
-        .from(scraperConfigs)
-        .where(eq(scraperConfigs.isActive, true));
+      configs = await db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true));
     }
 
     if (configs.length === 0) {
       return Response.json(
         { error: "Geen actieve scraper configuratie gevonden" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Run pipelines via Promise.allSettled (non-blocking)
     const results = await Promise.allSettled(
-      configs.map((cfg) => runScrapePipeline(cfg.platform, cfg.baseUrl))
+      configs.map((cfg) => runScrapePipeline(cfg.platform, cfg.baseUrl)),
     );
 
     const summary = configs.map((cfg, i) => {
@@ -59,7 +56,7 @@ export async function POST(request: NextRequest) {
       message: `Scrape gestart voor ${configs.length} platform(en)`,
       platforms: summary,
     });
-  } catch (err) {
+  } catch (_err) {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }
 }

@@ -24,7 +24,7 @@ export const unifiedJobSchema = z.object({
   contractLabel: z.string().optional(),
   location: z.string().optional(),
   province: z.string().optional(),
-  description: z.string().optional(),
+  description: z.string().min(10, "Beschrijving moet minimaal 10 tekens bevatten").optional(),
 
   // === Tarieven & Posities ===
   rateMin: z.number().positive().optional(),
@@ -42,18 +42,12 @@ export const unifiedJobSchema = z.object({
   postedAt: z.coerce.date().optional(),
 
   // === Werkcondities ===
-  contractType: z
-    .enum(["freelance", "interim", "vast", "opdracht"])
-    .optional(),
-  workArrangement: z
-    .enum(["remote", "hybride", "op_locatie"])
-    .optional(),
+  contractType: z.enum(["freelance", "interim", "vast", "opdracht"]).optional(),
+  workArrangement: z.enum(["remote", "hybride", "op_locatie"]).optional(),
   allowsSubcontracting: z.boolean().optional(),
 
   // === Gestructureerde Eisen ===
-  requirements: z
-    .array(z.union([z.string(), requirementSchema]))
-    .default([]),
+  requirements: z.array(z.union([z.string(), requirementSchema])).default([]),
   wishes: z.array(z.union([z.string(), wishSchema])).default([]),
   competences: z.array(z.string()).default([]),
   conditions: z.array(z.string()).default([]),
@@ -67,10 +61,16 @@ export const unifiedJobSchema = z.object({
   workExperienceYears: z.number().int().min(0).optional(),
   numberOfViews: z.number().int().min(0).optional(),
   attachments: z.array(z.object({ url: z.string(), description: z.string() })).default([]),
-  questions: z.array(z.object({ question: z.string(), type: z.string(), options: z.array(z.any()).default([]) })).default([]),
+  questions: z
+    .array(
+      z.object({ question: z.string(), type: z.string(), options: z.array(z.any()).default([]) }),
+    )
+    .default([]),
   languages: z.array(z.string()).default([]),
   descriptionSummary: z.any().optional(),
-  faqAnswers: z.array(z.object({ category: z.string(), question: z.string(), answer: z.string() })).default([]),
+  faqAnswers: z
+    .array(z.object({ category: z.string(), question: z.string(), answer: z.string() }))
+    .default([]),
   agentContact: z.object({ name: z.string(), email: z.string(), phone: z.string() }).optional(),
   recruiterContact: z.object({ name: z.string(), email: z.string(), phone: z.string() }).optional(),
 

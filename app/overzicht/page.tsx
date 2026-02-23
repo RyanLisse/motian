@@ -1,20 +1,20 @@
-import { db } from "@/src/db";
-import { jobs, scraperConfigs, scrapeResults } from "@/src/db/schema";
-import { desc, isNull, eq, sql, and, gte } from "drizzle-orm";
-import Link from "next/link";
+import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import {
+  Activity,
+  ArrowRight,
+  BarChart3,
   Briefcase,
-  TrendingUp,
-  RefreshCw,
+  Building2,
   Clock,
   MapPin,
-  Building2,
-  ArrowRight,
-  Activity,
+  RefreshCw,
+  TrendingUp,
   Zap,
-  BarChart3,
 } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { db } from "@/src/db";
+import { jobs, scrapeResults, scraperConfigs } from "@/src/db/schema";
 
 export const revalidate = 60;
 
@@ -34,10 +34,7 @@ export default async function OverzichtPage() {
     locationCounts,
   ] = await Promise.all([
     // Total active jobs
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt)),
+    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(isNull(jobs.deletedAt)),
     // Jobs per platform
     db
       .select({
@@ -63,23 +60,14 @@ export default async function OverzichtPage() {
       .orderBy(desc(jobs.scrapedAt))
       .limit(5),
     // Active scraper configs
-    db
-      .select()
-      .from(scraperConfigs)
-      .where(eq(scraperConfigs.isActive, true)),
+    db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
     // Recent scrape results
-    db
-      .select()
-      .from(scrapeResults)
-      .orderBy(desc(scrapeResults.runAt))
-      .limit(5),
+    db.select().from(scrapeResults).orderBy(desc(scrapeResults.runAt)).limit(5),
     // New jobs this week
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(jobs)
-      .where(
-        and(isNull(jobs.deletedAt), gte(jobs.scrapedAt, sevenDaysAgo))
-      ),
+      .where(and(isNull(jobs.deletedAt), gte(jobs.scrapedAt, sevenDaysAgo))),
     // Top companies by job count
     db
       .select({
@@ -157,7 +145,10 @@ export default async function OverzichtPage() {
                   const percentage = totalJobs > 0 ? Math.round((p.count / totalJobs) * 100) : 0;
                   return (
                     <div key={p.platform} className="flex items-center gap-3">
-                      <span className="text-sm text-[#ececec] capitalize w-36 shrink-0 truncate" title={p.platform}>
+                      <span
+                        className="text-sm text-[#ececec] capitalize w-36 shrink-0 truncate"
+                        title={p.platform}
+                      >
                         {p.platform}
                       </span>
                       <div className="flex-1 h-2 bg-[#2d2d2d] rounded-full overflow-hidden">
@@ -196,9 +187,7 @@ export default async function OverzichtPage() {
                     className="flex items-start justify-between py-3 first:pt-0 last:pb-0 hover:bg-[#1e1e1e] -mx-4 px-4 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-[#ececec] truncate">
-                        {job.title}
-                      </p>
+                      <p className="text-sm font-medium text-[#ececec] truncate">{job.title}</p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-[#6b6b6b]">
                         {job.company && (
                           <span className="flex items-center gap-1">
@@ -259,9 +248,7 @@ export default async function OverzichtPage() {
                                 : "bg-yellow-500"
                           }`}
                         />
-                        <span className="text-sm text-[#ececec] capitalize">
-                          {s.platform}
-                        </span>
+                        <span className="text-sm text-[#ececec] capitalize">{s.platform}</span>
                       </div>
                       <div className="flex items-center gap-4 text-xs text-[#6b6b6b]">
                         <span>{s.jobsNew ?? 0} nieuw</span>
@@ -293,9 +280,7 @@ export default async function OverzichtPage() {
                   <div key={c.company} className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs text-[#6b6b6b] w-4">{i + 1}.</span>
-                      <span className="text-sm text-[#ececec] truncate">
-                        {c.company}
-                      </span>
+                      <span className="text-sm text-[#ececec] truncate">{c.company}</span>
                     </div>
                     <Badge
                       variant="outline"
@@ -315,9 +300,7 @@ export default async function OverzichtPage() {
                   <div key={l.province} className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs text-[#6b6b6b] w-4">{i + 1}.</span>
-                      <span className="text-sm text-[#ececec] truncate">
-                        {l.province}
-                      </span>
+                      <span className="text-sm text-[#ececec] truncate">{l.province}</span>
                     </div>
                     <Badge
                       variant="outline"

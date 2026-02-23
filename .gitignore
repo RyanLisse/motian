@@ -13,3 +13,4 @@ auth.json
 tsconfig.tsbuildinfo
 .vercel
 .env*.local
+harness-evidence/

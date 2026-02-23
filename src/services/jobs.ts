@@ -1,6 +1,6 @@
+import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { and, desc, eq, gte, lte, isNull, isNotNull, ilike, or, sql } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -24,15 +24,13 @@ export async function getJobById(id: string): Promise<Job | null> {
 }
 
 /** Opdrachten zoeken op titel. Splits multi-word queries into OR conditions. */
-export async function searchJobsByTitle(
-  query: string,
-  limit?: number,
-): Promise<Job[]> {
+export async function searchJobsByTitle(query: string, limit?: number): Promise<Job[]> {
   const safeLimit = Math.min(limit ?? 50, 100);
   const words = query.trim().split(/\s+/).filter(Boolean);
-  const titleConditions = words.length > 1
-    ? or(...words.map((w) => ilike(jobs.title, `%${w}%`)))
-    : ilike(jobs.title, `%${query}%`);
+  const titleConditions =
+    words.length > 1
+      ? or(...words.map((w) => ilike(jobs.title, `%${w}%`)))
+      : ilike(jobs.title, `%${query}%`);
   return db
     .select()
     .from(jobs)
@@ -42,9 +40,7 @@ export async function searchJobsByTitle(
 }
 
 /** Opdrachten zoeken, optioneel gefilterd op platform. Soft-deleted rijen worden uitgesloten. */
-export async function searchJobs(
-  opts: SearchJobsOptions = {},
-): Promise<Job[]> {
+export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
 
   const conditions = [isNull(jobs.deletedAt)];
@@ -232,17 +228,12 @@ export async function hybridSearch(
   });
 
   // Fetch full job objects for any vector-only results
-  const vectorOnlyIds = [...scoreMap.entries()]
-    .filter(([, v]) => !v.job)
-    .map(([id]) => id);
+  const vectorOnlyIds = [...scoreMap.entries()].filter(([, v]) => !v.job).map(([id]) => id);
   if (vectorOnlyIds.length > 0) {
     const fetched = await db
       .select()
       .from(jobs)
-      .where(and(
-        isNull(jobs.deletedAt),
-        or(...vectorOnlyIds.map((id) => eq(jobs.id, id))),
-      ));
+      .where(and(isNull(jobs.deletedAt), or(...vectorOnlyIds.map((id) => eq(jobs.id, id)))));
     const fetchMap = new Map(fetched.map((j) => [j.id, j]));
     for (const [id, entry] of scoreMap) {
       if (!entry.job && fetchMap.has(id)) {
@@ -261,8 +252,14 @@ export async function hybridSearch(
       if (!job) return false;
       if (opts.platform && job.platform !== opts.platform) return false;
       // Province: case-insensitive partial match (DB stores "Utrecht - Utrecht" or "Utrecht")
-      if (provinceLower && !(job.province?.toLowerCase().includes(provinceLower) ||
-        job.location?.toLowerCase().includes(provinceLower))) return false;
+      if (
+        provinceLower &&
+        !(
+          job.province?.toLowerCase().includes(provinceLower) ||
+          job.location?.toLowerCase().includes(provinceLower)
+        )
+      )
+        return false;
       if (opts.rateMin != null && (job.rateMax == null || job.rateMax < opts.rateMin)) return false;
       if (opts.rateMax != null && (job.rateMin == null || job.rateMin > opts.rateMax)) return false;
       if (opts.contractType && job.contractType !== opts.contractType) return false;

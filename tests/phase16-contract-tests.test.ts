@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { unifiedJobSchema } from "../src/schemas/job";
 
 // ─── 1. Scraper Adapter Config Contracts ─────────────────────────────
@@ -16,26 +16,20 @@ describe("Phase 16 — Contract tests", () => {
     for (const { file, expectedName } of PLATFORM_STEPS) {
       describe(`${file} adapter`, () => {
         it("config.name is a non-empty string", async () => {
-          const mod = await import(
-            `../steps/scraper/platforms/${file}.step.ts`
-          );
+          const mod = await import(`../steps/scraper/platforms/${file}.step.ts`);
           expect(typeof mod.config.name).toBe("string");
           expect(mod.config.name.length).toBeGreaterThan(0);
           expect(mod.config.name).toBe(expectedName);
         });
 
         it("config.triggers exists with at least 1 trigger", async () => {
-          const { config } = await import(
-            `../steps/scraper/platforms/${file}.step.ts`
-          );
+          const { config } = await import(`../steps/scraper/platforms/${file}.step.ts`);
           expect(Array.isArray(config.triggers)).toBe(true);
           expect(config.triggers.length).toBeGreaterThanOrEqual(1);
         });
 
         it('each trigger has type "queue" and topic "platform.scrape"', async () => {
-          const { config } = await import(
-            `../steps/scraper/platforms/${file}.step.ts`
-          );
+          const { config } = await import(`../steps/scraper/platforms/${file}.step.ts`);
           for (const trigger of config.triggers) {
             expect(trigger.type).toBe("queue");
             expect(trigger.topic).toBe("platform.scrape");
@@ -43,26 +37,20 @@ describe("Phase 16 — Contract tests", () => {
         });
 
         it('config.enqueues includes { topic: "jobs.normalize" }', async () => {
-          const { config } = await import(
-            `../steps/scraper/platforms/${file}.step.ts`
-          );
+          const { config } = await import(`../steps/scraper/platforms/${file}.step.ts`);
           expect(Array.isArray(config.enqueues)).toBe(true);
           const topics = config.enqueues.map((e: any) => e.topic);
           expect(topics).toContain("jobs.normalize");
         });
 
         it('config.flows includes "recruitment-scraper"', async () => {
-          const { config } = await import(
-            `../steps/scraper/platforms/${file}.step.ts`
-          );
+          const { config } = await import(`../steps/scraper/platforms/${file}.step.ts`);
           expect(Array.isArray(config.flows)).toBe(true);
           expect(config.flows).toContain("recruitment-scraper");
         });
 
         it("handler is exported and is a function", async () => {
-          const mod = await import(
-            `../steps/scraper/platforms/${file}.step.ts`
-          );
+          const mod = await import(`../steps/scraper/platforms/${file}.step.ts`);
           expect(mod.handler).toBeDefined();
           expect(typeof mod.handler).toBe("function");
         });
@@ -76,9 +64,7 @@ describe("Phase 16 — Contract tests", () => {
     it("has a cron trigger", async () => {
       const { config } = await import("../steps/scraper/master-scrape.step.ts");
       expect(Array.isArray(config.triggers)).toBe(true);
-      const cronTriggers = config.triggers.filter(
-        (t: any) => t.type === "cron",
-      );
+      const cronTriggers = config.triggers.filter((t: any) => t.type === "cron");
       expect(cronTriggers.length).toBeGreaterThanOrEqual(1);
       expect(cronTriggers[0].expression).toBeDefined();
       expect(typeof cronTriggers[0].expression).toBe("string");
@@ -96,9 +82,7 @@ describe("Phase 16 — Contract tests", () => {
     });
 
     it("handler is exported and is a function", async () => {
-      const { handler } = await import(
-        "../steps/scraper/master-scrape.step.ts"
-      );
+      const { handler } = await import("../steps/scraper/master-scrape.step.ts");
       expect(typeof handler).toBe("function");
     });
   });
@@ -108,9 +92,7 @@ describe("Phase 16 — Contract tests", () => {
   describe("Normalize step contract", () => {
     it('subscribes to "jobs.normalize" queue', async () => {
       const { config } = await import("../steps/jobs/normalize.step.ts");
-      const queueTriggers = config.triggers.filter(
-        (t: any) => t.type === "queue",
-      );
+      const queueTriggers = config.triggers.filter((t: any) => t.type === "queue");
       expect(queueTriggers.length).toBeGreaterThanOrEqual(1);
       expect(queueTriggers[0].topic).toBe("jobs.normalize");
     });
@@ -136,27 +118,19 @@ describe("Phase 16 — Contract tests", () => {
 
   describe("Record scrape result contract", () => {
     it('subscribes to "scrape.completed" queue', async () => {
-      const { config } = await import(
-        "../steps/jobs/record-scrape-result.step.ts"
-      );
-      const queueTriggers = config.triggers.filter(
-        (t: any) => t.type === "queue",
-      );
+      const { config } = await import("../steps/jobs/record-scrape-result.step.ts");
+      const queueTriggers = config.triggers.filter((t: any) => t.type === "queue");
       expect(queueTriggers.length).toBeGreaterThanOrEqual(1);
       expect(queueTriggers[0].topic).toBe("scrape.completed");
     });
 
     it('has "recruitment-scraper" flow', async () => {
-      const { config } = await import(
-        "../steps/jobs/record-scrape-result.step.ts"
-      );
+      const { config } = await import("../steps/jobs/record-scrape-result.step.ts");
       expect(config.flows).toContain("recruitment-scraper");
     });
 
     it("handler is exported and is a function", async () => {
-      const { handler } = await import(
-        "../steps/jobs/record-scrape-result.step.ts"
-      );
+      const { handler } = await import("../steps/jobs/record-scrape-result.step.ts");
       expect(typeof handler).toBe("function");
     });
   });
@@ -167,13 +141,11 @@ describe("Phase 16 — Contract tests", () => {
     describe("opdrachten.step — GET /api/opdrachten", () => {
       it("has an HTTP GET trigger on /api/opdrachten", async () => {
         const { config } = await import("../steps/api/opdrachten.step.ts");
-        const httpTriggers = config.triggers.filter(
-          (t: any) => t.type === "http",
-        );
+        const httpTriggers = config.triggers.filter((t: any) => t.type === "http");
         expect(httpTriggers.length).toBeGreaterThanOrEqual(1);
         const getTrigger = httpTriggers.find((t: any) => t.method === "GET");
         expect(getTrigger).toBeDefined();
-        expect(getTrigger!.path).toBe("/api/opdrachten");
+        expect(getTrigger?.path).toBe("/api/opdrachten");
       });
 
       it('has "recruitment-pipeline" flow', async () => {
@@ -190,9 +162,7 @@ describe("Phase 16 — Contract tests", () => {
     describe("opdracht-detail.step — GET+PATCH+DELETE /api/opdrachten/:id", () => {
       it("has GET, PATCH, and DELETE triggers on /api/opdrachten/:id", async () => {
         const { config } = await import("../steps/api/opdracht-detail.step.ts");
-        const httpTriggers = config.triggers.filter(
-          (t: any) => t.type === "http",
-        );
+        const httpTriggers = config.triggers.filter((t: any) => t.type === "http");
         expect(httpTriggers.length).toBeGreaterThanOrEqual(3);
 
         const methods = httpTriggers.map((t: any) => t.method);
@@ -211,9 +181,7 @@ describe("Phase 16 — Contract tests", () => {
       });
 
       it("handler is exported and is a function", async () => {
-        const { handler } = await import(
-          "../steps/api/opdracht-detail.step.ts"
-        );
+        const { handler } = await import("../steps/api/opdracht-detail.step.ts");
         expect(typeof handler).toBe("function");
       });
     });
@@ -221,9 +189,7 @@ describe("Phase 16 — Contract tests", () => {
     describe("candidates.step — GET+POST /api/kandidaten", () => {
       it("has GET and POST triggers on /api/kandidaten", async () => {
         const { config } = await import("../steps/api/candidates.step.ts");
-        const httpTriggers = config.triggers.filter(
-          (t: any) => t.type === "http",
-        );
+        const httpTriggers = config.triggers.filter((t: any) => t.type === "http");
         expect(httpTriggers.length).toBeGreaterThanOrEqual(2);
 
         const methods = httpTriggers.map((t: any) => t.method);
@@ -249,13 +215,11 @@ describe("Phase 16 — Contract tests", () => {
     describe("matches.step — GET /api/matches", () => {
       it("has an HTTP GET trigger on /api/matches", async () => {
         const { config } = await import("../steps/api/matches.step.ts");
-        const httpTriggers = config.triggers.filter(
-          (t: any) => t.type === "http",
-        );
+        const httpTriggers = config.triggers.filter((t: any) => t.type === "http");
         expect(httpTriggers.length).toBeGreaterThanOrEqual(1);
         const getTrigger = httpTriggers.find((t: any) => t.method === "GET");
         expect(getTrigger).toBeDefined();
-        expect(getTrigger!.path).toBe("/api/matches");
+        expect(getTrigger?.path).toBe("/api/matches");
       });
 
       it('has "recruitment-pipeline" flow', async () => {
@@ -272,13 +236,11 @@ describe("Phase 16 — Contract tests", () => {
     describe("generate-matches.step — POST /api/matches/genereren", () => {
       it("has an HTTP POST trigger on /api/matches/genereren", async () => {
         const { config } = await import("../steps/api/generate-matches.step.ts");
-        const httpTriggers = config.triggers.filter(
-          (t: any) => t.type === "http",
-        );
+        const httpTriggers = config.triggers.filter((t: any) => t.type === "http");
         expect(httpTriggers.length).toBeGreaterThanOrEqual(1);
         const postTrigger = httpTriggers.find((t: any) => t.method === "POST");
         expect(postTrigger).toBeDefined();
-        expect(postTrigger!.path).toBe("/api/matches/genereren");
+        expect(postTrigger?.path).toBe("/api/matches/genereren");
       });
 
       it('enqueues "matches.generate"', async () => {
@@ -294,9 +256,7 @@ describe("Phase 16 — Contract tests", () => {
       });
 
       it("handler is exported and is a function", async () => {
-        const { handler } = await import(
-          "../steps/api/generate-matches.step.ts"
-        );
+        const { handler } = await import("../steps/api/generate-matches.step.ts");
         expect(typeof handler).toBe("function");
       });
     });

@@ -1,7 +1,7 @@
-import { NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
+import type { NextRequest } from "next/server";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
-import { eq } from "drizzle-orm";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     // Run all eligible scrapers in parallel
     const settled = await Promise.allSettled(
-      eligible.map((cfg) => runScrapePipeline(cfg.platform, cfg.baseUrl))
+      eligible.map((cfg) => runScrapePipeline(cfg.platform, cfg.baseUrl)),
     );
 
     for (let i = 0; i < eligible.length; i++) {
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       message: `${dispatched} platform(en) verwerkt, ${tripped} overgeslagen (circuit breaker)`,
       results,
     });
-  } catch (err) {
+  } catch (_err) {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }
 }

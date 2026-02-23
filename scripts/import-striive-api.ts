@@ -6,12 +6,13 @@
  * from https://supplier.striive.com/api/v2/job-requests?page=0&size=1000
  */
 import { config } from "dotenv";
+
 config({ path: ".env.local" });
 
+import { readFileSync } from "node:fs";
+import { sql } from "drizzle-orm";
 import { db } from "../src/db";
 import { jobs } from "../src/db/schema";
-import { sql } from "drizzle-orm";
-import { readFileSync } from "fs";
 
 interface StriiveJob {
   id: number;
@@ -33,10 +34,14 @@ interface StriiveJob {
 function mapWorkArrangement(remote?: string): string | undefined {
   if (!remote) return undefined;
   switch (remote) {
-    case "HYBRID": return "hybride";
-    case "NO": return "op_locatie";
-    case "YES": return "remote";
-    default: return undefined;
+    case "HYBRID":
+      return "hybride";
+    case "NO":
+      return "op_locatie";
+    case "YES":
+      return "remote";
+    default:
+      return undefined;
   }
 }
 
@@ -69,9 +74,7 @@ async function main() {
       province: extractProvince(j.locationName),
       startDate: j.startDate ? new Date(j.startDate) : undefined,
       endDate: j.endDate ? new Date(j.endDate) : undefined,
-      applicationDeadline: j.closingDateOffer
-        ? new Date(j.closingDateOffer)
-        : undefined,
+      applicationDeadline: j.closingDateOffer ? new Date(j.closingDateOffer) : undefined,
       postedAt: j.publishedAt ? new Date(j.publishedAt) : undefined,
       contractType: "freelance" as const,
       workArrangement: mapWorkArrangement(j.remoteAllowed),

@@ -1,5 +1,5 @@
+import { Building2, Calendar, Clock, Euro, MapPin } from "lucide-react";
 import Link from "next/link";
-import { MapPin, Building2, Clock, Calendar, Euro } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface JobCardProps {

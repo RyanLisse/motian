@@ -1,8 +1,5 @@
-import { describe, it, expect } from "vitest";
-import {
-  computeMatchScore,
-  extractKeywords,
-} from "../src/services/scoring.js";
+import { describe, expect, it } from "vitest";
+import { computeMatchScore, extractKeywords } from "../src/services/scoring.js";
 
 // ── Scoring Algorithm Tests ──────────────────────────────────────
 
@@ -180,9 +177,7 @@ describe("Phase 15 — extractKeywords", () => {
       competences: [],
     } as any;
     const kw = extractKeywords(job);
-    expect(kw.some((k: string) => k.toLowerCase().includes("spring"))).toBe(
-      true,
-    );
+    expect(kw.some((k: string) => k.toLowerCase().includes("spring"))).toBe(true);
   });
 
   it("returns empty array for job with no data", () => {
@@ -196,9 +191,7 @@ describe("Phase 15 — extractKeywords", () => {
       requirements: [{ description: "Java ervaring" }],
     } as any;
     const kw = extractKeywords(job);
-    const javaCount = kw.filter(
-      (k: string) => k.toLowerCase() === "java",
-    ).length;
+    const javaCount = kw.filter((k: string) => k.toLowerCase() === "java").length;
     expect(javaCount).toBe(1);
   });
 });
@@ -207,9 +200,7 @@ describe("Phase 15 — extractKeywords", () => {
 
 describe("Phase 15 — generate-matches event step config", () => {
   it("exports config and handler", async () => {
-    const mod = await import(
-      "../steps/jobs/generate-matches.step.js"
-    );
+    const mod = await import("../steps/jobs/generate-matches.step.js");
     expect(mod.config).toBeDefined();
     expect(mod.config.name).toBe("GenerateMatches");
     expect(mod.handler).toBeDefined();
@@ -217,9 +208,7 @@ describe("Phase 15 — generate-matches event step config", () => {
   });
 
   it("has correct triggers and enqueues", async () => {
-    const { config } = await import(
-      "../steps/jobs/generate-matches.step.js"
-    );
+    const { config } = await import("../steps/jobs/generate-matches.step.js");
     expect(config.triggers).toHaveLength(1);
     expect(config.triggers[0].type).toBe("queue");
     expect(config.triggers[0].topic).toBe("matches.generate");
@@ -229,9 +218,7 @@ describe("Phase 15 — generate-matches event step config", () => {
 
 describe("Phase 15 — generate-matches API step config", () => {
   it("exports config and handler", async () => {
-    const mod = await import(
-      "../steps/api/generate-matches.step.js"
-    );
+    const mod = await import("../steps/api/generate-matches.step.js");
     expect(mod.config).toBeDefined();
     expect(mod.config.name).toBe("TriggerGenerateMatches");
     expect(mod.handler).toBeDefined();
@@ -239,9 +226,7 @@ describe("Phase 15 — generate-matches API step config", () => {
   });
 
   it("has correct HTTP trigger", async () => {
-    const { config } = await import(
-      "../steps/api/generate-matches.step.js"
-    );
+    const { config } = await import("../steps/api/generate-matches.step.js");
     expect(config.triggers).toHaveLength(1);
     expect(config.triggers[0].type).toBe("http");
     expect(config.triggers[0].method).toBe("POST");
@@ -249,9 +234,7 @@ describe("Phase 15 — generate-matches API step config", () => {
   });
 
   it("enqueues matches.generate", async () => {
-    const { config } = await import(
-      "../steps/api/generate-matches.step.js"
-    );
+    const { config } = await import("../steps/api/generate-matches.step.js");
     expect(config.enqueues).toContainEqual({ topic: "matches.generate" });
   });
 });
@@ -260,9 +243,7 @@ describe("Phase 15 — generate-matches API step config", () => {
 
 describe("Phase 15 — candidates service: listActiveCandidates", () => {
   it("is exported as a function", async () => {
-    const { listActiveCandidates } = await import(
-      "../src/services/candidates.js"
-    );
+    const { listActiveCandidates } = await import("../src/services/candidates.js");
     expect(typeof listActiveCandidates).toBe("function");
   });
 });
@@ -271,9 +252,7 @@ describe("Phase 15 — candidates service: listActiveCandidates", () => {
 
 describe("Phase 15 — candidates service: getCandidatesByIds", () => {
   it("is exported as a function", async () => {
-    const { getCandidatesByIds } = await import(
-      "../src/services/candidates.js"
-    );
+    const { getCandidatesByIds } = await import("../src/services/candidates.js");
     expect(typeof getCandidatesByIds).toBe("function");
   });
 });

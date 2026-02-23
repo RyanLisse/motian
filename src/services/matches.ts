@@ -1,6 +1,6 @@
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db";
 import { jobMatches } from "../db/schema";
-import { and, desc, eq, isNull } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -25,9 +25,7 @@ export type CreateMatchData = {
 // ========== Service Functions ==========
 
 /** Matches ophalen met optionele filters. Geordend op matchScore aflopend. */
-export async function listMatches(
-  opts: ListMatchesOptions = {},
-): Promise<Match[]> {
+export async function listMatches(opts: ListMatchesOptions = {}): Promise<Match[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
 
   const conditions: ReturnType<typeof eq>[] = [];
@@ -54,11 +52,7 @@ export async function listMatches(
 
 /** Enkele match ophalen op ID, of null als niet gevonden. */
 export async function getMatchById(id: string): Promise<Match | null> {
-  const rows = await db
-    .select()
-    .from(jobMatches)
-    .where(eq(jobMatches.id, id))
-    .limit(1);
+  const rows = await db.select().from(jobMatches).where(eq(jobMatches.id, id)).limit(1);
 
   return rows[0] ?? null;
 }
@@ -100,18 +94,13 @@ export async function createMatch(data: CreateMatchData): Promise<Match> {
 }
 
 /** Matches voor een specifieke opdracht ophalen. Geordend op matchScore aflopend. */
-export async function getMatchesForJob(
-  jobId: string,
-  limit?: number,
-): Promise<Match[]> {
+export async function getMatchesForJob(jobId: string, limit?: number): Promise<Match[]> {
   const safeLimit = Math.min(limit ?? 50, 100);
 
   return db
     .select()
     .from(jobMatches)
-    .where(
-      eq(jobMatches.jobId, jobId),
-    )
+    .where(eq(jobMatches.jobId, jobId))
     .orderBy(desc(jobMatches.matchScore))
     .limit(safeLimit);
 }
@@ -126,9 +115,7 @@ export async function getMatchesForCandidate(
   return db
     .select()
     .from(jobMatches)
-    .where(
-      eq(jobMatches.candidateId, candidateId),
-    )
+    .where(eq(jobMatches.candidateId, candidateId))
     .orderBy(desc(jobMatches.matchScore))
     .limit(safeLimit);
 }

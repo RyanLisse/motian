@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { findSimilarJobs } from "../../../../services/embedding";
 
 export async function POST(request: NextRequest) {
@@ -8,10 +8,7 @@ export async function POST(request: NextRequest) {
     const limit = typeof body.limit === "number" ? body.limit : 10;
 
     if (!query || query.length < 3) {
-      return NextResponse.json(
-        { error: "Query moet minimaal 3 tekens bevatten" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Query moet minimaal 3 tekens bevatten" }, { status: 400 });
     }
 
     const results = await findSimilarJobs(query, { limit });

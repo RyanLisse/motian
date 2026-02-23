@@ -3,6 +3,7 @@
  * Gebruik: pnpm tsx scripts/seed-striive-config.ts
  */
 import { config as dotenvConfig } from "dotenv";
+
 dotenvConfig({ path: ".env.local" });
 
 import { db } from "../src/db";

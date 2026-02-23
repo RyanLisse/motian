@@ -1,23 +1,16 @@
 "use client";
 
-import { isToolUIPart, getToolName, type UIMessage } from "ai";
+import { getToolName, isToolUIPart, type UIMessage } from "ai";
+import { Bot } from "lucide-react";
 import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/src/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@/src/components/ai-elements/message";
-import {
-  Suggestions,
-  Suggestion,
-} from "@/src/components/ai-elements/suggestion";
+import { Message, MessageContent, MessageResponse } from "@/src/components/ai-elements/message";
+import { Suggestion, Suggestions } from "@/src/components/ai-elements/suggestion";
 import { ChatToolCall } from "./chat-tool-call";
-import { Bot } from "lucide-react";
 
 type Props = {
   messages: UIMessage[];

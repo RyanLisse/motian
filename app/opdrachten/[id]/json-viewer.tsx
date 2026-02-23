@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Code } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export function JsonViewer({ data }: { data: Record<string, unknown> }) {

@@ -7,9 +7,7 @@ export default function OpdrachtenPage() {
         <div className="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center mx-auto mb-5">
           <Search className="h-7 w-7 text-muted-foreground" />
         </div>
-        <h2 className="text-lg font-semibold text-foreground mb-2">
-          Start je zoektocht
-        </h2>
+        <h2 className="text-lg font-semibold text-foreground mb-2">Start je zoektocht</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Selecteer een opdracht uit de lijst om de details te bekijken
         </p>

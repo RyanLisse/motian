@@ -1,8 +1,8 @@
 import { openai } from "@ai-sdk/openai";
 import { embed, embedMany } from "ai";
+import { eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { eq, sql } from "drizzle-orm";
 
 // ========== Config ==========
 
@@ -38,7 +38,13 @@ export function buildJobEmbeddingText(job: {
   if (Array.isArray(job.requirements) && job.requirements.length > 0) {
     const reqs = job.requirements
       .slice(0, 10)
-      .map((r: unknown) => (typeof r === "string" ? r : typeof r === "object" && r !== null && "description" in r ? (r as { description: string }).description : JSON.stringify(r)));
+      .map((r: unknown) =>
+        typeof r === "string"
+          ? r
+          : typeof r === "object" && r !== null && "description" in r
+            ? (r as { description: string }).description
+            : JSON.stringify(r),
+      );
     parts.push(`Eisen: ${reqs.join("; ")}`);
   }
 
@@ -98,10 +104,7 @@ export async function embedJob(jobId: string): Promise<boolean> {
   const text = buildJobEmbeddingText(job);
   const embedding = await generateEmbedding(text);
 
-  await db
-    .update(jobs)
-    .set({ embedding })
-    .where(eq(jobs.id, jobId));
+  await db.update(jobs).set({ embedding }).where(eq(jobs.id, jobId));
 
   return true;
 }
@@ -131,11 +134,9 @@ export async function findSimilarJobs(
     LIMIT ${limit}
   `);
 
-  return (results.rows as Array<{ id: string; title: string; similarity: number }>).map(
-    (r) => ({
-      id: r.id,
-      title: r.title,
-      similarity: Number(r.similarity),
-    }),
-  );
+  return (results.rows as Array<{ id: string; title: string; similarity: number }>).map((r) => ({
+    id: r.id,
+    title: r.title,
+    similarity: Number(r.similarity),
+  }));
 }

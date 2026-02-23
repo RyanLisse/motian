@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useDeferredValue } from "react";
-import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useDeferredValue, useState } from "react";
 import { JobListItem } from "@/components/job-list-item";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SidebarJob {
   id: string;
@@ -58,7 +58,7 @@ async function searchJobs(
   q: string,
   platform: string,
   provincie: string,
-  page: number
+  page: number,
 ): Promise<SearchResponse> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
@@ -92,9 +92,15 @@ export function OpdrachtenSidebar({
     queryKey: ["opdrachten-search", deferredQuery, platform, provincie, page],
     queryFn: () => searchJobs(deferredQuery, platform, provincie, page),
     placeholderData: (prev) => prev,
-    initialData: page === 1 && !deferredQuery && !platform && !provincie
-      ? { jobs: initialJobs, total: initialTotal, page: 1, totalPages: Math.ceil(initialTotal / 10) }
-      : undefined,
+    initialData:
+      page === 1 && !deferredQuery && !platform && !provincie
+        ? {
+            jobs: initialJobs,
+            total: initialTotal,
+            page: 1,
+            totalPages: Math.ceil(initialTotal / 10),
+          }
+        : undefined,
   });
 
   const displayJobs = data?.jobs ?? initialJobs;
@@ -102,10 +108,7 @@ export function OpdrachtenSidebar({
   const totalPages = data?.totalPages ?? 1;
 
   // Reset page when filters change
-  const handleFilterChange = (
-    setter: (v: string) => void,
-    value: string
-  ) => {
+  const handleFilterChange = (setter: (v: string) => void, value: string) => {
     setter(value);
     setPage(1);
   };
@@ -135,9 +138,7 @@ export function OpdrachtenSidebar({
       <div className="px-3 pb-2 flex items-center gap-1.5 shrink-0">
         <Select
           value={platform || undefined}
-          onValueChange={(v) =>
-            handleFilterChange(setPlatform, v === "__all__" ? "" : v)
-          }
+          onValueChange={(v) => handleFilterChange(setPlatform, v === "__all__" ? "" : v)}
         >
           <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
             <SelectValue placeholder="Opdrachtgever" />
@@ -147,11 +148,7 @@ export function OpdrachtenSidebar({
               Alle opdrachtgevers
             </SelectItem>
             {platforms.map((p) => (
-              <SelectItem
-                key={p}
-                value={p}
-                className="capitalize text-foreground text-xs"
-              >
+              <SelectItem key={p} value={p} className="capitalize text-foreground text-xs">
                 {p}
               </SelectItem>
             ))}
@@ -160,9 +157,7 @@ export function OpdrachtenSidebar({
 
         <Select
           value={provincie || undefined}
-          onValueChange={(v) =>
-            handleFilterChange(setProvincie, v === "__all__" ? "" : v)
-          }
+          onValueChange={(v) => handleFilterChange(setProvincie, v === "__all__" ? "" : v)}
         >
           <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
             <SelectValue placeholder="Provincie" />
@@ -200,11 +195,7 @@ export function OpdrachtenSidebar({
           </div>
         ) : (
           displayJobs.map((job) => (
-            <JobListItem
-              key={job.id}
-              job={job}
-              isActive={job.id === activeId}
-            />
+            <JobListItem key={job.id} job={job} isActive={job.id === activeId} />
           ))
         )}
       </ScrollArea>

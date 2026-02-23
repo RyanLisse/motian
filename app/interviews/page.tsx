@@ -1,19 +1,9 @@
-import { db } from "@/src/db";
-import { interviews, applications, jobs, candidates } from "@/src/db/schema";
-import { desc, eq, and, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { Calendar, Clock, Code2, Filter, MapPin, Monitor, Phone, Star, Video } from "lucide-react";
 import Link from "next/link";
-import {
-  Calendar,
-  Clock,
-  Filter,
-  MapPin,
-  Star,
-  Video,
-  Phone,
-  Monitor,
-  Code2,
-} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { db } from "@/src/db";
+import { applications, candidates, interviews, jobs } from "@/src/db/schema";
 
 export const revalidate = 60;
 
@@ -110,10 +100,7 @@ export default async function InterviewsPage({ searchParams }: Props) {
       .orderBy(desc(interviews.scheduledAt))
       .limit(PER_PAGE)
       .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(interviews)
-      .where(where),
+    db.select({ count: sql<number>`count(*)::int` }).from(interviews).where(where),
   ]);
 
   const totalFiltered = countRows[0]?.count ?? 0;
@@ -124,9 +111,7 @@ export default async function InterviewsPage({ searchParams }: Props) {
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         <div>
           <h1 className="text-xl font-bold text-[#ececec]">Interviews</h1>
-          <p className="text-sm text-[#8e8e8e] mt-1">
-            Gesprekken plannen en bijhouden
-          </p>
+          <p className="text-sm text-[#8e8e8e] mt-1">Gesprekken plannen en bijhouden</p>
         </div>
 
         {/* KPI row */}
@@ -137,10 +122,7 @@ export default async function InterviewsPage({ searchParams }: Props) {
             { label: "Geannuleerd", value: countMap.cancelled ?? 0, icon: Clock },
             { label: "Deze week", value: weekCount[0]?.count ?? 0, icon: Star },
           ].map((kpi) => (
-            <div
-              key={kpi.label}
-              className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-3"
-            >
+            <div key={kpi.label} className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-lg p-3">
               <div className="flex items-center gap-2 mb-1">
                 <kpi.icon className="h-4 w-4 text-[#6b6b6b]" />
                 <span className="text-xs text-[#8e8e8e]">{kpi.label}</span>
@@ -182,18 +164,14 @@ export default async function InterviewsPage({ searchParams }: Props) {
         {rows.length === 0 ? (
           <div className="text-center py-16">
             <Calendar className="h-12 w-12 text-[#2d2d2d] mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-[#ececec] mb-2">
-              Geen interviews gevonden
-            </h2>
-            <p className="text-sm text-[#8e8e8e]">
-              Plan een interview in via de pipeline
-            </p>
+            <h2 className="text-lg font-semibold text-[#ececec] mb-2">Geen interviews gevonden</h2>
+            <p className="text-sm text-[#8e8e8e]">Plan een interview in via de pipeline</p>
           </div>
         ) : (
           <>
             <p className="text-sm text-[#8e8e8e]">
-              {totalFiltered} interview{totalFiltered !== 1 ? "s" : ""} gevonden —
-              Pagina {page} van {totalPages}
+              {totalFiltered} interview{totalFiltered !== 1 ? "s" : ""} gevonden — Pagina {page} van{" "}
+              {totalPages}
             </p>
             <div className="grid gap-3">
               {rows.map((row) => {
@@ -215,9 +193,7 @@ export default async function InterviewsPage({ searchParams }: Props) {
                           </span>
                         </div>
                         {row.jobCompany && (
-                          <p className="text-xs text-[#6b6b6b]">
-                            {row.jobCompany}
-                          </p>
+                          <p className="text-xs text-[#6b6b6b]">{row.jobCompany}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -239,15 +215,15 @@ export default async function InterviewsPage({ searchParams }: Props) {
                     <div className="flex items-center gap-4 mt-2 text-xs text-[#6b6b6b]">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {new Date(row.interview.scheduledAt).toLocaleDateString(
-                          "nl-NL",
-                          { weekday: "short", day: "numeric", month: "short" }
-                        )}
-                        {" "}
-                        {new Date(row.interview.scheduledAt).toLocaleTimeString(
-                          "nl-NL",
-                          { hour: "2-digit", minute: "2-digit" }
-                        )}
+                        {new Date(row.interview.scheduledAt).toLocaleDateString("nl-NL", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                        })}{" "}
+                        {new Date(row.interview.scheduledAt).toLocaleTimeString("nl-NL", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />

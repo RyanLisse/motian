@@ -1,26 +1,26 @@
-import { db } from "@/src/db";
-import { jobs } from "@/src/db/schema";
-import { eq, desc, isNull, and, ne } from "drizzle-orm";
-import { notFound } from "next/navigation";
-import Link from "next/link";
+import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import {
-  MapPin,
+  Briefcase,
   Building2,
-  Euro,
   Calendar,
   Clock,
+  Euro,
   ExternalLink,
-  Sparkles,
-  Briefcase,
-  Monitor,
-  Users,
-  Hash,
   FileText,
   GraduationCap,
+  Hash,
+  MapPin,
+  Monitor,
+  Sparkles,
+  Users,
 } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { db } from "@/src/db";
+import { jobs } from "@/src/db/schema";
 import { JsonViewer } from "./json-viewer";
 
 export const revalidate = 120;
@@ -35,13 +35,7 @@ const arrangementLabels: Record<string, string> = {
   remote: "Remote",
 };
 
-function SectionBlock({
-  title,
-  items,
-}: {
-  title: string;
-  items: string[];
-}) {
+function SectionBlock({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
 
   return (
@@ -49,10 +43,7 @@ function SectionBlock({
       <h3 className="text-base font-semibold text-foreground mb-3">{title}</h3>
       <ul className="space-y-2">
         {items.map((item, i) => (
-          <li
-            key={i}
-            className="text-sm text-muted-foreground flex items-start gap-2"
-          >
+          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
             <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
             <span>{item}</span>
           </li>
@@ -88,13 +79,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
     const companyRelated = await db
       .select()
       .from(jobs)
-      .where(
-        and(
-          isNull(jobs.deletedAt),
-          ne(jobs.id, id),
-          eq(jobs.company, job.company)
-        )
-      )
+      .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
       .orderBy(desc(jobs.scrapedAt))
       .limit(4);
     if (companyRelated.length > 0) {
@@ -103,13 +88,25 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   }
 
   // Extract jsonb fields — items can be strings or {isKnockout, description} objects
-  const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+  const stripHtml = (s: string) =>
+    s
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .trim();
   const toStrings = (arr: unknown, clean = false): string[] => {
     if (!Array.isArray(arr)) return [];
-    return arr.map((item) => {
-      const raw = typeof item === "string" ? item : (item as { description?: string })?.description ?? String(item);
-      return clean ? stripHtml(raw) : raw;
-    }).filter(Boolean);
+    return arr
+      .map((item) => {
+        const raw =
+          typeof item === "string"
+            ? item
+            : ((item as { description?: string })?.description ?? String(item));
+        return clean ? stripHtml(raw) : raw;
+      })
+      .filter(Boolean);
   };
   const requirementsList = toStrings(job.requirements);
   const wishesList = toStrings(job.wishes);
@@ -118,23 +115,26 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
   // Parse "Label: Value" conditions for sidebar display
   const metaFields = conditionsList
-    .map(c => { const i = c.indexOf(": "); return i > 0 ? [c.slice(0, i), c.slice(i + 2)] as [string, string] : null; })
+    .map((c) => {
+      const i = c.indexOf(": ");
+      return i > 0 ? ([c.slice(0, i), c.slice(i + 2)] as [string, string]) : null;
+    })
     .filter(Boolean) as [string, string][];
   // Conditions that are NOT key-value pairs stay in the bullet list
-  const plainConditions = conditionsList.filter(c => c.indexOf(": ") <= 0);
+  const plainConditions = conditionsList.filter((c) => c.indexOf(": ") <= 0);
 
   // Build AI summary preview from descriptionSummary JSONB
   const extractSummaryText = (summary: unknown): string | null => {
     if (!summary) return null;
-    if (typeof summary === 'string') return summary;
-    if (typeof summary === 'object') {
+    if (typeof summary === "string") return summary;
+    if (typeof summary === "object") {
       const obj = summary as Record<string, unknown>;
       // JSONB is stored as {en: "...", nl: "..."} — prefer Dutch
-      if (typeof obj.nl === 'string') return obj.nl;
-      if (typeof obj.en === 'string') return obj.en;
-      if (typeof obj.summary === 'string') return obj.summary;
-      if (typeof obj.text === 'string') return obj.text;
-      if (typeof obj.content === 'string') return obj.content;
+      if (typeof obj.nl === "string") return obj.nl;
+      if (typeof obj.en === "string") return obj.en;
+      if (typeof obj.summary === "string") return obj.summary;
+      if (typeof obj.text === "string") return obj.text;
+      if (typeof obj.content === "string") return obj.content;
     }
     return null;
   };
@@ -142,11 +142,11 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   // Sanitize HTML: remove empty paragraphs, consecutive <br> tags, etc.
   const sanitizeHtml = (html: string): string => {
     return html
-      .replace(/<p>\s*<br\s*\/?\s*>\s*<\/p>/gi, '')       // Remove <p><br></p>
-      .replace(/<p>\s*<\/p>/gi, '')                         // Remove empty <p></p>
-      .replace(/(<br\s*\/?\s*>){2,}/gi, '<br>')              // Collapse multiple <br> to one
-      .replace(/<p>\s*(<br\s*\/?\s*>\s*)+/gi, '<p>')        // Remove leading <br> in <p>
-      .replace(/(<br\s*\/?\s*>\s*)+<\/p>/gi, '</p>')        // Remove trailing <br> in <p>
+      .replace(/<p>\s*<br\s*\/?\s*>\s*<\/p>/gi, "") // Remove <p><br></p>
+      .replace(/<p>\s*<\/p>/gi, "") // Remove empty <p></p>
+      .replace(/(<br\s*\/?\s*>){2,}/gi, "<br>") // Collapse multiple <br> to one
+      .replace(/<p>\s*(<br\s*\/?\s*>\s*)+/gi, "<p>") // Remove leading <br> in <p>
+      .replace(/(<br\s*\/?\s*>\s*)+<\/p>/gi, "</p>") // Remove trailing <br> in <p>
       .trim();
   };
 
@@ -155,29 +155,42 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
   // Strip trailing metadata blob (OpdrachtgeverXxx...Referentiecode...)
   const stripTrailingMeta = (text: string): string =>
-    text.replace(/Opdrachtgever[A-Z][^\n]*?(Referentiecode(?:code)?\s*\w+)\s*$/, '').trim();
+    text.replace(/Opdrachtgever[A-Z][^\n]*?(Referentiecode(?:code)?\s*\w+)\s*$/, "").trim();
 
   const formatPlainText = (text: string): string => {
     const cleaned = stripTrailingMeta(text);
-    const lines = cleaned.split('\n');
+    const lines = cleaned.split("\n");
     const blocks: string[] = [];
     let i = 0;
 
     // Check if a line looks like a bullet (starts with space-indented text, dash, dot-prefix, or letter-o sub-bullet)
-    const isBullet = (l: string) => /^[-\u2022]\s/.test(l.trim()) || /^o\s+\S/.test(l.trim()) || (/^\s{1,4}\S/.test(l) && !l.trim().startsWith('(') && l.trim().length > 10 && l.trim().length < 200 && !/^\d+\.\s/.test(l.trim()));
+    const _isBullet = (l: string) =>
+      /^[-\u2022]\s/.test(l.trim()) ||
+      /^o\s+\S/.test(l.trim()) ||
+      (/^\s{1,4}\S/.test(l) &&
+        !l.trim().startsWith("(") &&
+        l.trim().length > 10 &&
+        l.trim().length < 200 &&
+        !/^\d+\.\s/.test(l.trim()));
 
     // Check if a line is a heading
     const isHeadingLine = (line: string, idx: number): boolean => {
-      if (line.length > 100 || line.endsWith(',') || line.endsWith(';') || /^\d+\.\s/.test(line)) return false;
+      if (line.length > 100 || line.endsWith(",") || line.endsWith(";") || /^\d+\.\s/.test(line))
+        return false;
       // Known Dutch heading patterns
-      if (/^(uitvoeringsvoorwaarde|opdracht(gever|omschrijving)?|vereisten|gunningscriteria|competenties|overige?\s*(informatie)?|beoordeling|functieschaal|fee flextender|cv-eisen|werkdagen|taken|profiel|algemeen|probleem|benodigd aantal|stap \d|geen zzp|overig)/i.test(line)) return true;
+      if (
+        /^(uitvoeringsvoorwaarde|opdracht(gever|omschrijving)?|vereisten|gunningscriteria|competenties|overige?\s*(informatie)?|beoordeling|functieschaal|fee flextender|cv-eisen|werkdagen|taken|profiel|algemeen|probleem|benodigd aantal|stap \d|geen zzp|overig)/i.test(
+          line,
+        )
+      )
+        return true;
       // Line ending with colon is a heading (e.g. "Taken:", "Profiel:")
       if (/^[A-Z].*:$/.test(line) && line.length < 80) return true;
       // Short line, no period, starts with capital — check next line is longer
-      if (line.length < 70 && !line.endsWith('.') && /^[A-Z]/.test(line)) {
+      if (line.length < 70 && !line.endsWith(".") && /^[A-Z]/.test(line)) {
         let j = idx + 1;
         while (j < lines.length && !lines[j].trim()) j++;
-        const next = lines[j]?.trim() ?? '';
+        const next = lines[j]?.trim() ?? "";
         return next.length > line.length || j >= lines.length;
       }
       return false;
@@ -185,39 +198,56 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
     while (i < lines.length) {
       const line = lines[i].trim();
-      if (!line) { i++; continue; }
+      if (!line) {
+        i++;
+        continue;
+      }
 
       // Collect consecutive numbered list items (1. 2. 3. ...)
       if (/^\d+\.\s/.test(line)) {
         const items: string[] = [];
         while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
-          items.push(lines[i].trim().replace(/^\d+\.\s*/, ''));
+          items.push(lines[i].trim().replace(/^\d+\.\s*/, ""));
           i++;
         }
-        blocks.push(`<ol class="list-decimal pl-5 mb-3 space-y-1">${items.map(it => `<li>${it}</li>`).join('')}</ol>`);
+        blocks.push(
+          `<ol class="list-decimal pl-5 mb-3 space-y-1">${items.map((it) => `<li>${it}</li>`).join("")}</ol>`,
+        );
         continue;
       }
 
       // Collect consecutive bullet items (- ..., bullet ..., or space-indented lines, or o sub-bullets)
       if (/^[-\u2022]\s/.test(line) || /^o\s+\S/.test(line)) {
         const items: string[] = [];
-        while (i < lines.length && (/^[-\u2022]\s/.test(lines[i].trim()) || /^o\s+\S/.test(lines[i].trim()))) {
-          items.push(lines[i].trim().replace(/^[-\u2022o]\s*/, ''));
+        while (
+          i < lines.length &&
+          (/^[-\u2022]\s/.test(lines[i].trim()) || /^o\s+\S/.test(lines[i].trim()))
+        ) {
+          items.push(lines[i].trim().replace(/^[-\u2022o]\s*/, ""));
           i++;
         }
-        blocks.push(`<ul class="list-disc pl-5 mb-3 space-y-1">${items.map(it => `<li>${it}</li>`).join('')}</ul>`);
+        blocks.push(
+          `<ul class="list-disc pl-5 mb-3 space-y-1">${items.map((it) => `<li>${it}</li>`).join("")}</ul>`,
+        );
         continue;
       }
 
       // Space-indented lines (common in Opdrachtoverheid for task/profile lists)
       if (/^\s{1,4}\S/.test(lines[i]) && lines[i].trim().length > 10) {
         const items: string[] = [];
-        while (i < lines.length && /^\s{1,4}\S/.test(lines[i]) && lines[i].trim().length > 10 && !isHeadingLine(lines[i].trim(), i)) {
+        while (
+          i < lines.length &&
+          /^\s{1,4}\S/.test(lines[i]) &&
+          lines[i].trim().length > 10 &&
+          !isHeadingLine(lines[i].trim(), i)
+        ) {
           items.push(lines[i].trim());
           i++;
         }
         if (items.length > 0) {
-          blocks.push(`<ul class="list-disc pl-5 mb-3 space-y-1">${items.map(it => `<li>${it}</li>`).join('')}</ul>`);
+          blocks.push(
+            `<ul class="list-disc pl-5 mb-3 space-y-1">${items.map((it) => `<li>${it}</li>`).join("")}</ul>`,
+          );
           continue;
         }
       }
@@ -232,19 +262,22 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       // Regular paragraph — collect consecutive non-empty, non-special lines
       const pLines: string[] = [line];
       i++;
-      while (i < lines.length && lines[i].trim()
-        && !/^\d+\.\s/.test(lines[i].trim())
-        && !/^[-\u2022]\s/.test(lines[i].trim())
-        && !/^o\s+\S/.test(lines[i].trim())
-        && !/^\s{1,4}\S/.test(lines[i])
-        && !isHeadingLine(lines[i].trim(), i)) {
+      while (
+        i < lines.length &&
+        lines[i].trim() &&
+        !/^\d+\.\s/.test(lines[i].trim()) &&
+        !/^[-\u2022]\s/.test(lines[i].trim()) &&
+        !/^o\s+\S/.test(lines[i].trim()) &&
+        !/^\s{1,4}\S/.test(lines[i]) &&
+        !isHeadingLine(lines[i].trim(), i)
+      ) {
         pLines.push(lines[i].trim());
         i++;
       }
-      blocks.push(`<p class="mb-3">${pLines.join(' ')}</p>`);
+      blocks.push(`<p class="mb-3">${pLines.join(" ")}</p>`);
     }
 
-    return blocks.join('');
+    return blocks.join("");
   };
 
   const cleanDescription = job.description
@@ -253,9 +286,13 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       : formatPlainText(job.description)
     : null;
 
-  const aiPreview = extractSummaryText(job.descriptionSummary)
-    ?? (cleanDescription
-      ? cleanDescription.replace(/<[^>]*>?/gm, '').substring(0, 250).trim() + (cleanDescription.replace(/<[^>]*>?/gm, '').length > 250 ? '...' : '')
+  const aiPreview =
+    extractSummaryText(job.descriptionSummary) ??
+    (cleanDescription
+      ? cleanDescription
+          .replace(/<[^>]*>?/gm, "")
+          .substring(0, 250)
+          .trim() + (cleanDescription.replace(/<[^>]*>?/gm, "").length > 250 ? "..." : "")
       : null);
 
   return (
@@ -310,9 +347,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               )}
             </div>
             <h1 className="text-xl font-bold text-foreground mb-1">{job.title}</h1>
-            {job.company && (
-              <p className="text-sm text-muted-foreground">{job.company}</p>
-            )}
+            {job.company && <p className="text-sm text-muted-foreground">{job.company}</p>}
           </div>
 
           {/* Meta row with icons */}
@@ -361,22 +396,27 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             {aiPreview ? (
               <p className="text-sm text-muted-foreground leading-relaxed">{aiPreview}</p>
             ) : (
-              <p className="text-sm text-muted-foreground italic">Samenvatting wordt gegenereerd...</p>
+              <p className="text-sm text-muted-foreground italic">
+                Samenvatting wordt gegenereerd...
+              </p>
             )}
           </div>
 
           {/* Tags / key requirements badges (short competences only) */}
-          {competencesList.filter(c => stripHtml(c).length < 60).length > 0 && (
+          {competencesList.filter((c) => stripHtml(c).length < 60).length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {competencesList.filter(c => stripHtml(c).length < 60).slice(0, 8).map((comp, i) => (
-                <Badge
-                  key={i}
-                  variant="outline"
-                  className="bg-primary/10 text-primary border-primary/20 text-xs"
-                >
-                  {stripHtml(comp)}
-                </Badge>
-              ))}
+              {competencesList
+                .filter((c) => stripHtml(c).length < 60)
+                .slice(0, 8)
+                .map((comp, i) => (
+                  <Badge
+                    key={i}
+                    variant="outline"
+                    className="bg-primary/10 text-primary border-primary/20 text-xs"
+                  >
+                    {stripHtml(comp)}
+                  </Badge>
+                ))}
             </div>
           )}
 
@@ -428,7 +468,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                       <h4 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
                         {rJob.title}
                       </h4>
-                      <p className="text-xs text-muted-foreground">{rJob.company || rJob.platform}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {rJob.company || rJob.platform}
+                      </p>
                       {rJob.location && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                           <MapPin className="h-3 w-3" />

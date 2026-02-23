@@ -6,9 +6,9 @@
  *   (of met dotenv via .env.local)
  */
 import "dotenv/config";
+import { isNotNull } from "drizzle-orm";
 import { db } from "../src/db";
 import { scraperConfigs } from "../src/db/schema";
-import { isNotNull } from "drizzle-orm";
 import { encrypt } from "../src/lib/crypto";
 import { isEncrypted } from "../src/services/scrapers";
 

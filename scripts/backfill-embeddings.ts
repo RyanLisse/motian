@@ -5,9 +5,10 @@
  *   npx tsx --env-file=.env.local scripts/backfill-embeddings.ts --limit 200
  *   npx tsx --env-file=.env.local scripts/backfill-embeddings.ts --platform opdrachtoverheid --limit 100
  */
+
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { db } from "../src/db";
 import { jobs } from "../src/db/schema";
-import { and, eq, isNull, isNotNull } from "drizzle-orm";
 import { buildJobEmbeddingText, generateEmbeddings } from "../src/services/embedding";
 
 async function main() {

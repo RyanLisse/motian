@@ -1,6 +1,6 @@
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { applications } from "../db/schema";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 export type Application = typeof applications.$inferSelect;
 
@@ -19,11 +19,20 @@ export async function listApplications(opts: ListApplicationsOpts): Promise<Appl
   if (opts.jobId) conditions.push(eq(applications.jobId, opts.jobId));
   if (opts.candidateId) conditions.push(eq(applications.candidateId, opts.candidateId));
   if (opts.stage) conditions.push(eq(applications.stage, opts.stage));
-  return db.select().from(applications).where(and(...conditions)).orderBy(desc(applications.createdAt)).limit(limit);
+  return db
+    .select()
+    .from(applications)
+    .where(and(...conditions))
+    .orderBy(desc(applications.createdAt))
+    .limit(limit);
 }
 
 export async function getApplicationById(id: string): Promise<Application | null> {
-  const rows = await db.select().from(applications).where(and(eq(applications.id, id), isNull(applications.deletedAt))).limit(1);
+  const rows = await db
+    .select()
+    .from(applications)
+    .where(and(eq(applications.id, id), isNull(applications.deletedAt)))
+    .limit(1);
   return rows[0] ?? null;
 }
 
@@ -34,35 +43,56 @@ export async function createApplication(data: {
   source?: string;
   notes?: string;
 }): Promise<Application> {
-  const rows = await db.insert(applications).values({
-    jobId: data.jobId,
-    candidateId: data.candidateId,
-    matchId: data.matchId ?? null,
-    source: data.source ?? "manual",
-    notes: data.notes ?? null,
-    stage: "new",
-  }).returning();
+  const rows = await db
+    .insert(applications)
+    .values({
+      jobId: data.jobId,
+      candidateId: data.candidateId,
+      matchId: data.matchId ?? null,
+      source: data.source ?? "manual",
+      notes: data.notes ?? null,
+      stage: "new",
+    })
+    .returning();
   return rows[0];
 }
 
-export async function updateApplicationStage(id: string, stage: string, notes?: string): Promise<Application | null> {
+export async function updateApplicationStage(
+  id: string,
+  stage: string,
+  notes?: string,
+): Promise<Application | null> {
   if (!VALID_STAGES.includes(stage)) return null;
   const updates: Record<string, unknown> = { stage, updatedAt: new Date() };
   if (notes !== undefined) updates.notes = notes;
-  const rows = await db.update(applications).set(updates).where(and(eq(applications.id, id), isNull(applications.deletedAt))).returning();
+  const rows = await db
+    .update(applications)
+    .set(updates)
+    .where(and(eq(applications.id, id), isNull(applications.deletedAt)))
+    .returning();
   return rows[0] ?? null;
 }
 
 export async function deleteApplication(id: string): Promise<boolean> {
-  const result = await db.update(applications).set({ deletedAt: new Date() }).where(and(eq(applications.id, id), isNull(applications.deletedAt)));
+  const result = await db
+    .update(applications)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(applications.id, id), isNull(applications.deletedAt)));
   return (result.rowCount ?? 0) > 0;
 }
 
-export async function getApplicationStats(): Promise<{ total: number; byStage: Record<string, number> }> {
-  const rows = await db.select({
-    stage: applications.stage,
-    count: sql<number>`count(*)::int`,
-  }).from(applications).where(isNull(applications.deletedAt)).groupBy(applications.stage);
+export async function getApplicationStats(): Promise<{
+  total: number;
+  byStage: Record<string, number>;
+}> {
+  const rows = await db
+    .select({
+      stage: applications.stage,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(applications)
+    .where(isNull(applications.deletedAt))
+    .groupBy(applications.stage);
 
   const byStage: Record<string, number> = {};
   let total = 0;

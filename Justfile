@@ -71,3 +71,33 @@ build:
 # Install all dependencies
 install:
 	pnpm install
+
+# ── Harness Engineering ─────────────────────────
+
+# Classify risk tier of current changes
+harness-risk:
+	pnpm tsx scripts/harness/risk-policy-gate.ts
+
+# Run all pre-PR checks
+harness-pre-pr:
+	pnpm run harness:pre-pr
+
+# Run structural tests
+harness-smoke:
+	pnpm vitest run tests/harness/
+
+# Capture browser evidence
+harness-evidence:
+	pnpm tsx scripts/harness/capture-browser-evidence.ts
+
+# Verify browser evidence
+harness-verify:
+	pnpm tsx scripts/harness/verify-browser-evidence.ts
+
+# Run entropy check
+harness-entropy:
+	pnpm tsx scripts/harness/entropy-check.ts
+
+# Create a harness gap issue from a production regression
+harness-gap title:
+	pnpm tsx scripts/harness/create-gap-issue.ts --title "{{title}}"

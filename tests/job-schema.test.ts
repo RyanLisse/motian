@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { unifiedJobSchema, extractProvince } from "../src/schemas/job";
+import { describe, expect, it } from "vitest";
+import { extractProvince, unifiedJobSchema } from "../src/schemas/job";
 
 describe("Unified Job Schema", () => {
   it("should accept a valid Striive opdracht (all fields)", () => {
@@ -12,8 +12,7 @@ describe("Unified Job Schema", () => {
       description:
         "Kandidaat heeft minimaal 1 jaar werkervaring in de rol van junior Projectleider...",
       externalId: "BTBDN000695",
-      externalUrl:
-        "https://supplier.striive.com/dashboard/opdrachten/BTBDN000695",
+      externalUrl: "https://supplier.striive.com/dashboard/opdrachten/BTBDN000695",
       clientReferenceCode: "SRQ187726",
       rateMax: 84.5,
       positionsAvailable: 1,
@@ -24,8 +23,7 @@ describe("Unified Job Schema", () => {
       allowsSubcontracting: false,
       requirements: [
         {
-          description:
-            "Minimaal 1 jaar werkervaring als junior Projectleider",
+          description: "Minimaal 1 jaar werkervaring als junior Projectleider",
           isKnockout: true,
         },
         {
@@ -39,11 +37,7 @@ describe("Unified Job Schema", () => {
           evaluationCriteria: "De mate waarin de kandidaat...",
         },
       ],
-      competences: [
-        "Resultaatgerichtheid",
-        "Flexibiliteit",
-        "Plannen en organiseren",
-      ],
+      competences: ["Resultaatgerichtheid", "Flexibiliteit", "Plannen en organiseren"],
       conditions: ["WKA", "G-rekening", "SNA-certificering"],
     };
 

@@ -14,11 +14,12 @@
  *   3. Set as STRIIVE_SESSION_COOKIE env var
  */
 import { config } from "dotenv";
+
 config({ path: ".env.local" });
 
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../src/db";
 import { jobs } from "../src/db/schema";
-import { eq, and, isNull, sql } from "drizzle-orm";
 
 const API_BASE = "https://supplier.striive.com/api/v2/job-requests";
 const DELAY_MS = 500; // Polite delay between requests
@@ -47,9 +48,7 @@ interface StriiveDetail {
   selectionCriteria?: any[];
 }
 
-function mapWorkArrangement(
-  remote?: string,
-): "remote" | "hybride" | "op_locatie" | undefined {
+function mapWorkArrangement(remote?: string): "remote" | "hybride" | "op_locatie" | undefined {
   if (!remote) return undefined;
   switch (remote) {
     case "HYBRID":
@@ -82,10 +81,7 @@ async function getSessionCookie(): Promise<string> {
   process.exit(1);
 }
 
-async function fetchJobDetail(
-  jobId: string,
-  cookie: string,
-): Promise<StriiveDetail | null> {
+async function fetchJobDetail(jobId: string, cookie: string): Promise<StriiveDetail | null> {
   const res = await fetch(`${API_BASE}/${encodeURIComponent(jobId)}`, {
     headers: {
       Cookie: cookie,
@@ -119,8 +115,7 @@ function extractRequirements(
 
   if (detail.qualificationRequirements?.length) {
     for (const r of detail.qualificationRequirements) {
-      const desc =
-        typeof r === "string" ? r : r.description ?? r.name ?? String(r);
+      const desc = typeof r === "string" ? r : (r.description ?? r.name ?? String(r));
       reqs.push({ description: desc, isKnockout: true });
     }
   }
@@ -131,8 +126,7 @@ function extractRequirements(
 function extractWishes(
   detail: StriiveDetail,
 ): Array<{ description: string; evaluationCriteria?: string }> {
-  const wishes: Array<{ description: string; evaluationCriteria?: string }> =
-    [];
+  const wishes: Array<{ description: string; evaluationCriteria?: string }> = [];
 
   if (detail.wishes?.length) {
     for (const w of detail.wishes) {
@@ -145,8 +139,7 @@ function extractWishes(
 
   if (detail.selectionCriteria?.length) {
     for (const s of detail.selectionCriteria) {
-      const desc =
-        typeof s === "string" ? s : s.description ?? s.name ?? String(s);
+      const desc = typeof s === "string" ? s : (s.description ?? s.name ?? String(s));
       wishes.push({ description: desc });
     }
   }
@@ -171,9 +164,7 @@ async function main() {
     headers: { Cookie: cookie, Accept: "application/json" },
   });
   if (!testRes.ok) {
-    console.error(
-      `API returned ${testRes.status}. Cookie may be expired — log in again.`,
-    );
+    console.error(`API returned ${testRes.status}. Cookie may be expired — log in again.`);
     process.exit(1);
   }
   console.log("API access verified.\n");
@@ -215,8 +206,7 @@ async function main() {
       const competences = extractCompetences(detail);
       const conditions = detail.conditions ?? [];
       const description =
-        detail.description &&
-        detail.description.length > (job.description?.length ?? 0)
+        detail.description && detail.description.length > (job.description?.length ?? 0)
           ? detail.description
           : job.description;
       const rateMax = detail.maxRateExclVAT ?? detail.maxRate;
@@ -255,9 +245,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, DELAY_MS));
   }
 
-  console.log(
-    `\nDone: ${enriched} enriched, ${skipped} skipped, ${failed} failed`,
-  );
+  console.log(`\nDone: ${enriched} enriched, ${skipped} skipped, ${failed} failed`);
   process.exit(0);
 }
 

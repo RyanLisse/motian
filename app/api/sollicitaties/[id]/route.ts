@@ -1,9 +1,9 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
 import {
+  deleteApplication,
   getApplicationById,
   updateApplicationStage,
-  deleteApplication,
 } from "@/src/services/applications";
 
 export const dynamic = "force-dynamic";
@@ -13,18 +13,12 @@ const updateApplicationSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const application = await getApplicationById(id);
     if (!application) {
-      return Response.json(
-        { error: "Sollicitatie niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: application });
   } catch (error) {
@@ -33,10 +27,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await request.json();
@@ -47,16 +38,9 @@ export async function PATCH(
         { status: 400 },
       );
     }
-    const application = await updateApplicationStage(
-      id,
-      parsed.data.stage,
-      parsed.data.notes,
-    );
+    const application = await updateApplicationStage(id, parsed.data.stage, parsed.data.notes);
     if (!application) {
-      return Response.json(
-        { error: "Sollicitatie niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: application });
   } catch (error) {
@@ -66,17 +50,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const deleted = await deleteApplication(id);
     if (!deleted) {
-      return Response.json(
-        { error: "Sollicitatie niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: { id, deleted: true } });
   } catch (error) {

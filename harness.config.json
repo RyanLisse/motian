@@ -1,0 +1,46 @@
+{
+  "version": "1",
+  "riskTierRules": {
+    "high": [
+      "src/db/schema.ts",
+      "src/db/index.ts",
+      "src/services/gdpr.ts",
+      "src/lib/crypto.ts",
+      "app/api/cron/**",
+      "drizzle/**"
+    ],
+    "medium": ["src/services/**", "src/ai/**", "src/schemas/**", "app/api/**"],
+    "low": ["**"]
+  },
+  "mergePolicy": {
+    "high": {
+      "requiredChecks": ["risk-policy-gate", "typecheck", "test", "lint", "browser-evidence"],
+      "requireCodeReview": true
+    },
+    "medium": {
+      "requiredChecks": ["risk-policy-gate", "typecheck", "test", "lint"],
+      "requireCodeReview": false
+    },
+    "low": {
+      "requiredChecks": ["risk-policy-gate", "lint"],
+      "requireCodeReview": false
+    }
+  },
+  "docsDriftRules": {
+    "triggers": {
+      "src/db/schema.ts": ["docs/architecture.md"],
+      "src/services/*.ts": ["docs/architecture.md"],
+      "src/ai/**": ["docs/architecture.md"],
+      "harness.config.json": ["docs/architecture.md"]
+    },
+    "message": "Schema/service changes detected. Please update the corresponding documentation."
+  },
+  "evidenceRequirements": {
+    "app/**/*.tsx": "browser-screenshot",
+    "components/**/*.tsx": "browser-screenshot"
+  },
+  "harnessGap": {
+    "slaHours": 48,
+    "labelPrefix": "harness-gap"
+  }
+}

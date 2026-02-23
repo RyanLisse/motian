@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SidebarLayout } from "@/components/sidebar-layout";
-import { Providers } from "./providers";
 import { ChatContextProvider } from "@/components/chat/chat-context-provider";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { SidebarLayout } from "@/components/sidebar-layout";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Motian - Recruitment Platform",
   description: "AI-Assisted Recruitment Operations Platform",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="nl" suppressHydrationWarning>
       <body className="min-h-screen bg-background antialiased">

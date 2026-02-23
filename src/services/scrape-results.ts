@@ -1,6 +1,6 @@
+import { desc, eq } from "drizzle-orm";
 import { db } from "../db";
 import { scrapeResults } from "../db/schema";
-import { desc, eq } from "drizzle-orm";
 
 // ========== Types ==========
 
@@ -14,9 +14,7 @@ export type GetHistoryOptions = {
 // ========== Service Functions ==========
 
 /** Scrape resultaten ophalen, optioneel gefilterd op platform en gelimiteerd */
-export async function getHistory(
-  opts: GetHistoryOptions = {},
-): Promise<ScrapeResult[]> {
+export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeResult[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
 
   const baseQuery = db.select().from(scrapeResults);

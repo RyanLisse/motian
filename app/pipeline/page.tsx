@@ -1,16 +1,9 @@
-import { db } from "@/src/db";
-import { applications, jobs, candidates } from "@/src/db/schema";
-import { desc, eq, and, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { Briefcase, CheckCircle2, Filter, Inbox, Users, XCircle } from "lucide-react";
 import Link from "next/link";
-import {
-  Inbox,
-  Filter,
-  Users,
-  Briefcase,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { db } from "@/src/db";
+import { applications, candidates, jobs } from "@/src/db/schema";
 
 export const revalidate = 60;
 
@@ -64,63 +57,45 @@ export default async function PipelinePage({ searchParams }: Props) {
   const whereClause = and(...conditions);
 
   // Fetch applications + KPIs in parallel
-  const [
-    rows,
-    totalResult,
-    newResult,
-    screeningResult,
-    interviewResult,
-    offerResult,
-    hiredResult,
-  ] = await Promise.all([
-    db
-      .select({
-        application: applications,
-        jobTitle: jobs.title,
-        jobCompany: jobs.company,
-        candidateName: candidates.name,
-        candidateEmail: candidates.email,
-      })
-      .from(applications)
-      .leftJoin(jobs, eq(applications.jobId, jobs.id))
-      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
-      .where(whereClause)
-      .orderBy(desc(applications.createdAt))
-      .limit(PER_PAGE)
-      .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(whereClause),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(and(isNull(applications.deletedAt), eq(applications.stage, "new"))),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(
-        and(isNull(applications.deletedAt), eq(applications.stage, "screening")),
-      ),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(
-        and(isNull(applications.deletedAt), eq(applications.stage, "interview")),
-      ),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(
-        and(isNull(applications.deletedAt), eq(applications.stage, "offer")),
-      ),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(
-        and(isNull(applications.deletedAt), eq(applications.stage, "hired")),
-      ),
-  ]);
+  const [rows, totalResult, newResult, screeningResult, interviewResult, offerResult, hiredResult] =
+    await Promise.all([
+      db
+        .select({
+          application: applications,
+          jobTitle: jobs.title,
+          jobCompany: jobs.company,
+          candidateName: candidates.name,
+          candidateEmail: candidates.email,
+        })
+        .from(applications)
+        .leftJoin(jobs, eq(applications.jobId, jobs.id))
+        .leftJoin(candidates, eq(applications.candidateId, candidates.id))
+        .where(whereClause)
+        .orderBy(desc(applications.createdAt))
+        .limit(PER_PAGE)
+        .offset(offset),
+      db.select({ count: sql<number>`count(*)::int` }).from(applications).where(whereClause),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(applications)
+        .where(and(isNull(applications.deletedAt), eq(applications.stage, "new"))),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(applications)
+        .where(and(isNull(applications.deletedAt), eq(applications.stage, "screening"))),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(applications)
+        .where(and(isNull(applications.deletedAt), eq(applications.stage, "interview"))),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(applications)
+        .where(and(isNull(applications.deletedAt), eq(applications.stage, "offer"))),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(applications)
+        .where(and(isNull(applications.deletedAt), eq(applications.stage, "hired"))),
+    ]);
 
   const totalCount = totalResult[0]?.count ?? 0;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
@@ -129,8 +104,7 @@ export default async function PipelinePage({ searchParams }: Props) {
   const interviewCount = interviewResult[0]?.count ?? 0;
   const offerCount = offerResult[0]?.count ?? 0;
   const hiredCount = hiredResult[0]?.count ?? 0;
-  const allCount =
-    newCount + screeningCount + interviewCount + offerCount + hiredCount;
+  const allCount = newCount + screeningCount + interviewCount + offerCount + hiredCount;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -164,18 +138,14 @@ export default async function PipelinePage({ searchParams }: Props) {
               <Filter className="h-4 w-4" />
               <span className="text-xs text-[#6b6b6b]">Screening</span>
             </div>
-            <p className="text-2xl font-bold text-blue-500">
-              {screeningCount}
-            </p>
+            <p className="text-2xl font-bold text-blue-500">{screeningCount}</p>
           </div>
           <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
             <div className="flex items-center gap-2 text-purple-500/60 mb-1">
               <Users className="h-4 w-4" />
               <span className="text-xs text-[#6b6b6b]">Interview</span>
             </div>
-            <p className="text-2xl font-bold text-purple-500">
-              {interviewCount}
-            </p>
+            <p className="text-2xl font-bold text-purple-500">{interviewCount}</p>
           </div>
           <div className="bg-[#1e1e1e] border border-[#2d2d2d] rounded-xl p-4">
             <div className="flex items-center gap-2 text-orange-500/60 mb-1">
@@ -220,9 +190,7 @@ export default async function PipelinePage({ searchParams }: Props) {
 
         {/* Results count */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[#8e8e8e]">
-            {totalCount} sollicitaties gevonden
-          </p>
+          <p className="text-sm text-[#8e8e8e]">{totalCount} sollicitaties gevonden</p>
           {totalPages > 1 && (
             <p className="text-sm text-[#6b6b6b]">
               Pagina {page} van {totalPages}
@@ -266,10 +234,7 @@ export default async function PipelinePage({ searchParams }: Props) {
                         <span className="text-sm text-[#8e8e8e]">
                           {row.jobTitle ?? "Vacature verwijderd"}
                           {row.jobCompany && (
-                            <span className="text-[#6b6b6b]">
-                              {" "}
-                              bij {row.jobCompany}
-                            </span>
+                            <span className="text-[#6b6b6b]"> bij {row.jobCompany}</span>
                           )}
                         </span>
                       </div>
@@ -277,15 +242,11 @@ export default async function PipelinePage({ searchParams }: Props) {
                       {/* Meta row */}
                       <div className="flex items-center gap-3 text-xs text-[#6b6b6b]">
                         {row.application.source && (
-                          <span className="capitalize">
-                            {row.application.source}
-                          </span>
+                          <span className="capitalize">{row.application.source}</span>
                         )}
                         {row.application.createdAt && (
                           <span>
-                            {new Date(
-                              row.application.createdAt,
-                            ).toLocaleDateString("nl-NL", {
+                            {new Date(row.application.createdAt).toLocaleDateString("nl-NL", {
                               day: "numeric",
                               month: "short",
                               year: "numeric",

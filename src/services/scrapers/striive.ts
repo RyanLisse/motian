@@ -45,13 +45,13 @@ async function scrapeLocal(username: string, password: string): Promise<any[]> {
     // === Login (single-step form: email + password visible simultaneously) ===
     console.log("[striive] Navigating to login...");
     await page.goto("https://login.striive.com", { waitUntil: "domcontentloaded", timeout: 30000 });
-    await new Promise(r => setTimeout(r, 3000)); // Wait for Angular to hydrate
+    await new Promise((r) => setTimeout(r, 3000)); // Wait for Angular to hydrate
 
     // Fill both fields — button only enables when both are filled
     await page.locator("#email").fill(username);
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 300));
     await page.locator("#password").fill(password);
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 300));
 
     // Click login
     const loginBtn = page.locator('[data-testid="login"]');
@@ -59,12 +59,12 @@ async function scrapeLocal(username: string, password: string): Promise<any[]> {
 
     // Wait for redirect to supplier dashboard
     await page.waitForURL("**/supplier.striive.com/**", { timeout: 30000 }).catch(() => {});
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise((r) => setTimeout(r, 3000));
     console.log("[striive] Login complete. URL:", page.url());
 
     // === Extract cookies ===
     const cookies = await context.cookies();
-    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join("; ");
+    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
     console.log(`[striive] Got ${cookies.length} cookies`);
 
     // Verify API access
@@ -74,11 +74,16 @@ async function scrapeLocal(username: string, password: string): Promise<any[]> {
     });
 
     if (!testRes.ok) {
-      console.log(`[striive] API test failed (${testRes.status}), navigating to supplier portal...`);
-      await page.goto("https://supplier.striive.com/jobrequests/list", { waitUntil: "domcontentloaded", timeout: 20000 });
-      await new Promise(r => setTimeout(r, 2000));
+      console.log(
+        `[striive] API test failed (${testRes.status}), navigating to supplier portal...`,
+      );
+      await page.goto("https://supplier.striive.com/jobrequests/list", {
+        waitUntil: "domcontentloaded",
+        timeout: 20000,
+      });
+      await new Promise((r) => setTimeout(r, 2000));
       const cookies2 = await context.cookies();
-      activeCookie = cookies2.map(c => `${c.name}=${c.value}`).join("; ");
+      activeCookie = cookies2.map((c) => `${c.name}=${c.value}`).join("; ");
 
       const testRes2 = await fetch(`${API_LIST}?page=0&size=1`, {
         headers: { Cookie: activeCookie, Accept: "application/json" },
@@ -124,7 +129,7 @@ async function fetchAndEnrichListings(cookie: string): Promise<any[]> {
 
     const data = await res.json();
     // API returns a plain array directly
-    const jobs = Array.isArray(data) ? data : data.content ?? data.items ?? [];
+    const jobs = Array.isArray(data) ? data : (data.content ?? data.items ?? []);
 
     if (!Array.isArray(jobs) || jobs.length === 0) break;
 
@@ -171,7 +176,7 @@ async function fetchAndEnrichListings(cookie: string): Promise<any[]> {
       enriched.push(mapBasicListing(job));
     }
 
-    await new Promise(r => setTimeout(r, DETAIL_DELAY));
+    await new Promise((r) => setTimeout(r, DETAIL_DELAY));
   }
 
   console.log(`[striive] Enriched ${enrichCount}/${allJobs.length} listings`);
@@ -192,10 +197,14 @@ function mapBoolean(val: any): boolean | undefined {
 function mapWorkArrangement(remote?: string): "remote" | "hybride" | "op_locatie" | undefined {
   if (!remote) return undefined;
   switch (remote) {
-    case "HYBRID": return "hybride";
-    case "NO": return "op_locatie";
-    case "YES": return "remote";
-    default: return undefined;
+    case "HYBRID":
+      return "hybride";
+    case "NO":
+      return "op_locatie";
+    case "YES":
+      return "remote";
+    default:
+      return undefined;
   }
 }
 
@@ -228,7 +237,7 @@ function mapDetailListing(job: any, detail: any) {
   const requirements: Array<{ description: string; isKnockout: boolean }> = [];
   if (detail.requirements?.length) {
     for (const r of detail.requirements) {
-      const desc = typeof r === "string" ? r : r.requirement ?? r.description ?? "";
+      const desc = typeof r === "string" ? r : (r.requirement ?? r.description ?? "");
       if (desc) {
         requirements.push({
           description: desc,
@@ -242,7 +251,7 @@ function mapDetailListing(job: any, detail: any) {
   const wishes: Array<{ description: string; evaluationCriteria?: string }> = [];
   if (detail.wishes?.length) {
     for (const w of detail.wishes) {
-      const desc = typeof w === "string" ? w : w.wish ?? w.description ?? "";
+      const desc = typeof w === "string" ? w : (w.wish ?? w.description ?? "");
       if (desc) {
         wishes.push({ description: desc });
       }
@@ -268,17 +277,20 @@ function mapDetailListing(job: any, detail: any) {
     ...base,
     location: detailLocation || base.location,
     province: detailProvince || base.province,
-    description: detail.description && detail.description.length > (base.description?.length ?? 0)
-      ? detail.description
-      : base.description,
-    rateMax: (detail.maxHourlyRate && detail.maxHourlyRate > 0)
-      ? Math.round(detail.maxHourlyRate)
-      : (detail.minHourlyRate && detail.minHourlyRate > 0)
+    description:
+      detail.description && detail.description.length > (base.description?.length ?? 0)
+        ? detail.description
+        : base.description,
+    rateMax:
+      detail.maxHourlyRate && detail.maxHourlyRate > 0
+        ? Math.round(detail.maxHourlyRate)
+        : detail.minHourlyRate && detail.minHourlyRate > 0
+          ? Math.round(detail.minHourlyRate)
+          : base.rateMax,
+    rateMin:
+      detail.minHourlyRate && detail.minHourlyRate > 0
         ? Math.round(detail.minHourlyRate)
-        : base.rateMax,
-    rateMin: (detail.minHourlyRate && detail.minHourlyRate > 0)
-      ? Math.round(detail.minHourlyRate)
-      : undefined,
+        : undefined,
     workArrangement: mapWorkArrangement(detail.remoteAllowed),
     allowsSubcontracting: mapBoolean(detail.onLendingAllowed),
     clientReferenceCode: detail.referenceCodeClient || undefined,
@@ -316,27 +328,36 @@ function mapDetailListing(job: any, detail: any) {
         answer: faq.answer,
       })),
     ),
-    agentContact: detail.agent ? {
-      name: detail.agent.name ?? "",
-      email: detail.agent.email ?? "",
-      phone: detail.agent.phone ?? "",
-    } : undefined,
-    recruiterContact: detail.recruiter ? {
-      name: detail.recruiter.name ?? "",
-      email: detail.recruiter.email ?? "",
-      phone: detail.recruiter.phone ?? "",
-    } : undefined,
+    agentContact: detail.agent
+      ? {
+          name: detail.agent.name ?? "",
+          email: detail.agent.email ?? "",
+          phone: detail.agent.phone ?? "",
+        }
+      : undefined,
+    recruiterContact: detail.recruiter
+      ? {
+          name: detail.recruiter.name ?? "",
+          email: detail.recruiter.email ?? "",
+          phone: detail.recruiter.phone ?? "",
+        }
+      : undefined,
   };
 }
 
 function mapContractType(type?: string): "freelance" | "interim" | "vast" | "opdracht" | undefined {
   if (!type) return undefined;
   switch (type) {
-    case "FREELANCER": return "freelance";
-    case "EMPLOYEES_ONLY": return "vast";
-    case "INTERIM": return "interim";
-    case "CONTRACTOR": return "opdracht";
-    default: return undefined;
+    case "FREELANCER":
+      return "freelance";
+    case "EMPLOYEES_ONLY":
+      return "vast";
+    case "INTERIM":
+      return "interim";
+    case "CONTRACTOR":
+      return "opdracht";
+    default:
+      return undefined;
   }
 }
 

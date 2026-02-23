@@ -4,7 +4,7 @@
  * Exponential backoff met jitter — voorkomt thundering herd bij rate limits
  */
 export function calculateBackoff(attempt: number): number {
-  const base = 1200 * Math.pow(2, attempt);
+  const base = 1200 * 2 ** attempt;
   const jitter = Math.floor(Math.random() * 500);
   return base + jitter;
 }

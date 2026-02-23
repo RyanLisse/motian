@@ -61,12 +61,10 @@ export async function scrapeFlextender(): Promise<any[]> {
     } catch (err) {
       attempt++;
       if (attempt > MAX_RETRIES) {
-        console.error(
-          `Flextender scrape mislukt na ${MAX_RETRIES + 1} pogingen: ${err}`,
-        );
+        console.error(`Flextender scrape mislukt na ${MAX_RETRIES + 1} pogingen: ${err}`);
         return [];
       } else {
-        const delay = 1200 * Math.pow(2, attempt) + Math.floor(Math.random() * 500);
+        const delay = 1200 * 2 ** attempt + Math.floor(Math.random() * 500);
         console.warn(`Flextender poging ${attempt} mislukt, retry in ${delay}ms: ${err}`);
         await new Promise((r) => setTimeout(r, delay));
       }
@@ -114,8 +112,9 @@ function parseFlextenderHtml(html: string): any[] {
     const { hoursPerWeek, minHoursPerWeek } = parseHoursPerWeek(fields["Uren per week"]);
 
     // Extract company logo URL
-    const logoMatch = cardHtml.match(/class="flx-client-logo"[^>]*src="([^"]+)"/i)
-      ?? cardHtml.match(/src="([^"]+)"[^>]*class="flx-client-logo"/i);
+    const logoMatch =
+      cardHtml.match(/class="flx-client-logo"[^>]*src="([^"]+)"/i) ??
+      cardHtml.match(/src="([^"]+)"[^>]*class="flx-client-logo"/i);
     const companyLogoUrl = logoMatch?.[1] ?? undefined;
 
     // Opleidingsniveau from listing card
@@ -164,13 +163,21 @@ async function enrichListings(
       batch.map(async (listing) => {
         try {
           const detail = await fetchDetailPage(listing.externalId);
-          if (listing._rawHours && !detail.conditions?.some((c: string) => c.includes("Uren per week"))) {
-            detail.conditions = [...(detail.conditions ?? []), `Uren per week: ${listing._rawHours}`];
+          if (
+            listing._rawHours &&
+            !detail.conditions?.some((c: string) => c.includes("Uren per week"))
+          ) {
+            detail.conditions = [
+              ...(detail.conditions ?? []),
+              `Uren per week: ${listing._rawHours}`,
+            ];
           }
           const { _rawHours, ...listingClean } = listing;
           return { ...listingClean, ...detail };
         } catch (err) {
-          (logger?.warn ?? console.warn)(`Detail ophalen mislukt voor ${listing.externalId}: ${err}`);
+          (logger?.warn ?? console.warn)(
+            `Detail ophalen mislukt voor ${listing.externalId}: ${err}`,
+          );
           return listing;
         }
       }),
@@ -186,9 +193,7 @@ async function enrichListings(
 }
 
 /** Haal detail-pagina op en parse gestructureerde secties */
-async function fetchDetailPage(
-  aanvraagnr: string,
-): Promise<Record<string, any>> {
+async function fetchDetailPage(aanvraagnr: string): Promise<Record<string, any>> {
   const url = `${DETAIL_BASE}${aanvraagnr}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Detail ${res.status}: ${res.statusText}`);
@@ -211,9 +216,7 @@ function parseDetailHtml(html: string): Record<string, any> {
   const sections = extractSections(content);
 
   const findSection = (needle: string): string | undefined => {
-    const key = Object.keys(sections).find((k) =>
-      k.toLowerCase().includes(needle.toLowerCase()),
-    );
+    const key = Object.keys(sections).find((k) => k.toLowerCase().includes(needle.toLowerCase()));
     return key ? sections[key] : undefined;
   };
 
@@ -265,7 +268,11 @@ function parseDetailHtml(html: string): Record<string, any> {
   // === Extract workArrangement from Werkdagen section ===
   if (werkText) {
     const lower = werkText.toLowerCase();
-    if (lower.includes("hybride") || lower.includes("in overleg") || lower.includes("onderlinge afstemming")) {
+    if (
+      lower.includes("hybride") ||
+      lower.includes("in overleg") ||
+      lower.includes("onderlinge afstemming")
+    ) {
       result.workArrangement = "hybride";
     } else if (lower.includes("remote") || lower.includes("thuiswerk")) {
       result.workArrangement = "remote";
@@ -282,11 +289,12 @@ function parseDetailHtml(html: string): Record<string, any> {
   }
 
   // === Parse summary fields for structured data + conditions ===
-  const summaryHtml = extractBetween(
-    html,
-    'class="css-summarybackground">',
-    'class="css-formattedjobdescription">',
-  ) ?? "";
+  const summaryHtml =
+    extractBetween(
+      html,
+      'class="css-summarybackground">',
+      'class="css-formattedjobdescription">',
+    ) ?? "";
   const summaryFields = parseFieldPairs(summaryHtml);
 
   // extensionPossible from "Opties verlenging"
@@ -319,7 +327,15 @@ function parseDetailHtml(html: string): Record<string, any> {
   }
 
   // Remaining summary fields → conditions (keep existing behavior)
-  const skipKeys = new Set(["Start", "Regio", "Einde inschrijfdatum", "Uren per week", "Opties verlenging", "Opleidingsniveau", "Duur"]);
+  const skipKeys = new Set([
+    "Start",
+    "Regio",
+    "Einde inschrijfdatum",
+    "Uren per week",
+    "Opties verlenging",
+    "Opleidingsniveau",
+    "Duur",
+  ]);
   for (const [key, value] of Object.entries(summaryFields)) {
     if (!value || skipKeys.has(key)) continue;
     conditions.push(`${key}: ${value}`);
@@ -384,13 +400,13 @@ function parseNumberedList(text: string): string[] {
   const items = text.split(/\n/).filter((l) => l.trim());
   const result: string[] = [];
   for (const line of items) {
-    const cleaned = line.replace(/^\d+[\.\)]\s*/, "").trim();
+    const cleaned = line.replace(/^\d+[.)]\s*/, "").trim();
     if (cleaned.length > 5) result.push(cleaned);
   }
   if (result.length === 0) {
     return text
       .split(/[;\n]/)
-      .map((s) => s.replace(/^\d+[\.\)]\s*/, "").trim())
+      .map((s) => s.replace(/^\d+[.)]\s*/, "").trim())
       .filter((s) => s.length > 5);
   }
   return result;
@@ -430,8 +446,7 @@ function decodeEntities(s: string): string {
 /** Parse alle caption-value paren uit een card HTML */
 function parseFieldPairs(cardHtml: string): Record<string, string> {
   const fields: Record<string, string> = {};
-  const pairRegex =
-    /class="css-caption">([^<]+)<[\s\S]*?class="css-value">([^<]+)</gi;
+  const pairRegex = /class="css-caption">([^<]+)<[\s\S]*?class="css-value">([^<]+)</gi;
   let pairMatch: RegExpExecArray | null;
   while ((pairMatch = pairRegex.exec(cardHtml)) !== null) {
     const key = pairMatch[1].trim();
@@ -448,9 +463,18 @@ function parseDutchDate(raw: string | undefined): string | undefined {
   if (s === "Z.s.m." || s.includes("uur") || s.length < 6) return undefined;
 
   const months: Record<string, string> = {
-    januari: "01", februari: "02", maart: "03", april: "04",
-    mei: "05", juni: "06", juli: "07", augustus: "08",
-    september: "09", oktober: "10", november: "11", december: "12",
+    januari: "01",
+    februari: "02",
+    maart: "03",
+    april: "04",
+    mei: "05",
+    juni: "06",
+    juli: "07",
+    augustus: "08",
+    september: "09",
+    oktober: "10",
+    november: "11",
+    december: "12",
   };
 
   const match = s.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
@@ -484,7 +508,10 @@ function parseDurationMonths(raw: string | undefined): number | undefined {
 }
 
 /** Parse "Uren per week" field: "36 uur" → {max:36}, "24 tot 32 uur" → {min:24, max:32} */
-function parseHoursPerWeek(raw: string | undefined): { hoursPerWeek?: number; minHoursPerWeek?: number } {
+function parseHoursPerWeek(raw: string | undefined): {
+  hoursPerWeek?: number;
+  minHoursPerWeek?: number;
+} {
   if (!raw) return {};
   const rangeMatch = raw.match(/(\d+)\s*tot\s*(\d+)/);
   if (rangeMatch) {

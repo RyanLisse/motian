@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useMemo,
-  type ReactNode,
-} from "react";
-import { usePathname, useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
 
 type ChatContext = {
   route: string;

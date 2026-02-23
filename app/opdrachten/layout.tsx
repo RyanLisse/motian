@@ -1,15 +1,11 @@
-import { db } from "@/src/db";
-import { jobs } from "@/src/db/schema";
 import { desc, isNull, sql } from "drizzle-orm";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
+import { db } from "@/src/db";
+import { jobs } from "@/src/db/schema";
 
 export const revalidate = 60;
 
-export default async function OpdrachtenLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
   // Fetch sidebar jobs, total count, and distinct platforms in parallel
   const [sidebarJobs, countResult, platformRows] = await Promise.all([
     db
@@ -26,10 +22,7 @@ export default async function OpdrachtenLayout({
       .where(isNull(jobs.deletedAt))
       .orderBy(desc(jobs.scrapedAt))
       .limit(10),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt)),
+    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(isNull(jobs.deletedAt)),
     db
       .selectDistinct({ platform: jobs.platform })
       .from(jobs)
@@ -42,14 +35,8 @@ export default async function OpdrachtenLayout({
 
   return (
     <div className="flex h-[calc(100vh-57px)]">
-      <OpdrachtenSidebar
-        jobs={sidebarJobs}
-        totalCount={totalCount}
-        platforms={platforms}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {children}
-      </div>
+      <OpdrachtenSidebar jobs={sidebarJobs} totalCount={totalCount} platforms={platforms} />
+      <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
     </div>
   );
 }

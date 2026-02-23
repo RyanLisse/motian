@@ -1,9 +1,9 @@
 import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { and, eq, isNull } from "drizzle-orm";
 
 // ========== Schema ==========
 
@@ -159,7 +159,10 @@ export async function enrichJobsBatch(opts: {
       if (job.workArrangement == null && result.workArrangement != null) {
         updates.workArrangement = result.workArrangement;
       }
-      if ((!job.languages || (Array.isArray(job.languages) && job.languages.length === 0)) && result.languages.length > 0) {
+      if (
+        (!job.languages || (Array.isArray(job.languages) && job.languages.length === 0)) &&
+        result.languages.length > 0
+      ) {
         updates.languages = result.languages;
       }
       if (job.durationMonths == null && result.durationMonths != null) {
@@ -168,7 +171,10 @@ export async function enrichJobsBatch(opts: {
       if (job.extensionPossible == null && result.extensionPossible != null) {
         updates.extensionPossible = result.extensionPossible;
       }
-      if ((!job.categories || (Array.isArray(job.categories) && job.categories.length === 0)) && result.categories.length > 0) {
+      if (
+        (!job.categories || (Array.isArray(job.categories) && job.categories.length === 0)) &&
+        result.categories.length > 0
+      ) {
         updates.categories = result.categories;
       }
 
@@ -176,10 +182,7 @@ export async function enrichJobsBatch(opts: {
       updates.descriptionSummary = result.descriptionSummary;
 
       if (Object.keys(updates).length > 0) {
-        await db
-          .update(jobs)
-          .set(updates)
-          .where(eq(jobs.id, job.id));
+        await db.update(jobs).set(updates).where(eq(jobs.id, job.id));
         enriched++;
 
         // Generate embedding after enrichment (non-fatal)
@@ -202,6 +205,8 @@ export async function enrichJobsBatch(opts: {
     }
   }
 
-  console.log(`[AI Enrichment] Done: ${enriched} enriched, ${skipped} skipped, ${errors.length} errors`);
+  console.log(
+    `[AI Enrichment] Done: ${enriched} enriched, ${skipped} skipped, ${errors.length} errors`,
+  );
   return { enriched, skipped, errors };
 }

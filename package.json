@@ -14,7 +14,15 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test:coverage": "vitest run --coverage",
-    "track:ai-costs": "npx ccusage"
+    "track:ai-costs": "npx ccusage",
+    "harness:risk-tier": "tsx scripts/harness/risk-policy-gate.ts",
+    "harness:pre-pr": "pnpm lint && pnpm exec tsc --noEmit && pnpm test && tsx scripts/harness/risk-policy-gate.ts",
+    "harness:smoke": "vitest run tests/harness/",
+    "harness:browser-evidence": "tsx scripts/harness/capture-browser-evidence.ts",
+    "harness:verify-evidence": "tsx scripts/harness/verify-browser-evidence.ts",
+    "harness:entropy": "tsx scripts/harness/entropy-check.ts",
+    "harness:gap": "tsx scripts/harness/create-gap-issue.ts",
+    "harness:weekly-metrics": "tsx scripts/harness/entropy-check.ts --verbose"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.46",

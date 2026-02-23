@@ -1,12 +1,9 @@
 import { z } from "zod";
-import { getInterviewById, updateInterview, deleteInterview } from "@/src/services/interviews";
+import { deleteInterview, getInterviewById, updateInterview } from "@/src/services/interviews";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const interview = await getInterviewById(id);
@@ -25,10 +22,7 @@ const PatchSchema = z.object({
   rating: z.number().int().min(1).max(5).optional(),
 });
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await req.json();
@@ -50,10 +44,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const deleted = await deleteInterview(id);

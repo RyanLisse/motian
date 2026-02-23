@@ -1,14 +1,12 @@
-import { describe, it, expect } from "vitest";
-import { existsSync } from "fs";
-import { resolve } from "path";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
 
 // ===== Opdrachtoverheid Scraper =====
 
 describe("Opdrachtoverheid scraper", () => {
   it("step config has correct structure", async () => {
-    const { config } = await import(
-      "../steps/scraper/platforms/opdrachtoverheid.step.ts"
-    );
+    const { config } = await import("../steps/scraper/platforms/opdrachtoverheid.step.ts");
     expect(config.name).toBe("ScrapeOpdrachtoverheid");
     expect(config.triggers[0].type).toBe("queue");
     expect(config.triggers[0].topic).toBe("platform.scrape");
@@ -16,14 +14,12 @@ describe("Opdrachtoverheid scraper", () => {
   });
 
   it("handler exports a function", async () => {
-    const { handler } = await import(
-      "../steps/scraper/platforms/opdrachtoverheid.step.ts"
-    );
+    const { handler } = await import("../steps/scraper/platforms/opdrachtoverheid.step.ts");
     expect(typeof handler).toBe("function");
   });
 
   it("step file uses JSON API instead of browser", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/opdrachtoverheid.step.ts"),
       "utf-8",
@@ -37,7 +33,7 @@ describe("Opdrachtoverheid scraper", () => {
   });
 
   it("step file parses HTML requirements from API", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/opdrachtoverheid.step.ts"),
       "utf-8",
@@ -49,7 +45,7 @@ describe("Opdrachtoverheid scraper", () => {
   });
 
   it("step file has no login logic", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/opdrachtoverheid.step.ts"),
       "utf-8",
@@ -60,7 +56,7 @@ describe("Opdrachtoverheid scraper", () => {
   });
 
   it("maps contract types correctly", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/opdrachtoverheid.step.ts"),
       "utf-8",
@@ -75,9 +71,7 @@ describe("Opdrachtoverheid scraper", () => {
 
 describe("Flextender scraper", () => {
   it("step config has correct structure", async () => {
-    const { config } = await import(
-      "../steps/scraper/platforms/flextender.step.ts"
-    );
+    const { config } = await import("../steps/scraper/platforms/flextender.step.ts");
     expect(config.name).toBe("ScrapeFlextender");
     expect(config.triggers[0].type).toBe("queue");
     expect(config.triggers[0].topic).toBe("platform.scrape");
@@ -85,14 +79,12 @@ describe("Flextender scraper", () => {
   });
 
   it("handler exports a function", async () => {
-    const { handler } = await import(
-      "../steps/scraper/platforms/flextender.step.ts"
-    );
+    const { handler } = await import("../steps/scraper/platforms/flextender.step.ts");
     expect(typeof handler).toBe("function");
   });
 
   it("step file uses AJAX API instead of browser", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/flextender.step.ts"),
       "utf-8",
@@ -105,7 +97,7 @@ describe("Flextender scraper", () => {
   });
 
   it("step file parses HTML job cards", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/flextender.step.ts"),
       "utf-8",
@@ -117,7 +109,7 @@ describe("Flextender scraper", () => {
   });
 
   it("step file extracts province from region", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/flextender.step.ts"),
       "utf-8",
@@ -129,7 +121,7 @@ describe("Flextender scraper", () => {
   });
 
   it("step file has no login logic", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/flextender.step.ts"),
       "utf-8",
@@ -140,7 +132,7 @@ describe("Flextender scraper", () => {
   });
 
   it("step file enriches listings via detail page", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/flextender.step.ts"),
       "utf-8",
@@ -153,7 +145,7 @@ describe("Flextender scraper", () => {
   });
 
   it("step file extracts structured sections from detail", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../steps/scraper/platforms/flextender.step.ts"),
       "utf-8",
@@ -171,13 +163,11 @@ describe("Flextender scraper", () => {
 
 describe("Seed script for new platforms", () => {
   it("script file exists", () => {
-    expect(
-      existsSync(resolve(__dirname, "../scripts/seed-new-platforms.ts")),
-    ).toBe(true);
+    expect(existsSync(resolve(__dirname, "../scripts/seed-new-platforms.ts"))).toBe(true);
   });
 
   it("script contains both platform names", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../scripts/seed-new-platforms.ts"),
       "utf-8",
@@ -187,7 +177,7 @@ describe("Seed script for new platforms", () => {
   });
 
   it("script uses onConflictDoNothing for idempotency", async () => {
-    const fs = await import("fs/promises");
+    const fs = await import("node:fs/promises");
     const content = await fs.readFile(
       resolve(__dirname, "../scripts/seed-new-platforms.ts"),
       "utf-8",
@@ -199,9 +189,7 @@ describe("Seed script for new platforms", () => {
 // ===== Contract Type Mapping =====
 
 describe("contract type mapping", () => {
-  function mapContractType(
-    raw?: string,
-  ): "interim" | "freelance" | undefined {
+  function mapContractType(raw?: string): "interim" | "freelance" | undefined {
     if (!raw) return undefined;
     switch (raw) {
       case "Loondienst":

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { listInterviews, createInterview, getUpcomingInterviews } from "@/src/services/interviews";
+import { createInterview, getUpcomingInterviews, listInterviews } from "@/src/services/interviews";
 
 export const dynamic = "force-dynamic";
 

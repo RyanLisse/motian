@@ -1,17 +1,12 @@
 "use client";
 
+import { Briefcase, Menu, RefreshCw, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase, RefreshCw, Users, Menu } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   {
@@ -41,9 +36,7 @@ function NavContent({ pathname }: { pathname: string }) {
         <Link href="/" className="text-2xl font-bold text-primary">
           motian
         </Link>
-        <p className="text-xs text-muted-foreground mt-1">
-          Recruitment Platform
-        </p>
+        <p className="text-xs text-muted-foreground mt-1">Recruitment Platform</p>
       </div>
 
       <nav className="flex-1 px-3 space-y-1">
@@ -59,7 +52,7 @@ function NavContent({ pathname }: { pathname: string }) {
                   ? "bg-primary/10 text-primary"
                   : item.disabled
                     ? "text-muted-foreground/50 cursor-not-allowed"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
               )}
               onClick={(e) => item.disabled && e.preventDefault()}
             >
@@ -76,9 +69,7 @@ function NavContent({ pathname }: { pathname: string }) {
       </nav>
 
       <div className="p-4 border-t border-border">
-        <p className="text-xs text-muted-foreground">
-          Motia.dev + Next.js
-        </p>
+        <p className="text-xs text-muted-foreground">Motia.dev + Next.js</p>
       </div>
     </div>
   );
