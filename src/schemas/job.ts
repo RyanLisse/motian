@@ -24,7 +24,7 @@ export const unifiedJobSchema = z.object({
   contractLabel: z.string().optional(),
   location: z.string().optional(),
   province: z.string().optional(),
-  description: z.string().min(10),
+  description: z.string().optional(),
 
   // === Tarieven & Posities ===
   rateMin: z.number().positive().optional(),

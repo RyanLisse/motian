@@ -1,12 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { listJobs, searchJobsByTitle } from "@/src/services/jobs";
+import { listJobs, hybridSearch } from "@/src/services/jobs";
 
 export const queryOpdrachten = tool({
   description:
-    "Zoek en filter opdrachten (vacatures). Gebruik dit om opdrachten te vinden op basis van zoekopdracht, platform, provincie, tarief, etc.",
+    "Zoek en filter opdrachten (vacatures). Gebruikt hybrid search (tekst + semantisch) voor slim zoeken. Gebruik dit om opdrachten te vinden op basis van zoekopdracht, platform, provincie, tarief, etc.",
   inputSchema: z.object({
-    q: z.string().optional().describe("Vrije tekst zoekterm voor titel"),
+    q: z.string().optional().describe("Vrije tekst zoekterm (hybrid: titel + semantisch)"),
     platform: z
       .string()
       .optional()
@@ -21,12 +21,18 @@ export const queryOpdrachten = tool({
     limit: z.number().optional().default(20).describe("Max resultaten (standaard 20)"),
   }),
   execute: async (params) => {
-    // If only a text query, use the title search for speed
-    if (params.q && !params.platform && !params.province && !params.rateMin && !params.rateMax && !params.contractType) {
-      const results = await searchJobsByTitle(params.q, params.limit);
+    // If text query with no other filters, use hybrid search (text + vector)
+    if (params.q && !params.province && !params.rateMin && !params.rateMax && !params.contractType) {
+      const results = await hybridSearch(params.q, {
+        limit: params.limit,
+        platform: params.platform,
+      });
       return {
         total: results.length,
-        opdrachten: results.map(summarizeJob),
+        opdrachten: results.map((job) => ({
+          ...summarizeJob(job),
+          score: job.score,
+        })),
       };
     }
 
