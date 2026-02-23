@@ -202,7 +202,7 @@ export function CvUploadSidebar() {
                 {parsed.location && (
                   <p className="text-xs text-muted-foreground mt-1">{parsed.location}</p>
                 )}
-                <p className="text-sm text-muted-foreground mt-2">{parsed.summary}</p>
+                <p className="text-sm text-muted-foreground mt-2">{parsed.introduction}</p>
                 <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
                   <span>{totalSkills} vaardigheden</span>
                   <span>{parsed.experience.length} ervaringen</span>

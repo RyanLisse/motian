@@ -124,11 +124,11 @@ export function JobDetail({ job }: { job: Job }) {
           </div>
         </div>
 
-        {job.requirements && Array.isArray(job.requirements) && job.requirements.length > 0 && (
+        {Array.isArray(job.requirements) && job.requirements.length > 0 && (
           <div>
             <h2 className="text-lg font-bold text-foreground mb-3">Functie-eisen</h2>
             <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-              {job.requirements.map((req: string) => (
+              {(job.requirements as string[]).map((req) => (
                 <li key={`req-${req}`}>{req}</li>
               ))}
             </ul>

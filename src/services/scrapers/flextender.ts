@@ -469,8 +469,8 @@ function parseFieldPairs(cardHtml: string): Record<string, string> {
   return fields;
 }
 
-/** Parse Nederlandse datum (bijv. "16 maart 2026") naar ISO string of undefined */
-function parseDutchDate(raw: string | undefined): string | undefined {
+/** Parse Nederlandse datum (bijv. "16 maart 2026") naar Date of undefined */
+function parseDutchDate(raw: string | undefined): Date | undefined {
   if (!raw) return undefined;
   const s = raw.trim();
   if (s === "Z.s.m." || s.includes("uur") || s.length < 6) return undefined;
@@ -494,11 +494,11 @@ function parseDutchDate(raw: string | undefined): string | undefined {
   if (match) {
     const month = months[match[2].toLowerCase()];
     if (month) {
-      return `${match[3]}-${month}-${match[1].padStart(2, "0")}`;
+      return new Date(`${match[3]}-${month}-${match[1].padStart(2, "0")}`);
     }
   }
 
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s.slice(0, 10));
 
   return undefined;
 }

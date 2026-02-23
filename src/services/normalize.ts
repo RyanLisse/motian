@@ -4,11 +4,12 @@ import { db } from "../db";
 import { jobs } from "../db/schema";
 import { unifiedJobSchema } from "../schemas/job";
 
-export type RawScrapedListing = z.input<typeof unifiedJobSchema> & Record<string, unknown>;
+/** Permissive type for scraped data — Zod validates at runtime via safeParse */
+export type RawScrapedListing = Record<string, unknown>;
 
 export async function normalizeAndSaveJobs(
   platform: string,
-  listings: RawScrapedListing[],
+  listings: Record<string, unknown>[],
 ): Promise<{ jobsNew: number; duplicates: number; errors: string[] }> {
   let jobsNew = 0;
   let duplicates = 0;
@@ -17,7 +18,7 @@ export async function normalizeAndSaveJobs(
   // Stap 1: Valideer alle listings
   const validItems: Array<{
     parsed: z.output<typeof unifiedJobSchema>;
-    raw: RawScrapedListing;
+    raw: Record<string, unknown>;
   }> = [];
   for (const raw of listings) {
     const parsed = unifiedJobSchema.safeParse(raw);

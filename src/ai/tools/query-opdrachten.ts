@@ -7,7 +7,7 @@ const VALID_CONTRACT_TYPES = ["freelance", "interim", "vast", "opdracht"];
 
 /** Normalize model inputs: strip "alle"/"all", zero rates, invalid values. */
 function normalizeParams(params: Record<string, unknown>) {
-  const platform = PLATFORMS.includes(params.platform as string)
+  const platform = (PLATFORMS as readonly string[]).includes(params.platform as string)
     ? (params.platform as string)
     : undefined;
   const contractType = VALID_CONTRACT_TYPES.includes(params.contractType as string)

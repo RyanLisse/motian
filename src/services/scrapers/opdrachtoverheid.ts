@@ -141,24 +141,24 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
 
         // === Rate logic: tariff = indicative, maximum_tariff = ceiling ===
         const maxTariff =
-          t.tender_maximum_tariff > 0 ? Math.round(t.tender_maximum_tariff) : undefined;
+          (t.tender_maximum_tariff ?? 0) > 0 ? Math.round(t.tender_maximum_tariff!) : undefined;
         const baseTariff =
-          t.tender_tariff && parseFloat(t.tender_tariff) > 0
-            ? Math.round(parseFloat(t.tender_tariff))
+          t.tender_tariff && parseFloat(String(t.tender_tariff)) > 0
+            ? Math.round(parseFloat(String(t.tender_tariff)))
             : undefined;
         const rateMax = maxTariff ?? baseTariff;
         const rateMin = maxTariff && baseTariff && baseTariff < maxTariff ? baseTariff : undefined;
 
         // === Hours: tender_hours_week (100%), with optional min/max range ===
         const hoursPerWeek =
-          t.tender_max_hours > 0
-            ? Math.round(t.tender_max_hours)
-            : t.tender_hours_week > 0
-              ? Math.round(t.tender_hours_week)
+          (t.tender_max_hours ?? 0) > 0
+            ? Math.round(t.tender_max_hours!)
+            : (t.tender_hours_week ?? 0) > 0
+              ? Math.round(t.tender_hours_week!)
               : undefined;
         const minHoursPerWeek =
-          t.tender_min_hours > 0 && t.tender_min_hours < (hoursPerWeek ?? Infinity)
-            ? Math.round(t.tender_min_hours)
+          (t.tender_min_hours ?? 0) > 0 && t.tender_min_hours! < (hoursPerWeek ?? Infinity)
+            ? Math.round(t.tender_min_hours!)
             : undefined;
 
         // === Extension from tender_other_information ===
@@ -209,7 +209,7 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
           contractType,
           allowsSubcontracting,
           workArrangement,
-          contractLabel: CATEGORY_MAP[t.tender_category] ?? undefined,
+          contractLabel: t.tender_category != null ? CATEGORY_MAP[t.tender_category] : undefined,
           positionsAvailable: parseInt(String(t.tender_number_of_professionals ?? 1), 10) || 1,
           requirements:
             requirements.length > 0
@@ -243,7 +243,7 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
         };
       });
 
-      const validListings = listings.filter((listing) => listing.externalId.length > 0);
+      const validListings = listings.filter((listing) => (listing.externalId as string)?.length > 0);
 
       console.log(`Opdrachtoverheid: ${validListings.length} geldige opdrachten`);
 
