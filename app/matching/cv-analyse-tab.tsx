@@ -1,17 +1,17 @@
 "use client";
 
-import {
-  AlertTriangle,
-  CheckCircle2,
-  FileText,
-  Loader2,
-  Upload,
-} from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Upload } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CvMatchCard } from "@/components/matching/cv-match-card";
-import { CvPdfPanel } from "@/components/matching/cv-pdf-panel";
+import { CvProfileCard } from "@/components/matching/cv-profile-card";
+import {
+  PipelineProgress,
+  type PipelineStep,
+  type StepStatus,
+} from "@/components/matching/pipeline-progress";
 import {
   RecentAnalyses,
   type RecentAnalysis,
@@ -19,6 +19,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AutoMatchResult } from "@/src/services/auto-matching";
+import type { ParsedCV } from "@/src/schemas/candidate-intelligence";
+
+const CvDocumentViewer = dynamic(
+  () => import("@/components/cv-document-viewer").then((m) => m.CvDocumentViewer),
+  { ssr: false },
+);
 
 interface CvAnalyseTabProps {
   recentAnalyses: RecentAnalysis[];
@@ -60,14 +66,23 @@ function getRecommendation(
   return result.structuredResult?.recommendation ?? null;
 }
 
+const INITIAL_STEPS: PipelineStep[] = [
+  { id: "upload", label: "CV uploaden naar opslag...", status: "pending" },
+  { id: "parse", label: "CV analyseren met AI...", status: "pending" },
+  { id: "deduplicate", label: "Kandidaat controleren...", status: "pending" },
+  { id: "match", label: "Matchen met vacatures...", status: "pending" },
+];
+
 export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [matches, setMatches] = useState<AutoMatchResult[]>([]);
   const [candidateInfo, setCandidateInfo] = useState<CandidateInfo | null>(null);
-  const [pdfPanelOpen, setPdfPanelOpen] = useState(false);
   const [activeRecentId, setActiveRecentId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>(INITIAL_STEPS);
+  const [parsedCv, setParsedCv] = useState<ParsedCV | null>(null);
+  const [isExistingCandidate, setIsExistingCandidate] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -92,10 +107,11 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
     }
 
     setStatus("uploading");
-    setMessage("CV wordt geanalyseerd...");
+    setMessage(null);
     setMatches([]);
     setCandidateInfo(null);
     setActiveRecentId(null);
+    setPipelineSteps(INITIAL_STEPS.map((s) => ({ ...s, detail: undefined })));
 
     try {
       const formData = new FormData();
@@ -107,28 +123,82 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
       });
 
       if (!res.ok) {
+        // Non-SSE error responses (validation errors) are JSON
         const json = await res.json();
         throw new Error(json.error ?? "Analyse mislukt");
       }
 
-      const data = await res.json();
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamDone = false;
 
-      setMatches(data.matches ?? []);
-      setCandidateInfo({
-        id: data.candidate.id,
-        name: data.candidate.name,
-        fileUrl: data.fileUrl,
-      });
-      setStatus("done");
-      setMessage(null);
-      router.refresh();
+      const processLine = (line: string) => {
+        if (!line.startsWith("data: ")) return;
+        const event = JSON.parse(line.slice(6));
+
+        if (event.step === "done") {
+          const data = event.result;
+          setMatches(data.matches ?? []);
+          setParsedCv(data.parsed ?? null);
+          setIsExistingCandidate(!!data.isExistingCandidate);
+          setCandidateInfo({
+            id: data.candidate.id,
+            name: data.candidate.name,
+            fileUrl: data.fileUrl,
+          });
+          streamDone = true;
+          setStatus("done");
+          setMessage(null);
+          router.refresh();
+        } else if (event.step === "error") {
+          throw new Error(event.label);
+        } else {
+          // Pipeline step update
+          setPipelineSteps((prev) =>
+            prev.map((s) => {
+              if (s.id === event.step) {
+                return { ...s, status: event.status as StepStatus, label: event.label, detail: event.detail };
+              }
+              return s;
+            }),
+          );
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        // Keep the last (potentially incomplete) line in the buffer
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          processLine(line);
+        }
+      }
+
+      // Flush remaining buffer (handles edge case where final event lacks trailing newline)
+      buffer += decoder.decode();
+      if (buffer.trim()) {
+        for (const line of buffer.split("\n")) {
+          processLine(line);
+        }
+      }
+
+      // If stream ended without a done event, something went wrong server-side
+      if (!streamDone) {
+        throw new Error("Analyse stream onverwacht beëindigd");
+      }
     } catch (err) {
       setStatus("error");
       setMessage(
         err instanceof Error ? err.message : "Onbekende fout opgetreden",
       );
     }
-  }, []);
+  }, [router]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -181,17 +251,123 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
     [handleDropZoneClick],
   );
 
-  const handleRecentSelect = useCallback((analysis: RecentAnalysis) => {
+  const handleCloseResults = useCallback(() => {
+    setStatus("idle");
+    setMatches([]);
+    setParsedCv(null);
+    setIsExistingCandidate(false);
+    setCandidateInfo(null);
+    setActiveRecentId(null);
+  }, []);
+
+  const handleRecentSelect = useCallback(async (analysis: RecentAnalysis) => {
     setActiveRecentId(analysis.id);
-    if (analysis.resumeUrl) {
-      setCandidateInfo({
-        id: analysis.id,
-        name: analysis.name,
-        fileUrl: analysis.resumeUrl,
-      });
-      setPdfPanelOpen(true);
+    setCandidateInfo({
+      id: analysis.id,
+      name: analysis.name,
+      fileUrl: analysis.resumeUrl ?? "",
+    });
+    // Fetch persisted match results from DB
+    setStatus("uploading");
+    setMessage("Resultaten ophalen...");
+    setMatches([]);
+
+    try {
+      const res = await fetch(`/api/candidates/${analysis.id}/matches`);
+      if (!res.ok) throw new Error("Ophalen mislukt");
+      const data: AutoMatchResult[] = await res.json();
+      setMatches(data);
+      setStatus("done");
+      setMessage(null);
+    } catch {
+      setStatus("error");
+      setMessage("Kon eerdere resultaten niet ophalen");
     }
   }, []);
+
+  // Close full-screen on Escape
+  useEffect(() => {
+    if (status !== "done") return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") handleCloseResults();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [status, handleCloseResults]);
+
+  // Full-screen results overlay
+  if (status === "done") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        {/* Header bar */}
+        <div className="flex items-center justify-between border-b border-border px-6 py-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={handleCloseResults} className="gap-1.5">
+              <ArrowLeft className="h-4 w-4" />
+              Terug
+            </Button>
+            <div className="h-4 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <h3 className="text-sm font-semibold">
+                {candidateInfo?.name ?? "Analyse"} — {matches.length} vacature{matches.length === 1 ? "" : "s"}
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        {/* Split content */}
+        <div className={cn(
+          "flex-1 min-h-0",
+          candidateInfo?.fileUrl ? "grid grid-cols-1 lg:grid-cols-2" : "",
+        )}>
+          {/* Left: match cards (scrollable) */}
+          <div className="overflow-y-auto p-6 space-y-4">
+            {/* CV Profile — always shown */}
+            {parsedCv && (
+              <CvProfileCard parsed={parsedCv} isExistingCandidate={isExistingCandidate} />
+            )}
+
+            {/* Match cards */}
+            {matches.length > 0 ? (
+              matches.map((match) => (
+                <CvMatchCard
+                  key={match.matchId}
+                  jobId={match.jobId}
+                  jobTitle={match.jobTitle}
+                  company={match.company}
+                  location={match.location}
+                  score={getScore(match)}
+                  recommendation={getRecommendation(match)}
+                  strengths={extractStrengths(match)}
+                  risks={extractRisks(match)}
+                  matchId={match.matchId}
+                  reasoning={match.structuredResult?.recommendationReasoning}
+                  criteriaBreakdown={match.structuredResult?.criteriaBreakdown}
+                  enrichmentSuggestions={match.structuredResult?.enrichmentSuggestions}
+                  judgeVerdict={match.judgeVerdict}
+                />
+              ))
+            ) : (
+              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                Geen actieve vacatures gevonden die boven de matchdrempel scoren.
+              </div>
+            )}
+          </div>
+
+          {/* Right: PDF viewer (scrollable) */}
+          {candidateInfo?.fileUrl && (
+            <div className="overflow-y-auto border-l border-border p-6">
+              <CvDocumentViewer
+                url={candidateInfo.fileUrl}
+                candidateName={candidateInfo.name}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -215,23 +391,20 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
         )}
       >
         {isProcessing ? (
-          <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          <PipelineProgress steps={pipelineSteps} />
         ) : (
-          <Upload className="h-10 w-10 text-muted-foreground" />
+          <>
+            <Upload className="h-10 w-10 text-muted-foreground" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                {isDragging
+                  ? "Laat het CV los om te uploaden"
+                  : "Sleep een CV hierheen of klik om te uploaden"}
+              </p>
+              <p className="text-xs text-muted-foreground">PDF / DOCX · Max 20MB</p>
+            </div>
+          </>
         )}
-
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">
-            {isProcessing
-              ? (message ?? "Bezig...")
-              : isDragging
-                ? "Laat het CV los om te uploaden"
-                : "Sleep een CV hierheen of klik om te uploaden"}
-          </p>
-          {!isProcessing && (
-            <p className="text-xs text-muted-foreground">PDF / DOCX · Max 20MB</p>
-          )}
-        </div>
 
         <input
           ref={fileInputRef}
@@ -257,74 +430,6 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
         onSelect={handleRecentSelect}
         activeId={activeRecentId}
       />
-
-      {/* Results section */}
-      {status === "done" && (
-        <div className="space-y-4">
-          {/* Results header */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <h3 className="text-sm font-semibold">
-                {matches.length > 0
-                  ? `${matches.length} passende vacature${matches.length === 1 ? "" : "s"} gevonden`
-                  : "Geen passende vacatures gevonden"}
-              </h3>
-            </div>
-
-            {candidateInfo && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPdfPanelOpen(true)}
-                className="gap-1.5 shrink-0"
-              >
-                <FileText className="h-4 w-4" />
-                Bekijk CV
-              </Button>
-            )}
-          </div>
-
-          {/* Match cards grid */}
-          {matches.length > 0 ? (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {matches.map((match) => (
-                <CvMatchCard
-                  key={match.matchId}
-                  jobId={match.jobId}
-                  jobTitle={match.jobTitle}
-                  company={match.company}
-                  location={match.location}
-                  score={getScore(match)}
-                  recommendation={getRecommendation(match)}
-                  strengths={extractStrengths(match)}
-                  risks={extractRisks(match)}
-                  matchId={match.matchId}
-                  reasoning={match.structuredResult?.recommendationReasoning}
-                  criteriaBreakdown={match.structuredResult?.criteriaBreakdown}
-                  enrichmentSuggestions={match.structuredResult?.enrichmentSuggestions}
-                  judgeVerdict={match.judgeVerdict}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Dit CV kon niet worden gekoppeld aan actieve vacatures. Probeer een
-              ander CV of controleer de beschikbare vacatures.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* PDF panel */}
-      {candidateInfo && (
-        <CvPdfPanel
-          url={candidateInfo.fileUrl}
-          candidateName={candidateInfo.name}
-          open={pdfPanelOpen}
-          onClose={() => setPdfPanelOpen(false)}
-        />
-      )}
     </div>
   );
 }
