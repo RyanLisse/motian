@@ -312,18 +312,21 @@ export default async function OverzichtPage() {
               </div>
             </DashboardCard>
 
-            {/* System status */}
+            {/* System status — derived from actual scrape results */}
             <DashboardCard title="Systeem status" icon={<Zap className="h-4 w-4" />}>
               <div className="space-y-3">
                 <StatusRow label="Database" status="online" />
-                <StatusRow label="Scraper engine" status="online" />
-                {activeScrapers.map((s) => (
-                  <StatusRow
-                    key={s.platform}
-                    label={`${s.platform.charAt(0).toUpperCase()}${s.platform.slice(1)} scraper`}
-                    status="online"
-                  />
-                ))}
+                {activeScrapers.map((s) => {
+                  const lastRun = recentScrapes.find((r) => r.platform === s.platform);
+                  const isHealthy = lastRun ? lastRun.status !== "failed" : false;
+                  return (
+                    <StatusRow
+                      key={s.platform}
+                      label={`${s.platform.charAt(0).toUpperCase()}${s.platform.slice(1)} scraper`}
+                      status={isHealthy ? "online" : "offline"}
+                    />
+                  );
+                })}
               </div>
             </DashboardCard>
           </div>
