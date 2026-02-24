@@ -82,6 +82,16 @@ mcp-verify:
 tui:
 	cd tui && bun run start
 
+# ── Docs (Fumadocs) ─────────────────────────────
+
+# Start fumadocs dev server (port 4000)
+docs:
+	cd fumadocs && pnpm dev
+
+# Build fumadocs production bundle
+docs-build:
+	cd fumadocs && pnpm build
+
 # ── Build & Deploy ───────────────────────────────
 
 # Build Next.js production bundle

@@ -1,8 +1,7 @@
 {
   "title": "Documentatie",
+  "root": true,
   "pages": [
-    "---Aan de slag---",
-    "index",
     "---Platform---",
     "architectuur",
     "matching",
