@@ -5,39 +5,106 @@ description: REST API documentatie voor het Motian platform.
 
 Alle API routes gebruiken Next.js App Router route handlers met Zod validatie.
 
-## Endpoints
+## Overzicht
 
-### Kandidaten
+<Mermaid chart={`
+graph LR
+  CLIENT[Client] --> API[Next.js API Routes]
+  API --> ZOD[Zod Validatie]
+  ZOD --> SVC[Service Laag]
+  SVC --> DB[(Neon PostgreSQL)]
+  SVC --> AI[AI Modellen]
+  SVC --> BLOB[Vercel Blob]
+
+  style API fill:#fef3c7,stroke:#92400e
+  style ZOD fill:#fef3c7,stroke:#92400e
+  style SVC fill:#d1fae5,stroke:#065f46
+`} />
+
+## Kandidaten
 
 | Methode | Pad | Beschrijving |
 |---------|-----|-------------|
+| `GET` | `/api/candidates` | Lijst met zoeken (query, location, skills, role) |
 | `GET` | `/api/candidates/:id` | Kandidaat ophalen |
-| `POST` | `/api/candidates/:id/matches` | Matching starten |
+| `PUT` | `/api/candidates/:id` | Kandidaat bijwerken |
+| `DELETE` | `/api/candidates/:id` | Soft-delete kandidaat |
+| `GET` | `/api/candidates/:id/matches` | Matches voor kandidaat |
 
-### CV-analyse
+## Vacatures
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `GET` | `/api/opdrachten` | Lijst (filters: q, platform, province, rate, contract) |
+| `GET` | `/api/opdrachten/zoeken` | Hybrid zoeken (FTS + vector) |
+| `GET` | `/api/opdrachten/:id` | Vacature ophalen |
+| `PUT` | `/api/opdrachten/:id` | Vacature bijwerken |
+| `DELETE` | `/api/opdrachten/:id` | Soft-delete vacature |
+
+## Matching
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `GET` | `/api/matches` | Lijst (filter: jobId, candidateId, status) |
+| `GET` | `/api/matches/:id` | Match details |
+| `PUT` | `/api/matches/:id` | Status bijwerken |
+| `DELETE` | `/api/matches/:id` | Match verwijderen |
+| `POST` | `/api/matches/auto` | Auto-match starten |
+| `POST` | `/api/matches/genereren` | Batch matches genereren |
+| `POST` | `/api/matches/structured` | Gestructureerde match |
+
+## CV-analyse
 
 | Methode | Pad | Beschrijving |
 |---------|-----|-------------|
 | `POST` | `/api/cv-analyse` | CV uploaden en analyseren |
 | `GET` | `/api/cv-file` | CV bestand ophalen |
 
-### Scraping
+## Sollicitaties
 
 | Methode | Pad | Beschrijving |
 |---------|-----|-------------|
-| `GET` | `/api/scraper-configuraties` | Configuraties ophalen |
-| `GET` | `/api/gezondheid` | Systeem gezondheid |
+| `GET` | `/api/sollicitaties` | Lijst sollicitaties |
+| `GET` | `/api/sollicitaties/:id` | Sollicitatie details |
+| `POST` | `/api/sollicitaties` | Nieuwe sollicitatie |
+| `PUT` | `/api/sollicitaties/:id` | Fase bijwerken |
 
-### Zoeken
+## GDPR
 
 | Methode | Pad | Beschrijving |
 |---------|-----|-------------|
-| `GET` | `/api/search` | Full-text zoeken in documentatie |
+| `GET` | `/api/gdpr/export/:kandidaatId` | Data export (Art. 15) |
+| `DELETE` | `/api/gdpr/verwijder/:kandidaatId` | Data wissen (Art. 17) |
+| `GET` | `/api/gdpr/contacten/export` | Contact data export |
+| `DELETE` | `/api/gdpr/contacten/verwijder` | Contact gegevens scrubben |
+
+## Scraping & Systeem
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `GET` | `/api/scraper-configuraties` | Scraper configs |
+| `POST` | `/api/scrape/starten` | Handmatige scrape |
+| `GET` | `/api/gezondheid` | Systeem health check |
+| `POST` | `/api/embeddings/backfill` | Ontbrekende embeddings genereren |
 
 ## Validatie
 
-Alle request bodies worden gevalideerd met Zod schema's uit `src/schemas/`. Bij ongeldige input wordt een `400` response teruggegeven met details.
+Alle request bodies worden gevalideerd met Zod schema's uit `src/schemas/`. Bij ongeldige input wordt een `400` response teruggegeven:
 
-## Authenticatie
+```json
+{
+  "error": "Validation failed",
+  "details": [
+    { "path": ["email"], "message": "Invalid email format" }
+  ]
+}
+```
 
-*Nog te implementeren* — Zie de roadmap voor meer informatie.
+## Foutcodes
+
+| Code | Betekenis |
+|------|-----------|
+| `200` | Succes |
+| `400` | Validatiefout (Zod) |
+| `404` | Resource niet gevonden |
+| `500` | Interne serverfout |

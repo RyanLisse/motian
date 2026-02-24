@@ -15,6 +15,24 @@ Motian automatiseert het wervingsproces:
 - **MCP-server** — Model Context Protocol integratie voor AI-assistenten
 - **CLI** — Command-line interface voor directe platform-interactie
 
+<Mermaid chart={`
+graph LR
+  A[CV Upload] --> B[AI Analyse]
+  B --> C[Kandidaat Profiel]
+  C --> D[Auto-Matching]
+  D --> E[Gerangschikte Matches]
+  E --> F[Pipeline]
+  F --> G[Aanname]
+
+  style A fill:#e8f4fd,stroke:#1e3a8a
+  style B fill:#e8f4fd,stroke:#1e3a8a
+  style C fill:#dbeafe,stroke:#1e3a8a
+  style D fill:#dbeafe,stroke:#1e3a8a
+  style E fill:#bfdbfe,stroke:#1e3a8a
+  style F fill:#bfdbfe,stroke:#1e3a8a
+  style G fill:#93c5fd,stroke:#1e3a8a
+`} />
+
 ## Snel starten
 
 ```bash
@@ -23,6 +41,9 @@ pnpm install
 
 # Start development server (poort 3001)
 pnpm dev
+
+# Start documentatie server (poort 4000)
+just docs
 
 # Voer tests uit
 pnpm test

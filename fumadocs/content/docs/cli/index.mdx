@@ -1,27 +1,110 @@
 ---
-title: CLI
-description: Command-line interface voor directe platform-interactie.
+title: CLI & MCP
+description: Command-line interface en MCP server voor directe platform-interactie.
 ---
 
-Motian biedt een CLI voor directe interactie met het platform.
+Motian biedt twee interfaces voor programmatische toegang: een **CLI** voor terminal-gebruik en een **MCP server** voor AI-assistenten.
 
-## Gebruik
+## Overzicht
+
+<Mermaid chart={`
+graph TB
+  subgraph Interfaces["Toegangspunten"]
+    CLI[CLI Terminal]
+    MCP[MCP Server]
+    WEB[Web UI]
+    API[REST API]
+  end
+
+  subgraph Core["Service Laag"]
+    SVC[20 Services]
+  end
+
+  subgraph Data["Data"]
+    DB[(PostgreSQL)]
+    AI[AI Modellen]
+  end
+
+  CLI --> SVC
+  MCP --> SVC
+  WEB --> API --> SVC
+  SVC --> DB
+  SVC --> AI
+
+  style Interfaces fill:#e8f4fd,stroke:#1e3a8a
+  style Core fill:#d1fae5,stroke:#065f46
+  style Data fill:#fee2e2,stroke:#991b1b
+`} />
+
+## CLI
+
+### Gebruik
 
 ```bash
 # CLI starten
 pnpm cli
 
-# Of direct via tsx
-tsx src/cli/index.ts
+# Of via Just
+just cli kandidaten:zoek --query "Java"
 ```
+
+### Commando's (50+)
+
+| Groep | Commando's | Voorbeeld |
+|-------|-----------|-----------|
+| **kandidaten** | zoek, detail, maak-aan, update, verwijder, notitie, auto-match | `kandidaten:zoek --skills "React,Node"` |
+| **vacatures** | zoek, detail, update, verwijder, auto-match | `vacatures:zoek --platform striive` |
+| **matches** | zoek, detail, maak-aan, goedkeuren, afwijzen, verwijder | `matches:goedkeuren --id <uuid>` |
+| **sollicitaties** | zoek, detail, maak-aan, fase, stats | `sollicitaties:fase --id <uuid> --stage interview` |
+| **interviews** | zoek, plan, update | `interviews:plan --type video` |
+| **berichten** | zoek, stuur | `berichten:stuur --channel email` |
+| **gdpr** | exporteer, wis, scrub, retentie | `gdpr:exporteer --candidate-id <uuid>` |
+| **ops** | importeer, scoring-batch | `ops:importeer --platform striive` |
 
 ## MCP Server
 
-Het platform biedt ook een Model Context Protocol (MCP) server voor integratie met AI-assistenten zoals Claude.
+De MCP server maakt het mogelijk om vanuit AI-tools (Claude Desktop, Cursor) het volledige platform te bedienen.
+
+### Starten
 
 ```bash
 # MCP server starten
 pnpm mcp
+
+# Via Just
+just mcp
+
+# Verificatie
+just mcp-verify
 ```
 
-De MCP server maakt het mogelijk om vanuit AI-tools kandidaten te zoeken, vacatures te beheren en matches te maken.
+### Tools (45+)
+
+<Mermaid chart={`
+pie title MCP Tools per Categorie
+  "Kandidaten" : 7
+  "Vacatures" : 5
+  "Matches" : 6
+  "Sollicitaties" : 5
+  "Interviews" : 3
+  "Berichten" : 2
+  "GDPR" : 4
+  "Operations" : 3
+`} />
+
+### Voorbeeld MCP Interactie
+
+Een AI-assistent kan via MCP:
+
+```
+Gebruiker: "Zoek kandidaten met React ervaring in Amsterdam"
+  → MCP tool: zoek_kandidaten { query: "React", location: "Amsterdam" }
+
+Gebruiker: "Match deze kandidaat met beschikbare vacatures"
+  → MCP tool: auto_match_kandidaat { kandidaatId: "uuid" }
+
+Gebruiker: "Keur de beste match goed"
+  → MCP tool: keur_match_goed { matchId: "uuid" }
+```
+
+Alle MCP tools gebruiken Zod schema's die automatisch worden omgezet naar JSON Schema via `zod-to-json-schema`.

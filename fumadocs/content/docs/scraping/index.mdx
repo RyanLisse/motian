@@ -5,20 +5,86 @@ description: Automatisch vacatures verzamelen van externe bronnen.
 
 Het scraping-systeem verzamelt vacatures automatisch van geconfigureerde bronnen.
 
-## Configuratie
+## Scrape Pipeline
 
-Scraper-configuraties worden beheerd via de UI op `/scraper` of via de API.
+<Mermaid chart={`
+flowchart TD
+  TRIGGER([Trigger: Cron / Handmatig]) --> CONFIG[Laad Scraper Config]
+  CONFIG --> SCRAPE[Platform Scraper]
+
+  subgraph Platforms["Ondersteunde Platforms"]
+    S1[Striive]
+    S2[Opdrachtoverheid]
+    S3[Flextender]
+    S4[Indeed]
+    S5[LinkedIn]
+  end
+
+  SCRAPE --> NORM[Normalisatie]
+  NORM --> DEDUP{Duplicaat Check}
+  DEDUP -->|Nieuw| INSERT[Opslaan in DB]
+  DEDUP -->|Bestaand| SKIP[Overslaan]
+  INSERT --> ENRICH[AI Verrijking]
+  ENRICH --> RECORD[Resultaat Loggen]
+  RECORD --> NOTIFY[Slack Notificatie]
+
+  style Platforms fill:#e8f4fd,stroke:#1e3a8a
+  style ENRICH fill:#ede9fe,stroke:#5b21b6
+  style NOTIFY fill:#d1fae5,stroke:#065f46
+`} />
+
+## Platforms
+
+| Platform | Status | Type |
+|----------|--------|------|
+| Striive | Actief | Detachering |
+| Opdrachtoverheid | Actief | Overheid |
+| Flextender | Actief | Overheid |
+| Indeed | Gepland | Algemeen |
+| LinkedIn | Gepland | Professioneel |
+
+## AI Verrijking
+
+Na het scrapen worden nieuwe vacatures automatisch verrijkt door Gemini Flash:
+
+| Veld | Beschrijving |
+|------|-------------|
+| `educationLevel` | HBO / WO / PhD |
+| `workExperienceYears` | Geschatte vereiste ervaring |
+| `workArrangement` | Remote / Hybrid / Onsite |
+| `languages` | Vereiste talen |
+| `durationMonths` | Contractduur |
+| `extensionPossible` | Verlengbaar ja/nee |
+| `descriptionSummary` | NL + EN samenvatting |
+| `categories` | Classificaties |
+
+## Foutafhandeling
+
+<Mermaid chart={`
+stateDiagram-v2
+  [*] --> Active: Scraper geconfigureerd
+  Active --> Running: Cron trigger
+  Running --> Success: Vacatures gevonden
+  Running --> Partial: Gedeeltelijk mislukt
+  Running --> Failed: Volledig mislukt
+  Success --> Active: Reset timer
+  Partial --> Active: Log + waarschuwing
+  Failed --> Retry: consecutiveFailures++
+  Retry --> Running: Backoff wachttijd
+  Retry --> Disabled: > 5 failures
+  Disabled --> Active: Handmatige reset
+`} />
+
+## API
 
 ```bash
 # Configuraties ophalen
 GET /api/scraper-configuraties
 
-# Systeem gezondheid controleren
+# Handmatige scrape starten
+POST /api/scrape/starten
+{ "platform": "striive" }
+
+# Systeem gezondheid
 GET /api/gezondheid
 ```
-
-## Functionaliteit
-
-- Configureerbare scrape-bronnen
-- Automatische status-detectie op basis van scrape-resultaten
-- Foutafhandeling met retry-logica via Trigger.dev

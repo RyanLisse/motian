@@ -3,23 +3,81 @@ title: Architectuur
 description: Technische architectuur van het Motian recruitment platform.
 ---
 
+## Systeemoverzicht
+
+<Mermaid chart={`
+graph TB
+  subgraph Frontend["Frontend (Next.js 16)"]
+    UI[App Router Pages]
+    SC[Server Components]
+    CC[Client Components]
+  end
+
+  subgraph API["API Laag"]
+    REST[REST Routes]
+    ZOD[Zod Validatie]
+  end
+
+  subgraph Services["Service Laag"]
+    CAND[Candidates]
+    JOBS[Jobs]
+    MATCH[Matching]
+    SCRAPE[Scraping]
+    GDPR[GDPR]
+  end
+
+  subgraph AI["AI Pipeline"]
+    GEMINI[Gemini Flash]
+    OPENAI[OpenAI Embeddings]
+    GROK[Grok Judge]
+  end
+
+  subgraph Data["Data Laag"]
+    DB[(Neon PostgreSQL)]
+    VEC[pgvector]
+    BLOB[Vercel Blob]
+  end
+
+  subgraph Tooling["Tooling"]
+    CLI[CLI]
+    MCP[MCP Server]
+    TRIG[Trigger.dev]
+  end
+
+  UI --> REST
+  REST --> ZOD --> Services
+  Services --> AI
+  Services --> Data
+  CLI --> Services
+  MCP --> Services
+  TRIG --> Services
+
+  style Frontend fill:#e8f4fd,stroke:#1e3a8a
+  style API fill:#fef3c7,stroke:#92400e
+  style Services fill:#d1fae5,stroke:#065f46
+  style AI fill:#ede9fe,stroke:#5b21b6
+  style Data fill:#fee2e2,stroke:#991b1b
+  style Tooling fill:#f3f4f6,stroke:#374151
+`} />
+
 ## Tech Stack
 
-| Laag | Technologie |
-|------|-------------|
-| Frontend | Next.js 16 (App Router, Server Components) |
-| Database | Neon (PostgreSQL) via Drizzle ORM |
-| AI | Vercel AI SDK (Claude, GPT, Gemini, Grok) |
-| Achtergrondtaken | Trigger.dev v4 |
-| Monitoring | Sentry, PostHog |
-| Opslag | Vercel Blob |
-| Stijl | Tailwind CSS v4, Radix UI |
+| Laag | Technologie | Doel |
+|------|-------------|------|
+| Frontend | Next.js 16 (App Router) | Server Components + Streaming |
+| Database | Neon PostgreSQL + pgvector | Relationeel + vector similarity |
+| AI | Vercel AI SDK | Multi-model (Gemini, OpenAI, Grok) |
+| Achtergrondtaken | Trigger.dev v4 | Scraping, enrichment, batch |
+| Monitoring | Sentry + PostHog | Errors + analytics |
+| Opslag | Vercel Blob | CV bestanden (PDF/DOCX) |
+| Stijl | Tailwind CSS v4 + Radix UI | Design system |
+| Validatie | Zod | End-to-end type safety |
 
 ## Projectstructuur
 
 ```
 app/                  # Next.js App Router pagina's
-├── api/              # API routes (REST)
+├── api/              # REST routes (30+ endpoints)
 ├── matching/         # Matching pagina's
 ├── pipeline/         # Kandidaat pipeline
 ├── professionals/    # Professionals overzicht
@@ -27,12 +85,69 @@ app/                  # Next.js App Router pagina's
 
 src/
 ├── ai/               # AI tools en prompts
-├── cli/              # CLI commando's
-├── db/               # Drizzle schema en connectie
-├── mcp/              # MCP server
+├── cli/              # CLI (50+ commando's)
+├── db/               # Drizzle schema (11 tabellen)
+├── mcp/              # MCP server (45+ tools)
 ├── schemas/          # Zod validatie schema's
-└── services/         # Business logica
+└── services/         # Business logica (20 services)
 ```
+
+## Datamodel
+
+<Mermaid chart={`
+erDiagram
+  candidates ||--o{ job_matches : "heeft"
+  candidates ||--o{ applications : "solliciteert"
+  jobs ||--o{ job_matches : "heeft"
+  jobs ||--o{ applications : "voor"
+  applications ||--o{ interviews : "heeft"
+  applications ||--o{ messages : "bevat"
+  scraper_configs ||--o{ scrape_results : "produceert"
+
+  candidates {
+    uuid id PK
+    text name
+    text email UK
+    jsonb skills
+    vector embedding
+    text resumeRaw
+  }
+
+  jobs {
+    uuid id PK
+    text platform
+    text externalId
+    text title
+    text company
+    text location
+    vector embedding
+  }
+
+  job_matches {
+    uuid id PK
+    uuid jobId FK
+    uuid candidateId FK
+    int matchScore
+    text recommendation
+    jsonb criteriaBreakdown
+  }
+
+  applications {
+    uuid id PK
+    uuid jobId FK
+    uuid candidateId FK
+    text stage
+    text source
+  }
+
+  interviews {
+    uuid id PK
+    uuid applicationId FK
+    text type
+    text status
+    int rating
+  }
+`} />
 
 ## Conventies
 
@@ -40,3 +155,5 @@ src/
 - **API paden**: Nederlands (`/api/scraper-configuraties`, `/api/gezondheid`)
 - **Linting**: Biome (niet ESLint/Prettier)
 - **Tests**: Vitest met `.test.ts` extensie in `/tests/`
+- **Soft deletes**: `deletedAt` timestamp voor GDPR compliance
+- **Vector dimensies**: 512 (OpenAI text-embedding-3-small)
