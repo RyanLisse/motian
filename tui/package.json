@@ -1,0 +1,23 @@
+{
+  "name": "motian-tui",
+  "module": "src/index.tsx",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/index.tsx",
+    "dev": "bun run --watch src/index.tsx",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.1.81",
+    "@opentui/react": "^0.1.81",
+    "dotenv": "^16.4.7",
+    "react": "^19.2.4"
+  }
+}
