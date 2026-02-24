@@ -1,0 +1,32 @@
+---
+title: CV-analyse
+description: Automatische CV-analyse met AI-modellen.
+---
+
+Motian analyseert CV's automatisch met meerdere AI-modellen om gestructureerde kandidaatprofielen te genereren.
+
+## Ondersteunde formaten
+
+- **PDF** — Directe tekst-extractie
+- **DOCX** — Via Mammoth conversie
+
+## Analyse stappen
+
+1. Upload naar Vercel Blob opslag
+2. Tekst-extractie uit document
+3. AI-analyse (Claude / GPT / Gemini)
+4. Gestructureerd profiel opslaan in database
+
+## API
+
+```bash
+# CV uploaden en analyseren
+POST /api/cv-analyse
+
+# CV bestand ophalen
+GET /api/cv-file?url=<blob-url>
+```
+
+## Configuratie
+
+De AI-provider is configureerbaar per analyse. Standaard wordt Claude gebruikt voor de beste resultaten bij Nederlandstalige CV's.

@@ -1,0 +1,42 @@
+---
+title: Architectuur
+description: Technische architectuur van het Motian recruitment platform.
+---
+
+## Tech Stack
+
+| Laag | Technologie |
+|------|-------------|
+| Frontend | Next.js 16 (App Router, Server Components) |
+| Database | Neon (PostgreSQL) via Drizzle ORM |
+| AI | Vercel AI SDK (Claude, GPT, Gemini, Grok) |
+| Achtergrondtaken | Trigger.dev v4 |
+| Monitoring | Sentry, PostHog |
+| Opslag | Vercel Blob |
+| Stijl | Tailwind CSS v4, Radix UI |
+
+## Projectstructuur
+
+```
+app/                  # Next.js App Router pagina's
+├── api/              # API routes (REST)
+├── matching/         # Matching pagina's
+├── pipeline/         # Kandidaat pipeline
+├── professionals/    # Professionals overzicht
+└── scraper/          # Scraper configuratie
+
+src/
+├── ai/               # AI tools en prompts
+├── cli/              # CLI commando's
+├── db/               # Drizzle schema en connectie
+├── mcp/              # MCP server
+├── schemas/          # Zod validatie schema's
+└── services/         # Business logica
+```
+
+## Conventies
+
+- **Taal**: Nederlandse UI-strings, Engelse code-variabelen
+- **API paden**: Nederlands (`/api/scraper-configuraties`, `/api/gezondheid`)
+- **Linting**: Biome (niet ESLint/Prettier)
+- **Tests**: Vitest met `.test.ts` extensie in `/tests/`

@@ -1,0 +1,15 @@
+{
+  "title": "Documentatie",
+  "pages": [
+    "---Aan de slag---",
+    "index",
+    "---Platform---",
+    "architectuur",
+    "matching",
+    "cv-analyse",
+    "scraping",
+    "---Tooling---",
+    "api",
+    "cli"
+  ]
+}

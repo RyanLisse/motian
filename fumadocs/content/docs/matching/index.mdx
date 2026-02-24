@@ -1,0 +1,30 @@
+---
+title: Matching
+description: AI-gestuurde matching tussen kandidaten en vacatures.
+---
+
+Het matching-systeem vergelijkt kandidaat-profielen met vacatures via gestructureerde AI-scoring.
+
+## Hoe het werkt
+
+1. **CV uploaden** — PDF of DOCX wordt geanalyseerd
+2. **Profiel extractie** — AI extraheert vaardigheden, ervaring en voorkeuren
+3. **Scoring** — Gestructureerde vergelijking op meerdere dimensies
+4. **Rangschikking** — Kandidaten worden gerangschikt per vacature
+
+## Score dimensies
+
+- Technische vaardigheden
+- Werkervaring (jaren + relevantie)
+- Opleiding
+- Locatie en beschikbaarheid
+- Salarisbandbreedte
+
+## API
+
+```bash
+# Kandidaat matchen met vacature
+POST /api/candidates/:id/matches
+```
+
+Zie [API Referentie](/docs/api) voor volledige documentatie.

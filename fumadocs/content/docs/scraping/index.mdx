@@ -1,0 +1,24 @@
+---
+title: Scraping
+description: Automatisch vacatures verzamelen van externe bronnen.
+---
+
+Het scraping-systeem verzamelt vacatures automatisch van geconfigureerde bronnen.
+
+## Configuratie
+
+Scraper-configuraties worden beheerd via de UI op `/scraper` of via de API.
+
+```bash
+# Configuraties ophalen
+GET /api/scraper-configuraties
+
+# Systeem gezondheid controleren
+GET /api/gezondheid
+```
+
+## Functionaliteit
+
+- Configureerbare scrape-bronnen
+- Automatische status-detectie op basis van scrape-resultaten
+- Foutafhandeling met retry-logica via Trigger.dev

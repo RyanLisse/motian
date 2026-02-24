@@ -1,0 +1,43 @@
+---
+title: API Referentie
+description: REST API documentatie voor het Motian platform.
+---
+
+Alle API routes gebruiken Next.js App Router route handlers met Zod validatie.
+
+## Endpoints
+
+### Kandidaten
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `GET` | `/api/candidates/:id` | Kandidaat ophalen |
+| `POST` | `/api/candidates/:id/matches` | Matching starten |
+
+### CV-analyse
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `POST` | `/api/cv-analyse` | CV uploaden en analyseren |
+| `GET` | `/api/cv-file` | CV bestand ophalen |
+
+### Scraping
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `GET` | `/api/scraper-configuraties` | Configuraties ophalen |
+| `GET` | `/api/gezondheid` | Systeem gezondheid |
+
+### Zoeken
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `GET` | `/api/search` | Full-text zoeken in documentatie |
+
+## Validatie
+
+Alle request bodies worden gevalideerd met Zod schema's uit `src/schemas/`. Bij ongeldige input wordt een `400` response teruggegeven met details.
+
+## Authenticatie
+
+*Nog te implementeren* — Zie de roadmap voor meer informatie.

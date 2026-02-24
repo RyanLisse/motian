@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/og/docs/[...
   }
 
   return new ImageResponse(
-    <DefaultImage title={page.data.title} description={page.data.description} site="My App" />,
+    <DefaultImage title={page.data.title} description={page.data.description} site="Motian Docs" />,
     {
       height: 630,
       width: 1200,
