@@ -6,6 +6,8 @@
 
 _Scrapen → Normaliseren → Verrijken → Matchen → Aannemen_
 
+> **Interactieve visuele documentatie**: Open [`docs/visual-explainer.html`](docs/visual-explainer.html) in een browser voor diagrammen en flowcharts.
+
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
 [![Neon PostgreSQL](https://img.shields.io/badge/Neon-PostgreSQL-00e599?logo=postgresql)](https://neon.tech)
 [![Vercel AI SDK](https://img.shields.io/badge/AI%20SDK-6.0-blue?logo=vercel)](https://sdk.vercel.ai)
@@ -39,11 +41,11 @@ graph TB
         OO[Opdrachtoverheid]
     end
 
-    subgraph Pipeline["⚙️ Scrape Pipeline"]
+    subgraph Pipeline["⚙️ Scrape Pipeline — Trigger.dev"]
         SC[Scraper Engine]
         NR[Normaliseren — Zod]
-        EN[Verrijken — Gemini 2.5 Flash Lite]
-        EM[Embedden — OpenAI 512d]
+        EN[Verrijken — Gemini 3 Flash]
+        EM[Embedden — GPT-5 Nano 512d]
     end
 
     subgraph DB["🗄️ Neon PostgreSQL + pgvector"]
@@ -55,6 +57,20 @@ graph TB
         MSG[(berichten)]
         SCFG[(scraper_configs)]
         SRES[(scrape_resultaten)]
+        GDPR[(gdpr_audit_log)]
+    end
+
+    subgraph Matching["🎯 3-Laags Matching Engine"]
+        QS[Quick Score — 60% regels + 40% vector]
+        DM[Deep Match — Gemini 3 Flash]
+        JV[Judge Verdict — Grok 4]
+    end
+
+    subgraph CVPipeline["📄 CV Analyse — SSE Stream"]
+        UP[Upload → Vercel Blob]
+        PA[Parse → Gemini 3 Flash]
+        DD[Dedupliceren]
+        AM[Auto-Match → Top 3]
     end
 
     subgraph Zoeken["🔍 Hybride Zoeken"]
@@ -91,6 +107,10 @@ graph TB
     TOOLS --> CAND
     TOOLS --> MATCH
 
+    CAND --> QS --> DM --> JV --> MATCH
+
+    UP --> PA --> DD --> AM --> MATCH
+
     AGENT --> STREAM --> CHAT
     CHAT --> PAGES
     PAGES --> THEME
@@ -100,19 +120,19 @@ graph TB
 
 ```mermaid
 sequenceDiagram
-    participant Cron as ⏰ Vercel Cron
-    participant API as 🔌 /api/cron/scrape
+    participant Cron as ⏰ Trigger.dev Cron (4u)
+    participant Pipeline as ⚙️ runScrapePipeline()
     participant Scraper as 🕷️ Platform Scraper
     participant Zod as ✅ Zod Normalisatie
-    participant Gemini as 🧠 Gemini 2.0
-    participant OpenAI as 🔢 OpenAI Embed
+    participant Gemini as 🧠 Gemini 3 Flash
+    participant OpenAI as 🔢 GPT-5 Nano Embed
     participant DB as 🗄️ Neon DB
 
-    Cron->>API: Dagelijks 06:00
-    API->>Scraper: runScrapePipeline()
+    Cron->>Pipeline: Elke 4 uur
+    Pipeline->>Scraper: Actieve configs ophalen
 
     loop Per Platform
-        Scraper->>Scraper: Vacatures ophalen
+        Scraper->>Scraper: Vacatures ophalen (throws on failure)
         Scraper->>Zod: Ruwe vacaturedata
         Zod->>DB: Upsert (platform, externalId)
         Zod-->>Gemini: Batch verrijken
@@ -194,6 +214,7 @@ erDiagram
     candidates ||--o{ job_matches : "gematcht met"
     candidates ||--o{ applications : "solliciteert"
     applications ||--o{ interviews : "ingepland"
+    applications ||--o{ messages : "communicatie"
 
     jobs {
         uuid id PK
@@ -220,6 +241,8 @@ erDiagram
         text function_title
         text province
         jsonb skills
+        text resume_raw
+        text resume_url
         vector embedding "512d"
         timestamp deleted_at
     }
@@ -229,14 +252,20 @@ erDiagram
         uuid job_id FK
         uuid candidate_id FK
         real match_score
-        text status
-        jsonb reasoning
+        text recommendation "go/no-go/conditional"
+        jsonb criteria_breakdown
+        jsonb risk_profile
+        jsonb enrichment_suggestions
+        text assessment_model
+        text judge_score
+        text judge_motivation
     }
 
     applications {
         uuid id PK
         uuid job_id FK
         uuid candidate_id FK
+        uuid match_id FK
         text stage "nieuw-screening-interview-aanbod-aangenomen"
     }
 
@@ -244,15 +273,18 @@ erDiagram
         uuid id PK
         uuid application_id FK
         timestamp scheduled_at
+        text type
         text status
         text feedback
+        integer rating "1-5"
     }
 
     messages {
         uuid id PK
-        uuid candidate_id FK
+        uuid application_id FK
         text direction "inkomend/uitgaand"
-        text content
+        text channel
+        text body
     }
 
     scraper_configs {
@@ -261,6 +293,7 @@ erDiagram
         text base_url
         text cron_expression
         boolean is_active
+        integer consecutive_failures "circuit breaker"
     }
 
     scrape_results {
@@ -269,7 +302,17 @@ erDiagram
         text platform
         text status "geslaagd/mislukt"
         integer jobs_found
-        integer jobs_saved
+        integer jobs_new
+        integer duplicates
+    }
+
+    gdpr_audit_log {
+        uuid id PK
+        text action
+        text subject_type
+        uuid subject_id
+        text requested_by
+        timestamp created_at
     }
 ```
 
@@ -291,11 +334,69 @@ stateDiagram-v2
     Aangenomen --> [*]
 ```
 
+### CV Analyse Pipeline (SSE)
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 Recruiter
+    participant UI as 🖥️ CV Analyse Tab
+    participant API as 📡 /api/cv-analyse (SSE)
+    participant Blob as 📦 Vercel Blob
+    participant Gemini as 🧠 Gemini 3 Flash
+    participant DB as 🗄️ Neon DB
+    participant Match as 🎯 Matching Engine
+
+    User->>UI: CV slepen (PDF/DOCX)
+    UI->>API: POST FormData
+
+    API->>Blob: Bestand uploaden
+    API-->>UI: SSE: upload ✓
+    API->>Gemini: CV parseren
+    API-->>UI: SSE: parse ✓ (naam, rol)
+    API->>DB: Dedupliceren (email/naam)
+    API-->>UI: SSE: deduplicate ✓
+    API->>Match: Auto-match top 3 vacatures
+    API-->>UI: SSE: match ✓ (N matches)
+    API-->>UI: SSE: done + volledig resultaat
+
+    UI->>UI: Volledig scherm resultaatweergave
+```
+
+### 3-Laags Matching Engine
+
+```mermaid
+graph LR
+    subgraph Laag1["⚡ Laag 1: Quick Score"]
+        RULES[60% Regelgebaseerd<br/>skills, ervaring, locatie, tarief]
+        VECTOR[40% Vector Similariteit<br/>pgvector cosine 512d]
+    end
+
+    subgraph Laag2["🧠 Laag 2: Deep Match — Gemini"]
+        KO[KNOCKOUT<br/>Harde eisen — pass/fail]
+        GUN[GUNNING<br/>Gescoorde criteria — 1-5 sterren]
+        PROC[PROCESS<br/>Proceseisen — pass/fail]
+    end
+
+    subgraph Laag3["⚖️ Laag 3: Judge — Grok 4"]
+        JUDGE[Onafhankelijke Review<br/>Eigen score + motivatie]
+    end
+
+    RULES --> QS[Quick Score ≥ 40%]
+    VECTOR --> QS
+    QS --> |Top 3| KO
+    KO --> GUN --> PROC --> REC[Aanbeveling<br/>go / no-go / conditional]
+    REC --> JUDGE --> FINAL[Eindresultaat<br/>+ risicoprofiel]
+
+    style QS fill:#f59e0b,color:#000
+    style REC fill:#4f46e5,color:#fff
+    style FINAL fill:#10b981,color:#000
+```
+
 ### Cron Planning
 
 ```mermaid
 gantt
-    title Dagelijkse Geautomatiseerde Taken
+    title Geautomatiseerde Taken — Trigger.dev
     dateFormat HH:mm
     axisFormat %H:%M
 
@@ -303,8 +404,10 @@ gantt
     Data Retentie Opschoning      :02:00, 30min
     Vacature Verloopcontrole      :03:00, 15min
 
-    section Scraping
-    Platform Scrape Pipeline      :06:00, 45min
+    section Scraping (elke 4 uur)
+    Platform Scrape Pipeline      :00:00, 45min
+    Platform Scrape Pipeline      :04:00, 45min
+    Platform Scrape Pipeline      :08:00, 45min
 ```
 
 ---
@@ -317,14 +420,17 @@ gantt
 | **Database**       | Neon PostgreSQL + pgvector      | Serverless Postgres met vector gelijkenis |
 | **ORM**            | Drizzle ORM                     | Type-veilig schema en queries             |
 | **AI Chat**        | GPT-5 Nano via Vercel AI SDK 6  | Streaming agent met tool calling          |
-| **Embeddings**     | OpenAI `text-embedding-3-small` | 512-dimensionale job/kandidaat vectoren   |
-| **Verrijking**     | Gemini 2.5 Flash Lite           | AI samenvattingen, vaardigheden extractie |
+| **Embeddings**     | GPT-5 Nano `text-embedding-3-small` | 512-dimensionale job/kandidaat vectoren |
+| **CV Parsing & Matching** | Gemini 3 Flash           | CV parsing, verrijking, gestructureerd matchen |
+| **Judge Verdict**  | Grok 4                          | Onafhankelijke AI beoordeling van matches |
+| **Achtergrondtaken** | Trigger.dev v4                | Cron (elke 4u), langlopende scrape taken  |
+| **Bestandsopslag** | Vercel Blob                     | CV bestanden (PDF/DOCX)                   |
 | **Styling**        | Tailwind CSS 4 + shadcn/ui      | Design systeem met donker/licht thema     |
 | **Validatie**      | Zod                             | Schema validatie voor gescrapete data     |
 | **Linting**        | Biome                           | Snelle linting en formatting              |
 | **Code Kwaliteit** | [Qlty CLI](https://qlty.sh)     | Universele kwaliteitspoort voor AI agents |
 | **Testen**         | Vitest + Playwright             | Unit tests + browser automatisering       |
-| **Deployment**     | Vercel (Hobby)                  | Edge deployment met dagelijkse crons      |
+| **Deployment**     | Vercel                          | Edge deployment + Trigger.dev workers     |
 | **Pakketbeheer**   | pnpm 9.15                       | Snelle, schijf-efficiënte installaties    |
 
 ---
@@ -364,7 +470,7 @@ motian/
 │   │   ├── agent.ts              # AI agent configuratie + systeemprompt
 │   │   └── tools/                # 11 tool definities
 │   ├── db/
-│   │   ├── schema.ts             # 8 tabellen met pgvector
+│   │   ├── schema.ts             # 9 tabellen met pgvector
 │   │   └── index.ts              # Neon serverless verbinding
 │   ├── services/
 │   │   ├── scrapers/             # Platform-specifieke scrapers
@@ -376,6 +482,10 @@ motian/
 │   │   ├── ai-enrichment.ts      # Gemini-aangedreven verrijking
 │   │   ├── embedding.ts          # OpenAI vector generatie
 │   │   ├── jobs.ts               # Vacature queries + hybride zoeken
+│   │   ├── auto-matching.ts      # 3-laags matching engine
+│   │   ├── structured-matching.ts # Gemini gestructureerd matchen
+│   │   ├── match-judge.ts        # Grok onafhankelijke beoordeling
+│   │   ├── cv-parser.ts          # Gemini CV parsing
 │   │   ├── scoring.ts            # Kandidaat-vacature scoring
 │   │   ├── gdpr.ts               # AVG compliance (Art 15/17)
 │   │   └── ...                   # Overige domein services
@@ -434,9 +544,19 @@ Elke scraper implementeert een gemeenschappelijke interface en wordt georkestree
 | `/opdrachten`      | Vacatures       | Filterbare vacaturelijst met platform, provincie en tarief filters                |
 | `/opdrachten/[id]` | Vacature Detail | Volledige vacaturedetails met geformatteerde beschrijvingen en competentie badges |
 | `/professionals`   | Kandidaten      | Kandidaten directory en profielen                                                 |
-| `/matching`        | AI Matching     | AI-aangedreven kandidaat ↔ vacature matching dashboard                            |
+| `/matching`        | AI Matching     | CV Analyse (drag-and-drop SSE) + Koppelen tab met 3-laags matching               |
 | `/pipeline`        | Pipeline        | Scrape run geschiedenis en statusmonitoring                                       |
 | `/scraper`         | Configuratie    | Platform scraper instellingen en handmatige triggers                              |
+
+### Belangrijke UI Componenten
+
+| Component | Beschrijving |
+|-----------|-------------|
+| `PipelineProgress` | Stap-stepper met geanimeerde statusiconen (pending/active/complete/error) |
+| `CvProfileCard` | Geparsed CV met vaardigheidsbalken, ervaring, educatie, certificeringen |
+| `CvMatchCard` | Matchresultaat met score ring, aanbevelingsbadge, criteria breakdown |
+| `ScoreRing` | SVG circulaire voortgangsindicator met kleurcodering |
+| `CvDocumentViewer` | Split-screen PDF viewer voor CV review |
 
 ### Chat Zijpaneel
 
@@ -629,12 +749,14 @@ Alle API routes gebruiken **Nederlandse padnamen**.
 | `/api/sollicitaties`         | GET/POST  | Sollicitatie pipeline                      |
 | `/api/interviews`            | GET/POST  | Interview planning                         |
 | `/api/berichten`             | GET/POST  | Berichten                                  |
+| `/api/cv-analyse`            | POST      | CV analyse SSE pipeline (upload, parse, match) |
+| `/api/candidates/[id]/matches` | GET    | Opgeslagen matchresultaten per kandidaat    |
 | `/api/scrape/starten`        | POST      | Handmatige scrape starten                  |
 | `/api/scraper-configuraties` | GET/PATCH | Platform configuratie                      |
 | `/api/scrape-resultaten`     | GET       | Scrape run geschiedenis                    |
 | `/api/gdpr/[action]`         | POST      | AVG Art 15 (export) / Art 17 (verwijderen) |
 | `/api/gezondheid`            | GET       | Gezondheidscheck                           |
-| `/api/cron/scrape`           | GET       | Dagelijkse scrape (Vercel Cron)            |
+| `/api/cron/scrape`           | GET       | Scrape pipeline (Trigger.dev cron, elke 4u) |
 | `/api/cron/vacancy-expiry`   | GET       | Verlopen vacatures                         |
 | `/api/cron/data-retention`   | GET       | AVG data opschoning                        |
 | `/api/revalidate`            | POST      | Cache hervalidatie                         |
@@ -645,13 +767,14 @@ Alle API routes gebruiken **Nederlandse padnamen**.
 
 ### Vercel
 
-Het project is geconfigureerd voor Vercel deployment met:
+Het project is geconfigureerd voor Vercel + Trigger.dev deployment:
 
-- **Cron Taken**: 3 dagelijkse geautomatiseerde taken (zie `vercel.json`)
-  - `06:00` — Platform scrape pipeline
-  - `03:00` — Vacature verloopcontrole
-  - `02:00` — Data retentie opschoning
-- **Omgeving**: Stel alle variabelen uit `.env.example` in via het Vercel dashboard
+- **Vercel**: Next.js frontend, API routes, edge deployment
+- **Trigger.dev v4**: Achtergrondtaken en cron scheduling
+  - Scrape pipeline — elke 4 uur (`0 */4 * * *`)
+  - Vacature verloopcontrole — dagelijks
+  - Data retentie opschoning — dagelijks
+- **Omgeving**: Stel alle variabelen uit `.env.example` in via Vercel + Trigger.dev dashboards
 - **Build**: `pnpm build` (automatisch bij push)
 
 ### Pre-PR Checklist
