@@ -25,7 +25,9 @@
     "harness:verify-evidence": "tsx scripts/harness/verify-browser-evidence.ts",
     "harness:entropy": "tsx scripts/harness/entropy-check.ts",
     "harness:gap": "tsx scripts/harness/create-gap-issue.ts",
-    "harness:weekly-metrics": "tsx scripts/harness/entropy-check.ts --verbose"
+    "harness:weekly-metrics": "tsx scripts/harness/entropy-check.ts --verbose",
+    "mcp": "tsx src/mcp/server.ts",
+    "cli": "tsx src/cli/index.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.46",
@@ -33,6 +35,7 @@
     "@ai-sdk/openai": "^3.0.30",
     "@ai-sdk/react": "^3.0.99",
     "@ai-sdk/xai": "^3.0.57",
+    "@modelcontextprotocol/sdk": "^1.27.0",
     "@sentry/nextjs": "^10.39.0",
     "@slack/web-api": "^7.14.1",
     "@streamdown/cjk": "^1.0.2",
