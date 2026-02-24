@@ -35,9 +35,25 @@ function readText(filePath: string): string {
 
 function listFiles(dir: string, ext?: string): string[] {
   if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((d) => d.isFile() && (ext === undefined || d.name.endsWith(ext)))
-    .map((d) => join(dir, d.name));
+  const entries = readdirSync(dir, { withFileTypes: true });
+  const files: string[] = [];
+
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      // skip build dirs
+      if (
+        !["node_modules", ".next", "dist", ".git", "opentui-demo", "tui", "tests"].includes(
+          entry.name,
+        )
+      ) {
+        files.push(...listFiles(full, ext));
+      }
+    } else if (entry.isFile() && (ext === undefined || entry.name.endsWith(ext))) {
+      files.push(full);
+    }
+  }
+  return files;
 }
 
 // ── Check 1: Stale Docs ────────────────────────────────────────────────────
@@ -204,6 +220,47 @@ function checkSchemaDrift(): CheckResult {
   return { name: "Schema Drift", issues };
 }
 
+// ── Check 5: Code Cruft (TODOs, FIXMEs, Commented Code) ────────────────────
+// Scans for leftover "TODO", "FIXME", and obvious commented-out code blocks.
+
+function checkCruft(): CheckResult {
+  const issues: Issue[] = [];
+  const dirs = ["src", "app", "components"].map((d) => join(ROOT, d));
+
+  const allFiles = dirs.flatMap((d) => {
+    if (!existsSync(d)) return [];
+    return listFiles(d).filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"));
+  });
+
+  const TODO_REGEX = /\/\/\s*TODO:/i;
+  const FIXME_REGEX = /\/\/\s*FIXME:/i;
+  const COMMENTED_CODE_REGEX = /\/\/\s*(const|let|var|function|import|export)\s+/;
+
+  for (const file of allFiles) {
+    const content = readText(file);
+    const lines = content.split("\n");
+    const relPath = relative(ROOT, file);
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (TODO_REGEX.test(line)) {
+        issues.push({ label: `TODO found in ${relPath}:${i + 1}`, severity: "warning" });
+      }
+      if (FIXME_REGEX.test(line)) {
+        issues.push({ label: `FIXME found in ${relPath}:${i + 1}`, severity: "warning" });
+      }
+      if (COMMENTED_CODE_REGEX.test(line)) {
+        issues.push({
+          label: `Potentially commented-out code in ${relPath}:${i + 1}`,
+          severity: "warning",
+        });
+      }
+    }
+  }
+
+  return { name: "Code Cruft", issues };
+}
+
 // ── Reporting ──────────────────────────────────────────────────────────────
 
 function _formatCount(issues: Issue[], label: string): string {
@@ -217,6 +274,7 @@ function run(): void {
     checkUntestedServices(),
     checkOrphanedImports(),
     checkSchemaDrift(),
+    checkCruft(),
   ];
 
   const totalIssues = results.reduce((sum, r) => sum + r.issues.length, 0);

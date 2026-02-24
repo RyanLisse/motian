@@ -1,3 +1,4 @@
+import type { KnownBlock } from "@slack/web-api";
 import { WebClient } from "@slack/web-api";
 
 // ========== Types ==========
@@ -19,6 +20,8 @@ type SlackBlock =
   | { type: "section"; text: { type: "mrkdwn"; text: string }; accessory?: unknown }
   | { type: "divider" }
   | { type: "context"; elements: { type: "mrkdwn"; text: string }[] };
+
+type AnyBlock = KnownBlock;
 
 // ========== Client ==========
 
@@ -222,8 +225,7 @@ export async function sendSlackNotification(payload: SlackNotificationPayload): 
 
   await client.chat.postMessage({
     channel,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Slack SDK types are overly strict for dynamic Block Kit
-    blocks: blocks as any[],
+    blocks: blocks as AnyBlock[],
     text: `Motian: ${payload.type}`, // Fallback for notifications
   });
 
