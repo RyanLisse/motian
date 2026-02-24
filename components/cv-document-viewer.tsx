@@ -24,6 +24,9 @@ export function CvDocumentViewer({ url, candidateName }: CvDocumentViewerProps) 
     url.toLowerCase().endsWith(".docx") ||
     url.includes("application/vnd.openxmlformats-officedocument");
 
+  // Proxy private Vercel Blob URLs through our API route
+  const proxyUrl = `/api/cv-file?url=${encodeURIComponent(url)}`;
+
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
   }, []);
@@ -43,7 +46,7 @@ export function CvDocumentViewer({ url, candidateName }: CvDocumentViewerProps) 
             </div>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <a href={url} download target="_blank" rel="noopener noreferrer">
+            <a href={proxyUrl} download target="_blank" rel="noopener noreferrer">
               <Download className="h-4 w-4 mr-1.5" />
               Download
             </a>
@@ -70,7 +73,7 @@ export function CvDocumentViewer({ url, candidateName }: CvDocumentViewerProps) 
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <a href={url} download target="_blank" rel="noopener noreferrer">
+            <a href={proxyUrl} download target="_blank" rel="noopener noreferrer">
               <Download className="h-4 w-4 mr-1.5" />
               Download
             </a>
@@ -94,7 +97,7 @@ export function CvDocumentViewer({ url, candidateName }: CvDocumentViewerProps) 
       {open && (
         <div className="p-4 bg-muted/30 max-h-[600px] overflow-y-auto">
           <Document
-            file={url}
+            file={proxyUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             loading={
               <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
@@ -126,7 +129,7 @@ export function CvDocumentViewer({ url, candidateName }: CvDocumentViewerProps) 
           onClick={() => setOpen(true)}
           className="w-full p-4 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
         >
-          <Document file={url} loading={null} error={null}>
+          <Document file={proxyUrl} loading={null} error={null}>
             <Page
               pageNumber={1}
               width={280}
