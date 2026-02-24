@@ -72,7 +72,7 @@ const data = {
           url: "/matching?tab=grading",
         },
         {
-          title: "CV Beheer",
+          title: "CV Analyse",
           url: "/matching?tab=cv",
         },
       ],

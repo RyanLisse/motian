@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   ArrowRight,
   BarChart3,
@@ -23,6 +23,7 @@ import { candidates, jobMatches, jobs } from "@/src/db/schema";
 import type { CriterionResult } from "@/src/schemas/matching";
 import { getGradedCandidates } from "@/src/services/grading";
 import { CandidateLinker } from "./candidate-linker";
+import { CvAnalyseTab } from "./cv-analyse-tab";
 import { MatchActions } from "./match-actions";
 import { MatchDetail } from "./match-detail";
 import { ReportButton } from "./report-button";
@@ -70,7 +71,7 @@ export default async function MatchingPage({ searchParams }: Props) {
   const tabOptions = [
     { value: "", label: "AI Matching" },
     { value: "grading", label: "AI Grading" },
-    { value: "cv", label: "CV Beheer" },
+    { value: "cv", label: "CV Analyse" },
   ];
 
   // Fetch job context when jobId is provided
@@ -114,6 +115,36 @@ export default async function MatchingPage({ searchParams }: Props) {
   }
 
   if (tab === "cv") {
+    // Fetch recent CV analyses
+    const recentCvsPromise = db
+      .select({
+        id: candidates.id,
+        name: candidates.name,
+        role: candidates.role,
+        resumeUrl: candidates.resumeUrl,
+        resumeParsedAt: candidates.resumeParsedAt,
+      })
+      .from(candidates)
+      .where(
+        and(
+          isNull(candidates.deletedAt),
+          sql`${candidates.resumeParsedAt} IS NOT NULL`,
+        ),
+      )
+      .orderBy(desc(candidates.resumeParsedAt))
+      .limit(10);
+
+    const recentCvsRaw = await recentCvsPromise;
+    const recentCvs = recentCvsRaw
+      .filter((c) => c.resumeParsedAt !== null)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        role: c.role,
+        resumeUrl: c.resumeUrl,
+        resumeParsedAt: c.resumeParsedAt as Date,
+      }));
+
     return (
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
@@ -131,11 +162,7 @@ export default async function MatchingPage({ searchParams }: Props) {
             variant="subtle"
           />
 
-          <EmptyState
-            icon={<FileText className="h-8 w-8 opacity-40" />}
-            title="CV Beheer — Binnenkort beschikbaar"
-            subtitle="Upload en beheer CV's van kandidaten voor snellere matching"
-          />
+          <CvAnalyseTab recentAnalyses={recentCvs} />
         </div>
       </div>
     );
