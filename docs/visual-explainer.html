@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motian — Recruitment Platform Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --bg-gradient: linear-gradient(135deg, #0a0e1a 0%, #0d1526 50%, #0a1628 100%);
+      --surface: #111827;
+      --surface-2: #1a2332;
+      --surface-3: #1e293b;
+      --border: rgba(56, 189, 248, 0.12);
+      --border-strong: rgba(56, 189, 248, 0.25);
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --text-muted: #64748b;
+      --accent-1: #06b6d4;
+      --accent-1-dim: rgba(6, 182, 212, 0.15);
+      --accent-2: #3b82f6;
+      --accent-2-dim: rgba(59, 130, 246, 0.15);
+      --accent-3: #8b5cf6;
+      --accent-3-dim: rgba(139, 92, 246, 0.15);
+      --accent-4: #10b981;
+      --accent-4-dim: rgba(16, 185, 129, 0.15);
+      --accent-5: #f59e0b;
+      --accent-5-dim: rgba(245, 158, 11, 0.15);
+      --accent-6: #ef4444;
+      --accent-6-dim: rgba(239, 68, 68, 0.15);
+      --glow-1: 0 0 30px rgba(6, 182, 212, 0.15);
+      --glow-2: 0 0 30px rgba(59, 130, 246, 0.15);
+      --radius: 12px;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Space Grotesk', system-ui, sans-serif;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+        --surface: #ffffff;
+        --surface-2: #f1f5f9;
+        --surface-3: #e2e8f0;
+        --border: rgba(6, 182, 212, 0.15);
+        --border-strong: rgba(6, 182, 212, 0.3);
+        --text: #1e293b;
+        --text-dim: #475569;
+        --text-muted: #94a3b8;
+        --glow-1: 0 0 20px rgba(6, 182, 212, 0.08);
+        --glow-2: 0 0 20px rgba(59, 130, 246, 0.08);
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg-gradient);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ─── Navigation ─── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .nav-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 24px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-inner::-webkit-scrollbar { display: none; }
+    .nav-brand {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--accent-1);
+      white-space: nowrap;
+      padding: 12px 0;
+      margin-right: 8px;
+      letter-spacing: -0.02em;
+    }
+    .nav-link {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-dim);
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 12px 10px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .nav-link:hover, .nav-link.active {
+      color: var(--accent-1);
+      border-bottom-color: var(--accent-1);
+    }
+
+    /* ─── Layout ─── */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    section {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.6s forwards;
+    }
+    section:nth-child(2) { animation-delay: 0.1s; }
+    section:nth-child(3) { animation-delay: 0.15s; }
+    section:nth-child(4) { animation-delay: 0.2s; }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeScale {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+    .section-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .section-subtitle {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* ─── Cards ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: all 0.3s;
+    }
+    .card:hover {
+      border-color: var(--border-strong);
+      box-shadow: var(--glow-1);
+    }
+    .card--hero {
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+      border-color: var(--border-strong);
+      box-shadow: var(--glow-2);
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+    .card-mono {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* ─── Grids ─── */
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+
+    /* ─── Tags / Badges ─── */
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: var(--mono);
+      border: 1px solid;
+    }
+    .tag--cyan { background: var(--accent-1-dim); color: var(--accent-1); border-color: rgba(6,182,212,0.2); }
+    .tag--blue { background: var(--accent-2-dim); color: var(--accent-2); border-color: rgba(59,130,246,0.2); }
+    .tag--purple { background: var(--accent-3-dim); color: var(--accent-3); border-color: rgba(139,92,246,0.2); }
+    .tag--green { background: var(--accent-4-dim); color: var(--accent-4); border-color: rgba(16,185,129,0.2); }
+    .tag--amber { background: var(--accent-5-dim); color: var(--accent-5); border-color: rgba(245,158,11,0.2); }
+    .tag--red { background: var(--accent-6-dim); color: var(--accent-6); border-color: rgba(239,68,68,0.2); }
+
+    /* ─── Mermaid ─── */
+    .mermaid-wrap {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      min-height: 200px;
+    }
+    .mermaid-container {
+      overflow: auto;
+      cursor: grab;
+      min-height: 200px;
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+    }
+    .mermaid-container:active { cursor: grabbing; }
+    .mermaid-container .mermaid {
+      transform-origin: center center;
+      transition: transform 0.1s ease-out;
+    }
+    .zoom-controls {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 4px;
+      z-index: 10;
+    }
+    .zoom-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .zoom-btn:hover {
+      background: var(--surface-3);
+      color: var(--text);
+      border-color: var(--border-strong);
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      text-align: center;
+      padding: 80px 0 60px;
+      position: relative;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(6,182,212,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 16px;
+      color: var(--text-dim);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+    .hero-stat {
+      text-align: center;
+    }
+    .hero-stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--accent-1);
+    }
+    .hero-stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    /* ─── Pipeline steps ─── */
+    .pipeline {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      overflow-x: auto;
+      padding: 8px 0;
+    }
+    .pipeline-step {
+      flex: 1;
+      min-width: 140px;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      position: relative;
+      text-align: center;
+    }
+    .pipeline-step:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+    .pipeline-step:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+    .pipeline-step + .pipeline-step::before {
+      content: '→';
+      position: absolute;
+      left: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--accent-1);
+      font-size: 16px;
+      font-weight: 700;
+      z-index: 1;
+    }
+    .pipeline-step-icon {
+      font-size: 20px;
+      margin-bottom: 6px;
+    }
+    .pipeline-step-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .pipeline-step-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+
+    /* ─── Table ─── */
+    .data-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .data-table th {
+      background: var(--surface-2);
+      padding: 10px 16px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+    .data-table tr:hover td { background: var(--accent-1-dim); }
+    .data-table code {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: var(--surface-3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-1);
+    }
+
+    /* ─── Matching tiers ─── */
+    .tier-card {
+      border-left: 3px solid;
+      padding-left: 16px;
+    }
+    .tier-knockout { border-left-color: var(--accent-6); }
+    .tier-gunning { border-left-color: var(--accent-5); }
+    .tier-process { border-left-color: var(--accent-4); }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 28px; }
+      .hero-stats { gap: 24px; }
+      section { padding: 40px 0; }
+      .section-title { font-size: 20px; }
+      .pipeline { flex-direction: column; }
+      .pipeline-step + .pipeline-step::before {
+        content: '↓';
+        left: 50%;
+        top: -8px;
+        transform: translateX(-50%);
+      }
+      .pipeline-step:first-child,
+      .pipeline-step:last-child {
+        border-radius: var(--radius);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      section { opacity: 1; transform: none; animation: none; }
+    }
+
+    /* ─── Collapsible ─── */
+    details {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      margin-bottom: 12px;
+    }
+    details summary {
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+    }
+    details summary::before {
+      content: '▸ ';
+      color: var(--accent-1);
+      font-family: var(--mono);
+    }
+    details[open] summary::before { content: '▾ '; }
+    details > div { padding: 0 16px 16px; }
+
+    /* ─── Flow arrow connectors ─── */
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .flow-arrow {
+      color: var(--accent-1);
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .flow-box {
+      padding: 8px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <span class="nav-brand">◆ Motian</span>
+      <a href="#overview" class="nav-link active">Overzicht</a>
+      <a href="#scraping" class="nav-link">Scraping</a>
+      <a href="#cv-analyse" class="nav-link">CV Analyse</a>
+      <a href="#matching" class="nav-link">Matching</a>
+      <a href="#schema" class="nav-link">Database</a>
+      <a href="#dataflow" class="nav-link">Data Flow</a>
+      <a href="#ai-models" class="nav-link">AI Modellen</a>
+      <a href="#techstack" class="nav-link">Tech Stack</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Hero -->
+    <div class="hero">
+      <h1>Motian Recruitment Platform</h1>
+      <p>AI-gestuurd wervingsoperatieplatform voor Nederlandse staffing bureaus. Automatische scraping, CV-analyse, en intelligente matching.</p>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-value">5</div>
+          <div class="hero-stat-label">Platforms</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">3</div>
+          <div class="hero-stat-label">AI Modellen</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">9</div>
+          <div class="hero-stat-label">DB Tabellen</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">3</div>
+          <div class="hero-stat-label">Match Lagen</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. System Overview -->
+    <section id="overview">
+      <div class="section-header">
+        <span class="section-badge tag--cyan">01</span>
+        <div>
+          <h2 class="section-title">Systeemoverzicht</h2>
+          <p class="section-subtitle">Architectuur van het complete platform</p>
+        </div>
+      </div>
+
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoom(this, 1.2)">+</button>
+          <button class="zoom-btn" onclick="zoom(this, 0.8)">−</button>
+          <button class="zoom-btn" onclick="resetZoom(this)">⟲</button>
+        </div>
+        <div class="mermaid-container">
+          <pre class="mermaid">
+graph TB
+    subgraph EXT["Externe Bronnen"]
+        S1["Striive<br/><small>Playwright</small>"]
+        S2["Flextender<br/><small>AJAX+CSRF</small>"]
+        S3["Opdrachtoverheid<br/><small>JSON API</small>"]
+        S4["Indeed"]
+        S5["LinkedIn"]
+    end
+
+    subgraph TRIGGER["Trigger.dev"]
+        CRON["Cron<br/><small>Elke 4 uur</small>"]
+        SCRAPE["Scrape Pipeline"]
+    end
+
+    subgraph AI["AI Modellen"]
+        GEMINI["Gemini 3 Flash<br/><small>Parsing &amp; Matching</small>"]
+        GPT5["GPT-5 Nano<br/><small>Embeddings 512d</small>"]
+        GROK["Grok 4<br/><small>Judge Verdict</small>"]
+    end
+
+    subgraph NEXTJS["Next.js 16 App Router"]
+        FE["React 19 Frontend<br/><small>Tailwind v4 + Radix UI</small>"]
+        API["API Routes<br/><small>/api/* + SSE Streaming</small>"]
+        CHAT["AI Chat Sidepanel<br/><small>Cmd+J</small>"]
+    end
+
+    subgraph DB["Neon PostgreSQL"]
+        JOBS[(jobs)]
+        CAND[(candidates)]
+        MATCH[(job_matches)]
+        APPS[(applications)]
+    end
+
+    subgraph STORAGE["Vercel Blob"]
+        CV["CV Bestanden<br/><small>PDF/DOCX</small>"]
+    end
+
+    EXT --> CRON
+    CRON --> SCRAPE
+    SCRAPE --> GEMINI
+    SCRAPE --> GPT5
+    SCRAPE --> JOBS
+
+    FE --> API
+    API --> GEMINI
+    API --> GPT5
+    API --> GROK
+    API --> DB
+    API --> CV
+
+    CHAT --> API
+
+    classDef ext fill:#1e3a5f,stroke:#38bdf8,color:#e2e8f0
+    classDef trigger fill:#1a2e44,stroke:#f59e0b,color:#e2e8f0
+    classDef ai fill:#2d1b4e,stroke:#8b5cf6,color:#e2e8f0
+    classDef next fill:#1a3332,stroke:#10b981,color:#e2e8f0
+    classDef db fill:#1a2332,stroke:#06b6d4,color:#e2e8f0
+    classDef storage fill:#2d2a1a,stroke:#f59e0b,color:#e2e8f0
+
+    class S1,S2,S3,S4,S5 ext
+    class CRON,SCRAPE trigger
+    class GEMINI,GPT5,GROK ai
+    class FE,API,CHAT next
+    class JOBS,CAND,MATCH,APPS db
+    class CV storage
+          </pre>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top: 24px;">
+        <div class="card card--hero">
+          <div class="card-title"><span class="tag tag--cyan">Frontend</span></div>
+          <div class="card-desc">Next.js 16 met React 19, Server Components, Tailwind CSS v4, Radix UI componenten. 7 pagina's + AI chat sidepanel.</div>
+          <div class="card-mono">app/ directory • SSR + CSR</div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="tag tag--blue">Backend</span></div>
+          <div class="card-desc">API Routes in App Router met Zod validatie. SSE streaming voor real-time pipeline progress. Drizzle ORM queries.</div>
+          <div class="card-mono">app/api/**/route.ts</div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="tag tag--purple">AI Layer</span></div>
+          <div class="card-desc">3 AI modellen: Gemini voor parsing/matching, GPT-5 Nano voor embeddings, Grok voor onafhankelijk oordeel.</div>
+          <div class="card-mono">src/services/</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Scraping Pipeline -->
+    <section id="scraping">
+      <div class="section-header">
+        <span class="section-badge tag--amber">02</span>
+        <div>
+          <h2 class="section-title">Scraping Pipeline</h2>
+          <p class="section-subtitle">Vacatures ophalen van 5 platforms via Trigger.dev cron</p>
+        </div>
+      </div>
+
+      <div class="pipeline">
+        <div class="pipeline-step" style="border-left: 3px solid var(--accent-5);">
+          <div class="pipeline-step-icon">🌐</div>
+          <div class="pipeline-step-title">Scrape</div>
+          <div class="pipeline-step-desc">Platform-specifieke scrapers</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-step-icon">✓</div>
+          <div class="pipeline-step-title">Zod Validatie</div>
+          <div class="pipeline-step-desc">Schema validatie + normalisatie</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-step-icon">🔄</div>
+          <div class="pipeline-step-title">Upsert</div>
+          <div class="pipeline-step-desc">Dedup op platform+externalId</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-step-icon">🤖</div>
+          <div class="pipeline-step-title">AI Verrijking</div>
+          <div class="pipeline-step-desc">Gemini → samenvatting + FAQ</div>
+        </div>
+        <div class="pipeline-step" style="border-right: 3px solid var(--accent-4);">
+          <div class="pipeline-step-icon">📐</div>
+          <div class="pipeline-step-title">Embeddings</div>
+          <div class="pipeline-step-desc">GPT-5 Nano → 512d vector</div>
+        </div>
+      </div>
+
+      <div style="overflow-x: auto; margin-top: 24px;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Platform</th>
+              <th>Methode</th>
+              <th>Bestand</th>
+              <th>Bijzonderheden</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag--blue">Striive</span></td>
+              <td>Playwright browser automation</td>
+              <td><code>scrapers/striive.ts</code></td>
+              <td>Login vereist, paginated listing + detail pages</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag--cyan">Flextender</span></td>
+              <td>AJAX POST + CSRF token</td>
+              <td><code>scrapers/flextender.ts</code></td>
+              <td>widget_config CSRF, detail page enrichment</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag--green">Opdrachtoverheid</span></td>
+              <td>Public JSON API</td>
+              <td><code>scrapers/opdrachtoverheid.ts</code></td>
+              <td>Paginated fetch, geen auth nodig</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag--purple">Indeed</span></td>
+              <td>Gepland</td>
+              <td>—</td>
+              <td>Toekomstige integratie</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag--amber">LinkedIn</span></td>
+              <td>Gepland</td>
+              <td>—</td>
+              <td>Toekomstige integratie</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <details style="margin-top: 16px;">
+        <summary>Pipeline Foutafhandeling</summary>
+        <div>
+          <p style="font-size:13px; color: var(--text-dim); margin-bottom: 12px;">
+            Scrapers <strong>gooien fouten</strong> in plaats van lege arrays teruggeven. De pipeline behandelt <code>listings.length === 0</code> als een fout — dit voorkomt stille mislukkingen.
+          </p>
+          <div class="flow-row">
+            <div class="flow-box" style="border-color: var(--accent-6);">Scraper Error</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-box">consecutiveFailures++</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-box" style="border-color: var(--accent-5);">Circuit Breaker</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-box">Deactiveer config</div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- 3. CV Analysis Pipeline -->
+    <section id="cv-analyse">
+      <div class="section-header">
+        <span class="section-badge tag--green">03</span>
+        <div>
+          <h2 class="section-title">CV Analyse Pipeline</h2>
+          <p class="section-subtitle">Real-time SSE streaming van upload tot match resultaten</p>
+        </div>
+      </div>
+
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoom(this, 1.2)">+</button>
+          <button class="zoom-btn" onclick="zoom(this, 0.8)">−</button>
+          <button class="zoom-btn" onclick="resetZoom(this)">⟲</button>
+        </div>
+        <div class="mermaid-container">
+          <pre class="mermaid">
+sequenceDiagram
+    participant U as Recruiter
+    participant FE as Frontend
+    participant API as /api/cv-analyse
+    participant BLOB as Vercel Blob
+    participant GEM as Gemini 3 Flash
+    participant DB as PostgreSQL
+
+    U->>FE: Drop CV (PDF/DOCX)
+    FE->>API: POST FormData (SSE)
+
+    Note over API: Step 1: Upload
+    API-->>FE: SSE: upload active
+    API->>BLOB: uploadFile()
+    API-->>FE: SSE: upload complete
+
+    Note over API: Step 2: Parse
+    API-->>FE: SSE: parse active
+    API->>GEM: parseCV(buffer)
+    GEM-->>API: ParsedCV (skills, experience, ...)
+    API-->>FE: SSE: parse complete + naam
+
+    Note over API: Step 3: Deduplicate
+    API-->>FE: SSE: deduplicate active
+    API->>DB: findDuplicateCandidate()
+    alt Bestaand
+        API->>DB: enrichCandidateFromCV()
+    else Nieuw
+        API->>DB: createCandidate()
+    end
+    API-->>FE: SSE: deduplicate complete
+
+    Note over API: Step 4: Match
+    API-->>FE: SSE: match active
+    API->>DB: autoMatchCandidateToJobs()
+    API-->>FE: SSE: match complete
+
+    API-->>FE: SSE: done + full result
+    FE->>U: Toon profiel + match scores
+          </pre>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 24px;">
+        <div class="card">
+          <div class="card-title">📤 Upload & Parse</div>
+          <div class="card-desc">
+            CV wordt geüpload naar Vercel Blob en vervolgens geanalyseerd door Gemini 3 Flash. Het resultaat is een gestructureerd <code>ParsedCV</code> object met skills (met proficiency 1-5), werkervaring, opleiding, talen, en certificeringen.
+          </div>
+          <div class="card-mono">Max 20MB • PDF + DOCX</div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔍 Dedup & Match</div>
+          <div class="card-desc">
+            Kandidaat wordt gecontroleerd op duplicaten (email/naam matching). Vervolgens worden de top 3 best passende vacatures berekend via de 3-laags matching engine met score ≥ 40%.
+          </div>
+          <div class="card-mono">SSE text/event-stream</div>
+        </div>
+      </div>
+
+      <details style="margin-top: 16px;">
+        <summary>SSE Event Formaat</summary>
+        <div>
+          <pre style="font-family: var(--mono); font-size: 12px; color: var(--accent-1); line-height: 1.8; overflow-x: auto;">
+data: {"step":"upload","status":"active","label":"CV uploaden naar opslag..."}
+data: {"step":"upload","status":"complete","label":"CV geüpload"}
+data: {"step":"parse","status":"active","label":"CV analyseren met AI..."}
+data: {"step":"parse","status":"complete","label":"CV geanalyseerd","detail":"Jan — Sr. Developer"}
+data: {"step":"deduplicate","status":"active","label":"Kandidaat controleren..."}
+data: {"step":"deduplicate","status":"complete","label":"Nieuwe kandidaat aangemaakt"}
+data: {"step":"match","status":"active","label":"Matchen met vacatures..."}
+data: {"step":"match","status":"complete","label":"3 vacatures gematcht"}
+data: {"step":"done","result":{...}}</pre>
+        </div>
+      </details>
+    </section>
+
+    <!-- 4. Matching Engine -->
+    <section id="matching">
+      <div class="section-header">
+        <span class="section-badge tag--purple">04</span>
+        <div>
+          <h2 class="section-title">Matching Engine</h2>
+          <p class="section-subtitle">3-laags matching: Quick Score → Structured Match → Judge Verdict</p>
+        </div>
+      </div>
+
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoom(this, 1.2)">+</button>
+          <button class="zoom-btn" onclick="zoom(this, 0.8)">−</button>
+          <button class="zoom-btn" onclick="resetZoom(this)">⟲</button>
+        </div>
+        <div class="mermaid-container">
+          <pre class="mermaid">
+graph LR
+    A["Alle Actieve<br/>Vacatures"] --> B["Quick Score<br/><small>60% rules + 40% vector</small>"]
+    B --> C{Score ≥ 40%?}
+    C -->|Nee| D["Uitgefilterd"]
+    C -->|Ja| E["Top 3"]
+    E --> F["Deep Structured<br/>Match<br/><small>Gemini 3 Flash</small>"]
+    F --> G["Judge Verdict<br/><small>Grok 4</small>"]
+    G --> H["Eindresultaat<br/><small>go / no-go / conditional</small>"]
+
+    classDef filter fill:#1e3a5f,stroke:#38bdf8,color:#e2e8f0
+    classDef ai fill:#2d1b4e,stroke:#8b5cf6,color:#e2e8f0
+    classDef result fill:#1a3332,stroke:#10b981,color:#e2e8f0
+    classDef reject fill:#2d1a1a,stroke:#ef4444,color:#e2e8f0
+
+    class A,B filter
+    class F,G ai
+    class E,H result
+    class D reject
+          </pre>
+        </div>
+      </div>
+
+      <div style="margin-top: 24px;">
+        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Mariënne Methodologie — Criteria Tiers</h3>
+        <div class="grid-3">
+          <div class="card tier-card tier-knockout">
+            <div class="card-title"><span class="tag tag--red">KNOCKOUT</span></div>
+            <div class="card-desc">
+              Harde eisen die direct tot afwijzing leiden als ze niet worden voldaan. Denk aan: vereiste certificeringen, minimale jaren ervaring, verplichte taalkennis.
+            </div>
+            <div class="card-mono">passed: true/false</div>
+          </div>
+          <div class="card tier-card tier-gunning">
+            <div class="card-title"><span class="tag tag--amber">GUNNING</span></div>
+            <div class="card-desc">
+              Beoordelingscriteria die sterren krijgen (1-5). Hoe beter de kandidaat scoort, hoe hoger de ranking. Inclusief relevante ervaring, skills diepte, en domeinkennis.
+            </div>
+            <div class="card-mono">stars: 1-5 ★</div>
+          </div>
+          <div class="card tier-card tier-process">
+            <div class="card-title"><span class="tag tag--green">PROCESS</span></div>
+            <div class="card-desc">
+              Procesvereisten zoals beschikbaarheid, locatie, en tarief. Deze beïnvloeden de uiteindelijke aanbeveling maar zijn niet altijd beslissend.
+            </div>
+            <div class="card-mono">passed: true/false</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 24px;">
+        <div class="card">
+          <div class="card-title">⚖️ Judge Verdict (Grok 4)</div>
+          <div class="card-desc">
+            Onafhankelijke beoordeling door een ander AI model. Grok beoordeelt het gestructureerde resultaat, geeft een eigen score en motiveert waar het verschilt van de primaire beoordeling. Dit voorkomt bias in de matching.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🎯 Quick Score Formule</div>
+          <div class="card-desc">
+            <strong>60% rule-based</strong> (skills overlap, ervaring match, locatie, tarief) + <strong>40% vector similarity</strong> (cosine distance tussen kandidaat en vacature embeddings via pgvector).
+          </div>
+          <div class="card-mono">MIN_SCORE: 40 • TOP_N: 3</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Database Schema -->
+    <section id="schema">
+      <div class="section-header">
+        <span class="section-badge tag--cyan">05</span>
+        <div>
+          <h2 class="section-title">Database Schema</h2>
+          <p class="section-subtitle">Neon PostgreSQL met pgvector voor embeddings</p>
+        </div>
+      </div>
+
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoom(this, 1.2)">+</button>
+          <button class="zoom-btn" onclick="zoom(this, 0.8)">−</button>
+          <button class="zoom-btn" onclick="resetZoom(this)">⟲</button>
+        </div>
+        <div class="mermaid-container">
+          <pre class="mermaid">
+erDiagram
+    scraper_configs ||--o{ scrape_results : "genereert"
+    jobs ||--o{ job_matches : "heeft"
+    candidates ||--o{ job_matches : "heeft"
+    jobs ||--o{ applications : "ontvangt"
+    candidates ||--o{ applications : "dient in"
+    job_matches ||--o| applications : "leidt tot"
+    applications ||--o{ interviews : "plant"
+    applications ||--o{ messages : "bevat"
+
+    scraper_configs {
+        uuid id PK
+        text platform UK
+        text base_url
+        boolean is_active
+        text cron_expression
+        int consecutive_failures
+    }
+
+    scrape_results {
+        uuid id PK
+        uuid config_id FK
+        text platform
+        int jobs_found
+        int jobs_new
+        text status
+    }
+
+    jobs {
+        uuid id PK
+        text platform
+        text external_id
+        text title
+        text company
+        text location
+        text description
+        jsonb requirements
+        vector embedding_512d
+    }
+
+    candidates {
+        uuid id PK
+        text name
+        text email UK
+        text role
+        jsonb skills
+        text resume_raw
+        vector embedding_512d
+        boolean consent_granted
+    }
+
+    job_matches {
+        uuid id PK
+        uuid job_id FK
+        uuid candidate_id FK
+        real match_score
+        text recommendation
+        jsonb criteria_breakdown
+        text status
+    }
+
+    applications {
+        uuid id PK
+        uuid job_id FK
+        uuid candidate_id FK
+        uuid match_id FK
+        text stage
+    }
+
+    interviews {
+        uuid id PK
+        uuid application_id FK
+        timestamp scheduled_at
+        text type
+        text status
+        int rating
+    }
+
+    messages {
+        uuid id PK
+        uuid application_id FK
+        text direction
+        text channel
+        text body
+    }
+
+    gdpr_audit_log {
+        uuid id PK
+        text action
+        text subject_type
+        text subject_id
+    }
+          </pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Data Flow -->
+    <section id="dataflow">
+      <div class="section-header">
+        <span class="section-badge tag--blue">06</span>
+        <div>
+          <h2 class="section-title">End-to-End Data Flow</h2>
+          <p class="section-subtitle">Van scraping tot hiring — het complete traject</p>
+        </div>
+      </div>
+
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoom(this, 1.2)">+</button>
+          <button class="zoom-btn" onclick="zoom(this, 0.8)">−</button>
+          <button class="zoom-btn" onclick="resetZoom(this)">⟲</button>
+        </div>
+        <div class="mermaid-container">
+          <pre class="mermaid">
+graph TD
+    A["🌐 Scrape Platforms<br/><small>Trigger.dev cron elke 4u</small>"] --> B["✅ Zod Validatie<br/><small>Normalize + dedup</small>"]
+    B --> C["🤖 AI Verrijking<br/><small>Gemini: samenvatting + FAQ</small>"]
+    C --> D["📐 Embeddings<br/><small>GPT-5 Nano: 512d vector</small>"]
+    D --> E["💾 Opslaan in DB<br/><small>jobs tabel met vector</small>"]
+
+    F["📄 CV Upload<br/><small>Recruiter dropt PDF</small>"] --> G["🔍 CV Parsing<br/><small>Gemini: ParsedCV</small>"]
+    G --> H["👤 Kandidaat<br/><small>Dedup + create/enrich</small>"]
+    H --> I["🎯 Auto-Match<br/><small>3-laags engine</small>"]
+
+    E --> I
+    I --> J["📊 Review<br/><small>Recruiter beoordeelt</small>"]
+    J --> K["📋 Sollicitatie<br/><small>Application aanmaken</small>"]
+    K --> L["🗓️ Interview<br/><small>Planning + feedback</small>"]
+    L --> M["✅ Hired<br/><small>Plaatsing voltooid</small>"]
+
+    classDef scrape fill:#1e3a5f,stroke:#38bdf8,color:#e2e8f0
+    classDef ai fill:#2d1b4e,stroke:#8b5cf6,color:#e2e8f0
+    classDef db fill:#1a2332,stroke:#06b6d4,color:#e2e8f0
+    classDef user fill:#1a3332,stroke:#10b981,color:#e2e8f0
+    classDef process fill:#2d2a1a,stroke:#f59e0b,color:#e2e8f0
+
+    class A,B scrape
+    class C,D,I ai
+    class E,H db
+    class F,G,J user
+    class K,L,M process
+          </pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. AI Models -->
+    <section id="ai-models">
+      <div class="section-header">
+        <span class="section-badge tag--purple">07</span>
+        <div>
+          <h2 class="section-title">AI Modellen</h2>
+          <p class="section-subtitle">Welk model doet wat in het platform</p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card card--hero" style="border-left: 3px solid var(--accent-2);">
+          <div class="card-title" style="font-size: 16px;">Gemini 3 Flash</div>
+          <div style="margin: 8px 0;">
+            <span class="tag tag--blue">Google AI</span>
+          </div>
+          <div class="card-desc">
+            Het werkpaard van het platform. Wordt ingezet voor:
+          </div>
+          <ul style="font-size: 12px; color: var(--text-dim); margin-top: 8px; padding-left: 16px; line-height: 2;">
+            <li>CV parsing → gestructureerd <code>ParsedCV</code></li>
+            <li>Job verrijking → samenvatting + FAQ</li>
+            <li>Structured matching → criteria beoordeling</li>
+            <li>Requirement extractie uit vacaturetekst</li>
+          </ul>
+          <div class="card-mono">gemini-3-flash • ~2-8s per call</div>
+        </div>
+
+        <div class="card" style="border-left: 3px solid var(--accent-4);">
+          <div class="card-title" style="font-size: 16px;">GPT-5 Nano</div>
+          <div style="margin: 8px 0;">
+            <span class="tag tag--green">OpenAI</span>
+          </div>
+          <div class="card-desc">
+            Gespecialiseerd in vectorisatie:
+          </div>
+          <ul style="font-size: 12px; color: var(--text-dim); margin-top: 8px; padding-left: 16px; line-height: 2;">
+            <li>Job embeddings → 512d vector</li>
+            <li>Kandidaat embeddings → 512d vector</li>
+            <li>AI Chat agent (Vercel AI SDK)</li>
+          </ul>
+          <div class="card-mono">text-embedding-3-small • 512d</div>
+        </div>
+
+        <div class="card" style="border-left: 3px solid var(--accent-3);">
+          <div class="card-title" style="font-size: 16px;">Grok 4</div>
+          <div style="margin: 8px 0;">
+            <span class="tag tag--purple">xAI</span>
+          </div>
+          <div class="card-desc">
+            Onafhankelijke beoordelaar:
+          </div>
+          <ul style="font-size: 12px; color: var(--text-dim); margin-top: 8px; padding-left: 16px; line-height: 2;">
+            <li>Judge Verdict op structured match</li>
+            <li>Eigen score + motivatie</li>
+            <li>Bias-detectie in matching</li>
+          </ul>
+          <div class="card-mono">grok-4 • ~3-5s per call</div>
+        </div>
+      </div>
+
+      <div style="overflow-x: auto; margin-top: 24px;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Functie</th>
+              <th>Model</th>
+              <th>Input</th>
+              <th>Output</th>
+              <th>Service</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CV Parsing</td>
+              <td><span class="tag tag--blue">Gemini</span></td>
+              <td>PDF/DOCX buffer</td>
+              <td>ParsedCV (Zod schema)</td>
+              <td><code>cv-parser.ts</code></td>
+            </tr>
+            <tr>
+              <td>Job Verrijking</td>
+              <td><span class="tag tag--blue">Gemini</span></td>
+              <td>Vacaturetekst</td>
+              <td>Samenvatting + FAQ</td>
+              <td><code>enrichment.ts</code></td>
+            </tr>
+            <tr>
+              <td>Structured Match</td>
+              <td><span class="tag tag--blue">Gemini</span></td>
+              <td>CV + Requirements</td>
+              <td>Criteria scores + aanbeveling</td>
+              <td><code>structured-matching.ts</code></td>
+            </tr>
+            <tr>
+              <td>Embeddings</td>
+              <td><span class="tag tag--green">GPT-5</span></td>
+              <td>Tekst (job/kandidaat)</td>
+              <td>512d vector</td>
+              <td><code>embedding.ts</code></td>
+            </tr>
+            <tr>
+              <td>Judge Verdict</td>
+              <td><span class="tag tag--purple">Grok</span></td>
+              <td>Structured result + CV summary</td>
+              <td>Onafhankelijk oordeel</td>
+              <td><code>match-judge.ts</code></td>
+            </tr>
+            <tr>
+              <td>AI Chat</td>
+              <td><span class="tag tag--green">GPT-5</span></td>
+              <td>Gebruikersvraag + context</td>
+              <td>Streaming antwoord + tool calls</td>
+              <td><code>api/chat/route.ts</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 8. Tech Stack -->
+    <section id="techstack">
+      <div class="section-header">
+        <span class="section-badge tag--green">08</span>
+        <div>
+          <h2 class="section-title">Tech Stack</h2>
+          <p class="section-subtitle">Alle technologieën en tools</p>
+        </div>
+      </div>
+
+      <div class="grid-4">
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-1);">Next.js 16</div>
+          <div class="card-desc">App Router, Server Components, SSE streaming</div>
+          <div class="card-mono">Framework</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-2);">React 19</div>
+          <div class="card-desc">Server + Client Components, Suspense, useOptimistic</div>
+          <div class="card-mono">UI Library</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-3);">Drizzle ORM</div>
+          <div class="card-desc">Type-safe SQL, migrations, pgvector support</div>
+          <div class="card-mono">Database ORM</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-4);">pgvector</div>
+          <div class="card-desc">512d vector embeddings, cosine distance search</div>
+          <div class="card-mono">Vector Search</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-5);">Trigger.dev</div>
+          <div class="card-desc">Background jobs, cron scheduling, long-running tasks</div>
+          <div class="card-mono">Job Queue</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-1);">Vercel Blob</div>
+          <div class="card-desc">CV opslag, file serving met signed URLs</div>
+          <div class="card-mono">File Storage</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-2);">Tailwind v4</div>
+          <div class="card-desc">CSS-first config, @theme semantische variabelen</div>
+          <div class="card-mono">Styling</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-3);">Radix UI</div>
+          <div class="card-desc">Accessible primitives via shadcn/ui wrappers</div>
+          <div class="card-mono">Components</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-4);">Biome</div>
+          <div class="card-desc">Linting + formatting (niet ESLint/Prettier)</div>
+          <div class="card-mono">Code Quality</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-5);">Vitest</div>
+          <div class="card-desc">Unit tests, coverage, watch mode</div>
+          <div class="card-mono">Testing</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-6);">Sentry</div>
+          <div class="card-desc">Error tracking, performance monitoring</div>
+          <div class="card-mono">Observability</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-1);">PostHog</div>
+          <div class="card-desc">Product analytics, feature flags</div>
+          <div class="card-mono">Analytics</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 32px; text-align: center; font-size: 12px; color: var(--text-muted);">
+        <p>Neon PostgreSQL • Vercel Deployment • pnpm Package Manager • Zod Validation</p>
+        <p style="margin-top: 8px;">
+          <span class="tag tag--cyan" style="font-size: 10px;">TypeScript</span>
+          <span class="tag tag--blue" style="font-size: 10px; margin-left: 4px;">SSR</span>
+          <span class="tag tag--purple" style="font-size: 10px; margin-left: 4px;">AI-native</span>
+          <span class="tag tag--green" style="font-size: 10px; margin-left: 4px;">Dutch UI</span>
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer style="text-align: center; padding: 40px 24px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border);">
+    <p>Motian Recruitment Platform — Architectuur Documentatie</p>
+    <p style="margin-top: 4px;">Gegenereerd op 24 februari 2026 · Next.js 16 · Neon PostgreSQL · AI-gestuurd</p>
+  </footer>
+
+  <!-- Mermaid.js -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        darkMode: true,
+        background: '#111827',
+        primaryColor: '#1e3a5f',
+        primaryTextColor: '#e2e8f0',
+        primaryBorderColor: '#38bdf8',
+        secondaryColor: '#2d1b4e',
+        secondaryTextColor: '#e2e8f0',
+        secondaryBorderColor: '#8b5cf6',
+        tertiaryColor: '#1a3332',
+        lineColor: '#475569',
+        fontFamily: 'Space Grotesk, system-ui, sans-serif',
+        fontSize: '13px',
+        noteBkgColor: '#1a2332',
+        noteTextColor: '#94a3b8',
+        noteBorderColor: '#38bdf8',
+        actorBkg: '#1e3a5f',
+        actorBorder: '#38bdf8',
+        actorTextColor: '#e2e8f0',
+        signalColor: '#94a3b8',
+        signalTextColor: '#e2e8f0',
+        labelBoxBkgColor: '#1a2332',
+        labelTextColor: '#e2e8f0',
+      },
+      flowchart: { curve: 'basis', padding: 16 },
+      sequence: { actorMargin: 60, messageMargin: 40 },
+      er: { layoutDirection: 'TB' },
+    });
+
+    // Navigation active state
+    const navLinks = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('section[id]');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(l => l.classList.remove('active'));
+          const link = document.querySelector(`.nav-link[href="#${entry.target.id}"]`);
+          if (link) link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-20% 0px -60% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+
+    // Smooth scroll
+    navLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  </script>
+
+  <!-- Zoom controls -->
+  <script>
+    const zoomStates = new WeakMap();
+
+    function getZoomState(btn) {
+      const wrap = btn.closest('.mermaid-wrap');
+      const container = wrap.querySelector('.mermaid-container');
+      const diagram = container.querySelector('.mermaid');
+      if (!zoomStates.has(wrap)) {
+        zoomStates.set(wrap, { scale: 1, translateX: 0, translateY: 0 });
+      }
+      return { state: zoomStates.get(wrap), container, diagram };
+    }
+
+    function applyTransform(diagram, state) {
+      diagram.style.transform = `scale(${state.scale}) translate(${state.translateX}px, ${state.translateY}px)`;
+    }
+
+    function zoom(btn, factor) {
+      const { state, diagram } = getZoomState(btn);
+      state.scale = Math.max(0.3, Math.min(3, state.scale * factor));
+      applyTransform(diagram, state);
+    }
+
+    function resetZoom(btn) {
+      const { state, diagram } = getZoomState(btn);
+      state.scale = 1;
+      state.translateX = 0;
+      state.translateY = 0;
+      applyTransform(diagram, state);
+    }
+
+    // Ctrl/Cmd+scroll zoom
+    document.querySelectorAll('.mermaid-container').forEach(container => {
+      container.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          const wrap = container.closest('.mermaid-wrap');
+          const diagram = container.querySelector('.mermaid');
+          if (!zoomStates.has(wrap)) zoomStates.set(wrap, { scale: 1, translateX: 0, translateY: 0 });
+          const state = zoomStates.get(wrap);
+          const factor = e.deltaY < 0 ? 1.1 : 0.9;
+          state.scale = Math.max(0.3, Math.min(3, state.scale * factor));
+          applyTransform(diagram, state);
+        }
+      }, { passive: false });
+
+      // Drag to pan
+      let isDragging = false, startX, startY;
+      container.addEventListener('mousedown', (e) => {
+        const wrap = container.closest('.mermaid-wrap');
+        if (!zoomStates.has(wrap)) return;
+        const state = zoomStates.get(wrap);
+        if (state.scale <= 1) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        container.style.cursor = 'grabbing';
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const wrap = container.closest('.mermaid-wrap');
+        const state = zoomStates.get(wrap);
+        const diagram = container.querySelector('.mermaid');
+        state.translateX += (e.clientX - startX) / state.scale;
+        state.translateY += (e.clientY - startY) / state.scale;
+        startX = e.clientX;
+        startY = e.clientY;
+        applyTransform(diagram, state);
+      });
+      window.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          container.style.cursor = 'grab';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
