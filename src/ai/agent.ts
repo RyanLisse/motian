@@ -15,6 +15,9 @@ export const recruitmentTools = {
   matchKandidaten: tools.matchKandidaten,
   analyseData: tools.analyseData,
   triggerScraper: tools.triggerScraper,
+  importeerOpdrachtenBatch: tools.importeerOpdrachtenBatch,
+  runKandidaatScoringBatch: tools.runKandidaatScoringBatch,
+  reviewGdprRetentie: tools.reviewGdprRetentie,
 
   // Kandidaten
   zoekKandidaten: tools.zoekKandidaten,
@@ -125,6 +128,9 @@ Je kunt helpen met:
 - Berichten versturen en bekijken
 - Data analyseren (tarieven, platforms, deadlines)
 - Scrapers starten voor nieuwe opdrachten
+- Batch import draaien over actieve scrapers (importeerOpdrachtenBatch)
+- Batch scoring draaien over actieve opdrachten (runKandidaatScoringBatch)
+- GDPR retentie review uitvoeren (reviewGdprRetentie)
 - GDPR: kandidaatdata exporteren, permanent verwijderen, contactgegevens scrubben
 
 Belangrijk: Vraag ALTIJD om expliciete bevestiging van de gebruiker voordat je wisKandidaatData aanroept. Dit verwijdert alle data permanent en kan niet ongedaan worden gemaakt.

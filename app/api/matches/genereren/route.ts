@@ -2,10 +2,7 @@ import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { publish } from "@/src/lib/event-bus";
-import { getCandidatesByIds, listActiveCandidates } from "@/src/services/candidates";
-import { getJobById } from "@/src/services/jobs";
-import { createMatch } from "@/src/services/matches";
-import { computeMatchScore } from "@/src/services/scoring";
+import { generateMatchesForJob } from "@/src/services/match-generation";
 
 export const dynamic = "force-dynamic";
 
@@ -28,65 +25,28 @@ export async function POST(request: NextRequest) {
 
     const { jobId, candidateIds, limit } = parsed.data;
 
-    const job = await getJobById(jobId);
-    if (!job) {
-      return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
-    }
-
-    const candidates = candidateIds?.length
-      ? await getCandidatesByIds(candidateIds)
-      : await listActiveCandidates(200);
-
-    if (candidates.length === 0) {
-      return Response.json({
-        message: "Geen kandidaten beschikbaar",
-        jobId,
-        matchesCreated: 0,
-      });
-    }
-
-    // Score and sort
-    const scored = candidates.map((candidate) => ({
-      candidate,
-      ...computeMatchScore(job, candidate),
-    }));
-    scored.sort((a, b) => b.score - a.score);
-    const topMatches = scored.slice(0, limit);
-
-    // Create matches
-    let matchesCreated = 0;
-    const errors: string[] = [];
-
-    for (const match of topMatches) {
-      try {
-        await createMatch({
-          jobId: job.id,
-          candidateId: match.candidate.id,
-          matchScore: match.score,
-          confidence: match.confidence,
-          reasoning: match.reasoning,
-          model: match.model,
-        });
-        matchesCreated++;
-      } catch (err) {
-        const errMsg = String(err);
-        if (!errMsg.includes("unique") && !errMsg.includes("duplicate")) {
-          errors.push(`Kandidaat ${match.candidate.id}: ${errMsg}`);
-        }
+    let result: Awaited<ReturnType<typeof generateMatchesForJob>>;
+    try {
+      result = await generateMatchesForJob({ jobId, candidateIds, limit });
+    } catch (err) {
+      if (err instanceof Error && err.message === "Opdracht niet gevonden") {
+        return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
       }
+      throw err;
     }
 
     revalidatePath("/matching");
     revalidatePath("/overzicht");
-    publish("matches:generated", { jobId, matchesCreated });
+    publish("matches:generated", { jobId, matchesCreated: result.matchesCreated });
 
     return Response.json({
       message: "Match generatie voltooid",
       jobId,
-      matchesCreated,
-      totalCandidatesScored: candidates.length,
-      topScore: topMatches[0]?.score ?? 0,
-      ...(errors.length > 0 ? { errors } : {}),
+      matchesCreated: result.matchesCreated,
+      duplicateMatches: result.duplicateMatches,
+      totalCandidatesScored: result.totalCandidatesScored,
+      topScore: result.topScore,
+      ...(result.errors.length > 0 ? { errors: result.errors } : {}),
     });
   } catch (_err) {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });

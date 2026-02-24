@@ -28,7 +28,6 @@ export {
   zoekKandidaten,
 } from "./kandidaten";
 export { matchKandidaten } from "./match-kandidaten";
-
 // Match tools
 export {
   getMatchDetail,
@@ -38,6 +37,12 @@ export {
   wijsMatchAf,
   zoekMatches,
 } from "./matches";
+// Operations console tools
+export {
+  importeerOpdrachtenBatch,
+  reviewGdprRetentie,
+  runKandidaatScoringBatch,
+} from "./operations-console";
 // Opdrachten mutatie tools
 export { updateOpdracht, verwijderOpdracht } from "./opdrachten-mutatie";
 export { queryOpdrachten } from "./query-opdrachten";
