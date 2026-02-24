@@ -341,7 +341,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               href="/opdrachten"
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors lg:hidden"
             >
-              &larr; Terug naar opdrachten
+              &larr; Terug naar vacatures
             </Link>
 
             {/* Header */}
@@ -509,7 +509,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             {related.length > 0 && (
               <div>
                 <h3 className="text-base font-semibold text-foreground mb-4">
-                  Vergelijkbare opdrachten
+                  Vergelijkbare vacatures
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {related.map((rJob) => (

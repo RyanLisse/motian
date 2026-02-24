@@ -18,9 +18,9 @@ export default function OpdrachtenError({ error, reset }: Props) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
       <AlertCircle className="h-12 w-12 text-destructive" />
-      <h2 className="text-xl font-semibold text-foreground">Kan opdrachten niet laden</h2>
+      <h2 className="text-xl font-semibold text-foreground">Kan vacatures niet laden</h2>
       <p className="text-sm text-muted-foreground text-center max-w-md">
-        Er is een fout opgetreden bij het ophalen van de opdrachten.
+        Er is een fout opgetreden bij het ophalen van de vacatures.
       </p>
       <button
         type="button"

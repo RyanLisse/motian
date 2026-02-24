@@ -41,7 +41,7 @@ const channelIcons: Record<string, typeof Mail> = {
 };
 
 const channelLabels: Record<string, string> = {
-  email: "Email",
+  email: "E-mail",
   phone: "Telefoon",
   platform: "Platform",
 };

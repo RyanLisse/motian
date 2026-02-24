@@ -318,7 +318,7 @@ export function CvMatchCard({
           onClick={onViewDetails}
           className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
         >
-          Bekijk opdracht
+          Bekijk vacature
           <ExternalLink className="h-3 w-3" />
         </Link>
       </div>

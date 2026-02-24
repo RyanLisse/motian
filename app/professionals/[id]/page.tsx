@@ -78,7 +78,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              Terug naar professionals
+              Terug naar kandidaten
             </Link>
             <DeleteCandidateButton candidateId={candidate.id} candidateName={candidate.name} />
           </div>
@@ -211,7 +211,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
             {matchRows.length === 0 ? (
               <div className="bg-card border border-border rounded-xl p-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Nog geen matches voor deze professional
+                  Nog geen matches voor deze kandidaat
                 </p>
               </div>
             ) : (
@@ -232,7 +232,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                           </Link>
                         ) : (
                           <span className="text-sm font-semibold text-muted-foreground">
-                            Opdracht verwijderd
+                            Vacature verwijderd
                           </span>
                         )}
                         {row.job?.company && (

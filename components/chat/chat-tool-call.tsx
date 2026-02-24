@@ -5,8 +5,8 @@ import { useState } from "react";
 
 const TOOL_LABELS: Record<string, string> = {
   // Opdrachten
-  queryOpdrachten: "Opdrachten zoeken",
-  getOpdrachtDetail: "Opdracht details ophalen",
+  queryOpdrachten: "Vacatures zoeken",
+  getOpdrachtDetail: "Vacature details ophalen",
   matchKandidaten: "Kandidaten matchen",
   analyseData: "Data analyseren",
   triggerScraper: "Scraper starten",

@@ -172,7 +172,7 @@ function MatchCard({ match }: { match: AutoMatchResult }) {
 
       {/* Score bars */}
       <div className="space-y-1.5">
-        <ScoreBar label="Quick score" score={match.quickScore} />
+        <ScoreBar label="Snelle score" score={match.quickScore} />
         {sr && <ScoreBar label="Beoordeling" score={sr.overallScore} />}
       </div>
 
@@ -236,7 +236,7 @@ function MatchCard({ match }: { match: AutoMatchResult }) {
           href={`/opdrachten/${match.jobId}`}
           className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
         >
-          Bekijk opdracht
+          Bekijk vacature
           <ExternalLink className="h-3 w-3" />
         </Link>
         {match.matchId && (

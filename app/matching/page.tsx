@@ -256,7 +256,7 @@ export default async function MatchingPage({ searchParams }: Props) {
             <Link2 className="h-4 w-4 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">
-                Koppelen voor opdracht:{" "}
+                Koppelen voor vacature:{" "}
                 <Link
                   href={`/opdrachten/${jobContext.id}`}
                   className="text-primary hover:underline"
@@ -281,7 +281,7 @@ export default async function MatchingPage({ searchParams }: Props) {
         {jobId && !jobContext && (
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
             <p className="text-sm text-yellow-600">
-              Opdracht niet gevonden. Je bekijkt alle matches.
+              Vacature niet gevonden. Je bekijkt alle matches.
             </p>
           </div>
         )}
@@ -349,7 +349,7 @@ export default async function MatchingPage({ searchParams }: Props) {
               statusFilter
                 ? "Probeer een ander statusfilter"
                 : jobContext
-                  ? "Er zijn nog geen matches voor deze opdracht. Gebruik handmatig koppelen hierboven."
+                  ? "Er zijn nog geen matches voor deze vacature. Gebruik handmatig koppelen hierboven."
                   : "Er zijn nog geen AI-matches gegenereerd"
             }
           />
@@ -404,7 +404,7 @@ export default async function MatchingPage({ searchParams }: Props) {
                           {row.job.title}
                         </Link>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Opdracht verwijderd</span>
+                        <span className="text-sm text-muted-foreground">Vacature verwijderd</span>
                       )}
                       {row.job?.company && (
                         <p className="text-xs text-muted-foreground">{row.job.company}</p>

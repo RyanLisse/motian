@@ -120,7 +120,7 @@ export function OpdrachtenSidebar({
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Zoek opdrachten..."
+            placeholder="Zoek vacatures..."
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -178,7 +178,7 @@ export function OpdrachtenSidebar({
       {/* Count */}
       <div className="px-4 py-2 border-t border-b border-border shrink-0 flex items-center justify-between">
         <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-          {displayTotal} opdrachten
+          {displayTotal} vacatures
         </p>
         {totalPages > 1 && (
           <p className="text-[10px] text-muted-foreground">
@@ -191,7 +191,7 @@ export function OpdrachtenSidebar({
       <ScrollArea className="flex-1">
         {displayJobs.length === 0 ? (
           <div className="px-4 py-8 text-center text-xs text-muted-foreground">
-            Geen opdrachten gevonden
+            Geen vacatures gevonden
           </div>
         ) : (
           displayJobs.map((job) => (

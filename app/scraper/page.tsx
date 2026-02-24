@@ -41,7 +41,7 @@ export default async function ScraperPage() {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <PageHeader
-          title="Scraper Dashboard"
+          title="Scraper-dashboard"
           description="Beheer scraper configuraties en bekijk resultaten"
         >
           <ScraperActions />
@@ -75,7 +75,7 @@ export default async function ScraperPage() {
           />
           <KPICard
             icon={<Database className="h-4 w-4" />}
-            label="Verwerkt per Run"
+            label="Verwerkt per run"
             value={
               analytics.totalRuns > 0
                 ? Math.round(

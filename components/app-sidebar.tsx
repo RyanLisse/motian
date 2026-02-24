@@ -35,12 +35,12 @@ const data = {
       isActive: true,
     },
     {
-      title: "Opdrachten",
+      title: "Vacatures",
       url: "/opdrachten",
       icon: Briefcase,
     },
     {
-      title: "Professionals",
+      title: "Kandidaten",
       url: "/professionals",
       icon: Users,
       items: [

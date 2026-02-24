@@ -103,7 +103,7 @@ export default async function OverzichtPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Overzicht</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Dashboard — realtime inzicht in opdrachten en scrapers
+            Dashboard — realtime inzicht in vacatures en scrapers
           </p>
         </div>
 
@@ -111,7 +111,7 @@ export default async function OverzichtPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KPICard
             icon={<Briefcase className="h-5 w-5" />}
-            label="Totaal opdrachten"
+            label="Totaal vacatures"
             value={totalJobs}
           />
           <KPICard
@@ -138,7 +138,7 @@ export default async function OverzichtPage() {
           {/* Left: 2/3 width */}
           <div className="lg:col-span-2 space-y-6">
             {/* Platform breakdown */}
-            <DashboardCard title="Opdrachten per platform" icon={<BarChart3 className="h-4 w-4" />}>
+            <DashboardCard title="Vacatures per platform" icon={<BarChart3 className="h-4 w-4" />}>
               <div className="space-y-3">
                 {platformCounts.map((p) => {
                   const percentage = totalJobs > 0 ? Math.round((p.count / totalJobs) * 100) : 0;
@@ -174,7 +174,7 @@ export default async function OverzichtPage() {
                   href="/opdrachten"
                   className="text-xs text-primary hover:underline flex items-center gap-1"
                 >
-                  Alle opdrachten <ArrowRight className="h-3 w-3" />
+                  Alle vacatures <ArrowRight className="h-3 w-3" />
                 </Link>
               }
             >

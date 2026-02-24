@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   {
     href: "/opdrachten",
-    label: "Opdrachten",
+    label: "Vacatures",
     icon: Briefcase,
     disabled: false,
   },

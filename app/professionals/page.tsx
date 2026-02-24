@@ -82,7 +82,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Professionals</h1>
+            <h1 className="text-xl font-bold text-foreground">Kandidaten</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Talent pool — overzicht van alle kandidaten
             </p>
@@ -138,7 +138,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
 
         {/* Results count */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{totalCount} professionals gevonden</p>
+          <p className="text-sm text-muted-foreground">{totalCount} kandidaten gevonden</p>
           {totalPages > 1 && (
             <p className="text-sm text-muted-foreground">
               Pagina {page} van {totalPages}
@@ -150,7 +150,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
         {candidateRows.length === 0 ? (
           <EmptyState
             icon={<Users className="h-8 w-8" />}
-            title="Geen professionals gevonden"
+            title="Geen kandidaten gevonden"
             subtitle="Pas je zoekopdracht of filters aan"
           />
         ) : (
