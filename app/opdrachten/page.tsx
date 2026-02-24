@@ -9,7 +9,7 @@ export default function OpdrachtenPage() {
         </div>
         <h2 className="text-lg font-semibold text-foreground mb-2">Start je zoektocht</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Selecteer een opdracht uit de lijst om de details te bekijken
+          Selecteer een vacature uit de lijst om de details te bekijken
         </p>
       </div>
     </div>

@@ -75,10 +75,10 @@ ${scraperLines}`;
 }
 
 export async function buildSystemPrompt(context?: {
-  route?: string;
-  entityId?: string;
-  entityType?: string;
-}) {
+  route?: string | null;
+  entityId?: string | null;
+  entityType?: string | null;
+} | null) {
   const now = new Date().toLocaleDateString("nl-NL", {
     weekday: "long",
     year: "numeric",

@@ -8,11 +8,11 @@ const limiter = rateLimit({ interval: 60_000, limit: 20 });
 
 const contextSchema = z
   .object({
-    route: z.string().max(200).optional(),
-    entityId: z.string().uuid().optional(),
-    entityType: z.enum(["opdracht", "kandidaat"]).optional(),
+    route: z.string().max(200).nullish(),
+    entityId: z.string().uuid().nullish(),
+    entityType: z.enum(["opdracht", "kandidaat"]).nullish(),
   })
-  .optional();
+  .nullish();
 
 export async function POST(req: Request) {
   const ip =
