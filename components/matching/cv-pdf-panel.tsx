@@ -2,8 +2,13 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
-import { CvDocumentViewer } from "@/components/cv-document-viewer";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
+
+const CvDocumentViewer = dynamic(
+  () => import("@/components/cv-document-viewer").then((m) => m.CvDocumentViewer),
+  { ssr: false },
+);
 
 interface CvPdfPanelProps {
   url: string;

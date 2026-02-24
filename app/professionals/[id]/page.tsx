@@ -3,7 +3,7 @@ import { ArrowLeft, Briefcase, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CandidateNotes } from "@/components/candidate-notes";
-import { CvDocumentViewer } from "@/components/cv-document-viewer";
+import { CvDocumentViewerLazy } from "@/components/cv-document-viewer-lazy";
 import { CvDropZone } from "@/components/cv-drop-zone";
 import { DeleteCandidateButton } from "@/components/delete-candidate-button";
 import { EditCandidateFields } from "@/components/edit-candidate-fields";
@@ -135,7 +135,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
           {/* CV Document Viewer */}
           {candidate.resumeUrl && (
-            <CvDocumentViewer url={candidate.resumeUrl} candidateName={candidate.name} />
+            <CvDocumentViewerLazy url={candidate.resumeUrl} candidateName={candidate.name} />
           )}
 
           {/* Vaardigheden — structured or legacy */}
