@@ -21,9 +21,13 @@ export {
   zoekKandidaten,
 } from "./kandidaten";
 export { matchKandidaten } from "./match-kandidaten";
-
 // Match tools
 export { getMatchDetail, keurMatchGoed, wijsMatchAf, zoekMatches } from "./matches";
+export {
+  importeerOpdrachtenBatch,
+  reviewGdprRetentie,
+  runKandidaatScoringBatch,
+} from "./operations-console";
 export { queryOpdrachten } from "./query-opdrachten";
 // Sollicitatie tools
 export {

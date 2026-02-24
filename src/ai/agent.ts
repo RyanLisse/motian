@@ -12,6 +12,9 @@ export const recruitmentTools = {
   matchKandidaten: tools.matchKandidaten,
   analyseData: tools.analyseData,
   triggerScraper: tools.triggerScraper,
+  importeerOpdrachtenBatch: tools.importeerOpdrachtenBatch,
+  runKandidaatScoringBatch: tools.runKandidaatScoringBatch,
+  reviewGdprRetentie: tools.reviewGdprRetentie,
 
   // Kandidaten
   zoekKandidaten: tools.zoekKandidaten,
@@ -74,11 +77,13 @@ ${scraperLines}`;
   }
 }
 
-export async function buildSystemPrompt(context?: {
-  route?: string | null;
-  entityId?: string | null;
-  entityType?: string | null;
-} | null) {
+export async function buildSystemPrompt(
+  context?: {
+    route?: string | null;
+    entityId?: string | null;
+    entityType?: string | null;
+  } | null,
+) {
   const now = new Date().toLocaleDateString("nl-NL", {
     weekday: "long",
     year: "numeric",
@@ -110,6 +115,9 @@ Je kunt helpen met:
 - Berichten versturen en bekijken
 - Data analyseren (tarieven, platforms, deadlines)
 - Scrapers starten voor nieuwe opdrachten
+- Batch import draaien over actieve scrapers (importeerOpdrachtenBatch)
+- Batch scoring draaien over actieve opdrachten (runKandidaatScoringBatch)
+- GDPR retentie review uitvoeren (reviewGdprRetentie)
 
 Zoektips: queryOpdrachten zoekt op losse woorden in de titel. Gebruik korte termen (bijv. "jurist" i.p.v. "juridische functies"). Voor semantisch zoeken gebruik matchKandidaten met een beschrijving.
 ${workspace}`;
