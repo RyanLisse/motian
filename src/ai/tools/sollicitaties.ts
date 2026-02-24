@@ -1,5 +1,7 @@
 import { tool } from "ai";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { publish } from "@/src/lib/event-bus";
 import {
   createApplication,
   deleteApplication,
@@ -68,6 +70,12 @@ export const maakSollicitatieAan = tool({
       source: params.source,
       notes: params.notes,
     });
+    revalidatePath("/pipeline");
+    publish("application:created", {
+      id: application.id,
+      jobId: params.jobId,
+      candidateId: params.candidateId,
+    });
     return application;
   },
 });
@@ -85,6 +93,8 @@ export const updateSollicitatieFase = tool({
   execute: async ({ id, stage, notes }) => {
     const application = await updateApplicationStage(id, stage, notes);
     if (!application) return { error: "Sollicitatie niet gevonden" };
+    revalidatePath("/pipeline");
+    publish("application:stage_changed", { id, stage });
     return application;
   },
 });
@@ -98,6 +108,8 @@ export const verwijderSollicitatie = tool({
   execute: async ({ id }) => {
     const success = await deleteApplication(id);
     if (!success) return { error: "Sollicitatie niet gevonden of kon niet verwijderd worden" };
+    revalidatePath("/pipeline");
+    publish("application:deleted", { id });
     return { success: true, message: "Sollicitatie succesvol verwijderd" };
   },
 });

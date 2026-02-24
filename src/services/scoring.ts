@@ -10,17 +10,21 @@ export type MatchResult = {
   model: string;
 };
 
-// ========== Scoring Rubric ==========
+// ========== Scoring Config ==========
 
 /** Scoring rubric weights — total must equal 100 */
-const WEIGHT_SKILLS = 40;
-const WEIGHT_LOCATION = 20;
-const WEIGHT_RATE = 20;
-const WEIGHT_ROLE = 20;
+export const SCORING_WEIGHTS = {
+  skills: 40,
+  location: 20,
+  rate: 20,
+  role: 20,
+} as const;
 
 /** When embeddings are available, blend rule-based and vector scores */
-const RULE_WEIGHT = 0.6;
-const VECTOR_WEIGHT = 0.4;
+export const HYBRID_BLEND = {
+  ruleWeight: 0.6,
+  vectorWeight: 0.4,
+} as const;
 
 // ========== Vector Math ==========
 
@@ -65,7 +69,9 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
   if (jobEmbedding?.length && candidateEmbedding?.length) {
     const similarity = cosineSimilarity(jobEmbedding, candidateEmbedding);
     const vectorScore = Math.round(similarity * 100);
-    const blended = Math.round(RULE_WEIGHT * ruleResult.score + VECTOR_WEIGHT * vectorScore);
+    const blended = Math.round(
+      HYBRID_BLEND.ruleWeight * ruleResult.score + HYBRID_BLEND.vectorWeight * vectorScore,
+    );
 
     reasons.push(`Semantische match: ${vectorScore}%`);
 
@@ -88,16 +94,16 @@ export function computeMatchScore(job: Job, candidate: Candidate): MatchResult {
 /**
  * Rule-based matching: kandidaat vs opdracht.
  * Maximaal 100 punten verdeeld over 4 dimensies:
- *   - Skills overlap:    0-{WEIGHT_SKILLS}
- *   - Locatie match:     0-{WEIGHT_LOCATION}
- *   - Tarief passend:    0-{WEIGHT_RATE}
- *   - Rol aansluiting:   0-{WEIGHT_ROLE}
+ *   - Skills overlap:    0-{SCORING_WEIGHTS.skills}
+ *   - Locatie match:     0-{SCORING_WEIGHTS.location}
+ *   - Tarief passend:    0-{SCORING_WEIGHTS.rate}
+ *   - Rol aansluiting:   0-{SCORING_WEIGHTS.role}
  */
 function computeRuleScore(job: Job, candidate: Candidate): Omit<MatchResult, "model"> {
   let score = 0;
   const reasons: string[] = [];
 
-  // ── 1. Skills overlap (0-WEIGHT_SKILLS) ──────────────────────────
+  // ── 1. Skills overlap (0-SCORING_WEIGHTS.skills) ──────────────────────────
   const jobKeywords = extractKeywords(job);
   const candidateSkills = (candidate.skills as string[]) || [];
 
@@ -109,7 +115,10 @@ function computeRuleScore(job: Job, candidate: Candidate): Omit<MatchResult, "mo
 
   const skillScore =
     jobKeywords.length > 0
-      ? Math.min(WEIGHT_SKILLS, Math.round((overlap.length / jobKeywords.length) * WEIGHT_SKILLS))
+      ? Math.min(
+          SCORING_WEIGHTS.skills,
+          Math.round((overlap.length / jobKeywords.length) * SCORING_WEIGHTS.skills),
+        )
       : 0;
   score += skillScore;
 
@@ -117,35 +126,35 @@ function computeRuleScore(job: Job, candidate: Candidate): Omit<MatchResult, "mo
     reasons.push(`${overlap.length} skills match: ${overlap.slice(0, 3).join(", ")}`);
   }
 
-  // ── 2. Location match (0-WEIGHT_LOCATION) ────────────────────────
+  // ── 2. Location match (0-SCORING_WEIGHTS.location) ────────────────────────
   if (
     candidate.province &&
     job.province &&
     candidate.province.toLowerCase() === job.province.toLowerCase()
   ) {
-    score += WEIGHT_LOCATION;
+    score += SCORING_WEIGHTS.location;
     reasons.push("Provincie match");
   } else if (candidate.location && job.location) {
     const candidateCity = candidate.location.split(" - ")[0]?.toLowerCase();
     const jobCity = job.location?.split(" - ")[0]?.toLowerCase();
     if (candidateCity && jobCity && candidateCity === jobCity) {
-      score += WEIGHT_LOCATION * 0.75;
+      score += SCORING_WEIGHTS.location * 0.75;
       reasons.push("Stad match");
     }
   }
 
-  // ── 3. Rate fit (0-WEIGHT_RATE) ────────────────────────────────
+  // ── 3. Rate fit (0-SCORING_WEIGHTS.rate) ────────────────────────────────
   if (candidate.hourlyRate && job.rateMax) {
     if (candidate.hourlyRate <= job.rateMax) {
-      score += WEIGHT_RATE;
+      score += SCORING_WEIGHTS.rate;
       reasons.push("Tarief past binnen budget");
     } else if (candidate.hourlyRate <= job.rateMax * 1.1) {
-      score += WEIGHT_RATE * 0.5;
+      score += SCORING_WEIGHTS.rate * 0.5;
       reasons.push("Tarief iets boven budget");
     }
   }
 
-  // ── 4. Role alignment (0-WEIGHT_ROLE) ──────────────────────────
+  // ── 4. Role alignment (0-SCORING_WEIGHTS.role) ──────────────────────────
   if (candidate.role && job.title) {
     const roleWords = candidate.role
       .toLowerCase()
@@ -161,7 +170,7 @@ function computeRuleScore(job: Job, candidate: Candidate): Omit<MatchResult, "mo
     );
 
     if (roleOverlap.length > 0) {
-      score += Math.min(WEIGHT_ROLE, roleOverlap.length * 10);
+      score += Math.min(SCORING_WEIGHTS.role, roleOverlap.length * 10);
       reasons.push("Rol sluit aan bij functietitel");
     }
   }

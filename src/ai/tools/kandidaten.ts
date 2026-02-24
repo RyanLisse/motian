@@ -1,5 +1,7 @@
 import { tool } from "ai";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { publish } from "@/src/lib/event-bus";
 import { autoMatchCandidateToJobs } from "@/src/services/auto-matching";
 import {
   addNoteToCandidate,
@@ -66,6 +68,8 @@ export const maakKandidaatAan = tool({
   }),
   execute: async (data) => {
     const candidate = await createCandidate(data);
+    revalidatePath("/professionals");
+    publish("candidate:created", { id: candidate.id, name: candidate.name });
     return candidate;
   },
 });
@@ -95,6 +99,9 @@ export const updateKandidaat = tool({
   execute: async ({ id, ...data }) => {
     const candidate = await updateCandidate(id, data);
     if (!candidate) return { error: "Kandidaat niet gevonden" };
+    revalidatePath("/professionals");
+    revalidatePath(`/professionals/${id}`);
+    publish("candidate:updated", { id, name: candidate.name });
     return candidate;
   },
 });
@@ -108,6 +115,8 @@ export const verwijderKandidaat = tool({
   execute: async ({ id }) => {
     const success = await deleteCandidate(id);
     if (!success) return { error: "Kandidaat niet gevonden of kon niet verwijderd worden" };
+    revalidatePath("/professionals");
+    publish("candidate:deleted", { id });
     return { success: true, message: "Kandidaat succesvol verwijderd" };
   },
 });
@@ -124,6 +133,9 @@ export const autoMatchKandidaat = tool({
       if (results.length === 0) {
         return { message: "Geen geschikte vacatures gevonden", matches: [] };
       }
+      revalidatePath("/matching");
+      revalidatePath(`/professionals/${id}`);
+      publish("match:created", { candidateId: id, count: results.length });
       return { total: results.length, matches: results };
     } catch (err) {
       return { error: err instanceof Error ? err.message : "Auto-matching mislukt" };
@@ -141,6 +153,8 @@ export const voegNotitieToe = tool({
   execute: async ({ id, note }) => {
     const candidate = await addNoteToCandidate(id, note);
     if (!candidate) return { error: "Kandidaat niet gevonden" };
+    revalidatePath(`/professionals/${id}`);
+    publish("candidate:updated", { id, action: "note_added" });
     return { success: true, notes: candidate.notes };
   },
 });
