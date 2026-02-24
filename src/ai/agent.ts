@@ -1,5 +1,6 @@
 import { gpt5Nano } from "@/src/lib/ai-models";
 import { PLATFORMS } from "@/src/lib/helpers";
+import { HYBRID_BLEND, SCORING_WEIGHTS } from "@/src/services/scoring";
 import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
 
@@ -9,6 +10,8 @@ export const recruitmentTools = {
   // Opdrachten
   queryOpdrachten: tools.queryOpdrachten,
   getOpdrachtDetail: tools.getOpdrachtDetail,
+  updateOpdracht: tools.updateOpdracht,
+  verwijderOpdracht: tools.verwijderOpdracht,
   matchKandidaten: tools.matchKandidaten,
   analyseData: tools.analyseData,
   triggerScraper: tools.triggerScraper,
@@ -25,8 +28,11 @@ export const recruitmentTools = {
   // Matches
   zoekMatches: tools.zoekMatches,
   getMatchDetail: tools.getMatchDetail,
+  maakMatchAan: tools.maakMatchAan,
   keurMatchGoed: tools.keurMatchGoed,
   wijsMatchAf: tools.wijsMatchAf,
+  verwijderMatch: tools.verwijderMatch,
+  voerStructuredMatchUit: tools.voerStructuredMatchUit,
 
   // Sollicitaties
   zoekSollicitaties: tools.zoekSollicitaties,
@@ -48,6 +54,12 @@ export const recruitmentTools = {
   getBerichtDetail: tools.getBerichtDetail,
   stuurBericht: tools.stuurBericht,
   verwijderBericht: tools.verwijderBericht,
+
+  // GDPR
+  exporteerKandidaatData: tools.exporteerKandidaatData,
+  wisKandidaatData: tools.wisKandidaatData,
+  scrubContactGegevens: tools.scrubContactGegevens,
+  exporteerContactData: tools.exporteerContactData,
 };
 
 /** Build workspace context string for prompt injection. */
@@ -74,11 +86,13 @@ ${scraperLines}`;
   }
 }
 
-export async function buildSystemPrompt(context?: {
-  route?: string | null;
-  entityId?: string | null;
-  entityType?: string | null;
-} | null) {
+export async function buildSystemPrompt(
+  context?: {
+    route?: string | null;
+    entityId?: string | null;
+    entityType?: string | null;
+  } | null,
+) {
   const now = new Date().toLocaleDateString("nl-NL", {
     weekday: "long",
     year: "numeric",
@@ -99,17 +113,24 @@ Vandaag is ${now}.
 Beschikbare platforms: ${PLATFORMS.join(", ")}.
 
 Je kunt helpen met:
-- Opdrachten zoeken, filteren en bekijken
+- Opdrachten zoeken, filteren, bijwerken en verwijderen
 - Kandidaten beheren (zoeken, aanmaken, bijwerken, verwijderen)
 - Notities toevoegen aan kandidaatprofielen
 - Kandidaten zoeken op vaardigheden, rol, naam of locatie
 - Automatisch matchen van kandidaten met vacatures (top 3 met gedetailleerde beoordeling)
-- Matches bekijken, goedkeuren of afwijzen
+- Diepgaande gestructureerde matching (Mariënne-methodologie) met knock-out criteria en gunningscriteria
+- Matches aanmaken, bekijken, goedkeuren, afwijzen en verwijderen
 - Sollicitaties aanmaken en door de pipeline verplaatsen
 - Interviews plannen en bijwerken
 - Berichten versturen en bekijken
 - Data analyseren (tarieven, platforms, deadlines)
 - Scrapers starten voor nieuwe opdrachten
+- GDPR: kandidaatdata exporteren, permanent verwijderen, contactgegevens scrubben
+
+Belangrijk: Vraag ALTIJD om expliciete bevestiging van de gebruiker voordat je wisKandidaatData aanroept. Dit verwijdert alle data permanent en kan niet ongedaan worden gemaakt.
+
+Matching gewichten (totaal 100): Skills ${SCORING_WEIGHTS.skills}%, Locatie ${SCORING_WEIGHTS.location}%, Tarief ${SCORING_WEIGHTS.rate}%, Rol ${SCORING_WEIGHTS.role}%.
+Hybride scoring: ${Math.round(HYBRID_BLEND.ruleWeight * 100)}% regelgebaseerd + ${Math.round(HYBRID_BLEND.vectorWeight * 100)}% semantisch (indien embeddings beschikbaar).
 
 Zoektips: queryOpdrachten zoekt op losse woorden in de titel. Gebruik korte termen (bijv. "jurist" i.p.v. "juridische functies"). Voor semantisch zoeken gebruik matchKandidaten met een beschrijving.
 ${workspace}`;

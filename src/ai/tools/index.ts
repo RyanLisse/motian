@@ -1,6 +1,13 @@
 export { analyseData } from "./analyse-data";
 // Berichten tools
 export { getBerichtDetail, stuurBericht, verwijderBericht, zoekBerichten } from "./berichten";
+// GDPR tools
+export {
+  exporteerContactData,
+  exporteerKandidaatData,
+  scrubContactGegevens,
+  wisKandidaatData,
+} from "./gdpr";
 export { getOpdrachtDetail } from "./get-opdracht-detail";
 // Interview tools
 export {
@@ -23,7 +30,16 @@ export {
 export { matchKandidaten } from "./match-kandidaten";
 
 // Match tools
-export { getMatchDetail, keurMatchGoed, wijsMatchAf, zoekMatches } from "./matches";
+export {
+  getMatchDetail,
+  keurMatchGoed,
+  maakMatchAan,
+  verwijderMatch,
+  wijsMatchAf,
+  zoekMatches,
+} from "./matches";
+// Opdrachten mutatie tools
+export { updateOpdracht, verwijderOpdracht } from "./opdrachten-mutatie";
 export { queryOpdrachten } from "./query-opdrachten";
 // Sollicitatie tools
 export {
@@ -34,4 +50,6 @@ export {
   verwijderSollicitatie,
   zoekSollicitaties,
 } from "./sollicitaties";
+// Structured matching tool
+export { voerStructuredMatchUit } from "./structured-match";
 export { triggerScraper } from "./trigger-scraper";

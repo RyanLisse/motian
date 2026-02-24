@@ -1,5 +1,7 @@
 import { tool } from "ai";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { publish } from "@/src/lib/event-bus";
 import {
   createMessage,
   deleteMessage,
@@ -77,6 +79,12 @@ export const stuurBericht = tool({
       body: params.body,
     });
     if (!message) return { error: "Bericht kon niet worden aangemaakt" };
+    revalidatePath("/messages");
+    publish("message:created", {
+      id: message.id,
+      applicationId: params.applicationId,
+      direction: params.direction,
+    });
     return message;
   },
 });
@@ -90,6 +98,8 @@ export const verwijderBericht = tool({
   execute: async ({ id }) => {
     const success = await deleteMessage(id);
     if (!success) return { error: "Bericht niet gevonden of kon niet worden verwijderd" };
+    revalidatePath("/messages");
+    publish("message:deleted", { id });
     return { success: true, message: "Bericht succesvol verwijderd" };
   },
 });

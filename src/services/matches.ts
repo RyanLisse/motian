@@ -21,6 +21,12 @@ export type CreateMatchData = {
   confidence?: number;
   reasoning?: string;
   model?: string;
+  criteriaBreakdown?: unknown;
+  riskProfile?: unknown;
+  enrichmentSuggestions?: unknown;
+  recommendation?: string;
+  recommendationConfidence?: number;
+  assessmentModel?: string;
 };
 
 // ========== Service Functions ==========
@@ -105,6 +111,12 @@ export async function createMatch(data: CreateMatchData): Promise<Match> {
       confidence: data.confidence,
       reasoning: data.reasoning,
       model: data.model,
+      criteriaBreakdown: data.criteriaBreakdown,
+      riskProfile: data.riskProfile,
+      enrichmentSuggestions: data.enrichmentSuggestions,
+      recommendation: data.recommendation,
+      recommendationConfidence: data.recommendationConfidence,
+      assessmentModel: data.assessmentModel,
     })
     .returning();
 
@@ -123,6 +135,12 @@ export async function getMatchByJobAndCandidate(
     .limit(1);
 
   return rows[0] ?? null;
+}
+
+/** Match verwijderen op ID. Retourneert true als gevonden en verwijderd. */
+export async function deleteMatch(id: string): Promise<boolean> {
+  const rows = await db.delete(jobMatches).where(eq(jobMatches.id, id)).returning();
+  return rows.length > 0;
 }
 
 /** Matches voor een specifieke opdracht ophalen. Geordend op matchScore aflopend. */

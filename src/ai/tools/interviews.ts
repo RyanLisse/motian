@@ -1,5 +1,7 @@
 import { tool } from "ai";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { publish } from "@/src/lib/event-bus";
 import {
   createInterview,
   deleteInterview,
@@ -79,6 +81,9 @@ export const planInterview = tool({
       duration,
       location,
     });
+    revalidatePath("/interviews");
+    revalidatePath("/pipeline");
+    publish("interview:scheduled", { id: interview.id, applicationId, type });
     return interview;
   },
 });
@@ -98,6 +103,8 @@ export const updateInterviewTool = tool({
     const result = await updateInterview(id, { status, feedback, rating });
     if (result.emptyUpdate) return { error: "Geen velden opgegeven om bij te werken" };
     if (!result.interview) return { error: "Interview niet gevonden of ongeldige waarden" };
+    revalidatePath("/interviews");
+    publish("interview:updated", { id, status });
     return result.interview;
   },
 });
@@ -110,6 +117,8 @@ export const verwijderInterview = tool({
   execute: async ({ id }) => {
     const deleted = await deleteInterview(id);
     if (!deleted) return { error: "Interview niet gevonden of kon niet verwijderd worden" };
+    revalidatePath("/interviews");
+    publish("interview:deleted", { id });
     return { success: true, message: "Interview succesvol verwijderd" };
   },
 });

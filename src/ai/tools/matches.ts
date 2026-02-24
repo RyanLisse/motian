@@ -1,6 +1,14 @@
 import { tool } from "ai";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getMatchById, listMatches, updateMatchStatus } from "@/src/services/matches";
+import { publish } from "@/src/lib/event-bus";
+import {
+  createMatch,
+  deleteMatch,
+  getMatchById,
+  listMatches,
+  updateMatchStatus,
+} from "@/src/services/matches";
 
 export const zoekMatches = tool({
   description:
@@ -45,6 +53,9 @@ export const keurMatchGoed = tool({
   execute: async ({ id, reviewedBy }) => {
     const match = await updateMatchStatus(id, "approved", reviewedBy);
     if (!match) return { error: "Match niet gevonden" };
+    revalidatePath("/matching");
+    revalidatePath(`/matching/${id}`);
+    publish("match:updated", { id, status: "approved" });
     return match;
   },
 });
@@ -59,6 +70,60 @@ export const wijsMatchAf = tool({
   execute: async ({ id, reviewedBy }) => {
     const match = await updateMatchStatus(id, "rejected", reviewedBy);
     if (!match) return { error: "Match niet gevonden" };
+    revalidatePath("/matching");
+    revalidatePath(`/matching/${id}`);
+    publish("match:updated", { id, status: "rejected" });
     return match;
+  },
+});
+
+export const maakMatchAan = tool({
+  description:
+    "Maak een nieuwe match aan tussen een vacature en een kandidaat. Geef een score en optioneel een aanbeveling.",
+  inputSchema: z.object({
+    jobId: z.string().uuid().describe("UUID van de vacature"),
+    candidateId: z.string().uuid().describe("UUID van de kandidaat"),
+    matchScore: z.number().min(0).max(100).describe("Matchscore (0-100)"),
+    reasoning: z.string().optional().describe("Reden of toelichting voor de match"),
+    recommendation: z
+      .enum(["go", "no-go", "conditional"])
+      .optional()
+      .describe("Aanbeveling: go, no-go, of conditional"),
+  }),
+  execute: async ({ jobId, candidateId, matchScore, reasoning, recommendation }) => {
+    try {
+      const match = await createMatch({
+        jobId,
+        candidateId,
+        matchScore,
+        reasoning,
+        recommendation,
+        model: "manual-agent",
+      });
+      revalidatePath("/matching");
+      publish("match:created", { id: match.id, jobId, candidateId, matchScore });
+      return match;
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("unique") || msg.includes("duplicate")) {
+        return { error: "Er bestaat al een match voor deze vacature en kandidaat" };
+      }
+      return { error: "Match kon niet worden aangemaakt" };
+    }
+  },
+});
+
+export const verwijderMatch = tool({
+  description:
+    "Verwijder een match permanent op basis van ID. Let op: dit is een harde verwijdering die niet ongedaan kan worden gemaakt. Gebruik dit om een onjuiste of ongewenste match te verwijderen.",
+  inputSchema: z.object({
+    id: z.string().uuid().describe("UUID van de match om te verwijderen"),
+  }),
+  execute: async ({ id }) => {
+    const success = await deleteMatch(id);
+    if (!success) return { error: "Match niet gevonden of kon niet worden verwijderd" };
+    revalidatePath("/matching");
+    publish("match:deleted", { id });
+    return { success: true, message: "Match succesvol verwijderd" };
   },
 });

@@ -1,3 +1,4 @@
+import { notifySlack } from "../lib/notify-slack";
 import type { StructuredMatchOutput } from "../schemas/matching";
 import { type Candidate, getCandidateById, listActiveCandidates } from "./candidates";
 import { embedCandidate } from "./embedding";
@@ -68,6 +69,12 @@ async function upsertMatch(
       confidence: structured?.recommendationConfidence ?? undefined,
       reasoning: structured?.recommendationReasoning ?? undefined,
       model: "auto-match-v1",
+      criteriaBreakdown: structured?.criteriaBreakdown,
+      riskProfile: structured?.riskProfile,
+      enrichmentSuggestions: structured?.enrichmentSuggestions,
+      recommendation: structured?.recommendation,
+      recommendationConfidence: structured?.recommendationConfidence,
+      assessmentModel: structured ? "auto-match-v1" : undefined,
     });
     return match.id;
   } catch (err) {
@@ -155,6 +162,18 @@ export async function autoMatchCandidateToJobs(candidateId: string): Promise<Aut
         console.error(`[Auto-Match] Create match failed for job ${job.id}:`, err);
       }
 
+      // Slack notification for successful match (fire-and-forget)
+      if (matchId && !matchSaveError) {
+        notifySlack("match:created", {
+          candidateName: freshCandidate.name,
+          jobTitle: job.title,
+          company: job.company,
+          matchScore: structuredResult?.overallScore ?? score,
+          recommendation: structuredResult?.recommendation,
+          matchId,
+        });
+      }
+
       return {
         jobId: job.id,
         jobTitle: job.title,
@@ -227,6 +246,18 @@ export async function autoMatchJobToCandidates(jobId: string): Promise<AutoMatch
       } catch (err) {
         matchSaveError = true;
         console.error(`[Auto-Match] Create match failed for candidate ${candidate.id}:`, err);
+      }
+
+      // Slack notification for successful match (fire-and-forget)
+      if (matchId && !matchSaveError) {
+        notifySlack("match:created", {
+          candidateName: candidate.name,
+          jobTitle: job.title,
+          company: job.company,
+          matchScore: structuredResult?.overallScore ?? score,
+          recommendation: structuredResult?.recommendation,
+          matchId,
+        });
       }
 
       return {

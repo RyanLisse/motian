@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
 import { publish } from "@/src/lib/event-bus";
 import { CIRCUIT_BREAKER_THRESHOLD } from "@/src/lib/helpers";
+import { notifySlack } from "@/src/lib/notify-slack";
 import { trackServerEvent } from "@/src/lib/posthog";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
 
@@ -106,13 +107,23 @@ export const scrapePipelineTask = schedules.task({
       dispatched++;
       const platform = eligible[i].platform;
       if (r.status === "fulfilled") {
-        results.push({ platform, status: "success", ...r.value });
+        const scrapeData = { platform, status: "success", ...r.value };
+        results.push(scrapeData);
+        notifySlack("scrape:complete", scrapeData);
         trackServerEvent("system", "scrape_completed", {
           platform,
           ...r.value,
         });
       } else {
         results.push({ platform, status: "failed", error: String(r.reason) });
+        notifySlack("scrape:complete", {
+          platform,
+          status: "failed",
+          jobsFound: 0,
+          jobsNew: 0,
+          duplicates: 0,
+          durationMs: 0,
+        });
         trackServerEvent("system", "scrape_failed", {
           platform,
           error: String(r.reason),
@@ -125,6 +136,13 @@ export const scrapePipelineTask = schedules.task({
         severity: "warning",
         type: "circuit_breaker_open",
         tripped,
+      });
+      notifySlack("scrape:alert", {
+        severity: "warning",
+        type: "circuit_breaker_open",
+        tripped: activeConfigs
+          .filter((cfg) => (cfg.consecutiveFailures ?? 0) >= CIRCUIT_BREAKER_THRESHOLD)
+          .map((cfg) => cfg.platform),
       });
       trackServerEvent("system", "scrape_circuit_breaker", { tripped });
     }
