@@ -4,6 +4,25 @@ import { normalizeAndSaveJobs } from "./normalize";
 import { recordScrapeResult } from "./record-scrape-result";
 import { scrapeFlextender, scrapeOpdrachtoverheid, scrapeStriive } from "./scrapers/index";
 
+type ScrapeStatus = "success" | "partial" | "failed";
+
+async function recordFailure(platform: string, errors: string[], startTime: number): Promise<void> {
+  try {
+    await recordScrapeResult({
+      platform,
+      jobsFound: 0,
+      jobsNew: 0,
+      duplicates: 0,
+      durationMs: Date.now() - startTime,
+      status: "failed",
+      errors,
+    });
+  } catch (recordErr) {
+    console.error(`[scrape-pipeline] recordScrapeResult mislukt voor ${platform}:`, recordErr);
+  }
+  publish("scrape:error", { platform, errors });
+}
+
 export async function runScrapePipeline(
   platform: string,
   url: string,
@@ -29,46 +48,20 @@ export async function runScrapePipeline(
     }
   } catch (err) {
     const errors = [err instanceof Error ? err.message : String(err)];
-    try {
-      await recordScrapeResult({
-        platform,
-        jobsFound: 0,
-        jobsNew: 0,
-        duplicates: 0,
-        durationMs: Date.now() - startTime,
-        status: "failed",
-        errors,
-      });
-    } catch (recordErr) {
-      console.error(`[scrape-pipeline] recordScrapeResult mislukt voor ${platform}:`, recordErr);
-    }
-    publish("scrape:error", { platform, errors });
+    await recordFailure(platform, errors, startTime);
     return { jobsNew: 0, duplicates: 0, errors };
   }
 
   // Safety net: scraper returned data but nothing parsed — treat as suspicious
   if (listings.length === 0) {
     const errors = [`${platform}: scraper retourneerde 0 listings (mogelijk stille fout)`];
-    try {
-      await recordScrapeResult({
-        platform,
-        jobsFound: 0,
-        jobsNew: 0,
-        duplicates: 0,
-        durationMs: Date.now() - startTime,
-        status: "failed",
-        errors,
-      });
-    } catch (recordErr) {
-      console.error(`[scrape-pipeline] recordScrapeResult mislukt voor ${platform}:`, recordErr);
-    }
-    publish("scrape:error", { platform, errors });
+    await recordFailure(platform, errors, startTime);
     return { jobsNew: 0, duplicates: 0, errors };
   }
 
   const result = await normalizeAndSaveJobs(platform, listings);
   const durationMs = Date.now() - startTime;
-  const status =
+  const status: ScrapeStatus =
     result.errors.length === 0
       ? "success"
       : result.jobsNew > 0 || result.duplicates > 0

@@ -7,6 +7,8 @@
  * Set STRIIVE_USE_MODAL=true + STRIIVE_WEBHOOK_URL to use remote webhook.
  */
 
+import type { RawScrapedListing } from "../normalize";
+
 const MAPPING_FUNCTIONS_AS_STRING = `
 function mapBoolean(val) {
   if (typeof val === "boolean") return val;
@@ -305,7 +307,7 @@ run();
 /**
  * Main entry point — scrapes Striive listings via Modal sandbox.
  */
-export async function scrapeStriive(_url: string): Promise<Record<string, unknown>[]> {
+export async function scrapeStriive(_url: string): Promise<RawScrapedListing[]> {
   const username = process.env.STRIIVE_USERNAME;
   const password = process.env.STRIIVE_PASSWORD;
 
@@ -316,10 +318,7 @@ export async function scrapeStriive(_url: string): Promise<Record<string, unknow
   return scrapeViaModal(username, password);
 }
 
-async function scrapeViaModal(
-  username: string,
-  password: string,
-): Promise<Record<string, unknown>[]> {
+async function scrapeViaModal(username: string, password: string): Promise<RawScrapedListing[]> {
   const { ModalClient } = await import("modal");
   console.log("[striive] Starting Modal sandbox scrape...");
 
@@ -387,6 +386,7 @@ async function scrapeViaModal(
   } catch (err) {
     throw new Error(
       `Striive Modal scrape mislukt: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
 }
