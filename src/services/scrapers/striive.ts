@@ -310,8 +310,7 @@ export async function scrapeStriive(_url: string): Promise<Record<string, unknow
   const password = process.env.STRIIVE_PASSWORD;
 
   if (!username || !password) {
-    console.error("[striive] STRIIVE_USERNAME and STRIIVE_PASSWORD must be set");
-    return [];
+    throw new Error("STRIIVE_USERNAME en STRIIVE_PASSWORD moeten ingesteld zijn");
   }
 
   return scrapeViaModal(username, password);
@@ -376,16 +375,18 @@ async function scrapeViaModal(
     const marker = "__MODAL_RESULT__";
     const markerIdx = stdout.indexOf(marker);
     if (markerIdx === -1) {
-      console.error("[striive] No result marker found in Modal sandbox output");
-      console.error(`[striive] Full stdout: ${stdout}`); // Log full stdout for debugging
-      return [];
+      const stdoutSnippet = stdout.substring(0, 500);
+      throw new Error(
+        `Striive Modal: geen resultaat-marker in sandbox output. stdout: ${stdoutSnippet}`,
+      );
     }
 
     const results = JSON.parse(stdout.substring(markerIdx + marker.length));
     console.log(`[striive] Modal sandbox returned ${results.length} listings`);
     return results;
   } catch (err) {
-    console.error(`[striive] Modal scrape failed: ${err}`);
-    return [];
+    throw new Error(
+      `Striive Modal scrape mislukt: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }

@@ -39,7 +39,29 @@ export async function runScrapePipeline(
         status: "failed",
         errors,
       });
-    } catch {}
+    } catch (recordErr) {
+      console.error(`[scrape-pipeline] recordScrapeResult mislukt voor ${platform}:`, recordErr);
+    }
+    publish("scrape:error", { platform, errors });
+    return { jobsNew: 0, duplicates: 0, errors };
+  }
+
+  // Safety net: scraper returned data but nothing parsed — treat as suspicious
+  if (listings.length === 0) {
+    const errors = [`${platform}: scraper retourneerde 0 listings (mogelijk stille fout)`];
+    try {
+      await recordScrapeResult({
+        platform,
+        jobsFound: 0,
+        jobsNew: 0,
+        duplicates: 0,
+        durationMs: Date.now() - startTime,
+        status: "failed",
+        errors,
+      });
+    } catch (recordErr) {
+      console.error(`[scrape-pipeline] recordScrapeResult mislukt voor ${platform}:`, recordErr);
+    }
     publish("scrape:error", { platform, errors });
     return { jobsNew: 0, duplicates: 0, errors };
   }
@@ -63,7 +85,9 @@ export async function runScrapePipeline(
       status,
       errors: result.errors,
     });
-  } catch {}
+  } catch (recordErr) {
+    console.error(`[scrape-pipeline] recordScrapeResult mislukt voor ${platform}:`, recordErr);
+  }
 
   publish("scrape:complete", {
     platform,

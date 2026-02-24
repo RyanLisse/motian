@@ -60,8 +60,7 @@ export async function scrapeFlextender(): Promise<RawScrapedListing[]> {
       const html: string = data.resultHtml ?? "";
 
       if (!html) {
-        console.warn("Flextender: lege HTML response");
-        return [];
+        throw new Error("Flextender: lege HTML response van AJAX endpoint");
       }
 
       const listings = parseFlextenderHtml(html);
@@ -74,8 +73,9 @@ export async function scrapeFlextender(): Promise<RawScrapedListing[]> {
     } catch (err) {
       attempt++;
       if (attempt > MAX_RETRIES) {
-        console.error(`Flextender scrape mislukt na ${MAX_RETRIES + 1} pogingen: ${err}`);
-        return [];
+        throw new Error(
+          `Flextender scrape mislukt na ${MAX_RETRIES + 1} pogingen: ${err instanceof Error ? err.message : String(err)}`,
+        );
       } else {
         const delay = 1200 * 2 ** attempt + Math.floor(Math.random() * 500);
         console.warn(`Flextender poging ${attempt} mislukt, retry in ${delay}ms: ${err}`);
@@ -84,7 +84,8 @@ export async function scrapeFlextender(): Promise<RawScrapedListing[]> {
     }
   }
 
-  return [];
+  // Unreachable — while loop always returns or throws — but satisfies TypeScript
+  throw new Error("Flextender scrape: onverwacht einde van retry-loop");
 }
 
 /** Parse Flextender AJAX HTML response naar listing array */

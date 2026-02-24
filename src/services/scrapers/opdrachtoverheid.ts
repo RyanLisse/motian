@@ -255,8 +255,9 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
     } catch (err) {
       attempt++;
       if (attempt > MAX_RETRIES) {
-        console.error(`Opdrachtoverheid scrape mislukt na ${MAX_RETRIES + 1} pogingen: ${err}`);
-        return [];
+        throw new Error(
+          `Opdrachtoverheid scrape mislukt na ${MAX_RETRIES + 1} pogingen: ${err instanceof Error ? err.message : String(err)}`,
+        );
       } else {
         const delay = 1200 * 2 ** attempt + Math.floor(Math.random() * 500);
         console.warn(`Opdrachtoverheid poging ${attempt} mislukt, retry in ${delay}ms: ${err}`);
@@ -265,7 +266,8 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
     }
   }
 
-  return [];
+  // Unreachable — while loop always returns or throws — but satisfies TypeScript
+  throw new Error("Opdrachtoverheid scrape: onverwacht einde van retry-loop");
 }
 
 /** Compute duration in months from start/end date strings */
