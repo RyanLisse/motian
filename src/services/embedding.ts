@@ -228,16 +228,23 @@ export async function embedCandidatesBatch(opts: {
 
   const embeddings = await generateEmbeddings(validTexts);
 
-  for (let i = 0; i < validIndices.length; i++) {
-    try {
-      const row = rows[validIndices[i]];
-      await db
+  // Batch update all embeddings in parallel instead of sequential loop
+  const updateResults = await Promise.allSettled(
+    validIndices.map((idx, i) =>
+      db
         .update(candidates)
         .set({ embedding: embeddings[i] })
-        .where(eq(candidates.id, row.id));
+        .where(eq(candidates.id, rows[idx].id)),
+    ),
+  );
+
+  for (let i = 0; i < updateResults.length; i++) {
+    if (updateResults[i].status === "fulfilled") {
       embedded++;
-    } catch (err) {
-      errors.push(`Candidate ${rows[validIndices[i]].id}: ${String(err)}`);
+    } else {
+      errors.push(
+        `Candidate ${rows[validIndices[i]].id}: ${String((updateResults[i] as PromiseRejectedResult).reason)}`,
+      );
     }
   }
 

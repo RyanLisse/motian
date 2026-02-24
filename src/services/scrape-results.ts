@@ -1,4 +1,4 @@
-import { desc, eq, isNull, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs, scrapeResults } from "../db/schema";
 
@@ -50,24 +50,26 @@ export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeRe
 
 /** Bereken analytics per platform over alle scrape resultaten */
 export async function getAnalytics(): Promise<ScrapeAnalytics> {
-  const [rows, uniqueJobsResult] = await Promise.all([
-    db
-      .select({
-        platform: scrapeResults.platform,
-        totalRuns: sql<number>`count(*)::int`,
-        successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
-        failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
-        totalJobsFound: sql<number>`coalesce(sum(${scrapeResults.jobsFound}), 0)::int`,
-        totalJobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
-        totalDuplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
-        avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
-      })
-      .from(scrapeResults)
-      .groupBy(scrapeResults.platform),
-    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(isNull(jobs.deletedAt)),
-  ]);
+  // Single query: platform aggregation + unique jobs count via subquery
+  const rows = await db
+    .select({
+      platform: scrapeResults.platform,
+      totalRuns: sql<number>`count(*)::int`,
+      successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
+      failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
+      totalJobsFound: sql<number>`coalesce(sum(${scrapeResults.jobsFound}), 0)::int`,
+      totalJobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
+      totalDuplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
+      avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
+      totalUniqueJobs: sql<number>`(select count(*)::int from ${jobs} where ${jobs.deletedAt} is null)`,
+    })
+    .from(scrapeResults)
+    .groupBy(scrapeResults.platform);
 
-  const byPlatform: PlatformStats[] = rows.map((r) => ({
+  // Extract unique jobs count from first row (subquery returns same value for all rows)
+  const totalUniqueJobs = rows[0]?.totalUniqueJobs ?? 0;
+
+  const byPlatform: PlatformStats[] = rows.map(({ totalUniqueJobs: _, ...r }) => ({
     ...r,
     successRate: r.totalRuns > 0 ? Math.round((r.successCount / r.totalRuns) * 100) : 0,
   }));
@@ -80,7 +82,7 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
     totalJobsFound: byPlatform.reduce((s, p) => s + p.totalJobsFound, 0),
     totalJobsNew: byPlatform.reduce((s, p) => s + p.totalJobsNew, 0),
     totalDuplicates: byPlatform.reduce((s, p) => s + p.totalDuplicates, 0),
-    totalUniqueJobs: uniqueJobsResult[0]?.count ?? 0,
+    totalUniqueJobs,
     overallSuccessRate: totalRuns > 0 ? Math.round((totalSuccess / totalRuns) * 100) : 0,
     avgDurationMs:
       byPlatform.length > 0

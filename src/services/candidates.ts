@@ -222,17 +222,17 @@ export async function deleteCandidate(id: string): Promise<boolean> {
 
 /** Notitie toevoegen aan een kandidaat met timestamp. Bestaande notities blijven behouden. */
 export async function addNoteToCandidate(id: string, note: string): Promise<Candidate | null> {
-  const existing = await getCandidateById(id);
-  if (!existing) return null;
-
   const timestamp = new Date().toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" });
   const newNote = `[${timestamp}] ${note}`;
-  const combined = existing.notes ? `${existing.notes}\n\n${newNote}` : newNote;
 
+  // Single query: append note using SQL CONCAT (avoids extra SELECT)
   const rows = await db
     .update(candidates)
-    .set({ notes: combined, updatedAt: new Date() })
-    .where(eq(candidates.id, id))
+    .set({
+      notes: sql`case when ${candidates.notes} is not null then ${candidates.notes} || ${`\n\n${newNote}`} else ${newNote} end`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
     .returning();
 
   return rows[0] ?? null;

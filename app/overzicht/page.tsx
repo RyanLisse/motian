@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   Activity,
   ArrowRight,
@@ -23,19 +23,24 @@ export default async function OverzichtPage() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  // Fetch all dashboard data in parallel
+  // Fetch all dashboard data in parallel (consolidated counts to reduce DB connections)
   const [
-    totalJobsResult,
+    jobStats,
     platformCounts,
     recentJobs,
     activeScrapers,
     recentScrapes,
-    weeklyNewResult,
     topCompanies,
     locationCounts,
   ] = await Promise.all([
-    // Total active jobs
-    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(isNull(jobs.deletedAt)),
+    // Total + weekly counts in one query using FILTER
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
+      })
+      .from(jobs)
+      .where(isNull(jobs.deletedAt)),
     // Jobs per platform
     db
       .select({
@@ -64,11 +69,6 @@ export default async function OverzichtPage() {
     db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
     // Recent scrape results
     db.select().from(scrapeResults).orderBy(desc(scrapeResults.runAt)).limit(5),
-    // New jobs this week
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), gte(jobs.scrapedAt, sevenDaysAgo))),
     // Top companies by job count
     db
       .select({
@@ -93,8 +93,8 @@ export default async function OverzichtPage() {
       .limit(5),
   ]);
 
-  const totalJobs = totalJobsResult[0]?.count ?? 0;
-  const weeklyNew = weeklyNewResult[0]?.count ?? 0;
+  const totalJobs = jobStats[0]?.total ?? 0;
+  const weeklyNew = jobStats[0]?.weeklyNew ?? 0;
 
   return (
     <div className="flex-1 overflow-y-auto">

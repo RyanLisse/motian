@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { AddCandidateDialog } from "@/components/add-candidate-dialog";
@@ -48,11 +48,14 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
 
   const whereClause = and(...conditions);
 
-  // Fetch candidates + counts in parallel
+  // Fetch candidates + consolidated counts in parallel (reduces DB connections)
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-  const [candidateRows, countResult, availableCount, newThisWeekCount] = await Promise.all([
+  // Extra filter conditions beyond isNull(deletedAt) for the filtered count
+  const extraFilters = conditions.length > 1 ? and(...conditions.slice(1)) : null;
+
+  const [candidateRows, statsResult] = await Promise.all([
     db
       .select()
       .from(candidates)
@@ -60,21 +63,23 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
       .orderBy(desc(candidates.createdAt))
       .limit(PER_PAGE)
       .offset(offset),
-    db.select({ count: sql<number>`count(*)::int` }).from(candidates).where(whereClause),
+    // All 3 counts in a single query using FILTER clauses
     db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({
+        totalFiltered: extraFilters
+          ? sql<number>`count(*) filter (where ${extraFilters})::int`
+          : sql<number>`count(*)::int`,
+        directCount: sql<number>`count(*) filter (where ${candidates.availability} = 'direct')::int`,
+        weekCount: sql<number>`count(*) filter (where ${candidates.createdAt} >= ${oneWeekAgo})::int`,
+      })
       .from(candidates)
-      .where(and(isNull(candidates.deletedAt), eq(candidates.availability, "direct"))),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(candidates)
-      .where(and(isNull(candidates.deletedAt), gte(candidates.createdAt, oneWeekAgo))),
+      .where(isNull(candidates.deletedAt)),
   ]);
 
-  const totalCount = countResult[0]?.count ?? 0;
+  const totalCount = statsResult[0]?.totalFiltered ?? 0;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
-  const directCount = availableCount[0]?.count ?? 0;
-  const weekCount = newThisWeekCount[0]?.count ?? 0;
+  const directCount = statsResult[0]?.directCount ?? 0;
+  const weekCount = statsResult[0]?.weekCount ?? 0;
 
   return (
     <div className="flex-1 overflow-y-auto">

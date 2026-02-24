@@ -234,7 +234,8 @@ export async function scrubContactData(
       ),
     );
 
-  let scrubbed = 0;
+  // Build update list, then execute in parallel instead of sequential loop
+  const scrubOps: { id: string; updates: Record<string, null> }[] = [];
   for (const job of matchingJobs) {
     const updates: Record<string, null> = {};
     const agent = job.agentContact as { email?: string; name?: string } | null;
@@ -254,10 +255,14 @@ export async function scrubContactData(
     }
 
     if (Object.keys(updates).length > 0) {
-      await db.update(jobs).set(updates).where(eq(jobs.id, job.id));
-      scrubbed++;
+      scrubOps.push({ id: job.id, updates });
     }
   }
+
+  await Promise.all(
+    scrubOps.map((op) => db.update(jobs).set(op.updates).where(eq(jobs.id, op.id))),
+  );
+  const scrubbed = scrubOps.length;
 
   await logGdprAction("scrub_contact", "contact", identifier, requestedBy, { scrubbed });
   return { scrubbed };

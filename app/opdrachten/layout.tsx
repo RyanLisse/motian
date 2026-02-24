@@ -7,8 +7,8 @@ import { jobs } from "@/src/db/schema";
 export const revalidate = 60;
 
 export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
-  // Fetch sidebar jobs, total count, and distinct platforms in parallel
-  const [sidebarJobs, countResult, platformRows] = await Promise.all([
+  // Fetch sidebar jobs + consolidated meta (count + platforms) to reduce DB connections
+  const [sidebarJobs, metaResult] = await Promise.all([
     db
       .select({
         id: jobs.id,
@@ -23,16 +23,18 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
       .where(isNull(jobs.deletedAt))
       .orderBy(desc(jobs.scrapedAt))
       .limit(10),
-    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(isNull(jobs.deletedAt)),
+    // Count + distinct platforms in a single query
     db
-      .selectDistinct({ platform: jobs.platform })
+      .select({
+        count: sql<number>`count(*)::int`,
+        platforms: sql<string[]>`array_agg(distinct ${jobs.platform} order by ${jobs.platform})`,
+      })
       .from(jobs)
-      .where(isNull(jobs.deletedAt))
-      .orderBy(jobs.platform),
+      .where(isNull(jobs.deletedAt)),
   ]);
 
-  const totalCount = countResult[0]?.count ?? 0;
-  const platforms = platformRows.map((r) => r.platform);
+  const totalCount = metaResult[0]?.count ?? 0;
+  const platforms = (metaResult[0]?.platforms ?? []).filter(Boolean);
 
   return (
     <OpdrachtenLayoutShell
