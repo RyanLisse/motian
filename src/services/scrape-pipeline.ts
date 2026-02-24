@@ -46,7 +46,12 @@ export async function runScrapePipeline(
 
   const result = await normalizeAndSaveJobs(platform, listings);
   const durationMs = Date.now() - startTime;
-  const status = result.errors.length === 0 ? "success" : result.jobsNew > 0 ? "partial" : "failed";
+  const status =
+    result.errors.length === 0
+      ? "success"
+      : result.jobsNew > 0 || result.duplicates > 0
+        ? "partial"
+        : "failed";
 
   try {
     await recordScrapeResult({

@@ -75,8 +75,14 @@ export default async function ScraperPage() {
           />
           <KPICard
             icon={<Database className="h-4 w-4" />}
-            label="Duplicaten"
-            value={analytics.totalDuplicates}
+            label="Verwerkt per Run"
+            value={
+              analytics.totalRuns > 0
+                ? Math.round(
+                    (analytics.totalJobsNew + analytics.totalDuplicates) / analytics.totalRuns,
+                  )
+                : 0
+            }
             iconClassName="text-amber-500/60"
             valueClassName="text-amber-500"
             compact
