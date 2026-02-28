@@ -256,47 +256,49 @@ export default async function ScraperPage() {
             {results.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Nog geen resultaten</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border hover:bg-transparent">
-                    <TableHead>Platform</TableHead>
-                    <TableHead>Datum</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Gevonden</TableHead>
-                    <TableHead className="text-right">Nieuw</TableHead>
-                    <TableHead className="text-right">Duplicaten</TableHead>
-                    <TableHead className="text-right">Duur</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {results.map((result) => (
-                    <TableRow key={result.id} className="border-border">
-                      <TableCell className="capitalize font-medium">{result.platform}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {result.runAt
-                          ? new Date(result.runAt).toLocaleString("nl-NL", {
-                              day: "numeric",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={result.status} />
-                      </TableCell>
-                      <TableCell className="text-right">{result.jobsFound}</TableCell>
-                      <TableCell className="text-right text-primary">{result.jobsNew}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {result.duplicates}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {result.durationMs ? `${(result.durationMs / 1000).toFixed(1)}s` : "-"}
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead>Platform</TableHead>
+                      <TableHead>Datum</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Gevonden</TableHead>
+                      <TableHead className="text-right">Nieuw</TableHead>
+                      <TableHead className="text-right">Duplicaten</TableHead>
+                      <TableHead className="text-right">Duur</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result) => (
+                      <TableRow key={result.id} className="border-border">
+                        <TableCell className="capitalize font-medium">{result.platform}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {result.runAt
+                            ? new Date(result.runAt).toLocaleString("nl-NL", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={result.status} />
+                        </TableCell>
+                        <TableCell className="text-right">{result.jobsFound}</TableCell>
+                        <TableCell className="text-right text-primary">{result.jobsNew}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {result.duplicates}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {result.durationMs ? `${(result.durationMs / 1000).toFixed(1)}s` : "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

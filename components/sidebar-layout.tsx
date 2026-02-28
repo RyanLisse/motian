@@ -18,8 +18,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset className="overflow-hidden">
-          <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
+        <SidebarInset className="overflow-x-hidden">
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 sm:px-4">
             <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
             <Separator orientation="vertical" className="mr-2 h-4 bg-border" />
             <span className="text-sm font-medium text-muted-foreground">Motian</span>
