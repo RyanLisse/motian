@@ -44,8 +44,8 @@ describe("CV upload sidebar", () => {
 });
 
 describe("Layout integration", () => {
-  it("layout.tsx includes CvUploadSidebar", () => {
+  it("layout.tsx includes ChatPanel as global widget", () => {
     const source = readFile("app/layout.tsx");
-    expect(source).toContain("CvUploadSidebar");
+    expect(source).toContain("ChatPanel");
   });
 });
