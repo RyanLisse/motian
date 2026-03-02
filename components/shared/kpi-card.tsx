@@ -31,7 +31,9 @@ export function KPICard({
         {icon}
         <span className={`text-xs truncate ${labelClassName}`}>{label}</span>
       </div>
-      <p className={`font-bold truncate ${compact ? "text-lg" : "text-2xl"} ${valueClassName}`}>{value}</p>
+      <p className={`font-bold truncate ${compact ? "text-lg" : "text-2xl"} ${valueClassName}`}>
+        {value}
+      </p>
     </div>
   );
 }
