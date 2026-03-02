@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { X } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 const CvDocumentViewer = dynamic(

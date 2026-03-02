@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
   // Only allow Vercel Blob URLs
   try {
     const parsed = new URL(blobUrl);
-    if (!parsed.hostname.endsWith(".vercel-storage.com") && !parsed.hostname.endsWith(".blob.vercel-storage.com")) {
+    if (
+      !parsed.hostname.endsWith(".vercel-storage.com") &&
+      !parsed.hostname.endsWith(".blob.vercel-storage.com")
+    ) {
       return new Response("Invalid URL domain", { status: 403 });
     }
   } catch {

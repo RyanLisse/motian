@@ -16,7 +16,7 @@ describe("Requirement extraction service", () => {
 
   it("uses Gemini model for structured output", () => {
     const source = readFile("src/services/requirement-extraction.ts");
-    expect(source).toContain("gemini-");
+    expect(source).toContain("geminiFlash");
     expect(source).toContain("generateText");
   });
 

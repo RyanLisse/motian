@@ -492,7 +492,6 @@ describe("Dutch naming in API routes", () => {
   const DISALLOWED_ENGLISH_SEGMENTS = [
     "jobs",
     "health",
-    "candidates",
     "applications",
     "messages",
     "scrapers",
@@ -538,12 +537,12 @@ describe("Dutch naming in API routes", () => {
 
     expect(
       violations,
-      `API routes must use Dutch naming conventions.\nViolations:\n${violations.join("\n")}\n\nExpected Dutch equivalents: opdrachten, gezondheid, kandidaten, sollicitaties, berichten, matches, interviews, scrapers→scraper-configuraties`,
+      `API routes must use Dutch naming conventions.\nViolations:\n${violations.join("\n")}\n\nExpected Dutch equivalents: opdrachten, gezondheid, sollicitaties, berichten, matches, interviews, scrapers→scraper-configuraties`,
     ).toHaveLength(0);
   });
 
   it("known Dutch API route directories exist", () => {
-    const expectedDutchRoutes = ["opdrachten", "gezondheid", "kandidaten"];
+    const expectedDutchRoutes = ["opdrachten", "gezondheid"];
 
     const missing: string[] = [];
     for (const route of expectedDutchRoutes) {

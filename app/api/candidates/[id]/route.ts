@@ -5,6 +5,8 @@ import { db } from "@/src/db";
 import { candidates } from "@/src/db/schema";
 import { deleteFile } from "@/src/lib/file-storage";
 
+export const dynamic = "force-dynamic";
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const patchSchema = z.object({
@@ -15,10 +17,7 @@ const patchSchema = z.object({
 });
 
 /** PATCH /api/candidates/[id] — update candidate fields */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!UUID_RE.test(id)) {
     return Response.json({ error: "Ongeldig ID" }, { status: 400 });

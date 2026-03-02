@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import "dotenv/config";
-import { parseArgs } from "./parse-args";
 import { commands } from "./commands";
+import { parseArgs } from "./parse-args";
 
 const { command, args } = parseArgs(process.argv.slice(2));
 

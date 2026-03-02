@@ -16,7 +16,7 @@ describe("Structured matching service", () => {
 
   it("uses Gemini model for structured output", () => {
     const source = readFile("src/services/structured-matching.ts");
-    expect(source).toContain("gemini-");
+    expect(source).toContain("geminiFlash");
     expect(source).toContain("generateText");
   });
 

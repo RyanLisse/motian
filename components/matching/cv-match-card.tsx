@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 
 import { MatchActions } from "@/app/matching/match-actions";
+import { CriteriaBreakdownChart } from "@/components/matching/criteria-breakdown-chart";
 import { ScoreRing } from "@/components/score-ring";
 import { Badge } from "@/components/ui/badge";
 import type { CriterionResult } from "@/src/schemas/matching";
@@ -40,17 +41,20 @@ const recommendationConfig = {
   go: {
     label: "Go",
     icon: <CheckCircle2 className="h-3 w-3" />,
-    className: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+    className:
+      "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
   },
   "no-go": {
     label: "No-go",
     icon: <XCircle className="h-3 w-3" />,
-    className: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
+    className:
+      "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
   },
   conditional: {
     label: "Voorwaardelijk",
     icon: null,
-    className: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
+    className:
+      "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
   },
 } as const;
 
@@ -71,7 +75,8 @@ function StarRating({ stars }: { stars: number }) {
     <span className="inline-flex gap-0.5">
       {Array.from({ length: 5 }, (_, i) => (
         <Star
-          key={i}
+          // biome-ignore lint/suspicious/noArrayIndexKey: Safe for static visual stars
+          key={`star-${i}`}
           className={`h-3 w-3 ${i < stars ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
         />
       ))}
@@ -95,7 +100,8 @@ export function CvMatchCard({
   judgeVerdict,
   onViewDetails,
 }: CvMatchCardProps) {
-  const hasReasoning = reasoning || (criteriaBreakdown && criteriaBreakdown.length > 0) || judgeVerdict;
+  const hasReasoning =
+    reasoning || (criteriaBreakdown && criteriaBreakdown.length > 0) || judgeVerdict;
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
       {/* Header: ScoreRing + recommendation badge + job info */}
@@ -105,10 +111,7 @@ export function CvMatchCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             {recommendation && (
-              <Badge
-                variant="outline"
-                className={recommendationConfig[recommendation].className}
-              >
+              <Badge variant="outline" className={recommendationConfig[recommendation].className}>
                 {recommendationConfig[recommendation].icon}
                 {recommendationConfig[recommendation].label}
               </Badge>
@@ -141,7 +144,11 @@ export function CvMatchCard({
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">Sterke punten</p>
             {strengths.slice(0, 3).map((s, i) => (
-              <div key={`s-${i}`} className="flex items-start gap-1.5 text-xs">
+              <div
+                // biome-ignore lint/suspicious/noArrayIndexKey: Strings are unique enough for this static list
+                key={`s-${i}`}
+                className="flex items-start gap-1.5 text-xs"
+              >
                 <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0 mt-0.5" />
                 <span className="line-clamp-2">{s}</span>
               </div>
@@ -155,7 +162,11 @@ export function CvMatchCard({
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">Risico&apos;s</p>
             {risks.slice(0, 3).map((r, i) => (
-              <div key={`r-${i}`} className="flex items-start gap-1.5 text-xs">
+              <div
+                // biome-ignore lint/suspicious/noArrayIndexKey: Strings are unique enough for this static list
+                key={`r-${i}`}
+                className="flex items-start gap-1.5 text-xs"
+              >
                 <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
                 <span className="line-clamp-2">{r}</span>
               </div>
@@ -167,12 +178,12 @@ export function CvMatchCard({
         </div>
       )}
 
-      {/* Expandable reasoning section */}
+      {/* Expandable reasoning & judge verdict (structured match + judge) */}
       {hasReasoning && (
         <details className="group">
           <summary className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-primary hover:text-primary/80 transition-colors list-none [&::-webkit-details-marker]:hidden">
             <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-            Bekijk analyse
+            Reasoning & oordeel
           </summary>
 
           <div className="mt-3 space-y-3">
@@ -184,10 +195,11 @@ export function CvMatchCard({
               </div>
             )}
 
-            {/* Criteria Breakdown */}
+            {/* Criteria Breakdown + chart */}
             {criteriaBreakdown && criteriaBreakdown.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">Criteria Analyse</p>
+                <CriteriaBreakdownChart criteria={criteriaBreakdown} className="mb-3" />
                 {criteriaBreakdown.map((criterion) => (
                   <div
                     key={criterion.criterion}
@@ -198,16 +210,18 @@ export function CvMatchCard({
                         {criterion.criterion}
                       </span>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-[10px] font-medium ${tierConfig[criterion.tier].className}`}>
+                        <span
+                          className={`text-[10px] font-medium ${tierConfig[criterion.tier].className}`}
+                        >
                           {tierConfig[criterion.tier].label}
                         </span>
-                        {criterion.tier === "knockout" && criterion.passed !== null && (
-                          criterion.passed ? (
+                        {criterion.tier === "knockout" &&
+                          criterion.passed !== null &&
+                          (criterion.passed ? (
                             <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
                           ) : (
                             <XCircle className="h-3.5 w-3.5 text-red-500" />
-                          )
-                        )}
+                          ))}
                         {criterion.tier === "gunning" && criterion.stars !== null && (
                           <StarRating stars={criterion.stars} />
                         )}
@@ -217,7 +231,9 @@ export function CvMatchCard({
                       {criterion.evidence}
                     </p>
                     <div className="flex items-center gap-1">
-                      <span className={`text-[10px] ${confidenceConfig[criterion.confidence].className}`}>
+                      <span
+                        className={`text-[10px] ${confidenceConfig[criterion.confidence].className}`}
+                      >
                         Zekerheid: {confidenceConfig[criterion.confidence].label}
                       </span>
                     </div>

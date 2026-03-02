@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { MessageSquare, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   PromptInput,
@@ -15,6 +16,7 @@ import { useChatContext } from "./chat-context-provider";
 import { ChatMessages } from "./chat-messages";
 
 export function ChatPanel() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const ctx = useChatContext();
 
@@ -58,6 +60,8 @@ export function ChatPanel() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  if (pathname === "/chat") return null;
 
   return (
     <>

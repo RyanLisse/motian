@@ -2,77 +2,59 @@ import type { ParsedArgs } from "./parse-args";
 
 // ========== Kandidaten ==========
 
+import { autoMatchCandidateToJobs, autoMatchJobToCandidates } from "../services/auto-matching";
 import {
-  searchCandidates,
-  listCandidates,
-  getCandidateById,
-  createCandidate,
-  updateCandidate,
-  deleteCandidate,
   addNoteToCandidate,
+  createCandidate,
+  deleteCandidate,
+  getCandidateById,
+  listCandidates,
+  searchCandidates,
+  updateCandidate,
 } from "../services/candidates";
-
-import {
-  autoMatchCandidateToJobs,
-  autoMatchJobToCandidates,
-} from "../services/auto-matching";
 
 // ========== Vacatures ==========
 
-import {
-  searchJobsByTitle,
-  listJobs,
-  getJobById,
-  updateJob,
-  deleteJob,
-} from "../services/jobs";
+import { deleteJob, getJobById, listJobs, searchJobsByTitle, updateJob } from "../services/jobs";
 
 // ========== Matches ==========
 
 import {
-  listMatches,
-  getMatchById,
   createMatch,
-  updateMatchStatus,
   deleteMatch,
+  getMatchById,
+  listMatches,
+  updateMatchStatus,
 } from "../services/matches";
 
 // ========== Sollicitaties ==========
 
 import {
-  listApplications,
-  getApplicationById,
   createApplication,
-  updateApplicationStage,
+  getApplicationById,
   getApplicationStats,
+  listApplications,
+  updateApplicationStage,
 } from "../services/applications";
 
 // ========== Interviews ==========
 
-import {
-  listInterviews,
-  createInterview,
-  updateInterview,
-} from "../services/interviews";
+import { createInterview, listInterviews, updateInterview } from "../services/interviews";
 
 // ========== Berichten ==========
 
-import { listMessages, createMessage } from "../services/messages";
+import { createMessage, listMessages } from "../services/messages";
 
 // ========== GDPR ==========
 
-import {
-  exportCandidateData,
-  eraseCandidateData,
-  scrubContactData,
-} from "../services/gdpr";
+import { eraseCandidateData, exportCandidateData, scrubContactData } from "../services/gdpr";
 
 // ========== Operaties ==========
 
 import {
   importJobsFromActiveScrapers,
-  runCandidateScoringBatch,
   reviewGdprRetention,
+  runCandidateScoringBatch,
 } from "../services/operations-console";
 
 // ========== Helpers ==========
@@ -146,7 +128,8 @@ export const commands: Record<string, Command> = {
 
   "kandidaten:maak-aan": {
     description: "Maak een nieuwe kandidaat aan",
-    usage: "--name <naam> [--email, --phone, --role, --skills (komma-gescheiden), --location, --source]",
+    usage:
+      "--name <naam> [--email, --phone, --role, --skills (komma-gescheiden), --location, --source]",
     handler: async (args) => {
       const name = requireArg(args, "name");
       return createCandidate({
@@ -243,11 +226,18 @@ export const commands: Record<string, Command> = {
 
   "vacatures:update": {
     description: "Werk een vacature bij",
-    usage: "--id <uuid> [--title, --description, --location, --rate-min, --rate-max, --contract-type, --work-arrangement]",
+    usage:
+      "--id <uuid> [--title, --description, --location, --rate-min, --rate-max, --contract-type, --work-arrangement]",
     handler: async (args) => {
       const id = requireArg(args, "id");
       const data: Record<string, unknown> = {};
-      const stringFields = ["title", "description", "location", "contractType", "workArrangement"] as const;
+      const stringFields = [
+        "title",
+        "description",
+        "location",
+        "contractType",
+        "workArrangement",
+      ] as const;
       const argMap: Record<string, string> = {
         title: "title",
         description: "description",
@@ -318,7 +308,8 @@ export const commands: Record<string, Command> = {
 
   "matches:maak-aan": {
     description: "Maak een nieuwe match aan",
-    usage: "--job-id <uuid> --candidate-id <uuid> --score <0-100> [--reasoning <tekst>] [--recommendation <tekst>]",
+    usage:
+      "--job-id <uuid> --candidate-id <uuid> --score <0-100> [--reasoning <tekst>] [--recommendation <tekst>]",
     handler: async (args) => {
       const jobId = requireArg(args, "job-id");
       const candidateId = requireArg(args, "candidate-id");
@@ -443,7 +434,8 @@ export const commands: Record<string, Command> = {
 
   "interviews:plan": {
     description: "Plan een nieuw interview",
-    usage: "--application-id <uuid> --type <phone|video|onsite|technical> --scheduled-at <ISO-datum> --interviewer <naam> [--location <locatie>] [--duration <minuten>]",
+    usage:
+      "--application-id <uuid> --type <phone|video|onsite|technical> --scheduled-at <ISO-datum> --interviewer <naam> [--location <locatie>] [--duration <minuten>]",
     handler: async (args) => {
       const scheduledAtStr = requireArg(args, "scheduled-at");
       const scheduledAt = new Date(scheduledAtStr);
@@ -464,7 +456,8 @@ export const commands: Record<string, Command> = {
 
   "interviews:update": {
     description: "Werk een interview bij (status, feedback, rating)",
-    usage: "--id <uuid> [--status <scheduled|completed|cancelled>] [--feedback <tekst>] [--rating <1-5>]",
+    usage:
+      "--id <uuid> [--status <scheduled|completed|cancelled>] [--feedback <tekst>] [--rating <1-5>]",
     handler: async (args) => {
       const id = requireArg(args, "id");
       const { interview, emptyUpdate } = await updateInterview(id, {
@@ -482,7 +475,8 @@ export const commands: Record<string, Command> = {
 
   "berichten:zoek": {
     description: "Zoek berichten met optionele filters",
-    usage: "[--application-id <uuid>] [--direction <inbound|outbound>] [--channel <email|phone|platform>] [--limit <n>]",
+    usage:
+      "[--application-id <uuid>] [--direction <inbound|outbound>] [--channel <email|phone|platform>] [--limit <n>]",
     handler: async (args) => {
       return listMessages({
         applicationId: optionalString(args, "application-id"),
@@ -495,7 +489,8 @@ export const commands: Record<string, Command> = {
 
   "berichten:stuur": {
     description: "Stuur een nieuw bericht",
-    usage: "--application-id <uuid> --direction <inbound|outbound> --channel <email|phone|platform> --body <tekst> [--subject <onderwerp>]",
+    usage:
+      "--application-id <uuid> --direction <inbound|outbound> --channel <email|phone|platform> --body <tekst> [--subject <onderwerp>]",
     handler: async (args) => {
       const result = await createMessage({
         applicationId: requireArg(args, "application-id"),

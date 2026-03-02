@@ -1,12 +1,12 @@
 import {
-  Briefcase,
-  GraduationCap,
-  Globe,
-  MapPin,
-  Star,
   Award,
   BookOpen,
+  Briefcase,
   Calendar,
+  Globe,
+  GraduationCap,
+  MapPin,
+  Star,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,8 @@ function ProficiencyBar({ level }: { level: number }) {
     <div className="flex gap-0.5">
       {Array.from({ length: 5 }, (_, i) => (
         <div
-          key={i}
+          // biome-ignore lint/suspicious/noArrayIndexKey: safe for static visual dots
+          key={`level-dot-${i}`}
           className={`h-1.5 w-3 rounded-full transition-colors ${
             i < level ? "bg-primary" : "bg-muted"
           }`}
@@ -47,7 +48,9 @@ export function CvProfileCard({ parsed, isExistingCandidate }: CvProfileCardProp
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-base font-semibold">{parsed.name}</h3>
           {isExistingCandidate && (
-            <Badge variant="outline" className="text-[10px]">Bestaand</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              Bestaand
+            </Badge>
           )}
         </div>
         <p className="text-sm text-muted-foreground mt-0.5">{parsed.role}</p>
@@ -66,7 +69,10 @@ export function CvProfileCard({ parsed, isExistingCandidate }: CvProfileCardProp
             </span>
           )}
           {parsed.highestEducationLevel && (
-            <Badge variant="outline" className={`text-[10px] ${educationColors[parsed.highestEducationLevel] ?? ""}`}>
+            <Badge
+              variant="outline"
+              className={`text-[10px] ${educationColors[parsed.highestEducationLevel] ?? ""}`}
+            >
               <GraduationCap className="h-3 w-3 mr-0.5" />
               {parsed.highestEducationLevel}
             </Badge>

@@ -11,7 +11,7 @@ import { db } from "@/src/db";
 import { candidates } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 interface Props {
   searchParams: Promise<{

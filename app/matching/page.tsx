@@ -5,7 +5,6 @@ import {
   Briefcase,
   CheckCircle2,
   Clock,
-  FileText,
   Link2,
   Sparkles,
   User,
@@ -28,7 +27,7 @@ import { MatchActions } from "./match-actions";
 import { MatchDetail } from "./match-detail";
 import { ReportButton } from "./report-button";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 interface Props {
   searchParams: Promise<{
@@ -125,12 +124,7 @@ export default async function MatchingPage({ searchParams }: Props) {
         resumeParsedAt: candidates.resumeParsedAt,
       })
       .from(candidates)
-      .where(
-        and(
-          isNull(candidates.deletedAt),
-          sql`${candidates.resumeParsedAt} IS NOT NULL`,
-        ),
-      )
+      .where(and(isNull(candidates.deletedAt), sql`${candidates.resumeParsedAt} IS NOT NULL`))
       .orderBy(desc(candidates.resumeParsedAt))
       .limit(10);
 

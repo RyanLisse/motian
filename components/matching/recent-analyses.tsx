@@ -59,7 +59,8 @@ function AnalysisRow({
   const handleDelete = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!window.confirm(`CV van "${analysis.name}" verwijderen? Dit kan niet ongedaan worden.`)) return;
+      if (!window.confirm(`CV van "${analysis.name}" verwijderen? Dit kan niet ongedaan worden.`))
+        return;
 
       setBusy(true);
       try {
@@ -111,11 +112,9 @@ function AnalysisRow({
     e.stopPropagation();
     setEditing(false);
   }, []);
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={editing ? undefined : onSelect}
       onKeyDown={(e) => {
         if (!editing && (e.key === "Enter" || e.key === " ")) {
@@ -124,8 +123,8 @@ function AnalysisRow({
         }
       }}
       className={cn(
-        "group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
-        editing ? "" : "hover:bg-accent/50 cursor-pointer",
+        "group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors cursor-pointer",
+        editing ? "" : "hover:bg-accent/50",
         isActive ? "border-primary bg-accent/30" : "border-transparent",
         busy && "opacity-50 pointer-events-none",
       )}
@@ -138,7 +137,6 @@ function AnalysisRow({
         {editing ? (
           <form onSubmit={handleEditSave} className="flex items-center gap-1.5">
             <input
-              autoFocus
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
@@ -166,15 +164,10 @@ function AnalysisRow({
             <p className="truncate text-sm font-medium">
               {analysis.name}
               {analysis.role && (
-                <span className="font-normal text-muted-foreground">
-                  {" "}
-                  &mdash; {analysis.role}
-                </span>
+                <span className="font-normal text-muted-foreground"> &mdash; {analysis.role}</span>
               )}
             </p>
-            <p className="text-xs text-muted-foreground">
-              {timeAgo(analysis.resumeParsedAt)}
-            </p>
+            <p className="text-xs text-muted-foreground">{timeAgo(analysis.resumeParsedAt)}</p>
           </>
         )}
       </div>
@@ -200,7 +193,7 @@ function AnalysisRow({
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </div>
       )}
-    </div>
+    </button>
   );
 }
 

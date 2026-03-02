@@ -35,11 +35,11 @@ graph LR
 
 | Methode | Pad | Beschrijving |
 |---------|-----|-------------|
-| `GET` | `/api/vacatures` | Lijst (filters: q, platform, province, rate, contract) |
-| `GET` | `/api/vacatures/zoeken` | Hybrid zoeken (FTS + vector) |
-| `GET` | `/api/vacatures/:id` | Vacature ophalen |
-| `PUT` | `/api/vacatures/:id` | Vacature bijwerken |
-| `DELETE` | `/api/vacatures/:id` | Soft-delete vacature |
+| `GET` | `/api/opdrachten` | Lijst (filters: q, platform, province, rate, contract) |
+| `GET` | `/api/opdrachten?q=...` | Hybrid zoeken (FTS + vector via query params) |
+| `GET` | `/api/opdrachten/:id` | Vacature ophalen |
+| `PUT` | `/api/opdrachten/:id` | Vacature bijwerken |
+| `DELETE` | `/api/opdrachten/:id` | Soft-delete vacature |
 
 ## Matching
 
@@ -57,8 +57,27 @@ graph LR
 
 | Methode | Pad | Beschrijving |
 |---------|-----|-------------|
-| `POST` | `/api/cv-analyse` | CV uploaden en analyseren |
+| `POST` | `/api/cv-analyse` | CV analyseren (tekst/URL input) |
+| `POST` | `/api/cv-upload` | CV bestand uploaden (PDF/DOCX naar Blob) |
 | `GET` | `/api/cv-file` | CV bestand ophalen |
+
+## Embeddings
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `POST` | `/api/embeddings/backfill` | Ontbrekende embeddings genereren |
+
+## Rapporten
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `GET` | `/api/reports` | Rapport data ophalen |
+
+## Events
+
+| Methode | Pad | Beschrijving |
+|---------|-----|-------------|
+| `POST` | `/api/events` | Platform events registreren |
 
 ## Sollicitaties
 
@@ -84,8 +103,8 @@ graph LR
 |---------|-----|-------------|
 | `GET` | `/api/scraper-configuraties` | Scraper configs |
 | `POST` | `/api/scrape/starten` | Handmatige scrape |
+| `GET` | `/api/scraper-configuraties/scrape-resultaten` | Scrape resultaten ophalen |
 | `GET` | `/api/gezondheid` | Systeem health check |
-| `POST` | `/api/embeddings/backfill` | Ontbrekende embeddings genereren |
 
 ## Validatie
 

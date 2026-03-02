@@ -4,7 +4,7 @@ import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
   // Fetch sidebar jobs + consolidated meta (count + platforms) to reduce DB connections

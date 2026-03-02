@@ -21,6 +21,26 @@ type AllowedMimeType = (typeof ALLOWED_TYPES)[number];
 
 const MAX_SIZE_MB = 20;
 
+/** Heuristic CV quality score (0–100) en label voor de grade-stap. */
+function computeGradeFromParsed(parsed: {
+  skills?: { hard?: { name: string }[]; soft?: { name: string }[] };
+  experience?: unknown[];
+  education?: unknown[];
+}): { score: number; label: string } {
+  const skillCount = (parsed.skills?.hard?.length ?? 0) + (parsed.skills?.soft?.length ?? 0);
+  const expCount = Array.isArray(parsed.experience) ? parsed.experience.length : 0;
+  const eduCount = Array.isArray(parsed.education) ? parsed.education.length : 0;
+  let score = Math.min(
+    100,
+    20 + skillCount * 3 + Math.min(expCount, 5) * 8 + Math.min(eduCount, 3) * 5,
+  );
+  score = Math.round(Math.max(0, score));
+  if (score >= 80) return { score, label: "Sterk profiel" };
+  if (score >= 60) return { score, label: "Goed profiel" };
+  if (score >= 40) return { score, label: "Basis profiel" };
+  return { score, label: "Beperkt profiel" };
+}
+
 function sseEvent(data: Record<string, unknown>): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
 }
@@ -63,25 +83,53 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         // Step 1: Upload
-        controller.enqueue(sseEvent({ step: "upload", status: "active", label: "CV uploaden naar opslag..." }));
-        const { url: fileUrl } = await uploadFile(buffer, `cv/${Date.now()}-${file.name}`, mimeType);
+        controller.enqueue(
+          sseEvent({ step: "upload", status: "active", label: "CV uploaden naar opslag..." }),
+        );
+        const { url: fileUrl } = await uploadFile(
+          buffer,
+          `cv/${Date.now()}-${file.name}`,
+          mimeType,
+        );
         controller.enqueue(sseEvent({ step: "upload", status: "complete", label: "CV geüpload" }));
 
         // Step 2: Parse
-        controller.enqueue(sseEvent({ step: "parse", status: "active", label: "CV analyseren met AI..." }));
+        controller.enqueue(
+          sseEvent({ step: "parse", status: "active", label: "CV analyseren met AI..." }),
+        );
         const parsed = await parseCV(buffer, mimeType as AllowedMimeType);
-        controller.enqueue(sseEvent({
-          step: "parse",
-          status: "complete",
-          label: `CV geanalyseerd`,
-          detail: `${parsed.name}${parsed.role ? ` — ${parsed.role}` : ""}`,
-        }));
+        controller.enqueue(
+          sseEvent({
+            step: "parse",
+            status: "complete",
+            label: `CV geanalyseerd`,
+            detail: `${parsed.name}${parsed.role ? ` — ${parsed.role}` : ""}`,
+          }),
+        );
+
+        // Step 2: Grade (expliciete beoordelingsfase op basis van parsed CV)
+        controller.enqueue(
+          sseEvent({ step: "grade", status: "active", label: "CV beoordelen..." }),
+        );
+        const gradeScore = computeGradeFromParsed(parsed);
+        controller.enqueue(
+          sseEvent({
+            step: "grade",
+            status: "complete",
+            label: "CV beoordeeld",
+            detail: `${gradeScore.score}/100 — ${gradeScore.label}`,
+            gradeScore: gradeScore.score,
+            gradeLabel: gradeScore.label,
+          }),
+        );
 
         // Step 3: Deduplicate
-        controller.enqueue(sseEvent({ step: "deduplicate", status: "active", label: "Kandidaat controleren..." }));
+        controller.enqueue(
+          sseEvent({ step: "deduplicate", status: "active", label: "Kandidaat controleren..." }),
+        );
         const duplicates = await findDuplicateCandidate(parsed);
 
-        let candidate;
+        let candidate: { id: string; name: string } | null | undefined;
         if (duplicates.exact) {
           candidate = await enrichCandidateFromCV(
             duplicates.exact.id,
@@ -90,20 +138,24 @@ export async function POST(request: NextRequest) {
             fileUrl,
           );
           if (!candidate) {
-            controller.enqueue(sseEvent({
-              step: "deduplicate",
-              status: "error",
-              label: "Bestaande kandidaat kon niet worden verrijkt",
-            }));
+            controller.enqueue(
+              sseEvent({
+                step: "deduplicate",
+                status: "error",
+                label: "Bestaande kandidaat kon niet worden verrijkt",
+              }),
+            );
             controller.close();
             return;
           }
-          controller.enqueue(sseEvent({
-            step: "deduplicate",
-            status: "complete",
-            label: "Bestaande kandidaat gevonden",
-            detail: candidate.name,
-          }));
+          controller.enqueue(
+            sseEvent({
+              step: "deduplicate",
+              status: "complete",
+              label: "Bestaande kandidaat gevonden",
+              detail: candidate.name,
+            }),
+          );
         } else {
           candidate = await createCandidate({
             name: parsed.name,
@@ -119,41 +171,49 @@ export async function POST(request: NextRequest) {
             source: "cv-analyse",
           });
           await enrichCandidateFromCV(candidate.id, parsed, JSON.stringify(parsed), fileUrl);
-          controller.enqueue(sseEvent({
-            step: "deduplicate",
-            status: "complete",
-            label: "Nieuwe kandidaat aangemaakt",
-            detail: candidate.name,
-          }));
+          controller.enqueue(
+            sseEvent({
+              step: "deduplicate",
+              status: "complete",
+              label: "Nieuwe kandidaat aangemaakt",
+              detail: candidate.name,
+            }),
+          );
         }
 
         // Step 4: Match
-        controller.enqueue(sseEvent({ step: "match", status: "active", label: "Matchen met vacatures..." }));
+        controller.enqueue(
+          sseEvent({ step: "match", status: "active", label: "Matchen met vacatures..." }),
+        );
         let matches: Awaited<ReturnType<typeof autoMatchCandidateToJobs>> = [];
         try {
           matches = await autoMatchCandidateToJobs(candidate.id);
         } catch (err) {
           console.error("[CV Analyse] Auto-matching mislukt:", err);
         }
-        controller.enqueue(sseEvent({
-          step: "match",
-          status: "complete",
-          label: `${matches.length} vacature${matches.length === 1 ? "" : "s"} gematcht`,
-        }));
+        controller.enqueue(
+          sseEvent({
+            step: "match",
+            status: "complete",
+            label: `${matches.length} vacature${matches.length === 1 ? "" : "s"} gematcht`,
+          }),
+        );
 
         console.log(`[CV Analyse] Done: ${matches.length} matches for candidate ${candidate.id}`);
 
         // Final event: full result
-        controller.enqueue(sseEvent({
-          step: "done",
-          result: {
-            candidate,
-            matches,
-            fileUrl,
-            parsed,
-            isExistingCandidate: !!duplicates.exact,
-          },
-        }));
+        controller.enqueue(
+          sseEvent({
+            step: "done",
+            result: {
+              candidate,
+              matches,
+              fileUrl,
+              parsed,
+              isExistingCandidate: !!duplicates.exact,
+            },
+          }),
+        );
 
         revalidatePath("/professionals");
       } catch (err) {
