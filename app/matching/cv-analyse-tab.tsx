@@ -3,7 +3,7 @@
 import { AlertTriangle, ArrowLeft, CheckCircle2, Upload } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CvMatchCard } from "@/components/matching/cv-match-card";
 import { CvProfileCard } from "@/components/matching/cv-profile-card";
@@ -13,13 +13,14 @@ import {
   type StepStatus,
 } from "@/components/matching/pipeline-progress";
 import {
-  RecentAnalyses,
-  type RecentAnalysis,
-} from "@/components/matching/recent-analyses";
+  PipelineWorkflowCanvas,
+  type PipelineWorkflowStepId,
+} from "@/components/matching/pipeline-workflow-canvas";
+import { RecentAnalyses, type RecentAnalysis } from "@/components/matching/recent-analyses";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { AutoMatchResult } from "@/src/services/auto-matching";
 import type { ParsedCV } from "@/src/schemas/candidate-intelligence";
+import type { AutoMatchResult } from "@/src/services/auto-matching";
 
 const CvDocumentViewer = dynamic(
   () => import("@/components/cv-document-viewer").then((m) => m.CvDocumentViewer),
@@ -60,18 +61,30 @@ function getScore(result: AutoMatchResult): number {
   return result.structuredResult?.overallScore ?? result.quickScore;
 }
 
-function getRecommendation(
-  result: AutoMatchResult,
-): "go" | "no-go" | "conditional" | null {
+function getRecommendation(result: AutoMatchResult): "go" | "no-go" | "conditional" | null {
   return result.structuredResult?.recommendation ?? null;
 }
 
-const INITIAL_STEPS: PipelineStep[] = [
-  { id: "upload", label: "CV uploaden naar opslag...", status: "pending" },
-  { id: "parse", label: "CV analyseren met AI...", status: "pending" },
-  { id: "deduplicate", label: "Kandidaat controleren...", status: "pending" },
-  { id: "match", label: "Matchen met vacatures...", status: "pending" },
+/** Drie stappen voor de visuele pipeline: Analyse → Grade → Match. */
+const PIPELINE_STEP_IDS: { id: "analyse" | "grade" | "match"; label: string }[] = [
+  { id: "analyse", label: "CV analyseren..." },
+  { id: "grade", label: "CV beoordelen..." },
+  { id: "match", label: "Matchen met vacatures..." },
 ];
+
+const INITIAL_STEPS: PipelineStep[] = PIPELINE_STEP_IDS.map((s) => ({
+  id: s.id,
+  label: s.label,
+  status: "pending" as const,
+}));
+
+/** Map backend SSE step naar pipeline-step id. */
+function toPipelineStepId(backendStep: string): "analyse" | "grade" | "match" | null {
+  if (backendStep === "upload" || backendStep === "parse") return "analyse";
+  if (backendStep === "grade") return "grade";
+  if (backendStep === "deduplicate" || backendStep === "match") return "match";
+  return null;
+}
 
 export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
   const [status, setStatus] = useState<Status>("idle");
@@ -88,117 +101,135 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
 
   const isProcessing = status === "uploading";
 
-  const processFile = useCallback(async (file: File) => {
-    const validTypes = [
-      "application/pdf",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
+  /** Huidige actieve pipeline-stap voor de workflow-canvas. */
+  const activeWorkflowStepId = useMemo((): PipelineWorkflowStepId | null => {
+    const active = pipelineSteps.find((s) => s.status === "active");
+    if (active) return active.id as PipelineWorkflowStepId;
+    const lastComplete = [...pipelineSteps].reverse().find((s) => s.status === "complete");
+    return lastComplete ? (lastComplete.id as PipelineWorkflowStepId) : null;
+  }, [pipelineSteps]);
 
-    if (!validTypes.includes(file.type)) {
-      setStatus("error");
-      setMessage("Alleen PDF en Word (.docx) bestanden zijn toegestaan");
-      return;
-    }
+  const processFile = useCallback(
+    async (file: File) => {
+      const validTypes = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
 
-    if (file.size > 20 * 1024 * 1024) {
-      setStatus("error");
-      setMessage("Bestand is te groot. Maximaal 20MB.");
-      return;
-    }
-
-    setStatus("uploading");
-    setMessage(null);
-    setMatches([]);
-    setCandidateInfo(null);
-    setActiveRecentId(null);
-    setPipelineSteps(INITIAL_STEPS.map((s) => ({ ...s, detail: undefined })));
-
-    try {
-      const formData = new FormData();
-      formData.append("cv", file);
-
-      const res = await fetch("/api/cv-analyse", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        // Non-SSE error responses (validation errors) are JSON
-        const json = await res.json();
-        throw new Error(json.error ?? "Analyse mislukt");
+      if (!validTypes.includes(file.type)) {
+        setStatus("error");
+        setMessage("Alleen PDF en Word (.docx) bestanden zijn toegestaan");
+        return;
       }
 
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let streamDone = false;
+      if (file.size > 20 * 1024 * 1024) {
+        setStatus("error");
+        setMessage("Bestand is te groot. Maximaal 20MB.");
+        return;
+      }
 
-      const processLine = (line: string) => {
-        if (!line.startsWith("data: ")) return;
-        const event = JSON.parse(line.slice(6));
+      setStatus("uploading");
+      setMessage(null);
+      setMatches([]);
+      setCandidateInfo(null);
+      setActiveRecentId(null);
+      setPipelineSteps(INITIAL_STEPS.map((s) => ({ ...s, detail: undefined })));
 
-        if (event.step === "done") {
-          const data = event.result;
-          setMatches(data.matches ?? []);
-          setParsedCv(data.parsed ?? null);
-          setIsExistingCandidate(!!data.isExistingCandidate);
-          setCandidateInfo({
-            id: data.candidate.id,
-            name: data.candidate.name,
-            fileUrl: data.fileUrl,
-          });
-          streamDone = true;
-          setStatus("done");
-          setMessage(null);
-          router.refresh();
-        } else if (event.step === "error") {
-          throw new Error(event.label);
-        } else {
-          // Pipeline step update
-          setPipelineSteps((prev) =>
-            prev.map((s) => {
-              if (s.id === event.step) {
-                return { ...s, status: event.status as StepStatus, label: event.label, detail: event.detail };
-              }
-              return s;
-            }),
-          );
+      try {
+        const formData = new FormData();
+        formData.append("cv", file);
+
+        const res = await fetch("/api/cv-analyse", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          // Non-SSE error responses (validation errors) are JSON
+          const json = await res.json();
+          throw new Error(json.error ?? "Analyse mislukt");
         }
-      };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("Kon stream niet lezen");
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        // Keep the last (potentially incomplete) line in the buffer
-        buffer = lines.pop() ?? "";
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamDone = false;
 
-        for (const line of lines) {
-          processLine(line);
+        const processLine = (line: string) => {
+          if (!line.startsWith("data: ")) return;
+          const event = JSON.parse(line.slice(6));
+
+          if (event.step === "done") {
+            const data = event.result;
+            setMatches(data.matches ?? []);
+            setParsedCv(data.parsed ?? null);
+            setIsExistingCandidate(!!data.isExistingCandidate);
+            setCandidateInfo({
+              id: data.candidate.id,
+              name: data.candidate.name,
+              fileUrl: data.fileUrl,
+            });
+            streamDone = true;
+            setStatus("done");
+            setMessage(null);
+            router.refresh();
+          } else if (event.step === "error") {
+            throw new Error(event.label);
+          } else {
+            const pipelineId = toPipelineStepId(event.step);
+            if (pipelineId) {
+              setPipelineSteps((prev) =>
+                prev.map((s) => {
+                  if (s.id === pipelineId) {
+                    return {
+                      ...s,
+                      status: event.status as StepStatus,
+                      label: event.label,
+                      detail: event.detail,
+                    };
+                  }
+                  return s;
+                }),
+              );
+            }
+          }
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          // Keep the last (potentially incomplete) line in the buffer
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            processLine(line);
+          }
         }
-      }
 
-      // Flush remaining buffer (handles edge case where final event lacks trailing newline)
-      buffer += decoder.decode();
-      if (buffer.trim()) {
-        for (const line of buffer.split("\n")) {
-          processLine(line);
+        // Flush remaining buffer (handles edge case where final event lacks trailing newline)
+        buffer += decoder.decode();
+        if (buffer.trim()) {
+          for (const line of buffer.split("\n")) {
+            processLine(line);
+          }
         }
-      }
 
-      // If stream ended without a done event, something went wrong server-side
-      if (!streamDone) {
-        throw new Error("Analyse stream onverwacht beëindigd");
+        // If stream ended without a done event, something went wrong server-side
+        if (!streamDone) {
+          throw new Error("Analyse stream onverwacht beëindigd");
+        }
+      } catch (err) {
+        setStatus("error");
+        setMessage(err instanceof Error ? err.message : "Onbekende fout opgetreden");
       }
-    } catch (err) {
-      setStatus("error");
-      setMessage(
-        err instanceof Error ? err.message : "Onbekende fout opgetreden",
-      );
-    }
-  }, [router]);
+    },
+    [router],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -310,44 +341,62 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <h3 className="text-sm font-semibold">
-                {candidateInfo?.name ?? "Analyse"} — {matches.length} vacature{matches.length === 1 ? "" : "s"}
+                {candidateInfo?.name ?? "Analyse"} — {matches.length} vacature
+                {matches.length === 1 ? "" : "s"}
               </h3>
             </div>
           </div>
         </div>
 
         {/* Split content */}
-        <div className={cn(
-          "flex-1 min-h-0",
-          candidateInfo?.fileUrl ? "grid grid-cols-1 lg:grid-cols-2" : "",
-        )}>
+        <div
+          className={cn(
+            "flex-1 min-h-0",
+            candidateInfo?.fileUrl ? "grid grid-cols-1 lg:grid-cols-2" : "",
+          )}
+        >
           {/* Left: match cards (scrollable) */}
           <div className="overflow-y-auto p-6 space-y-4">
+            {/* Workflow: Analyse → Grade → Match (alle stappen voltooid) */}
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Pipeline</p>
+              <PipelineWorkflowCanvas
+                activeStepId="match"
+                isRunning={false}
+                className="h-[160px]"
+              />
+            </div>
+
             {/* CV Profile — always shown */}
             {parsedCv && (
               <CvProfileCard parsed={parsedCv} isExistingCandidate={isExistingCandidate} />
             )}
 
-            {/* Match cards */}
+            {/* Top 3 matches met score ring */}
             {matches.length > 0 ? (
-              matches.map((match) => (
-                <CvMatchCard
-                  key={match.matchId}
-                  jobId={match.jobId}
-                  jobTitle={match.jobTitle}
-                  company={match.company}
-                  location={match.location}
-                  score={getScore(match)}
-                  recommendation={getRecommendation(match)}
-                  strengths={extractStrengths(match)}
-                  risks={extractRisks(match)}
-                  matchId={match.matchId}
-                  reasoning={match.structuredResult?.recommendationReasoning}
-                  criteriaBreakdown={match.structuredResult?.criteriaBreakdown}
-                  enrichmentSuggestions={match.structuredResult?.enrichmentSuggestions}
-                  judgeVerdict={match.judgeVerdict}
-                />
-              ))
+              <>
+                <h3 className="text-sm font-semibold text-foreground pt-2">
+                  Top 3 vacatures — matchpercentage
+                </h3>
+                {matches.map((match) => (
+                  <CvMatchCard
+                    key={match.matchId}
+                    jobId={match.jobId}
+                    jobTitle={match.jobTitle}
+                    company={match.company}
+                    location={match.location}
+                    score={getScore(match)}
+                    recommendation={getRecommendation(match)}
+                    strengths={extractStrengths(match)}
+                    risks={extractRisks(match)}
+                    matchId={match.matchId}
+                    reasoning={match.structuredResult?.recommendationReasoning}
+                    criteriaBreakdown={match.structuredResult?.criteriaBreakdown}
+                    enrichmentSuggestions={match.structuredResult?.enrichmentSuggestions}
+                    judgeVerdict={match.judgeVerdict}
+                  />
+                ))}
+              </>
             ) : (
               <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
                 Geen actieve vacatures gevonden die boven de matchdrempel scoren.
@@ -358,10 +407,7 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
           {/* Right: PDF viewer (scrollable) */}
           {candidateInfo?.fileUrl && (
             <div className="overflow-y-auto border-l border-border p-6">
-              <CvDocumentViewer
-                url={candidateInfo.fileUrl}
-                candidateName={candidateInfo.name}
-              />
+              <CvDocumentViewer url={candidateInfo.fileUrl} candidateName={candidateInfo.name} />
             </div>
           )}
         </div>
@@ -372,9 +418,8 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
   return (
     <div className="space-y-6">
       {/* Drop zone */}
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         aria-label="CV uploaden"
         onClick={handleDropZoneClick}
         onKeyDown={handleDropZoneKeyDown}
@@ -391,7 +436,14 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
         )}
       >
         {isProcessing ? (
-          <PipelineProgress steps={pipelineSteps} />
+          <div className="w-full space-y-4">
+            <PipelineWorkflowCanvas
+              activeStepId={activeWorkflowStepId}
+              isRunning={true}
+              className="max-w-xl mx-auto"
+            />
+            <PipelineProgress steps={pipelineSteps} />
+          </div>
         ) : (
           <>
             <Upload className="h-10 w-10 text-muted-foreground" />
@@ -414,7 +466,7 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
           onChange={handleFileInputChange}
           tabIndex={-1}
         />
-      </div>
+      </button>
 
       {/* Error state */}
       {status === "error" && message && (

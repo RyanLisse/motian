@@ -42,14 +42,13 @@ CV Upload (SSE)       3-Layer Matching Engine      | scrape_results   |
 
 ## CV Analysis Pipeline
 
-Real-time SSE streaming pipeline at `/api/cv-analyse`:
+Real-time SSE streaming pipeline at `/api/cv-analyse` with **visuele pipeline** Analyse → Grade → Match:
 
-1. **Upload** → File to Vercel Blob storage
-2. **Parse** → Gemini 3 Flash extracts `ParsedCV` (skills with proficiency 1-5, experience, education, languages, certifications)
-3. **Deduplicate** → Check for existing candidate by email/name; enrich or create new
-4. **Match** → Auto-match against top 3 active jobs (score ≥ 40%)
+1. **Analyse** — Upload (Vercel Blob) + Parse (Gemini 3 Flash → `ParsedCV`: skills, experience, education)
+2. **Grade** — Expliciete beoordelingsfase: heuristische kwaliteitsscore op basis van parsed CV (0–100 + label)
+3. **Match** — Deduplicate (bestaande kandidaat vinden/aanmaken) + Auto-match tegen top 3 actieve vacatures (score ≥ 40%)
 
-Events streamed as `text/event-stream` with step status updates (pending → active → complete → error).
+De frontend toont een **workflow-canvas** (@xyflow/react) met nodes Analyse → Grade → Match en een stap-indicator. Events worden gestreamd als `text/event-stream` (pending → active → complete → error).
 
 ## Matching Engine (3 Layers)
 
@@ -94,13 +93,30 @@ RRF formula: `score = sum(1 / (k + rank))` with k=60.
 
 ### Tools
 
-| Tool | Purpose | Service |
-|------|---------|---------|
-| `queryOpdrachten` | Hybrid search + filtered listing | `hybridSearch()`, `listJobs()` |
-| `getOpdrachtDetail` | Full job details by ID | `getJobById()` |
-| `matchKandidaten` | Vector similarity matching | `findSimilarJobs()` |
-| `analyseData` | Aggregate DB statistics | Direct Drizzle queries |
-| `triggerScraper` | Start scrape pipeline | `runScrapePipeline()` |
+| Category | Tools | Count |
+|----------|-------|-------|
+| Kandidaten | zoekKandidaten, getKandidaatDetail, maakKandidaatAan, updateKandidaat, verwijderKandidaat, voegNotitieToe, autoMatchKandidaat | 7 |
+| Vacatures | queryOpdrachten, getOpdrachtDetail, updateOpdracht, verwijderOpdracht, matchKandidaten | 5 |
+| Matches | zoekMatches, getMatchDetail, maakMatchAan, keurMatchGoed, wijsMatchAf, verwijderMatch | 6 |
+| Sollicitaties | zoekSollicitaties, getSollicitatieDetail, maakSollicitatieAan, updateSollicitatieFase, verwijderSollicitatie, getSollicitatieStats | 6 |
+| Interviews | zoekInterviews, getInterviewDetail, planInterview, updateInterviewTool, verwijderInterview | 5 |
+| Berichten | zoekBerichten, getBerichtDetail, stuurBericht, verwijderBericht | 4 |
+| GDPR | exporteerKandidaatData, wisKandidaatData, exporteerContactData, scrubContactGegevens | 4 |
+| Operaties | importeerOpdrachtenBatch, runKandidaatScoringBatch, reviewGdprRetentie | 3 |
+| Analyse | analyseData, voerStructuredMatchUit, triggerScraper | 3 |
+| **Totaal** | | **45** |
+
+## CLI & MCP
+
+### CLI (34 commando's)
+
+Terminal interface via `pnpm cli <command>`. Commands grouped by domain: kandidaten (7), vacatures (5), matches (6), sollicitaties (5), interviews (3), berichten (2), gdpr (4), ops (2).
+
+### MCP Server (37 tools)
+
+Model Context Protocol server for AI assistants (Claude Desktop, Cursor). Exposes the same service layer via stdio transport. Tools grouped: kandidaten (9), vacatures (5), matches (6), pipeline (10), gdpr-ops (7).
+
+Start: `pnpm mcp`
 
 ## Database
 
@@ -138,10 +154,12 @@ Next.js 16 App Router with Tailwind CSS v4, Radix UI (shadcn/ui), React 19.
 
 | Component | Purpose |
 |-----------|---------|
-| `PipelineProgress` | Step stepper with animated status icons (pending/active/complete/error) |
+| `PipelineProgress` | Step stepper (Analyse → Grade → Match) with animated status icons (pending/active/complete/error) |
+| `PipelineWorkflowCanvas` | @xyflow/react workflow diagram: nodes Analyse, Grade, Match met edges; toont actieve stap |
+| `CriteriaBreakdownChart` | Recharts bar chart voor criteria-scores per match |
 | `CvProfileCard` | Parsed CV display with skill proficiency bars, experience, education |
-| `CvMatchCard` | Match result card with score ring, recommendation badge, criteria breakdown |
-| `ScoreRing` | SVG circular progress with color-coded scores |
+| `CvMatchCard` | Match result card with ScoreRing, recommendation badge, criteria breakdown + chart, reasoning & judge panel |
+| `ScoreRing` | SVG circular progress with color-coded scores (top 3 prominent) |
 | `CvDocumentViewer` | Split-screen PDF viewer for CV review |
 
 ### Theme System
