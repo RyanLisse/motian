@@ -88,86 +88,59 @@ async function upsertMatch(
   }
 }
 
-// ========== Candidate → Jobs ==========
+// ========== Shared Auto-Match Pipeline ==========
 
 /**
- * Auto-match a candidate to their top 3 best-fitting jobs.
- *
- * 1. Ensures embedding exists (for hybrid scoring)
- * 2. Pre-filters all active jobs via computeMatchScore (~2s)
- * 3. Deep structured match for top 3 with score ≥ 40% (~8-12s parallel)
- * 4. Creates match records in jobMatches table
+ * Generic auto-match pipeline: score pairs → deep match top N → judge → persist.
+ * Used by both candidate→jobs and job→candidates directions.
  */
-export async function autoMatchCandidateToJobs(candidateId: string): Promise<AutoMatchResult[]> {
-  // 1. Get candidate
-  const candidate = await getCandidateById(candidateId);
-  if (!candidate) throw new Error("Kandidaat niet gevonden");
+async function runAutoMatchPipeline(
+  pairs: Array<{ job: Job; candidate: Candidate; score: number }>,
+): Promise<AutoMatchResult[]> {
+  const top = pairs
+    .sort((a, b) => b.score - a.score)
+    .filter((p) => p.score >= MIN_SCORE)
+    .slice(0, TOP_N);
 
-  // 2. Ensure embedding exists (await, don't fire-and-forget)
-  try {
-    await embedCandidate(candidateId);
-  } catch (err) {
-    console.warn("[Auto-Match] Embedding failed, falling back to rule-based:", err);
-  }
+  if (top.length === 0) return [];
 
-  // Re-fetch candidate with updated embedding
-  const freshCandidate = await getCandidateById(candidateId);
-  if (!freshCandidate) throw new Error("Kandidaat niet gevonden na embedding");
-
-  // 3. Get all active jobs and score
-  const activeJobs = await listActiveJobs(200);
-  if (activeJobs.length === 0) return [];
-
-  const scored = activeJobs.map((job) => ({
-    job,
-    ...computeMatchScore(job, freshCandidate),
-  }));
-  scored.sort((a, b) => b.score - a.score);
-
-  const topJobs = scored.filter((s) => s.score >= MIN_SCORE).slice(0, TOP_N);
-  if (topJobs.length === 0) return [];
-
-  // 4. Deep structured match + create matches in parallel
-  const results = await Promise.all(
-    topJobs.map(async ({ job, score }): Promise<AutoMatchResult> => {
+  return Promise.all(
+    top.map(async ({ job: j, candidate: c, score }): Promise<AutoMatchResult> => {
       let structuredResult: StructuredMatchOutput | null = null;
-
       try {
-        structuredResult = await deepMatch(job, freshCandidate);
+        structuredResult = await deepMatch(j, c);
       } catch (err) {
-        console.error(`[Auto-Match] Deep match failed for job ${job.id}:`, err);
+        console.error(`[Auto-Match] Deep match failed for job ${j.id} / candidate ${c.id}:`, err);
       }
 
-      // 5. Run Grok judge on the structured result (non-fatal)
       let judgeVerdict: JudgeVerdict | null = null;
       if (structuredResult) {
         try {
           judgeVerdict = await judgeMatch({
-            jobTitle: job.title,
-            candidateName: freshCandidate.name,
-            cvSummary: (freshCandidate.resumeRaw ?? "").slice(0, 2000),
+            jobTitle: j.title,
+            candidateName: c.name,
+            cvSummary: (c.resumeRaw ?? "").slice(0, 2000),
             structuredResult,
           });
         } catch (err) {
-          console.error(`[Auto-Match] Judge failed for job ${job.id}:`, err);
+          console.error(`[Auto-Match] Judge failed for job ${j.id} / candidate ${c.id}:`, err);
         }
       }
 
       let matchId = "";
       let matchSaveError = false;
       try {
-        matchId = await upsertMatch(job.id, freshCandidate.id, score, structuredResult);
+        matchId = await upsertMatch(j.id, c.id, score, structuredResult);
       } catch (err) {
         matchSaveError = true;
-        console.error(`[Auto-Match] Create match failed for job ${job.id}:`, err);
+        console.error(`[Auto-Match] Create match failed for job ${j.id} / candidate ${c.id}:`, err);
       }
 
-      // Slack notification for successful match (fire-and-forget)
       if (matchId && !matchSaveError) {
         notifySlack("match:created", {
-          candidateName: freshCandidate.name,
-          jobTitle: job.title,
-          company: job.company,
+          candidateName: c.name,
+          jobTitle: j.title,
+          company: j.company,
           matchScore: structuredResult?.overallScore ?? score,
           recommendation: structuredResult?.recommendation,
           matchId,
@@ -175,12 +148,12 @@ export async function autoMatchCandidateToJobs(candidateId: string): Promise<Aut
       }
 
       return {
-        jobId: job.id,
-        jobTitle: job.title,
-        company: job.company,
-        location: job.location,
-        candidateId: freshCandidate.id,
-        candidateName: freshCandidate.name,
+        jobId: j.id,
+        jobTitle: j.title,
+        company: j.company,
+        location: j.location,
+        candidateId: c.id,
+        candidateName: c.name,
         quickScore: score,
         structuredResult,
         judgeVerdict,
@@ -189,15 +162,47 @@ export async function autoMatchCandidateToJobs(candidateId: string): Promise<Aut
       };
     }),
   );
+}
 
-  return results;
+// ========== Candidate → Jobs ==========
+
+/**
+ * Auto-match a candidate to their top 3 best-fitting jobs.
+ *
+ * 1. Ensures embedding exists (for hybrid scoring)
+ * 2. Pre-filters all active jobs via computeMatchScore (~2s)
+ * 3. Deep structured match for top 3 with score >= 40% (~8-12s parallel)
+ * 4. Creates match records in jobMatches table
+ */
+export async function autoMatchCandidateToJobs(candidateId: string): Promise<AutoMatchResult[]> {
+  const candidate = await getCandidateById(candidateId);
+  if (!candidate) throw new Error("Kandidaat niet gevonden");
+
+  try {
+    await embedCandidate(candidateId);
+  } catch (err) {
+    console.warn("[Auto-Match] Embedding failed, falling back to rule-based:", err);
+  }
+
+  const freshCandidate = await getCandidateById(candidateId);
+  if (!freshCandidate) throw new Error("Kandidaat niet gevonden na embedding");
+
+  const activeJobs = await listActiveJobs(200);
+  if (activeJobs.length === 0) return [];
+
+  const pairs = activeJobs.map((job) => ({
+    job,
+    candidate: freshCandidate,
+    ...computeMatchScore(job, freshCandidate),
+  }));
+
+  return runAutoMatchPipeline(pairs);
 }
 
 // ========== Job → Candidates ==========
 
 /**
  * Auto-match a job to its top 3 best-fitting candidates.
- * Mirror of autoMatchCandidateToJobs but in the reverse direction.
  */
 export async function autoMatchJobToCandidates(jobId: string): Promise<AutoMatchResult[]> {
   const job = await getJobById(jobId);
@@ -206,75 +211,11 @@ export async function autoMatchJobToCandidates(jobId: string): Promise<AutoMatch
   const activeCandidates = await listActiveCandidates(200);
   if (activeCandidates.length === 0) return [];
 
-  const scored = activeCandidates.map((candidate) => ({
+  const pairs = activeCandidates.map((candidate) => ({
+    job,
     candidate,
     ...computeMatchScore(job, candidate),
   }));
-  scored.sort((a, b) => b.score - a.score);
 
-  const topCandidates = scored.filter((s) => s.score >= MIN_SCORE).slice(0, TOP_N);
-  if (topCandidates.length === 0) return [];
-
-  const results = await Promise.all(
-    topCandidates.map(async ({ candidate, score }): Promise<AutoMatchResult> => {
-      let structuredResult: StructuredMatchOutput | null = null;
-
-      try {
-        structuredResult = await deepMatch(job, candidate);
-      } catch (err) {
-        console.error(`[Auto-Match] Deep match failed for candidate ${candidate.id}:`, err);
-      }
-
-      let judgeVerdict: JudgeVerdict | null = null;
-      if (structuredResult) {
-        try {
-          judgeVerdict = await judgeMatch({
-            jobTitle: job.title,
-            candidateName: candidate.name,
-            cvSummary: (candidate.resumeRaw ?? "").slice(0, 2000),
-            structuredResult,
-          });
-        } catch (err) {
-          console.error(`[Auto-Match] Judge failed for candidate ${candidate.id}:`, err);
-        }
-      }
-
-      let matchId = "";
-      let matchSaveError = false;
-      try {
-        matchId = await upsertMatch(job.id, candidate.id, score, structuredResult);
-      } catch (err) {
-        matchSaveError = true;
-        console.error(`[Auto-Match] Create match failed for candidate ${candidate.id}:`, err);
-      }
-
-      // Slack notification for successful match (fire-and-forget)
-      if (matchId && !matchSaveError) {
-        notifySlack("match:created", {
-          candidateName: candidate.name,
-          jobTitle: job.title,
-          company: job.company,
-          matchScore: structuredResult?.overallScore ?? score,
-          recommendation: structuredResult?.recommendation,
-          matchId,
-        });
-      }
-
-      return {
-        jobId: job.id,
-        jobTitle: job.title,
-        company: job.company,
-        location: job.location,
-        candidateId: candidate.id,
-        candidateName: candidate.name,
-        quickScore: score,
-        structuredResult,
-        judgeVerdict,
-        matchId,
-        matchSaveError,
-      };
-    }),
-  );
-
-  return results;
+  return runAutoMatchPipeline(pairs);
 }

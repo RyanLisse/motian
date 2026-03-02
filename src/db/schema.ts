@@ -326,6 +326,24 @@ export const gdprAuditLog = pgTable(
   }),
 );
 
+// ========== Chat Sessies ==========
+export const chatSessions = pgTable(
+  "chat_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: text("session_id").notNull(), // Client-provided session identifier
+    messages: jsonb("messages").notNull().default([]), // Array of { role, content, toolInvocations? }
+    context: jsonb("context").default({}), // Route, entityId, entityType snapshot
+    messageCount: integer("message_count").default(0),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    sessionIdUniqueIdx: uniqueIndex("uq_chat_sessions_session_id").on(table.sessionId),
+    updatedAtIdx: index("idx_chat_sessions_updated_at").on(table.updatedAt),
+  }),
+);
+
 // ========== Berichten (Messages) ==========
 export const messages = pgTable(
   "messages",

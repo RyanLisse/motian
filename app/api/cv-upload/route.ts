@@ -1,9 +1,12 @@
 import type { NextRequest } from "next/server";
 import { uploadFile } from "@/src/lib/file-storage";
+import { rateLimit } from "@/src/lib/rate-limit";
 import { findDuplicateCandidate } from "@/src/services/candidates";
 import { parseCV } from "@/src/services/cv-parser";
 
 export const dynamic = "force-dynamic";
+
+const limiter = rateLimit({ interval: 60_000, limit: 10 });
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -13,6 +16,18 @@ const ALLOWED_TYPES = [
 const MAX_SIZE_MB = 20;
 
 export async function POST(request: NextRequest) {
+  const ip =
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    "anonymous";
+  const { success, reset } = limiter.check(ip);
+  if (!success) {
+    return Response.json(
+      { error: "Te veel verzoeken. Probeer het later opnieuw." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((reset - Date.now()) / 1000)) } },
+    );
+  }
+
   try {
     // Early check for required env vars
     if (!process.env.BLOB_READ_WRITE_TOKEN) {

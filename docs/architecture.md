@@ -2,28 +2,29 @@
 
 AI-Assisted Recruitment Operations Platform built with Next.js 16, React 19, Drizzle ORM, Neon PostgreSQL + pgvector, Trigger.dev, and multiple AI models (Gemini, GPT-5, Grok).
 
-> **Interactive visual explainer**: Open `docs/visual-explainer.html` in a browser for diagrams and flowcharts.
+> **Interactive visual explainer**: Open `app/visual-explainer/page.tsx` or visit `/visual-explainer` for diagrams and flowcharts.
 
 ## System Overview
 
 ```
-External Sources          Trigger.dev (cron 4h)        Neon PostgreSQL
-+--------------+     +----------------------+     +------------------+
-| Striive      |---->| scrape()             |---->| jobs             |
-| Flextender   |---->| normalize (Zod)      |     | candidates       |
-| Opdrachtovhd |---->| enrich (Gemini)      |     | job_matches      |
-| Indeed (TBD) |     | embed (GPT-5 Nano)   |     | applications     |
-| LinkedIn(TBD)|     +----------------------+     | interviews       |
-+--------------+                                  | messages         |
-                                                  | scraper_configs  |
-CV Upload (SSE)       3-Layer Matching Engine      | scrape_results   |
-+--------------+     +----------------------+     | gdpr_audit_log   |
-| Upload Blob  |---->| Quick Score (hybrid)  |     +------------------+
-| Parse Gemini |     | Deep Match (Gemini)   |
-| Dedup        |     | Judge Verdict (Grok)  |     Vercel Blob
-| Auto-Match   |     +----------------------+     +------------------+
-+--------------+                                  | CV Files (PDF)   |
-                                                  +------------------+
+External Sources          Trigger.dev (8 scheduled tasks)    Neon PostgreSQL
++--------------+     +-----------------------------+     +-------------------+
+| Striive      |---->| scrape-pipeline (4h)        |---->| jobs              |
+| Flextender   |---->| embeddings-batch (1h)       |     | candidates        |
+| Opdrachtovhd |---->| vacancy-expiry (daily)      |     | job_matches       |
+| Indeed (TBD) |     | data-retention (daily)      |     | applications      |
+| LinkedIn(TBD)|     | scraper-health (daily)      |     | interviews        |
++--------------+     | candidate-dedup (weekly)     |     | messages          |
+                     | match-staleness (weekly)     |     | chat_sessions     |
+CV Upload (SSE)      | slack-notification (on-demand)|     | scraper_configs   |
++--------------+     +-----------------------------+     | scrape_results    |
+| Upload Blob  |                                         | gdpr_audit_log    |
+| Parse Gemini |     3-Layer Matching Engine              +-------------------+
+| Dedup        |     +----------------------+
+| Auto-Match   |---->| Quick Score (hybrid)  |           Vercel Blob
++--------------+     | Deep Match (Gemini)   |           +------------------+
+                     | Judge Verdict (Grok)  |           | CV Files (PDF)   |
+                     +----------------------+           +------------------+
 ```
 
 ## Scrapers
@@ -88,7 +89,9 @@ RRF formula: `score = sum(1 / (k + rank))` with k=60.
 ## AI Chat Agent
 
 - **Model**: GPT-5 Nano via Vercel AI SDK 6 with `streamText()` + `maxSteps: 5`
-- **System prompt**: Dutch, context-aware (current page + entity ID)
+- **System prompt**: Dutch, context-aware (current page + entity ID + workspace summary)
+- **Conversation memory**: Persisted to `chat_sessions` table (last 50 messages per session)
+- **Rate limit**: 20 requests/minute per IP
 - **Toggle**: `Cmd+J` keyboard shortcut
 
 ### Tools
@@ -118,9 +121,30 @@ Model Context Protocol server for AI assistants (Claude Desktop, Cursor). Expose
 
 Start: `pnpm mcp`
 
+## Trigger.dev Scheduled Tasks (8 total)
+
+| Task ID | Schedule | Purpose | File |
+|---------|----------|---------|------|
+| `scrape-pipeline` | Every 4h | Orchestrate all scraper runs with circuit breaker | `trigger/scrape-pipeline.ts` |
+| `embeddings-batch` | Hourly (:15) | Backfill missing job + candidate embeddings | `trigger/embeddings-batch.ts` |
+| `vacancy-expiry` | Daily 3:00 AM | Soft-delete expired jobs past deadline | `trigger/vacancy-expiry.ts` |
+| `data-retention-cleanup` | Daily 2:00 AM | GDPR auto-erasure of expired candidate data | `trigger/data-retention.ts` |
+| `scraper-health-check` | Daily 6:00 AM | Auto-reset circuit breakers after 72h clean window | `trigger/scraper-health.ts` |
+| `candidate-dedup` | Weekly Sun 4:00 AM | Detect duplicate candidates by email/name | `trigger/candidate-dedup.ts` |
+| `match-staleness-purge` | Weekly Mon 5:00 AM | Archive pending matches older than 30 days | `trigger/match-staleness.ts` |
+| `slack-notification` | On-demand | Reliable Slack delivery with 5x retry | `trigger/slack-notifications.ts` |
+
+## Security & Rate Limiting
+
+- **CORS**: Environment-based origin whitelist via `ALLOWED_ORIGINS` (no wildcard)
+- **Rate limiting**: Applied to all sensitive endpoints (GDPR 5/min, CV upload 10/min, matching 10/min, chat 20/min, scraping 5/5min)
+- **Auth**: CRON_SECRET bearer token on internal endpoints; `x-requested-by` header on GDPR routes
+- **Zod validation**: All API inputs validated with typed schemas (no `z.any()`)
+- **Encryption**: Scraper auth configs encrypted at rest via `src/lib/crypto.ts`
+
 ## Database
 
-Neon PostgreSQL with pgvector extension. 9 tables in `src/db/schema.ts`:
+Neon PostgreSQL with pgvector extension. 10 tables in `src/db/schema.ts`:
 
 | Table | Purpose | Key Fields |
 |-------|---------|------------|
@@ -130,6 +154,7 @@ Neon PostgreSQL with pgvector extension. 9 tables in `src/db/schema.ts`:
 | `applications` | Pipeline: new → screening → interview → offer → hired | stage, job_id, candidate_id, match_id |
 | `interviews` | Scheduled with feedback + rating (1-5) | application_id, scheduled_at, type, status, rating |
 | `messages` | Communication log | application_id, direction, channel, body |
+| `chat_sessions` | Conversation memory persistence | session_id, messages (JSONB), context, message_count |
 | `scraper_configs` | Platform config + cron + circuit breaker | platform, is_active, cron_expression, consecutive_failures |
 | `scrape_results` | Run history | jobs_found, jobs_new, duplicates, status |
 | `gdpr_audit_log` | GDPR compliance audit trail | action, subject_type, subject_id, requested_by |

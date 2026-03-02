@@ -44,5 +44,8 @@ export const POST = withApiHandler(
       matches,
     });
   },
-  { logPrefix: "POST /api/matches/auto error" },
+  {
+    logPrefix: "POST /api/matches/auto error",
+    rateLimit: { interval: 60_000, limit: 10 },
+  },
 );

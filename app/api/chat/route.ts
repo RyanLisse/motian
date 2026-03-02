@@ -1,16 +1,21 @@
 import { convertToModelMessages, stepCountIs } from "ai";
+
 import { z } from "zod";
 import { buildSystemPrompt, chatModel, recruitmentTools } from "@/src/ai/agent";
+import { db } from "@/src/db";
+import { chatSessions } from "@/src/db/schema";
 import { tracedStreamText as streamText } from "@/src/lib/ai-models";
 import { rateLimit } from "@/src/lib/rate-limit";
 
 const limiter = rateLimit({ interval: 60_000, limit: 20 });
+const MAX_STORED_MESSAGES = 50;
 
 const contextSchema = z
   .object({
     route: z.string().max(200).nullish(),
     entityId: z.string().uuid().nullish(),
     entityType: z.enum(["opdracht", "kandidaat"]).nullish(),
+    sessionId: z.string().max(100).nullish(),
   })
   .nullish();
 
@@ -37,7 +42,32 @@ export async function POST(req: Request) {
     return Response.json({ error: "Ongeldige context" }, { status: 400 });
   }
 
-  const system = await buildSystemPrompt(contextResult.data ?? undefined);
+  const ctx = contextResult.data ?? undefined;
+  const sessionId = ctx?.sessionId;
+
+  // Persist conversation turn (fire-and-forget, non-blocking)
+  if (sessionId) {
+    const lastMessages = body.messages.slice(-MAX_STORED_MESSAGES);
+    db.insert(chatSessions)
+      .values({
+        sessionId,
+        messages: lastMessages,
+        context: ctx,
+        messageCount: lastMessages.length,
+      })
+      .onConflictDoUpdate({
+        target: chatSessions.sessionId,
+        set: {
+          messages: lastMessages,
+          context: ctx,
+          messageCount: lastMessages.length,
+          updatedAt: new Date(),
+        },
+      })
+      .catch(() => {}); // Non-blocking — don't fail the chat if persistence fails
+  }
+
+  const system = await buildSystemPrompt(ctx);
 
   const result = streamText({
     model: chatModel,

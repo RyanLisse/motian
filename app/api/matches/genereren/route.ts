@@ -2,9 +2,12 @@ import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { publish } from "@/src/lib/event-bus";
+import { rateLimit } from "@/src/lib/rate-limit";
 import { generateMatchesForJob } from "@/src/services/match-generation";
 
 export const dynamic = "force-dynamic";
+
+const limiter = rateLimit({ interval: 60_000, limit: 10 });
 
 const generateSchema = z.object({
   jobId: z.string().uuid(),
@@ -13,6 +16,18 @@ const generateSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const ip =
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    "anonymous";
+  const { success, reset } = limiter.check(ip);
+  if (!success) {
+    return Response.json(
+      { error: "Te veel verzoeken. Probeer het later opnieuw." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((reset - Date.now()) / 1000)) } },
+    );
+  }
+
   try {
     const body = await request.json();
     const parsed = generateSchema.safeParse(body);

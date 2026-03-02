@@ -306,6 +306,7 @@ run();
 
 /**
  * Main entry point — scrapes Striive listings via Modal sandbox.
+ * Validates auth result by checking for empty listings (silent auth failure).
  */
 export async function scrapeStriive(_url: string): Promise<RawScrapedListing[]> {
   const username = process.env.STRIIVE_USERNAME;
@@ -315,7 +316,17 @@ export async function scrapeStriive(_url: string): Promise<RawScrapedListing[]> 
     throw new Error("STRIIVE_USERNAME en STRIIVE_PASSWORD moeten ingesteld zijn");
   }
 
-  return scrapeViaModal(username, password);
+  const results = await scrapeViaModal(username, password);
+
+  // Auth validation: if the API returns 0 listings, the session likely expired
+  // Striive always has active jobs — 0 results indicates auth failure
+  if (results.length === 0) {
+    throw new Error(
+      "Striive scraper returned 0 listings — possible auth failure. Check STRIIVE_USERNAME/PASSWORD credentials.",
+    );
+  }
+
+  return results;
 }
 
 async function scrapeViaModal(username: string, password: string): Promise<RawScrapedListing[]> {

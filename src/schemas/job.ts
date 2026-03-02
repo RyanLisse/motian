@@ -63,11 +63,17 @@ export const unifiedJobSchema = z.object({
   attachments: z.array(z.object({ url: z.string(), description: z.string() })).default([]),
   questions: z
     .array(
-      z.object({ question: z.string(), type: z.string(), options: z.array(z.any()).default([]) }),
+      z.object({
+        question: z.string(),
+        type: z.string(),
+        options: z.array(z.union([z.string(), z.number(), z.boolean()])).default([]),
+      }),
     )
     .default([]),
   languages: z.array(z.string()).default([]),
-  descriptionSummary: z.any().optional(),
+  descriptionSummary: z
+    .union([z.object({ nl: z.string().optional(), en: z.string().optional() }), z.string()])
+    .optional(),
   faqAnswers: z
     .array(z.object({ category: z.string(), question: z.string(), answer: z.string() }))
     .default([]),

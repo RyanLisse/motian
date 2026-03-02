@@ -19,5 +19,6 @@ export const DELETE = withApiHandler(
   {
     logPrefix: "Fout bij verwijderen kandidaatgegevens",
     errorMessage: "Kan kandidaatgegevens niet verwijderen",
+    rateLimit: { interval: 60_000, limit: 5 },
   },
 );

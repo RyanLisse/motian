@@ -19,5 +19,6 @@ export const GET = withApiHandler(
   {
     logPrefix: "Fout bij exporteren kandidaatgegevens",
     errorMessage: "Kan kandidaatgegevens niet exporteren",
+    rateLimit: { interval: 60_000, limit: 10 },
   },
 );
