@@ -36,17 +36,42 @@ export const analyseData = tool({
       }
 
       case "avg_rates": {
-        const rows = await db
+        // Outlier cap: exclude rates > 500 EUR/hour (likely data errors or daily rates)
+        const RATE_CAP = 500;
+
+        const perPlatform = await db
           .select({
             platform: jobs.platform,
-            avgMin: sql<number>`round(avg(rate_min))::int`,
-            avgMax: sql<number>`round(avg(rate_max))::int`,
-            count: sql<number>`count(*)::int`,
+            avgMin: sql<number>`round(avg(rate_min) FILTER (WHERE rate_min > 0 AND rate_min <= ${RATE_CAP}))::int`,
+            avgMax: sql<number>`round(avg(rate_max) FILTER (WHERE rate_max > 0 AND rate_max <= ${RATE_CAP}))::int`,
+            // Single "effective rate" using whichever field is available
+            avgTarief: sql<number>`round(avg(COALESCE(NULLIF(rate_max,0), NULLIF(rate_min,0))) FILTER (WHERE COALESCE(NULLIF(rate_max,0), NULLIF(rate_min,0)) <= ${RATE_CAP}))::int`,
+            total: sql<number>`count(*)::int`,
+            metTarief: sql<number>`count(*) FILTER (WHERE rate_min IS NOT NULL OR rate_max IS NOT NULL)::int`,
+            zonderTarief: sql<number>`count(*) FILTER (WHERE rate_min IS NULL AND rate_max IS NULL)::int`,
           })
           .from(jobs)
           .where(isNull(jobs.deletedAt))
           .groupBy(jobs.platform);
-        return { analysis: "Gemiddelde tarieven per platform", data: rows };
+
+        // Overall cross-platform average (jobs with at least one rate field, excl. outliers)
+        const [overall] = await db
+          .select({
+            avgTarief: sql<number>`round(avg(COALESCE(NULLIF(rate_max,0), NULLIF(rate_min,0))) FILTER (WHERE COALESCE(NULLIF(rate_max,0), NULLIF(rate_min,0)) BETWEEN 1 AND ${RATE_CAP}))::int`,
+            metTarief: sql<number>`count(*) FILTER (WHERE rate_min IS NOT NULL OR rate_max IS NOT NULL)::int`,
+            total: sql<number>`count(*)::int`,
+          })
+          .from(jobs)
+          .where(isNull(jobs.deletedAt));
+
+        return {
+          analysis: "Gemiddelde tarieven per platform",
+          data: {
+            perPlatform,
+            overall,
+            toelichting: `Tarieven boven ${RATE_CAP} EUR/uur worden als uitschieters beschouwd en niet meegenomen in het gemiddelde. 'zonderTarief' = opdrachten zonder tariefinformatie.`,
+          },
+        };
       }
 
       case "total_counts": {

@@ -12,6 +12,13 @@ import {
 import { Message, MessageContent, MessageResponse } from "@/src/components/ai-elements/message";
 import { Suggestion, Suggestions } from "@/src/components/ai-elements/suggestion";
 import { ChatToolCall } from "./chat-tool-call";
+import { KandidaatGenUICard, MatchGenUICard, OpdrachtGenUICard, ToolErrorBlock } from "./genui";
+
+const GENUI_COMPONENTS: Record<string, React.ComponentType<{ output: unknown }>> = {
+  getOpdrachtDetail: OpdrachtGenUICard,
+  getKandidaatDetail: KandidaatGenUICard,
+  getMatchDetail: MatchGenUICard,
+};
 
 type Props = {
   messages: UIMessage[];
@@ -186,6 +193,36 @@ export function ChatMessages({ messages, status, onSuggestion }: Props) {
                     output?: unknown;
                   };
                   const name = toolPart.toolName ?? getToolName(part);
+                  const GenUICard = name ? GENUI_COMPONENTS[name] : undefined;
+                  const isErrorOutput =
+                    toolPart.output &&
+                    typeof toolPart.output === "object" &&
+                    "error" in toolPart.output;
+
+                  if (toolPart.state === "output-error") {
+                    const msg =
+                      toolPart.output &&
+                      typeof toolPart.output === "object" &&
+                      "error" in toolPart.output &&
+                      typeof (toolPart.output as { error: unknown }).error === "string"
+                        ? (toolPart.output as { error: string }).error
+                        : "Er is iets misgegaan bij deze actie.";
+                    return <ToolErrorBlock key={partKey} message={msg} />;
+                  }
+                  if (
+                    toolPart.state === "output-available" &&
+                    GenUICard &&
+                    toolPart.output !== undefined
+                  ) {
+                    if (isErrorOutput) {
+                      const msg =
+                        typeof (toolPart.output as { error: unknown }).error === "string"
+                          ? (toolPart.output as { error: string }).error
+                          : "Niet gevonden.";
+                      return <ToolErrorBlock key={partKey} message={msg} />;
+                    }
+                    return <GenUICard key={partKey} output={toolPart.output} />;
+                  }
                   return (
                     <ChatToolCall
                       key={partKey}
