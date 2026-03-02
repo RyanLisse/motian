@@ -5,7 +5,6 @@ import {
   Briefcase,
   CheckCircle2,
   Clock,
-  FileText,
   Link2,
   Sparkles,
   User,
@@ -125,12 +124,7 @@ export default async function MatchingPage({ searchParams }: Props) {
         resumeParsedAt: candidates.resumeParsedAt,
       })
       .from(candidates)
-      .where(
-        and(
-          isNull(candidates.deletedAt),
-          sql`${candidates.resumeParsedAt} IS NOT NULL`,
-        ),
-      )
+      .where(and(isNull(candidates.deletedAt), sql`${candidates.resumeParsedAt} IS NOT NULL`))
       .orderBy(desc(candidates.resumeParsedAt))
       .limit(10);
 

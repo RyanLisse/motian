@@ -81,7 +81,7 @@ graph TB
 
     subgraph AI["🤖 AI Agent"]
         AGENT[GPT-5 Nano]
-        TOOLS[11 Tools]
+        TOOLS[45 Tools]
         STREAM[streamText + maxSteps]
     end
 
@@ -153,17 +153,17 @@ graph LR
         CTX[Page Context Detection]
     end
 
-    subgraph Tools["🔧 11 Tools"]
-        T1[queryOpdrachten]
-        T2[getOpdrachtDetail]
-        T3[matchKandidaten]
-        T4[analyseData]
-        T5[triggerScraper]
-        T6[kandidaten]
-        T7[berichten]
-        T8[interviews]
-        T9[sollicitaties]
-        T10[matches]
+    subgraph Tools["🔧 45 Tools"]
+        T1[Kandidaten — 7 tools]
+        T2[Vacatures — 5 tools]
+        T3[Matches — 6 tools]
+        T4[Sollicitaties — 6 tools]
+        T5[Interviews — 5 tools]
+        T6[Berichten — 4 tools]
+        T7[GDPR — 4 tools]
+        T8[Operaties — 3 tools]
+        T9[Analyse & Search — 3 tools]
+        T10[Structured Match — 2 tools]
     end
 
     subgraph Services["📦 Service Layer"]
@@ -174,16 +174,23 @@ graph LR
         S5[runScrapePipeline]
     end
 
-    Agent --> T1 --> S1
-    Agent --> T2 --> S2
-    Agent --> T3 --> S3
-    Agent --> T4 --> S4
-    Agent --> T5 --> S5
+    Agent --> T1
+    Agent --> T2
+    Agent --> T3
+    Agent --> T4
+    Agent --> T5
     Agent --> T6
     Agent --> T7
     Agent --> T8
     Agent --> T9
     Agent --> T10
+    T1 --> S4
+    T2 --> S4
+    T3 --> S1
+    T3 --> S3
+    T8 --> S5
+    T9 --> S1
+    T9 --> S2
 ```
 
 ### Hybrid Search — Reciprocal Rank Fusion
@@ -440,7 +447,7 @@ gantt
 ```
 motian/
 ├── app/                          # Next.js App Router
-│   ├── api/                      # 14 API route groups (Dutch paths)
+│   ├── api/                      # 22 API route groups (Dutch paths)
 │   │   ├── chat/                 # AI chat streaming endpoint
 │   │   ├── cron/                 # Scheduled tasks (scrape, expiry, retention)
 │   │   ├── gdpr/                 # GDPR Art 15/17 endpoints
@@ -452,6 +459,11 @@ motian/
 │   │   ├── berichten/            # Messaging
 │   │   ├── scrape/               # Manual scrape triggers
 │   │   ├── scraper-configuraties/# Platform config management
+│   │   ├── cv-file/              # CV file retrieval
+│   │   ├── cv-upload/            # CV upload to Vercel Blob
+│   │   ├── embeddings/           # Embedding backfill
+│   │   ├── events/               # SSE event stream
+│   │   ├── reports/              # Platform reports
 │   │   └── gezondheid/           # Health check
 │   ├── opdrachten/               # Job listing & detail pages
 │   ├── professionals/            # Candidate directory
@@ -468,7 +480,7 @@ motian/
 ├── src/
 │   ├── ai/
 │   │   ├── agent.ts              # AI agent config + system prompt
-│   │   └── tools/                # 11 tool definitions
+│   │   └── tools/                # 45 tool definitions
 │   ├── db/
 │   │   ├── schema.ts             # 9 tables with pgvector
 │   │   └── index.ts              # Neon serverless connection
@@ -681,8 +693,24 @@ ANTHROPIC_API_KEY=sk-ant-...
 STRIIVE_USERNAME=...
 STRIIVE_PASSWORD=...
 
+# Google AI (Gemini — CV parsing & enrichment)
+GOOGLE_GENERATIVE_AI_API_KEY=AIza...
+
+# xAI Grok (Judge — independent match review)
+X_AI_API_KEY=xai-...
+
 # Security
 ENCRYPTION_KEY=...   # openssl rand -base64 32
+
+# Sentry (error tracking)
+SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+
+# PostHog (product analytics)
+NEXT_PUBLIC_POSTHOG_KEY=phc_...
+
+# Slack (recruiter notifications — optional)
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_CHANNEL_ID=C0...
 ```
 
 ### Database Setup
@@ -750,6 +778,11 @@ All API routes use **Dutch path naming** convention.
 | `/api/interviews`            | GET/POST  | Interview scheduling                   |
 | `/api/berichten`             | GET/POST  | Messages                               |
 | `/api/cv-analyse`            | POST      | CV analysis SSE pipeline (upload, parse, match) |
+| `/api/cv-file`               | GET       | Retrieve CV file                               |
+| `/api/cv-upload`             | POST      | Upload CV file to Vercel Blob                  |
+| `/api/embeddings/backfill`   | POST      | Generate missing embeddings                    |
+| `/api/events`                | GET       | SSE event stream                               |
+| `/api/reports`               | GET       | Generate platform reports                      |
 | `/api/candidates/[id]/matches` | GET    | Stored match results per candidate     |
 | `/api/scrape/starten`        | POST      | Trigger manual scrape                  |
 | `/api/scraper-configuraties` | GET/PATCH | Platform config                        |

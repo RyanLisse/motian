@@ -32,5 +32,15 @@
     ".next/dev/types/**/*.ts",
     "trigger.config.ts"
   ],
-  "exclude": ["node_modules", "dist", "drizzle", "tests", "extension", "fumadocs", "scripts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "drizzle",
+    "tests",
+    "extension",
+    "fumadocs",
+    "scripts",
+    "opentui-demo",
+    "tui"
+  ]
 }

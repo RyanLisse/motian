@@ -16,7 +16,7 @@ describe("CV parser service", () => {
 
   it("uses Gemini model for structured output", () => {
     const source = readFile("src/services/cv-parser.ts");
-    expect(source).toContain("gemini-");
+    expect(source).toContain("geminiFlash");
     expect(source).toContain("generateText");
   });
 

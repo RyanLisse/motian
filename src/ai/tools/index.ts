@@ -37,14 +37,14 @@ export {
   wijsMatchAf,
   zoekMatches,
 } from "./matches";
+// Opdrachten mutatie tools
+export { updateOpdracht, verwijderOpdracht } from "./opdrachten-mutatie";
 // Operations console tools
 export {
   importeerOpdrachtenBatch,
   reviewGdprRetentie,
   runKandidaatScoringBatch,
 } from "./operations-console";
-// Opdrachten mutatie tools
-export { updateOpdracht, verwijderOpdracht } from "./opdrachten-mutatie";
 export { queryOpdrachten } from "./query-opdrachten";
 // Sollicitatie tools
 export {

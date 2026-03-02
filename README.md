@@ -81,7 +81,7 @@ graph TB
 
     subgraph AI["🤖 AI Agent"]
         AGENT[GPT-5 Nano]
-        TOOLS[11 Tools]
+        TOOLS[45 Tools]
         STREAM[streamText + maxSteps]
     end
 
@@ -153,17 +153,17 @@ graph LR
         CTX[Pagina Context Detectie]
     end
 
-    subgraph Tools["🔧 11 Tools"]
-        T1[queryOpdrachten]
-        T2[getOpdrachtDetail]
-        T3[matchKandidaten]
-        T4[analyseData]
-        T5[triggerScraper]
-        T6[kandidaten]
-        T7[berichten]
-        T8[interviews]
-        T9[sollicitaties]
-        T10[matches]
+    subgraph Tools["🔧 45 Tools"]
+        T1[Kandidaten — 7 tools]
+        T2[Vacatures — 5 tools]
+        T3[Matches — 6 tools]
+        T4[Sollicitaties — 6 tools]
+        T5[Interviews — 5 tools]
+        T6[Berichten — 4 tools]
+        T7[GDPR — 4 tools]
+        T8[Operaties — 3 tools]
+        T9[Analyse & Zoeken — 3 tools]
+        T10[Structured Match — 2 tools]
     end
 
     subgraph Diensten["📦 Service Laag"]
@@ -440,7 +440,7 @@ gantt
 ```
 motian/
 ├── app/                          # Next.js App Router
-│   ├── api/                      # 14 API route groepen (Nederlandse paden)
+│   ├── api/                      # 22 API route groepen (Nederlandse paden)
 │   │   ├── chat/                 # AI chat streaming endpoint
 │   │   ├── cron/                 # Geplande taken (scrape, verloop, retentie)
 │   │   ├── gdpr/                 # AVG Art 15/17 endpoints
@@ -452,6 +452,13 @@ motian/
 │   │   ├── berichten/            # Berichtenverkeer
 │   │   ├── scrape/               # Handmatige scrape triggers
 │   │   ├── scraper-configuraties/# Platform configuratie beheer
+│   │   ├── cv-file/              # CV bestand ophalen
+│   │   ├── cv-upload/            # CV bestand uploaden naar Vercel Blob
+│   │   ├── embeddings/           # Ontbrekende embeddings genereren
+│   │   ├── events/               # SSE event stream
+│   │   ├── reports/              # Platform rapporten
+│   │   ├── revalidate/           # Cache hervalidatie
+│   │   ├── scrape-resultaten/    # Scrape run geschiedenis
 │   │   └── gezondheid/           # Gezondheidscheck
 │   ├── opdrachten/               # Vacature overzicht & detailpagina's
 │   ├── professionals/            # Kandidaten directory
@@ -468,7 +475,7 @@ motian/
 ├── src/
 │   ├── ai/
 │   │   ├── agent.ts              # AI agent configuratie + systeemprompt
-│   │   └── tools/                # 11 tool definities
+│   │   └── tools/                # 45 tool definities
 │   ├── db/
 │   │   ├── schema.ts             # 9 tabellen met pgvector
 │   │   └── index.ts              # Neon serverless verbinding
@@ -683,6 +690,22 @@ STRIIVE_PASSWORD=...
 
 # Beveiliging
 ENCRYPTION_KEY=...   # openssl rand -base64 32
+
+# Google AI (Gemini — CV parsing & verrijking)
+GOOGLE_GENERATIVE_AI_API_KEY=AIza...
+
+# xAI Grok (Judge — onafhankelijke match beoordeling)
+X_AI_API_KEY=xai-...
+
+# Sentry (foutopsporing)
+SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+
+# PostHog (product analytics)
+NEXT_PUBLIC_POSTHOG_KEY=phc_...
+
+# Slack (recruiter notificaties — optioneel)
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_CHANNEL_ID=C0...
 ```
 
 ### Database Opzet
@@ -760,6 +783,11 @@ Alle API routes gebruiken **Nederlandse padnamen**.
 | `/api/cron/vacancy-expiry`   | GET       | Verlopen vacatures                         |
 | `/api/cron/data-retention`   | GET       | AVG data opschoning                        |
 | `/api/revalidate`            | POST      | Cache hervalidatie                         |
+| `/api/cv-file`               | GET       | CV bestand ophalen                         |
+| `/api/cv-upload`             | POST      | CV bestand uploaden naar Vercel Blob       |
+| `/api/embeddings/backfill`   | POST      | Ontbrekende embeddings genereren           |
+| `/api/events`                | GET       | SSE event stream                           |
+| `/api/reports`               | GET       | Platform rapporten genereren               |
 
 ---
 

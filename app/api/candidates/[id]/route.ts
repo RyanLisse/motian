@@ -15,10 +15,7 @@ const patchSchema = z.object({
 });
 
 /** PATCH /api/candidates/[id] — update candidate fields */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!UUID_RE.test(id)) {
     return Response.json({ error: "Ongeldig ID" }, { status: 400 });
