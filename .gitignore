@@ -22,3 +22,15 @@ harness-evidence/
 .qlty/
 FW_\ Custom\ GPT\ Mariënne/
 .trigger
+
+# Temporary files (feature videos, screenshots)
+tmp/
+
+# AI coding tool config directories (machine-local, not shared)
+.agents/
+.claude/
+.codex/
+.cursor/
+.ruler/
+.windsurf/
+GEMINI.md
