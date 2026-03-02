@@ -96,6 +96,6 @@ describe("Phase 13 — messages service exports are functions", () => {
   });
 });
 
-// NOTE: DB behavior tests skipped — services now hit real Neon DB which
+// DB behavior tests skipped — services now hit real Neon DB which
 // requires SSL unavailable in the vitest runner. Integration tests should
 // be run against a running dev server instead.

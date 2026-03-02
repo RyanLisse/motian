@@ -5,7 +5,7 @@ interface ReportInput {
     name: string;
     role?: string | null;
     location?: string | null;
-    // NOTE: Exclude email, phone for GDPR
+    // Exclude email, phone for GDPR compliance
   };
   job: {
     title: string;
