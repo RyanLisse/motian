@@ -1,7 +1,8 @@
 "use client";
 
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
-import { Bot } from "lucide-react";
+import { Bot, Brain, ExternalLink, FileText, Loader2 } from "lucide-react";
+import { useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -26,6 +27,64 @@ const EXAMPLE_PROMPTS = [
   "Hoeveel pending matches zijn er?",
   "Start de Flextender scraper",
 ];
+
+function ReasoningBlock({ text, state }: { text: string; state?: "streaming" | "done" }) {
+  const hasContent = text.length > 0;
+  const [expanded, setExpanded] = useState(hasContent || state === "streaming");
+
+  if (!hasContent && state !== "streaming") return null;
+
+  return (
+    <div className="my-2 rounded-lg border border-border bg-muted/50">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/50"
+      >
+        <Brain className="h-4 w-4 shrink-0" />
+        <span>Redenering</span>
+        {state === "streaming" && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />}
+        <span className="ml-auto text-xs">{expanded ? "Inklappen" : "Uitklappen"}</span>
+      </button>
+      {expanded && (
+        <div className="border-t border-border px-3 py-2">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+            {text}
+            {state === "streaming" && (
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-primary align-middle" />
+            )}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SourceUrlBlock({ url, title }: { url: string; title: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="my-1 flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+    >
+      <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{title}</span>
+    </a>
+  );
+}
+
+function SourceDocumentBlock({ title, mediaType }: { title: string; mediaType: string }) {
+  return (
+    <div className="my-1 flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+      <FileText className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{title}</span>
+      {mediaType && (
+        <span className="rounded bg-background px-1.5 py-0.5 text-[10px]">{mediaType}</span>
+      )}
+    </div>
+  );
+}
 
 export function ChatMessages({ messages, status, onSuggestion }: Props) {
   if (messages.length === 0) {
@@ -69,6 +128,53 @@ export function ChatMessages({ messages, status, onSuggestion }: Props) {
                     );
                   }
                   return <MessageResponse key={partKey}>{part.text}</MessageResponse>;
+                }
+
+                if (part.type === "reasoning") {
+                  const reasoningPart = part as {
+                    type: "reasoning";
+                    text: string;
+                    state?: "streaming" | "done";
+                  };
+                  return (
+                    <ReasoningBlock
+                      key={partKey}
+                      text={reasoningPart.text}
+                      state={reasoningPart.state}
+                    />
+                  );
+                }
+
+                if (part.type === "source-url") {
+                  const sourcePart = part as {
+                    type: "source-url";
+                    sourceId: string;
+                    url: string;
+                    title?: string;
+                  };
+                  return (
+                    <SourceUrlBlock
+                      key={partKey}
+                      url={sourcePart.url}
+                      title={sourcePart.title ?? sourcePart.url}
+                    />
+                  );
+                }
+
+                if (part.type === "source-document") {
+                  const docPart = part as {
+                    type: "source-document";
+                    sourceId: string;
+                    mediaType: string;
+                    title: string;
+                  };
+                  return (
+                    <SourceDocumentBlock
+                      key={partKey}
+                      title={docPart.title}
+                      mediaType={docPart.mediaType}
+                    />
+                  );
                 }
 
                 if (isToolUIPart(part)) {

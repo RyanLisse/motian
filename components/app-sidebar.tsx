@@ -1,6 +1,14 @@
 "use client";
 
-import { Activity, Briefcase, GalleryVerticalEnd, LayoutDashboard, Users, Zap } from "lucide-react";
+import {
+  Activity,
+  Briefcase,
+  GalleryVerticalEnd,
+  LayoutDashboard,
+  MessageSquare,
+  Users,
+  Zap,
+} from "lucide-react";
 import type * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
@@ -81,6 +89,11 @@ const data = {
       title: "Scraper Analytics",
       url: "/scraper",
       icon: Activity,
+    },
+    {
+      title: "Chat",
+      url: "/chat",
+      icon: MessageSquare,
     },
   ],
 };
