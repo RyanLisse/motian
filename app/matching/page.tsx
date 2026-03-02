@@ -358,7 +358,7 @@ export default async function MatchingPage({ searchParams }: Props) {
                   key={row.match.id}
                   className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-accent transition-colors"
                 >
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 mb-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <User className="h-3.5 w-3.5 text-muted-foreground" />
@@ -381,10 +381,10 @@ export default async function MatchingPage({ searchParams }: Props) {
                       )}
                     </div>
 
-                    <ArrowRight className="h-4 w-4 text-border shrink-0" />
+                    <ArrowRight className="hidden sm:block h-4 w-4 text-border shrink-0" />
 
-                    <div className="flex-1 min-w-0 text-right">
-                      <div className="flex items-center justify-end gap-1.5 mb-0.5">
+                    <div className="flex-1 min-w-0 sm:text-right">
+                      <div className="flex items-center sm:justify-end gap-1.5 mb-0.5">
                         <span className="text-xs text-muted-foreground uppercase tracking-wider">
                           Vacature
                         </span>
@@ -473,7 +473,7 @@ export default async function MatchingPage({ searchParams }: Props) {
                     </div>
                   ) : null}
 
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div className="flex flex-wrap items-center gap-2 justify-between pt-2 border-t border-border">
                     <Badge
                       variant="outline"
                       className={`text-[10px] ${statusColors[row.match.status] ?? "border-border text-muted-foreground"}`}

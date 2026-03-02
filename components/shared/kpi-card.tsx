@@ -25,13 +25,15 @@ export function KPICard({
 }: KPICardProps) {
   return (
     <div
-      className={`bg-card border border-border ${compact ? "rounded-lg p-3" : "rounded-xl p-4"}`}
+      className={`bg-card border border-border min-w-0 ${compact ? "rounded-lg p-3" : "rounded-xl p-4"}`}
     >
-      <div className={`flex items-center gap-2 ${iconClassName} mb-1`}>
+      <div className={`flex items-center gap-2 min-w-0 ${iconClassName} mb-1`}>
         {icon}
-        <span className={`text-xs ${labelClassName}`}>{label}</span>
+        <span className={`text-xs truncate ${labelClassName}`}>{label}</span>
       </div>
-      <p className={`font-bold ${compact ? "text-lg" : "text-2xl"} ${valueClassName}`}>{value}</p>
+      <p className={`font-bold truncate ${compact ? "text-lg" : "text-2xl"} ${valueClassName}`}>
+        {value}
+      </p>
     </div>
   );
 }

@@ -145,7 +145,7 @@ export default async function OverzichtPage() {
                   return (
                     <div key={p.platform} className="flex items-center gap-3">
                       <span
-                        className="text-sm text-foreground capitalize w-36 shrink-0 truncate"
+                        className="text-sm text-foreground capitalize w-20 sm:w-36 shrink-0 truncate"
                         title={p.platform}
                       >
                         {p.platform}
@@ -235,7 +235,7 @@ export default async function OverzichtPage() {
                   {recentScrapes.map((s) => (
                     <div
                       key={s.id}
-                      className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between py-2.5 first:pt-0 last:pb-0"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -249,7 +249,7 @@ export default async function OverzichtPage() {
                         />
                         <span className="text-sm text-foreground capitalize">{s.platform}</span>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 sm:gap-4 text-xs text-muted-foreground flex-wrap">
                         <span>{s.jobsNew ?? 0} nieuw</span>
                         <span>{s.jobsFound ?? 0} gevonden</span>
                         {s.runAt && (

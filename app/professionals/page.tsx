@@ -85,7 +85,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div>
             <h1 className="text-xl font-bold text-foreground">Kandidaten</h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -96,7 +96,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
         </div>
 
         {/* KPI row */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <KPICard icon={<Users className="h-4 w-4" />} label="Totaal" value={totalCount} />
           <KPICard
             icon={<Zap className="h-4 w-4" />}
