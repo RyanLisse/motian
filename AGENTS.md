@@ -201,6 +201,32 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 | Sidebar         | `components/app-sidebar.tsx`       | Missing Interviews/Messages nav items                                   |
 | Vercel Config   | `vercel.json`                      | Cron: scrape 6AM, vacancy-expiry 3AM                                    |
 
+---
+
+## Cursor Cloud specific instructions
+
+### Services
+
+| Service | Command | Notes |
+|---------|---------|-------|
+| Next.js dev server | `pnpm dev` (port 3001) | Requires `.env.local`. Turbopack hot-reload. |
+| Lint | `pnpm lint` | Biome — see `biome.json`. Pre-existing errors exist in the codebase (formatting). |
+| Tests | `pnpm test` | Vitest — `tests/**/*.test.ts`. A few structural/string-match tests may fail due to model abstraction indirection. |
+
+### Environment setup
+
+- Node 22.x and pnpm 9.15.0 are managed via corepack. The update script handles `pnpm install --frozen-lockfile`.
+- `.env.local` must exist (copied from `.env.example`). The app connects to a live Neon PostgreSQL database via `DATABASE_URL`. Without valid credentials, pages will load but some server-side data fetching will fail.
+- `drizzle.config.ts` reads from `.env.local` (not `.env`).
+
+### Gotchas
+
+- `pnpm lint` reports pre-existing formatting and lint errors (23 errors as of initial setup). These are not blocking — they are in the existing codebase.
+- 4 test failures are pre-existing: 3 tests check for literal `"gemini-"` string in source but the code uses a `geminiFlash` alias from `src/lib/ai-models.ts`; 1 structural test flags an English `candidates` API route segment.
+- The Justfile uses `zsh` as its shell — use `pnpm` commands directly instead if `zsh` is not installed.
+- `bv` (Bead Viewer) without flags launches an interactive TUI that will block the session. Always use `bv --robot-*` flags.
+- The sidebar nav calls `/kandidaten` but the actual route is `/professionals` (Talent Pool submenu).
+
 <!-- TRIGGER.DEV basic START -->
 
 # Trigger.dev Basic Tasks (v4)
