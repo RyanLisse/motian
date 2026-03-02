@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { jobs, scrapeResults, scraperConfigs } from "@/src/db/schema";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function OverzichtPage() {
   const sevenDaysAgo = new Date();

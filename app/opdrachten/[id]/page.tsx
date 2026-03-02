@@ -12,7 +12,7 @@ import { stripHtml } from "@/src/lib/html";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
-export const revalidate = 120;
+export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;

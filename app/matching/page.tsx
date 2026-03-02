@@ -27,7 +27,7 @@ import { MatchActions } from "./match-actions";
 import { MatchDetail } from "./match-detail";
 import { ReportButton } from "./report-button";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 interface Props {
   searchParams: Promise<{

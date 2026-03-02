@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 interface Props {
   searchParams: Promise<{
