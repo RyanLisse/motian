@@ -75,3 +75,19 @@ Let me chronologically analyze the conversation:
 
 1. **Initial Request**: User invoked `/compound-engineering:slfg` (Swarm-enabled LFG workflow) with the task: "lets add whatsapp https://github.com/steipete/wacli we need to be able to talk to the agent and the user should be able to upload a pdv or doc resume, and get the grading re...
 
+### Prompt 7
+
+# Feature Video Walkthrough
+
+<command_purpose>Record a video walkthrough demonstrating a feature, upload it, and add it to the PR description.</command_purpose>
+
+## Introduction
+
+<role>Developer Relations Engineer creating feature demo videos</role>
+
+This command creates professional video walkthroughs of features for PR documentation:
+- Records browser interactions using agent-browser CLI
+- Demonstrates the complete user flow
+- Uploads the video for easy sharing
+- Updates the PR description ...
+
