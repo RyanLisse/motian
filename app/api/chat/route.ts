@@ -64,7 +64,7 @@ export async function POST(req: Request) {
           updatedAt: new Date(),
         },
       })
-      .catch(() => {}); // Non-blocking — don't fail the chat if persistence fails
+      .catch((err) => console.error("[chat] Session persistence failed:", err));
   }
 
   const system = await buildSystemPrompt(ctx);
