@@ -59,16 +59,18 @@ export async function updateConfig(
 export async function getHealth(): Promise<HealthReport> {
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const configs = await db.select().from(scraperConfigs);
-  const statsRows = await db
-    .select({
-      platform: scrapeResults.platform,
-      total: sql<number>`count(*)::int`,
-      failures: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
-    })
-    .from(scrapeResults)
-    .where(gte(scrapeResults.runAt, twentyFourHoursAgo))
-    .groupBy(scrapeResults.platform);
+  const [configs, statsRows] = await Promise.all([
+    db.select().from(scraperConfigs),
+    db
+      .select({
+        platform: scrapeResults.platform,
+        total: sql<number>`count(*)::int`,
+        failures: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
+      })
+      .from(scrapeResults)
+      .where(gte(scrapeResults.runAt, twentyFourHoursAgo))
+      .groupBy(scrapeResults.platform),
+  ]);
 
   const statsMap = new Map(statsRows.map((s) => [s.platform, s]));
 

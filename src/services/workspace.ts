@@ -1,6 +1,6 @@
-import { isNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "../db";
-import { candidates, jobMatches, jobs } from "../db/schema";
+import { jobs } from "../db/schema";
 import { getHealth } from "./scrapers";
 
 export type WorkspaceSummary = {
@@ -15,31 +15,26 @@ export type WorkspaceSummary = {
 
 /** Lightweight workspace overview for system prompt injection. */
 export async function getWorkspaceSummary(): Promise<WorkspaceSummary> {
-  const [jobCounts, matchCounts, candidateCount, health] = await Promise.all([
+  // Single query with scalar subqueries replaces 3 separate count queries (fixes N+1)
+  const [allCounts, health] = await Promise.all([
     db
       .select({
-        total: sql<number>`count(*)::int`,
-        withEmbedding: sql<number>`count(embedding)::int`,
+        jobsTotal: sql<number>`(select count(*)::int from jobs where deleted_at is null)`,
+        jobsWithEmbedding: sql<number>`(select count(embedding)::int from jobs where deleted_at is null)`,
+        candidatesTotal: sql<number>`(select count(*)::int from candidates where deleted_at is null)`,
+        matchesTotal: sql<number>`(select count(*)::int from job_matches)`,
+        matchesPending: sql<number>`(select count(*) filter (where status = 'pending')::int from job_matches)`,
       })
       .from(jobs)
-      .where(isNull(jobs.deletedAt)),
-    db
-      .select({
-        pending: sql<number>`count(*) filter (where status = 'pending')::int`,
-        total: sql<number>`count(*)::int`,
-      })
-      .from(jobMatches),
-    db
-      .select({ total: sql<number>`count(*)::int` })
-      .from(candidates)
-      .where(isNull(candidates.deletedAt)),
+      .limit(1),
     getHealth(),
   ]);
 
+  const c = allCounts[0];
   return {
-    jobs: { total: jobCounts[0]?.total ?? 0, withEmbedding: jobCounts[0]?.withEmbedding ?? 0 },
-    candidates: { total: candidateCount[0]?.total ?? 0 },
-    matches: { total: matchCounts[0]?.total ?? 0, pending: matchCounts[0]?.pending ?? 0 },
+    jobs: { total: c?.jobsTotal ?? 0, withEmbedding: c?.jobsWithEmbedding ?? 0 },
+    candidates: { total: c?.candidatesTotal ?? 0 },
+    matches: { total: c?.matchesTotal ?? 0, pending: c?.matchesPending ?? 0 },
     scraperHealth: {
       overall: health.overall,
       platforms: health.data.map((h) => ({

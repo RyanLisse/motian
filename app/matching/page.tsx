@@ -171,58 +171,40 @@ export default async function MatchingPage({ searchParams }: Props) {
   // Scoped count conditions (for KPI cards, scoped to jobId if present)
   const scopeCondition = jobId ? eq(jobMatches.jobId, jobId) : undefined;
 
-  const [matchRows, totalResult, pendingResult, approvedResult, rejectedResult] = await Promise.all(
-    [
-      db
-        .select({
-          match: jobMatches,
-          job: { id: jobs.id, title: jobs.title, company: jobs.company },
-          candidate: {
-            id: candidates.id,
-            name: candidates.name,
-            role: candidates.role,
-          },
-        })
-        .from(jobMatches)
-        .leftJoin(jobs, eq(jobMatches.jobId, jobs.id))
-        .leftJoin(candidates, eq(jobMatches.candidateId, candidates.id))
-        .where(whereClause)
-        .orderBy(desc(jobMatches.matchScore))
-        .limit(PER_PAGE)
-        .offset(offset),
-      db.select({ count: sql<number>`count(*)::int` }).from(jobMatches).where(whereClause),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(jobMatches)
-        .where(
-          scopeCondition
-            ? and(eq(jobMatches.status, "pending"), scopeCondition)
-            : eq(jobMatches.status, "pending"),
-        ),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(jobMatches)
-        .where(
-          scopeCondition
-            ? and(eq(jobMatches.status, "approved"), scopeCondition)
-            : eq(jobMatches.status, "approved"),
-        ),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(jobMatches)
-        .where(
-          scopeCondition
-            ? and(eq(jobMatches.status, "rejected"), scopeCondition)
-            : eq(jobMatches.status, "rejected"),
-        ),
-    ],
-  );
+  const [matchRows, totalResult, statusCounts] = await Promise.all([
+    db
+      .select({
+        match: jobMatches,
+        job: { id: jobs.id, title: jobs.title, company: jobs.company },
+        candidate: {
+          id: candidates.id,
+          name: candidates.name,
+          role: candidates.role,
+        },
+      })
+      .from(jobMatches)
+      .leftJoin(jobs, eq(jobMatches.jobId, jobs.id))
+      .leftJoin(candidates, eq(jobMatches.candidateId, candidates.id))
+      .where(whereClause)
+      .orderBy(desc(jobMatches.matchScore))
+      .limit(PER_PAGE)
+      .offset(offset),
+    db.select({ count: sql<number>`count(*)::int` }).from(jobMatches).where(whereClause),
+    db
+      .select({
+        pending: sql<number>`count(*) filter (where ${jobMatches.status} = 'pending')::int`,
+        approved: sql<number>`count(*) filter (where ${jobMatches.status} = 'approved')::int`,
+        rejected: sql<number>`count(*) filter (where ${jobMatches.status} = 'rejected')::int`,
+      })
+      .from(jobMatches)
+      .where(scopeCondition),
+  ]);
 
   const totalCount = totalResult[0]?.count ?? 0;
   const totalPages = Math.ceil(totalCount / PER_PAGE);
-  const pendingCount = pendingResult[0]?.count ?? 0;
-  const approvedCount = approvedResult[0]?.count ?? 0;
-  const rejectedCount = rejectedResult[0]?.count ?? 0;
+  const pendingCount = statusCounts[0]?.pending ?? 0;
+  const approvedCount = statusCounts[0]?.approved ?? 0;
+  const rejectedCount = statusCounts[0]?.rejected ?? 0;
   const allCount = pendingCount + approvedCount + rejectedCount;
 
   // Collect ALL approved candidate IDs for this job (not just current page)

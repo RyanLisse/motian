@@ -24,77 +24,63 @@ export default async function OverzichtPage() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   // Fetch all dashboard data in parallel (consolidated counts to reduce DB connections)
-  const [
-    jobStats,
-    platformCounts,
-    recentJobs,
-    activeScrapers,
-    recentScrapes,
-    topCompanies,
-    locationCounts,
-  ] = await Promise.all([
-    // Total + weekly counts in one query using FILTER
-    db
-      .select({
-        total: sql<number>`count(*)::int`,
-        weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
-      })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt)),
-    // Jobs per platform
-    db
-      .select({
-        platform: jobs.platform,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt))
-      .groupBy(jobs.platform)
-      .orderBy(sql`count(*) desc`),
-    // Last 5 jobs
-    db
-      .select({
-        id: jobs.id,
-        title: jobs.title,
-        company: jobs.company,
-        platform: jobs.platform,
-        location: jobs.location,
-        scrapedAt: jobs.scrapedAt,
-      })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt))
-      .orderBy(desc(jobs.scrapedAt))
-      .limit(5),
-    // Active scraper configs
-    db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
-    // Recent scrape results
-    db.select().from(scrapeResults).orderBy(desc(scrapeResults.runAt)).limit(5),
-    // Top companies by job count
-    db
-      .select({
-        company: jobs.company,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.company} is not null`))
-      .groupBy(jobs.company)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
-    // Top locations
-    db
-      .select({
-        province: jobs.province,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.province} is not null`))
-      .groupBy(jobs.province)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
-  ]);
+  const [platformCounts, recentJobs, activeScrapers, recentScrapes, topCompanies, locationCounts] =
+    await Promise.all([
+      // Jobs per platform (includes weeklyNew to eliminate separate jobStats query)
+      db
+        .select({
+          platform: jobs.platform,
+          count: sql<number>`count(*)::int`,
+          weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
+        })
+        .from(jobs)
+        .where(isNull(jobs.deletedAt))
+        .groupBy(jobs.platform)
+        .orderBy(sql`count(*) desc`),
+      // Last 5 jobs
+      db
+        .select({
+          id: jobs.id,
+          title: jobs.title,
+          company: jobs.company,
+          platform: jobs.platform,
+          location: jobs.location,
+          scrapedAt: jobs.scrapedAt,
+        })
+        .from(jobs)
+        .where(isNull(jobs.deletedAt))
+        .orderBy(desc(jobs.scrapedAt))
+        .limit(5),
+      // Active scraper configs
+      db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
+      // Recent scrape results
+      db.select().from(scrapeResults).orderBy(desc(scrapeResults.runAt)).limit(5),
+      // Top companies by job count
+      db
+        .select({
+          company: jobs.company,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(jobs)
+        .where(and(isNull(jobs.deletedAt), sql`${jobs.company} is not null`))
+        .groupBy(jobs.company)
+        .orderBy(sql`count(*) desc`)
+        .limit(5),
+      // Top locations
+      db
+        .select({
+          province: jobs.province,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(jobs)
+        .where(and(isNull(jobs.deletedAt), sql`${jobs.province} is not null`))
+        .groupBy(jobs.province)
+        .orderBy(sql`count(*) desc`)
+        .limit(5),
+    ]);
 
-  const totalJobs = jobStats[0]?.total ?? 0;
-  const weeklyNew = jobStats[0]?.weeklyNew ?? 0;
+  const totalJobs = platformCounts.reduce((s, p) => s + p.count, 0);
+  const weeklyNew = platformCounts.reduce((s, p) => s + p.weeklyNew, 0);
 
   return (
     <div className="flex-1 overflow-y-auto">
