@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ff7777b15444",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "app/api/cv-analyse/route.ts",
+    "app/api/whatsapp/status/route.ts",
+    "package.json",
+    "pnpm-lock.yaml",
+    "src/lib/grading-utils.ts",
+    "src/schemas/whatsapp.ts",
+    "src/services/auto-matching.ts",
+    "src/services/whatsapp-cv-pipeline.ts",
+    "src/services/whatsapp.ts",
+    "trigger/whatsapp-gateway.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ff/7777b15444/0/metadata.json",
+      "transcript": "/ff/7777b15444/0/full.jsonl",
+      "context": "/ff/7777b15444/0/context.md",
+      "content_hash": "/ff/7777b15444/0/content_hash.txt",
+      "prompt": "/ff/7777b15444/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 70,
+    "cache_creation_tokens": 262491,
+    "cache_read_tokens": 7305867,
+    "output_tokens": 31058,
+    "api_call_count": 55
+  }
+}
