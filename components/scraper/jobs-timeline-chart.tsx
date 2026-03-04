@@ -9,6 +9,7 @@ type TimeSeriesPoint = {
   jobsNew: number;
   duplicates: number;
   successCount: number;
+  partialCount: number;
   failedCount: number;
   totalRuns: number;
   avgDurationMs: number;
@@ -126,16 +127,6 @@ export function JobsTimelineChart({ data, className }: JobsTimelineChartProps) {
             stroke="var(--chart-4)"
             fill="var(--chart-4)"
             fillOpacity={0.3}
-            strokeWidth={2}
-          />
-          <Area
-            type="monotone"
-            dataKey="jobsFound"
-            name="Totaal gevonden"
-            stackId="jobs"
-            stroke="var(--chart-5)"
-            fill="var(--chart-5)"
-            fillOpacity={0.2}
             strokeWidth={2}
           />
         </AreaChart>

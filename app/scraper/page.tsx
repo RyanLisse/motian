@@ -1,6 +1,7 @@
 import { desc } from "drizzle-orm";
 import {
   Activity,
+  AlertCircle,
   AlertTriangle,
   CalendarClock,
   CheckCircle,
@@ -321,6 +322,12 @@ export default async function ScraperPage() {
                         <CheckCircle className="h-3 w-3 text-emerald-500" />
                         {p.successCount}
                       </span>
+                      {p.partialCount > 0 && (
+                        <span className="flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3 text-amber-500" />
+                          {p.partialCount}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
                         <XCircle className="h-3 w-3 text-red-500" />
                         {p.failedCount}
@@ -398,35 +405,61 @@ export default async function ScraperPage() {
                       <TableHead className="text-right">Nieuw</TableHead>
                       <TableHead className="text-right">Duplicaten</TableHead>
                       <TableHead className="text-right">Duur</TableHead>
+                      <TableHead>Fouten</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {results.map((result) => (
-                      <TableRow key={result.id} className="border-border">
-                        <TableCell className="capitalize font-medium">{result.platform}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {result.runAt
-                            ? new Date(result.runAt).toLocaleString("nl-NL", {
-                                day: "numeric",
-                                month: "short",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={result.status} />
-                        </TableCell>
-                        <TableCell className="text-right">{result.jobsFound}</TableCell>
-                        <TableCell className="text-right text-primary">{result.jobsNew}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {result.duplicates}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {result.durationMs ? `${(result.durationMs / 1000).toFixed(1)}s` : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {results.map((result) => {
+                      const errors = Array.isArray(result.errors)
+                        ? (result.errors as string[])
+                        : [];
+
+                      return (
+                        <TableRow key={result.id} className="border-border">
+                          <TableCell className="capitalize font-medium">
+                            {result.platform}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {result.runAt
+                              ? new Date(result.runAt).toLocaleString("nl-NL", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={result.status} />
+                          </TableCell>
+                          <TableCell className="text-right">{result.jobsFound}</TableCell>
+                          <TableCell className="text-right text-primary">
+                            {result.jobsNew}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {result.duplicates}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {result.durationMs ? `${(result.durationMs / 1000).toFixed(1)}s` : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {errors.length > 0 ? (
+                              <span
+                                className="flex items-center gap-1 text-xs text-amber-500 cursor-help max-w-[200px]"
+                                title={errors.join("\n")}
+                              >
+                                <AlertCircle className="h-3 w-3 shrink-0" />
+                                <span className="truncate">
+                                  {errors.length === 1 ? errors[0] : `${errors.length} fouten`}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

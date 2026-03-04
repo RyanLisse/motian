@@ -527,14 +527,17 @@ function parseHoursPerWeek(raw: string | undefined): {
   if (!raw) return {};
   const rangeMatch = raw.match(/(\d+)\s*tot\s*(\d+)/);
   if (rangeMatch) {
+    const min = parseInt(rangeMatch[1], 10);
+    const max = parseInt(rangeMatch[2], 10);
     return {
-      minHoursPerWeek: parseInt(rangeMatch[1], 10),
-      hoursPerWeek: parseInt(rangeMatch[2], 10),
+      minHoursPerWeek: min > 0 ? min : undefined,
+      hoursPerWeek: max > 0 ? max : undefined,
     };
   }
   const singleMatch = raw.match(/(\d+)/);
   if (singleMatch) {
-    return { hoursPerWeek: parseInt(singleMatch[1], 10) };
+    const hours = parseInt(singleMatch[1], 10);
+    return hours > 0 ? { hoursPerWeek: hours } : {};
   }
   return {};
 }

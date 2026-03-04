@@ -15,6 +15,7 @@ export type PlatformStats = {
   platform: string;
   totalRuns: number;
   successCount: number;
+  partialCount: number;
   failedCount: number;
   successRate: number;
   totalJobsFound: number;
@@ -41,6 +42,7 @@ export type TimeSeriesPoint = {
   jobsNew: number;
   duplicates: number;
   successCount: number;
+  partialCount: number;
   failedCount: number;
   totalRuns: number;
   avgDurationMs: number;
@@ -74,6 +76,7 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
       platform: scrapeResults.platform,
       totalRuns: sql<number>`count(*)::int`,
       successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
+      partialCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'partial')::int`,
       failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
       totalJobsFound: sql<number>`coalesce(sum(${scrapeResults.jobsFound}), 0)::int`,
       totalJobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
@@ -92,11 +95,12 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
 
   const byPlatform: PlatformStats[] = rows.map((r) => ({
     ...r,
-    successRate: r.totalRuns > 0 ? Math.round((r.successCount / r.totalRuns) * 100) : 0,
+    successRate:
+      r.totalRuns > 0 ? Math.round(((r.successCount + r.partialCount) / r.totalRuns) * 100) : 0,
   }));
 
   const totalRuns = byPlatform.reduce((s, p) => s + p.totalRuns, 0);
-  const totalSuccess = byPlatform.reduce((s, p) => s + p.successCount, 0);
+  const totalNotFailed = byPlatform.reduce((s, p) => s + p.successCount + p.partialCount, 0);
 
   return {
     totalRuns,
@@ -104,7 +108,7 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
     totalJobsNew: byPlatform.reduce((s, p) => s + p.totalJobsNew, 0),
     totalDuplicates: byPlatform.reduce((s, p) => s + p.totalDuplicates, 0),
     totalUniqueJobs,
-    overallSuccessRate: totalRuns > 0 ? Math.round((totalSuccess / totalRuns) * 100) : 0,
+    overallSuccessRate: totalRuns > 0 ? Math.round((totalNotFailed / totalRuns) * 100) : 0,
     avgDurationMs:
       totalRuns > 0
         ? Math.round(byPlatform.reduce((s, p) => s + p.avgDurationMs * p.totalRuns, 0) / totalRuns)
@@ -139,6 +143,7 @@ export async function getTimeSeriesAnalytics(
       jobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
       duplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
       successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
+      partialCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'partial')::int`,
       failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
       totalRuns: sql<number>`count(*)::int`,
       avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,

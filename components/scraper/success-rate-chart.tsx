@@ -18,6 +18,7 @@ type TimeSeriesPoint = {
   jobsNew: number;
   duplicates: number;
   successCount: number;
+  partialCount: number;
   failedCount: number;
   totalRuns: number;
   avgDurationMs: number;
@@ -62,14 +63,23 @@ function getPlatforms(data: TimeSeriesPoint[]) {
 }
 
 function pivotSuccessRates(data: TimeSeriesPoint[], platforms: string[]) {
-  const grouped = new Map<string, Map<string, { successCount: number; totalRuns: number }>>();
+  const grouped = new Map<
+    string,
+    Map<string, { successCount: number; partialCount: number; totalRuns: number }>
+  >();
 
   for (const point of data) {
     const platformMap =
-      grouped.get(point.date) ?? new Map<string, { successCount: number; totalRuns: number }>();
-    const current = platformMap.get(point.platform) ?? { successCount: 0, totalRuns: 0 };
+      grouped.get(point.date) ??
+      new Map<string, { successCount: number; partialCount: number; totalRuns: number }>();
+    const current = platformMap.get(point.platform) ?? {
+      successCount: 0,
+      partialCount: 0,
+      totalRuns: 0,
+    };
 
     current.successCount += point.successCount;
+    current.partialCount += point.partialCount;
     current.totalRuns += point.totalRuns;
 
     platformMap.set(point.platform, current);
@@ -90,7 +100,7 @@ function pivotSuccessRates(data: TimeSeriesPoint[], platforms: string[]) {
           continue;
         }
 
-        row[platform] = (totals.successCount / totals.totalRuns) * 100;
+        row[platform] = ((totals.successCount + totals.partialCount) / totals.totalRuns) * 100;
       }
 
       return row;

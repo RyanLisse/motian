@@ -66,7 +66,7 @@ export const unifiedJobSchema = z.object({
       z.object({
         question: z.string(),
         type: z.string(),
-        options: z.array(z.union([z.string(), z.number(), z.boolean()])).default([]),
+        options: z.array(z.unknown()).default([]),
       }),
     )
     .default([]),

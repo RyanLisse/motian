@@ -17,6 +17,7 @@ type TimeSeriesPoint = {
   jobsNew: number;
   duplicates: number;
   successCount: number;
+  partialCount: number;
   failedCount: number;
   totalRuns: number;
   avgDurationMs: number;
