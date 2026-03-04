@@ -335,6 +335,8 @@ export const chatSessions = pgTable(
     messages: jsonb("messages").notNull().default([]), // Array of { role, content, toolInvocations? }
     context: jsonb("context").default({}), // Route, entityId, entityType snapshot
     messageCount: integer("message_count").default(0),
+    title: text("title"), // Auto-generated from first user message
+    lastMessagePreview: text("last_message_preview"), // First 100 chars of last user message
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

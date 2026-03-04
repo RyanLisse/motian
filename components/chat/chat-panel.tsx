@@ -2,7 +2,8 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { MessageSquare, X } from "lucide-react";
+import { MessageSquare, RotateCcw, X } from "lucide-react";
+import { nanoid } from "nanoid";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -15,11 +16,24 @@ import {
 import { useChatContext } from "./chat-context-provider";
 import { ChatMessages } from "./chat-messages";
 
-export function ChatPanel() {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const ctx = useChatContext();
+const SESSION_KEY = "motian-fab-session";
 
+function getOrCreateSessionId(): string {
+  if (typeof window === "undefined") return "";
+  const existing = sessionStorage.getItem(SESSION_KEY);
+  if (existing) return existing;
+  const id = nanoid();
+  sessionStorage.setItem(SESSION_KEY, id);
+  return id;
+}
+
+function ChatPanelInner({
+  ctx,
+  sessionId,
+}: {
+  ctx: { route: string; entityId: string | null; entityType: string | null };
+  sessionId: string;
+}) {
   const { messages, sendMessage, status, stop } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
@@ -28,6 +42,7 @@ export function ChatPanel() {
           route: ctx.route,
           entityId: ctx.entityId,
           entityType: ctx.entityType,
+          sessionId,
         },
       },
     }),
@@ -41,6 +56,40 @@ export function ChatPanel() {
     },
     [sendMessage],
   );
+
+  return (
+    <>
+      <ChatMessages
+        messages={messages}
+        status={status}
+        onSuggestion={(text) => {
+          sendMessage({ text });
+        }}
+      />
+      <div className="border-t border-border p-3">
+        <PromptInput onSubmit={handleSubmit}>
+          <PromptInputTextarea placeholder="Stel een vraag..." />
+          <PromptInputFooter>
+            <div />
+            <PromptInputSubmit status={status} onStop={stop} />
+          </PromptInputFooter>
+        </PromptInput>
+      </div>
+    </>
+  );
+}
+
+export function ChatPanel() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [sessionId, setSessionId] = useState(getOrCreateSessionId);
+  const ctx = useChatContext();
+
+  const handleNewSession = useCallback(() => {
+    const id = nanoid();
+    sessionStorage.setItem(SESSION_KEY, id);
+    setSessionId(id);
+  }, []);
 
   // Cmd+J / Ctrl+J toggle
   const handleKeyDown = useCallback(
@@ -65,7 +114,7 @@ export function ChatPanel() {
 
   return (
     <>
-      {/* FAB button — visible when panel is closed */}
+      {/* FAB button */}
       {!open && (
         <button
           type="button"
@@ -93,35 +142,28 @@ export function ChatPanel() {
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title="Sluiten (Esc)"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleNewSession}
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="Nieuw gesprek"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="Sluiten (Esc)"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Messages */}
-        <ChatMessages
-          messages={messages}
-          status={status}
-          onSuggestion={(text) => {
-            sendMessage({ text });
-          }}
-        />
-
-        {/* Input — AI Elements PromptInput */}
-        <div className="border-t border-border p-3">
-          <PromptInput onSubmit={handleSubmit}>
-            <PromptInputTextarea placeholder="Stel een vraag..." />
-            <PromptInputFooter>
-              <div />
-              <PromptInputSubmit status={status} onStop={stop} />
-            </PromptInputFooter>
-          </PromptInput>
-        </div>
+        {/* Chat content — key forces remount on session change */}
+        <ChatPanelInner key={sessionId} ctx={ctx} sessionId={sessionId} />
       </div>
     </>
   );

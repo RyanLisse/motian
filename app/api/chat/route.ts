@@ -1,5 +1,5 @@
 import { convertToModelMessages, stepCountIs } from "ai";
-
+import { after } from "next/server";
 import { z } from "zod";
 import { buildSystemPrompt, chatModel, recruitmentTools } from "@/src/ai/agent";
 import { db } from "@/src/db";
@@ -45,26 +45,46 @@ export async function POST(req: Request) {
   const ctx = contextResult.data ?? undefined;
   const sessionId = ctx?.sessionId;
 
-  // Persist conversation turn (fire-and-forget, non-blocking)
+  // Persist conversation using after() — runs after response streams, guaranteed to complete
   if (sessionId) {
     const lastMessages = body.messages.slice(-MAX_STORED_MESSAGES);
-    db.insert(chatSessions)
-      .values({
-        sessionId,
-        messages: lastMessages,
-        context: ctx,
-        messageCount: lastMessages.length,
-      })
-      .onConflictDoUpdate({
-        target: chatSessions.sessionId,
-        set: {
-          messages: lastMessages,
-          context: ctx,
-          messageCount: lastMessages.length,
-          updatedAt: new Date(),
-        },
-      })
-      .catch((err) => console.error("[chat] Session persistence failed:", err));
+    const lastUserMsg = [...body.messages]
+      .reverse()
+      .find((m: { role: string }) => m.role === "user");
+    const preview =
+      typeof lastUserMsg?.content === "string" ? lastUserMsg.content.slice(0, 100) : null;
+
+    // Extract title from first user message (only set once)
+    const firstUserMsg = body.messages.find((m: { role: string }) => m.role === "user");
+    const title =
+      typeof firstUserMsg?.content === "string" ? firstUserMsg.content.slice(0, 60) : null;
+
+    after(async () => {
+      try {
+        await db
+          .insert(chatSessions)
+          .values({
+            sessionId,
+            messages: lastMessages,
+            context: ctx,
+            messageCount: lastMessages.length,
+            title,
+            lastMessagePreview: preview,
+          })
+          .onConflictDoUpdate({
+            target: chatSessions.sessionId,
+            set: {
+              messages: lastMessages,
+              context: ctx,
+              messageCount: lastMessages.length,
+              lastMessagePreview: preview,
+              updatedAt: new Date(),
+            },
+          });
+      } catch (err) {
+        console.error("[chat] Session persistence failed:", err);
+      }
+    });
   }
 
   const system = await buildSystemPrompt(ctx);
