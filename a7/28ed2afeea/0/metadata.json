@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a728ed2afeea",
+  "session_id": "1b29506a-66e0-45ad-8b21-0fc627390486",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-04T17:18:33.981908Z",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "app/scraper/page.tsx",
+    "components/scraper/analytics-charts.tsx",
+    "components/scraper/duration-chart.tsx",
+    "components/scraper/jobs-timeline-chart.tsx",
+    "components/scraper/success-rate-chart.tsx",
+    "next-env.d.ts",
+    "src/schemas/job.ts",
+    "src/services/scrape-results.ts",
+    "src/services/scrapers/flextender.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "03fc3c3aa201",
+  "token_usage": {
+    "input_tokens": 260,
+    "cache_creation_tokens": 1315198,
+    "cache_read_tokens": 24348630,
+    "output_tokens": 91760,
+    "api_call_count": 208
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-04T17:18:32.697166Z",
+    "agent_lines": 90,
+    "human_added": 1205,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 1296,
+    "agent_percentage": 6.944444444444445
+  }
+}

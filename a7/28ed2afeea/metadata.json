@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "a728ed2afeea",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "app/scraper/page.tsx",
+    "components/scraper/analytics-charts.tsx",
+    "components/scraper/duration-chart.tsx",
+    "components/scraper/jobs-timeline-chart.tsx",
+    "components/scraper/success-rate-chart.tsx",
+    "next-env.d.ts",
+    "src/schemas/job.ts",
+    "src/services/scrape-results.ts",
+    "src/services/scrapers/flextender.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a7/28ed2afeea/0/metadata.json",
+      "transcript": "/a7/28ed2afeea/0/full.jsonl",
+      "context": "/a7/28ed2afeea/0/context.md",
+      "content_hash": "/a7/28ed2afeea/0/content_hash.txt",
+      "prompt": "/a7/28ed2afeea/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 260,
+    "cache_creation_tokens": 1315198,
+    "cache_read_tokens": 24348630,
+    "output_tokens": 91760,
+    "api_call_count": 208
+  }
+}
