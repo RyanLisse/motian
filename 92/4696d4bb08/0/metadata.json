@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "924696d4bb08",
+  "session_id": "1b29506a-66e0-45ad-8b21-0fc627390486",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-04T20:10:47.880953Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/plans/2026-03-04-feat-livekit-agents-ui-chat-history-plan.md",
+    "docs/plans/2026-03-04-feat-whatsapp-cv-analyse-plan.md",
+    "next-env.d.ts",
+    "src/services/scrapers/flextender.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "ab4191dd1bfd",
+  "token_usage": {
+    "input_tokens": 1133,
+    "cache_creation_tokens": 1951913,
+    "cache_read_tokens": 34072291,
+    "output_tokens": 146708,
+    "api_call_count": 287
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-04T20:10:43.739267Z",
+    "agent_lines": 615,
+    "human_added": 167,
+    "human_modified": 57,
+    "human_removed": 0,
+    "total_committed": 839,
+    "agent_percentage": 73.30154946364719
+  }
+}
