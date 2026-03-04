@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "eea13409ba23",
+  "session_id": "a7e815d7-36d7-487e-b087-2bfbbf1bdd6c",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-04T10:06:31.581492Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/meeting-overzicht-ai-instructies-en-backlog.md"
+  ],
+  "agent": "Cursor",
+  "turn_id": "233d37704655",
+  "initial_attribution": {
+    "calculated_at": "2026-03-04T10:06:31.580062Z",
+    "agent_lines": 114,
+    "human_added": 2,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 116,
+    "agent_percentage": 98.27586206896551
+  }
+}
