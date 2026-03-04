@@ -33,4 +33,6 @@ tmp/
 .cursor/
 .ruler/
 .windsurf/
+.entire/
+.opencode/
 GEMINI.md
