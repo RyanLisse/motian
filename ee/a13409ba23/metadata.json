@@ -3,7 +3,7 @@
   "checkpoint_id": "eea13409ba23",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
     ".gitignore",
     "docs/meeting-overzicht-ai-instructies-en-backlog.md"
@@ -22,6 +22,13 @@
       "context": "/ee/a13409ba23/1/context.md",
       "content_hash": "/ee/a13409ba23/1/content_hash.txt",
       "prompt": "/ee/a13409ba23/1/prompt.txt"
+    },
+    {
+      "metadata": "/ee/a13409ba23/2/metadata.json",
+      "transcript": "/ee/a13409ba23/2/full.jsonl",
+      "context": "/ee/a13409ba23/2/context.md",
+      "content_hash": "/ee/a13409ba23/2/content_hash.txt",
+      "prompt": "/ee/a13409ba23/2/prompt.txt"
     }
   ],
   "token_usage": {

@@ -1,0 +1,8 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+Heb je voor mij voor onze meeting ook even de instructies van de AI die je hebt gegeven, dus welke requirements/ welke product backlog is er deels gemaakt. Zie dat er een aantal onderdelen niet werken/ deels geen database achter zit die het wegschrijft.
+
