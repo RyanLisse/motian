@@ -1,0 +1,16 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+{
+      "platform": "flextender",
+      "status": "success",
+      "jobsNew": 10,
+      "duplicates": 209,
+      "errors": [
+        "Validation: [\n  {\n    \"code\": \"too_small\",\n    \"minimum\": 0,\n    \"type\": \"number\",\n    \"inclusive\": false,\n    \"exact\": false,\n    \"message\": \"Number must be greater than 0\",\n    \"path\": [\n      \"hoursPerWeek\"\n    ]\n  }\n]"
+      ]
+    } in trigger.dev
+
