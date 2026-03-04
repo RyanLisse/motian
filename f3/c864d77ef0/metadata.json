@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f3c864d77ef0",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "app/api/chat-sessies/[id]/route.ts",
+    "app/api/chat-sessies/route.ts",
+    "app/api/chat/route.ts",
+    "components/chat/chat-history-sidebar.tsx",
+    "components/chat/chat-page-content.tsx",
+    "components/chat/chat-panel.tsx",
+    "src/db/schema.ts",
+    "src/services/chat-sessions.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/f3/c864d77ef0/0/metadata.json",
+      "transcript": "/f3/c864d77ef0/0/full.jsonl",
+      "context": "/f3/c864d77ef0/0/context.md",
+      "content_hash": "/f3/c864d77ef0/0/content_hash.txt",
+      "prompt": "/f3/c864d77ef0/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1131,
+    "cache_creation_tokens": 1951231,
+    "cache_read_tokens": 33740807,
+    "output_tokens": 146197,
+    "api_call_count": 285
+  }
+}
