@@ -34,6 +34,25 @@ export type ScrapeAnalytics = {
   byPlatform: PlatformStats[];
 };
 
+export type TimeSeriesPoint = {
+  date: string;
+  platform: string;
+  jobsFound: number;
+  jobsNew: number;
+  duplicates: number;
+  successCount: number;
+  failedCount: number;
+  totalRuns: number;
+  avgDurationMs: number;
+};
+
+export type GetTimeSeriesOptions = {
+  startDate?: Date;
+  endDate?: Date;
+  platform?: string;
+  groupBy?: "day" | "week";
+};
+
 // ========== Service Functions ==========
 
 /** Scrape resultaten ophalen, optioneel gefilterd op platform en gelimiteerd */
@@ -50,7 +69,6 @@ export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeRe
 
 /** Bereken analytics per platform over alle scrape resultaten */
 export async function getAnalytics(): Promise<ScrapeAnalytics> {
-  // Single query: platform aggregation + unique jobs count via subquery
   const rows = await db
     .select({
       platform: scrapeResults.platform,
@@ -61,15 +79,18 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
       totalJobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
       totalDuplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
       avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
-      totalUniqueJobs: sql<number>`(select count(*)::int from ${jobs} where ${jobs.deletedAt} is null)`,
     })
     .from(scrapeResults)
     .groupBy(scrapeResults.platform);
 
-  // Extract unique jobs count from first row (subquery returns same value for all rows)
-  const totalUniqueJobs = rows[0]?.totalUniqueJobs ?? 0;
+  const [uniqueJobsResult] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(jobs)
+    .where(sql`${jobs.deletedAt} is null`);
 
-  const byPlatform: PlatformStats[] = rows.map(({ totalUniqueJobs: _, ...r }) => ({
+  const totalUniqueJobs = uniqueJobsResult?.count ?? 0;
+
+  const byPlatform: PlatformStats[] = rows.map((r) => ({
     ...r,
     successRate: r.totalRuns > 0 ? Math.round((r.successCount / r.totalRuns) * 100) : 0,
   }));
@@ -85,9 +106,50 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
     totalUniqueJobs,
     overallSuccessRate: totalRuns > 0 ? Math.round((totalSuccess / totalRuns) * 100) : 0,
     avgDurationMs:
-      byPlatform.length > 0
-        ? Math.round(byPlatform.reduce((s, p) => s + p.avgDurationMs, 0) / byPlatform.length)
+      totalRuns > 0
+        ? Math.round(byPlatform.reduce((s, p) => s + p.avgDurationMs * p.totalRuns, 0) / totalRuns)
         : 0,
     byPlatform,
   };
+}
+
+export async function getTimeSeriesAnalytics(
+  opts: GetTimeSeriesOptions = {},
+): Promise<TimeSeriesPoint[]> {
+  const now = new Date();
+  const startDate = opts.startDate ?? new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const endDate = opts.endDate ?? now;
+  const groupBy = opts.groupBy ?? "day";
+  const truncFn = groupBy === "week" ? "week" : "day";
+
+  const conditions = [
+    sql`${scrapeResults.runAt} >= ${startDate}`,
+    sql`${scrapeResults.runAt} <= ${endDate}`,
+  ];
+
+  if (opts.platform) {
+    conditions.push(sql`${scrapeResults.platform} = ${opts.platform}`);
+  }
+
+  const rows = await db
+    .select({
+      date: sql<string>`date_trunc('${sql.raw(truncFn)}', ${scrapeResults.runAt})::date::text`,
+      platform: scrapeResults.platform,
+      jobsFound: sql<number>`coalesce(sum(${scrapeResults.jobsFound}), 0)::int`,
+      jobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
+      duplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
+      successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
+      failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
+      totalRuns: sql<number>`count(*)::int`,
+      avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
+    })
+    .from(scrapeResults)
+    .where(sql.join(conditions, sql` and `))
+    .groupBy(
+      sql`date_trunc('${sql.raw(truncFn)}', ${scrapeResults.runAt})::date`,
+      scrapeResults.platform,
+    )
+    .orderBy(sql`date_trunc('${sql.raw(truncFn)}', ${scrapeResults.runAt})::date`);
+
+  return rows;
 }

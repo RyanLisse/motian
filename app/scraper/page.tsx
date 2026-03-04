@@ -2,6 +2,7 @@ import { desc } from "drizzle-orm";
 import {
   Activity,
   AlertTriangle,
+  CalendarClock,
   CheckCircle,
   Clock,
   Database,
@@ -10,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { AnalyticsCharts } from "@/components/scraper/analytics-charts";
 import { KPICard } from "@/components/shared/kpi-card";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +29,32 @@ import { db } from "@/src/db";
 import { scrapeResults, scraperConfigs } from "@/src/db/schema";
 import { getAnalytics } from "@/src/services/scrape-results";
 import { ScraperActions } from "./actions";
+
+/** Parse a simple cron hour interval (e.g. `0 *​/4 * * *`) to milliseconds. */
+function cronIntervalMs(cron: string): number | null {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [min, hour] = parts;
+  const hourMatch = hour.match(/^\*\/(\d+)$/);
+  if (hourMatch && min === "0") return Number.parseInt(hourMatch[1], 10) * 3_600_000;
+  return null;
+}
+
+function getNextRunAt(config: {
+  lastRunAt: Date | null;
+  cronExpression: string | null;
+}): Date | null {
+  if (!config.lastRunAt || !config.cronExpression) return null;
+  const interval = cronIntervalMs(config.cronExpression);
+  if (!interval) return null;
+  return new Date(new Date(config.lastRunAt).getTime() + interval);
+}
+
+function isDue(config: { lastRunAt: Date | null; cronExpression: string | null }): boolean {
+  const next = getNextRunAt(config);
+  if (!next) return false;
+  return next.getTime() <= Date.now();
+}
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +139,109 @@ export default async function ScraperPage() {
             compact
           />
         </div>
+
+        {/* Time-series charts (client component) */}
+        <AnalyticsCharts />
+
+        {/* Trigger.dev Taakstatus */}
+        {configs.length > 0 && (
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                Trigger.dev Taakstatus
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead>Platform</TableHead>
+                      <TableHead>Schema</TableHead>
+                      <TableHead>Laatste Run</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Volgende Run</TableHead>
+                      <TableHead className="text-right">Fouten</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {configs.map((config) => {
+                      const nextRun = getNextRunAt(config);
+                      const due = isDue(config);
+                      const circuitOpen = (config.consecutiveFailures ?? 0) >= 5;
+
+                      return (
+                        <TableRow key={config.id} className="border-border">
+                          <TableCell className="capitalize font-medium">
+                            {config.platform}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground font-mono text-xs">
+                            {config.cronExpression ?? "-"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {config.lastRunAt
+                              ? new Date(config.lastRunAt).toLocaleString("nl-NL", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  timeZone: "Europe/Amsterdam",
+                                })
+                              : "Nooit"}
+                          </TableCell>
+                          <TableCell>
+                            {circuitOpen ? (
+                              <Badge
+                                variant="outline"
+                                className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px]"
+                              >
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Circuit Open
+                              </Badge>
+                            ) : due ? (
+                              <Badge
+                                variant="outline"
+                                className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px]"
+                              >
+                                <Clock className="h-3 w-3 mr-1" />
+                                Achterstallig
+                              </Badge>
+                            ) : config.lastRunStatus ? (
+                              <StatusBadge status={config.lastRunStatus} />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {nextRun
+                              ? nextRun.toLocaleString("nl-NL", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  timeZone: "Europe/Amsterdam",
+                                })
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {(config.consecutiveFailures ?? 0) > 0 ? (
+                              <span className="text-red-500 font-medium">
+                                {config.consecutiveFailures}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">0</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Per-Platform Analytics */}
         {analytics.byPlatform.length > 0 && (
