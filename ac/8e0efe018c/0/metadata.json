@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ac8e0efe018c",
+  "session_id": "1b29506a-66e0-45ad-8b21-0fc627390486",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-04T11:43:10.287554Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/meeting-overzicht-ai-instructies-en-backlog.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d2dc7c5241c0",
+  "checkpoint_transcript_start": 71,
+  "transcript_lines_at_start": 71,
+  "token_usage": {
+    "input_tokens": 102,
+    "cache_creation_tokens": 333112,
+    "cache_read_tokens": 9586291,
+    "output_tokens": 33561,
+    "api_call_count": 84
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-04T11:43:08.128189Z",
+    "agent_lines": 32,
+    "human_added": 1491,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1523,
+    "agent_percentage": 2.1011162179908074
+  }
+}

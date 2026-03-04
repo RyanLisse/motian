@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "ac8e0efe018c",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/meeting-overzicht-ai-instructies-en-backlog.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ac/8e0efe018c/0/metadata.json",
+      "transcript": "/ac/8e0efe018c/0/full.jsonl",
+      "context": "/ac/8e0efe018c/0/context.md",
+      "content_hash": "/ac/8e0efe018c/0/content_hash.txt",
+      "prompt": "/ac/8e0efe018c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 102,
+    "cache_creation_tokens": 333112,
+    "cache_read_tokens": 9586291,
+    "output_tokens": 33561,
+    "api_call_count": 84
+  }
+}
