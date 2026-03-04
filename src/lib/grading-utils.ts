@@ -62,3 +62,23 @@ export function extractRadarData(breakdown: CriterionResult[] | null): {
     { subject: "CV Kwaliteit", value: Math.round(avgStars(processCriteria.slice(2))) },
   ];
 }
+
+/** Heuristic CV quality score (0-100) and Dutch label for the grading step. */
+export function computeGradeFromParsed(parsed: {
+  skills?: { hard?: { name: string }[]; soft?: { name: string }[] };
+  experience?: unknown[];
+  education?: unknown[];
+}): { score: number; label: string } {
+  const skillCount = (parsed.skills?.hard?.length ?? 0) + (parsed.skills?.soft?.length ?? 0);
+  const expCount = Array.isArray(parsed.experience) ? parsed.experience.length : 0;
+  const eduCount = Array.isArray(parsed.education) ? parsed.education.length : 0;
+  let score = Math.min(
+    100,
+    20 + skillCount * 3 + Math.min(expCount, 5) * 8 + Math.min(eduCount, 3) * 5,
+  );
+  score = Math.round(Math.max(0, score));
+  if (score >= 80) return { score, label: "Sterk profiel" };
+  if (score >= 60) return { score, label: "Goed profiel" };
+  if (score >= 40) return { score, label: "Basis profiel" };
+  return { score, label: "Beperkt profiel" };
+}

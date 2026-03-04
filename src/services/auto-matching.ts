@@ -12,7 +12,7 @@ import { runStructuredMatch } from "./structured-matching";
 // ========== Config ==========
 
 const MIN_SCORE = 40;
-const TOP_N = 3;
+const DEFAULT_TOP_N = 3;
 
 // ========== Types ==========
 
@@ -96,11 +96,12 @@ async function upsertMatch(
  */
 async function runAutoMatchPipeline(
   pairs: Array<{ job: Job; candidate: Candidate; score: number }>,
+  topN: number = DEFAULT_TOP_N,
 ): Promise<AutoMatchResult[]> {
   const top = pairs
     .sort((a, b) => b.score - a.score)
     .filter((p) => p.score >= MIN_SCORE)
-    .slice(0, TOP_N);
+    .slice(0, topN);
 
   if (top.length === 0) return [];
 
@@ -174,7 +175,10 @@ async function runAutoMatchPipeline(
  * 3. Deep structured match for top 3 with score >= 40% (~8-12s parallel)
  * 4. Creates match records in jobMatches table
  */
-export async function autoMatchCandidateToJobs(candidateId: string): Promise<AutoMatchResult[]> {
+export async function autoMatchCandidateToJobs(
+  candidateId: string,
+  topN: number = DEFAULT_TOP_N,
+): Promise<AutoMatchResult[]> {
   const candidate = await getCandidateById(candidateId);
   if (!candidate) throw new Error("Kandidaat niet gevonden");
 
@@ -196,7 +200,7 @@ export async function autoMatchCandidateToJobs(candidateId: string): Promise<Aut
     ...computeMatchScore(job, freshCandidate),
   }));
 
-  return runAutoMatchPipeline(pairs);
+  return runAutoMatchPipeline(pairs, topN);
 }
 
 // ========== Job → Candidates ==========
@@ -204,7 +208,10 @@ export async function autoMatchCandidateToJobs(candidateId: string): Promise<Aut
 /**
  * Auto-match a job to its top 3 best-fitting candidates.
  */
-export async function autoMatchJobToCandidates(jobId: string): Promise<AutoMatchResult[]> {
+export async function autoMatchJobToCandidates(
+  jobId: string,
+  topN: number = DEFAULT_TOP_N,
+): Promise<AutoMatchResult[]> {
   const job = await getJobById(jobId);
   if (!job) throw new Error("Opdracht niet gevonden");
 
@@ -217,5 +224,5 @@ export async function autoMatchJobToCandidates(jobId: string): Promise<AutoMatch
     ...computeMatchScore(job, candidate),
   }));
 
-  return runAutoMatchPipeline(pairs);
+  return runAutoMatchPipeline(pairs, topN);
 }

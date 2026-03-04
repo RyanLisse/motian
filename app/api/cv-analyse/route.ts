@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { uploadFile } from "@/src/lib/file-storage";
+import { computeGradeFromParsed } from "@/src/lib/grading-utils";
 import { autoMatchCandidateToJobs } from "@/src/services/auto-matching";
 import {
   createCandidate,
@@ -20,26 +21,6 @@ const ALLOWED_TYPES = [
 type AllowedMimeType = (typeof ALLOWED_TYPES)[number];
 
 const MAX_SIZE_MB = 20;
-
-/** Heuristic CV quality score (0–100) en label voor de grade-stap. */
-function computeGradeFromParsed(parsed: {
-  skills?: { hard?: { name: string }[]; soft?: { name: string }[] };
-  experience?: unknown[];
-  education?: unknown[];
-}): { score: number; label: string } {
-  const skillCount = (parsed.skills?.hard?.length ?? 0) + (parsed.skills?.soft?.length ?? 0);
-  const expCount = Array.isArray(parsed.experience) ? parsed.experience.length : 0;
-  const eduCount = Array.isArray(parsed.education) ? parsed.education.length : 0;
-  let score = Math.min(
-    100,
-    20 + skillCount * 3 + Math.min(expCount, 5) * 8 + Math.min(eduCount, 3) * 5,
-  );
-  score = Math.round(Math.max(0, score));
-  if (score >= 80) return { score, label: "Sterk profiel" };
-  if (score >= 60) return { score, label: "Goed profiel" };
-  if (score >= 40) return { score, label: "Basis profiel" };
-  return { score, label: "Beperkt profiel" };
-}
 
 function sseEvent(data: Record<string, unknown>): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
