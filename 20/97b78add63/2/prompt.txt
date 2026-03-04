@@ -1,0 +1,16 @@
+check What’s in place
+
+H1: parseHoursPerWeek returns 0 for some input (e.g. "0", "0 uur", or a range).
+H2: Detail merge sets result.hoursPerWeek from summary even when the value is 0 (falsy check bug).
+H3: Listing card sets hoursPerWeek from another field or typo that ends up as 0.
+H4: Another numeric field (e.g. positionsAvailable) is wrongly assigned to hoursPerWeek.
+H5: Merged object ends up with hoursPerWeek: 0 or minHoursPerWeek: 0 from spread/merge.
+Instrumentation added:
+
+normalize.ts – when validation fails on hoursPerWeek, log externalId, hoursPerWeek, minHoursPerWeek, and platform.
+flextender.ts – log when a listing has hoursPerWeek === 0 or minHoursPerWeek === 0 (card parse).
+flextender.ts – log when detail summary parseHoursPerWeek returns 0 or non‑positive.
+flextender.ts – log when the merged listing (after { ...listingClean, ...detail }) has hoursPerWeek === 0 or minHoursPerWeek === 0.
+Logs are sent to the debug ingest server. If the flextender scrape only runs on Trigger.dev in the cloud, that process does not run on your machine, so the ingest server at 127.0.0.1:7696 will not receive them. To get logs you need a local run (e.g. Trigger dev locally or calling the scrape pipeline from your app on your machine).
+
+After you run these steps, tell me when the scrape has finished. I’ll read the log file at /Users/cortex-air/Developer/motian/.cursor/debug-df9709.log, evaluate each hypothesis (CONFIRMED/REJECTED/INCONCLUSIVE) from the log lines, and then apply a single, evidence-based fix and leave the instrumentation in place for verification. test and verify and commit and push

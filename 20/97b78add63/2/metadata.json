@@ -1,0 +1,23 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "2097b78add63",
+  "session_id": "4b2b2d84-9597-4a36-bb18-063cefffa84e",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-04T20:09:15.783992Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/services/normalize.ts"
+  ],
+  "agent": "Cursor",
+  "turn_id": "318c6632fe65",
+  "initial_attribution": {
+    "calculated_at": "2026-03-04T20:09:15.782424Z",
+    "agent_lines": 34,
+    "human_added": 59,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 93,
+    "agent_percentage": 36.55913978494624
+  }
+}
