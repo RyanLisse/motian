@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f3c864d77ef0",
+  "session_id": "c5918284-b449-4d41-8066-749b29c00a08",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-04T19:45:56.007505Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "app/api/chat/route.ts",
+    "components/chat/chat-page-content.tsx",
+    "components/chat/chat-panel.tsx",
+    "src/db/schema.ts"
+  ],
+  "agent": "Cursor",
+  "turn_id": "190da75f4c4b",
+  "initial_attribution": {
+    "calculated_at": "2026-03-04T19:45:56.002373Z",
+    "agent_lines": 211,
+    "human_added": 245,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 456,
+    "agent_percentage": 46.271929824561404
+  }
+}
