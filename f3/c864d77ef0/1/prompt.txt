@@ -79,3 +79,7 @@
 ---
 
 resolve alll remaining issues
+
+---
+
+finish all slash commands

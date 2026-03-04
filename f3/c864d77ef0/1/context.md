@@ -16,3 +16,7 @@
 
 resolve alll remaining issues
 
+### Prompt 3
+
+finish all slash commands
+
