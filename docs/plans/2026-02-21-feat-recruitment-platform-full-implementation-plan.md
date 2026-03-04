@@ -1,3 +1,5 @@
+> ⚠️ REFERENTIE — Dit plan was gebaseerd op Motia Steps. Actuele implementatie is Next.js 16 + Drizzle. Zie /app en /src.
+
 ---
 title: "feat: Recruitment Platform Full Implementation"
 type: feat

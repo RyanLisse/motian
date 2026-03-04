@@ -365,3 +365,23 @@ export const messages = pgTable(
     deletedAtIdx: index("idx_messages_deleted_at").on(table.deletedAt),
   }),
 );
+
+// ========== Platform Instellingen ==========
+export const platformSettings = pgTable(
+  "platform_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    category: text("category").notNull(), // "matching" | "gegevensbeheer" | "meldingen"
+    key: text("key").notNull(),
+    value: jsonb("value").notNull(),
+    description: text("description"),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    categoryKeyUniqueIdx: uniqueIndex("uq_platform_settings_category_key").on(
+      table.category,
+      table.key,
+    ),
+    categoryIdx: index("idx_platform_settings_category").on(table.category),
+  }),
+);

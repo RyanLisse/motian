@@ -1,10 +1,14 @@
-import { Settings } from "lucide-react";
-import { EmptyState } from "@/components/shared/empty-state";
+import { SettingsForm } from "@/components/settings-form";
+import { getAllSettings } from "@/src/services/settings";
 
-export default function SettingsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
+  const settings = await getAllSettings();
+
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+      <div className="max-w-[800px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <div>
           <h1 className="text-xl font-bold text-foreground">Instellingen</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -12,11 +16,7 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        <EmptyState
-          icon={<Settings className="h-8 w-8 opacity-40" />}
-          title="Binnenkort beschikbaar"
-          subtitle="Instellingen worden hier binnenkort toegevoegd"
-        />
+        <SettingsForm initial={settings} />
       </div>
     </div>
   );
