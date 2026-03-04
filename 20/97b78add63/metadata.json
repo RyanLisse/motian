@@ -3,10 +3,12 @@
   "checkpoint_id": "2097b78add63",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 2,
+  "checkpoints_count": 4,
   "files_touched": [
     "app/overzicht/page.tsx",
     "app/scraper/page.tsx",
+    "components/shared/kpi-card.tsx",
+    "src/services/normalize.ts",
     "src/services/scrape-results.ts"
   ],
   "sessions": [
@@ -16,6 +18,13 @@
       "context": "/20/97b78add63/0/context.md",
       "content_hash": "/20/97b78add63/0/content_hash.txt",
       "prompt": "/20/97b78add63/0/prompt.txt"
+    },
+    {
+      "metadata": "/20/97b78add63/1/metadata.json",
+      "transcript": "/20/97b78add63/1/full.jsonl",
+      "context": "/20/97b78add63/1/context.md",
+      "content_hash": "/20/97b78add63/1/content_hash.txt",
+      "prompt": "/20/97b78add63/1/prompt.txt"
     }
   ],
   "token_usage": {
