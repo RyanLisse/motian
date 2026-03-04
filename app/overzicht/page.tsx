@@ -238,6 +238,15 @@ export default async function OverzichtPage() {
                       <div className="flex items-center gap-2 sm:gap-4 text-xs text-muted-foreground flex-wrap">
                         <span>{s.jobsNew ?? 0} nieuw</span>
                         <span>{s.jobsFound ?? 0} gevonden</span>
+                        {(() => {
+                          const skipped =
+                            (s.jobsFound ?? 0) - (s.jobsNew ?? 0) - (s.duplicates ?? 0);
+                          return skipped > 0 ? (
+                            <span title="Validatiefout of niet opgeslagen">
+                              {skipped} overgeslagen
+                            </span>
+                          ) : null;
+                        })()}
                         {s.runAt && (
                           <span>
                             {new Date(s.runAt).toLocaleString("nl-NL", {

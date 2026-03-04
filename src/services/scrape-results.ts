@@ -71,27 +71,34 @@ export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeRe
 
 /** Bereken analytics per platform over alle scrape resultaten */
 export async function getAnalytics(): Promise<ScrapeAnalytics> {
-  const rows = await db
-    .select({
-      platform: scrapeResults.platform,
-      totalRuns: sql<number>`count(*)::int`,
-      successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
-      partialCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'partial')::int`,
-      failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
-      totalJobsFound: sql<number>`coalesce(sum(${scrapeResults.jobsFound}), 0)::int`,
-      totalJobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
-      totalDuplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
-      avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
-    })
-    .from(scrapeResults)
-    .groupBy(scrapeResults.platform);
+  const [rows, uniqueJobsResult, overallDuration] = await Promise.all([
+    db
+      .select({
+        platform: scrapeResults.platform,
+        totalRuns: sql<number>`count(*)::int`,
+        successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
+        partialCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'partial')::int`,
+        failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
+        totalJobsFound: sql<number>`coalesce(sum(${scrapeResults.jobsFound}), 0)::int`,
+        totalJobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
+        totalDuplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
+        avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
+      })
+      .from(scrapeResults)
+      .groupBy(scrapeResults.platform),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(jobs)
+      .where(sql`${jobs.deletedAt} is null`),
+    db
+      .select({
+        avgMs: sql<number>`(coalesce(round(avg(${scrapeResults.durationMs})), 0))::int`,
+      })
+      .from(scrapeResults),
+  ]);
 
-  const [uniqueJobsResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(jobs)
-    .where(sql`${jobs.deletedAt} is null`);
-
-  const totalUniqueJobs = uniqueJobsResult?.count ?? 0;
+  const totalUniqueJobs = uniqueJobsResult?.[0]?.count ?? 0;
+  const overallAvgDurationMs = overallDuration?.[0]?.avgMs ?? 0;
 
   const byPlatform: PlatformStats[] = rows.map((r) => ({
     ...r,
@@ -109,10 +116,7 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
     totalDuplicates: byPlatform.reduce((s, p) => s + p.totalDuplicates, 0),
     totalUniqueJobs,
     overallSuccessRate: totalRuns > 0 ? Math.round((totalNotFailed / totalRuns) * 100) : 0,
-    avgDurationMs:
-      totalRuns > 0
-        ? Math.round(byPlatform.reduce((s, p) => s + p.avgDurationMs * p.totalRuns, 0) / totalRuns)
-        : 0,
+    avgDurationMs: totalRuns > 0 ? overallAvgDurationMs : 0,
     byPlatform,
   };
 }

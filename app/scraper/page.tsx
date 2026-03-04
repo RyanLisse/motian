@@ -85,6 +85,7 @@ export default async function ScraperPage() {
             iconClassName="text-primary/60"
             valueClassName="text-primary"
             compact
+            title="Aantal scrape-runs in de historie (alle platforms)"
           />
           <KPICard
             icon={<Search className="h-4 w-4" />}
@@ -93,6 +94,7 @@ export default async function ScraperPage() {
             iconClassName="text-blue-500/60"
             valueClassName="text-blue-500"
             compact
+            title="Huidig aantal opdrachten in de database (niet verwijderd)"
           />
           <KPICard
             icon={<Sparkles className="h-4 w-4" />}
@@ -101,6 +103,7 @@ export default async function ScraperPage() {
             iconClassName="text-green-500/60"
             valueClassName="text-green-500"
             compact
+            title="Cumulatief aantal inserts (nieuw) over alle runs"
           />
           <KPICard
             icon={<Database className="h-4 w-4" />}
@@ -115,6 +118,7 @@ export default async function ScraperPage() {
             iconClassName="text-amber-500/60"
             valueClassName="text-amber-500"
             compact
+            title="Gemiddeld aantal opgeslagen per run (nieuw + duplicaten)"
           />
           <KPICard
             icon={<CheckCircle className="h-4 w-4" />}
@@ -129,6 +133,7 @@ export default async function ScraperPage() {
                   : "text-red-500"
             }
             compact
+            title="Percentage runs met status geslaagd of gedeeltelijk"
           />
           <KPICard
             icon={<Clock className="h-4 w-4" />}
@@ -138,6 +143,7 @@ export default async function ScraperPage() {
             }
             iconClassName="text-muted-foreground"
             compact
+            title="Gemiddelde duur van een scrape-run (alle platforms)"
           />
         </div>
 
@@ -404,6 +410,9 @@ export default async function ScraperPage() {
                       <TableHead className="text-right">Gevonden</TableHead>
                       <TableHead className="text-right">Nieuw</TableHead>
                       <TableHead className="text-right">Duplicaten</TableHead>
+                      <TableHead className="text-right" title="Validatiefout of niet opgeslagen">
+                        Overgeslagen
+                      </TableHead>
                       <TableHead className="text-right">Duur</TableHead>
                       <TableHead>Fouten</TableHead>
                     </TableRow>
@@ -438,6 +447,15 @@ export default async function ScraperPage() {
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground">
                             {result.duplicates}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {(() => {
+                              const skipped =
+                                (result.jobsFound ?? 0) -
+                                (result.jobsNew ?? 0) -
+                                (result.duplicates ?? 0);
+                              return skipped > 0 ? skipped : "-";
+                            })()}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground">
                             {result.durationMs ? `${(result.durationMs / 1000).toFixed(1)}s` : "-"}

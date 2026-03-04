@@ -12,6 +12,8 @@ interface KPICardProps {
   labelClassName?: string;
   /** Compact mode uses smaller padding and font size */
   compact?: boolean;
+  /** Optional tooltip describing how the value is calculated */
+  title?: string;
 }
 
 export function KPICard({
@@ -22,10 +24,12 @@ export function KPICard({
   iconClassName = "text-muted-foreground",
   labelClassName = "text-muted-foreground",
   compact = false,
+  title,
 }: KPICardProps) {
   return (
     <div
       className={`bg-card border border-border min-w-0 ${compact ? "rounded-lg p-3" : "rounded-xl p-4"}`}
+      title={title}
     >
       <div className={`flex items-center gap-2 min-w-0 ${iconClassName} mb-1`}>
         {icon}
