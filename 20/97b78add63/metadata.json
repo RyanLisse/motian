@@ -3,7 +3,7 @@
   "checkpoint_id": "2097b78add63",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 6,
+  "checkpoints_count": 12,
   "files_touched": [
     "app/overzicht/page.tsx",
     "app/scraper/page.tsx",
@@ -39,6 +39,13 @@
       "context": "/20/97b78add63/3/context.md",
       "content_hash": "/20/97b78add63/3/content_hash.txt",
       "prompt": "/20/97b78add63/3/prompt.txt"
+    },
+    {
+      "metadata": "/20/97b78add63/4/metadata.json",
+      "transcript": "/20/97b78add63/4/full.jsonl",
+      "context": "/20/97b78add63/4/context.md",
+      "content_hash": "/20/97b78add63/4/content_hash.txt",
+      "prompt": "/20/97b78add63/4/prompt.txt"
     }
   ],
   "token_usage": {
