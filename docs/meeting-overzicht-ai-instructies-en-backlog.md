@@ -55,7 +55,7 @@
 | **Chat-sessies** | ✅ Schrijven (met logging) | chat_sessions: fire-and-forget met error logging; faalt niet als persistence faalt. |
 | **Reports** | ✅ Alleen lezen | Genereert rapport uit bestaande match (geen extra persistentie). |
 | **Striive scraping** | ✅ Volledig | Playwright-gebaseerd (local + webhook mode). Niet langer stub. |
-| **Instellingen** | ❌ Alleen UI | Settings-pagina: lege “Binnenkort beschikbaar”-state, geen backend/DB. |
+| **Instellingen** | ✅ Lezen + schrijven | platform_settings tabel, GET/PUT /api/instellingen, 3-categorie formulier (Matching, Gegevensbeheer, Meldingen). |
 | **AI Grading / CV Beheer** | ✅ Tabs onder Matching | AI Grading en CV Analyse beschikbaar als tabs op /matching pagina. |
 
 ---
@@ -66,7 +66,7 @@
 
 | Onderdeel | Situatie |
 |-----------|----------|
-| **Instellingen** | Pagina toont alleen “Binnenkort beschikbaar”. Geen API, geen tabel, geen opslag. (P4 — backlog) |
+| ~~**Instellingen**~~ | ✅ **OPGELOST** — platform_settings tabel, GET/PUT API, 6 configureerbare velden in 3 categorieën. |
 | ~~**AI Grading (als aparte flow)**~~ | ✅ **OPGELOST** — AI Grading beschikbaar als tab op /matching. Structured matching schrijft naar DB. |
 | ~~**CV Beheer (als module)**~~ | ✅ **OPGELOST** — CV Analyse beschikbaar als tab op /matching. CV-upload schrijft kandidaat naar DB. |
 
@@ -97,7 +97,7 @@
 
 Alle 146 beads zijn gesloten (gemiddelde doorlooptijd: 3.0 uur). Enige resterende backlog-items:
 
-- **Instellingen (Settings)** — P4: pagina is placeholder, geen backend. Bewust uitgesteld.
+- ~~**Instellingen (Settings)**~~ — ✅ **OPGELOST** — platform_settings tabel, API, formulier met 6 velden.
 - **Berichten in sidebar** — Bewust uitgesteld; bereikbaar via /messages route.
 
 ---
@@ -107,8 +107,8 @@ Alle 146 beads zijn gesloten (gemiddelde doorlooptijd: 3.0 uur). Enige resterend
 - **Instructies voor de AI** staan in **AGENTS.md** en **CLAUDE.md** (workflow, stack, conventies, beads).
 - **Productbacklog/requirements** komen uit **PRD.md** en het **full implementation plan** in `docs/plans/`.
 - **Alle 146 beads gesloten** — gemiddelde doorlooptijd 3.0 uur.
-- **Volledig werkend met DB:** opdrachten, scraper (Playwright), kandidaten, matches (hybride scoring), sollicitaties, interviews, berichten, chat-sessies (met error logging), GDPR (kandidaten + contacten + audit trail), AI enrichment (met retry), paginatie (6 routes), full-text search (tsvector), zoeken (LIKE-escape), cron per platform, kandidaat-embeddings.
+- **Volledig werkend met DB:** opdrachten, scraper (Playwright), kandidaten, matches (hybride scoring), sollicitaties, interviews, berichten, chat-sessies (met error logging), GDPR (kandidaten + contacten + audit trail), AI enrichment (met retry), paginatie (6 routes), full-text search (tsvector), zoeken (LIKE-escape), cron per platform, kandidaat-embeddings, **instellingen** (platform_settings tabel, 6 velden, 3 categorieën).
 - **AI features:** AI Matching, AI Grading en CV Analyse als tabs onder /matching.
-- **Enige openstaande items:** Instellingen-pagina (P4, placeholder) en Berichten-link in sidebar (bewust uitgesteld).
+- **Enige openstaande items:** Berichten-link in sidebar (bewust uitgesteld).
 
 Dit document is bijgewerkt op **2026-03-04** en staat in **`docs/meeting-overzicht-ai-instructies-en-backlog.md`**.
