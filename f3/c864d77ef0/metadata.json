@@ -3,7 +3,7 @@
   "checkpoint_id": "f3c864d77ef0",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 3,
+  "checkpoints_count": 5,
   "files_touched": [
     "app/api/chat-sessies/[id]/route.ts",
     "app/api/chat-sessies/route.ts",
@@ -28,6 +28,13 @@
       "context": "/f3/c864d77ef0/1/context.md",
       "content_hash": "/f3/c864d77ef0/1/content_hash.txt",
       "prompt": "/f3/c864d77ef0/1/prompt.txt"
+    },
+    {
+      "metadata": "/f3/c864d77ef0/2/metadata.json",
+      "transcript": "/f3/c864d77ef0/2/full.jsonl",
+      "context": "/f3/c864d77ef0/2/context.md",
+      "content_hash": "/f3/c864d77ef0/2/content_hash.txt",
+      "prompt": "/f3/c864d77ef0/2/prompt.txt"
     }
   ],
   "token_usage": {

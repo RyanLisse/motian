@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "f3c864d77ef0",
+  "session_id": "unknown",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-04T19:45:56.113927Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "app/api/chat-sessies/[id]/route.ts",
+    "app/api/chat-sessies/route.ts",
+    "app/api/chat/route.ts",
+    "components/chat/chat-history-sidebar.tsx",
+    "components/chat/chat-page-content.tsx",
+    "components/chat/chat-panel.tsx",
+    "src/db/schema.ts",
+    "src/services/chat-sessions.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "6b1a8cd6a7f1",
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-04T19:45:56.103402Z",
+    "agent_lines": 467,
+    "human_added": 4110,
+    "human_modified": 5,
+    "human_removed": 0,
+    "total_committed": 4582,
+    "agent_percentage": 10.192055870798777
+  }
+}
