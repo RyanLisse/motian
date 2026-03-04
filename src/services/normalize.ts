@@ -32,29 +32,26 @@ export async function normalizeAndSaveJobs(
       );
       // #region agent log
       if (hasHoursPerWeekError) {
-        fetch(
-          "http://127.0.0.1:7696/ingest/807648ac-0e4a-43e7-9281-fc9626035545",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Debug-Session-Id": "df9709",
-            },
-            body: JSON.stringify({
-              sessionId: "df9709",
-              hypothesisId: "H1-H5",
-              location: "normalize.ts:validation-fail",
-              message: "hoursPerWeek validation failed",
-              data: {
-                externalId: (raw as { externalId?: string }).externalId,
-                hoursPerWeek: (raw as { hoursPerWeek?: number }).hoursPerWeek,
-                minHoursPerWeek: (raw as { minHoursPerWeek?: number }).minHoursPerWeek,
-                platform,
-              },
-              timestamp: Date.now(),
-            }),
+        fetch("http://127.0.0.1:7696/ingest/807648ac-0e4a-43e7-9281-fc9626035545", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "df9709",
           },
-        ).catch(() => {});
+          body: JSON.stringify({
+            sessionId: "df9709",
+            hypothesisId: "H1-H5",
+            location: "normalize.ts:validation-fail",
+            message: "hoursPerWeek validation failed",
+            data: {
+              externalId: (raw as { externalId?: string }).externalId,
+              hoursPerWeek: (raw as { hoursPerWeek?: number }).hoursPerWeek,
+              minHoursPerWeek: (raw as { minHoursPerWeek?: number }).minHoursPerWeek,
+              platform,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
       }
       // #endregion
       errors.push(`Validation: ${parsed.error.message}`);

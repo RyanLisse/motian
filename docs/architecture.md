@@ -111,9 +111,9 @@ RRF formula: `score = sum(1 / (k + rank))` with k=60.
 
 ## CLI & MCP
 
-### CLI (34 commando's)
+### CLI (41 commando's)
 
-Terminal interface via `pnpm cli <command>`. Commands grouped by domain: kandidaten (7), vacatures (5), matches (6), sollicitaties (5), interviews (3), berichten (2), gdpr (4), ops (2).
+Terminal interface via `pnpm cli <command>`. Commands grouped by domain: kandidaten (7), vacatures (6), matches (6), sollicitaties (5), interviews (4), berichten (2), gdpr (4), ops (2), scraper (4), health (1).
 
 ### MCP Server (37 tools)
 

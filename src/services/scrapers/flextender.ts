@@ -124,6 +124,27 @@ function parseFlextenderHtml(html: string): FlextenderListing[] {
 
     // Parse "Uren per week": "36 uur" → 36, "24 tot 32 uur" → min=24, max=32
     const { hoursPerWeek, minHoursPerWeek } = parseHoursPerWeek(fields["Uren per week"]);
+    // #region agent log
+    if (hoursPerWeek === 0 || minHoursPerWeek === 0) {
+      fetch("http://127.0.0.1:7696/ingest/807648ac-0e4a-43e7-9281-fc9626035545", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "df9709" },
+        body: JSON.stringify({
+          sessionId: "df9709",
+          hypothesisId: "H1",
+          location: "flextender.ts:listing-hours",
+          message: "listing hoursPerWeek or minHoursPerWeek is 0",
+          data: {
+            externalId,
+            rawUrenPerWeek: fields["Uren per week"],
+            hoursPerWeek,
+            minHoursPerWeek,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion
 
     // Extract company logo URL
     const logoMatch =
@@ -189,7 +210,31 @@ async function enrichListings(
             ];
           }
           const { _rawHours, ...listingClean } = listing;
-          return { ...listingClean, ...detail };
+          const merged = { ...listingClean, ...detail };
+          // #region agent log
+          if (
+            (merged as { hoursPerWeek?: number }).hoursPerWeek === 0 ||
+            (merged as { minHoursPerWeek?: number }).minHoursPerWeek === 0
+          ) {
+            fetch("http://127.0.0.1:7696/ingest/807648ac-0e4a-43e7-9281-fc9626035545", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "df9709" },
+              body: JSON.stringify({
+                sessionId: "df9709",
+                hypothesisId: "H5",
+                location: "flextender.ts:enrich-merged",
+                message: "merged listing has hoursPerWeek or minHoursPerWeek 0",
+                data: {
+                  externalId: merged.externalId,
+                  hoursPerWeek: (merged as { hoursPerWeek?: number }).hoursPerWeek,
+                  minHoursPerWeek: (merged as { minHoursPerWeek?: number }).minHoursPerWeek,
+                },
+                timestamp: Date.now(),
+              }),
+            }).catch(() => {});
+          }
+          // #endregion
+          return merged;
         } catch (err) {
           detailFailures++;
           (logger?.warn ?? console.warn)(
@@ -337,6 +382,29 @@ function parseDetailHtml(html: string): FlextenderDetail {
 
   // hoursPerWeek from summary (may override listing-level if detail has it)
   const summaryHours = parseHoursPerWeek(summaryFields["Uren per week"]);
+  // #region agent log
+  if (
+    summaryHours.hoursPerWeek === 0 ||
+    summaryHours.minHoursPerWeek === 0 ||
+    (summaryHours.hoursPerWeek !== undefined && summaryHours.hoursPerWeek <= 0)
+  ) {
+    fetch("http://127.0.0.1:7696/ingest/807648ac-0e4a-43e7-9281-fc9626035545", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "df9709" },
+      body: JSON.stringify({
+        sessionId: "df9709",
+        hypothesisId: "H2",
+        location: "flextender.ts:detail-summary-hours",
+        message: "detail summaryHours has 0 or non-positive",
+        data: {
+          rawUrenPerWeek: summaryFields["Uren per week"],
+          summaryHours,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
   if (summaryHours.hoursPerWeek) {
     result.hoursPerWeek = summaryHours.hoursPerWeek;
     if (summaryHours.minHoursPerWeek) result.minHoursPerWeek = summaryHours.minHoursPerWeek;

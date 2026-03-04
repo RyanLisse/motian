@@ -326,3 +326,54 @@ export async function deleteJob(id: string): Promise<boolean> {
 
   return rows.length > 0;
 }
+
+/** Statistieken: aantal per platform, per provincie, gemiddeld tarief. */
+export async function getJobStats(): Promise<{
+  total: number;
+  byPlatform: Array<{ platform: string; count: number }>;
+  byProvince: Array<{ province: string | null; count: number }>;
+  avgRateMin: number | null;
+  avgRateMax: number | null;
+}> {
+  const [byPlatformRows, byProvinceRows, aggRow] = await Promise.all([
+    db
+      .select({
+        platform: jobs.platform,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(jobs)
+      .where(isNull(jobs.deletedAt))
+      .groupBy(jobs.platform)
+      .orderBy(sql`count(*) desc`),
+    db
+      .select({
+        province: jobs.province,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(jobs)
+      .where(isNull(jobs.deletedAt))
+      .groupBy(jobs.province)
+      .orderBy(sql`count(*) desc`)
+      .limit(20),
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        avgRateMin: sql<number | null>`avg(${jobs.rateMin})::float`,
+        avgRateMax: sql<number | null>`avg(${jobs.rateMax})::float`,
+      })
+      .from(jobs)
+      .where(isNull(jobs.deletedAt)),
+  ]);
+
+  const agg = aggRow[0];
+  return {
+    total: agg?.total ?? 0,
+    byPlatform: byPlatformRows.map((r) => ({ platform: r.platform, count: r.count })),
+    byProvince: byProvinceRows.map((r) => ({
+      province: r.province,
+      count: r.count,
+    })),
+    avgRateMin: agg?.avgRateMin != null ? Math.round(agg.avgRateMin) : null,
+    avgRateMax: agg?.avgRateMax != null ? Math.round(agg.avgRateMax) : null,
+  };
+}

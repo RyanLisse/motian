@@ -15,7 +15,14 @@ import {
 
 // ========== Vacatures ==========
 
-import { deleteJob, getJobById, listJobs, searchJobsByTitle, updateJob } from "../services/jobs";
+import {
+  deleteJob,
+  getJobById,
+  getJobStats,
+  listJobs,
+  searchJobsByTitle,
+  updateJob,
+} from "../services/jobs";
 
 // ========== Matches ==========
 
@@ -56,6 +63,8 @@ import {
   reviewGdprRetention,
   runCandidateScoringBatch,
 } from "../services/operations-console";
+import { getHistory } from "../services/scrape-results";
+import { getAllConfigs, getHealth, updateConfig } from "../services/scrapers";
 
 // ========== Helpers ==========
 
@@ -280,6 +289,12 @@ export const commands: Record<string, Command> = {
     },
   },
 
+  "vacatures:stats": {
+    description: "Statistieken vacatures: aantal per platform, per provincie, gemiddeld tarief",
+    usage: "",
+    handler: async () => getJobStats(),
+  },
+
   // ── Matches ────────────────────────────────────────────────────────────
 
   "matches:zoek": {
@@ -471,6 +486,17 @@ export const commands: Record<string, Command> = {
     },
   },
 
+  "interviews:annuleren": {
+    description: "Annuleer een gepland interview",
+    usage: "--id <uuid>",
+    handler: async (args) => {
+      const id = requireArg(args, "id");
+      const { interview } = await updateInterview(id, { status: "cancelled" });
+      if (!interview) throw new Error("Interview niet gevonden");
+      return interview;
+    },
+  },
+
   // ── Berichten ──────────────────────────────────────────────────────────
 
   "berichten:zoek": {
@@ -565,5 +591,58 @@ export const commands: Record<string, Command> = {
     handler: async () => {
       return runCandidateScoringBatch();
     },
+  },
+
+  // ── Scraper ────────────────────────────────────────────────────────────
+
+  "scraper:list": {
+    description: "Toon alle scraperconfiguraties met status",
+    usage: "",
+    handler: async () => getAllConfigs(),
+  },
+
+  "scraper:toggle": {
+    description: "Zet scraper aan of uit voor een platform",
+    usage: "--platform <platform> [--on|--off]",
+    handler: async (args) => {
+      const platform = requireArg(args, "platform");
+      const configs = await getAllConfigs();
+      const config = configs.find((c) => c.platform === platform);
+      if (!config) throw new Error(`Scraper niet gevonden voor platform: ${platform}`);
+      const onFlag = args.on === true;
+      const offFlag = args.off === true;
+      const isActive = offFlag ? false : onFlag ? true : !config.isActive;
+      const updated = await updateConfig(config.id, { isActive });
+      if (!updated) throw new Error("Configuratie bijwerken mislukt");
+      return updated;
+    },
+  },
+
+  "scraper:trigger": {
+    description: "Start scrape handmatig (alle actieve platforms of één platform)",
+    usage: "[--platform <platform>]",
+    handler: async (args) => {
+      const platform = optionalString(args, "platform");
+      return importJobsFromActiveScrapers(platform);
+    },
+  },
+
+  "scraper:history": {
+    description: "Toon recente scrape-resultaten",
+    usage: "[--platform <platform>] [--limit <n>]",
+    handler: async (args) => {
+      return getHistory({
+        platform: optionalString(args, "platform"),
+        limit: optionalNumber(args, "limit"),
+      });
+    },
+  },
+
+  // ── Gezondheid ────────────────────────────────────────────────────────
+
+  health: {
+    description: "Gezondheidsrapport per scraperplatform",
+    usage: "",
+    handler: async () => getHealth(),
   },
 };
