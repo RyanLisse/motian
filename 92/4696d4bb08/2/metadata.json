@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "924696d4bb08",
+  "session_id": "2fe3eee0-dcc0-4396-b6f3-a5f7816e4767",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-04T20:10:48.398041Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/plans/2026-03-04-feat-whatsapp-cv-analyse-plan.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "3bf77795be09",
+  "token_usage": {
+    "input_tokens": 83,
+    "cache_creation_tokens": 377340,
+    "cache_read_tokens": 7852592,
+    "output_tokens": 33492,
+    "api_call_count": 63
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-04T20:10:48.024737Z",
+    "agent_lines": 279,
+    "human_added": 1200,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1479,
+    "agent_percentage": 18.864097363083165
+  }
+}

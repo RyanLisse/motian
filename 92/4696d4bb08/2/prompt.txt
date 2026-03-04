@@ -1,0 +1,665 @@
+Swarm-enabled LFG. Run these steps in order, parallelizing where indicated.
+
+## Sequential Phase
+
+1. `/ralph-wiggum:ralph-loop "finish all slash commands" --completion-promise "DONE"`
+2. `/workflows:plan  lets add whatsapp https://github.com/steipete/wacli we need to be able to talk to the agent and the user
+  should be able to upload a pdv or doc resume , and get the grading results plus top 5 matching vacatures``
+3. `/compound-engineering:deepen-plan`
+4. `/workflows:work` — **Use swarm mode**: Make a Task list and launch an army of agent swarm subagents to build the plan
+
+## Parallel Phase
+
+After work completes, launch steps 5 and 6 as **parallel swarm agents** (both only need code to be written):
+
+5. `/workflows:review` — spawn as background Task agent
+6. `/compound-engineering:test-browser` — spawn as background Task agent
+
+Wait for both to complete before continuing.
+
+## Finalize Phase
+
+7. `/compound-engineering:resolve_todo_parallel` — resolve any findings from the review
+8. `/compound-engineering:feature-video` — record the final walkthrough and add to PR
+9. Output `<promise>DONE</promise>` when video is in PR
+
+Start with step 1 now.
+
+---
+
+# Ralph Loop Command
+
+Execute the setup script to initialize the Ralph loop:
+
+🔄 Ralph loop activated in this session!
+
+Iteration: 1
+Max iterations: unlimited
+Completion promise: DONE (ONLY output when TRUE - do not lie!)
+
+The stop hook is now active. When you try to exit, the SAME PROMPT will be
+fed back to you. You'll see your previous work in files, creating a
+self-referential loop where you iteratively improve on the same task.
+
+To monitor: head -10 .claude/ralph-loop.local.md
+
+⚠️  WARNING: This loop cannot be stopped manually! It will run infinitely
+    unless you set --max-iterations or --completion-promise.
+
+🔄
+
+finish all slash commands
+
+═══════════════════════════════════════════════════════════
+CRITICAL - Ralph Loop Completion Promise
+═══════════════════════════════════════════════════════════
+
+To complete this loop, output this EXACT text:
+  <promise>DONE</promise>
+
+STRICT REQUIREMENTS (DO NOT VIOLATE):
+  ✓ Use <promise> XML tags EXACTLY as shown above
+  ✓ The statement MUST be completely and unequivocally TRUE
+  ✓ Do NOT output false statements to exit the loop
+  ✓ Do NOT lie even if you think you should exit
+
+IMPORTANT - Do not circumvent the loop:
+  Even if you believe you're stuck, the task is impossible,
+  or you've been running too long - you MUST NOT output a
+  false promise statement. The loop is designed to continue
+  until the promise is GENUINELY TRUE. Trust the process.
+
+  If the loop should stop, the promise statement will become
+  true naturally. Do not force it by lying.
+═══════════════════════════════════════════════════════════
+
+Please work on the task. When you try to exit, the Ralph loop will feed the SAME PROMPT back to you for the next iteration. You'll see your previous work in files and git history, allowing you to iterate and improve.
+
+CRITICAL RULE: If a completion promise is set, you may ONLY output it when the statement is completely and unequivocally TRUE. Do not output false promises to escape the loop, even if you think you're stuck or should exit for other reasons. The loop is designed to continue until genuine completion.
+
+---
+
+Swarm-enabled LFG. Run these steps in order, parallelizing where indicated.
+
+## Sequential Phase
+
+1. `/ralph-wiggum:ralph-loop "finish all slash commands" --completion-promise "DONE"`
+2. `/workflows:plan `
+3. `/compound-engineering:deepen-plan`
+4. `/workflows:work` — **Use swarm mode**: Make a Task list and launch an army of agent swarm subagents to build the plan
+
+## Parallel Phase
+
+After work completes, launch steps 5 and 6 as **parallel swarm agents** (both only need code to be written):
+
+5. `/workflows:review` — spawn as background Task agent
+6. `/compound-engineering:test-browser` — spawn as background Task agent
+
+Wait for both to complete before continuing.
+
+## Finalize Phase
+
+7. `/compound-engineering:resolve_todo_parallel` — resolve any findings from the review
+8. `/compound-engineering:feature-video` — record the final walkthrough and add to PR
+9. Output `<promise>DONE</promise>` when video is in PR
+
+Start with step 1 now.
+
+---
+
+<task-notification>
+<task-id>b4iads3c1</task-id>
+<tool-use-id>toolu_01Eud5hZY1LDHu9KZvxotiHz</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-cortex-air-Developer-motian/tasks/b4iads3c1.output</output-file>
+<status>completed</status>
+<summary>Background command "Run existing tests to ensure no regressions" completed (exit code 0)</summary>
+</task-notification>
+Read the output file to retrieve the result: /private/tmp/claude-501/-Users-cortex-air-Developer-motian/tasks/b4iads3c1.output
+
+---
+
+proceed
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Analysis:
+Let me chronologically analyze the conversation:
+
+1. **Initial Request**: User invoked `/compound-engineering:slfg` (Swarm-enabled LFG workflow) with the task: "lets add whatsapp https://github.com/steipete/wacli we need to be able to talk to the agent and the user should be able to upload a pdv or doc resume, and get the grading results plus top 5 matching vacatures"
+
+2. **Step 1 - Ralph Loop**: Activated with completion promise "DONE" to keep iterating until all steps complete.
+
+3. **Step 2 - Plan**: 
+   - Explored the full Motian codebase (Next.js 16 Dutch recruitment platform)
+   - Fetched wacli GitHub repo info
+   - Created initial plan at `docs/plans/2026-03-04-feat-whatsapp-cv-analyse-plan.md` using wacli
+
+4. **User Intervention**: User sent a detailed message about OpenClaw's architecture, explaining they use Baileys (Node.js WhatsApp Web library) not wacli. This is event-driven, native JS, much better fit.
+
+5. **User said "research the best way"**: Triggered deep research phase.
+
+6. **Step 3 - Deepen Plan**: Launched two research agents:
+   - Agent 1: Comprehensive comparison of all WhatsApp integration options (Baileys, whatsapp-web.js, Official Cloud API, wacli, OpenClaw)
+   - Agent 2: Detailed Baileys implementation patterns with working code
+
+7. **Research Conclusion**: Baileys recommended for short-term (personal account, native TypeScript, event-driven) with Official Cloud API for long-term production.
+
+8. **Step 4 - Implementation (Swarm Mode)**:
+   - Created 8 tasks in task list
+   - Installed dependencies: `@whiskeysockets/baileys`, `@hapi/boom`, `pino`
+   - Launched 4 parallel Engineer agents:
+     - Agent 1: Schemas + grading extraction
+     - Agent 2: Auto-matching topN parameter
+     - Agent 3: WhatsApp gateway service
+     - Agent 4: CV pipeline + trigger task + status endpoint
+
+9. **All agents completed successfully**. Verified files exist, ran tsc and lint.
+
+10. **Lint fixes**: 
+    - `app/api/whatsapp/status/route.ts` — unused `err` variable → changed to `_err`
+    - `src/services/whatsapp.ts` — Biome false positive on `useMultiFileAuthState` (thinks it's React hook) → added biome-ignore comment
+    - Formatting issues → `pnpm lint:fix` auto-fixed
+
+11. **Steps 5 & 6 - Review + Tests** (parallel):
+    - Code reviewer found 7 issues
+    - Tests passed (exit code 0)
+
+12. **Step 7 - Resolve Review Findings** (7 fixes):
+    1. Race condition → per-sender `processingLocks` Map with promise chaining
+    2. File size validation → `MAX_FILE_SIZE_BYTES` check before download
+    3. GDPR deletion handler → `handleWhatsAppText()` with soft-delete
+    4. Rate limiter memory leak → `cleanupTimer` interval + `destroy()` method
+    5. Phone sanitization → `sanitizePhone()` validating 10-15 digits
+    6. Error status → Added `"error"` to `WhatsAppStatus` union type
+    7. Graceful shutdown → `AbortController` + `waitUntilAborted()` replacing never-resolving promise
+
+13. **Post-fix type error**: `TS2345` — `IDocumentMessage.mimetype` is `string | null | undefined`, not `string`. Fixed by making the `doc` parameter type nullable and adding fallback.
+
+14. **Final checks**: TypeScript ✅, Biome ✅, all pass clean.
+
+15. **User said "proceed"**: I started the git commit process — ran `git status`, `git diff --stat`, and `git log`.
+
+16. **Summary requested** before the commit was actually created.
+
+Now let me compile the summary with all technical details.
+
+Summary:
+1. Primary Request and Intent:
+   The user invoked the `/compound-engineering:slfg` (Swarm-enabled LFG) workflow to add WhatsApp integration to the Motian recruitment platform. The specific requirement: users should be able to send a PDF or DOCX resume via WhatsApp, and receive back grading results plus top 5 matching vacatures. The user initially referenced `https://github.com/steipete/wacli` but then pivoted to recommending the Baileys (`@whiskeysockets/baileys`) Node.js library after explaining the OpenClaw architecture pattern. The SLFG workflow has 9 sequential/parallel steps: ralph-loop → plan → deepen-plan → work (swarm) → review + test-browser (parallel) → resolve findings → feature-video → output DONE promise.
+
+2. Key Technical Concepts:
+   - **Baileys** (`@whiskeysockets/baileys` v7.0.0-rc.9) — WhatsApp Web reverse-engineered protocol for Node.js
+   - **OpenClaw architecture pattern** — WhatsApp → Baileys gateway → Agent runtime → Tools/APIs → Response back
+   - **Singleton pattern** for WhatsApp connection (one socket per process)
+   - **Per-sender locking** via promise chaining to prevent race conditions
+   - **AbortController** for graceful shutdown of long-running Trigger.dev tasks
+   - **Phone number sanitization** — regex extraction + digit-only validation (10-15 chars)
+   - **Rate limiting** per phone number per hour with periodic memory cleanup
+   - **GDPR AVG compliance** — soft-delete via WhatsApp text command "verwijder"
+   - **Shared grading utility** — `computeGradeFromParsed` extracted from route to shared lib
+   - **Configurable topN** matching parameter (default 3, WhatsApp uses 5)
+   - **Dynamic imports** in Trigger.dev task and API route to avoid loading Baileys at build time
+   - **Feature flag** — `WHATSAPP_ENABLED=true` environment variable
+   - Existing CV pipeline reuse: parseCV (Gemini) → grade → dedup → create candidate → auto-match
+   - **Dutch UI strings, English code variables** — project convention
+   - **Biome** for linting (not ESLint), **pnpm** for package management
+
+3. Files and Code Sections:
+
+   - **`src/schemas/whatsapp.ts`** (NEW — 1025 bytes)
+     - Zod schemas for WhatsApp document validation and processing tracking
+     - Exports: `CV_MIME_TYPES`, `whatsappIncomingDocSchema`, `whatsappProcessedSchema` and their inferred types
+
+   - **`src/services/whatsapp.ts`** (NEW — ~310 lines, most complex file)
+     - Baileys gateway singleton with full lifecycle management
+     - Key components after review fixes:
+       - `sanitizePhone(jid)` — validates 10-15 digit phone from JID
+       - `PhoneRateLimiter` class with `cleanupTimer` interval and `destroy()` method
+       - `WhatsAppGateway` class with:
+         - `processingLocks` Map for per-sender race condition prevention
+         - `abortController` for graceful shutdown
+         - `onDocument(handler)` and `onText(handler)` for registering callbacks
+         - `connect()` — Baileys socket with QR auth, reconnection, file size check before download
+         - `processDocument()` — private method called within per-sender lock
+         - `sendText()`, `sendFile()`, `disconnect()`, `waitUntilAborted()`
+       - `WhatsAppStatus` type: `"disconnected" | "connecting" | "connected" | "error"`
+       - `getWhatsAppGateway()` singleton accessor
+     - Important: biome-ignore comment on `useMultiFileAuthState` (Biome false positive — not a React hook)
+
+   - **`src/services/whatsapp-cv-pipeline.ts`** (NEW — ~262 lines)
+     - Pipeline orchestrator reusing existing CV analysis services
+     - `processWhatsAppCV(doc)` — upload → parseCV → grade → dedup/create → autoMatch(topN=5)
+     - `formatCVResultMessage(result)` — Dutch formatted WhatsApp message with emoji, vacancy matches
+     - `handleWhatsAppCV(doc)` — full handler: acknowledge → process → send results
+     - `handleWhatsAppText(phone, jid, text)` — GDPR deletion handler for "verwijder"/"delete"/"wis mijn gegevens"
+     - Imports `db` and `candidates` from Drizzle schema for soft-delete operations
+
+   - **`trigger/whatsapp-gateway.ts`** (NEW — ~40 lines)
+     - Trigger.dev long-running task with dynamic imports
+     - Registers both document and text handlers
+     - Uses `gateway.waitUntilAborted()` instead of never-resolving promise
+     - Feature flag check: `WHATSAPP_ENABLED=true`
+
+   - **`app/api/whatsapp/status/route.ts`** (NEW)
+     - Health check endpoint returning connection status in Dutch
+     - Dynamic import of gateway to avoid build-time Baileys loading
+     - Uses `_err` for unused catch variable (Biome fix)
+
+   - **`src/lib/grading-utils.ts`** (MODIFIED)
+     - Added `computeGradeFromParsed()` function at end of existing file
+     - Scoring: `min(100, 20 + skillCount*3 + min(expCount,5)*8 + min(eduCount,3)*5)`
+     - Labels: ≥80 "Sterk profiel", ≥60 "Goed profiel", ≥40 "Basis profiel", <40 "Beperkt profiel"
+
+   - **`app/api/cv-analyse/route.ts`** (MODIFIED)
+     - Added import: `import { computeGradeFromParsed } from "@/src/lib/grading-utils";`
+     - Removed local duplicate `computeGradeFromParsed` function (lines 24-42)
+
+   - **`src/services/auto-matching.ts`** (MODIFIED)
+     - `TOP_N = 3` renamed to `DEFAULT_TOP_N = 3`
+     - `runAutoMatchPipeline(pairs, topN = DEFAULT_TOP_N)` — new parameter
+     - `autoMatchCandidateToJobs(candidateId, topN = DEFAULT_TOP_N)` — new parameter
+     - `autoMatchJobToCandidates(jobId, topN = DEFAULT_TOP_N)` — new parameter
+     - All pass `topN` through to `runAutoMatchPipeline`
+
+   - **`package.json`** (MODIFIED)
+     - Added: `@whiskeysockets/baileys`, `@hapi/boom`, `pino`
+
+   - **`docs/plans/2026-03-04-feat-whatsapp-cv-analyse-plan.md`** (NEW)
+     - Full architecture plan document with Baileys approach
+
+4. Errors and fixes:
+   - **Biome lint: unused variable `err`** in `app/api/whatsapp/status/route.ts:31`:
+     - Fixed by renaming to `_err`
+   - **Biome lint: `useHookAtTopLevel`** in `src/services/whatsapp.ts:92`:
+     - False positive — `useMultiFileAuthState` is a Baileys function, not a React hook
+     - Fixed with `// biome-ignore lint/correctness/useHookAtTopLevel: Baileys function, not a React hook`
+   - **Biome lint: `useImportType`** and **organize imports** in `src/services/whatsapp.ts`:
+     - Auto-fixed by `pnpm lint:fix`
+   - **Biome format** issues in `whatsapp-cv-pipeline.ts` and `whatsapp.ts`:
+     - Auto-fixed by `pnpm lint:fix`
+   - **TypeScript TS2345** after review fixes: `IDocumentMessage.mimetype` is `string | null | undefined`, not assignable to `string`:
+     - Fixed `processDocument` parameter type from `{ mimetype: string }` to `{ mimetype?: string | null }`
+     - Added fallback: `doc.mimetype ?? "application/octet-stream"` when constructing `IncomingDocument`
+   - **Code review found 7 issues** (all resolved):
+     1. Never-resolving promise memory leak → AbortController + waitUntilAborted()
+     2. Race condition on concurrent messages → per-sender processingLocks Map
+     3. No file size validation → MAX_FILE_SIZE_BYTES check before download
+     4. Rate limiter memory leak → cleanupTimer + destroy()
+     5. GDPR deletion not implemented → handleWhatsAppText() handler
+     6. Phone number not sanitized → sanitizePhone() function
+     7. Silent failure on max reconnect → status set to "error"
+
+5. Problem Solving:
+   - **wacli vs Baileys decision**: User redirected from wacli (Go CLI) to Baileys (Node.js library) after explaining the OpenClaw architecture. Baileys is native TypeScript, event-driven, no polling needed — much better fit for Next.js stack.
+   - **Shared grading utility**: `computeGradeFromParsed` was duplicated in the cv-analyse route. Extracted to `src/lib/grading-utils.ts` (which already existed with other grading functions) so both web UI and WhatsApp pipeline use the same logic.
+   - **topN parameter**: Auto-matching was hardcoded to top 3. Made configurable with default 3 (backward compatible) so WhatsApp can request top 5.
+   - **Ban risk acknowledged**: Research confirmed Baileys has very high ban risk in 2026. Architecture designed with abstraction layer so gateway can be swapped for Official WhatsApp Business Cloud API later without changing pipeline logic.
+
+6. All user messages:
+   - `/compound-engineering:slfg lets add whatsapp https://github.com/steipete/wacli we need to be able to talk to the agent and the user should be able to upload a pdv or doc resume, and get the grading results plus top 5 matching vacatures`
+   - Long message explaining OpenClaw architecture with Baileys: "OpenClaw doet het anders dan een normale WhatsApp API integratie... Ze gebruiken geen officiële WhatsApp Business Cloud API, maar koppelen direct aan WhatsApp Web... De meeste OpenClaw setups gebruiken: Baileys" — with code examples and architecture diagrams
+   - "research the best way"
+   - "proceed" (after all implementation and review was complete, triggering the git commit phase)
+
+7. Pending Tasks:
+   - **Git commit and push**: Files are ready but NOT yet committed. `git status` was run but `git add`, `git commit`, and `git push` have NOT been executed yet.
+   - **Session close protocol**: `bd sync` needs to run before and after commit per beads workflow.
+   - **SLFG Step 8**: Feature video (`/compound-engineering:feature-video`) — record walkthrough and add to PR
+   - **SLFG Step 9**: Output `<promise>DONE</promise>` when video is in PR
+
+8. Current Work:
+   The user said "proceed" after all implementation was complete. I started the git commit process by running `git status --short`, `git diff --stat`, and `git log --oneline -5` to prepare for the commit. The results showed:
+   - Modified: `app/api/cv-analyse/route.ts`, `next-env.d.ts`, `package.json`, `pnpm-lock.yaml`, `src/lib/grading-utils.ts`, `src/services/auto-matching.ts`
+   - New (untracked): `app/api/whatsapp/`, `docs/plans/2026-03-04-feat-whatsapp-cv-analyse-plan.md`, `src/schemas/whatsapp.ts`, `src/services/whatsapp-cv-pipeline.ts`, `src/services/whatsapp.ts`, `trigger/whatsapp-gateway.ts`
+   
+   The summary was requested BEFORE the actual `git add` and `git commit` commands were executed.
+
+9. Optional Next Step:
+   Complete the git commit and push workflow. The user said "proceed" and I was in the middle of preparing the commit. The exact state:
+   - `git status`, `git diff --stat`, and `git log` were run
+   - Next: `git add` the specific files, create commit with message following project convention (e.g., `feat: WhatsApp CV analyse — Baileys gateway, grading, top 5 matching`), then `bd sync`, `git push`, `bd sync` per the beads session close protocol.
+   - After push: SLFG Step 8 (feature video) and Step 9 (output DONE promise).
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/cortex-air/.claude/projects/-Users-cortex-air-Developer-motian/2fe3eee0-dcc0-4396-b6f3-a5f7816e4767.jsonl
+Please continue the conversation from where we left off without asking the user any further questions. Continue with the last task that you were asked to work on.
+
+---
+
+# Feature Video Walkthrough
+
+<command_purpose>Record a video walkthrough demonstrating a feature, upload it, and add it to the PR description.</command_purpose>
+
+## Introduction
+
+<role>Developer Relations Engineer creating feature demo videos</role>
+
+This command creates professional video walkthroughs of features for PR documentation:
+- Records browser interactions using agent-browser CLI
+- Demonstrates the complete user flow
+- Uploads the video for easy sharing
+- Updates the PR description with an embedded video
+
+## Prerequisites
+
+<requirements>
+- Local development server running (e.g., `bin/dev`, `rails server`)
+- agent-browser CLI installed
+- Git repository with a PR to document
+- `ffmpeg` installed (for video conversion)
+- `rclone` configured (optional, for cloud upload - see rclone skill)
+</requirements>
+
+## Setup
+
+**Check installation:**
+```bash
+command -v agent-browser >/dev/null 2>&1 && echo "Installed" || echo "NOT INSTALLED"
+```
+
+**Install if needed:**
+```bash
+npm install -g agent-browser && agent-browser install
+```
+
+See the `agent-browser` skill for detailed usage.
+
+## Main Tasks
+
+### 1. Parse Arguments
+
+<parse_args>
+
+**Arguments:** 
+
+Parse the input:
+- First argument: PR number or "current" (defaults to current branch's PR)
+- Second argument: Base URL (defaults to `http://localhost:3000`)
+
+```bash
+# Get PR number for current branch if needed
+gh pr view --json number -q '.number'
+```
+
+</parse_args>
+
+### 2. Gather Feature Context
+
+<gather_context>
+
+**Get PR details:**
+```bash
+gh pr view [number] --json title,body,files,headRefName -q '.'
+```
+
+**Get changed files:**
+```bash
+gh pr view [number] --json files -q '.files[].path'
+```
+
+**Map files to testable routes** (same as playwright-test):
+
+| File Pattern | Route(s) |
+|-------------|----------|
+| `app/views/users/*` | `/users`, `/users/:id`, `/users/new` |
+| `app/controllers/settings_controller.rb` | `/settings` |
+| `app/javascript/controllers/*_controller.js` | Pages using that Stimulus controller |
+| `app/components/*_component.rb` | Pages rendering that component |
+
+</gather_context>
+
+### 3. Plan the Video Flow
+
+<plan_flow>
+
+Before recording, create a shot list:
+
+1. **Opening shot**: Homepage or starting point (2-3 seconds)
+2. **Navigation**: How user gets to the feature
+3. **Feature demonstration**: Core functionality (main focus)
+4. **Edge cases**: Error states, validation, etc. (if applicable)
+5. **Success state**: Completed action/result
+
+Ask user to confirm or adjust the flow:
+
+```markdown
+**Proposed Video Flow**
+
+Based on PR #[number]: [title]
+
+1. Start at: /[starting-route]
+2. Navigate to: /[feature-route]
+3. Demonstrate:
+   - [Action 1]
+   - [Action 2]
+   - [Action 3]
+4. Show result: [success state]
+
+Estimated duration: ~[X] seconds
+
+Does this look right?
+1. Yes, start recording
+2. Modify the flow (describe changes)
+3. Add specific interactions to demonstrate
+```
+
+</plan_flow>
+
+### 4. Setup Video Recording
+
+<setup_recording>
+
+**Create videos directory:**
+```bash
+mkdir -p tmp/videos
+```
+
+**Recording approach: Use browser screenshots as frames**
+
+agent-browser captures screenshots at key moments, then combine into video using ffmpeg:
+
+```bash
+ffmpeg -framerate 2 -pattern_type glob -i 'tmp/screenshots/*.png' -vf "scale=1280:-1" tmp/videos/feature-demo.gif
+```
+
+</setup_recording>
+
+### 5. Record the Walkthrough
+
+<record_walkthrough>
+
+Execute the planned flow, capturing each step:
+
+**Step 1: Navigate to starting point**
+```bash
+agent-browser open "[base-url]/[start-route]"
+agent-browser wait 2000
+agent-browser screenshot tmp/screenshots/01-start.png
+```
+
+**Step 2: Perform navigation/interactions**
+```bash
+agent-browser snapshot -i  # Get refs
+agent-browser click @e1    # Click navigation element
+agent-browser wait 1000
+agent-browser screenshot tmp/screenshots/02-navigate.png
+```
+
+**Step 3: Demonstrate feature**
+```bash
+agent-browser snapshot -i  # Get refs for feature elements
+agent-browser click @e2    # Click feature element
+agent-browser wait 1000
+agent-browser screenshot tmp/screenshots/03-feature.png
+```
+
+**Step 4: Capture result**
+```bash
+agent-browser wait 2000
+agent-browser screenshot tmp/screenshots/04-result.png
+```
+
+**Create video/GIF from screenshots:**
+
+```bash
+# Create directories
+mkdir -p tmp/videos tmp/screenshots
+
+# Create MP4 video (RECOMMENDED - better quality, smaller size)
+# -framerate 0.5 = 2 seconds per frame (slower playback)
+# -framerate 1 = 1 second per frame
+ffmpeg -y -framerate 0.5 -pattern_type glob -i 'tmp/screenshots/*.png' \
+  -c:v libx264 -pix_fmt yuv420p -vf "scale=1280:-2" \
+  tmp/videos/feature-demo.mp4
+
+# Create low-quality GIF for preview (small file, for GitHub embed)
+ffmpeg -y -framerate 0.5 -pattern_type glob -i 'tmp/screenshots/*.png' \
+  -vf "scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse" \
+  -loop 0 tmp/videos/feature-demo-preview.gif
+```
+
+**Note:**
+- The `-2` in MP4 scale ensures height is divisible by 2 (required for H.264)
+- Preview GIF uses 640px width and 128 colors to keep file size small (~100-200KB)
+
+</record_walkthrough>
+
+### 6. Upload the Video
+
+<upload_video>
+
+**Upload with rclone:**
+
+```bash
+# Check rclone is configured
+rclone listremotes
+
+# Upload video, preview GIF, and screenshots to cloud storage
+# Use --s3-no-check-bucket to avoid permission errors
+rclone copy tmp/videos/ r2:kieran-claude/pr-videos/pr-[number]/ --s3-no-check-bucket --progress
+rclone copy tmp/screenshots/ r2:kieran-claude/pr-videos/pr-[number]/screenshots/ --s3-no-check-bucket --progress
+
+# List uploaded files
+rclone ls r2:kieran-claude/pr-videos/pr-[number]/
+```
+
+Public URLs (R2 with public access):
+```
+Video: https://pub-4047722ebb1b4b09853f24d3b61467f1.r2.dev/pr-videos/pr-[number]/feature-demo.mp4
+Preview: https://pub-4047722ebb1b4b09853f24d3b61467f1.r2.dev/pr-videos/pr-[number]/feature-demo-preview.gif
+```
+
+</upload_video>
+
+### 7. Update PR Description
+
+<update_pr>
+
+**Get current PR body:**
+```bash
+gh pr view [number] --json body -q '.body'
+```
+
+**Add video section to PR description:**
+
+If the PR already has a video section, replace it. Otherwise, append:
+
+**IMPORTANT:** GitHub cannot embed external MP4s directly. Use a clickable GIF that links to the video:
+
+```markdown
+## Demo
+
+[![Feature Demo]([preview-gif-url])]([video-mp4-url])
+
+*Click to view full video*
+```
+
+Example:
+```markdown
+[![Feature Demo](https://pub-4047722ebb1b4b09853f24d3b61467f1.r2.dev/pr-videos/pr-137/feature-demo-preview.gif)](https://pub-4047722ebb1b4b09853f24d3b61467f1.r2.dev/pr-videos/pr-137/feature-demo.mp4)
+```
+
+**Update the PR:**
+```bash
+gh pr edit [number] --body "[updated body with video section]"
+```
+
+**Or add as a comment if preferred:**
+```bash
+gh pr comment [number] --body "## Feature Demo
+
+![Demo]([video-url])
+
+_Automated walkthrough of the changes in this PR_"
+```
+
+</update_pr>
+
+### 8. Cleanup
+
+<cleanup>
+
+```bash
+# Optional: Clean up screenshots
+rm -rf tmp/screenshots
+
+# Keep videos for reference
+echo "Video retained at: tmp/videos/feature-demo.gif"
+```
+
+</cleanup>
+
+### 9. Summary
+
+<summary>
+
+Present completion summary:
+
+```markdown
+## Feature Video Complete
+
+**PR:** #[number] - [title]
+**Video:** [url or local path]
+**Duration:** ~[X] seconds
+**Format:** [GIF/MP4]
+
+### Shots Captured
+1. [Starting point] - [description]
+2. [Navigation] - [description]
+3. [Feature demo] - [description]
+4. [Result] - [description]
+
+### PR Updated
+- [x] Video section added to PR description
+- [ ] Ready for review
+
+**Next steps:**
+- Review the video to ensure it accurately demonstrates the feature
+- Share with reviewers for context
+```
+
+</summary>
+
+## Quick Usage Examples
+
+```bash
+# Record video for current branch's PR
+/feature-video
+
+# Record video for specific PR
+/feature-video 847
+
+# Record with custom base URL
+/feature-video 847 http://localhost:5000
+
+# Record for staging environment
+/feature-video current https://staging.example.com
+```
+
+## Tips
+
+- **Keep it short**: 10-30 seconds is ideal for PR demos
+- **Focus on the change**: Don't include unrelated UI
+- **Show before/after**: If fixing a bug, show the broken state first (if possible)
+- **Annotate if needed**: Add text overlays for complex features
