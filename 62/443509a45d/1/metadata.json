@@ -1,0 +1,39 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "62443509a45d",
+  "session_id": "2fe3eee0-dcc0-4396-b6f3-a5f7816e4767",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-04T14:11:09.22928Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "app/api/scraper-analyse/route.ts",
+    "app/scraper/page.tsx",
+    "components/scraper/analytics-charts.tsx",
+    "components/scraper/duration-chart.tsx",
+    "components/scraper/jobs-timeline-chart.tsx",
+    "components/scraper/success-rate-chart.tsx",
+    "docs/plans/2026-03-04-feat-scraper-analyse-observability-fase1-plan.md",
+    "src/services/scrape-results.ts",
+    "docs/brainstorms/2026-03-04-scraper-analyse-observability-brainstorm.md",
+    "src/schemas/scraper-analyse.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "f285374aaa7d",
+  "token_usage": {
+    "input_tokens": 5,
+    "cache_creation_tokens": 110005,
+    "cache_read_tokens": 21750,
+    "output_tokens": 878,
+    "api_call_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-04T14:11:09.176921Z",
+    "agent_lines": 79,
+    "human_added": 1115,
+    "human_modified": 7,
+    "human_removed": 0,
+    "total_committed": 1201,
+    "agent_percentage": 6.577851790174854
+  }
+}
