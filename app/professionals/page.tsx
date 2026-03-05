@@ -43,7 +43,14 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   const availability = params.beschikbaarheid ?? "";
   const escoUri = params.vaardigheid ?? "";
 
-  const skillOptions = await listEscoSkillsForFilter();
+  let skillOptions: { uri: string; labelNl: string | null; labelEn: string }[] = [];
+  let escoSkillsAvailable = false;
+  try {
+    skillOptions = await listEscoSkillsForFilter();
+    escoSkillsAvailable = true;
+  } catch (err) {
+    console.error("[Professionals] listEscoSkillsForFilter failed:", err);
+  }
 
   const urlParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -65,7 +72,8 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   if (availability) {
     conditions.push(eq(candidates.availability, availability));
   }
-  if (escoUri) {
+  // Only apply ESCO filter when skills loaded successfully (avoids query failure if candidate_skills missing)
+  if (escoUri && escoSkillsAvailable) {
     conditions.push(
       sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${escoUri})`,
     );

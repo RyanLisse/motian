@@ -19,12 +19,16 @@ import { ChatMessages } from "./chat-messages";
 const SESSION_KEY = "motian-fab-session";
 
 function getOrCreateSessionId(): string {
-  if (typeof window === "undefined") return "";
-  const existing = sessionStorage.getItem(SESSION_KEY);
-  if (existing) return existing;
-  const id = nanoid();
-  sessionStorage.setItem(SESSION_KEY, id);
-  return id;
+  try {
+    if (typeof window === "undefined") return "";
+    const existing = sessionStorage.getItem(SESSION_KEY);
+    if (existing) return existing;
+    const id = nanoid();
+    sessionStorage.setItem(SESSION_KEY, id);
+    return id;
+  } catch {
+    return nanoid();
+  }
 }
 
 type UploadState = "idle" | "uploading" | "success" | "error";
@@ -194,12 +198,19 @@ function ChatPanelInner({
 export function ChatPanel() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [sessionId, setSessionId] = useState(getOrCreateSessionId);
+  const [sessionId, setSessionId] = useState("");
+  useEffect(() => {
+    setSessionId(getOrCreateSessionId());
+  }, []);
   const ctx = useChatContext();
 
   const handleNewSession = useCallback(() => {
     const id = nanoid();
-    sessionStorage.setItem(SESSION_KEY, id);
+    try {
+      sessionStorage.setItem(SESSION_KEY, id);
+    } catch {
+      // Storage not available (e.g. private or iframe)
+    }
     setSessionId(id);
   }, []);
 
@@ -222,7 +233,7 @@ export function ChatPanel() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  if (pathname === "/chat") return null;
+  if (pathname === "/chat" || pathname === "/opdrachten") return null;
 
   return (
     <>
@@ -274,8 +285,14 @@ export function ChatPanel() {
           </div>
         </div>
 
-        {/* Chat content — key forces remount on session change */}
-        <ChatPanelInner key={sessionId} ctx={ctx} sessionId={sessionId} />
+        {/* Chat content — key forces remount on session change; only mount when sessionId is ready (avoids storage access during SSR/hydration) */}
+        {sessionId ? (
+          <ChatPanelInner key={sessionId} ctx={ctx} sessionId={sessionId} />
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-4">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
       </div>
     </>
   );

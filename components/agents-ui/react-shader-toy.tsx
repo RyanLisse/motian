@@ -32,10 +32,10 @@ function isMatrixType(t: string, v: number[] | number): v is number[] {
   return t.includes("Matrix") && Array.isArray(v);
 }
 function isVectorListType(t: string, v: number[] | number): v is number[] {
-  return t.includes("v") && Array.isArray(v) && v.length > Number.parseInt(t.charAt(0));
+  return t.includes("v") && Array.isArray(v) && v.length > Number.parseInt(t.charAt(0), 10);
 }
 function isVectorType(t: string, v: number[] | number): v is Vector4 {
-  return !t.includes("v") && Array.isArray(v) && v.length > Number.parseInt(t.charAt(0));
+  return !t.includes("v") && Array.isArray(v) && v.length > Number.parseInt(t.charAt(0), 10);
 }
 const processUniform = <T extends UniformType>(
   gl: WebGLRenderingContext,
@@ -143,10 +143,10 @@ const uniformTypeToGLSLType = (t: string) => {
 const LinearFilter = 9729;
 const NearestFilter = 9728;
 const LinearMipMapLinearFilter = 9987;
-const NearestMipMapLinearFilter = 9986;
-const LinearMipMapNearestFilter = 9985;
-const NearestMipMapNearestFilter = 9984;
-const MirroredRepeatWrapping = 33648;
+const _NearestMipMapLinearFilter = 9986;
+const _LinearMipMapNearestFilter = 9985;
+const _NearestMipMapNearestFilter = 9984;
+const _MirroredRepeatWrapping = 33648;
 const ClampToEdgeWrapping = 33071;
 const RepeatWrapping = 10497;
 
@@ -655,11 +655,11 @@ export function ReactShaderToy({
         const tempObject: { arraySize?: string } = {};
         if (isMatrixType(type, value)) {
           const arrayLength = type.length;
-          const val = Number.parseInt(type.charAt(arrayLength - 3));
+          const val = Number.parseInt(type.charAt(arrayLength - 3), 10);
           const numberOfMatrices = Math.floor(value.length / (val * val));
           if (value.length > val * val) tempObject.arraySize = `[${numberOfMatrices}]`;
         } else if (isVectorListType(type, value)) {
-          tempObject.arraySize = `[${Math.floor(value.length / Number.parseInt(type.charAt(0)))}]`;
+          tempObject.arraySize = `[${Math.floor(value.length / Number.parseInt(type.charAt(0), 10))}]`;
         }
         uniformsRef.current[name] = { type: glslType, isNeeded: false, value, ...tempObject };
       }
@@ -906,7 +906,7 @@ export function ReactShaderToy({
     observer.observe(canvas);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animateWhenNotVisible]);
+  }, [animateWhenNotVisible, drawScene]);
 
   // Main effect for initialization and cleanup
   useEffect(() => {
@@ -954,7 +954,21 @@ export function ReactShaderToy({
       cancelAnimationFrame(animFrameIdRef.current ?? 0);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array to run only once on mount
+  }, [
+    addEventListeners,
+    clearColor,
+    drawScene,
+    fs,
+    initBuffers,
+    initShaders,
+    initWebGL,
+    onResize,
+    preProcessFragment,
+    processCustomUniforms,
+    processTextures,
+    removeEventListeners,
+    vs,
+  ]); // Empty dependency array to run only once on mount
 
   return (
     <canvas ref={canvasRef} style={{ height: "100%", width: "100%", ...style }} {...canvasProps} />

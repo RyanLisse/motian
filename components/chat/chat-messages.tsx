@@ -2,7 +2,6 @@
 
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import {
-  Bot,
   Brain,
   Briefcase,
   ExternalLink,

@@ -110,7 +110,6 @@ function AgentChatInput({ chatOpen, onSend = async () => {}, className }: AgentC
   return (
     <div className={cn("mb-3 flex grow items-end gap-2 rounded-md pl-1 text-sm", className)}>
       <textarea
-        autoFocus
         ref={inputRef}
         value={message}
         disabled={!chatOpen || isSending}

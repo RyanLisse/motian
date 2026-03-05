@@ -56,9 +56,7 @@ describe("mapSkillInput", () => {
 
   it("returns alias strategy with expected escoUri and confidence when normalized rawSkill matches alias", async () => {
     const escoUri = "http://data.europa.eu/esco/skill/react";
-    mockLimit.mockResolvedValueOnce([
-      { escoUri, confidence: 0.9 },
-    ]);
+    mockLimit.mockResolvedValueOnce([{ escoUri, confidence: 0.9 }]);
 
     const result = await mapSkillInput({
       ...baseInput,
@@ -74,9 +72,7 @@ describe("mapSkillInput", () => {
 
   it("returns exact strategy when rawSkill trim matches preferred label (no alias hit)", async () => {
     const uri = "http://data.europa.eu/esco/skill/typescript";
-    mockLimit
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ uri }]);
+    mockLimit.mockResolvedValueOnce([]).mockResolvedValueOnce([{ uri }]);
 
     const result = await mapSkillInput({
       ...baseInput,
@@ -90,9 +86,7 @@ describe("mapSkillInput", () => {
   });
 
   it("returns none strategy when neither alias nor exact match", async () => {
-    mockLimit
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+    mockLimit.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const result = await mapSkillInput({
       ...baseInput,
@@ -108,9 +102,7 @@ describe("mapSkillInput", () => {
 
   it("sets reviewRequired when critical and alias confidence below threshold", async () => {
     const escoUri = "http://data.europa.eu/esco/skill/react";
-    mockLimit.mockResolvedValueOnce([
-      { escoUri, confidence: 0.5 },
-    ]);
+    mockLimit.mockResolvedValueOnce([{ escoUri, confidence: 0.5 }]);
 
     const result = await mapSkillInput({
       ...baseInput,

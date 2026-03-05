@@ -2,8 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, RotateCcw, Search } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { useDeferredValue, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useDeferredValue, useEffect, useState } from "react";
 import { JobListItem } from "@/components/job-list-item";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,18 +90,32 @@ export function OpdrachtenSidebar({
   platforms,
 }: OpdrachtenSidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isOverviewPage = pathname === "/opdrachten";
   const match = pathname.match(/^\/opdrachten\/(.+)$/);
   const activeId = match?.[1] ?? null;
 
-  const [query, setQuery] = useState("");
-  const [platform, setPlatform] = useState("");
-  const [provincie, setProvincie] = useState("");
-  const [contractType, setContractType] = useState("");
-  const [tariefMin, setTariefMin] = useState("");
-  const [tariefMax, setTariefMax] = useState("");
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  const [platform, setPlatform] = useState(() => searchParams.get("platform") ?? "");
+  const [provincie, setProvincie] = useState(() => searchParams.get("provincie") ?? "");
+  const [contractType, setContractType] = useState(() => searchParams.get("contractType") ?? "");
+  const [tariefMin, setTariefMin] = useState(() => searchParams.get("tariefMin") ?? "");
+  const [tariefMax, setTariefMax] = useState(() => searchParams.get("tariefMax") ?? "");
   const [sortBy, setSortBy] = useState("nieuwst");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() =>
+    Math.max(1, Number.parseInt(searchParams.get("pagina") ?? "1", 10) || 1),
+  );
+
+  // Sync filter state when URL changes (e.g. klik op overzicht-link naar andere filter)
+  useEffect(() => {
+    setQuery(searchParams.get("q") ?? "");
+    setPlatform(searchParams.get("platform") ?? "");
+    setProvincie(searchParams.get("provincie") ?? "");
+    setContractType(searchParams.get("contractType") ?? "");
+    setTariefMin(searchParams.get("tariefMin") ?? "");
+    setTariefMax(searchParams.get("tariefMax") ?? "");
+    setPage(Math.max(1, Number.parseInt(searchParams.get("pagina") ?? "1", 10) || 1));
+  }, [searchParams]);
 
   const deferredQuery = useDeferredValue(query);
   const deferredTariefMin = useDeferredValue(tariefMin);

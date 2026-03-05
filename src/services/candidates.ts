@@ -1,9 +1,9 @@
 import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
-import { syncCandidateEscoSkills } from "./esco";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
+import { syncCandidateEscoSkills } from "./esco";
 
 // ========== Types ==========
 
