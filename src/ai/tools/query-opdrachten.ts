@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { PLATFORMS } from "@/src/lib/helpers";
+import type { ListJobsSortBy } from "@/src/services/jobs";
 import { hybridSearch, listJobs } from "@/src/services/jobs";
 
 const VALID_CONTRACT_TYPES = ["freelance", "interim", "vast", "opdracht"];
@@ -26,7 +27,17 @@ function normalizeParams(params: Record<string, unknown>) {
   const q =
     typeof params.q === "string" && params.q.trim().length > 0 ? params.q.trim() : undefined;
 
-  return { q, platform, province, rateMin, rateMax, contractType };
+  const VALID_SORT_OPTIONS: ListJobsSortBy[] = [
+    "nieuwste",
+    "tarief_hoog",
+    "tarief_laag",
+    "deadline",
+  ];
+  const sortBy = VALID_SORT_OPTIONS.includes(params.sortBy as ListJobsSortBy)
+    ? (params.sortBy as ListJobsSortBy)
+    : undefined;
+
+  return { q, platform, province, rateMin, rateMax, contractType, sortBy };
 }
 
 export const queryOpdrachten = tool({
@@ -56,6 +67,12 @@ export const queryOpdrachten = tool({
       .describe(
         "Contract type: freelance, interim, vast, opdracht. Alleen als de gebruiker dit expliciet noemt.",
       ),
+    sortBy: z
+      .enum(["nieuwste", "tarief_hoog", "tarief_laag", "deadline"])
+      .optional()
+      .describe(
+        "Sorteer resultaten: nieuwste (standaard), tarief_hoog (duurste eerst), tarief_laag (goedkoopste eerst), deadline (eerstvolgende deadline).",
+      ),
     limit: z.number().optional().default(20).describe("Max resultaten (standaard 20)"),
   }),
   execute: async (params) => {
@@ -70,6 +87,7 @@ export const queryOpdrachten = tool({
         rateMin: n.rateMin,
         rateMax: n.rateMax,
         contractType: n.contractType,
+        sortBy: n.sortBy,
       });
       return {
         total: results.length,
@@ -87,6 +105,7 @@ export const queryOpdrachten = tool({
       rateMin: n.rateMin,
       rateMax: n.rateMax,
       contractType: n.contractType,
+      sortBy: n.sortBy,
       limit: params.limit,
     });
 

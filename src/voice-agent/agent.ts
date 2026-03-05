@@ -69,18 +69,42 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
         // ========== Opdrachten (Jobs) ==========
 
         zoekOpdrachten: llm.tool({
-          description: "Zoek opdrachten/vacatures op trefwoord, platform of provincie",
+          description:
+            "Zoek opdrachten/vacatures op trefwoord, platform, provincie, tarief of sorteer op tarief/deadline",
           parameters: z.object({
             query: z.string().optional().describe("Zoekterm"),
             platform: z.string().optional().describe("Platform filter"),
             provincie: z.string().optional().describe("Provincie filter"),
+            rateMin: z.number().optional().describe("Minimum uurtarief in EUR"),
+            rateMax: z.number().optional().describe("Maximum uurtarief in EUR"),
+            contractType: z
+              .string()
+              .optional()
+              .describe("Contract type: freelance, interim, vast, opdracht"),
+            sortBy: z
+              .enum(["nieuwste", "tarief_hoog", "tarief_laag", "deadline"])
+              .optional()
+              .describe("Sortering"),
             limit: z.number().optional().describe("Max resultaten (standaard 10)"),
           }),
-          execute: async ({ query, platform, provincie, limit }) => {
+          execute: async ({
+            query,
+            platform,
+            provincie,
+            rateMin,
+            rateMax,
+            contractType,
+            sortBy,
+            limit,
+          }) => {
             const result = await listJobs({
               q: query,
               platform,
               province: provincie,
+              rateMin,
+              rateMax,
+              contractType,
+              sortBy,
               limit: limit ?? 10,
               offset: 0,
             });
@@ -92,6 +116,8 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
                 company: j.company,
                 location: j.location,
                 platform: j.platform,
+                rateMin: j.rateMin,
+                rateMax: j.rateMax,
               })),
             };
           },

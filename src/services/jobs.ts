@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
@@ -82,6 +82,15 @@ export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
 }
 
 /** Alle opdrachten ophalen met paginering. */
+export type ListJobsSortBy = "nieuwste" | "tarief_hoog" | "tarief_laag" | "deadline";
+
+const sortByMap: Record<ListJobsSortBy, ReturnType<typeof desc>> = {
+  nieuwste: desc(jobs.scrapedAt),
+  tarief_hoog: desc(jobs.rateMax),
+  tarief_laag: asc(jobs.rateMin),
+  deadline: asc(jobs.applicationDeadline),
+};
+
 export async function listJobs(
   opts: {
     limit?: number;
@@ -93,6 +102,7 @@ export async function listJobs(
     rateMax?: number;
     contractType?: string;
     hasDescription?: boolean;
+    sortBy?: ListJobsSortBy;
   } = {},
 ): Promise<{ data: Job[]; total: number }> {
   const limit = Math.min(opts.limit ?? 50, 100);
@@ -147,11 +157,13 @@ export async function listJobs(
     .from(jobs)
     .where(whereClause);
 
+  const orderBy = sortByMap[opts.sortBy ?? "nieuwste"];
+
   const data = await db
     .select()
     .from(jobs)
     .where(whereClause)
-    .orderBy(desc(jobs.scrapedAt))
+    .orderBy(orderBy)
     .limit(limit)
     .offset(offset);
 
@@ -219,6 +231,7 @@ export async function hybridSearch(
     rateMin?: number;
     rateMax?: number;
     contractType?: string;
+    sortBy?: ListJobsSortBy;
   } = {},
 ): Promise<Array<Job & { score: number }>> {
   const limit = Math.min(opts.limit ?? 20, 100);
@@ -274,10 +287,10 @@ export async function hybridSearch(
     }
   }
 
-  // Sort by combined RRF score descending, then post-filter
+  // Sort by combined RRF score descending (default), then post-filter
   const provinceLower = opts.province?.toLowerCase();
 
-  return [...scoreMap.entries()]
+  const filtered = [...scoreMap.entries()]
     .sort((a, b) => b[1].rrfScore - a[1].rrfScore)
     .filter(([, v]) => {
       const job = v.job;
@@ -296,12 +309,45 @@ export async function hybridSearch(
       if (opts.rateMax != null && (job.rateMin == null || job.rateMin > opts.rateMax)) return false;
       if (opts.contractType && job.contractType !== opts.contractType) return false;
       return true;
-    })
-    .slice(0, limit)
-    .map(([, v]) => ({
-      ...(v.job as NonNullable<typeof v.job>),
-      score: Math.round(v.rrfScore * 10000) / 10000,
-    }));
+    });
+
+  // Re-sort by explicit sortBy if specified (overrides RRF relevance ranking)
+  if (opts.sortBy && opts.sortBy !== "nieuwste") {
+    const sortFn = getSortComparator(opts.sortBy);
+    filtered.sort((a, b) => {
+      const jobA = a[1].job;
+      const jobB = b[1].job;
+      if (!jobA || !jobB) return 0;
+      return sortFn(jobA, jobB);
+    });
+  }
+
+  return filtered.slice(0, limit).map(([, v]) => ({
+    ...(v.job as NonNullable<typeof v.job>),
+    score: Math.round(v.rrfScore * 10000) / 10000,
+  }));
+}
+
+function getSortComparator(sortBy: ListJobsSortBy): (a: Job, b: Job) => number {
+  switch (sortBy) {
+    case "tarief_hoog":
+      return (a, b) => (b.rateMax ?? 0) - (a.rateMax ?? 0);
+    case "tarief_laag":
+      return (a, b) =>
+        (a.rateMin ?? Number.MAX_SAFE_INTEGER) - (b.rateMin ?? Number.MAX_SAFE_INTEGER);
+    case "deadline":
+      return (a, b) => {
+        const da = a.applicationDeadline
+          ? new Date(a.applicationDeadline).getTime()
+          : Number.MAX_SAFE_INTEGER;
+        const db_ = b.applicationDeadline
+          ? new Date(b.applicationDeadline).getTime()
+          : Number.MAX_SAFE_INTEGER;
+        return da - db_;
+      };
+    default:
+      return () => 0;
+  }
 }
 
 /** Alle actieve (niet-verwijderde) jobs ophalen. Hogere limiet voor batch matching. */

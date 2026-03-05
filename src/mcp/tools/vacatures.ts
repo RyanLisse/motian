@@ -1,19 +1,28 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { autoMatchJobToCandidates } from "../../services/auto-matching.js";
-import {
-  deleteJob,
-  getJobById,
-  listJobs,
-  searchJobsByTitle,
-  updateJob,
-} from "../../services/jobs.js";
+import type { ListJobsSortBy } from "../../services/jobs.js";
+import { deleteJob, getJobById, hybridSearch, listJobs, updateJob } from "../../services/jobs.js";
 
 // ========== Schemas ==========
 
 const zoekVacaturesSchema = z.object({
-  query: z.string().optional().describe("Zoekterm voor titel, bedrijf of omschrijving"),
-  platform: z.string().optional().describe("Filter op platform (bijv. 'huxley', 'yacht')"),
+  query: z
+    .string()
+    .optional()
+    .describe("Zoekterm voor titel, bedrijf of omschrijving (hybrid: tekst + semantisch)"),
+  platform: z
+    .string()
+    .optional()
+    .describe("Filter op platform (bijv. 'striive', 'flextender', 'opdrachtoverheid')"),
+  province: z.string().optional().describe("Provincie filter, bijv. 'Utrecht', 'Noord-Holland'"),
+  rateMin: z.number().optional().describe("Minimum uurtarief in EUR"),
+  rateMax: z.number().optional().describe("Maximum uurtarief in EUR"),
+  contractType: z.string().optional().describe("Contract type: freelance, interim, vast, opdracht"),
+  sortBy: z
+    .enum(["nieuwste", "tarief_hoog", "tarief_laag", "deadline"])
+    .optional()
+    .describe("Sortering: nieuwste (standaard), tarief_hoog, tarief_laag, deadline"),
   limit: z
     .number()
     .int()
@@ -53,7 +62,7 @@ export const tools = [
   {
     name: "zoek_vacatures",
     description:
-      "Zoek vacatures op titel, bedrijf of omschrijving. Zonder zoekterm worden de nieuwste vacatures getoond.",
+      "Zoek en filter vacatures. Met zoekterm: hybrid search (tekst + semantisch). Zonder: gefilterde lijst. Ondersteunt sortering op tarief, datum en deadline.",
     inputSchema: zodToJsonSchema(zoekVacaturesSchema, { $refStrategy: "none" }),
   },
   {
@@ -85,9 +94,27 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   zoek_vacatures: async (raw) => {
     const opts = zoekVacaturesSchema.parse(raw);
     if (opts.query) {
-      return searchJobsByTitle(opts.query, opts.limit);
+      const results = await hybridSearch(opts.query, {
+        limit: opts.limit,
+        platform: opts.platform,
+        province: opts.province,
+        rateMin: opts.rateMin,
+        rateMax: opts.rateMax,
+        contractType: opts.contractType,
+        sortBy: opts.sortBy as ListJobsSortBy | undefined,
+      });
+      return { total: results.length, vacatures: results };
     }
-    return listJobs({ platform: opts.platform, limit: opts.limit, offset: opts.offset });
+    return listJobs({
+      platform: opts.platform,
+      province: opts.province,
+      rateMin: opts.rateMin,
+      rateMax: opts.rateMax,
+      contractType: opts.contractType,
+      sortBy: opts.sortBy as ListJobsSortBy | undefined,
+      limit: opts.limit,
+      offset: opts.offset,
+    });
   },
 
   vacature_detail: async (raw) => {
