@@ -24,11 +24,20 @@ export const unifiedJobSchema = z.object({
   contractLabel: z.string().optional(),
   location: z.string().optional(),
   province: z.string().optional(),
-  description: z.string().min(10, "Beschrijving moet minimaal 10 tekens bevatten").optional(),
+  description: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().min(10, "Beschrijving moet minimaal 10 tekens bevatten").optional(),
+  ),
 
   // === Tarieven & Posities ===
-  rateMin: z.number().positive().optional(),
-  rateMax: z.number().positive().optional(),
+  rateMin: z.preprocess(
+    (v) => (v === undefined || v === null ? undefined : Number(v)),
+    z.number().min(0).optional(),
+  ),
+  rateMax: z.preprocess(
+    (v) => (v === undefined || v === null ? undefined : Number(v)),
+    z.number().min(0).optional(),
+  ),
   currency: z.string().default("EUR"),
   positionsAvailable: z.preprocess(
     (v) => (typeof v === "string" ? parseInt(v, 10) : typeof v === "number" ? Math.round(v) : v),
@@ -53,19 +62,40 @@ export const unifiedJobSchema = z.object({
   conditions: z.array(z.string()).default([]),
 
   // === Verrijkte Data ===
-  hoursPerWeek: z.number().int().positive().optional(),
-  minHoursPerWeek: z.number().int().positive().optional(),
+  hoursPerWeek: z.preprocess((v) => {
+    if (v === undefined || v === null) return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : undefined;
+  }, z.number().int().positive().max(168).optional()),
+  minHoursPerWeek: z.preprocess((v) => {
+    if (v === undefined || v === null) return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : undefined;
+  }, z.number().int().positive().max(168).optional()),
   extensionPossible: z.boolean().optional(),
   countryCode: z.string().optional(),
   remunerationType: z.string().optional(),
-  workExperienceYears: z.number().int().min(0).optional(),
-  numberOfViews: z.number().int().min(0).optional(),
-  attachments: z.array(z.object({ url: z.string(), description: z.string() })).default([]),
+  workExperienceYears: z.preprocess(
+    (v) => (v === undefined || v === null ? undefined : Math.round(Number(v))),
+    z.number().int().min(0).optional(),
+  ),
+  numberOfViews: z.preprocess(
+    (v) => (v === undefined || v === null ? undefined : Math.round(Number(v))),
+    z.number().int().min(0).optional(),
+  ),
+  attachments: z
+    .array(
+      z.object({
+        url: z.string(),
+        description: z.string().optional().default(""),
+      }),
+    )
+    .default([]),
   questions: z
     .array(
       z.object({
         question: z.string(),
-        type: z.string(),
+        type: z.string().optional().default(""),
         options: z.array(z.unknown()).default([]),
       }),
     )
@@ -75,10 +105,28 @@ export const unifiedJobSchema = z.object({
     .union([z.object({ nl: z.string().optional(), en: z.string().optional() }), z.string()])
     .optional(),
   faqAnswers: z
-    .array(z.object({ category: z.string(), question: z.string(), answer: z.string() }))
+    .array(
+      z.object({
+        category: z.string().optional().default(""),
+        question: z.string().optional().default(""),
+        answer: z.string().optional().default(""),
+      }),
+    )
     .default([]),
-  agentContact: z.object({ name: z.string(), email: z.string(), phone: z.string() }).optional(),
-  recruiterContact: z.object({ name: z.string(), email: z.string(), phone: z.string() }).optional(),
+  agentContact: z
+    .object({
+      name: z.string().optional().default(""),
+      email: z.string().optional().default(""),
+      phone: z.string().optional().default(""),
+    })
+    .optional(),
+  recruiterContact: z
+    .object({
+      name: z.string().optional().default(""),
+      email: z.string().optional().default(""),
+      phone: z.string().optional().default(""),
+    })
+    .optional(),
 
   // === Locatie & Organisatie ===
   latitude: z.number().min(-90).max(90).optional(),
@@ -88,7 +136,11 @@ export const unifiedJobSchema = z.object({
 
   // === Opdracht Kenmerken ===
   educationLevel: z.string().optional(),
-  durationMonths: z.number().int().positive().optional(),
+  durationMonths: z.preprocess((v) => {
+    if (v === undefined || v === null) return undefined;
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }, z.number().int().positive().optional()),
   sourceUrl: z.string().optional(),
   sourcePlatform: z.string().optional(),
   categories: z.array(z.string()).default([]),

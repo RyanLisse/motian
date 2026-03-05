@@ -100,11 +100,19 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
   const totalUniqueJobs = uniqueJobsResult?.[0]?.count ?? 0;
   const overallAvgDurationMs = overallDuration?.[0]?.avgMs ?? 0;
 
-  const byPlatform: PlatformStats[] = rows.map((r) => ({
-    ...r,
-    successRate:
-      r.totalRuns > 0 ? Math.round(((r.successCount + r.partialCount) / r.totalRuns) * 100) : 0,
-  }));
+  const byPlatform: PlatformStats[] = rows.map((r) => {
+    const statusSum = r.successCount + r.partialCount + r.failedCount;
+    if (statusSum !== r.totalRuns) {
+      console.warn(
+        `[scrape-results] Platform ${r.platform}: success+partial+failed (${statusSum}) !== totalRuns (${r.totalRuns})`,
+      );
+    }
+    return {
+      ...r,
+      successRate:
+        r.totalRuns > 0 ? Math.round(((r.successCount + r.partialCount) / r.totalRuns) * 100) : 0,
+    };
+  });
 
   const totalRuns = byPlatform.reduce((s, p) => s + p.totalRuns, 0);
   const totalNotFailed = byPlatform.reduce((s, p) => s + p.successCount + p.partialCount, 0);

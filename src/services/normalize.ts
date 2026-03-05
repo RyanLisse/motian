@@ -27,33 +27,6 @@ export async function normalizeAndSaveJobs(
       console.warn(
         `[normalize] Validatiefout voor ${platform} externalId=${externalId}: ${parsed.error.message}`,
       );
-      const hasHoursPerWeekError = parsed.error.issues?.some(
-        (i) => Array.isArray(i.path) && i.path[i.path.length - 1] === "hoursPerWeek",
-      );
-      // #region agent log
-      if (hasHoursPerWeekError) {
-        fetch("http://127.0.0.1:7696/ingest/807648ac-0e4a-43e7-9281-fc9626035545", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "df9709",
-          },
-          body: JSON.stringify({
-            sessionId: "df9709",
-            hypothesisId: "H1-H5",
-            location: "normalize.ts:validation-fail",
-            message: "hoursPerWeek validation failed",
-            data: {
-              externalId: (raw as { externalId?: string }).externalId,
-              hoursPerWeek: (raw as { hoursPerWeek?: number }).hoursPerWeek,
-              minHoursPerWeek: (raw as { minHoursPerWeek?: number }).minHoursPerWeek,
-              platform,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
       errors.push(`Validation: ${parsed.error.message}`);
     } else {
       validItems.push({ parsed: parsed.data, raw });

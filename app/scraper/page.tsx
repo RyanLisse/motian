@@ -306,39 +306,50 @@ export default async function ScraperPage() {
                       <Progress value={p.successRate} className="h-1.5" />
                     </div>
 
-                    {/* Stats grid */}
+                    {/* Stats grid: Nieuw/Gevonden zijn cumulatief over alle runs */}
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div>
+                      <div title="Cumulatief: totaal aantal nieuw opgeslagen vacatures over alle runs">
                         <p className="text-lg font-bold text-foreground">{p.totalJobsNew}</p>
                         <p className="text-[10px] text-muted-foreground">Nieuw</p>
                       </div>
-                      <div>
+                      <div title="Cumulatief: totaal aantal gevonden listings over alle runs">
                         <p className="text-lg font-bold text-foreground">{p.totalJobsFound}</p>
                         <p className="text-[10px] text-muted-foreground">Gevonden</p>
                       </div>
-                      <div>
+                      <div title="Aantal scrape-runs voor dit platform">
                         <p className="text-lg font-bold text-foreground">{p.totalRuns}</p>
                         <p className="text-[10px] text-muted-foreground">Runs</p>
                       </div>
                     </div>
 
-                    {/* Run breakdown */}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t border-border">
-                      <span className="flex items-center gap-1">
-                        <CheckCircle className="h-3 w-3 text-emerald-500" />
-                        {p.successCount}
-                      </span>
-                      {p.partialCount > 0 && (
-                        <span className="flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3 text-amber-500" />
-                          {p.partialCount}
+                    {/* Run breakdown: success + partial + failed = totalRuns */}
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-muted-foreground pt-2 border-t border-border">
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1" title="Runs met status geslaagd">
+                          <CheckCircle className="h-3 w-3 text-emerald-500" />
+                          {p.successCount}
                         </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <XCircle className="h-3 w-3 text-red-500" />
-                        {p.failedCount}
-                      </span>
-                      <span className="ml-auto">
+                        {p.partialCount > 0 && (
+                          <span
+                            className="flex items-center gap-1"
+                            title="Runs met status gedeeltelijk"
+                          >
+                            <AlertCircle className="h-3 w-3 text-amber-500" />
+                            {p.partialCount}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1" title="Runs met status mislukt">
+                          <XCircle className="h-3 w-3 text-red-500" />
+                          {p.failedCount}
+                        </span>
+                        <span
+                          className="font-mono text-[10px] opacity-80"
+                          title="Controle: geslaagd + gedeeltelijk + mislukt = totaal runs"
+                        >
+                          ={p.totalRuns}
+                        </span>
+                      </div>
+                      <span>
                         Gem. {p.avgDurationMs > 0 ? `${(p.avgDurationMs / 1000).toFixed(1)}s` : "-"}
                       </span>
                     </div>

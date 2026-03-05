@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { Clock, MessageSquare, Plus, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -17,6 +17,7 @@ type Props = {
   activeSessionId: string | null;
   onSelectSession: (sessionId: string) => void;
   onNewSession: () => void;
+  onClose?: () => void;
 };
 
 function timeAgo(dateStr: string | null): string {
@@ -32,7 +33,12 @@ function timeAgo(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
 }
 
-export function ChatHistorySidebar({ activeSessionId, onSelectSession, onNewSession }: Props) {
+export function ChatHistorySidebar({
+  activeSessionId,
+  onSelectSession,
+  onNewSession,
+  onClose,
+}: Props) {
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -73,15 +79,28 @@ export function ChatHistorySidebar({ activeSessionId, onSelectSession, onNewSess
       {/* Header */}
       <div className="flex h-12 items-center justify-between border-b border-border px-3">
         <span className="text-sm font-semibold text-foreground">Gesprekken</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={onNewSession}
-          title="Nieuw gesprek"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={onNewSession}
+            title="Nieuw gesprek"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onClose}
+              title="Sluiten"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Session list */}
