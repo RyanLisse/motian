@@ -8,9 +8,10 @@ import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
-import { candidates } from "@/src/db/schema";
+import { candidateSkills, candidates } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
 import { parsePagination } from "@/src/lib/pagination";
+import { listEscoSkillsForFilter } from "@/src/services/esco";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ interface Props {
   searchParams: Promise<{
     q?: string;
     beschikbaarheid?: string;
+    vaardigheid?: string;
     pagina?: string;
     page?: string;
     limit?: string;
@@ -39,6 +41,10 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   const params = await searchParams;
   const query = params.q ?? "";
   const availability = params.beschikbaarheid ?? "";
+  const escoUri = params.vaardigheid ?? "";
+
+  const skillOptions = await listEscoSkillsForFilter();
+
   const urlParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === "") continue;
@@ -59,6 +65,11 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   if (availability) {
     conditions.push(eq(candidates.availability, availability));
   }
+  if (escoUri) {
+    conditions.push(
+      sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${escoUri})`,
+    );
+  }
 
   const whereClause = and(...conditions);
 
@@ -75,8 +86,8 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
       .from(candidates)
       .where(whereClause)
       .orderBy(desc(candidates.createdAt))
-    .limit(limit)
-    .offset(offset),
+      .limit(limit)
+      .offset(offset),
     // All 3 counts in a single query using FILTER clauses
     db
       .select({
@@ -146,6 +157,19 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
             <option value="direct">Direct beschikbaar</option>
             <option value="1_maand">Binnen 1 maand</option>
             <option value="3_maanden">Binnen 3 maanden</option>
+          </select>
+          <select
+            name="vaardigheid"
+            defaultValue={escoUri}
+            className="h-9 px-3 min-w-[180px] bg-card border border-border rounded-lg text-sm text-muted-foreground focus:outline-none focus:border-primary/40"
+            title="Filter op canonieke vaardigheid (ESCO)"
+          >
+            <option value="">Alle vaardigheden</option>
+            {skillOptions.map((s) => (
+              <option key={s.uri} value={s.uri}>
+                {s.labelNl ?? s.labelEn}
+              </option>
+            ))}
           </select>
           <button
             type="submit"

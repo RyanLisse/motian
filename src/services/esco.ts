@@ -467,9 +467,7 @@ export async function getEscoMappingStats(): Promise<EscoMappingStats> {
   oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
   const [totals, byStrategy, reviewCount, last24h] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(skillMappings),
+    db.select({ count: sql<number>`count(*)::int` }).from(skillMappings),
     db
       .select({
         strategy: skillMappings.strategy,
@@ -562,28 +560,33 @@ export type EscoSkillOption = {
 };
 
 /** List ESCO skills for filter dropdowns; optional search on preferred labels. */
-export async function listEscoSkillsForFilter(query?: string): Promise<EscoSkillOption[]> {
-  const conditions = [];
-  if (query?.trim()) {
-    const term = `%${query.trim().toLowerCase()}%`;
-    conditions.push(
-      or(
-        sql`lower(${escoSkills.preferredLabelEn}) LIKE ${term}`,
-        sql`lower(${escoSkills.preferredLabelNl}) LIKE ${term}`,
-      ),
-    );
-  }
-
-  const rows = await db
+export async function listEscoSkillsForFilter(searchQuery?: string): Promise<EscoSkillOption[]> {
+  const baseQuery = db
     .select({
       uri: escoSkills.uri,
       preferredLabelNl: escoSkills.preferredLabelNl,
       preferredLabelEn: escoSkills.preferredLabelEn,
     })
     .from(escoSkills)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(escoSkills.preferredLabelNl ?? escoSkills.preferredLabelEn)
     .limit(200);
+
+  if (searchQuery?.trim()) {
+    const term = `%${searchQuery.trim().toLowerCase()}%`;
+    const rows = await baseQuery.where(
+      or(
+        sql`lower(${escoSkills.preferredLabelEn}) LIKE ${term}`,
+        sql`lower(${escoSkills.preferredLabelNl}) LIKE ${term}`,
+      ),
+    );
+    return rows.map((r) => ({
+      uri: r.uri,
+      labelNl: r.preferredLabelNl,
+      labelEn: r.preferredLabelEn,
+    }));
+  }
+
+  const rows = await baseQuery;
 
   return rows.map((r) => ({
     uri: r.uri,
