@@ -2,6 +2,13 @@ import { notifySlack } from "../lib/notify-slack";
 import type { StructuredMatchOutput } from "../schemas/matching";
 import { type Candidate, getCandidateById, listActiveCandidates } from "./candidates";
 import { embedCandidate } from "./embedding";
+import {
+  getCandidateSkills,
+  getCandidateSkillsForCandidateIds,
+  getJobSkills,
+  getJobSkillsForJobIds,
+  isEscoScoringEnabled,
+} from "./esco";
 import { getJobById, type Job, listActiveJobs } from "./jobs";
 import { type JudgeVerdict, judgeMatch } from "./match-judge";
 import { createMatch, getMatchByJobAndCandidate } from "./matches";
@@ -60,6 +67,7 @@ async function upsertMatch(
   candidateId: string,
   score: number,
   structured: StructuredMatchOutput | null,
+  quickScoreMeta?: { reasoning?: string; model?: string },
 ): Promise<string> {
   try {
     const match = await createMatch({
@@ -67,8 +75,8 @@ async function upsertMatch(
       candidateId,
       matchScore: structured?.overallScore ?? score,
       confidence: structured?.recommendationConfidence ?? undefined,
-      reasoning: structured?.recommendationReasoning ?? undefined,
-      model: "auto-match-v1",
+      reasoning: quickScoreMeta?.reasoning ?? structured?.recommendationReasoning ?? undefined,
+      model: quickScoreMeta?.model ?? (structured ? "auto-match-v1" : undefined),
       criteriaBreakdown: structured?.criteriaBreakdown,
       riskProfile: structured?.riskProfile,
       enrichmentSuggestions: structured?.enrichmentSuggestions,
@@ -95,7 +103,7 @@ async function upsertMatch(
  * Used by both candidate→jobs and job→candidates directions.
  */
 async function runAutoMatchPipeline(
-  pairs: Array<{ job: Job; candidate: Candidate; score: number }>,
+  pairs: Array<{ job: Job; candidate: Candidate; score: number; reasoning: string; model: string }>,
   topN: number = DEFAULT_TOP_N,
 ): Promise<AutoMatchResult[]> {
   const top = pairs
@@ -106,7 +114,7 @@ async function runAutoMatchPipeline(
   if (top.length === 0) return [];
 
   return Promise.all(
-    top.map(async ({ job: j, candidate: c, score }): Promise<AutoMatchResult> => {
+    top.map(async ({ job: j, candidate: c, score, reasoning, model }): Promise<AutoMatchResult> => {
       let structuredResult: StructuredMatchOutput | null = null;
       try {
         structuredResult = await deepMatch(j, c);
@@ -131,7 +139,10 @@ async function runAutoMatchPipeline(
       let matchId = "";
       let matchSaveError = false;
       try {
-        matchId = await upsertMatch(j.id, c.id, score, structuredResult);
+        matchId = await upsertMatch(j.id, c.id, score, structuredResult, {
+          reasoning,
+          model,
+        });
       } catch (err) {
         matchSaveError = true;
         console.error(`[Auto-Match] Create match failed for job ${j.id} / candidate ${c.id}:`, err);
@@ -194,10 +205,31 @@ export async function autoMatchCandidateToJobs(
   const activeJobs = await listActiveJobs(200);
   if (activeJobs.length === 0) return [];
 
+  const useEscoScoring =
+    process.env.USE_ESCO_SCORING === "true" ||
+    process.env.USE_ESCO_SCORING === "1" ||
+    (typeof process.env.USE_ESCO_SCORING === "string" && process.env.USE_ESCO_SCORING.length > 0) ||
+    isEscoScoringEnabled();
+  let candidateEscoSkills: Awaited<ReturnType<typeof getCandidateSkills>> = [];
+  let jobEscoMap: Awaited<ReturnType<typeof getJobSkillsForJobIds>> = new Map();
+  if (useEscoScoring) {
+    try {
+      [candidateEscoSkills, jobEscoMap] = await Promise.all([
+        getCandidateSkills(candidateId),
+        getJobSkillsForJobIds(activeJobs.map((j) => j.id)),
+      ]);
+    } catch (err) {
+      console.warn("[Auto-Match] ESCO skills fetch failed, using legacy scoring:", err);
+    }
+  }
+
   const pairs = activeJobs.map((job) => ({
     job,
     candidate: freshCandidate,
-    ...computeMatchScore(job, freshCandidate),
+    ...computeMatchScore(job, freshCandidate, {
+      candidateEscoSkills,
+      jobEscoSkills: jobEscoMap.get(job.id) ?? [],
+    }),
   }));
 
   return runAutoMatchPipeline(pairs, topN);
@@ -218,10 +250,31 @@ export async function autoMatchJobToCandidates(
   const activeCandidates = await listActiveCandidates(200);
   if (activeCandidates.length === 0) return [];
 
+  const useEscoScoringJob =
+    process.env.USE_ESCO_SCORING === "true" ||
+    process.env.USE_ESCO_SCORING === "1" ||
+    (typeof process.env.USE_ESCO_SCORING === "string" && process.env.USE_ESCO_SCORING.length > 0) ||
+    isEscoScoringEnabled();
+  let jobEscoSkills: Awaited<ReturnType<typeof getJobSkills>> = [];
+  let candidateEscoMap: Awaited<ReturnType<typeof getCandidateSkillsForCandidateIds>> = new Map();
+  if (useEscoScoringJob) {
+    try {
+      [jobEscoSkills, candidateEscoMap] = await Promise.all([
+        getJobSkills(jobId),
+        getCandidateSkillsForCandidateIds(activeCandidates.map((c) => c.id)),
+      ]);
+    } catch (err) {
+      console.warn("[Auto-Match] ESCO skills fetch failed, using legacy scoring:", err);
+    }
+  }
+
   const pairs = activeCandidates.map((candidate) => ({
     job,
     candidate,
-    ...computeMatchScore(job, candidate),
+    ...computeMatchScore(job, candidate, {
+      candidateEscoSkills: candidateEscoMap.get(candidate.id) ?? [],
+      jobEscoSkills,
+    }),
   }));
 
   return runAutoMatchPipeline(pairs, topN);

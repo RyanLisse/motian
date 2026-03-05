@@ -77,6 +77,58 @@ describe("Hybrid scoring — rule + vector blend", () => {
     expect(result.score).toBeLessThanOrEqual(100);
     expect(result.confidence).toBeLessThanOrEqual(100);
   });
+
+  it("uses esco-rule-v1 when canonical skills are provided without embeddings", () => {
+    const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
+      candidateEscoSkills: [
+        {
+          escoUri: "skill:react",
+          label: "React",
+          confidence: 0.98,
+          critical: false,
+        },
+      ],
+      jobEscoSkills: [
+        {
+          escoUri: "skill:react",
+          label: "React",
+          confidence: 0.99,
+          required: true,
+          critical: true,
+          weight: 1,
+        },
+      ],
+    });
+
+    expect(result.model).toBe("esco-rule-v1");
+    expect(result.reasoning).toContain("ESCO");
+  });
+
+  it("falls back to legacy scoring when a critical canonical skill has low confidence", () => {
+    const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
+      candidateEscoSkills: [
+        {
+          escoUri: "skill:react",
+          label: "React",
+          confidence: 0.95,
+          critical: false,
+        },
+      ],
+      jobEscoSkills: [
+        {
+          escoUri: "skill:react",
+          label: "React",
+          confidence: 0.2,
+          required: true,
+          critical: true,
+          weight: 1,
+        },
+      ],
+    });
+
+    expect(result.model).toBe("rule-based-v1");
+    expect(result.reasoning).toContain("skills match");
+  });
 });
 
 // ── Embedding Text Builder Tests ─────────────────────────────────

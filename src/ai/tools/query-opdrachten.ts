@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { PLATFORMS } from "@/src/lib/helpers";
+import { withJobsCanonicalSkills } from "@/src/services/esco";
 import type { ListJobsSortBy } from "@/src/services/jobs";
 import { hybridSearch, listJobs } from "@/src/services/jobs";
 
@@ -144,9 +145,10 @@ export const queryOpdrachten = tool({
         deadlineBefore: n.deadlineBefore,
         startDateAfter: n.startDateAfter,
       });
+      const resultsWithCanonicalSkills = await withJobsCanonicalSkills(results);
       return {
-        total: results.length,
-        opdrachten: results.map((job) => ({
+        total: resultsWithCanonicalSkills.length,
+        opdrachten: resultsWithCanonicalSkills.map((job) => ({
           ...summarizeJob(job),
           score: job.score,
         })),
@@ -167,10 +169,11 @@ export const queryOpdrachten = tool({
       startDateAfter: n.startDateAfter,
       limit: params.limit,
     });
+    const dataWithCanonicalSkills = await withJobsCanonicalSkills(data);
 
     return {
       total,
-      opdrachten: data.map(summarizeJob),
+      opdrachten: dataWithCanonicalSkills.map(summarizeJob),
     };
   },
 });
@@ -191,5 +194,6 @@ function summarizeJob(job: Record<string, unknown>) {
     applicationDeadline: job.applicationDeadline,
     postedAt: job.postedAt,
     startDate: job.startDate,
+    canonicalSkills: job.canonicalSkills,
   };
 }

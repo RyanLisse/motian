@@ -12,6 +12,7 @@ import {
   searchCandidates,
   updateCandidate,
 } from "@/src/services/candidates";
+import { withCandidateCanonicalSkills, withCandidatesCanonicalSkills } from "@/src/services/esco";
 
 export const zoekKandidaten = tool({
   description:
@@ -26,10 +27,10 @@ export const zoekKandidaten = tool({
   execute: async ({ query, location, skills, role, limit }) => {
     if (query || location || skills || role) {
       const results = await searchCandidates({ query, location, skills, role, limit });
-      return { total: results.length, kandidaten: results };
+      return { total: results.length, kandidaten: await withCandidatesCanonicalSkills(results) };
     }
     const results = await listCandidates(limit);
-    return { total: results.length, kandidaten: results };
+    return { total: results.length, kandidaten: await withCandidatesCanonicalSkills(results) };
   },
 });
 
@@ -42,7 +43,7 @@ export const getKandidaatDetail = tool({
   execute: async ({ id }) => {
     const candidate = await getCandidateById(id);
     if (!candidate) return { error: "Kandidaat niet gevonden" };
-    return candidate;
+    return withCandidateCanonicalSkills(candidate);
   },
 });
 
@@ -70,7 +71,7 @@ export const maakKandidaatAan = tool({
     const candidate = await createCandidate(data);
     revalidatePath("/professionals");
     publish("candidate:created", { id: candidate.id, name: candidate.name });
-    return candidate;
+    return withCandidateCanonicalSkills(candidate);
   },
 });
 
@@ -102,7 +103,7 @@ export const updateKandidaat = tool({
     revalidatePath("/professionals");
     revalidatePath(`/professionals/${id}`);
     publish("candidate:updated", { id, name: candidate.name });
-    return candidate;
+    return withCandidateCanonicalSkills(candidate);
   },
 });
 

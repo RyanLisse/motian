@@ -14,7 +14,9 @@ export interface PaginatedResponse<T> {
 
 /**
  * Parse pagination parameters from URL search params.
+ * Use in Server Components (page receives searchParams) or in API routes (request.url searchParams).
  * Supports Dutch aliases: `pagina` for page, `perPage` for limit.
+ * @see https://nextjs.org/learn/dashboard-app/adding-search-and-pagination
  */
 export function parsePagination(
   searchParams: URLSearchParams,

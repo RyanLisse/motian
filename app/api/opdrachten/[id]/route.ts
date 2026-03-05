@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
+import { withJobCanonicalSkills } from "@/src/services/esco";
 import { deleteJob, getJobById, updateJob } from "@/src/services/jobs";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export const GET = withApiHandler(
     if (!job) {
       return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: job });
+    return Response.json({ data: await withJobCanonicalSkills(job) });
   },
   { logPrefix: "GET /api/opdrachten/[id] error" },
 );
@@ -42,7 +43,7 @@ export const PATCH = withApiHandler(
     if (!job) {
       return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: job });
+    return Response.json({ data: await withJobCanonicalSkills(job) });
   },
   { logPrefix: "PATCH /api/opdrachten/[id] error" },
 );

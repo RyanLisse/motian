@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Bell, ChevronLeft, ChevronRight, Loader2, RotateCcw, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, RotateCcw, Search } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useDeferredValue, useState } from "react";
 import { JobListItem } from "@/components/job-list-item";
@@ -281,17 +281,6 @@ export function OpdrachtenSidebar({
     <aside className="h-full w-full bg-sidebar/25">
       <div className="grid h-full min-h-0 lg:grid-cols-[300px_minmax(0,1fr)]">
         <div className="border-b border-border/70 px-4 py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
-          <div className="mb-6">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 w-full justify-center rounded-full border-primary/50 bg-background text-primary font-semibold hover:bg-primary/10"
-            >
-              <Bell className="mr-2 h-4 w-4" />
-              Job alert
-            </Button>
-          </div>
-
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-2xl font-semibold tracking-tight text-foreground">Zoekfilter</h3>
             <button

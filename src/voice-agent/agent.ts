@@ -22,6 +22,12 @@ import {
 } from "../services/candidates.js";
 import { findSimilarJobs } from "../services/embedding.js";
 import {
+  withCandidateCanonicalSkills,
+  withCandidatesCanonicalSkills,
+  withJobCanonicalSkills,
+  withJobsCanonicalSkills,
+} from "../services/esco.js";
+import {
   eraseCandidateData,
   exportCandidateData,
   exportContactData,
@@ -130,9 +136,10 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
               limit: limit ?? 10,
               offset: 0,
             });
+            const jobsWithCanonicalSkills = await withJobsCanonicalSkills(result.data);
             return {
               total: result.total,
-              opdrachten: result.data.map((j) => ({
+              opdrachten: jobsWithCanonicalSkills.map((j) => ({
                 id: j.id,
                 title: j.title,
                 company: j.company,
@@ -143,6 +150,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
                 contractType: j.contractType,
                 applicationDeadline: j.applicationDeadline,
                 startDate: j.startDate,
+                canonicalSkills: j.canonicalSkills,
               })),
             };
           },
@@ -156,7 +164,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
           execute: async ({ id }) => {
             const job = await getJobById(id);
             if (!job) return { error: "Opdracht niet gevonden" };
-            return job;
+            return withJobCanonicalSkills(job);
           },
         }),
 
@@ -173,7 +181,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
           execute: async ({ id, ...data }) => {
             const job = await updateJob(id, data);
             if (!job) return { error: "Opdracht niet gevonden" };
-            return job;
+            return withJobCanonicalSkills(job);
           },
         }),
 
@@ -205,14 +213,16 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
               limit: limit ?? 20,
               offset: 0,
             });
+            const candidatesWithCanonicalSkills = await withCandidatesCanonicalSkills(data);
             return {
-              total: data.length,
-              kandidaten: data.map((c) => ({
+              total: candidatesWithCanonicalSkills.length,
+              kandidaten: candidatesWithCanonicalSkills.map((c) => ({
                 id: c.id,
                 name: c.name,
                 role: c.role,
                 location: c.location,
                 skills: c.skills,
+                canonicalSkills: c.canonicalSkills,
               })),
             };
           },
@@ -226,7 +236,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
           execute: async ({ id }) => {
             const candidate = await getCandidateById(id);
             if (!candidate) return { error: "Kandidaat niet gevonden" };
-            return candidate;
+            return withCandidateCanonicalSkills(candidate);
           },
         }),
 
@@ -245,7 +255,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
               .optional()
               .describe("Beschikbaarheid"),
           }),
-          execute: async (data) => createCandidate(data),
+          execute: async (data) => withCandidateCanonicalSkills(await createCandidate(data)),
         }),
 
         updateKandidaat: llm.tool({
@@ -264,7 +274,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
           execute: async ({ id, ...data }) => {
             const candidate = await updateCandidate(id, data);
             if (!candidate) return { error: "Kandidaat niet gevonden" };
-            return candidate;
+            return withCandidateCanonicalSkills(candidate);
           },
         }),
 

@@ -7,17 +7,23 @@ import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { applications, candidates, interviews, jobs } from "@/src/db/schema";
+import { parsePagination } from "@/src/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
+/** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
   searchParams: Promise<{
     status?: string;
     pagina?: string;
+    page?: string;
+    limit?: string;
+    perPage?: string;
   }>;
 }
 
-const PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 20;
+const MAX_PER_PAGE = 50;
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
@@ -50,8 +56,17 @@ const STATUSES = ["scheduled", "completed", "cancelled"];
 export default async function InterviewsPage({ searchParams }: Props) {
   const params = await searchParams;
   const statusFilter = params.status ?? "";
-  const page = Math.max(1, parseInt(params.pagina ?? "1", 10));
-  const offset = (page - 1) * PER_PAGE;
+
+  const urlParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "") continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (v) urlParams.set(key, v);
+  }
+  const { page, limit, offset } = parsePagination(urlParams, {
+    limit: DEFAULT_PER_PAGE,
+    maxLimit: MAX_PER_PAGE,
+  });
 
   // KPI counts
   const now = new Date();
@@ -108,13 +123,13 @@ export default async function InterviewsPage({ searchParams }: Props) {
       .leftJoin(jobs, eq(applications.jobId, jobs.id))
       .where(where)
       .orderBy(desc(interviews.scheduledAt))
-      .limit(PER_PAGE)
+      .limit(limit)
       .offset(offset),
     db.select({ count: sql<number>`count(*)::int` }).from(interviews).where(where),
   ]);
 
   const totalFiltered = countRows[0]?.count ?? 0;
-  const totalPages = Math.ceil(totalFiltered / PER_PAGE);
+  const totalPages = Math.ceil(totalFiltered / limit) || 1;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -255,12 +270,14 @@ export default async function InterviewsPage({ searchParams }: Props) {
             <Pagination
               page={page}
               totalPages={totalPages}
-              buildHref={(p) =>
-                `/interviews?${new URLSearchParams({
+              buildHref={(p) => {
+                const sp = new URLSearchParams({
                   ...(statusFilter ? { status: statusFilter } : {}),
                   pagina: String(p),
-                }).toString()}`
-              }
+                });
+                if (limit !== DEFAULT_PER_PAGE) sp.set("limit", String(limit));
+                return `/interviews?${sp.toString()}`;
+              }}
             />
           </>
         )}

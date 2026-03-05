@@ -10,18 +10,24 @@ import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
+import { parsePagination } from "@/src/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
+/** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
   searchParams: Promise<{
     q?: string;
     beschikbaarheid?: string;
     pagina?: string;
+    page?: string;
+    limit?: string;
+    perPage?: string;
   }>;
 }
 
-const PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 20;
+const MAX_PER_PAGE = 50;
 
 const availabilityLabels: Record<string, string> = {
   direct: "Direct beschikbaar",
@@ -33,8 +39,16 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   const params = await searchParams;
   const query = params.q ?? "";
   const availability = params.beschikbaarheid ?? "";
-  const page = Math.max(1, parseInt(params.pagina ?? "1", 10));
-  const offset = (page - 1) * PER_PAGE;
+  const urlParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "") continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (v) urlParams.set(key, v);
+  }
+  const { page, limit, offset } = parsePagination(urlParams, {
+    limit: DEFAULT_PER_PAGE,
+    maxLimit: MAX_PER_PAGE,
+  });
 
   // Build conditions
   const conditions = [isNull(candidates.deletedAt)];
@@ -61,8 +75,8 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
       .from(candidates)
       .where(whereClause)
       .orderBy(desc(candidates.createdAt))
-      .limit(PER_PAGE)
-      .offset(offset),
+    .limit(limit)
+    .offset(offset),
     // All 3 counts in a single query using FILTER clauses
     db
       .select({
@@ -77,7 +91,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   ]);
 
   const totalCount = statsResult[0]?.totalFiltered ?? 0;
-  const totalPages = Math.ceil(totalCount / PER_PAGE);
+  const totalPages = Math.ceil(totalCount / limit) || 1;
   const directCount = statsResult[0]?.directCount ?? 0;
   const weekCount = statsResult[0]?.weekCount ?? 0;
 
@@ -255,13 +269,14 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
         <Pagination
           page={page}
           totalPages={totalPages}
-          buildHref={(p) =>
-            `/professionals?${new URLSearchParams({
-              ...(query ? { q: query } : {}),
-              ...(availability ? { beschikbaarheid: availability } : {}),
-              pagina: String(p),
-            }).toString()}`
-          }
+          buildHref={(p) => {
+            const sp = new URLSearchParams();
+            if (query) sp.set("q", query);
+            if (availability) sp.set("beschikbaarheid", availability);
+            sp.set("pagina", String(p));
+            if (limit !== DEFAULT_PER_PAGE) sp.set("limit", String(limit));
+            return `/professionals?${sp.toString()}`;
+          }}
         />
 
         <div className="h-8" />

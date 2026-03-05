@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { autoMatchJobToCandidates } from "../../services/auto-matching.js";
+import { withJobCanonicalSkills, withJobsCanonicalSkills } from "../../services/esco.js";
 import type { ListJobsSortBy } from "../../services/jobs.js";
 import { deleteJob, getJobById, hybridSearch, listJobs, updateJob } from "../../services/jobs.js";
 
@@ -119,9 +120,12 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
         deadlineBefore: opts.deadlineBefore,
         startDateAfter: opts.startDateAfter,
       });
-      return { total: results.length, vacatures: results };
+      return {
+        total: results.length,
+        vacatures: await withJobsCanonicalSkills(results),
+      };
     }
-    return listJobs({
+    const result = await listJobs({
       platform: opts.platform,
       province: opts.province,
       rateMin: opts.rateMin,
@@ -135,20 +139,24 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       limit: opts.limit,
       offset: opts.offset,
     });
+    return {
+      ...result,
+      data: await withJobsCanonicalSkills(result.data),
+    };
   },
 
   vacature_detail: async (raw) => {
     const { id } = vacatureDetailSchema.parse(raw);
     const result = await getJobById(id);
     if (!result) return { error: "Vacature niet gevonden" };
-    return result;
+    return withJobCanonicalSkills(result);
   },
 
   update_vacature: async (raw) => {
     const { id, ...data } = updateVacatureSchema.parse(raw);
     const result = await updateJob(id, data);
     if (!result) return { error: "Vacature niet gevonden" };
-    return result;
+    return withJobCanonicalSkills(result);
   },
 
   verwijder_vacature: async (raw) => {

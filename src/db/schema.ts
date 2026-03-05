@@ -189,6 +189,7 @@ export const candidates = pgTable(
     resumeUrl: text("resume_url"),
     linkedinUrl: text("linkedin_url"),
     headline: text("headline"),
+    profileSummary: text("profile_summary"), // AI/parser samenvatting (2-4 zinnen), getoond op profiel
     source: text("source"), // "linkedin", "manual", "import", "mcp"
     notes: text("notes"),
     hourlyRate: integer("hourly_rate"),
@@ -213,6 +214,148 @@ export const candidates = pgTable(
     nameIdx: index("idx_candidates_name").on(table.name),
     provinceIdx: index("idx_candidates_province").on(table.province),
     deletedAtIdx: index("idx_candidates_deleted_at").on(table.deletedAt),
+  }),
+);
+
+// ========== ESCO Canonical Skills ==========
+export const escoSkills = pgTable(
+  "esco_skills",
+  {
+    uri: text("uri").primaryKey(),
+    preferredLabelEn: text("preferred_label_en").notNull(),
+    preferredLabelNl: text("preferred_label_nl"),
+    skillType: text("skill_type"),
+    reuseLevel: text("reuse_level"),
+    broaderUri: text("broader_uri"),
+    escoVersion: text("esco_version").notNull(),
+    rawConcept: jsonb("raw_concept").default({}),
+    importedAt: timestamp("imported_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    preferredLabelEnIdx: index("idx_esco_skills_preferred_label_en").on(table.preferredLabelEn),
+    preferredLabelNlIdx: index("idx_esco_skills_preferred_label_nl").on(table.preferredLabelNl),
+    broaderUriIdx: index("idx_esco_skills_broader_uri").on(table.broaderUri),
+  }),
+);
+
+export const skillAliases = pgTable(
+  "skill_aliases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    alias: text("alias").notNull(),
+    normalizedAlias: text("normalized_alias").notNull(),
+    language: text("language"),
+    source: text("source").notNull(),
+    confidence: real("confidence"),
+    escoUri: text("esco_uri")
+      .notNull()
+      .references(() => escoSkills.uri, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    normalizedAliasIdx: index("idx_skill_aliases_normalized_alias").on(table.normalizedAlias),
+    escoUriIdx: index("idx_skill_aliases_esco_uri").on(table.escoUri),
+    aliasLanguageUniqueIdx: uniqueIndex("uq_skill_aliases_alias_language_esco").on(
+      table.normalizedAlias,
+      table.language,
+      table.escoUri,
+    ),
+  }),
+);
+
+export const candidateSkills = pgTable(
+  "candidate_skills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    escoUri: text("esco_uri")
+      .notNull()
+      .references(() => escoSkills.uri, { onDelete: "restrict" }),
+    source: text("source").notNull(),
+    confidence: real("confidence"),
+    confidenceHint: text("confidence_hint"),
+    evidence: text("evidence"),
+    critical: boolean("critical").notNull().default(false),
+    mappingStrategy: text("mapping_strategy"),
+    escoVersion: text("esco_version"),
+    mappedAt: timestamp("mapped_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    candidateIdIdx: index("idx_candidate_skills_candidate_id").on(table.candidateId),
+    escoUriIdx: index("idx_candidate_skills_esco_uri").on(table.escoUri),
+    candidateSkillUniqueIdx: uniqueIndex("uq_candidate_skills_candidate_esco_source").on(
+      table.candidateId,
+      table.escoUri,
+      table.source,
+    ),
+  }),
+);
+
+export const jobSkills = pgTable(
+  "job_skills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    escoUri: text("esco_uri")
+      .notNull()
+      .references(() => escoSkills.uri, { onDelete: "restrict" }),
+    source: text("source").notNull(),
+    confidence: real("confidence"),
+    confidenceHint: text("confidence_hint"),
+    evidence: text("evidence"),
+    required: boolean("required").notNull().default(false),
+    critical: boolean("critical").notNull().default(false),
+    weight: real("weight"),
+    mappingStrategy: text("mapping_strategy"),
+    escoVersion: text("esco_version"),
+    mappedAt: timestamp("mapped_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    jobIdIdx: index("idx_job_skills_job_id").on(table.jobId),
+    escoUriIdx: index("idx_job_skills_esco_uri").on(table.escoUri),
+    jobSkillUniqueIdx: uniqueIndex("uq_job_skills_job_esco_source").on(
+      table.jobId,
+      table.escoUri,
+      table.source,
+    ),
+    criticalIdx: index("idx_job_skills_critical").on(table.critical),
+  }),
+);
+
+export const skillMappings = pgTable(
+  "skill_mappings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    rawSkill: text("raw_skill").notNull(),
+    normalizedSkill: text("normalized_skill").notNull(),
+    escoUri: text("esco_uri").references(() => escoSkills.uri, { onDelete: "set null" }),
+    contextType: text("context_type").notNull(),
+    contextId: text("context_id").notNull(),
+    source: text("source").notNull(),
+    strategy: text("strategy").notNull(),
+    confidence: real("confidence"),
+    evidence: text("evidence"),
+    critical: boolean("critical").notNull().default(false),
+    sentToReview: boolean("sent_to_review").notNull().default(false),
+    reviewStatus: text("review_status"),
+    escoVersion: text("esco_version"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    normalizedSkillIdx: index("idx_skill_mappings_normalized_skill").on(table.normalizedSkill),
+    contextIdx: index("idx_skill_mappings_context").on(table.contextType, table.contextId),
+    escoUriIdx: index("idx_skill_mappings_esco_uri").on(table.escoUri),
+    reviewQueueIdx: index("idx_skill_mappings_review_queue").on(
+      table.sentToReview,
+      table.reviewStatus,
+    ),
   }),
 );
 
