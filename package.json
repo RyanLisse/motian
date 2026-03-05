@@ -27,7 +27,9 @@
     "harness:gap": "tsx scripts/harness/create-gap-issue.ts",
     "harness:weekly-metrics": "tsx scripts/harness/entropy-check.ts --verbose",
     "mcp": "tsx src/mcp/server.ts",
-    "cli": "tsx src/cli/index.ts"
+    "cli": "tsx src/cli/index.ts",
+    "voice-agent:dev": "tsx src/voice-agent/main.ts dev",
+    "voice-agent:start": "tsx src/voice-agent/main.ts start"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.46",
@@ -36,6 +38,9 @@
     "@ai-sdk/react": "^3.0.99",
     "@ai-sdk/xai": "^3.0.57",
     "@hapi/boom": "^10.0.1",
+    "@livekit/agents": "^1.0.48",
+    "@livekit/agents-plugin-google": "^1.0.48",
+    "@livekit/agents-plugin-silero": "^1.0.48",
     "@livekit/components-react": "^2.9.20",
     "@livekit/protocol": "^1.45.0",
     "@modelcontextprotocol/sdk": "^1.27.0",

@@ -86,15 +86,28 @@ RRF formula: `score = sum(1 / (k + rank))` with k=60.
 | GPT-5 Nano | OpenAI | 512d embeddings, AI chat agent | `embedding.ts`, `api/chat/route.ts` |
 | Grok 4 | xAI | Independent judge verdict on match results | `match-judge.ts` |
 
-## AI Chat Agent
+## AI Agent Surfaces
+
+Motian provides **4 agent surfaces** sharing the same service layer:
+
+| Surface | Tools | Model | Transport | Start |
+|---------|-------|-------|-----------|-------|
+| **Chat** | 40 | GPT-5 Nano | Vercel AI SDK `streamText` | `/chat` page |
+| **MCP Server** | 42 | N/A (client chooses) | stdio (Model Context Protocol) | `pnpm mcp` |
+| **Voice Agent** | 35 | Gemini 2.5 Flash Native Audio | LiveKit Agents + Silero VAD | `pnpm voice-agent:dev` |
+| **CLI** | — | Interactive | Terminal | `pnpm cli` |
+
+### Chat Agent
 
 - **Model**: GPT-5 Nano via Vercel AI SDK 6 with `streamText()` + `maxSteps: 5`
+- **UI**: Full-screen `/chat` page built with **AI SDK Elements** (`PromptInput`, `Conversation`, `Message` with Streamdown)
+- **Model Picker**: Gemini 3.1 Flash Lite, Gemini 3 Flash, GPT-5 Nano, Grok 4
+- **Features**: Voice mode toggle, session history sidebar, CV upload in chat, GenUI cards, reasoning display
 - **System prompt**: Dutch, context-aware (current page + entity ID + workspace summary)
 - **Conversation memory**: Persisted to `chat_sessions` table (last 50 messages per session)
 - **Rate limit**: 20 requests/minute per IP
-- **Toggle**: `Cmd+J` keyboard shortcut
 
-### Tools
+### Chat Tools (40)
 
 | Category | Tools | Count |
 |----------|-------|-------|
@@ -106,18 +119,24 @@ RRF formula: `score = sum(1 / (k + rank))` with k=60.
 | Berichten | zoekBerichten, getBerichtDetail, stuurBericht, verwijderBericht | 4 |
 | GDPR | exporteerKandidaatData, wisKandidaatData, exporteerContactData, scrubContactGegevens | 4 |
 | Operaties | importeerOpdrachtenBatch, runKandidaatScoringBatch, reviewGdprRetentie | 3 |
-| Analyse | analyseData, voerStructuredMatchUit, triggerScraper | 3 |
-| **Totaal** | | **45** |
+| **Totaal** | | **40** |
 
-## CLI & MCP
+### Voice Agent
 
-### CLI (41 commando's)
+- **Model**: Gemini 2.5 Flash Native Audio (`gemini-2.5-flash-native-audio-preview-12-2025`)
+- **VAD**: Silero Voice Activity Detection
+- **Language**: Dutch (automatic greeting)
+- **Architecture**: Direct service imports — no HTTP overhead (35 tools)
+- **Location**: `src/voice-agent/main.ts` + `src/voice-agent/agent.ts`
+- **Start**: `pnpm voice-agent:dev` (development) or `pnpm voice-agent:start` (production)
 
-Terminal interface via `pnpm cli <command>`. Commands grouped by domain: kandidaten (7), vacatures (6), matches (6), sollicitaties (5), interviews (4), berichten (2), gdpr (4), ops (2), scraper (4), health (1).
+### MCP Server (42 tools)
 
-### MCP Server (37 tools)
+Model Context Protocol server for AI assistants (Claude Code, Cursor, Windsurf). Exposes the same service layer via stdio transport.
 
-Model Context Protocol server for AI assistants (Claude Desktop, Cursor). Exposes the same service layer via stdio transport. Tools grouped: kandidaten (9), vacatures (5), matches (6), pipeline (10), gdpr-ops (7).
+Tool modules: kandidaten (9), vacatures (5), matches (6), sollicitaties, interviews, berichten, gdpr-ops (8), advanced-matching (2), analytics, scraping.
+
+Location: `src/mcp/server.ts` + `src/mcp/tools/`
 
 Start: `pnpm mcp`
 
@@ -174,6 +193,8 @@ Next.js 16 App Router with Tailwind CSS v4, Radix UI (shadcn/ui), React 19.
 | `/pipeline` | Scrape history and status |
 | `/scraper` | Scraper configuration and manual triggers |
 | `/overzicht` | Overview dashboard with KPIs |
+| `/chat` | Full-screen AI chat with model picker, voice mode, session history, GenUI cards |
+| `/settings` | Platform settings (matching, data management, notifications) |
 
 ### Key UI Components
 

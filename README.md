@@ -79,15 +79,26 @@ graph TB
         RRF[RRF Samenvoegen k=60]
     end
 
-    subgraph AI["🤖 AI Agent"]
+    subgraph AI["🤖 AI Chat Agent"]
         AGENT[GPT-5 Nano]
-        TOOLS[45 Tools]
+        TOOLS[40 Tools]
         STREAM[streamText + maxSteps]
     end
 
+    subgraph MCP["🔌 MCP Server"]
+        MCPS[42 Tools — Stdio Protocol]
+        CLI[CLI & IDE Integratie]
+    end
+
+    subgraph Voice["🎙️ Voice Agent — LiveKit"]
+        VLLM[Gemini 2.5 Flash Native Audio]
+        VTOOLS[35 Tools — Direct Service Imports]
+        VAD[Silero VAD]
+    end
+
     subgraph Frontend["🖥️ Next.js 16 Frontend"]
-        PAGES[7 Pagina's — App Router]
-        CHAT[Chat Zijpaneel — Cmd+J / Ctrl+J]
+        PAGES[8 Pagina's — App Router]
+        CHAT[Chat — Volledig Scherm + AI Elements]
         THEME[Donker/Licht Thema]
     end
 
@@ -112,6 +123,9 @@ graph TB
     UP --> PA --> DD --> AM --> MATCH
 
     AGENT --> STREAM --> CHAT
+    MCPS --> CLI
+    VLLM --> VTOOLS
+    VAD --> VLLM
     CHAT --> PAGES
     PAGES --> THEME
 ```
@@ -144,16 +158,56 @@ sequenceDiagram
     Note over DB: Vacatures nu doorzoekbaar via<br/>tekst ILIKE + vector cosine
 ```
 
-### AI Agent Tool Architectuur
+### Multi-Surface Agent Architectuur
+
+Motian biedt **4 agent-oppervlakken** die dezelfde service laag delen:
+
+```mermaid
+graph TB
+    subgraph Surfaces["🎯 Agent Oppervlakken"]
+        direction LR
+        CHAT["💬 Chat Agent<br/>40 tools — GPT-5 Nano<br/>Web UI + AI Elements"]
+        MCP["🔌 MCP Server<br/>42 tools — Stdio Protocol<br/>IDE & CLI integratie"]
+        VOICE["🎙️ Voice Agent<br/>35 tools — Gemini 2.5 Flash<br/>LiveKit + Silero VAD"]
+        CLIA["⌨️ CLI Agent<br/>Interactieve terminal"]
+    end
+
+    subgraph Services["📦 Gedeelde Service Laag"]
+        S1[Kandidaten & CV]
+        S2[Vacatures & Zoeken]
+        S3[Matching Engine]
+        S4[Sollicitaties & Interviews]
+        S5[GDPR & Berichten]
+        S6[Scraping & Analytics]
+    end
+
+    subgraph DB["🗄️ Neon PostgreSQL + pgvector"]
+        DATA[(Alle tabellen)]
+    end
+
+    CHAT --> S1 & S2 & S3 & S4 & S5 & S6
+    MCP --> S1 & S2 & S3 & S4 & S5 & S6
+    VOICE --> S1 & S2 & S3 & S4 & S5 & S6
+    CLIA --> S1 & S2 & S3 & S4 & S5 & S6
+
+    S1 & S2 & S3 & S4 & S5 & S6 --> DATA
+
+    style CHAT fill:#3b82f6,color:#fff
+    style MCP fill:#8b5cf6,color:#fff
+    style VOICE fill:#10b981,color:#fff
+    style CLIA fill:#f59e0b,color:#000
+```
+
+### AI Chat Tool Architectuur
 
 ```mermaid
 graph LR
-    subgraph Agent["🤖 AI Agent — GPT-5 Nano"]
+    subgraph Agent["🤖 Chat Agent — GPT-5 Nano"]
         SYS[Systeemprompt — Nederlands]
         CTX[Pagina Context Detectie]
     end
 
-    subgraph Tools["🔧 45 Tools"]
+    subgraph Tools["🔧 40 Tools"]
         T1[Kandidaten — 7 tools]
         T2[Vacatures — 5 tools]
         T3[Matches — 6 tools]
@@ -419,7 +473,10 @@ gantt
 | **Framework**      | Next.js 16 (App Router)         | Server Components, API Routes, Turbopack  |
 | **Database**       | Neon PostgreSQL + pgvector      | Serverless Postgres met vector gelijkenis |
 | **ORM**            | Drizzle ORM                     | Type-veilig schema en queries             |
-| **AI Chat**        | GPT-5 Nano via Vercel AI SDK 6  | Streaming agent met tool calling          |
+| **AI Chat**        | GPT-5 Nano via Vercel AI SDK 6  | Streaming agent met 40 tools              |
+| **Chat UI**        | AI SDK Elements                 | Pre-built chat componenten (PromptInput, Conversation, Message) |
+| **Voice Agent**    | LiveKit Agents + Gemini 2.5 Flash Native Audio | Realtime spraak-AI met 35 tools via Silero VAD |
+| **MCP Server**     | Model Context Protocol (stdio)  | 42 tools voor IDE/CLI integratie          |
 | **Embeddings**     | GPT-5 Nano `text-embedding-3-small` | 512-dimensionale job/kandidaat vectoren |
 | **CV Parsing & Matching** | Gemini 3 Flash           | CV parsing, verrijking, gestructureerd matchen |
 | **Judge Verdict**  | Grok 4                          | Onafhankelijke AI beoordeling van matches |
@@ -470,12 +527,19 @@ motian/
 │   └── overzicht/                # Dashboard overzicht
 ├── components/                   # React componenten
 │   ├── ui/                       # shadcn/ui primitieven (24 componenten)
-│   ├── chat/                     # AI chat zijpaneel
+│   ├── chat/                     # Volledig scherm chat pagina
 │   └── *.tsx                     # App-specifieke componenten
 ├── src/
 │   ├── ai/
 │   │   ├── agent.ts              # AI agent configuratie + systeemprompt
-│   │   └── tools/                # 45 tool definities
+│   │   └── tools/                # 40 tool definities (chat)
+│   ├── components/ai-elements/   # AI SDK Elements (PromptInput, Conversation, Message)
+│   ├── mcp/                      # MCP server (42 tools, stdio protocol)
+│   │   ├── server.ts             # MCP server entry point
+│   │   └── tools/                # Tool modules (matching, gdpr-ops, etc.)
+│   ├── voice-agent/              # LiveKit voice agent (35 tools)
+│   │   ├── main.ts               # Entry point — Gemini 2.5 Flash + Silero VAD
+│   │   └── agent.ts              # MotianAgent met directe service imports
 │   ├── db/
 │   │   ├── schema.ts             # 9 tabellen met pgvector
 │   │   └── index.ts              # Neon serverless verbinding
@@ -554,6 +618,8 @@ Elke scraper implementeert een gemeenschappelijke interface en wordt georkestree
 | `/matching`        | AI Matching     | CV Analyse (drag-and-drop SSE) + Koppelen tab met 3-laags matching               |
 | `/pipeline`        | Pipeline        | Scrape run geschiedenis en statusmonitoring                                       |
 | `/scraper`         | Configuratie    | Platform scraper instellingen en handmatige triggers                              |
+| `/chat`            | AI Chat         | Volledig scherm chat met model picker, stemherkenning, sessiegeschiedenis         |
+| `/settings`        | Instellingen    | Platform instellingen (matching, gegevensbeheer, meldingen)                      |
 
 ### Belangrijke UI Componenten
 
@@ -565,13 +631,37 @@ Elke scraper implementeert een gemeenschappelijke interface en wordt georkestree
 | `ScoreRing` | SVG circulaire voortgangsindicator met kleurcodering |
 | `CvDocumentViewer` | Split-screen PDF viewer voor CV review |
 
-### Chat Zijpaneel
+### Chat (`/chat`)
 
-- **Schakelen**: `Cmd+J / Ctrl+J` toetsenbord sneltoets
-- **Context**: detecteert automatisch huidige route en entiteit ID
-- **Streaming**: `useChat()` van `@ai-sdk/react`
-- **Tools**: inklapbare kaarten met spinner → vinkje status
-- **Thema**: ondersteunt donker/licht modus via `next-themes`
+Volledig scherm AI chat met **AI SDK Elements** componenten:
+
+- **Model Keuze**: Gemini 3.1 Flash Lite, Gemini 3 Flash, GPT-5 Nano, Grok 4
+- **Stemmodus**: spraakinvoer toggle voor hands-free interactie
+- **Sessiegeschiedenis**: zijbalk met eerdere gesprekken
+- **CV Upload**: direct CV uploaden in de chat voor analyse
+- **GenUI Kaarten**: rijke visualisaties voor opdrachten, kandidaten en matches
+- **Reasoning**: inklapbare denkstappen van het AI-model
+- **40 Tools**: volledige toegang tot alle platform operaties
+- **AI Elements**: `PromptInput`, `Conversation`, `Message` met Streamdown (CJK/code/math/mermaid)
+
+### Voice Agent
+
+Realtime spraak-AI agent via **LiveKit Agents**:
+
+- **Model**: Gemini 2.5 Flash Native Audio (`gemini-2.5-flash-native-audio-preview-12-2025`)
+- **VAD**: Silero Voice Activity Detection
+- **Taal**: Nederlands (automatische begroeting)
+- **35 Tools**: directe service imports — geen HTTP overhead
+- **Starten**: `pnpm voice-agent:dev` (ontwikkeling) of `pnpm voice-agent:start` (productie)
+
+### MCP Server
+
+Model Context Protocol server voor IDE en CLI integratie:
+
+- **Protocol**: stdio transport
+- **42 Tools**: kandidaten, vacatures, matches, sollicitaties, interviews, berichten, GDPR, operaties, analyse, scraping
+- **Integratie**: werkt met Claude Code, Cursor, Windsurf en andere MCP-compatibele clients
+- **Starten**: `pnpm mcp`
 
 ---
 
@@ -706,6 +796,11 @@ NEXT_PUBLIC_POSTHOG_KEY=phc_...
 # Slack (recruiter notificaties — optioneel)
 SLACK_BOT_TOKEN=xoxb-...
 SLACK_CHANNEL_ID=C0...
+
+# LiveKit (voice agent — optioneel)
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=API...
+LIVEKIT_API_SECRET=...
 ```
 
 ### Database Opzet
@@ -754,6 +849,16 @@ just health
 
 # Dashboard openen
 just dashboard
+
+# Voice agent starten (LiveKit)
+pnpm voice-agent:dev       # Ontwikkelmodus
+pnpm voice-agent:start     # Productiemodus
+
+# MCP server starten
+pnpm mcp
+
+# CLI starten
+pnpm cli
 ```
 
 ---

@@ -68,6 +68,10 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - `pnpm lint:fix` - Biome auto-fix
 - `pnpm db:generate` - Generate Drizzle migration
 - `pnpm db:push` - Push schema to Neon
+- `pnpm voice-agent:dev` - Start LiveKit voice agent (dev)
+- `pnpm voice-agent:start` - Start LiveKit voice agent (prod)
+- `pnpm mcp` - Start MCP server (stdio)
+- `pnpm cli` - Start CLI agent
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.

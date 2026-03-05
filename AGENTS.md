@@ -9,6 +9,9 @@ Motian is a **Dutch recruitment platform** built with:
 - **Next.js 16** (App Router, Turbopack, Server Components)
 - **Drizzle ORM** on **Neon PostgreSQL** (with pgvector for embeddings)
 - **Vercel AI SDK** (`ai` package — `tool()`, `streamText`, `generateObject`)
+- **AI SDK Elements** — Pre-built chat UI components (`PromptInput`, `Conversation`, `Message`)
+- **LiveKit Agents** + Gemini 2.5 Flash Native Audio — Realtime voice AI
+- **MCP Server** — 42 tools via Model Context Protocol (stdio)
 - **Biome** for linting/formatting (NOT eslint/prettier)
 - **pnpm** as package manager
 - **Vercel** deployment target
@@ -18,7 +21,10 @@ Motian is a **Dutch recruitment platform** built with:
 ```
 app/                    → Next.js pages + API routes (Dutch URL paths)
 components/             → React components (shadcn/ui)
-src/ai/                 → AI agent system (tools, prompts, model config)
+src/ai/                 → AI agent system (40 tools, prompts, model config)
+src/components/ai-elements/ → AI SDK Elements (PromptInput, Conversation, Message)
+src/mcp/                → MCP server (42 tools, stdio protocol)
+src/voice-agent/        → LiveKit voice agent (35 tools, Gemini native audio)
 src/services/           → Business logic (scraping, scoring, GDPR, etc.)
 src/db/                 → Drizzle schema + connection (Neon)
 src/lib/                → Shared utilities (rate-limit, etc.)
@@ -69,9 +75,13 @@ pnpm lint                         # Biome lint check (MUST PASS before commit)
 pnpm lint:fix                     # Auto-fix lint issues
 pnpm build                        # Next.js production build
 pnpm test                         # Run vitest tests
-pnpm dev                          # Start dev server (port 3000)
+pnpm dev                          # Start dev server (port 3001)
 pnpm db:generate                  # Generate Drizzle migration
 pnpm db:push                      # Push schema to Neon
+pnpm voice-agent:dev              # Start LiveKit voice agent (dev)
+pnpm voice-agent:start            # Start LiveKit voice agent (prod)
+pnpm mcp                          # Start MCP server (stdio)
+pnpm cli                          # Start CLI agent
 ```
 
 ---
