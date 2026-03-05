@@ -60,8 +60,10 @@ export async function createApplication(data: {
   candidateId: string;
   matchId?: string;
   source?: string;
+  stage?: string;
   notes?: string;
 }): Promise<Application> {
+  const stage = data.stage && VALID_STAGES.includes(data.stage) ? data.stage : "new";
   const rows = await db
     .insert(applications)
     .values({
@@ -70,10 +72,98 @@ export async function createApplication(data: {
       matchId: data.matchId ?? null,
       source: data.source ?? "manual",
       notes: data.notes ?? null,
-      stage: "new",
+      stage,
     })
     .returning();
   return rows[0];
+}
+
+export type CreateApplicationsFromMatchesResult = {
+  created: Application[];
+  alreadyLinked: string[];
+};
+
+/**
+ * Create applications from match results (e.g. after recruiter confirms top-N).
+ * Idempotent: skips (jobId, candidateId) pairs that already have an application.
+ * Sets stage (default "screening"), source "match", and links matchId.
+ */
+export async function createApplicationsFromMatches(
+  candidateId: string,
+  matches: Array<{ jobId: string; matchId?: string | null }>,
+  stage: string = "screening",
+): Promise<CreateApplicationsFromMatchesResult> {
+  if (!VALID_STAGES.includes(stage)) stage = "screening";
+  const existing = await listApplications({ candidateId });
+  const existingJobIds = new Set(existing.map((a) => a.jobId).filter(Boolean) as string[]);
+  const created: Application[] = [];
+  const alreadyLinked: string[] = [];
+  for (const { jobId, matchId } of matches) {
+    if (existingJobIds.has(jobId)) {
+      alreadyLinked.push(jobId);
+      continue;
+    }
+    try {
+      const app = await createApplication({
+        jobId,
+        candidateId,
+        matchId: matchId ?? undefined,
+        source: "match",
+        stage,
+      });
+      created.push(app);
+      existingJobIds.add(jobId);
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("unique") || msg.includes("duplicate")) alreadyLinked.push(jobId);
+      else throw err;
+    }
+  }
+  return { created, alreadyLinked };
+}
+
+export type CreateApplicationsForJobResult = {
+  created: Application[];
+  alreadyLinked: string[];
+};
+
+/**
+ * Create applications from job side (vacancy → candidates). Idempotent per (jobId, candidateId).
+ */
+export async function createApplicationsForJob(
+  jobId: string,
+  pairs: Array<{ candidateId: string; matchId?: string | null }>,
+  stage: string = "screening",
+): Promise<CreateApplicationsForJobResult> {
+  if (!VALID_STAGES.includes(stage)) stage = "screening";
+  const existing = await listApplications({ jobId });
+  const existingCandidateIds = new Set(
+    existing.map((a) => a.candidateId).filter(Boolean) as string[],
+  );
+  const created: Application[] = [];
+  const alreadyLinked: string[] = [];
+  for (const { candidateId, matchId } of pairs) {
+    if (existingCandidateIds.has(candidateId)) {
+      alreadyLinked.push(candidateId);
+      continue;
+    }
+    try {
+      const app = await createApplication({
+        jobId,
+        candidateId,
+        matchId: matchId ?? undefined,
+        source: "match",
+        stage,
+      });
+      created.push(app);
+      existingCandidateIds.add(candidateId);
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("unique") || msg.includes("duplicate")) alreadyLinked.push(candidateId);
+      else throw err;
+    }
+  }
+  return { created, alreadyLinked };
 }
 
 export async function updateApplicationStage(

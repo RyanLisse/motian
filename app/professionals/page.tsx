@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
-import { AddCandidateDialog } from "@/components/add-candidate-dialog";
+import { AddCandidateWizard } from "@/components/add-candidate-wizard";
 import { DraggableCandidate } from "@/components/draggable-candidate";
 import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -92,7 +92,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
               Talent pool — overzicht van alle kandidaten
             </p>
           </div>
-          <AddCandidateDialog />
+          <AddCandidateWizard />
         </div>
 
         {/* KPI row */}
