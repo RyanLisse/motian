@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 interface KPICardProps {
@@ -14,6 +15,8 @@ interface KPICardProps {
   compact?: boolean;
   /** Optional tooltip describing how the value is calculated */
   title?: string;
+  /** Optional link — makes the card clickable */
+  href?: string;
 }
 
 export function KPICard({
@@ -25,10 +28,11 @@ export function KPICard({
   labelClassName = "text-muted-foreground",
   compact = false,
   title,
+  href,
 }: KPICardProps) {
-  return (
+  const card = (
     <div
-      className={`bg-card border border-border min-w-0 ${compact ? "rounded-lg p-3" : "rounded-xl p-4"}`}
+      className={`bg-card border border-border min-w-0 ${compact ? "rounded-lg p-3" : "rounded-xl p-4"} ${href ? "hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer" : ""}`}
       title={title}
     >
       <div className={`flex items-center gap-2 min-w-0 ${iconClassName} mb-1`}>
@@ -40,4 +44,10 @@ export function KPICard({
       </p>
     </div>
   );
+
+  if (href) {
+    return <Link href={href}>{card}</Link>;
+  }
+
+  return card;
 }

@@ -99,6 +99,7 @@ export default async function OverzichtPage() {
             icon={<Briefcase className="h-5 w-5" />}
             label="Totaal vacatures"
             value={totalJobs}
+            href="/opdrachten"
           />
           <KPICard
             icon={<TrendingUp className="h-5 w-5" />}
@@ -106,16 +107,19 @@ export default async function OverzichtPage() {
             value={weeklyNew}
             iconClassName="text-primary/60"
             valueClassName="text-primary"
+            href="/opdrachten"
           />
           <KPICard
             icon={<RefreshCw className="h-5 w-5" />}
             label="Actieve scrapers"
             value={activeScrapers.length}
+            href="/scraper"
           />
           <KPICard
             icon={<Zap className="h-5 w-5" />}
             label="Platforms"
             value={platformCounts.length}
+            href="/scraper"
           />
         </div>
 
@@ -125,11 +129,15 @@ export default async function OverzichtPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Platform breakdown */}
             <DashboardCard title="Vacatures per platform" icon={<BarChart3 className="h-4 w-4" />}>
-              <div className="space-y-3">
+              <div className="space-y-1">
                 {platformCounts.map((p) => {
                   const percentage = totalJobs > 0 ? Math.round((p.count / totalJobs) * 100) : 0;
                   return (
-                    <div key={p.platform} className="flex items-center gap-3">
+                    <Link
+                      key={p.platform}
+                      href={`/opdrachten?platform=${encodeURIComponent(p.platform)}`}
+                      className="flex items-center gap-3 hover:bg-accent -mx-2 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    >
                       <span
                         className="text-sm text-foreground capitalize w-20 sm:w-36 shrink-0 truncate"
                         title={p.platform}
@@ -145,7 +153,7 @@ export default async function OverzichtPage() {
                       <span className="text-xs text-muted-foreground w-16 text-right">
                         {p.count} ({percentage}%)
                       </span>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -217,11 +225,12 @@ export default async function OverzichtPage() {
                   Nog geen scrape resultaten
                 </p>
               ) : (
-                <div className="divide-y divide-border">
+                <div className="space-y-0.5">
                   {recentScrapes.map((s) => (
-                    <div
+                    <Link
                       key={s.id}
-                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between py-2.5 first:pt-0 last:pb-0"
+                      href="/scraper"
+                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between py-2 hover:bg-accent -mx-2 px-2 rounded-lg transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -258,7 +267,7 @@ export default async function OverzichtPage() {
                           </span>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -269,9 +278,13 @@ export default async function OverzichtPage() {
           <div className="space-y-6">
             {/* Top companies */}
             <DashboardCard title="Top opdrachtgevers" icon={<Building2 className="h-4 w-4" />}>
-              <div className="space-y-2.5">
+              <div className="space-y-0.5">
                 {topCompanies.map((c, i) => (
-                  <div key={c.company} className="flex items-center justify-between">
+                  <Link
+                    key={c.company}
+                    href={`/opdrachten?q=${encodeURIComponent(c.company ?? "")}`}
+                    className="flex items-center justify-between hover:bg-accent -mx-2 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
                       <span className="text-sm text-foreground truncate">{c.company}</span>
@@ -282,16 +295,20 @@ export default async function OverzichtPage() {
                     >
                       {c.count}
                     </Badge>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </DashboardCard>
 
             {/* Top locations */}
             <DashboardCard title="Top provincies" icon={<MapPin className="h-4 w-4" />}>
-              <div className="space-y-2.5">
+              <div className="space-y-0.5">
                 {locationCounts.map((l, i) => (
-                  <div key={l.province} className="flex items-center justify-between">
+                  <Link
+                    key={l.province}
+                    href={`/opdrachten?provincie=${encodeURIComponent(l.province ?? "")}`}
+                    className="flex items-center justify-between hover:bg-accent -mx-2 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
                       <span className="text-sm text-foreground truncate">{l.province}</span>
@@ -302,24 +319,29 @@ export default async function OverzichtPage() {
                     >
                       {l.count}
                     </Badge>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </DashboardCard>
 
             {/* System status — derived from actual scrape results */}
             <DashboardCard title="Systeem status" icon={<Zap className="h-4 w-4" />}>
-              <div className="space-y-3">
+              <div className="space-y-1">
                 <StatusRow label="Database" status="online" />
                 {activeScrapers.map((s) => {
                   const lastRun = recentScrapes.find((r) => r.platform === s.platform);
                   const isHealthy = lastRun ? lastRun.status !== "failed" : false;
                   return (
-                    <StatusRow
+                    <Link
                       key={s.platform}
-                      label={`${s.platform.charAt(0).toUpperCase()}${s.platform.slice(1)} scraper`}
-                      status={isHealthy ? "online" : "offline"}
-                    />
+                      href="/scraper"
+                      className="block hover:bg-accent -mx-2 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <StatusRow
+                        label={`${s.platform.charAt(0).toUpperCase()}${s.platform.slice(1)} scraper`}
+                        status={isHealthy ? "online" : "offline"}
+                      />
+                    </Link>
                   );
                 })}
               </div>
