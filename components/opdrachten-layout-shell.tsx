@@ -15,20 +15,12 @@ export function OpdrachtenLayoutShell({
 
   return (
     <div className="flex h-full min-h-0">
-      {/* Sidebar: full-width on mobile when no detail selected, fixed sidebar on desktop */}
       <div
-        className={cn(
-          "border-border bg-sidebar flex flex-col",
-          "lg:w-[300px] lg:shrink-0 lg:border-r lg:flex",
-          isDetailPage ? "hidden lg:flex" : "w-full",
-        )}
+        className={cn("border-border bg-sidebar flex flex-col", isDetailPage ? "hidden" : "w-full")}
       >
         {sidebar}
       </div>
-      {/* Main content: hidden on mobile when on index page (sidebar is shown instead) */}
-      <div
-        className={cn("flex-1 flex flex-col overflow-hidden", !isDetailPage && "hidden lg:flex")}
-      >
+      <div className={cn("flex-1 flex-col overflow-hidden", isDetailPage ? "flex" : "hidden")}>
         {children}
       </div>
     </div>
