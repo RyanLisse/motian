@@ -3,7 +3,10 @@ import { withApiHandler } from "@/src/lib/api-handler";
 import { listSessions } from "@/src/services/chat-sessions";
 
 const querySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(50).default(20),
+  limit: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().int().min(1).max(50).default(20),
+  ),
 });
 
 export const GET = withApiHandler(

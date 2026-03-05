@@ -41,6 +41,7 @@
     "fumadocs",
     "scripts",
     "opentui-demo",
-    "tui"
+    "tui",
+    "agent"
   ]
 }

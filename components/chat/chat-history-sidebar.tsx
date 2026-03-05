@@ -117,11 +117,18 @@ export function ChatHistorySidebar({
         ) : (
           <div className="py-1">
             {sessions.map((session) => (
-              <button
-                type="button"
+              <div
                 key={session.sessionId}
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelectSession(session.sessionId)}
-                className={`group flex w-full items-start gap-2 px-3 py-2.5 text-left transition-colors hover:bg-accent ${
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelectSession(session.sessionId);
+                  }
+                }}
+                className={`group flex w-full cursor-pointer items-start gap-2 px-3 py-2.5 text-left transition-colors hover:bg-accent ${
                   activeSessionId === session.sessionId ? "bg-accent" : ""
                 }`}
               >
@@ -145,7 +152,7 @@ export function ChatHistorySidebar({
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         )}

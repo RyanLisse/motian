@@ -3,9 +3,19 @@
 import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
-import { Check, Loader2, Menu, PanelLeftClose, Paperclip, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Loader2,
+  Menu,
+  Mic,
+  PanelLeftClose,
+  Paperclip,
+  Plus,
+  X,
+} from "lucide-react";
 import { nanoid } from "nanoid";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   PromptInput,
   PromptInputFooter,
@@ -16,6 +26,14 @@ import {
 import { useChatContext } from "./chat-context-provider";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { ChatMessages } from "./chat-messages";
+import { VoiceSession } from "./voice-session";
+
+const CHAT_MODELS = [
+  { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", provider: "Google" },
+  { id: "gemini-3-flash", label: "Gemini 3 Flash", provider: "Google" },
+  { id: "gpt-5-nano", label: "GPT-5 Nano", provider: "OpenAI" },
+  { id: "grok-4", label: "Grok 4", provider: "xAI" },
+] as const;
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 
@@ -23,24 +41,33 @@ function ChatSession({
   sessionId,
   initialMessages,
   ctx,
+  modelId,
 }: {
   sessionId: string;
   initialMessages?: UIMessage[];
   ctx: { route: string; entityId: string | null; entityType: string | null };
+  modelId: string;
 }) {
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: {
+          model: modelId,
+          context: {
+            route: ctx.route,
+            entityId: ctx.entityId,
+            entityType: ctx.entityType,
+            sessionId,
+          },
+        },
+      }),
+    [modelId, ctx.route, ctx.entityId, ctx.entityType, sessionId],
+  );
+
   const { messages, sendMessage, status, stop } = useChat({
     messages: initialMessages,
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: {
-        context: {
-          route: ctx.route,
-          entityId: ctx.entityId,
-          entityType: ctx.entityType,
-          sessionId,
-        },
-      },
-    }),
+    transport,
   });
 
   // File upload state
@@ -230,6 +257,9 @@ export function ChatPageContent() {
   const [sessionId, setSessionId] = useState(() => nanoid());
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [modelId, setModelId] = useState<string>(CHAT_MODELS[0].id);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const [mode, setMode] = useState<"text" | "voice">("text");
 
   const handleSelectSession = useCallback(async (id: string) => {
     try {
@@ -281,7 +311,7 @@ export function ChatPageContent() {
 
       {/* Main chat area */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3 sm:px-4">
+        <header className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 sm:px-4">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -291,17 +321,87 @@ export function ChatPageContent() {
             >
               {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
-            <span className="text-sm font-semibold text-foreground">Motian AI</span>
+
+            {/* Model picker */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setModelPickerOpen((p) => !p)}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+              >
+                {CHAT_MODELS.find((m) => m.id === modelId)?.label ?? "Model"}
+                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              </button>
+              {modelPickerOpen && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-50"
+                    onClick={() => setModelPickerOpen(false)}
+                    aria-label="Sluit"
+                  />
+                  <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-popover py-1 shadow-lg">
+                    {CHAT_MODELS.map((m) => (
+                      <button
+                        type="button"
+                        key={m.id}
+                        onClick={() => {
+                          setModelId(m.id);
+                          setModelPickerOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors hover:bg-accent ${
+                          modelId === m.id ? "text-primary" : "text-foreground"
+                        }`}
+                      >
+                        <span className="font-medium">{m.label}</span>
+                        <span className="text-[10px] text-muted-foreground">{m.provider}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Voice mode toggle */}
+            <button
+              type="button"
+              onClick={() => setMode((m) => (m === "text" ? "voice" : "text"))}
+              className={`rounded-md p-1.5 transition-colors ${
+                mode === "voice"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+              title={mode === "voice" ? "Terug naar tekst" : "Spraakassistent"}
+            >
+              <Mic className="h-4 w-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNewSession}
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="Nieuw gesprek"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Nieuw gesprek</span>
+            </button>
           </div>
         </header>
 
-        {/* Chat session — key forces remount = clean state */}
-        <ChatSession
-          key={sessionId}
-          sessionId={sessionId}
-          initialMessages={initialMessages}
-          ctx={ctx}
-        />
+        {/* Voice or text mode */}
+        {mode === "voice" ? (
+          <VoiceSession onClose={() => setMode("text")} />
+        ) : (
+          <ChatSession
+            key={`${sessionId}-${modelId}`}
+            sessionId={sessionId}
+            initialMessages={initialMessages}
+            ctx={ctx}
+            modelId={modelId}
+          />
+        )}
       </div>
     </div>
   );

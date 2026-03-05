@@ -132,6 +132,20 @@ harness-entropy:
 harness-gap title:
 	pnpm tsx scripts/harness/create-gap-issue.ts --title "{{title}}"
 
+# ── Voice Agent (LiveKit) ─────────────────────
+
+# Install voice agent dependencies
+voice-install:
+	cd agent && pnpm install
+
+# Start the voice agent (connects to LiveKit Cloud)
+voice-dev:
+	cd agent && pnpm dev
+
+# Build the voice agent for production
+voice-build:
+	cd agent && pnpm build
+
 # ── Planning & Orchestration ────────────────────
 
 # Harness Plan Validator ("Planning is the New Coding")

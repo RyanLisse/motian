@@ -1,10 +1,10 @@
 import { convertToModelMessages, stepCountIs } from "ai";
 import { after } from "next/server";
 import { z } from "zod";
-import { buildSystemPrompt, chatModel, recruitmentTools } from "@/src/ai/agent";
+import { buildSystemPrompt, recruitmentTools } from "@/src/ai/agent";
 import { db } from "@/src/db";
 import { chatSessions } from "@/src/db/schema";
-import { tracedStreamText as streamText } from "@/src/lib/ai-models";
+import { resolveChatModel, tracedStreamText as streamText } from "@/src/lib/ai-models";
 import { rateLimit } from "@/src/lib/rate-limit";
 
 const limiter = rateLimit({ interval: 60_000, limit: 20 });
@@ -88,9 +88,10 @@ export async function POST(req: Request) {
   }
 
   const system = await buildSystemPrompt(ctx);
+  const model = resolveChatModel(body.model);
 
   const result = streamText({
-    model: chatModel,
+    model,
     system,
     messages: await convertToModelMessages(body.messages),
     tools: recruitmentTools,

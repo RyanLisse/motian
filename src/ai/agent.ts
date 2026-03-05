@@ -1,10 +1,7 @@
-import { gpt5Nano } from "@/src/lib/ai-models";
 import { PLATFORMS } from "@/src/lib/helpers";
 import { HYBRID_BLEND, SCORING_WEIGHTS } from "@/src/services/scoring";
 import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
-
-export const chatModel = gpt5Nano;
 
 export const recruitmentTools = {
   // Opdrachten

@@ -4,11 +4,37 @@ import { xai } from "@ai-sdk/xai";
 import * as ai from "ai";
 
 // ── Centralized model instances ─────────────────────────────────────
+export const gemini31FlashLite = google("gemini-3.1-flash-lite-preview");
 export const geminiFlashLite = google("gemini-2.5-flash-lite");
 export const geminiFlash = google("gemini-3-flash-preview");
 export const grok = xai("grok-4-1-fast-reasoning");
 export const gpt5Nano = openai("gpt-5-nano-2025-08-07");
 export const embeddingModel = openai.textEmbeddingModel("text-embedding-3-small");
+
+// ── Chat model registry (for model picker) ─────────────────────────
+export const CHAT_MODELS = {
+  "gemini-3.1-flash-lite": {
+    model: gemini31FlashLite,
+    label: "Gemini 3.1 Flash Lite",
+    provider: "Google",
+  },
+  "gemini-3-flash": { model: geminiFlash, label: "Gemini 3 Flash", provider: "Google" },
+  "gemini-2.5-flash-lite": {
+    model: geminiFlashLite,
+    label: "Gemini 2.5 Flash Lite",
+    provider: "Google",
+  },
+  "gpt-5-nano": { model: gpt5Nano, label: "GPT-5 Nano", provider: "OpenAI" },
+  "grok-4": { model: grok, label: "Grok 4", provider: "xAI" },
+} as const;
+
+export type ChatModelId = keyof typeof CHAT_MODELS;
+export const DEFAULT_CHAT_MODEL: ChatModelId = "gemini-3.1-flash-lite";
+
+export function resolveChatModel(id?: string) {
+  if (id && id in CHAT_MODELS) return CHAT_MODELS[id as ChatModelId].model;
+  return CHAT_MODELS[DEFAULT_CHAT_MODEL].model;
+}
 
 // ── LangSmith-traced AI SDK functions ───────────────────────────────
 // Uses `wrapAISDK` from `langsmith/experimental/vercel` to instrument
