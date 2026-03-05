@@ -336,10 +336,10 @@ export default async function OpdrachtDetailPage({ params }: Props) {
         {/* Center: Job detail */}
         <main className="flex-1 overflow-y-auto pb-[72px] xl:pb-0">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
-            {/* Back link (visible on mobile when sidebar is hidden) */}
+            {/* Back link */}
             <Link
               href="/opdrachten"
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors lg:hidden"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               &larr; Terug naar vacatures
             </Link>

@@ -19,10 +19,22 @@ const zoekVacaturesSchema = z.object({
   rateMin: z.number().optional().describe("Minimum uurtarief in EUR"),
   rateMax: z.number().optional().describe("Maximum uurtarief in EUR"),
   contractType: z.string().optional().describe("Contract type: freelance, interim, vast, opdracht"),
-  sortBy: z
-    .enum(["nieuwste", "tarief_hoog", "tarief_laag", "deadline"])
+  workArrangement: z.string().optional().describe("Werkvorm: hybride, op_locatie, remote"),
+  postedAfter: z.string().optional().describe("Vacatures geplaatst na deze datum (ISO formaat)"),
+  deadlineBefore: z
+    .string()
     .optional()
-    .describe("Sortering: nieuwste (standaard), tarief_hoog, tarief_laag, deadline"),
+    .describe("Vacatures met deadline voor deze datum (ISO formaat)"),
+  startDateAfter: z
+    .string()
+    .optional()
+    .describe("Vacatures die starten na deze datum (ISO formaat)"),
+  sortBy: z
+    .enum(["nieuwste", "tarief_hoog", "tarief_laag", "deadline", "geplaatst", "startdatum"])
+    .optional()
+    .describe(
+      "Sortering: nieuwste (standaard), tarief_hoog, tarief_laag, deadline, geplaatst, startdatum",
+    ),
   limit: z
     .number()
     .int()
@@ -101,7 +113,11 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
         rateMin: opts.rateMin,
         rateMax: opts.rateMax,
         contractType: opts.contractType,
+        workArrangement: opts.workArrangement,
         sortBy: opts.sortBy as ListJobsSortBy | undefined,
+        postedAfter: opts.postedAfter,
+        deadlineBefore: opts.deadlineBefore,
+        startDateAfter: opts.startDateAfter,
       });
       return { total: results.length, vacatures: results };
     }
@@ -111,7 +127,11 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       rateMin: opts.rateMin,
       rateMax: opts.rateMax,
       contractType: opts.contractType,
+      workArrangement: opts.workArrangement,
       sortBy: opts.sortBy as ListJobsSortBy | undefined,
+      postedAfter: opts.postedAfter,
+      deadlineBefore: opts.deadlineBefore,
+      startDateAfter: opts.startDateAfter,
       limit: opts.limit,
       offset: opts.offset,
     });

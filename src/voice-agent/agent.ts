@@ -70,7 +70,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
 
         zoekOpdrachten: llm.tool({
           description:
-            "Zoek opdrachten/vacatures op trefwoord, platform, provincie, tarief of sorteer op tarief/deadline",
+            "Zoek opdrachten/vacatures. Filter op trefwoord, platform, provincie, tarief, werkvorm, datums. Sorteer op tarief, deadline, publicatiedatum of startdatum.",
           parameters: z.object({
             query: z.string().optional().describe("Zoekterm"),
             platform: z.string().optional().describe("Platform filter"),
@@ -81,8 +81,22 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
               .string()
               .optional()
               .describe("Contract type: freelance, interim, vast, opdracht"),
+            workArrangement: z
+              .enum(["hybride", "op_locatie", "remote"])
+              .optional()
+              .describe("Werkvorm"),
+            postedAfter: z.string().optional().describe("Geplaatst na datum (ISO)"),
+            deadlineBefore: z.string().optional().describe("Deadline voor datum (ISO)"),
+            startDateAfter: z.string().optional().describe("Startdatum na datum (ISO)"),
             sortBy: z
-              .enum(["nieuwste", "tarief_hoog", "tarief_laag", "deadline"])
+              .enum([
+                "nieuwste",
+                "tarief_hoog",
+                "tarief_laag",
+                "deadline",
+                "geplaatst",
+                "startdatum",
+              ])
               .optional()
               .describe("Sortering"),
             limit: z.number().optional().describe("Max resultaten (standaard 10)"),
@@ -94,6 +108,10 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
             rateMin,
             rateMax,
             contractType,
+            workArrangement,
+            postedAfter,
+            deadlineBefore,
+            startDateAfter,
             sortBy,
             limit,
           }) => {
@@ -104,7 +122,11 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
               rateMin,
               rateMax,
               contractType,
+              workArrangement,
               sortBy,
+              postedAfter,
+              deadlineBefore,
+              startDateAfter,
               limit: limit ?? 10,
               offset: 0,
             });
@@ -118,6 +140,9 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
                 platform: j.platform,
                 rateMin: j.rateMin,
                 rateMax: j.rateMax,
+                contractType: j.contractType,
+                applicationDeadline: j.applicationDeadline,
+                startDate: j.startDate,
               })),
             };
           },

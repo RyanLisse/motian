@@ -37,7 +37,38 @@ function normalizeParams(params: Record<string, unknown>) {
     ? (params.sortBy as ListJobsSortBy)
     : undefined;
 
-  return { q, platform, province, rateMin, rateMax, contractType, sortBy };
+  const workArrangement = ["hybride", "op_locatie", "remote"].includes(
+    params.workArrangement as string,
+  )
+    ? (params.workArrangement as string)
+    : undefined;
+
+  const postedAfter =
+    typeof params.postedAfter === "string" && params.postedAfter.length > 0
+      ? params.postedAfter
+      : undefined;
+  const deadlineBefore =
+    typeof params.deadlineBefore === "string" && params.deadlineBefore.length > 0
+      ? params.deadlineBefore
+      : undefined;
+  const startDateAfter =
+    typeof params.startDateAfter === "string" && params.startDateAfter.length > 0
+      ? params.startDateAfter
+      : undefined;
+
+  return {
+    q,
+    platform,
+    province,
+    rateMin,
+    rateMax,
+    contractType,
+    workArrangement,
+    sortBy,
+    postedAfter,
+    deadlineBefore,
+    startDateAfter,
+  };
 }
 
 export const queryOpdrachten = tool({
@@ -67,11 +98,31 @@ export const queryOpdrachten = tool({
       .describe(
         "Contract type: freelance, interim, vast, opdracht. Alleen als de gebruiker dit expliciet noemt.",
       ),
-    sortBy: z
-      .enum(["nieuwste", "tarief_hoog", "tarief_laag", "deadline"])
+    workArrangement: z
+      .enum(["hybride", "op_locatie", "remote"])
       .optional()
       .describe(
-        "Sorteer resultaten: nieuwste (standaard), tarief_hoog (duurste eerst), tarief_laag (goedkoopste eerst), deadline (eerstvolgende deadline).",
+        "Werkvorm: hybride, op_locatie, remote. Alleen als de gebruiker dit expliciet noemt.",
+      ),
+    postedAfter: z
+      .string()
+      .optional()
+      .describe("Toon alleen vacatures geplaatst NA deze datum (ISO formaat, bijv. 2026-03-01)."),
+    deadlineBefore: z
+      .string()
+      .optional()
+      .describe(
+        "Toon alleen vacatures met deadline VOOR deze datum (ISO formaat). Gebruik voor urgente/bijna-verlopen vacatures.",
+      ),
+    startDateAfter: z
+      .string()
+      .optional()
+      .describe("Toon alleen vacatures die starten NA deze datum (ISO formaat)."),
+    sortBy: z
+      .enum(["nieuwste", "tarief_hoog", "tarief_laag", "deadline", "geplaatst", "startdatum"])
+      .optional()
+      .describe(
+        "Sorteer resultaten: nieuwste (standaard), tarief_hoog, tarief_laag, deadline, geplaatst (publicatiedatum), startdatum.",
       ),
     limit: z.number().optional().default(20).describe("Max resultaten (standaard 20)"),
   }),
@@ -87,7 +138,11 @@ export const queryOpdrachten = tool({
         rateMin: n.rateMin,
         rateMax: n.rateMax,
         contractType: n.contractType,
+        workArrangement: n.workArrangement,
         sortBy: n.sortBy,
+        postedAfter: n.postedAfter,
+        deadlineBefore: n.deadlineBefore,
+        startDateAfter: n.startDateAfter,
       });
       return {
         total: results.length,
@@ -105,7 +160,11 @@ export const queryOpdrachten = tool({
       rateMin: n.rateMin,
       rateMax: n.rateMax,
       contractType: n.contractType,
+      workArrangement: n.workArrangement,
       sortBy: n.sortBy,
+      postedAfter: n.postedAfter,
+      deadlineBefore: n.deadlineBefore,
+      startDateAfter: n.startDateAfter,
       limit: params.limit,
     });
 
@@ -124,9 +183,13 @@ function summarizeJob(job: Record<string, unknown>) {
     company: job.company,
     platform: job.platform,
     location: job.location,
+    province: job.province,
     rateMin: job.rateMin,
     rateMax: job.rateMax,
     contractType: job.contractType,
+    workArrangement: job.workArrangement,
     applicationDeadline: job.applicationDeadline,
+    postedAt: job.postedAt,
+    startDate: job.startDate,
   };
 }

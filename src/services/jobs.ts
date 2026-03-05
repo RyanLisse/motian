@@ -82,13 +82,21 @@ export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
 }
 
 /** Alle opdrachten ophalen met paginering. */
-export type ListJobsSortBy = "nieuwste" | "tarief_hoog" | "tarief_laag" | "deadline";
+export type ListJobsSortBy =
+  | "nieuwste"
+  | "tarief_hoog"
+  | "tarief_laag"
+  | "deadline"
+  | "geplaatst"
+  | "startdatum";
 
 const sortByMap: Record<ListJobsSortBy, ReturnType<typeof desc>> = {
   nieuwste: desc(jobs.scrapedAt),
   tarief_hoog: desc(jobs.rateMax),
   tarief_laag: asc(jobs.rateMin),
   deadline: asc(jobs.applicationDeadline),
+  geplaatst: desc(jobs.postedAt),
+  startdatum: asc(jobs.startDate),
 };
 
 export async function listJobs(
@@ -101,8 +109,15 @@ export async function listJobs(
     rateMin?: number;
     rateMax?: number;
     contractType?: string;
+    workArrangement?: string;
     hasDescription?: boolean;
     sortBy?: ListJobsSortBy;
+    postedAfter?: Date | string;
+    postedBefore?: Date | string;
+    deadlineAfter?: Date | string;
+    deadlineBefore?: Date | string;
+    startDateAfter?: Date | string;
+    startDateBefore?: Date | string;
   } = {},
 ): Promise<{ data: Job[]; total: number }> {
   const limit = Math.min(opts.limit ?? 50, 100);
@@ -126,7 +141,6 @@ export async function listJobs(
   }
 
   if (opts.province) {
-    // Province partial match: "Utrecht" matches "Utrecht - Utrecht" and "Utrecht"
     const provinceMatch = or(
       ilike(jobs.province, `%${escapeLike(opts.province)}%`),
       ilike(jobs.location, `%${escapeLike(opts.province)}%`),
@@ -146,8 +160,32 @@ export async function listJobs(
     conditions.push(eq(jobs.contractType, opts.contractType));
   }
 
+  if (opts.workArrangement) {
+    conditions.push(eq(jobs.workArrangement, opts.workArrangement));
+  }
+
   if (opts.hasDescription) {
     conditions.push(isNotNull(jobs.description));
+  }
+
+  // Date filters
+  if (opts.postedAfter) {
+    conditions.push(gte(jobs.postedAt, new Date(opts.postedAfter)));
+  }
+  if (opts.postedBefore) {
+    conditions.push(lte(jobs.postedAt, new Date(opts.postedBefore)));
+  }
+  if (opts.deadlineAfter) {
+    conditions.push(gte(jobs.applicationDeadline, new Date(opts.deadlineAfter)));
+  }
+  if (opts.deadlineBefore) {
+    conditions.push(lte(jobs.applicationDeadline, new Date(opts.deadlineBefore)));
+  }
+  if (opts.startDateAfter) {
+    conditions.push(gte(jobs.startDate, new Date(opts.startDateAfter)));
+  }
+  if (opts.startDateBefore) {
+    conditions.push(lte(jobs.startDate, new Date(opts.startDateBefore)));
   }
 
   const whereClause = and(...conditions);
@@ -231,7 +269,11 @@ export async function hybridSearch(
     rateMin?: number;
     rateMax?: number;
     contractType?: string;
+    workArrangement?: string;
     sortBy?: ListJobsSortBy;
+    postedAfter?: Date | string;
+    deadlineBefore?: Date | string;
+    startDateAfter?: Date | string;
   } = {},
 ): Promise<Array<Job & { score: number }>> {
   const limit = Math.min(opts.limit ?? 20, 100);
@@ -308,6 +350,16 @@ export async function hybridSearch(
       if (opts.rateMin != null && (job.rateMax == null || job.rateMax < opts.rateMin)) return false;
       if (opts.rateMax != null && (job.rateMin == null || job.rateMin > opts.rateMax)) return false;
       if (opts.contractType && job.contractType !== opts.contractType) return false;
+      if (opts.workArrangement && job.workArrangement !== opts.workArrangement) return false;
+      if (opts.postedAfter && (!job.postedAt || job.postedAt < new Date(opts.postedAfter)))
+        return false;
+      if (
+        opts.deadlineBefore &&
+        (!job.applicationDeadline || job.applicationDeadline > new Date(opts.deadlineBefore))
+      )
+        return false;
+      if (opts.startDateAfter && (!job.startDate || job.startDate < new Date(opts.startDateAfter)))
+        return false;
       return true;
     });
 
@@ -328,6 +380,11 @@ export async function hybridSearch(
   }));
 }
 
+function getTimestamp(d: Date | string | null | undefined, fallback: number): number {
+  if (!d) return fallback;
+  return new Date(d).getTime();
+}
+
 function getSortComparator(sortBy: ListJobsSortBy): (a: Job, b: Job) => number {
   switch (sortBy) {
     case "tarief_hoog":
@@ -336,15 +393,15 @@ function getSortComparator(sortBy: ListJobsSortBy): (a: Job, b: Job) => number {
       return (a, b) =>
         (a.rateMin ?? Number.MAX_SAFE_INTEGER) - (b.rateMin ?? Number.MAX_SAFE_INTEGER);
     case "deadline":
-      return (a, b) => {
-        const da = a.applicationDeadline
-          ? new Date(a.applicationDeadline).getTime()
-          : Number.MAX_SAFE_INTEGER;
-        const db_ = b.applicationDeadline
-          ? new Date(b.applicationDeadline).getTime()
-          : Number.MAX_SAFE_INTEGER;
-        return da - db_;
-      };
+      return (a, b) =>
+        getTimestamp(a.applicationDeadline, Number.MAX_SAFE_INTEGER) -
+        getTimestamp(b.applicationDeadline, Number.MAX_SAFE_INTEGER);
+    case "geplaatst":
+      return (a, b) => getTimestamp(b.postedAt, 0) - getTimestamp(a.postedAt, 0);
+    case "startdatum":
+      return (a, b) =>
+        getTimestamp(a.startDate, Number.MAX_SAFE_INTEGER) -
+        getTimestamp(b.startDate, Number.MAX_SAFE_INTEGER);
     default:
       return () => 0;
   }
