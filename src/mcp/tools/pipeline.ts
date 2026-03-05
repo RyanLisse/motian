@@ -2,13 +2,25 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import {
   createApplication,
+  deleteApplication,
   getApplicationById,
   getApplicationStats,
   listApplications,
   updateApplicationStage,
 } from "../../services/applications.js";
-import { createInterview, listInterviews, updateInterview } from "../../services/interviews.js";
-import { createMessage, listMessages } from "../../services/messages.js";
+import {
+  createInterview,
+  deleteInterview,
+  getInterviewById,
+  listInterviews,
+  updateInterview,
+} from "../../services/interviews.js";
+import {
+  createMessage,
+  deleteMessage,
+  getMessageById,
+  listMessages,
+} from "../../services/messages.js";
 
 // ========== Schemas ==========
 
@@ -74,6 +86,26 @@ const zoekBerichtenSchema = z.object({
   offset: z.number().int().min(0).optional().describe("Offset voor paginering"),
 });
 
+const verwijderSollicitatieSchema = z.object({
+  id: z.string().uuid().describe("UUID van de sollicitatie"),
+});
+
+const interviewDetailSchema = z.object({
+  id: z.string().uuid().describe("UUID van het interview"),
+});
+
+const verwijderInterviewSchema = z.object({
+  id: z.string().uuid().describe("UUID van het interview"),
+});
+
+const berichtDetailSchema = z.object({
+  id: z.string().uuid().describe("UUID van het bericht"),
+});
+
+const verwijderBerichtSchema = z.object({
+  id: z.string().uuid().describe("UUID van het bericht"),
+});
+
 const stuurBerichtSchema = z.object({
   applicationId: z.string().uuid().describe("UUID van de sollicitatie"),
   direction: z.enum(["inbound", "outbound"]).describe("Richting van het bericht"),
@@ -134,6 +166,31 @@ export const tools = [
     name: "stuur_bericht",
     description: "Registreer een bericht (e-mail, telefoon of platform) bij een sollicitatie.",
     inputSchema: zodToJsonSchema(stuurBerichtSchema, { $refStrategy: "none" }),
+  },
+  {
+    name: "verwijder_sollicitatie",
+    description: "Verwijder een sollicitatie (soft-delete).",
+    inputSchema: zodToJsonSchema(verwijderSollicitatieSchema, { $refStrategy: "none" }),
+  },
+  {
+    name: "interview_detail",
+    description: "Haal volledige details op van een interview op basis van UUID.",
+    inputSchema: zodToJsonSchema(interviewDetailSchema, { $refStrategy: "none" }),
+  },
+  {
+    name: "verwijder_interview",
+    description: "Verwijder een interview permanent.",
+    inputSchema: zodToJsonSchema(verwijderInterviewSchema, { $refStrategy: "none" }),
+  },
+  {
+    name: "bericht_detail",
+    description: "Haal volledige details op van een bericht op basis van UUID.",
+    inputSchema: zodToJsonSchema(berichtDetailSchema, { $refStrategy: "none" }),
+  },
+  {
+    name: "verwijder_bericht",
+    description: "Verwijder een bericht permanent.",
+    inputSchema: zodToJsonSchema(verwijderBerichtSchema, { $refStrategy: "none" }),
   },
 ];
 
@@ -199,5 +256,40 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const result = await createMessage(data);
     if (!result) return { error: "Ongeldig kanaal of richting" };
     return result;
+  },
+
+  verwijder_sollicitatie: async (raw) => {
+    const { id } = verwijderSollicitatieSchema.parse(raw);
+    const deleted = await deleteApplication(id);
+    if (!deleted) return { error: "Sollicitatie niet gevonden of al verwijderd" };
+    return { success: true, message: "Sollicitatie verwijderd" };
+  },
+
+  interview_detail: async (raw) => {
+    const { id } = interviewDetailSchema.parse(raw);
+    const result = await getInterviewById(id);
+    if (!result) return { error: "Interview niet gevonden" };
+    return result;
+  },
+
+  verwijder_interview: async (raw) => {
+    const { id } = verwijderInterviewSchema.parse(raw);
+    const deleted = await deleteInterview(id);
+    if (!deleted) return { error: "Interview niet gevonden" };
+    return { success: true, message: "Interview verwijderd" };
+  },
+
+  bericht_detail: async (raw) => {
+    const { id } = berichtDetailSchema.parse(raw);
+    const result = await getMessageById(id);
+    if (!result) return { error: "Bericht niet gevonden" };
+    return result;
+  },
+
+  verwijder_bericht: async (raw) => {
+    const { id } = verwijderBerichtSchema.parse(raw);
+    const deleted = await deleteMessage(id);
+    if (!deleted) return { error: "Bericht niet gevonden" };
+    return { success: true, message: "Bericht verwijderd" };
   },
 };

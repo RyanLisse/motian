@@ -11,6 +11,8 @@ import {
   reviewGdprRetention,
   runCandidateScoringBatch,
 } from "../../services/operations-console.js";
+import { runScrapePipeline } from "../../services/scrape-pipeline.js";
+import { getAllConfigs } from "../../services/scrapers.js";
 
 // ========== Schemas ==========
 
@@ -47,6 +49,13 @@ const importeerVacaturesBatchSchema = z.object({
 const runScoringBatchSchema = z.object({});
 
 const reviewGdprRetentieSchema = z.object({});
+
+const triggerScraperSchema = z.object({
+  platform: z
+    .string()
+    .min(1)
+    .describe("Het platform om te scrapen (bijv. 'striive', 'flextender', 'opdrachtoverheid')"),
+});
 
 // ========== Tool Definitions ==========
 
@@ -93,6 +102,11 @@ export const tools = [
       "Bekijk de GDPR-retentiestatus: hoeveel kandidaten hebben een verlopen bewaartermijn.",
     inputSchema: zodToJsonSchema(reviewGdprRetentieSchema, { $refStrategy: "none" }),
   },
+  {
+    name: "trigger_scraper",
+    description: "Start een scraper voor een specifiek platform. Dit kan even duren (30s-2min).",
+    inputSchema: zodToJsonSchema(triggerScraperSchema, { $refStrategy: "none" }),
+  },
 ];
 
 // ========== Handlers ==========
@@ -136,5 +150,21 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   review_gdpr_retentie: async () => {
     return reviewGdprRetention();
+  },
+
+  trigger_scraper: async (raw) => {
+    const { platform } = triggerScraperSchema.parse(raw);
+    const configs = await getAllConfigs();
+    const config = configs.find((c) => c.platform === platform);
+    if (!config) return { error: `Geen scraper configuratie gevonden voor ${platform}` };
+    if (!config.isActive) return { error: `Scraper voor ${platform} is niet actief` };
+    const result = await runScrapePipeline(platform, config.baseUrl);
+    return {
+      platform,
+      jobsNew: result.jobsNew,
+      duplicates: result.duplicates,
+      errors: result.errors.length > 0 ? result.errors : undefined,
+      status: result.errors.length === 0 ? "success" : "partial",
+    };
   },
 };

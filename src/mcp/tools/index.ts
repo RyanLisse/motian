@@ -1,3 +1,8 @@
+import {
+  handlers as advancedMatchingHandlers,
+  tools as advancedMatchingTools,
+} from "./advanced-matching.js";
+import { handlers as analyticsHandlers, tools as analyticsTools } from "./analytics.js";
 import { handlers as gdprOpsHandlers, tools as gdprOpsTools } from "./gdpr-ops.js";
 import { handlers as kandidatenHandlers, tools as kandidatenTools } from "./kandidaten.js";
 import { handlers as matchHandlers, tools as matchTools } from "./matches.js";
@@ -10,6 +15,8 @@ export const allTools = [
   ...matchTools,
   ...pipelineTools,
   ...gdprOpsTools,
+  ...analyticsTools,
+  ...advancedMatchingTools,
 ];
 
 export const allHandlers: Record<string, (args: unknown) => Promise<unknown>> = {
@@ -18,4 +25,6 @@ export const allHandlers: Record<string, (args: unknown) => Promise<unknown>> = 
   ...matchHandlers,
   ...pipelineHandlers,
   ...gdprOpsHandlers,
+  ...analyticsHandlers,
+  ...advancedMatchingHandlers,
 };
