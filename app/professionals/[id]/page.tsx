@@ -118,6 +118,16 @@ export default async function ProfessionalDetailPage({ params }: Props) {
             </div>
           </div>
 
+          {/* Profielsamenvatting (AI/parser) */}
+          {(candidate.profileSummary ?? candidate.headline) && (
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-2">Profielsamenvatting</h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-line">
+                {candidate.profileSummary ?? candidate.headline}
+              </p>
+            </div>
+          )}
+
           {/* Editable profile fields */}
           <EditCandidateFields
             candidateId={candidate.id}

@@ -10,18 +10,24 @@ import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
+import { parsePagination } from "@/src/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
+/** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
   searchParams: Promise<{
     fase?: string;
     pagina?: string;
+    page?: string;
+    limit?: string;
+    perPage?: string;
     weergave?: string;
   }>;
 }
 
-const PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 20;
+const MAX_PER_PAGE = 50;
 
 const stageColors: Record<string, string> = {
   new: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
@@ -55,9 +61,18 @@ const KANBAN_STAGES = ["new", "screening", "interview", "offer", "hired"] as con
 export default async function PipelinePage({ searchParams }: Props) {
   const params = await searchParams;
   const stageFilter = params.fase ?? "";
-  const page = Math.max(1, parseInt(params.pagina ?? "1", 10));
-  const offset = (page - 1) * PER_PAGE;
   const view = params.weergave === "lijst" ? "lijst" : "kanban";
+
+  const urlParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "") continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (v) urlParams.set(key, v);
+  }
+  const { page, limit, offset } = parsePagination(urlParams, {
+    limit: DEFAULT_PER_PAGE,
+    maxLimit: MAX_PER_PAGE,
+  });
 
   // Build where clause for list view
   const conditions = [isNull(applications.deletedAt)];
@@ -92,7 +107,7 @@ export default async function PipelinePage({ searchParams }: Props) {
           .leftJoin(candidates, eq(applications.candidateId, candidates.id))
           .where(whereClause)
           .orderBy(desc(applications.createdAt))
-          .limit(PER_PAGE)
+          .limit(limit)
           .offset(offset)
       : Promise.resolve([]),
     db.select({ count: sql<number>`count(*)::int` }).from(applications).where(whereClause),
@@ -142,7 +157,7 @@ export default async function PipelinePage({ searchParams }: Props) {
   ]);
 
   const totalCount = totalResult[0]?.count ?? 0;
-  const totalPages = Math.ceil(totalCount / PER_PAGE);
+  const totalPages = Math.ceil(totalCount / limit) || 1;
   const newCount = newResult[0]?.count ?? 0;
   const screeningCount = screeningResult[0]?.count ?? 0;
   const interviewCount = interviewResult[0]?.count ?? 0;
@@ -369,13 +384,15 @@ export default async function PipelinePage({ searchParams }: Props) {
             <Pagination
               page={page}
               totalPages={totalPages}
-              buildHref={(p) =>
-                `/pipeline?${new URLSearchParams({
+              buildHref={(p) => {
+                const sp = new URLSearchParams({
                   weergave: "lijst",
                   ...(stageFilter ? { fase: stageFilter } : {}),
                   pagina: String(p),
-                }).toString()}`
-              }
+                });
+                if (limit !== DEFAULT_PER_PAGE) sp.set("limit", String(limit));
+                return `/pipeline?${sp.toString()}`;
+              }}
             />
           </>
         )}

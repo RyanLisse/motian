@@ -3,6 +3,7 @@ import { Calendar, Euro, ExternalLink, Link2, MapPin, Monitor, Sparkles } from "
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
+import { LinkCandidatesDialog } from "@/components/link-candidates-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -551,12 +552,16 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
             {/* Action buttons */}
             <div className="space-y-2">
-              <Link href={`/matching?jobId=${job.id}`}>
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
-                  <Link2 className="h-4 w-4 mr-2" />
-                  Koppel aan kandidaat
-                </Button>
-              </Link>
+              <LinkCandidatesDialog
+                jobId={job.id}
+                jobTitle={job.title}
+                trigger={
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Koppel aan kandidaat
+                  </Button>
+                }
+              />
               <Button
                 variant="outline"
                 className="w-full border-primary text-primary hover:bg-primary/10 font-semibold h-10"
@@ -569,12 +574,16 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
         {/* Mobile sticky bottom action bar */}
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 flex gap-2 xl:hidden z-50">
-          <Link href={`/matching?jobId=${job.id}`} className="flex-1">
-            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
-              <Link2 className="h-4 w-4 mr-2" />
-              Koppel aan kandidaat
-            </Button>
-          </Link>
+          <LinkCandidatesDialog
+            jobId={job.id}
+            jobTitle={job.title}
+            trigger={
+              <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
+                <Link2 className="h-4 w-4 mr-2" />
+                Koppel aan kandidaat
+              </Button>
+            }
+          />
           <Button
             variant="outline"
             className="flex-1 border-primary text-primary hover:bg-primary/10 font-semibold h-11"

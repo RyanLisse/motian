@@ -1,27 +1,35 @@
 import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
-import { AddCandidateDialog } from "@/components/add-candidate-dialog";
+import { AddCandidateWizard } from "@/components/add-candidate-wizard";
 import { DraggableCandidate } from "@/components/draggable-candidate";
 import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
-import { candidates } from "@/src/db/schema";
+import { candidateSkills, candidates } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
+import { parsePagination } from "@/src/lib/pagination";
+import { listEscoSkillsForFilter } from "@/src/services/esco";
 
 export const dynamic = "force-dynamic";
 
+/** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
   searchParams: Promise<{
     q?: string;
     beschikbaarheid?: string;
+    vaardigheid?: string;
     pagina?: string;
+    page?: string;
+    limit?: string;
+    perPage?: string;
   }>;
 }
 
-const PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 20;
+const MAX_PER_PAGE = 50;
 
 const availabilityLabels: Record<string, string> = {
   direct: "Direct beschikbaar",
@@ -33,8 +41,20 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   const params = await searchParams;
   const query = params.q ?? "";
   const availability = params.beschikbaarheid ?? "";
-  const page = Math.max(1, parseInt(params.pagina ?? "1", 10));
-  const offset = (page - 1) * PER_PAGE;
+  const escoUri = params.vaardigheid ?? "";
+
+  const skillOptions = await listEscoSkillsForFilter();
+
+  const urlParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "") continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (v) urlParams.set(key, v);
+  }
+  const { page, limit, offset } = parsePagination(urlParams, {
+    limit: DEFAULT_PER_PAGE,
+    maxLimit: MAX_PER_PAGE,
+  });
 
   // Build conditions
   const conditions = [isNull(candidates.deletedAt)];
@@ -44,6 +64,11 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   }
   if (availability) {
     conditions.push(eq(candidates.availability, availability));
+  }
+  if (escoUri) {
+    conditions.push(
+      sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${escoUri})`,
+    );
   }
 
   const whereClause = and(...conditions);
@@ -61,7 +86,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
       .from(candidates)
       .where(whereClause)
       .orderBy(desc(candidates.createdAt))
-      .limit(PER_PAGE)
+      .limit(limit)
       .offset(offset),
     // All 3 counts in a single query using FILTER clauses
     db
@@ -77,7 +102,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   ]);
 
   const totalCount = statsResult[0]?.totalFiltered ?? 0;
-  const totalPages = Math.ceil(totalCount / PER_PAGE);
+  const totalPages = Math.ceil(totalCount / limit) || 1;
   const directCount = statsResult[0]?.directCount ?? 0;
   const weekCount = statsResult[0]?.weekCount ?? 0;
 
@@ -92,7 +117,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
               Talent pool — overzicht van alle kandidaten
             </p>
           </div>
-          <AddCandidateDialog />
+          <AddCandidateWizard />
         </div>
 
         {/* KPI row */}
@@ -132,6 +157,19 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
             <option value="direct">Direct beschikbaar</option>
             <option value="1_maand">Binnen 1 maand</option>
             <option value="3_maanden">Binnen 3 maanden</option>
+          </select>
+          <select
+            name="vaardigheid"
+            defaultValue={escoUri}
+            className="h-9 px-3 min-w-[180px] bg-card border border-border rounded-lg text-sm text-muted-foreground focus:outline-none focus:border-primary/40"
+            title="Filter op canonieke vaardigheid (ESCO)"
+          >
+            <option value="">Alle vaardigheden</option>
+            {skillOptions.map((s) => (
+              <option key={s.uri} value={s.uri}>
+                {s.labelNl ?? s.labelEn}
+              </option>
+            ))}
           </select>
           <button
             type="submit"
@@ -255,13 +293,14 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
         <Pagination
           page={page}
           totalPages={totalPages}
-          buildHref={(p) =>
-            `/professionals?${new URLSearchParams({
-              ...(query ? { q: query } : {}),
-              ...(availability ? { beschikbaarheid: availability } : {}),
-              pagina: String(p),
-            }).toString()}`
-          }
+          buildHref={(p) => {
+            const sp = new URLSearchParams();
+            if (query) sp.set("q", query);
+            if (availability) sp.set("beschikbaarheid", availability);
+            sp.set("pagina", String(p));
+            if (limit !== DEFAULT_PER_PAGE) sp.set("limit", String(limit));
+            return `/professionals?${sp.toString()}`;
+          }}
         />
 
         <div className="h-8" />

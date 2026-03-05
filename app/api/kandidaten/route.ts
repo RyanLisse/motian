@@ -8,6 +8,7 @@ import {
   listCandidates,
   searchCandidates,
 } from "@/src/services/candidates";
+import { withCandidateCanonicalSkills, withCandidatesCanonicalSkills } from "@/src/services/esco";
 
 export const dynamic = "force-dynamic";
 
@@ -43,8 +44,9 @@ export const GET = withApiHandler(async (request: Request) => {
     ? await searchCandidates({ query: q, location, limit, offset })
     : await listCandidates({ limit, offset });
   const total = useSearch ? await countCandidates({ query: q, location }) : await countCandidates();
+  const dataWithCanonicalSkills = await withCandidatesCanonicalSkills(data);
 
-  return Response.json(paginatedResponse(data, total, { page, limit, offset }));
+  return Response.json(paginatedResponse(dataWithCanonicalSkills, total, { page, limit, offset }));
 });
 
 export const POST = withApiHandler(async (request: Request) => {
@@ -58,5 +60,5 @@ export const POST = withApiHandler(async (request: Request) => {
   }
   const candidate = await createCandidate(parsed.data);
   revalidatePath("/professionals");
-  return Response.json({ data: candidate }, { status: 201 });
+  return Response.json({ data: await withCandidateCanonicalSkills(candidate) }, { status: 201 });
 });

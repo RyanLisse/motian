@@ -411,14 +411,20 @@ function getSortComparator(sortBy: ListJobsSortBy): (a: Job, b: Job) => number {
   }
 }
 
-/** Alle actieve (niet-verwijderde) jobs ophalen. Hogere limiet voor batch matching. */
+/** Alle actieve (niet-verwijderde, deadline niet verstreken) jobs ophalen. Hogere limiet voor batch matching. */
 export async function listActiveJobs(limit?: number): Promise<Job[]> {
   const safeLimit = Math.min(limit ?? 200, 500);
+  const now = new Date();
 
   return db
     .select()
     .from(jobs)
-    .where(isNull(jobs.deletedAt))
+    .where(
+      and(
+        isNull(jobs.deletedAt),
+        or(isNull(jobs.applicationDeadline), gte(jobs.applicationDeadline, now)),
+      ),
+    )
     .orderBy(desc(jobs.scrapedAt))
     .limit(safeLimit);
 }

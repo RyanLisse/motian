@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../db";
 import { jobs } from "../db/schema";
+import { syncJobEscoSkills } from "./esco";
 import { unifiedJobSchema } from "../schemas/job";
 
 /** Permissive type for scraped data — Zod validates at runtime via safeParse */
@@ -104,6 +105,7 @@ export async function normalizeAndSaveJobs(
           })
           .returning({
             id: jobs.id,
+            externalId: jobs.externalId,
             isNew: sql<boolean>`xmax = 0`.as("is_new"),
           });
 
@@ -111,6 +113,18 @@ export async function normalizeAndSaveJobs(
         const updated = result.length - inserted;
         jobsNew += inserted;
         duplicates += updated;
+
+        for (const row of result) {
+          const item = batch.find((batchItem) => batchItem.parsed.externalId === row.externalId);
+          if (!item) continue;
+
+          await syncJobEscoSkills({
+            jobId: row.id,
+            requirements: item.parsed.requirements,
+            wishes: item.parsed.wishes,
+            competences: item.parsed.competences,
+          });
+        }
       } catch (err) {
         errors.push(`DB batch ${i}-${i + batch.length}: ${String(err)}`);
       }

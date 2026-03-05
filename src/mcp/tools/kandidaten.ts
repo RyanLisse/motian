@@ -10,6 +10,10 @@ import {
   searchCandidates,
   updateCandidate,
 } from "../../services/candidates.js";
+import {
+  withCandidateCanonicalSkills,
+  withCandidatesCanonicalSkills,
+} from "../../services/esco.js";
 
 // ========== Schemas ==========
 
@@ -129,28 +133,30 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   zoek_kandidaten: async (raw) => {
     const opts = zoekKandidatenSchema.parse(raw);
     if (opts.query || opts.location || opts.skills || opts.role) {
-      return searchCandidates(opts);
+      return withCandidatesCanonicalSkills(await searchCandidates(opts));
     }
-    return listCandidates({ limit: opts.limit, offset: opts.offset });
+    return withCandidatesCanonicalSkills(
+      await listCandidates({ limit: opts.limit, offset: opts.offset }),
+    );
   },
 
   kandidaat_detail: async (raw) => {
     const { id } = kandidaatDetailSchema.parse(raw);
     const result = await getCandidateById(id);
     if (!result) return { error: "Kandidaat niet gevonden" };
-    return result;
+    return withCandidateCanonicalSkills(result);
   },
 
   maak_kandidaat_aan: async (raw) => {
     const data = maakKandidaatSchema.parse(raw);
-    return createCandidate(data);
+    return withCandidateCanonicalSkills(await createCandidate(data));
   },
 
   update_kandidaat: async (raw) => {
     const { id, ...data } = updateKandidaatSchema.parse(raw);
     const result = await updateCandidate(id, data);
     if (!result) return { error: "Kandidaat niet gevonden" };
-    return result;
+    return withCandidateCanonicalSkills(result);
   },
 
   verwijder_kandidaat: async (raw) => {

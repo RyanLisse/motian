@@ -15,18 +15,24 @@ import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { applications, candidates, jobs, messages } from "@/src/db/schema";
+import { parsePagination } from "@/src/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
+/** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
   searchParams: Promise<{
     direction?: string;
     channel?: string;
     pagina?: string;
+    page?: string;
+    limit?: string;
+    perPage?: string;
   }>;
 }
 
-const PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 20;
+const MAX_PER_PAGE = 50;
 
 const channelColors: Record<string, string> = {
   email: "bg-blue-500/10 text-blue-500 border-blue-500/20",
@@ -55,8 +61,17 @@ export default async function MessagesPage({ searchParams }: Props) {
   const params = await searchParams;
   const directionFilter = params.direction ?? "";
   const channelFilter = params.channel ?? "";
-  const page = Math.max(1, parseInt(params.pagina ?? "1", 10));
-  const offset = (page - 1) * PER_PAGE;
+
+  const urlParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "") continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (v) urlParams.set(key, v);
+  }
+  const { page, limit, offset } = parsePagination(urlParams, {
+    limit: DEFAULT_PER_PAGE,
+    maxLimit: MAX_PER_PAGE,
+  });
 
   // KPI counts
   const directionCounts = await db
@@ -98,13 +113,13 @@ export default async function MessagesPage({ searchParams }: Props) {
       .leftJoin(jobs, eq(applications.jobId, jobs.id))
       .where(where)
       .orderBy(desc(messages.sentAt))
-      .limit(PER_PAGE)
+      .limit(limit)
       .offset(offset),
     db.select({ count: sql<number>`count(*)::int` }).from(messages).where(where),
   ]);
 
   const totalFiltered = countRows[0]?.count ?? 0;
-  const totalPages = Math.ceil(totalFiltered / PER_PAGE);
+  const totalPages = Math.ceil(totalFiltered / limit) || 1;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -254,6 +269,7 @@ export default async function MessagesPage({ searchParams }: Props) {
                 if (directionFilter) p.set("direction", directionFilter);
                 if (channelFilter) p.set("channel", channelFilter);
                 p.set("pagina", String(pg));
+                if (limit !== DEFAULT_PER_PAGE) p.set("limit", String(limit));
                 return `/messages?${p.toString()}`;
               }}
             />

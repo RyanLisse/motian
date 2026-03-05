@@ -19,6 +19,7 @@ import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
+import { parsePagination } from "@/src/lib/pagination";
 import type { CriterionResult } from "@/src/schemas/matching";
 import { getGradedCandidates } from "@/src/services/grading";
 import { CandidateLinker } from "./candidate-linker";
@@ -29,16 +30,21 @@ import { ReportButton } from "./report-button";
 
 export const dynamic = "force-dynamic";
 
+/** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
   searchParams: Promise<{
     tab?: string;
     status?: string;
     pagina?: string;
+    page?: string;
+    limit?: string;
+    perPage?: string;
     jobId?: string;
   }>;
 }
 
-const PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 20;
+const MAX_PER_PAGE = 50;
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
@@ -63,10 +69,19 @@ export default async function MatchingPage({ searchParams }: Props) {
   const params = await searchParams;
   const tab = params.tab ?? "";
   const statusFilter = params.status ?? "";
-  const page = Math.max(1, parseInt(params.pagina ?? "1", 10));
-  const offset = (page - 1) * PER_PAGE;
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const jobId = UUID_RE.test(params.jobId ?? "") ? (params.jobId ?? "") : "";
+
+  const urlParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "") continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (v) urlParams.set(key, v);
+  }
+  const { page, limit, offset } = parsePagination(urlParams, {
+    limit: DEFAULT_PER_PAGE,
+    maxLimit: MAX_PER_PAGE,
+  });
   const tabOptions = [
     { value: "", label: "AI Matching" },
     { value: "grading", label: "AI Grading" },
@@ -187,7 +202,7 @@ export default async function MatchingPage({ searchParams }: Props) {
       .leftJoin(candidates, eq(jobMatches.candidateId, candidates.id))
       .where(whereClause)
       .orderBy(desc(jobMatches.matchScore))
-      .limit(PER_PAGE)
+      .limit(limit)
       .offset(offset),
     db.select({ count: sql<number>`count(*)::int` }).from(jobMatches).where(whereClause),
     db
@@ -201,7 +216,7 @@ export default async function MatchingPage({ searchParams }: Props) {
   ]);
 
   const totalCount = totalResult[0]?.count ?? 0;
-  const totalPages = Math.ceil(totalCount / PER_PAGE);
+  const totalPages = Math.ceil(totalCount / limit) || 1;
   const pendingCount = statusCounts[0]?.pending ?? 0;
   const approvedCount = statusCounts[0]?.approved ?? 0;
   const rejectedCount = statusCounts[0]?.rejected ?? 0;
@@ -489,15 +504,14 @@ export default async function MatchingPage({ searchParams }: Props) {
         <Pagination
           page={page}
           totalPages={totalPages}
-          buildHref={(p) =>
-            `/matching${buildQs(
-              {
-                ...(statusFilter ? { status: statusFilter } : {}),
-                pagina: String(p),
-              },
-              jobId,
-            )}`
-          }
+          buildHref={(p) => {
+            const base: Record<string, string> = {
+              ...(statusFilter ? { status: statusFilter } : {}),
+              pagina: String(p),
+            };
+            if (limit !== DEFAULT_PER_PAGE) base.limit = String(limit);
+            return `/matching${buildQs(base, jobId)}`;
+          }}
         />
 
         <div className="h-8" />

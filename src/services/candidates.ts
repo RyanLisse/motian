@@ -1,6 +1,7 @@
 import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
-import { candidates } from "../db/schema";
+import { candidateSkills, candidates } from "../db/schema";
+import { syncCandidateEscoSkills } from "./esco";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
 
@@ -13,6 +14,8 @@ export type SearchCandidatesOptions = {
   location?: string;
   skills?: string;
   role?: string;
+  /** Filter by canonical ESCO skill URI (candidate must have this skill in candidate_skills). */
+  escoUri?: string;
   limit?: number;
   offset?: number;
 };
@@ -32,6 +35,7 @@ export type CreateCandidateData = {
   source?: string;
   linkedinUrl?: string;
   headline?: string;
+  profileSummary?: string;
   hourlyRate?: number;
   availability?: string;
   notes?: string;
@@ -104,6 +108,12 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
     );
   }
 
+  if (opts.escoUri) {
+    conditions.push(
+      sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${opts.escoUri})`,
+    );
+  }
+
   return db
     .select()
     .from(candidates)
@@ -125,6 +135,22 @@ export async function countCandidates(
 
   if (opts.location) {
     conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
+  }
+
+  if (opts.role) {
+    conditions.push(ilike(candidates.role, `%${escapeLike(opts.role)}%`));
+  }
+
+  if (opts.skills) {
+    conditions.push(
+      sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}) AS s WHERE s ILIKE ${`%${escapeLike(opts.skills)}%`})`,
+    );
+  }
+
+  if (opts.escoUri) {
+    conditions.push(
+      sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${opts.escoUri})`,
+    );
   }
 
   const [{ count }] = await db
@@ -149,6 +175,7 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
       source: data.source,
       linkedinUrl: data.linkedinUrl,
       headline: data.headline,
+      profileSummary: data.profileSummary,
       hourlyRate: data.hourlyRate,
       availability: data.availability,
       notes: data.notes,
@@ -167,6 +194,11 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     console.error(`[Candidates] Embedding error for ${candidate.id}:`, err);
   }
 
+  await syncCandidateEscoSkills({
+    candidateId: candidate.id,
+    skills: candidate.skills,
+  });
+
   return candidate;
 }
 
@@ -184,7 +216,16 @@ export async function updateCandidate(
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
     .returning();
 
-  return rows[0] ?? null;
+  const candidate = rows[0] ?? null;
+  if (!candidate) return null;
+
+  await syncCandidateEscoSkills({
+    candidateId: candidate.id,
+    skills: candidate.skills,
+    skillsStructured: candidate.skillsStructured,
+  });
+
+  return candidate;
 }
 
 /** Alle actieve (niet-verwijderde) kandidaten ophalen. Hogere limiet voor batch matching. */
@@ -281,6 +322,7 @@ export async function enrichCandidateFromCV(
     resumeRaw,
     resumeParsedAt: new Date(),
     ...(resumeUrl ? { resumeUrl } : {}),
+    profileSummary: parsed.introduction,
     skillsStructured: {
       hard: parsed.skills.hard,
       soft: parsed.skills.soft,
@@ -316,5 +358,14 @@ export async function enrichCandidateFromCV(
     .where(eq(candidates.id, candidateId))
     .returning();
 
-  return rows[0] ?? null;
+  const candidate = rows[0] ?? null;
+  if (!candidate) return null;
+
+  await syncCandidateEscoSkills({
+    candidateId: candidate.id,
+    skills: candidate.skills,
+    skillsStructured: candidate.skillsStructured,
+  });
+
+  return candidate;
 }

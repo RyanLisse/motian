@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
 import { deleteCandidate, getCandidateById, updateCandidate } from "@/src/services/candidates";
+import { withCandidateCanonicalSkills } from "@/src/services/esco";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export const GET = withApiHandler(
     if (!candidate) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: candidate });
+    return Response.json({ data: await withCandidateCanonicalSkills(candidate) });
   },
   { logPrefix: "GET /api/kandidaten/[id] error" },
 );
@@ -49,7 +50,7 @@ export const PATCH = withApiHandler(
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
     revalidatePath("/professionals");
-    return Response.json({ data: candidate });
+    return Response.json({ data: await withCandidateCanonicalSkills(candidate) });
   },
   { logPrefix: "PATCH /api/kandidaten/[id] error" },
 );
