@@ -1,5 +1,5 @@
 import { tool } from "ai";
-import { isNull, sql } from "drizzle-orm";
+import { and, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { jobs, scrapeResults } from "@/src/db/schema";
@@ -12,13 +12,14 @@ export const analyseData = tool({
       .enum([
         "jobs_per_platform",
         "avg_rates",
+        "top_tarieven",
         "total_counts",
         "recent_scrapes",
         "jobs_per_province",
         "deadline_overview",
       ])
       .describe(
-        "Type analyse: jobs_per_platform, avg_rates, total_counts, recent_scrapes, jobs_per_province, deadline_overview",
+        "Type analyse: jobs_per_platform, avg_rates, top_tarieven (top 10 hoogste tarieven), total_counts, recent_scrapes, jobs_per_province, deadline_overview",
       ),
   }),
   execute: async ({ analysis }): Promise<{ analysis: string; data: unknown }> => {
@@ -71,6 +72,32 @@ export const analyseData = tool({
             overall,
             toelichting: `Tarieven boven ${RATE_CAP} EUR/uur worden als uitschieters beschouwd en niet meegenomen in het gemiddelde. 'zonderTarief' = opdrachten zonder tariefinformatie.`,
           },
+        };
+      }
+
+      case "top_tarieven": {
+        const topRows = await db
+          .select({
+            id: jobs.id,
+            title: jobs.title,
+            company: jobs.company,
+            platform: jobs.platform,
+            location: jobs.location,
+            rateMin: jobs.rateMin,
+            rateMax: jobs.rateMax,
+          })
+          .from(jobs)
+          .where(
+            and(
+              isNull(jobs.deletedAt),
+              sql`COALESCE(${jobs.rateMax}, ${jobs.rateMin}) IS NOT NULL`,
+            ),
+          )
+          .orderBy(sql`COALESCE(${jobs.rateMax}, ${jobs.rateMin}) DESC NULLS LAST`)
+          .limit(10);
+        return {
+          analysis: "Top 10 opdrachten met hoogste tarief",
+          data: topRows,
         };
       }
 

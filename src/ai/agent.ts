@@ -136,6 +136,8 @@ Matching gewichten (totaal 100): Skills ${SCORING_WEIGHTS.skills}%, Locatie ${SC
 Hybride scoring: ${Math.round(HYBRID_BLEND.ruleWeight * 100)}% regelgebaseerd + ${Math.round(HYBRID_BLEND.vectorWeight * 100)}% semantisch (indien embeddings beschikbaar).
 
 Zoektips: queryOpdrachten zoekt op losse woorden in de titel. Gebruik korte termen (bijv. "jurist" i.p.v. "juridische functies"). Voor semantisch zoeken gebruik matchKandidaten met een beschrijving.
+
+Tarief-vragen: Voor "hoogste tarief" of "duurste vacature" gebruik queryOpdrachten met sortBy="tarief_hoog" en limit=5 (ZONDER q). Voor tarief-statistieken gebruik analyseData met analysis="top_tarieven" of "avg_rates". Gebruik NOOIT rateMin/rateMax filters als de gebruiker alleen wil weten wat het hoogste/laagste tarief is.
 ${workspace}`;
 
   if (context?.route) {

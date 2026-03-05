@@ -325,11 +325,39 @@ function parseDetailHtml(html: string): FlextenderDetail {
   const funcText = findSection("functieschaal");
   if (funcText) {
     const scaleMatch = funcText.match(/schaal\s*(\d+)/i);
-    if (scaleMatch) conditions.push(`Functieschaal ${scaleMatch[1]}`);
+    if (scaleMatch) {
+      conditions.push(`Functieschaal ${scaleMatch[1]}`);
+      // Map functieschaal to indicative hourly rate ranges (Dutch government scales 2026)
+      const rates = functieschaalToRate(parseInt(scaleMatch[1], 10));
+      if (rates) {
+        if (!result.rateMin) result.rateMin = rates.min;
+        if (!result.rateMax) result.rateMax = rates.max;
+      }
+    }
   }
 
   const feeText = findSection("fee");
-  if (feeText) conditions.push(`Fee: ${feeText.trim()}`);
+  if (feeText) {
+    conditions.push(`Fee: ${feeText.trim()}`);
+    // Try to extract a rate from fee text (e.g., "€ 100,00 per uur", "maximaal 95")
+    const feeRate = parseRateFromText(feeText);
+    if (feeRate) {
+      const curMax = typeof result.rateMax === "number" ? result.rateMax : 0;
+      if (!curMax || feeRate > curMax) result.rateMax = feeRate;
+      if (!result.rateMin) result.rateMin = feeRate;
+    }
+  }
+
+  // Also check "Maximaal uurtarief" or "Tarief" sections
+  const tariefText = findSection("tarief") ?? findSection("uurtarief");
+  if (tariefText) {
+    const rate = parseRateFromText(tariefText);
+    if (rate) {
+      const curMax = typeof result.rateMax === "number" ? result.rateMax : 0;
+      if (!curMax || rate > curMax) result.rateMax = rate;
+      if (!result.rateMin) result.rateMin = rate;
+    }
+  }
 
   const werkText = findSection("werkdagen");
   if (werkText) conditions.push(`Werkdagen: ${werkText.trim()}`);
@@ -608,6 +636,44 @@ function parseHoursPerWeek(raw: string | undefined): {
     return hours > 0 ? { hoursPerWeek: hours } : {};
   }
   return {};
+}
+
+/** Map Dutch government functieschaal to indicative hourly rate range (EUR, excl BTW).
+ *  Based on 2025/2026 BBRA/CAO Rijk scales for interim/freelance contractors. */
+function functieschaalToRate(scale: number): { min: number; max: number } | undefined {
+  const scaleRates: Record<number, { min: number; max: number }> = {
+    5: { min: 35, max: 50 },
+    6: { min: 40, max: 60 },
+    7: { min: 50, max: 70 },
+    8: { min: 55, max: 80 },
+    9: { min: 65, max: 90 },
+    10: { min: 75, max: 105 },
+    11: { min: 85, max: 120 },
+    12: { min: 100, max: 135 },
+    13: { min: 110, max: 150 },
+    14: { min: 120, max: 165 },
+    15: { min: 135, max: 185 },
+    16: { min: 150, max: 200 },
+  };
+  return scaleRates[scale];
+}
+
+/** Extract hourly rate from free text (e.g., "€ 100,00 per uur", "maximaal 95", "max. €110") */
+function parseRateFromText(text: string): number | undefined {
+  const lower = text.toLowerCase().replace(/\s+/g, " ");
+  // Match: €100, € 100, €100,00, EUR 100, 100 euro
+  const rateMatch = lower.match(/(?:€|eur)\s*(\d+)[,.]?(\d{0,2})/);
+  if (rateMatch) {
+    const rate = parseInt(rateMatch[1], 10);
+    if (rate > 10 && rate < 500) return rate;
+  }
+  // Match: "maximaal 95", "max. 110", "tarief: 80"
+  const maxMatch = lower.match(/(?:max(?:imaal)?\.?\s*|tarief\s*:?\s*)(\d+)/);
+  if (maxMatch) {
+    const rate = parseInt(maxMatch[1], 10);
+    if (rate > 10 && rate < 500) return rate;
+  }
+  return undefined;
 }
 
 /** Map regio/locatie naar Nederlandse provincie */
