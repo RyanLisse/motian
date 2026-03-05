@@ -54,16 +54,29 @@ const PROVINCES = [
   "Zeeland",
 ];
 
+const CONTRACT_TYPES = [
+  { value: "freelance", label: "Freelance" },
+  { value: "interim", label: "Interim" },
+  { value: "vast", label: "Vast" },
+  { value: "opdracht", label: "Opdracht" },
+];
+
 async function searchJobs(
   q: string,
   platform: string,
   provincie: string,
+  contractType: string,
+  tariefMin: string,
+  tariefMax: string,
   page: number,
 ): Promise<SearchResponse> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (platform) params.set("platform", platform);
   if (provincie) params.set("provincie", provincie);
+  if (contractType) params.set("contractType", contractType);
+  if (tariefMin) params.set("tariefMin", tariefMin);
+  if (tariefMax) params.set("tariefMax", tariefMax);
   if (page > 1) params.set("pagina", String(page));
 
   const res = await fetch(`/api/opdrachten/zoeken?${params.toString()}`);
@@ -84,17 +97,46 @@ export function OpdrachtenSidebar({
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState("");
   const [provincie, setProvincie] = useState("");
+  const [contractType, setContractType] = useState("");
+  const [tariefMin, setTariefMin] = useState("");
+  const [tariefMax, setTariefMax] = useState("");
   const [sortBy, setSortBy] = useState("nieuwst");
   const [page, setPage] = useState(1);
 
   const deferredQuery = useDeferredValue(query);
+  const deferredTariefMin = useDeferredValue(tariefMin);
+  const deferredTariefMax = useDeferredValue(tariefMax);
 
   const { data, isFetching } = useQuery({
-    queryKey: ["opdrachten-search", deferredQuery, platform, provincie, page],
-    queryFn: () => searchJobs(deferredQuery, platform, provincie, page),
+    queryKey: [
+      "opdrachten-search",
+      deferredQuery,
+      platform,
+      provincie,
+      contractType,
+      deferredTariefMin,
+      deferredTariefMax,
+      page,
+    ],
+    queryFn: () =>
+      searchJobs(
+        deferredQuery,
+        platform,
+        provincie,
+        contractType,
+        deferredTariefMin,
+        deferredTariefMax,
+        page,
+      ),
     placeholderData: (prev) => prev,
     initialData:
-      page === 1 && !deferredQuery && !platform && !provincie
+      page === 1 &&
+      !deferredQuery &&
+      !platform &&
+      !provincie &&
+      !contractType &&
+      !deferredTariefMin &&
+      !deferredTariefMax
         ? {
             jobs: initialJobs,
             total: initialTotal,
@@ -117,6 +159,9 @@ export function OpdrachtenSidebar({
     setQuery("");
     setPlatform("");
     setProvincie("");
+    setContractType("");
+    setTariefMin("");
+    setTariefMax("");
     setPage(1);
   };
 
@@ -343,6 +388,64 @@ export function OpdrachtenSidebar({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="opdrachten-contracttype"
+                className="mb-2 block text-sm font-medium text-foreground"
+              >
+                Contract type
+              </label>
+              <Select
+                value={contractType || "__all__"}
+                onValueChange={(v) => handleFilterChange(setContractType, v === "__all__" ? "" : v)}
+              >
+                <SelectTrigger
+                  id="opdrachten-contracttype"
+                  className="h-11 rounded-lg border-border bg-background text-left text-sm"
+                >
+                  <SelectValue placeholder="Alle types" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="__all__" className="text-foreground">
+                    Alle types
+                  </SelectItem>
+                  {CONTRACT_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value} className="text-foreground">
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <p className="mb-2 block text-sm font-medium text-foreground">Tarief per uur</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Min"
+                  value={tariefMin}
+                  onChange={(e) => {
+                    setTariefMin(e.target.value);
+                    setPage(1);
+                  }}
+                  className="h-11 rounded-lg border-border bg-background text-sm"
+                />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Max"
+                  value={tariefMax}
+                  onChange={(e) => {
+                    setTariefMax(e.target.value);
+                    setPage(1);
+                  }}
+                  className="h-11 rounded-lg border-border bg-background text-sm"
+                />
+              </div>
             </div>
           </div>
         </div>
