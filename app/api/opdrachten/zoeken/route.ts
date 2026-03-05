@@ -12,6 +12,11 @@ export async function GET(req: NextRequest) {
   const q = params.get("q")?.trim() ?? "";
   const platform = params.get("platform") ?? "";
   const provincie = params.get("provincie") ?? "";
+  const contractType = params.get("contractType") ?? "";
+  const tariefMinParam = params.get("tariefMin");
+  const tariefMaxParam = params.get("tariefMax");
+  const tariefMin = tariefMinParam ? Number.parseInt(tariefMinParam, 10) : undefined;
+  const tariefMax = tariefMaxParam ? Number.parseInt(tariefMaxParam, 10) : undefined;
   const { page, limit, offset } = parsePagination(params, { limit: 10 });
 
   const conditions = [isNull(jobs.deletedAt)];
@@ -35,6 +40,18 @@ export async function GET(req: NextRequest) {
 
   if (provincie) {
     conditions.push(ilike(jobs.location, `%${escapeLike(provincie)}%`));
+  }
+
+  if (contractType) {
+    conditions.push(eq(jobs.contractType, contractType));
+  }
+
+  if (tariefMin != null && Number.isFinite(tariefMin)) {
+    conditions.push(sql`${jobs.rateMax} is not null and ${jobs.rateMax} >= ${tariefMin}`);
+  }
+
+  if (tariefMax != null && Number.isFinite(tariefMax)) {
+    conditions.push(sql`${jobs.rateMin} is not null and ${jobs.rateMin} <= ${tariefMax}`);
   }
 
   const whereClause = and(...conditions);
