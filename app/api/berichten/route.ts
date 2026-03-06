@@ -3,11 +3,11 @@ import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
 import { publish } from "@/src/lib/event-bus";
 import { paginatedResponse, parsePagination } from "@/src/lib/pagination";
-import { countMessages, createMessage, listMessages } from "@/src/services/messages";
 
 export const dynamic = "force-dynamic";
 
 export const GET = withApiHandler(async (req: Request) => {
+  const { countMessages, listMessages } = await import("@/src/services/messages");
   const { searchParams } = new URL(req.url);
   const { page, limit, offset } = parsePagination(searchParams);
   const applicationId = searchParams.get("applicationId") ?? undefined;
@@ -34,6 +34,7 @@ const CreateSchema = z.object({
 });
 
 export const POST = withApiHandler(async (req: Request) => {
+  const { createMessage } = await import("@/src/services/messages");
   const body = await req.json();
   const result = CreateSchema.safeParse(body);
   if (!result.success) {
