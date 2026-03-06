@@ -1,5 +1,6 @@
 import { convertToModelMessages, generateObject, stepCountIs } from "ai";
 import { after } from "next/server";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { buildSystemPrompt, recruitmentTools } from "@/src/ai/agent";
 import { db } from "@/src/db";
@@ -57,27 +58,7 @@ export async function POST(req: Request) {
     const firstUserMsg = body.messages.find((m: { role: string }) => m.role === "user");
 
     after(async () => {
-      let title: string | null = null;
-
-      if (body.messages.length === 1 && firstUserMsg && typeof firstUserMsg.content === "string") {
-        try {
-          const titleResult = await generateObject({
-            model: resolveChatModel("gemini-3.1-flash-lite"),
-            schema: z.object({
-              title: z
-                .string()
-                .max(50)
-                .describe("Korte titel voor dit gesprek in 3-6 woorden, Nederlands"),
-            }),
-            prompt: `Genereer een korte titel (3-6 woorden) voor dit gesprek. Gebruikersvraag: "${firstUserMsg.content.slice(0, 200)}"`,
-          });
-          title = titleResult.object.title;
-        } catch (err) {
-          console.error("[chat] Title generation failed:", err);
-          title = firstUserMsg.content.slice(0, 50);
-        }
-      }
-
+      // 1. Persist session immediately without waiting for title generation
       try {
         await db
           .insert(chatSessions)
@@ -86,7 +67,7 @@ export async function POST(req: Request) {
             messages: lastMessages,
             context: ctx,
             messageCount: lastMessages.length,
-            title,
+            title: null,
             lastMessagePreview: preview,
           })
           .onConflictDoUpdate({
@@ -101,6 +82,37 @@ export async function POST(req: Request) {
           });
       } catch (err) {
         console.error("[chat] Session persistence failed:", err);
+      }
+
+      // 2. Best-effort title generation for first message — does not block persistence
+      if (body.messages.length === 1 && firstUserMsg && typeof firstUserMsg.content === "string") {
+        let generatedTitle: string;
+        try {
+          const titleResult = await generateObject({
+            model: resolveChatModel("gemini-3.1-flash-lite"),
+            schema: z.object({
+              title: z
+                .string()
+                .max(50)
+                .describe("Korte titel voor dit gesprek in 3-6 woorden, Nederlands"),
+            }),
+            prompt: `Genereer een korte titel (3-6 woorden) voor dit gesprek. Gebruikersvraag: "${firstUserMsg.content.slice(0, 200)}"`,
+          });
+          generatedTitle = titleResult.object.title;
+        } catch (err) {
+          console.error("[chat] Title generation failed:", err);
+          generatedTitle = firstUserMsg.content.slice(0, 50);
+        }
+
+        // Conditional update: only set title if it is still null (prevents overwriting on race)
+        try {
+          await db
+            .update(chatSessions)
+            .set({ title: generatedTitle })
+            .where(and(eq(chatSessions.sessionId, sessionId), isNull(chatSessions.title)));
+        } catch (err) {
+          console.error("[chat] Title update failed:", err);
+        }
       }
     });
   }
