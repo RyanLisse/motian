@@ -62,3 +62,22 @@ export const RemoteBadge: Story = {
     },
   },
 };
+
+export const WithPipelineCount: Story = {
+  args: {
+    job: {
+      id: "4",
+      title: "Senior Data Engineer — Azure & Databricks",
+      company: "ABN AMRO",
+      location: "Amsterdam",
+      platform: "striive",
+      contractType: "freelance",
+      workArrangement: "hybride",
+      rateMin: 90,
+      rateMax: 120,
+      applicationDeadline: new Date("2026-03-20"),
+      postedAt: new Date("2026-02-25"),
+    },
+    pipelineCount: 5,
+  },
+};

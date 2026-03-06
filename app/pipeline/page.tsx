@@ -1,5 +1,16 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { Briefcase, CheckCircle2, Filter, Inbox, Kanban, List, Users, XCircle } from "lucide-react";
+import {
+  ArrowRight,
+  Briefcase,
+  CheckCircle2,
+  Filter,
+  Inbox,
+  Kanban,
+  List,
+  Sparkles,
+  Users,
+  XCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import type { KanbanCardData } from "@/components/pipeline/kanban-card";
@@ -23,6 +34,7 @@ interface Props {
     limit?: string;
     perPage?: string;
     weergave?: string;
+    vacature?: string;
   }>;
 }
 
@@ -62,6 +74,7 @@ export default async function PipelinePage({ searchParams }: Props) {
   const params = await searchParams;
   const stageFilter = params.fase ?? "";
   const view = params.weergave === "lijst" ? "lijst" : "kanban";
+  const vacatureId = params.vacature ?? "";
 
   const urlParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -74,14 +87,29 @@ export default async function PipelinePage({ searchParams }: Props) {
     maxLimit: MAX_PER_PAGE,
   });
 
-  // Build where clause for list view
+  // Build where clause — filter by vacancy when provided
   const conditions = [isNull(applications.deletedAt)];
   if (stageFilter) {
     conditions.push(eq(applications.stage, stageFilter));
   }
+  if (vacatureId) {
+    conditions.push(eq(applications.jobId, vacatureId));
+  }
   const whereClause = and(...conditions);
 
-  // Fetch applications + KPIs in parallel
+  // Build base conditions for KPI queries (respect vacancy filter but NOT stage filter)
+  const kpiConditions = [isNull(applications.deletedAt)];
+  if (vacatureId) {
+    kpiConditions.push(eq(applications.jobId, vacatureId));
+  }
+
+  // Kanban where clause: vacancy filter but no stage filter
+  const kanbanConditions = [isNull(applications.deletedAt)];
+  if (vacatureId) {
+    kanbanConditions.push(eq(applications.jobId, vacatureId));
+  }
+
+  // Fetch applications + KPIs + optional vacancy info in parallel
   const [
     rows,
     totalResult,
@@ -91,6 +119,7 @@ export default async function PipelinePage({ searchParams }: Props) {
     offerResult,
     hiredResult,
     kanbanRows,
+    vacatureRows,
   ] = await Promise.all([
     // List view data (only if list view)
     view === "lijst"
@@ -114,24 +143,24 @@ export default async function PipelinePage({ searchParams }: Props) {
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(applications)
-      .where(and(isNull(applications.deletedAt), eq(applications.stage, "new"))),
+      .where(and(...kpiConditions, eq(applications.stage, "new"))),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(applications)
-      .where(and(isNull(applications.deletedAt), eq(applications.stage, "screening"))),
+      .where(and(...kpiConditions, eq(applications.stage, "screening"))),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(applications)
-      .where(and(isNull(applications.deletedAt), eq(applications.stage, "interview"))),
+      .where(and(...kpiConditions, eq(applications.stage, "interview"))),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(applications)
-      .where(and(isNull(applications.deletedAt), eq(applications.stage, "offer"))),
+      .where(and(...kpiConditions, eq(applications.stage, "offer"))),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(applications)
-      .where(and(isNull(applications.deletedAt), eq(applications.stage, "hired"))),
-    // Kanban data (only if kanban view) — all non-deleted applications for kanban stages
+      .where(and(...kpiConditions, eq(applications.stage, "hired"))),
+    // Kanban data (only if kanban view)
     view === "kanban"
       ? db
           .select({
@@ -151,10 +180,20 @@ export default async function PipelinePage({ searchParams }: Props) {
           .leftJoin(jobs, eq(applications.jobId, jobs.id))
           .leftJoin(candidates, eq(applications.candidateId, candidates.id))
           .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
-          .where(isNull(applications.deletedAt))
+          .where(and(...kanbanConditions))
           .orderBy(desc(applications.createdAt))
       : Promise.resolve([]),
+    // Fetch vacancy info when filtering
+    vacatureId
+      ? db
+          .select({ id: jobs.id, title: jobs.title, company: jobs.company })
+          .from(jobs)
+          .where(and(eq(jobs.id, vacatureId), isNull(jobs.deletedAt)))
+          .limit(1)
+      : Promise.resolve([]),
   ]);
+
+  const vacature = vacatureRows[0] ?? null;
 
   const totalCount = totalResult[0]?.count ?? 0;
   const totalPages = Math.ceil(totalCount / limit) || 1;
@@ -190,19 +229,88 @@ export default async function PipelinePage({ searchParams }: Props) {
     const p = new URLSearchParams();
     if (v !== "kanban") p.set("weergave", v);
     if (stageFilter) p.set("fase", stageFilter);
+    if (vacatureId) p.set("vacature", vacatureId);
     const qs = p.toString();
     return `/pipeline${qs ? `?${qs}` : ""}`;
   }
 
+  // Determine next-best-action for the recruiter
+  const nextAction = (() => {
+    if (allCount === 0) {
+      return {
+        label: vacature ? "Match kandidaten" : "Koppel kandidaten aan vacatures",
+        href: vacature ? `/matching?jobId=${vacatureId}` : "/matching",
+        icon: "sparkles" as const,
+      };
+    }
+    if (newCount > 0) {
+      return {
+        label: `${newCount} nieuwe kandidaten screenen`,
+        href: buildViewHref("kanban"),
+        icon: "inbox" as const,
+      };
+    }
+    if (interviewCount > 0) {
+      return {
+        label: `${interviewCount} interviews plannen`,
+        href: "/interviews",
+        icon: "users" as const,
+      };
+    }
+    if (offerCount > 0) {
+      return {
+        label: `${offerCount} aanbiedingen opvolgen`,
+        href: buildViewHref("kanban"),
+        icon: "briefcase" as const,
+      };
+    }
+    return null;
+  })();
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        {/* Vacancy context header — shown when filtering by a specific vacancy */}
+        {vacature && (
+          <div className="bg-card border border-border rounded-lg p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Briefcase className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{vacature.title}</p>
+                {vacature.company && (
+                  <p className="text-xs text-muted-foreground">{vacature.company}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href={`/opdrachten/${vacatureId}`}
+                className="text-xs text-primary hover:underline"
+              >
+                ← Terug naar vacature
+              </Link>
+              <Link
+                href="/pipeline"
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Alle pipelines
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Pipeline</h1>
+            <h1 className="text-xl font-bold text-foreground">
+              {vacature ? `Pipeline — ${vacature.title}` : "Pipeline"}
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Sollicitatiepipeline — volg kandidaten door elke fase
+              {vacature
+                ? `Volg kandidaten voor deze vacature door elke fase`
+                : "Sollicitatiepipeline — volg kandidaten door elke fase"}
             </p>
           </div>
 
@@ -273,6 +381,24 @@ export default async function PipelinePage({ searchParams }: Props) {
           />
         </div>
 
+        {/* Next best action prompt */}
+        {nextAction && (
+          <Link href={nextAction.href}>
+            <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center justify-between hover:bg-primary/10 transition-colors group">
+              <div className="flex items-center gap-2.5">
+                {nextAction.icon === "sparkles" && <Sparkles className="h-4 w-4 text-primary" />}
+                {nextAction.icon === "inbox" && <Inbox className="h-4 w-4 text-yellow-500" />}
+                {nextAction.icon === "users" && <Users className="h-4 w-4 text-purple-500" />}
+                {nextAction.icon === "briefcase" && (
+                  <Briefcase className="h-4 w-4 text-orange-500" />
+                )}
+                <span className="text-sm font-medium text-foreground">{nextAction.label}</span>
+              </div>
+              <ArrowRight className="h-4 w-4 text-primary group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
+        )}
+
         {/* KANBAN VIEW */}
         {view === "kanban" ? (
           <KanbanBoard byStage={byStage} />
@@ -291,7 +417,7 @@ export default async function PipelinePage({ searchParams }: Props) {
               ]}
               activeValue={stageFilter}
               buildHref={(v) =>
-                `/pipeline?${new URLSearchParams({ weergave: "lijst", ...(v ? { fase: v } : {}) }).toString()}`
+                `/pipeline?${new URLSearchParams({ weergave: "lijst", ...(v ? { fase: v } : {}), ...(vacatureId ? { vacature: vacatureId } : {}) }).toString()}`
               }
             />
 
@@ -388,6 +514,7 @@ export default async function PipelinePage({ searchParams }: Props) {
                 const sp = new URLSearchParams({
                   weergave: "lijst",
                   ...(stageFilter ? { fase: stageFilter } : {}),
+                  ...(vacatureId ? { vacature: vacatureId } : {}),
                   pagina: String(p),
                 });
                 if (limit !== DEFAULT_PER_PAGE) sp.set("limit", String(limit));

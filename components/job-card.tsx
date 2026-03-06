@@ -1,4 +1,4 @@
-import { Building2, Calendar, Clock, Euro, MapPin } from "lucide-react";
+import { AlertTriangle, Building2, Calendar, Clock, Euro, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
@@ -16,6 +16,8 @@ interface JobCardProps {
     applicationDeadline: Date | null;
     postedAt: Date | null;
   };
+  /** Number of candidates in pipeline for this job */
+  pipelineCount?: number;
 }
 
 const arrangementLabels: Record<string, string> = {
@@ -24,20 +26,39 @@ const arrangementLabels: Record<string, string> = {
   remote: "Remote",
 };
 
-export function JobCard({ job }: JobCardProps) {
+export function JobCard({ job, pipelineCount }: JobCardProps) {
+  // Deadline urgency: within 3 days = urgent
+  const deadlineUrgent =
+    job.applicationDeadline &&
+    new Date(job.applicationDeadline).getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000 &&
+    new Date(job.applicationDeadline).getTime() > Date.now();
+
   return (
     <Link href={`/opdrachten/${job.id}`}>
-      <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer">
+      <div
+        className={`bg-card border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer ${deadlineUrgent ? "border-orange-400/60" : "border-border"}`}
+      >
         <div className="flex items-start justify-between gap-2 mb-3">
           <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
             {job.title}
           </h3>
-          <Badge
-            variant="outline"
-            className="shrink-0 text-[10px] capitalize border-border text-muted-foreground bg-transparent"
-          >
-            {job.platform}
-          </Badge>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {pipelineCount != null && pipelineCount > 0 && (
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-primary/10 text-primary border-primary/20 flex items-center gap-0.5"
+              >
+                <Users className="h-2.5 w-2.5" />
+                {pipelineCount}
+              </Badge>
+            )}
+            <Badge
+              variant="outline"
+              className="text-[10px] capitalize border-border text-muted-foreground bg-transparent"
+            >
+              {job.platform}
+            </Badge>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-3">
@@ -90,8 +111,14 @@ export function JobCard({ job }: JobCardProps) {
 
         <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
           {job.applicationDeadline && (
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
+            <span
+              className={`flex items-center gap-1 ${deadlineUrgent ? "text-orange-600 font-medium" : ""}`}
+            >
+              {deadlineUrgent ? (
+                <AlertTriangle className="h-3 w-3" />
+              ) : (
+                <Clock className="h-3 w-3" />
+              )}
               Sluit{" "}
               {new Date(job.applicationDeadline).toLocaleDateString("nl-NL", {
                 day: "numeric",

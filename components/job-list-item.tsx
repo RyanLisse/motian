@@ -1,4 +1,4 @@
-import { ArrowRight, BriefcaseBusiness, Building2, MapPin } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Building2, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,8 @@ interface JobListItemProps {
   };
   isActive: boolean;
   variant?: "compact" | "card";
+  /** Number of candidates in pipeline for this job */
+  pipelineCount?: number;
 }
 
 const arrangementLabels: Record<string, string> = {
@@ -31,7 +33,12 @@ const contractLabels: Record<string, string> = {
   opdracht: "Opdracht",
 };
 
-export function JobListItem({ job, isActive, variant = "compact" }: JobListItemProps) {
+export function JobListItem({
+  job,
+  isActive,
+  variant = "compact",
+  pipelineCount,
+}: JobListItemProps) {
   if (variant === "card") {
     return (
       <DroppableVacancy jobId={job.id} jobTitle={job.title}>
@@ -80,6 +87,15 @@ export function JobListItem({ job, isActive, variant = "compact" }: JobListItemP
                     className="h-5 rounded-md border-border bg-background px-2 text-[10px] font-medium text-muted-foreground"
                   >
                     {contractLabels[job.contractType] ?? job.contractType}
+                  </Badge>
+                )}
+                {pipelineCount != null && pipelineCount > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="h-5 rounded-md bg-primary/10 text-primary border-primary/20 px-2 text-[10px] font-medium flex items-center gap-0.5"
+                  >
+                    <Users className="h-2.5 w-2.5" />
+                    {pipelineCount} in pipeline
                   </Badge>
                 )}
               </div>
@@ -131,6 +147,15 @@ export function JobListItem({ job, isActive, variant = "compact" }: JobListItemP
                 )}
               >
                 {arrangementLabels[job.workArrangement] ?? job.workArrangement}
+              </Badge>
+            )}
+            {pipelineCount != null && pipelineCount > 0 && (
+              <Badge
+                variant="outline"
+                className="text-[9px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20 flex items-center gap-0.5"
+              >
+                <Users className="h-2.5 w-2.5" />
+                {pipelineCount}
               </Badge>
             )}
           </div>

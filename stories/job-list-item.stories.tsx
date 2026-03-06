@@ -38,3 +38,36 @@ export const Inactive: Story = {
     },
   },
 };
+
+export const WithPipelineCount: Story = {
+  args: {
+    isActive: false,
+    job: {
+      id: "3",
+      title: "Python Developer — ML Platform",
+      company: "Booking.com",
+      location: "Amsterdam",
+      platform: "striive",
+      workArrangement: "hybride",
+      contractType: "freelance",
+    },
+    pipelineCount: 3,
+  },
+};
+
+export const CardWithPipeline: Story = {
+  args: {
+    isActive: false,
+    variant: "card",
+    job: {
+      id: "4",
+      title: "Cloud Architect — AWS & Kubernetes",
+      company: "ING Bank",
+      location: "Amsterdam",
+      platform: "huxley",
+      workArrangement: "remote",
+      contractType: "interim",
+    },
+    pipelineCount: 7,
+  },
+};

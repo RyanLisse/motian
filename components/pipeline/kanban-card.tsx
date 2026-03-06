@@ -1,7 +1,8 @@
 "use client";
 
 import { GripVertical } from "lucide-react";
-import { type DragEvent, useCallback, useState } from "react";
+import Link from "next/link";
+import { type DragEvent, useCallback, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 
 export interface KanbanCardData {
@@ -22,18 +23,24 @@ interface KanbanCardProps {
 
 export function KanbanCard({ card }: KanbanCardProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const didDrag = useRef(false);
 
   const handleDragStart = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
       e.dataTransfer.setData("application/x-application-id", card.id);
       e.dataTransfer.effectAllowed = "move";
       setIsDragging(true);
+      didDrag.current = true;
     },
     [card.id],
   );
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
+    // Reset drag flag after a tick so the click handler can check it
+    setTimeout(() => {
+      didDrag.current = false;
+    }, 0);
   }, []);
 
   const initials = (card.candidateName ?? "?")
@@ -42,6 +49,8 @@ export function KanbanCard({ card }: KanbanCardProps) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const candidateHref = card.candidateId ? `/professionals/${card.candidateId}` : null;
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: drag source
@@ -66,9 +75,21 @@ export function KanbanCard({ card }: KanbanCardProps) {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">
-            {card.candidateName ?? "Onbekend"}
-          </p>
+          {candidateHref ? (
+            <Link
+              href={candidateHref}
+              onClick={(e) => {
+                if (didDrag.current) e.preventDefault();
+              }}
+              className="text-sm font-medium text-foreground truncate block hover:text-primary transition-colors"
+            >
+              {card.candidateName ?? "Onbekend"}
+            </Link>
+          ) : (
+            <p className="text-sm font-medium text-foreground truncate">
+              {card.candidateName ?? "Onbekend"}
+            </p>
+          )}
           {card.jobTitle && (
             <p className="text-xs text-muted-foreground truncate">
               {card.jobTitle}

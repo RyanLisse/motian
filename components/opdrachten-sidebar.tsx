@@ -24,6 +24,7 @@ interface SidebarJob {
   platform: string;
   workArrangement: string | null;
   contractType: string | null;
+  pipelineCount?: number;
 }
 
 interface SearchResponse {
@@ -272,7 +273,12 @@ export function OpdrachtenSidebar({
             </div>
           ) : (
             displayJobs.map((job) => (
-              <JobListItem key={job.id} job={job} isActive={job.id === activeId} />
+              <JobListItem
+                key={job.id}
+                job={job}
+                isActive={job.id === activeId}
+                pipelineCount={job.pipelineCount}
+              />
             ))
           )}
         </ScrollArea>
@@ -503,6 +509,7 @@ export function OpdrachtenSidebar({
                     job={job}
                     isActive={job.id === activeId}
                     variant="card"
+                    pipelineCount={job.pipelineCount}
                   />
                 ))}
               </div>
