@@ -11,14 +11,18 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    posthog.init(key, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
-      person_profiles: "identified_only",
-      capture_pageview: true,
-      capture_pageleave: true,
-      autocapture: true,
-      capture_exceptions: true,
-    });
+    try {
+      posthog.init(key, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
+        person_profiles: "identified_only",
+        capture_pageview: true,
+        capture_pageleave: true,
+        autocapture: true,
+        capture_exceptions: true,
+      });
+    } catch {
+      // Storage may be disabled (private mode, iframe, strict partitioning)
+    }
   }, []);
 
   if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) {
