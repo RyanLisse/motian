@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.warn("[CV Save] Auto-match overgeslagen:", err);
       }
-      revalidatePath("/professionals");
-      revalidatePath(`/professionals/${candidate.id}`);
+      revalidatePath("/kandidaten");
+      revalidatePath(`/kandidaten/${candidate.id}`);
     }
 
     return Response.json({

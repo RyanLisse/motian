@@ -59,6 +59,6 @@ export const POST = withApiHandler(async (request: Request) => {
     );
   }
   const candidate = await createCandidate(parsed.data);
-  revalidatePath("/professionals");
+  revalidatePath("/kandidaten");
   return Response.json({ data: await withCandidateCanonicalSkills(candidate) }, { status: 201 });
 });

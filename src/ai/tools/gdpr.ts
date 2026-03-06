@@ -34,7 +34,7 @@ export const wisKandidaatData = tool({
       return { error: "Bevestiging is vereist om data permanent te verwijderen" };
     }
     const result = await eraseCandidateData(candidateId, "ai-agent");
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     revalidatePath("/matching");
     revalidatePath("/pipeline");
     revalidatePath("/messages");

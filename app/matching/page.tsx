@@ -365,7 +365,7 @@ export default async function MatchingPage({ searchParams }: Props) {
                       </div>
                       {row.candidate ? (
                         <Link
-                          href={`/professionals/${row.candidate.id}`}
+                          href={`/kandidaten/${row.candidate.id}`}
                           className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
                         >
                           {row.candidate.name}

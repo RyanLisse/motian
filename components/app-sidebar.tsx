@@ -49,12 +49,12 @@ const data = {
     },
     {
       title: "Kandidaten",
-      url: "/professionals",
+      url: "/kandidaten",
       icon: Users,
       items: [
         {
           title: "Talent Pool",
-          url: "/professionals",
+          url: "/kandidaten",
         },
         {
           title: "Pipeline",

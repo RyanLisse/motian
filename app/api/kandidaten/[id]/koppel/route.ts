@@ -45,11 +45,11 @@ export const POST = withApiHandler(
     for (const app of result.created) {
       publish("application:created", { applicationId: app.id });
     }
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     revalidatePath("/pipeline");
     revalidatePath("/overzicht");
     revalidatePath("/opdrachten");
-    revalidatePath(`/professionals/${candidateId}`);
+    revalidatePath(`/kandidaten/${candidateId}`);
     return Response.json({
       created: result.created.length,
       alreadyLinked: result.alreadyLinked,

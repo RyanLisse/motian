@@ -22,10 +22,16 @@ const updateCandidateSchema = z.object({
   notes: z.string().optional(),
 });
 
+const candidateIdSchema = z.string().uuid("Ongeldig kandidaat-ID");
+
 export const GET = withApiHandler(
   async (_request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
-    const candidate = await getCandidateById(id);
+    const parsedId = candidateIdSchema.safeParse((await params).id);
+    if (!parsedId.success) {
+      return Response.json({ error: "Ongeldig kandidaat-ID" }, { status: 400 });
+    }
+
+    const candidate = await getCandidateById(parsedId.data);
     if (!candidate) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
@@ -36,7 +42,11 @@ export const GET = withApiHandler(
 
 export const PATCH = withApiHandler(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
+    const parsedId = candidateIdSchema.safeParse((await params).id);
+    if (!parsedId.success) {
+      return Response.json({ error: "Ongeldig kandidaat-ID" }, { status: 400 });
+    }
+
     const body = await request.json();
     const parsed = updateCandidateSchema.safeParse(body);
     if (!parsed.success) {
@@ -45,11 +55,11 @@ export const PATCH = withApiHandler(
         { status: 400 },
       );
     }
-    const candidate = await updateCandidate(id, parsed.data);
+    const candidate = await updateCandidate(parsedId.data, parsed.data);
     if (!candidate) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     return Response.json({ data: await withCandidateCanonicalSkills(candidate) });
   },
   { logPrefix: "PATCH /api/kandidaten/[id] error" },
@@ -57,13 +67,17 @@ export const PATCH = withApiHandler(
 
 export const DELETE = withApiHandler(
   async (_request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
-    const deleted = await deleteCandidate(id);
+    const parsedId = candidateIdSchema.safeParse((await params).id);
+    if (!parsedId.success) {
+      return Response.json({ error: "Ongeldig kandidaat-ID" }, { status: 400 });
+    }
+
+    const deleted = await deleteCandidate(parsedId.data);
     if (!deleted) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
-    revalidatePath("/professionals");
-    return Response.json({ data: { id, deleted: true } });
+    revalidatePath("/kandidaten");
+    return Response.json({ data: { id: parsedId.data, deleted: true } });
   },
   { logPrefix: "DELETE /api/kandidaten/[id] error" },
 );

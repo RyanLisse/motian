@@ -25,7 +25,7 @@ export function DeleteCandidateButton({
     try {
       const res = await fetch(`/api/kandidaten/${candidateId}`, { method: "DELETE" });
       if (res.ok) {
-        router.push("/professionals");
+        router.push("/kandidaten");
         router.refresh();
       }
     } finally {

@@ -83,7 +83,7 @@ export const maakKandidaatAan = tool({
   }),
   execute: async (data) => {
     const candidate = await createCandidate(data);
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     publish("candidate:created", { id: candidate.id, name: candidate.name });
     return withCandidateCanonicalSkills(candidate);
   },
@@ -114,8 +114,8 @@ export const updateKandidaat = tool({
   execute: async ({ id, ...data }) => {
     const candidate = await updateCandidate(id, data);
     if (!candidate) return { error: "Kandidaat niet gevonden" };
-    revalidatePath("/professionals");
-    revalidatePath(`/professionals/${id}`);
+    revalidatePath("/kandidaten");
+    revalidatePath(`/kandidaten/${id}`);
     publish("candidate:updated", { id, name: candidate.name });
     return withCandidateCanonicalSkills(candidate);
   },
@@ -130,7 +130,7 @@ export const verwijderKandidaat = tool({
   execute: async ({ id }) => {
     const success = await deleteCandidate(id);
     if (!success) return { error: "Kandidaat niet gevonden of kon niet verwijderd worden" };
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     publish("candidate:deleted", { id });
     return { success: true, message: "Kandidaat succesvol verwijderd" };
   },
@@ -149,7 +149,7 @@ export const autoMatchKandidaat = tool({
         return { message: "Geen geschikte vacatures gevonden", matches: [] };
       }
       revalidatePath("/matching");
-      revalidatePath(`/professionals/${id}`);
+      revalidatePath(`/kandidaten/${id}`);
       publish("match:created", { candidateId: id, count: results.length });
       return { total: results.length, matches: results };
     } catch (err) {
@@ -168,7 +168,7 @@ export const voegNotitieToe = tool({
   execute: async ({ id, note }) => {
     const candidate = await addNoteToCandidate(id, note);
     if (!candidate) return { error: "Kandidaat niet gevonden" };
-    revalidatePath(`/professionals/${id}`);
+    revalidatePath(`/kandidaten/${id}`);
     publish("candidate:updated", { id, action: "note_added" });
     return { success: true, notes: candidate.notes };
   },

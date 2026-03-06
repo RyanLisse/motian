@@ -15,6 +15,20 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "2mb",
     },
   },
+  async redirects() {
+    return [
+      {
+        source: "/professionals",
+        destination: "/kandidaten",
+        permanent: true,
+      },
+      {
+        source: "/professionals/:id",
+        destination: "/kandidaten/:id",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     // In dev, allow localhost; in prod, only explicitly allowed origins
     const origin =

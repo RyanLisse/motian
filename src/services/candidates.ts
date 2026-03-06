@@ -8,6 +8,28 @@ import { syncCandidateEscoSkills } from "./esco";
 // ========== Types ==========
 
 export type Candidate = typeof candidates.$inferSelect;
+export type CandidateDetail = Pick<
+  Candidate,
+  | "id"
+  | "name"
+  | "email"
+  | "phone"
+  | "role"
+  | "location"
+  | "skills"
+  | "experience"
+  | "preferences"
+  | "resumeUrl"
+  | "linkedinUrl"
+  | "headline"
+  | "profileSummary"
+  | "source"
+  | "notes"
+  | "hourlyRate"
+  | "availability"
+  | "skillsStructured"
+  | "languageSkills"
+>;
 
 export type SearchCandidatesOptions = {
   query?: string;
@@ -43,6 +65,128 @@ export type CreateCandidateData = {
   education?: { school: string; degree: string; duration: string }[];
 };
 
+const CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY = {
+  id: candidates.id,
+  name: candidates.name,
+  email: candidates.email,
+  phone: candidates.phone,
+  role: candidates.role,
+  location: candidates.location,
+  province: candidates.province,
+  skills: candidates.skills,
+  experience: candidates.experience,
+  preferences: candidates.preferences,
+  resumeUrl: candidates.resumeUrl,
+  linkedinUrl: candidates.linkedinUrl,
+  headline: candidates.headline,
+  source: candidates.source,
+  notes: candidates.notes,
+  hourlyRate: candidates.hourlyRate,
+  availability: candidates.availability,
+  embedding: candidates.embedding,
+  resumeRaw: candidates.resumeRaw,
+  resumeParsedAt: candidates.resumeParsedAt,
+  skillsStructured: candidates.skillsStructured,
+  education: candidates.education,
+  certifications: candidates.certifications,
+  languageSkills: candidates.languageSkills,
+  consentGranted: candidates.consentGranted,
+  dataRetentionUntil: candidates.dataRetentionUntil,
+  createdAt: candidates.createdAt,
+  updatedAt: candidates.updatedAt,
+  deletedAt: candidates.deletedAt,
+} as const;
+
+const CANDIDATE_COLUMNS = {
+  ...CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY,
+  profileSummary: candidates.profileSummary,
+} as const;
+
+const CANDIDATE_DETAIL_COLUMNS_WITHOUT_PROFILE_SUMMARY = {
+  id: candidates.id,
+  name: candidates.name,
+  email: candidates.email,
+  phone: candidates.phone,
+  role: candidates.role,
+  location: candidates.location,
+  skills: candidates.skills,
+  experience: candidates.experience,
+  preferences: candidates.preferences,
+  resumeUrl: candidates.resumeUrl,
+  linkedinUrl: candidates.linkedinUrl,
+  headline: candidates.headline,
+  source: candidates.source,
+  notes: candidates.notes,
+  hourlyRate: candidates.hourlyRate,
+  availability: candidates.availability,
+  skillsStructured: candidates.skillsStructured,
+  languageSkills: candidates.languageSkills,
+} as const;
+
+const CANDIDATE_DETAIL_COLUMNS = {
+  ...CANDIDATE_DETAIL_COLUMNS_WITHOUT_PROFILE_SUMMARY,
+  profileSummary: candidates.profileSummary,
+} as const;
+
+type CandidateProfileSummarySupport = "unknown" | "supported" | "unsupported";
+
+let candidateProfileSummarySupport: CandidateProfileSummarySupport = "unknown";
+
+export function resetCandidateProfileSummaryFallbackCacheForTests() {
+  candidateProfileSummarySupport = "unknown";
+}
+
+export function isCandidateProfileSummaryMissingColumnError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code ?? "")
+      : "";
+
+  return (
+    (code === "42703" || /column .* does not exist/i.test(message)) &&
+    /profile_summary/i.test(message)
+  );
+}
+
+function withNullProfileSummary<T extends Record<string, unknown>>(
+  row: T,
+): T & { profileSummary: null } {
+  return { ...row, profileSummary: null };
+}
+
+type CandidateProfileSummaryFallbackOptions<T> = {
+  operation: string;
+  execute: (options: { includeProfileSummary: boolean }) => Promise<T>;
+};
+
+export async function withCandidateProfileSummaryFallback<T>({
+  operation,
+  execute,
+}: CandidateProfileSummaryFallbackOptions<T>): Promise<T> {
+  if (candidateProfileSummarySupport === "unsupported") {
+    return execute({ includeProfileSummary: false });
+  }
+
+  try {
+    const result = await execute({ includeProfileSummary: true });
+    candidateProfileSummarySupport = "supported";
+    return result;
+  } catch (error) {
+    if (!isCandidateProfileSummaryMissingColumnError(error)) {
+      throw error;
+    }
+
+    candidateProfileSummarySupport = "unsupported";
+    console.warn(
+      `[Candidates] ${operation}: profile_summary ontbreekt in database, degradeer zonder samenvatting.`,
+      error instanceof Error ? error.message : error,
+    );
+
+    return execute({ includeProfileSummary: false });
+  }
+}
+
 // ========== Service Functions ==========
 
 /** Actieve kandidaten ophalen, geordend op aanmaakdatum. Soft-deleted rijen worden uitgesloten. */
@@ -53,22 +197,80 @@ export async function listCandidates(
   const safeLimit = Math.min(opts.limit ?? 50, 100);
   const safeOffset = Math.max(0, opts.offset ?? 0);
 
-  return db
-    .select()
-    .from(candidates)
-    .where(isNull(candidates.deletedAt))
-    .orderBy(desc(candidates.createdAt))
-    .limit(safeLimit)
-    .offset(safeOffset);
+  return withCandidateProfileSummaryFallback({
+    operation: "listCandidates",
+    execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+      if (includeProfileSummary) {
+        return db
+          .select(CANDIDATE_COLUMNS)
+          .from(candidates)
+          .where(isNull(candidates.deletedAt))
+          .orderBy(desc(candidates.createdAt))
+          .limit(safeLimit)
+          .offset(safeOffset);
+      }
+
+      const rows = await db
+        .select(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY)
+        .from(candidates)
+        .where(isNull(candidates.deletedAt))
+        .orderBy(desc(candidates.createdAt))
+        .limit(safeLimit)
+        .offset(safeOffset);
+
+      return rows.map((row) => withNullProfileSummary(row));
+    },
+  });
 }
 
 /** Enkele kandidaat ophalen op ID, of null als niet gevonden. */
 export async function getCandidateById(id: string): Promise<Candidate | null> {
-  const rows = await db
-    .select()
-    .from(candidates)
-    .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
-    .limit(1);
+  const rows = await withCandidateProfileSummaryFallback({
+    operation: "getCandidateById",
+    execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+      if (includeProfileSummary) {
+        return db
+          .select(CANDIDATE_COLUMNS)
+          .from(candidates)
+          .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
+          .limit(1);
+      }
+
+      const result = await db
+        .select(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY)
+        .from(candidates)
+        .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
+        .limit(1);
+
+      return result.map((row) => withNullProfileSummary(row));
+    },
+  });
+
+  return rows[0] ?? null;
+}
+
+/** Detailselect voor kandidaatprofiel zonder harde afhankelijkheid van optionele kolommen. */
+export async function getCandidateDetailById(id: string): Promise<CandidateDetail | null> {
+  const rows = await withCandidateProfileSummaryFallback({
+    operation: "getCandidateDetailById",
+    execute: async ({ includeProfileSummary }): Promise<CandidateDetail[]> => {
+      if (includeProfileSummary) {
+        return db
+          .select(CANDIDATE_DETAIL_COLUMNS)
+          .from(candidates)
+          .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
+          .limit(1);
+      }
+
+      const result = await db
+        .select(CANDIDATE_DETAIL_COLUMNS_WITHOUT_PROFILE_SUMMARY)
+        .from(candidates)
+        .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
+        .limit(1);
+
+      return result.map((row) => withNullProfileSummary(row));
+    },
+  });
 
   return rows[0] ?? null;
 }
@@ -114,13 +316,30 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
     );
   }
 
-  return db
-    .select()
-    .from(candidates)
-    .where(and(...conditions))
-    .orderBy(desc(candidates.createdAt))
-    .limit(limit)
-    .offset(offset);
+  return withCandidateProfileSummaryFallback({
+    operation: "searchCandidates",
+    execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+      if (includeProfileSummary) {
+        return db
+          .select(CANDIDATE_COLUMNS)
+          .from(candidates)
+          .where(and(...conditions))
+          .orderBy(desc(candidates.createdAt))
+          .limit(limit)
+          .offset(offset);
+      }
+
+      const rows = await db
+        .select(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY)
+        .from(candidates)
+        .where(and(...conditions))
+        .orderBy(desc(candidates.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      return rows.map((row) => withNullProfileSummary(row));
+    },
+  });
 }
 
 /** Aantal actieve kandidaten met optionele filters. */
@@ -163,26 +382,55 @@ export async function countCandidates(
 
 /** Nieuwe kandidaat aanmaken en teruggeven. Genereert embedding op de achtergrond. */
 export async function createCandidate(data: CreateCandidateData): Promise<Candidate> {
-  const rows = await db
-    .insert(candidates)
-    .values({
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      role: data.role,
-      skills: data.skills,
-      location: data.location,
-      source: data.source,
-      linkedinUrl: data.linkedinUrl,
-      headline: data.headline,
-      profileSummary: data.profileSummary,
-      hourlyRate: data.hourlyRate,
-      availability: data.availability,
-      notes: data.notes,
-      experience: data.experience,
-      education: data.education,
-    })
-    .returning();
+  const rows = await withCandidateProfileSummaryFallback({
+    operation: "createCandidate",
+    execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+      if (includeProfileSummary) {
+        return db
+          .insert(candidates)
+          .values({
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            role: data.role,
+            skills: data.skills,
+            location: data.location,
+            source: data.source,
+            linkedinUrl: data.linkedinUrl,
+            headline: data.headline,
+            profileSummary: data.profileSummary,
+            hourlyRate: data.hourlyRate,
+            availability: data.availability,
+            notes: data.notes,
+            experience: data.experience,
+            education: data.education,
+          })
+          .returning(CANDIDATE_COLUMNS);
+      }
+
+      const result = await db
+        .insert(candidates)
+        .values({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          role: data.role,
+          skills: data.skills,
+          location: data.location,
+          source: data.source,
+          linkedinUrl: data.linkedinUrl,
+          headline: data.headline,
+          hourlyRate: data.hourlyRate,
+          availability: data.availability,
+          notes: data.notes,
+          experience: data.experience,
+          education: data.education,
+        })
+        .returning(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY);
+
+      return result.map((row) => withNullProfileSummary(row));
+    },
+  });
 
   const candidate = rows[0];
 
@@ -207,14 +455,34 @@ export async function updateCandidate(
   id: string,
   data: Partial<CreateCandidateData>,
 ): Promise<Candidate | null> {
-  const rows = await db
-    .update(candidates)
-    .set({
-      ...data,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
-    .returning();
+  const rows = await withCandidateProfileSummaryFallback({
+    operation: "updateCandidate",
+    execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+      const { profileSummary, ...rest } = data;
+      if (includeProfileSummary) {
+        return db
+          .update(candidates)
+          .set({
+            ...rest,
+            profileSummary,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
+          .returning(CANDIDATE_COLUMNS);
+      }
+
+      const result = await db
+        .update(candidates)
+        .set({
+          ...rest,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
+        .returning(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY);
+
+      return result.map((row) => withNullProfileSummary(row));
+    },
+  });
 
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
@@ -232,33 +500,62 @@ export async function updateCandidate(
 export async function listActiveCandidates(limit?: number): Promise<Candidate[]> {
   const safeLimit = Math.min(limit ?? 200, 500);
 
-  return db
-    .select()
-    .from(candidates)
-    .where(isNull(candidates.deletedAt))
-    .orderBy(desc(candidates.createdAt))
-    .limit(safeLimit);
+  return withCandidateProfileSummaryFallback({
+    operation: "listActiveCandidates",
+    execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+      if (includeProfileSummary) {
+        return db
+          .select(CANDIDATE_COLUMNS)
+          .from(candidates)
+          .where(isNull(candidates.deletedAt))
+          .orderBy(desc(candidates.createdAt))
+          .limit(safeLimit);
+      }
+
+      const rows = await db
+        .select(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY)
+        .from(candidates)
+        .where(isNull(candidates.deletedAt))
+        .orderBy(desc(candidates.createdAt))
+        .limit(safeLimit);
+
+      return rows.map((row) => withNullProfileSummary(row));
+    },
+  });
 }
 
 /** Meerdere kandidaten ophalen op ID. Soft-deleted rijen worden uitgesloten. */
 export async function getCandidatesByIds(ids: string[]): Promise<Candidate[]> {
   if (ids.length === 0) return [];
 
-  return db
-    .select()
-    .from(candidates)
-    .where(and(inArray(candidates.id, ids), isNull(candidates.deletedAt)));
+  return withCandidateProfileSummaryFallback({
+    operation: "getCandidatesByIds",
+    execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+      if (includeProfileSummary) {
+        return db
+          .select(CANDIDATE_COLUMNS)
+          .from(candidates)
+          .where(and(inArray(candidates.id, ids), isNull(candidates.deletedAt)));
+      }
+
+      const rows = await db
+        .select(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY)
+        .from(candidates)
+        .where(and(inArray(candidates.id, ids), isNull(candidates.deletedAt)));
+
+      return rows.map((row) => withNullProfileSummary(row));
+    },
+  });
 }
 
 /** Kandidaat soft-deleten. Retourneert true als de rij is bijgewerkt. */
 export async function deleteCandidate(id: string): Promise<boolean> {
-  const rows = await db
+  const result = await db
     .update(candidates)
     .set({ deletedAt: new Date() })
-    .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
-    .returning();
+    .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)));
 
-  return rows.length > 0;
+  return (result.rowCount ?? 0) > 0;
 }
 
 /** Notitie toevoegen aan een kandidaat met timestamp. Bestaande notities blijven behouden. */
@@ -267,14 +564,32 @@ export async function addNoteToCandidate(id: string, note: string): Promise<Cand
   const newNote = `[${timestamp}] ${note}`;
 
   // Single query: append note using SQL CONCAT (avoids extra SELECT)
-  const rows = await db
-    .update(candidates)
-    .set({
-      notes: sql`case when ${candidates.notes} is not null then ${candidates.notes} || ${`\n\n${newNote}`} else ${newNote} end`,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
-    .returning();
+  const rows = await withCandidateProfileSummaryFallback({
+    operation: "addNoteToCandidate",
+    execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+      if (includeProfileSummary) {
+        return db
+          .update(candidates)
+          .set({
+            notes: sql`case when ${candidates.notes} is not null then ${candidates.notes} || ${`\n\n${newNote}`} else ${newNote} end`,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
+          .returning(CANDIDATE_COLUMNS);
+      }
+
+      const result = await db
+        .update(candidates)
+        .set({
+          notes: sql`case when ${candidates.notes} is not null then ${candidates.notes} || ${`\n\n${newNote}`} else ${newNote} end`,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
+        .returning(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY);
+
+      return result.map((row) => withNullProfileSummary(row));
+    },
+  });
 
   return rows[0] ?? null;
 }
@@ -285,11 +600,27 @@ export async function findDuplicateCandidate(
 ): Promise<{ exact: Candidate | null; similar: Candidate[] }> {
   // 1. Try exact match by email (unique index: uq_candidates_email)
   if (parsed.email) {
-    const emailRows = await db
-      .select()
-      .from(candidates)
-      .where(and(eq(candidates.email, parsed.email), isNull(candidates.deletedAt)))
-      .limit(1);
+    const email = parsed.email;
+    const emailRows = await withCandidateProfileSummaryFallback({
+      operation: "findDuplicateCandidate.email",
+      execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+        if (includeProfileSummary) {
+          return db
+            .select(CANDIDATE_COLUMNS)
+            .from(candidates)
+            .where(and(eq(candidates.email, email), isNull(candidates.deletedAt)))
+            .limit(1);
+        }
+
+        const result = await db
+          .select(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY)
+          .from(candidates)
+          .where(and(eq(candidates.email, email), isNull(candidates.deletedAt)))
+          .limit(1);
+
+        return result.map((row) => withNullProfileSummary(row));
+      },
+    });
 
     if (emailRows.length > 0) {
       return { exact: emailRows[0], similar: [] };
@@ -297,13 +628,30 @@ export async function findDuplicateCandidate(
   }
 
   // 2. Fuzzy match by name (ILIKE)
-  const nameRows = await db
-    .select()
-    .from(candidates)
-    .where(
-      and(ilike(candidates.name, `%${escapeLike(parsed.name)}%`), isNull(candidates.deletedAt)),
-    )
-    .limit(5);
+  const nameRows = await withCandidateProfileSummaryFallback({
+    operation: "findDuplicateCandidate.name",
+    execute: async ({ includeProfileSummary }): Promise<Candidate[]> => {
+      if (includeProfileSummary) {
+        return db
+          .select(CANDIDATE_COLUMNS)
+          .from(candidates)
+          .where(
+            and(ilike(candidates.name, `%${escapeLike(parsed.name)}%`), isNull(candidates.deletedAt)),
+          )
+          .limit(5);
+      }
+
+      const result = await db
+        .select(CANDIDATE_COLUMNS_WITHOUT_PROFILE_SUMMARY)
+        .from(candidates)
+        .where(
+          and(ilike(candidates.name, `%${escapeLike(parsed.name)}%`), isNull(candidates.deletedAt)),
+        )
+        .limit(5);
+
+      return result.map((row) => withNullProfileSummary(row));
+    },
+  });
 
   return { exact: null, similar: nameRows };
 }

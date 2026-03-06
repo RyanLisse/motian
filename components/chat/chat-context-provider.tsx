@@ -29,7 +29,7 @@ export function ChatContextProvider({ children }: { children: ReactNode }) {
     if (pathname.startsWith("/opdrachten/") && id) {
       return { route: pathname, entityType: "opdracht", entityId: id };
     }
-    if (pathname.startsWith("/professionals/") && id) {
+    if (pathname.startsWith("/kandidaten/") && id) {
       return { route: pathname, entityType: "kandidaat", entityId: id };
     }
 

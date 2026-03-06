@@ -54,7 +54,7 @@ export const POST = withApiHandler(
     for (const app of result.created) {
       publish("application:created", { applicationId: app.id });
     }
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     revalidatePath("/pipeline");
     revalidatePath("/overzicht");
     revalidatePath("/opdrachten");
