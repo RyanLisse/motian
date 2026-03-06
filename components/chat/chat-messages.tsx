@@ -14,13 +14,13 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from "@/src/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/src/components/ai-elements/message";
-import { cn } from "@/lib/utils";
 import { ChatToolCall } from "./chat-tool-call";
 import { KandidaatGenUICard, MatchGenUICard, OpdrachtGenUICard, ToolErrorBlock } from "./genui";
 

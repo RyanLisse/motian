@@ -7,6 +7,19 @@ import { normalizeAlias } from "./esco-import";
 const ESCO_VERSION = process.env.ESCO_VERSION ?? "v1.0";
 const CRITICAL_REVIEW_THRESHOLD = Number(process.env.ESCO_CRITICAL_REVIEW_THRESHOLD ?? "0.7");
 
+/**
+ * Check if an error is caused by a missing ESCO relation (table not yet created).
+ * Returns true for "relation X does not exist" PostgreSQL errors.
+ */
+function isEscoTableMissing(err: unknown): boolean {
+  if (err instanceof Error) {
+    return /relation "(?:esco_skills|skill_aliases|skill_mappings|candidate_skills|job_skills)" does not exist/i.test(
+      err.message,
+    );
+  }
+  return false;
+}
+
 export type MapSkillContextType = "candidate" | "job" | "tool";
 
 export type MapSkillInput = {
@@ -54,71 +67,79 @@ export function isEscoScoringEnabled(): boolean {
 }
 
 export async function mapSkillInput(input: MapSkillInput): Promise<MapSkillResult> {
-  const normalized = normalizeRawSkill(input.rawSkill);
-  if (!normalized) {
-    await persistMapping(input, null, "none", 0, false);
-    return { escoUri: null, confidence: 0, strategy: "none", reviewRequired: false };
-  }
+  try {
+    const normalized = normalizeRawSkill(input.rawSkill);
+    if (!normalized) {
+      await persistMapping(input, null, "none", 0, false);
+      return { escoUri: null, confidence: 0, strategy: "none", reviewRequired: false };
+    }
 
-  const language = input.language ?? "nl";
+    const language = input.language ?? "nl";
 
-  const aliasRows = await db
-    .select({
-      escoUri: skillAliases.escoUri,
-      confidence: skillAliases.confidence,
-    })
-    .from(skillAliases)
-    .where(
-      and(
-        eq(skillAliases.normalizedAlias, normalized),
-        sql`(${skillAliases.language} IS NULL OR ${skillAliases.language} = ${language})`,
-      ),
-    )
-    .limit(1);
+    const aliasRows = await db
+      .select({
+        escoUri: skillAliases.escoUri,
+        confidence: skillAliases.confidence,
+      })
+      .from(skillAliases)
+      .where(
+        and(
+          eq(skillAliases.normalizedAlias, normalized),
+          sql`(${skillAliases.language} IS NULL OR ${skillAliases.language} = ${language})`,
+        ),
+      )
+      .limit(1);
 
-  if (aliasRows.length > 0) {
-    const alias = aliasRows[0];
-    const confidence = alias.confidence ?? 0.9;
-    const reviewRequired = input.critical && confidence < CRITICAL_REVIEW_THRESHOLD;
-    await persistMapping(input, alias.escoUri, "alias", confidence, reviewRequired);
+    if (aliasRows.length > 0) {
+      const alias = aliasRows[0];
+      const confidence = alias.confidence ?? 0.9;
+      const reviewRequired = input.critical && confidence < CRITICAL_REVIEW_THRESHOLD;
+      await persistMapping(input, alias.escoUri, "alias", confidence, reviewRequired);
+      return {
+        escoUri: alias.escoUri,
+        confidence,
+        strategy: "alias",
+        reviewRequired,
+      };
+    }
+
+    const exactRows = await db
+      .select({ uri: escoSkills.uri })
+      .from(escoSkills)
+      .where(
+        or(
+          ilike(escoSkills.preferredLabelEn, input.rawSkill.trim()),
+          ilike(escoSkills.preferredLabelNl, input.rawSkill.trim()),
+        ),
+      )
+      .limit(1);
+
+    if (exactRows.length > 0) {
+      const confidence = 0.95;
+      const reviewRequired = input.critical && confidence < CRITICAL_REVIEW_THRESHOLD;
+      await persistMapping(input, exactRows[0].uri, "exact", confidence, reviewRequired);
+      return {
+        escoUri: exactRows[0].uri,
+        confidence,
+        strategy: "exact",
+        reviewRequired,
+      };
+    }
+
+    await persistMapping(input, null, "none", 0, input.critical);
     return {
-      escoUri: alias.escoUri,
-      confidence,
-      strategy: "alias",
-      reviewRequired,
+      escoUri: null,
+      confidence: 0,
+      strategy: "none",
+      reviewRequired: input.critical,
     };
+  } catch (err) {
+    if (isEscoTableMissing(err)) {
+      console.warn("[ESCO] mapSkillInput: ESCO tables not yet created, returning no match.");
+      return { escoUri: null, confidence: 0, strategy: "none", reviewRequired: false };
+    }
+    throw err;
   }
-
-  const exactRows = await db
-    .select({ uri: escoSkills.uri })
-    .from(escoSkills)
-    .where(
-      or(
-        ilike(escoSkills.preferredLabelEn, input.rawSkill.trim()),
-        ilike(escoSkills.preferredLabelNl, input.rawSkill.trim()),
-      ),
-    )
-    .limit(1);
-
-  if (exactRows.length > 0) {
-    const confidence = 0.95;
-    const reviewRequired = input.critical && confidence < CRITICAL_REVIEW_THRESHOLD;
-    await persistMapping(input, exactRows[0].uri, "exact", confidence, reviewRequired);
-    return {
-      escoUri: exactRows[0].uri,
-      confidence,
-      strategy: "exact",
-      reviewRequired,
-    };
-  }
-
-  await persistMapping(input, null, "none", 0, input.critical);
-  return {
-    escoUri: null,
-    confidence: 0,
-    strategy: "none",
-    reviewRequired: input.critical,
-  };
 }
 
 /** Audit log of mapping attempts (one row per call; no unique constraint for deduplication). */
@@ -290,51 +311,67 @@ export async function syncJobEscoSkills(input: {
 }
 
 export async function getCandidateSkills(candidateId: string): Promise<CandidateCanonicalSkill[]> {
-  const rows = await db
-    .select({
-      escoUri: candidateSkills.escoUri,
-      label: sql<
-        string | null
-      >`coalesce(${escoSkills.preferredLabelNl}, ${escoSkills.preferredLabelEn})`,
-      confidence: candidateSkills.confidence,
-      critical: candidateSkills.critical,
-    })
-    .from(candidateSkills)
-    .innerJoin(escoSkills, eq(candidateSkills.escoUri, escoSkills.uri))
-    .where(eq(candidateSkills.candidateId, candidateId));
+  try {
+    const rows = await db
+      .select({
+        escoUri: candidateSkills.escoUri,
+        label: sql<
+          string | null
+        >`coalesce(${escoSkills.preferredLabelNl}, ${escoSkills.preferredLabelEn})`,
+        confidence: candidateSkills.confidence,
+        critical: candidateSkills.critical,
+      })
+      .from(candidateSkills)
+      .innerJoin(escoSkills, eq(candidateSkills.escoUri, escoSkills.uri))
+      .where(eq(candidateSkills.candidateId, candidateId));
 
-  return rows.map((row) => ({
-    escoUri: row.escoUri,
-    label: row.label,
-    confidence: row.confidence ?? 0,
-    critical: row.critical ?? false,
-  }));
+    return rows.map((row) => ({
+      escoUri: row.escoUri,
+      label: row.label,
+      confidence: row.confidence ?? 0,
+      critical: row.critical ?? false,
+    }));
+  } catch (err) {
+    if (isEscoTableMissing(err)) {
+      console.warn("[ESCO] getCandidateSkills: ESCO tables not yet created, returning empty.");
+      return [];
+    }
+    throw err;
+  }
 }
 
 export async function getJobSkills(jobId: string): Promise<JobCanonicalSkill[]> {
-  const rows = await db
-    .select({
-      escoUri: jobSkills.escoUri,
-      label: sql<
-        string | null
-      >`coalesce(${escoSkills.preferredLabelNl}, ${escoSkills.preferredLabelEn})`,
-      confidence: jobSkills.confidence,
-      required: jobSkills.required,
-      critical: jobSkills.critical,
-      weight: jobSkills.weight,
-    })
-    .from(jobSkills)
-    .innerJoin(escoSkills, eq(jobSkills.escoUri, escoSkills.uri))
-    .where(eq(jobSkills.jobId, jobId));
+  try {
+    const rows = await db
+      .select({
+        escoUri: jobSkills.escoUri,
+        label: sql<
+          string | null
+        >`coalesce(${escoSkills.preferredLabelNl}, ${escoSkills.preferredLabelEn})`,
+        confidence: jobSkills.confidence,
+        required: jobSkills.required,
+        critical: jobSkills.critical,
+        weight: jobSkills.weight,
+      })
+      .from(jobSkills)
+      .innerJoin(escoSkills, eq(jobSkills.escoUri, escoSkills.uri))
+      .where(eq(jobSkills.jobId, jobId));
 
-  return rows.map((row) => ({
-    escoUri: row.escoUri,
-    label: row.label,
-    confidence: row.confidence ?? 0,
-    required: row.required ?? false,
-    critical: row.critical ?? false,
-    weight: row.weight ?? null,
-  }));
+    return rows.map((row) => ({
+      escoUri: row.escoUri,
+      label: row.label,
+      confidence: row.confidence ?? 0,
+      required: row.required ?? false,
+      critical: row.critical ?? false,
+      weight: row.weight ?? null,
+    }));
+  } catch (err) {
+    if (isEscoTableMissing(err)) {
+      console.warn("[ESCO] getJobSkills: ESCO tables not yet created, returning empty.");
+      return [];
+    }
+    throw err;
+  }
 }
 
 export async function getJobSkillsForJobIds(
@@ -342,37 +379,45 @@ export async function getJobSkillsForJobIds(
 ): Promise<Map<string, JobCanonicalSkill[]>> {
   if (jobIds.length === 0) return new Map();
 
-  const rows = await db
-    .select({
-      jobId: jobSkills.jobId,
-      escoUri: jobSkills.escoUri,
-      label: sql<
-        string | null
-      >`coalesce(${escoSkills.preferredLabelNl}, ${escoSkills.preferredLabelEn})`,
-      confidence: jobSkills.confidence,
-      required: jobSkills.required,
-      critical: jobSkills.critical,
-      weight: jobSkills.weight,
-    })
-    .from(jobSkills)
-    .innerJoin(escoSkills, eq(jobSkills.escoUri, escoSkills.uri))
-    .where(inArray(jobSkills.jobId, jobIds));
+  try {
+    const rows = await db
+      .select({
+        jobId: jobSkills.jobId,
+        escoUri: jobSkills.escoUri,
+        label: sql<
+          string | null
+        >`coalesce(${escoSkills.preferredLabelNl}, ${escoSkills.preferredLabelEn})`,
+        confidence: jobSkills.confidence,
+        required: jobSkills.required,
+        critical: jobSkills.critical,
+        weight: jobSkills.weight,
+      })
+      .from(jobSkills)
+      .innerJoin(escoSkills, eq(jobSkills.escoUri, escoSkills.uri))
+      .where(inArray(jobSkills.jobId, jobIds));
 
-  const mapped = new Map<string, JobCanonicalSkill[]>();
-  for (const row of rows) {
-    const skills = mapped.get(row.jobId) ?? [];
-    skills.push({
-      escoUri: row.escoUri,
-      label: row.label,
-      confidence: row.confidence ?? 0,
-      required: row.required ?? false,
-      critical: row.critical ?? false,
-      weight: row.weight ?? null,
-    });
-    mapped.set(row.jobId, skills);
+    const mapped = new Map<string, JobCanonicalSkill[]>();
+    for (const row of rows) {
+      const skills = mapped.get(row.jobId) ?? [];
+      skills.push({
+        escoUri: row.escoUri,
+        label: row.label,
+        confidence: row.confidence ?? 0,
+        required: row.required ?? false,
+        critical: row.critical ?? false,
+        weight: row.weight ?? null,
+      });
+      mapped.set(row.jobId, skills);
+    }
+
+    return mapped;
+  } catch (err) {
+    if (isEscoTableMissing(err)) {
+      console.warn("[ESCO] getJobSkillsForJobIds: ESCO tables not yet created, returning empty.");
+      return new Map();
+    }
+    throw err;
   }
-
-  return mapped;
 }
 
 /** Batch load candidate skills for many candidates (for job→candidates auto-match). */
@@ -381,33 +426,43 @@ export async function getCandidateSkillsForCandidateIds(
 ): Promise<Map<string, CandidateCanonicalSkill[]>> {
   if (candidateIds.length === 0) return new Map();
 
-  const rows = await db
-    .select({
-      candidateId: candidateSkills.candidateId,
-      escoUri: candidateSkills.escoUri,
-      label: sql<
-        string | null
-      >`coalesce(${escoSkills.preferredLabelNl}, ${escoSkills.preferredLabelEn})`,
-      confidence: candidateSkills.confidence,
-      critical: candidateSkills.critical,
-    })
-    .from(candidateSkills)
-    .innerJoin(escoSkills, eq(candidateSkills.escoUri, escoSkills.uri))
-    .where(inArray(candidateSkills.candidateId, candidateIds));
+  try {
+    const rows = await db
+      .select({
+        candidateId: candidateSkills.candidateId,
+        escoUri: candidateSkills.escoUri,
+        label: sql<
+          string | null
+        >`coalesce(${escoSkills.preferredLabelNl}, ${escoSkills.preferredLabelEn})`,
+        confidence: candidateSkills.confidence,
+        critical: candidateSkills.critical,
+      })
+      .from(candidateSkills)
+      .innerJoin(escoSkills, eq(candidateSkills.escoUri, escoSkills.uri))
+      .where(inArray(candidateSkills.candidateId, candidateIds));
 
-  const mapped = new Map<string, CandidateCanonicalSkill[]>();
-  for (const row of rows) {
-    const skills = mapped.get(row.candidateId) ?? [];
-    skills.push({
-      escoUri: row.escoUri,
-      label: row.label,
-      confidence: row.confidence ?? 0,
-      critical: row.critical ?? false,
-    });
-    mapped.set(row.candidateId, skills);
+    const mapped = new Map<string, CandidateCanonicalSkill[]>();
+    for (const row of rows) {
+      const skills = mapped.get(row.candidateId) ?? [];
+      skills.push({
+        escoUri: row.escoUri,
+        label: row.label,
+        confidence: row.confidence ?? 0,
+        critical: row.critical ?? false,
+      });
+      mapped.set(row.candidateId, skills);
+    }
+
+    return mapped;
+  } catch (err) {
+    if (isEscoTableMissing(err)) {
+      console.warn(
+        "[ESCO] getCandidateSkillsForCandidateIds: ESCO tables not yet created, returning empty.",
+      );
+      return new Map();
+    }
+    throw err;
   }
-
-  return mapped;
 }
 
 export async function withCandidateCanonicalSkills<T extends { id: string }>(
@@ -463,52 +518,66 @@ export type EscoMappingStats = {
 };
 
 export async function getEscoMappingStats(): Promise<EscoMappingStats> {
-  const oneDayAgo = new Date();
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+  try {
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-  const [totals, byStrategy, reviewCount, last24h] = await Promise.all([
-    db.select({ count: sql<number>`count(*)::int` }).from(skillMappings),
-    db
+    const [totals, byStrategy, reviewCount, last24h] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(skillMappings),
+      db
+        .select({
+          strategy: skillMappings.strategy,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(skillMappings)
+        .groupBy(skillMappings.strategy),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(skillMappings)
+        .where(
+          and(
+            eq(skillMappings.sentToReview, true),
+            sql`(${skillMappings.reviewStatus} IS NULL OR ${skillMappings.reviewStatus} = 'pending')`,
+          ),
+        ),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(skillMappings)
+        .where(sql`${skillMappings.createdAt} >= ${oneDayAgo}`),
+    ]);
+
+    const [avgRow] = await db
       .select({
-        strategy: skillMappings.strategy,
-        count: sql<number>`count(*)::int`,
+        avg: sql<number | null>`avg(${skillMappings.confidence})::float`,
       })
       .from(skillMappings)
-      .groupBy(skillMappings.strategy),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(skillMappings)
-      .where(
-        and(
-          eq(skillMappings.sentToReview, true),
-          sql`(${skillMappings.reviewStatus} IS NULL OR ${skillMappings.reviewStatus} = 'pending')`,
-        ),
-      ),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(skillMappings)
-      .where(sql`${skillMappings.createdAt} >= ${oneDayAgo}`),
-  ]);
+      .where(sql`${skillMappings.confidence} IS NOT NULL`);
 
-  const [avgRow] = await db
-    .select({
-      avg: sql<number | null>`avg(${skillMappings.confidence})::float`,
-    })
-    .from(skillMappings)
-    .where(sql`${skillMappings.confidence} IS NOT NULL`);
+    const byStrategyMap: Record<string, number> = {};
+    for (const row of byStrategy) {
+      byStrategyMap[row.strategy] = row.count;
+    }
 
-  const byStrategyMap: Record<string, number> = {};
-  for (const row of byStrategy) {
-    byStrategyMap[row.strategy] = row.count;
+    return {
+      totalMappings: totals[0]?.count ?? 0,
+      byStrategy: byStrategyMap,
+      avgConfidence: avgRow?.avg ?? null,
+      sentToReviewCount: reviewCount[0]?.count ?? 0,
+      last24hCount: last24h[0]?.count ?? 0,
+    };
+  } catch (err) {
+    if (isEscoTableMissing(err)) {
+      console.warn("[ESCO] getEscoMappingStats: ESCO tables not yet created, returning zeros.");
+      return {
+        totalMappings: 0,
+        byStrategy: {},
+        avgConfidence: null,
+        sentToReviewCount: 0,
+        last24hCount: 0,
+      };
+    }
+    throw err;
   }
-
-  return {
-    totalMappings: totals[0]?.count ?? 0,
-    byStrategy: byStrategyMap,
-    avgConfidence: avgRow?.avg ?? null,
-    sentToReviewCount: reviewCount[0]?.count ?? 0,
-    last24hCount: last24h[0]?.count ?? 0,
-  };
 }
 
 export type ReviewQueueSummary = {
@@ -518,39 +587,47 @@ export type ReviewQueueSummary = {
 };
 
 export async function getReviewQueueSummary(): Promise<ReviewQueueSummary> {
-  const pending = and(
-    eq(skillMappings.sentToReview, true),
-    sql`(${skillMappings.reviewStatus} IS NULL OR ${skillMappings.reviewStatus} = 'pending')`,
-  );
+  try {
+    const pending = and(
+      eq(skillMappings.sentToReview, true),
+      sql`(${skillMappings.reviewStatus} IS NULL OR ${skillMappings.reviewStatus} = 'pending')`,
+    );
 
-  const [countResult, byContext, oldest] = await Promise.all([
-    db.select({ count: sql<number>`count(*)::int` }).from(skillMappings).where(pending),
-    db
-      .select({
-        contextType: skillMappings.contextType,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(skillMappings)
-      .where(pending)
-      .groupBy(skillMappings.contextType),
-    db
-      .select({ createdAt: skillMappings.createdAt })
-      .from(skillMappings)
-      .where(pending)
-      .orderBy(skillMappings.createdAt)
-      .limit(1),
-  ]);
+    const [countResult, byContext, oldest] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(skillMappings).where(pending),
+      db
+        .select({
+          contextType: skillMappings.contextType,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(skillMappings)
+        .where(pending)
+        .groupBy(skillMappings.contextType),
+      db
+        .select({ createdAt: skillMappings.createdAt })
+        .from(skillMappings)
+        .where(pending)
+        .orderBy(skillMappings.createdAt)
+        .limit(1),
+    ]);
 
-  const byContextMap: Record<string, number> = {};
-  for (const row of byContext) {
-    byContextMap[row.contextType] = row.count;
+    const byContextMap: Record<string, number> = {};
+    for (const row of byContext) {
+      byContextMap[row.contextType] = row.count;
+    }
+
+    return {
+      pendingCount: countResult[0]?.count ?? 0,
+      byContextType: byContextMap,
+      oldestCreatedAt: oldest[0]?.createdAt?.toISOString() ?? null,
+    };
+  } catch (err) {
+    if (isEscoTableMissing(err)) {
+      console.warn("[ESCO] getReviewQueueSummary: ESCO tables not yet created, returning zeros.");
+      return { pendingCount: 0, byContextType: {}, oldestCreatedAt: null };
+    }
+    throw err;
   }
-
-  return {
-    pendingCount: countResult[0]?.count ?? 0,
-    byContextType: byContextMap,
-    oldestCreatedAt: oldest[0]?.createdAt?.toISOString() ?? null,
-  };
 }
 
 export type EscoSkillOption = {
@@ -561,36 +638,44 @@ export type EscoSkillOption = {
 
 /** List ESCO skills for filter dropdowns; optional search on preferred labels. */
 export async function listEscoSkillsForFilter(searchQuery?: string): Promise<EscoSkillOption[]> {
-  const baseQuery = db
-    .select({
-      uri: escoSkills.uri,
-      preferredLabelNl: escoSkills.preferredLabelNl,
-      preferredLabelEn: escoSkills.preferredLabelEn,
-    })
-    .from(escoSkills)
-    .orderBy(escoSkills.preferredLabelNl ?? escoSkills.preferredLabelEn)
-    .limit(200);
+  try {
+    const baseQuery = db
+      .select({
+        uri: escoSkills.uri,
+        preferredLabelNl: escoSkills.preferredLabelNl,
+        preferredLabelEn: escoSkills.preferredLabelEn,
+      })
+      .from(escoSkills)
+      .orderBy(escoSkills.preferredLabelNl ?? escoSkills.preferredLabelEn)
+      .limit(200);
 
-  if (searchQuery?.trim()) {
-    const term = `%${searchQuery.trim().toLowerCase()}%`;
-    const rows = await baseQuery.where(
-      or(
-        sql`lower(${escoSkills.preferredLabelEn}) LIKE ${term}`,
-        sql`lower(${escoSkills.preferredLabelNl}) LIKE ${term}`,
-      ),
-    );
+    if (searchQuery?.trim()) {
+      const term = `%${searchQuery.trim().toLowerCase()}%`;
+      const rows = await baseQuery.where(
+        or(
+          sql`lower(${escoSkills.preferredLabelEn}) LIKE ${term}`,
+          sql`lower(${escoSkills.preferredLabelNl}) LIKE ${term}`,
+        ),
+      );
+      return rows.map((r) => ({
+        uri: r.uri,
+        labelNl: r.preferredLabelNl,
+        labelEn: r.preferredLabelEn,
+      }));
+    }
+
+    const rows = await baseQuery;
+
     return rows.map((r) => ({
       uri: r.uri,
       labelNl: r.preferredLabelNl,
       labelEn: r.preferredLabelEn,
     }));
+  } catch (err) {
+    if (isEscoTableMissing(err)) {
+      console.warn("[ESCO] listEscoSkillsForFilter: ESCO tables not yet created, returning empty.");
+      return [];
+    }
+    throw err;
   }
-
-  const rows = await baseQuery;
-
-  return rows.map((r) => ({
-    uri: r.uri,
-    labelNl: r.preferredLabelNl,
-    labelEn: r.preferredLabelEn,
-  }));
 }
