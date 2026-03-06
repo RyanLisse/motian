@@ -65,8 +65,23 @@ export default async function OverzichtPage() {
       .limit(5),
     // Active scraper configs
     db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
-    // Recent scrape results
-    db.select().from(scrapeResults).orderBy(desc(scrapeResults.runAt)).limit(5),
+    // Recent scrape results (explicit columns for DBs without job_ids)
+    db
+      .select({
+        id: scrapeResults.id,
+        configId: scrapeResults.configId,
+        platform: scrapeResults.platform,
+        runAt: scrapeResults.runAt,
+        durationMs: scrapeResults.durationMs,
+        jobsFound: scrapeResults.jobsFound,
+        jobsNew: scrapeResults.jobsNew,
+        duplicates: scrapeResults.duplicates,
+        status: scrapeResults.status,
+        errors: scrapeResults.errors,
+      })
+      .from(scrapeResults)
+      .orderBy(desc(scrapeResults.runAt))
+      .limit(5),
     // Top companies by job count
     db
       .select({

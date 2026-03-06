@@ -3,17 +3,19 @@
 This is a Next.js application generated with
 [Create Fumadocs](https://github.com/fuma-nama/fumadocs).
 
-Run development server:
+Run development server. From **repo root** (port 4000):
 
 ```bash
-npm run dev
-# or
-pnpm dev
-# or
-yarn dev
+just docs
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+Or from this directory:
+
+```bash
+pnpm dev
+```
+
+Open http://localhost:4000 in your browser to see the result.
 
 ## Explore
 

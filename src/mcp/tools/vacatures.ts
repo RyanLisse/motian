@@ -3,7 +3,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { autoMatchJobToCandidates } from "../../services/auto-matching.js";
 import { withJobCanonicalSkills, withJobsCanonicalSkills } from "../../services/esco.js";
 import type { ListJobsSortBy } from "../../services/jobs.js";
-import { deleteJob, getJobById, hybridSearch, listJobs, updateJob } from "../../services/jobs.js";
+import { deleteJob, getJobById, searchJobsUnified, updateJob } from "../../services/jobs.js";
 
 // ========== Schemas ==========
 
@@ -106,26 +106,8 @@ export const tools = [
 export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   zoek_vacatures: async (raw) => {
     const opts = zoekVacaturesSchema.parse(raw);
-    if (opts.query) {
-      const results = await hybridSearch(opts.query, {
-        limit: opts.limit,
-        platform: opts.platform,
-        province: opts.province,
-        rateMin: opts.rateMin,
-        rateMax: opts.rateMax,
-        contractType: opts.contractType,
-        workArrangement: opts.workArrangement,
-        sortBy: opts.sortBy as ListJobsSortBy | undefined,
-        postedAfter: opts.postedAfter,
-        deadlineBefore: opts.deadlineBefore,
-        startDateAfter: opts.startDateAfter,
-      });
-      return {
-        total: results.length,
-        vacatures: await withJobsCanonicalSkills(results),
-      };
-    }
-    const result = await listJobs({
+    const result = await searchJobsUnified({
+      q: opts.query?.trim() || undefined,
       platform: opts.platform,
       province: opts.province,
       rateMin: opts.rateMin,
@@ -139,10 +121,8 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       limit: opts.limit,
       offset: opts.offset,
     });
-    return {
-      ...result,
-      data: await withJobsCanonicalSkills(result.data),
-    };
+    const vacatures = await withJobsCanonicalSkills(result.data);
+    return { total: result.total, vacatures };
   },
 
   vacature_detail: async (raw) => {

@@ -3,8 +3,13 @@ import { HYBRID_BLEND, SCORING_WEIGHTS } from "@/src/services/scoring";
 import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
 
-export const recruitmentTools = {
-  // Opdrachten
+type AgentContext = {
+  route?: string | null;
+  entityId?: string | null;
+  entityType?: string | null;
+} | null;
+
+const opdrachtTools = {
   queryOpdrachten: tools.queryOpdrachten,
   getOpdrachtDetail: tools.getOpdrachtDetail,
   updateOpdracht: tools.updateOpdracht,
@@ -15,8 +20,9 @@ export const recruitmentTools = {
   importeerOpdrachtenBatch: tools.importeerOpdrachtenBatch,
   runKandidaatScoringBatch: tools.runKandidaatScoringBatch,
   reviewGdprRetentie: tools.reviewGdprRetentie,
+};
 
-  // Kandidaten
+const kandidaatTools = {
   zoekKandidaten: tools.zoekKandidaten,
   getKandidaatDetail: tools.getKandidaatDetail,
   maakKandidaatAan: tools.maakKandidaatAan,
@@ -24,8 +30,9 @@ export const recruitmentTools = {
   verwijderKandidaat: tools.verwijderKandidaat,
   voegNotitieToe: tools.voegNotitieToe,
   autoMatchKandidaat: tools.autoMatchKandidaat,
+};
 
-  // Matches
+const matchTools = {
   zoekMatches: tools.zoekMatches,
   getMatchDetail: tools.getMatchDetail,
   maakMatchAan: tools.maakMatchAan,
@@ -33,34 +40,129 @@ export const recruitmentTools = {
   wijsMatchAf: tools.wijsMatchAf,
   verwijderMatch: tools.verwijderMatch,
   voerStructuredMatchUit: tools.voerStructuredMatchUit,
+};
 
-  // Sollicitaties
+const sollicitatieTools = {
   zoekSollicitaties: tools.zoekSollicitaties,
   getSollicitatieDetail: tools.getSollicitatieDetail,
   maakSollicitatieAan: tools.maakSollicitatieAan,
   updateSollicitatieFase: tools.updateSollicitatieFase,
   verwijderSollicitatie: tools.verwijderSollicitatie,
   getSollicitatieStats: tools.getSollicitatieStats,
+};
 
-  // Interviews
+const interviewTools = {
   zoekInterviews: tools.zoekInterviews,
   getInterviewDetail: tools.getInterviewDetail,
   planInterview: tools.planInterview,
   updateInterview: tools.updateInterviewTool,
   verwijderInterview: tools.verwijderInterview,
+};
 
-  // Berichten
+const berichtTools = {
   zoekBerichten: tools.zoekBerichten,
   getBerichtDetail: tools.getBerichtDetail,
   stuurBericht: tools.stuurBericht,
   verwijderBericht: tools.verwijderBericht,
+};
 
-  // GDPR
+const gdprTools = {
   exporteerKandidaatData: tools.exporteerKandidaatData,
   wisKandidaatData: tools.wisKandidaatData,
   scrubContactGegevens: tools.scrubContactGegevens,
   exporteerContactData: tools.exporteerContactData,
 };
+
+export const recruitmentTools = {
+  ...opdrachtTools,
+  ...kandidaatTools,
+  ...matchTools,
+  ...sollicitatieTools,
+  ...interviewTools,
+  ...berichtTools,
+  ...gdprTools,
+};
+
+function isOpdrachtContext(context?: AgentContext) {
+  return (
+    context?.entityType === "opdracht" ||
+    context?.route?.includes("/opdrachten") ||
+    context?.route?.includes("/scraper")
+  );
+}
+
+function isKandidaatContext(context?: AgentContext) {
+  return (
+    context?.entityType === "kandidaat" ||
+    context?.route?.includes("/professionals") ||
+    context?.route?.includes("/kandidaten")
+  );
+}
+
+function getCapabilityLines(context?: AgentContext): string[] {
+  if (isOpdrachtContext(context)) {
+    return [
+      "Opdrachten zoeken, filteren, bijwerken en verwijderen",
+      "Kandidaten matchen op opdrachten en matchresultaten beoordelen",
+      "Sollicitaties bekijken en pipeline-fases bijwerken",
+      "Data analyseren (tarieven, platforms, deadlines)",
+      "Scrapers en scoring-batches starten voor opdrachten",
+    ];
+  }
+
+  if (isKandidaatContext(context)) {
+    return [
+      "Kandidaten beheren (zoeken, aanmaken, bijwerken, verwijderen)",
+      "Notities toevoegen aan kandidaatprofielen",
+      "Kandidaten zoeken op vaardigheden, rol, naam of locatie",
+      "Kandidaten en opdrachten matchen, inclusief structured matching",
+      "Sollicitaties, interviews en berichten rondom kandidaten beheren",
+      "GDPR-acties uitvoeren voor kandidaten en contactgegevens",
+    ];
+  }
+
+  return [
+    "Opdrachten zoeken, filteren, bijwerken en verwijderen",
+    "Kandidaten beheren (zoeken, aanmaken, bijwerken, verwijderen)",
+    "Notities toevoegen aan kandidaatprofielen",
+    "Kandidaten zoeken op vaardigheden, rol, naam of locatie",
+    "Automatisch matchen van kandidaten met vacatures (top 3 met gedetailleerde beoordeling)",
+    "Diepgaande gestructureerde matching (Mariënne-methodologie) met knock-out criteria en gunningscriteria",
+    "Matches aanmaken, bekijken, goedkeuren, afwijzen en verwijderen",
+    "Sollicitaties aanmaken en door de pipeline verplaatsen",
+    "Interviews plannen en bijwerken",
+    "Berichten versturen en bekijken",
+    "Data analyseren (tarieven, platforms, deadlines)",
+    "Scrapers starten voor nieuwe opdrachten",
+    "Batch import draaien over actieve scrapers (importeerOpdrachtenBatch)",
+    "Batch scoring draaien over actieve opdrachten (runKandidaatScoringBatch)",
+    "GDPR retentie review uitvoeren (reviewGdprRetentie)",
+    "GDPR: kandidaatdata exporteren, permanent verwijderen, contactgegevens scrubben",
+  ];
+}
+
+export function getRecruitmentTools(context?: AgentContext) {
+  if (isOpdrachtContext(context)) {
+    return {
+      ...opdrachtTools,
+      ...matchTools,
+      ...sollicitatieTools,
+    };
+  }
+
+  if (isKandidaatContext(context)) {
+    return {
+      ...kandidaatTools,
+      ...matchTools,
+      ...sollicitatieTools,
+      ...interviewTools,
+      ...berichtTools,
+      ...gdprTools,
+    };
+  }
+
+  return recruitmentTools;
+}
 
 /** Build workspace context string for prompt injection. */
 async function getWorkspaceContext(): Promise<string> {
@@ -86,13 +188,7 @@ ${scraperLines}`;
   }
 }
 
-export async function buildSystemPrompt(
-  context?: {
-    route?: string | null;
-    entityId?: string | null;
-    entityType?: string | null;
-  } | null,
-) {
+export async function buildSystemPrompt(context?: AgentContext) {
   const now = new Date().toLocaleDateString("nl-NL", {
     weekday: "long",
     year: "numeric",
@@ -102,6 +198,9 @@ export async function buildSystemPrompt(
   });
 
   const workspace = await getWorkspaceContext();
+  const capabilityLines = getCapabilityLines(context)
+    .map((line) => `- ${line}`)
+    .join("\n");
 
   let prompt = `Je bent Motian AI, de slimme recruitment assistent voor het Motian platform.
 Antwoord altijd in het Nederlands, tenzij de gebruiker in het Engels schrijft.
@@ -113,22 +212,7 @@ Vandaag is ${now}.
 Beschikbare platforms: ${PLATFORMS.join(", ")}.
 
 Je kunt helpen met:
-- Opdrachten zoeken, filteren, bijwerken en verwijderen
-- Kandidaten beheren (zoeken, aanmaken, bijwerken, verwijderen)
-- Notities toevoegen aan kandidaatprofielen
-- Kandidaten zoeken op vaardigheden, rol, naam of locatie
-- Automatisch matchen van kandidaten met vacatures (top 3 met gedetailleerde beoordeling)
-- Diepgaande gestructureerde matching (Mariënne-methodologie) met knock-out criteria en gunningscriteria
-- Matches aanmaken, bekijken, goedkeuren, afwijzen en verwijderen
-- Sollicitaties aanmaken en door de pipeline verplaatsen
-- Interviews plannen en bijwerken
-- Berichten versturen en bekijken
-- Data analyseren (tarieven, platforms, deadlines)
-- Scrapers starten voor nieuwe opdrachten
-- Batch import draaien over actieve scrapers (importeerOpdrachtenBatch)
-- Batch scoring draaien over actieve opdrachten (runKandidaatScoringBatch)
-- GDPR retentie review uitvoeren (reviewGdprRetentie)
-- GDPR: kandidaatdata exporteren, permanent verwijderen, contactgegevens scrubben
+${capabilityLines}
 
 Belangrijk: Vraag ALTIJD om expliciete bevestiging van de gebruiker voordat je wisKandidaatData aanroept. Dit verwijdert alle data permanent en kan niet ongedaan worden gemaakt.
 

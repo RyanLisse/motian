@@ -3,7 +3,7 @@ import { z } from "zod";
 import { PLATFORMS } from "@/src/lib/helpers";
 import { withJobsCanonicalSkills } from "@/src/services/esco";
 import type { ListJobsSortBy } from "@/src/services/jobs";
-import { hybridSearch, listJobs } from "@/src/services/jobs";
+import { searchJobsUnified } from "@/src/services/jobs";
 
 const VALID_CONTRACT_TYPES = ["freelance", "interim", "vast", "opdracht"];
 
@@ -129,34 +129,8 @@ export const queryOpdrachten = tool({
   }),
   execute: async (params) => {
     const n = normalizeParams(params);
-
-    // Always use hybrid search when text query is present
-    if (n.q) {
-      const results = await hybridSearch(n.q, {
-        limit: params.limit ?? 20,
-        platform: n.platform,
-        province: n.province,
-        rateMin: n.rateMin,
-        rateMax: n.rateMax,
-        contractType: n.contractType,
-        workArrangement: n.workArrangement,
-        sortBy: n.sortBy,
-        postedAfter: n.postedAfter,
-        deadlineBefore: n.deadlineBefore,
-        startDateAfter: n.startDateAfter,
-      });
-      const resultsWithCanonicalSkills = await withJobsCanonicalSkills(results);
-      return {
-        total: resultsWithCanonicalSkills.length,
-        opdrachten: resultsWithCanonicalSkills.map((job) => ({
-          ...summarizeJob(job),
-          score: job.score,
-        })),
-      };
-    }
-
-    // No text query — use filtered listing
-    const { data, total } = await listJobs({
+    const result = await searchJobsUnified({
+      q: n.q,
       platform: n.platform,
       province: n.province,
       rateMin: n.rateMin,
@@ -167,13 +141,17 @@ export const queryOpdrachten = tool({
       postedAfter: n.postedAfter,
       deadlineBefore: n.deadlineBefore,
       startDateAfter: n.startDateAfter,
-      limit: params.limit,
+      limit: params.limit ?? 20,
     });
-    const dataWithCanonicalSkills = await withJobsCanonicalSkills(data);
-
+    const dataWithCanonicalSkills = await withJobsCanonicalSkills(result.data);
+    const hasScore = result.data.some((j) => "score" in j && typeof j.score === "number");
     return {
-      total,
-      opdrachten: dataWithCanonicalSkills.map(summarizeJob),
+      total: result.total,
+      opdrachten: dataWithCanonicalSkills.map((job) =>
+        hasScore && "score" in job
+          ? { ...summarizeJob(job), score: (job as { score: number }).score }
+          : summarizeJob(job),
+      ),
     };
   },
 });

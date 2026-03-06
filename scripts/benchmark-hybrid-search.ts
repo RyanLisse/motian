@@ -2,7 +2,10 @@
  * Benchmark for hybridSearch(query, filters).
  * Run with: pnpm tsx scripts/benchmark-hybrid-search.ts
  * Requires DATABASE_URL (e.g. from .env.local). Uses limit 10, 100, and 10×100 for reference.
+ * Writes summary to docs/metrics/hybrid-search-benchmark-latest.json for baseline/regression.
  */
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { config as dotenvConfig } from "dotenv";
 
 dotenvConfig({ path: ".env.local" });
@@ -34,14 +37,22 @@ async function main() {
     `10 × hybridSearch(..., { limit: 100 }) → ${ms1k}ms total (avg ${(ms1k / 10).toFixed(0)}ms/run)`,
   );
 
+  const summary = {
+    date: new Date().toISOString(),
+    query,
+    runs: results,
+    tenTimes100Ms: ms1k,
+    avgPerRun100: Math.round(ms1k / 10),
+  };
+
   console.log("\nSummary:");
-  console.log(
-    JSON.stringify(
-      { date: new Date().toISOString(), query, runs: results, tenTimes100: ms1k },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify(summary, null, 2));
+
+  const outDir = path.join(process.cwd(), "docs", "metrics");
+  fs.mkdirSync(outDir, { recursive: true });
+  const outPath = path.join(outDir, "hybrid-search-benchmark-latest.json");
+  fs.writeFileSync(outPath, JSON.stringify(summary, null, 2), "utf8");
+  console.log(`\nWrote ${outPath}`);
 }
 
 main().catch((err) => {

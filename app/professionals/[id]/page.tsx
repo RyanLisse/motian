@@ -136,8 +136,40 @@ function getLanguageSkills(languageSkills: unknown): Array<{ language: string; l
 export default async function ProfessionalDetailPage({ params }: Props) {
   const { id } = await params;
 
+  const candidateSelect = {
+    id: candidates.id,
+    name: candidates.name,
+    email: candidates.email,
+    phone: candidates.phone,
+    role: candidates.role,
+    location: candidates.location,
+    province: candidates.province,
+    skills: candidates.skills,
+    experience: candidates.experience,
+    preferences: candidates.preferences,
+    resumeUrl: candidates.resumeUrl,
+    linkedinUrl: candidates.linkedinUrl,
+    headline: candidates.headline,
+    source: candidates.source,
+    notes: candidates.notes,
+    hourlyRate: candidates.hourlyRate,
+    availability: candidates.availability,
+    embedding: candidates.embedding,
+    resumeRaw: candidates.resumeRaw,
+    resumeParsedAt: candidates.resumeParsedAt,
+    skillsStructured: candidates.skillsStructured,
+    education: candidates.education,
+    certifications: candidates.certifications,
+    languageSkills: candidates.languageSkills,
+    consentGranted: candidates.consentGranted,
+    dataRetentionUntil: candidates.dataRetentionUntil,
+    createdAt: candidates.createdAt,
+    updatedAt: candidates.updatedAt,
+    deletedAt: candidates.deletedAt,
+  };
+
   const [candidateRows, matchRows] = await Promise.all([
-    db.select().from(candidates).where(eq(candidates.id, id)).limit(1),
+    db.select(candidateSelect).from(candidates).where(eq(candidates.id, id)).limit(1),
     db
       .select({
         match: jobMatches,
@@ -268,7 +300,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 <h2 className="text-lg font-semibold text-foreground mb-3">Overzicht</h2>
                 <div className="rounded-xl border border-border bg-card p-4">
                   <p className="text-sm text-muted-foreground whitespace-pre-line">
-                    {candidate.profileSummary ?? candidate.headline ?? "Geen samenvatting."}
+                    {candidate.headline ?? "Geen samenvatting."}
                   </p>
                   {languages.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">

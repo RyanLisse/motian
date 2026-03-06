@@ -7,7 +7,7 @@
  * Set STRIIVE_USE_MODAL=true + STRIIVE_WEBHOOK_URL to use remote webhook.
  */
 
-import type { RawScrapedListing } from "../normalize";
+import type { RawScrapedListing } from "./types";
 
 const MAPPING_FUNCTIONS_AS_STRING = `
 function mapBoolean(val) {

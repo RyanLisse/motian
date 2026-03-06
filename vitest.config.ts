@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    reporters: ["verbose"],
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "json-summary"],
@@ -16,9 +17,16 @@ export default defineConfig({
         "**/*.test.ts",
         "**/*.config.*",
         "harness-evidence/",
+        ".next/",
+        "**/.next/**",
       ],
-      // Optional: enable threshold later, e.g. { statements: 40, branches: 35 }
-      // threshold: { statements: 0, branches: 0, functions: 0, lines: 0 },
+      // Gate: fail if coverage drops below minimum (raise over time)
+      thresholds: {
+        statements: 1,
+        branches: 1,
+        functions: 1,
+        lines: 1,
+      },
     },
   },
   resolve: {

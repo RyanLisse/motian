@@ -203,7 +203,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test with coverage
-        run: pnpm test:coverage
+        run: |
+          start=$(date +%s)
+          pnpm test:coverage
+          echo "::notice:: Test run completed in $(($(date +%s) - start))s"
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3

@@ -4,10 +4,18 @@ This is a React-based OpenTUI console wired to real Motian API actions.
 
 ## Run
 
+From repo root:
+
 ```bash
-cd opentui-demo
+just tui
+```
+
+Or from this directory:
+
+```bash
+cd tui
 bun install
-bun run src/index.tsx
+bun run start
 ```
 
 ## Controls

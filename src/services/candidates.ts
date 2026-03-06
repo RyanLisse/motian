@@ -279,24 +279,31 @@ export async function addNoteToCandidate(id: string, note: string): Promise<Cand
   return rows[0] ?? null;
 }
 
-/** Zoek duplicaat-kandidaten op basis van geparsed CV (email-match of naam-match). */
+/** Zoek duplicaat-kandidaten op basis van geparsed CV (email-match of naam-match). Bij email-match telt ook een soft-deleted kandidaat: die wordt heropend en teruggegeven. */
 export async function findDuplicateCandidate(
   parsed: ParsedCV,
 ): Promise<{ exact: Candidate | null; similar: Candidate[] }> {
-  // 1. Try exact match by email (unique index: uq_candidates_email)
   if (parsed.email) {
     const emailRows = await db
       .select()
       .from(candidates)
-      .where(and(eq(candidates.email, parsed.email), isNull(candidates.deletedAt)))
+      .where(eq(candidates.email, parsed.email))
       .limit(1);
 
     if (emailRows.length > 0) {
-      return { exact: emailRows[0], similar: [] };
+      const row = emailRows[0];
+      if (row.deletedAt) {
+        const restored = await db
+          .update(candidates)
+          .set({ deletedAt: null, updatedAt: new Date() })
+          .where(eq(candidates.id, row.id))
+          .returning();
+        return { exact: restored[0] ?? row, similar: [] };
+      }
+      return { exact: row, similar: [] };
     }
   }
 
-  // 2. Fuzzy match by name (ILIKE)
   const nameRows = await db
     .select()
     .from(candidates)

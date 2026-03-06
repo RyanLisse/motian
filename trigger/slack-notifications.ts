@@ -2,7 +2,7 @@ import { task } from "@trigger.dev/sdk";
 import {
   type SlackNotificationPayload,
   sendSlackNotification,
-} from "../src/services/slack-notifications";
+} from "@/src/services/slack-notifications";
 
 /**
  * Reliable Slack notification delivery via Trigger.dev.

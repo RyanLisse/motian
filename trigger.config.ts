@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { defineConfig } from "@trigger.dev/sdk";
 
 const SENTRY_DSN =
+  process.env.SENTRY_DSN ??
   "https://f13da1ff32b7d1f499309c7040de8fae@o4507090437668864.ingest.de.sentry.io/4510936878481488";
 
 let sentryInitialized = false;

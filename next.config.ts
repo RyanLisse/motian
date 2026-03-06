@@ -1,7 +1,7 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
-// CORS for /api is handled per-request in middleware.ts (all ALLOWED_ORIGINS supported)
+// CORS for /api is handled per-request in proxy.ts (all ALLOWED_ORIGINS supported)
 const nextConfig: NextConfig = {
   // Server components can import DB directly
   serverExternalPackages: ["pg"],

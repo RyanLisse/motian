@@ -15,14 +15,7 @@ import {
 
 // ========== Vacatures ==========
 
-import {
-  deleteJob,
-  getJobById,
-  getJobStats,
-  listJobs,
-  searchJobsByTitle,
-  updateJob,
-} from "../services/jobs";
+import { deleteJob, getJobById, getJobStats, searchJobsUnified, updateJob } from "../services/jobs";
 
 // ========== Matches ==========
 
@@ -208,17 +201,18 @@ export const commands: Record<string, Command> = {
   // ── Vacatures ──────────────────────────────────────────────────────────
 
   "vacatures:zoek": {
-    description: "Zoek vacatures op titel of platform",
+    description: "Zoek vacatures op titel of platform (unified: hybrid bij query, lijst zonder)",
     usage: "[--query <term>] [--platform <platform>] [--limit <n>]",
     handler: async (args) => {
       const query = optionalString(args, "query");
       const platform = optionalString(args, "platform");
       const limit = optionalNumber(args, "limit");
-
-      if (query) {
-        return searchJobsByTitle(query, limit);
-      }
-      return listJobs({ platform, limit });
+      const result = await searchJobsUnified({
+        q: query?.trim() || undefined,
+        platform: platform ?? undefined,
+        limit: limit ?? 50,
+      });
+      return { data: result.data, total: result.total };
     },
   },
 

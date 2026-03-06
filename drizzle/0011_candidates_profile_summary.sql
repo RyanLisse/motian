@@ -1,0 +1,1 @@
+ALTER TABLE "candidates" ADD COLUMN IF NOT EXISTS "profile_summary" text;

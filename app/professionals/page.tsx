@@ -88,9 +88,41 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
   // Extra filter conditions beyond isNull(deletedAt) for the filtered count
   const extraFilters = conditions.length > 1 ? and(...conditions.slice(1)) : null;
 
+  const candidateSelect = {
+    id: candidates.id,
+    name: candidates.name,
+    email: candidates.email,
+    phone: candidates.phone,
+    role: candidates.role,
+    location: candidates.location,
+    province: candidates.province,
+    skills: candidates.skills,
+    experience: candidates.experience,
+    preferences: candidates.preferences,
+    resumeUrl: candidates.resumeUrl,
+    linkedinUrl: candidates.linkedinUrl,
+    headline: candidates.headline,
+    source: candidates.source,
+    notes: candidates.notes,
+    hourlyRate: candidates.hourlyRate,
+    availability: candidates.availability,
+    embedding: candidates.embedding,
+    resumeRaw: candidates.resumeRaw,
+    resumeParsedAt: candidates.resumeParsedAt,
+    skillsStructured: candidates.skillsStructured,
+    education: candidates.education,
+    certifications: candidates.certifications,
+    languageSkills: candidates.languageSkills,
+    consentGranted: candidates.consentGranted,
+    dataRetentionUntil: candidates.dataRetentionUntil,
+    createdAt: candidates.createdAt,
+    updatedAt: candidates.updatedAt,
+    deletedAt: candidates.deletedAt,
+  };
+
   const [candidateRows, statsResult] = await Promise.all([
     db
-      .select()
+      .select(candidateSelect)
       .from(candidates)
       .where(whereClause)
       .orderBy(desc(candidates.createdAt))

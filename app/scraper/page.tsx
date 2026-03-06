@@ -5,12 +5,14 @@ import {
   AlertTriangle,
   CalendarClock,
   CheckCircle,
+  ChevronRight,
   Clock,
   Database,
   Search,
   Sparkles,
   XCircle,
 } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { AnalyticsCharts } from "@/components/scraper/analytics-charts";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -62,7 +64,22 @@ export const dynamic = "force-dynamic";
 export default async function ScraperPage() {
   const [configs, results, analytics] = await Promise.all([
     db.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
-    db.select().from(scrapeResults).orderBy(desc(scrapeResults.runAt)).limit(30),
+    db
+      .select({
+        id: scrapeResults.id,
+        configId: scrapeResults.configId,
+        platform: scrapeResults.platform,
+        runAt: scrapeResults.runAt,
+        durationMs: scrapeResults.durationMs,
+        jobsFound: scrapeResults.jobsFound,
+        jobsNew: scrapeResults.jobsNew,
+        duplicates: scrapeResults.duplicates,
+        status: scrapeResults.status,
+        errors: scrapeResults.errors,
+      })
+      .from(scrapeResults)
+      .orderBy(desc(scrapeResults.runAt))
+      .limit(30),
     getAnalytics(),
   ]);
 
@@ -402,30 +419,49 @@ export default async function ScraperPage() {
           </div>
         )}
 
-        {/* History Table */}
+        {/* Overzicht van alle scrape-runs */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-base">Recente Scrape Resultaten</CardTitle>
+            <CardTitle className="text-base">Overzicht scrape-runs</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Alle recente scrapes. Klik op &quot;Bekijk details&quot; voor datum, bron, status,
+              aantallen en de gescrapede records per run.
+            </p>
           </CardHeader>
           <CardContent>
             {results.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Nog geen resultaten</p>
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Nog geen scrape-resultaten
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Start een scrape via de knop hierboven of wacht op de geplande run. Resultaten
+                  verschijnen hier zodra er runs zijn uitgevoerd.
+                </p>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
-                      <TableHead>Platform</TableHead>
-                      <TableHead>Datum</TableHead>
+                      <TableHead>Bron / platform</TableHead>
+                      <TableHead>Datum en tijd</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Gevonden</TableHead>
-                      <TableHead className="text-right">Nieuw</TableHead>
-                      <TableHead className="text-right">Duplicaten</TableHead>
+                      <TableHead className="text-right" title="Aantal gevonden items bij de bron">
+                        Gevonden
+                      </TableHead>
+                      <TableHead className="text-right" title="Nieuw opgeslagen in de database">
+                        Nieuw
+                      </TableHead>
+                      <TableHead className="text-right" title="Al bestaand, bijgewerkt">
+                        Bijgewerkt
+                      </TableHead>
                       <TableHead className="text-right" title="Validatiefout of niet opgeslagen">
                         Overgeslagen
                       </TableHead>
                       <TableHead className="text-right">Duur</TableHead>
-                      <TableHead>Fouten</TableHead>
+                      <TableHead>Fouten / waarschuwingen</TableHead>
+                      <TableHead className="w-[100px]">Actie</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -435,15 +471,19 @@ export default async function ScraperPage() {
                         : [];
 
                       return (
-                        <TableRow key={result.id} className="border-border">
+                        <TableRow
+                          key={result.id}
+                          className="border-border hover:bg-muted/50 transition-colors"
+                        >
                           <TableCell className="capitalize font-medium">
                             {result.platform}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-muted-foreground whitespace-nowrap">
                             {result.runAt
                               ? new Date(result.runAt).toLocaleString("nl-NL", {
                                   day: "numeric",
                                   month: "short",
+                                  year: "numeric",
                                   hour: "2-digit",
                                   minute: "2-digit",
                                 })
@@ -485,6 +525,15 @@ export default async function ScraperPage() {
                             ) : (
                               <span className="text-xs text-muted-foreground">-</span>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <Link
+                              href={`/scraper/runs/${result.id}`}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                            >
+                              Bekijk details
+                              <ChevronRight className="h-3 w-3" />
+                            </Link>
                           </TableCell>
                         </TableRow>
                       );

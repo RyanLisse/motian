@@ -2,11 +2,23 @@
 
 Meetbare uitgangssituatie voor optimalisatie. Resultaten vastleggen in `baseline-YYYY-MM-DD.md` of als CI-artifact.
 
+## hybridSearch benchmark
+
+Reproduceerbare run (with `DATABASE_URL` set, e.g. from `.env.local`):
+
+```bash
+pnpm benchmark:hybrid-search
+# or from repo root:
+just benchmark-hybrid-search
+```
+
+The script writes a summary to `docs/metrics/hybrid-search-benchmark-latest.json`. Use this as a reference for regression after search changes. Optionally copy or rename to `hybrid-search-benchmark-YYYY-MM-DD.json` when recording a baseline. If the benchmark has not been run yet, this file will be created on first successful run.
+
 ## Wat vastleggen
 
 | Metric | Hoe |
 |--------|-----|
-| `pnpm build`-tijd | `pnpm tsx scripts/baseline-metrics.ts` (lokaal) of CI build job duration |
+| `pnpm build`-tijd | `just baseline-metrics` of `pnpm tsx scripts/baseline-metrics.ts` (lokaal) of CI build job duration |
 | Cold start / p95 latency | App draaien; herhaalde requests naar `/api/chat` en `/api/cv-analyse`; p95 uit percentielen |
 | DB-queryduur | Representatieve zoek- en matchqueries; logging of tracing (Sentry, PostHog) |
 | Trigger job-duur | Per scraper/enrichment job in Trigger dashboard of job metadata |

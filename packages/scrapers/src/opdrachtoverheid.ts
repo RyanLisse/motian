@@ -1,5 +1,5 @@
-import { stripHtml } from "../../lib/html";
-import type { RawScrapedListing } from "../normalize";
+import type { RawScrapedListing } from "./types";
+import { stripHtml } from "./strip-html";
 
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
 const MAX_RESULTS = 1000;
@@ -97,19 +97,13 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
           offset: 0,
           disjunction: 0,
           user_coordinates: {},
+          // Store both open and gesloten opdrachten; UI status is derived from deadline/end date.
           filters: {
-            and_filters: [
-              {
-                filters: [
-                  {
-                    field_name: "tender_active",
-                    operator: "eq",
-                    value: true,
-                  },
-                ],
-              },
-            ],
+            and_filters: [],
+            or_filters: [],
+            or_disjunction: 0,
           },
+          order_by: [{ field: "tender_first_seen", direction: "desc" }],
         }),
       });
 
@@ -121,7 +115,7 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
       const data = (await res.json()) as OpdrachtoverheidApiResponse;
       const allTenders = data.negometrix_tenders ?? [];
 
-      console.log(`Opdrachtoverheid API: ${allTenders.length} actieve opdrachten`);
+      console.log(`Opdrachtoverheid API: ${allTenders.length} opdrachten opgehaald`);
 
       const listings: RawScrapedListing[] = allTenders.map((t) => {
         const loc = t.vacancies_location ?? {};

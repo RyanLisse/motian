@@ -52,6 +52,15 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.27.0
         version: 1.27.0(zod@3.25.76)
+      '@motian/db':
+        specifier: workspace:*
+        version: link:packages/db
+      '@motian/esco':
+        specifier: workspace:*
+        version: link:packages/esco
+      '@motian/scrapers':
+        specifier: workspace:*
+        version: link:packages/scrapers
       '@sentry/nextjs':
         specifier: ^10.39.0
         version: 10.39.0(@opentelemetry/context-async-hooks@2.5.1(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.5.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.1(@opentelemetry/api@1.9.0))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(webpack@5.105.2(esbuild@0.27.3))
@@ -245,6 +254,30 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0)
+
+  packages/db:
+    dependencies:
+      drizzle-orm:
+        specifier: ^0.38.4
+        version: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(@types/react@19.2.14)(pg@8.18.0)(react@19.2.4)
+      pg:
+        specifier: ^8.18.0
+        version: 8.18.0
+
+  packages/esco:
+    dependencies:
+      '@motian/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.38.4
+        version: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(@types/react@19.2.14)(pg@8.18.0)(react@19.2.4)
+
+  packages/scrapers:
+    dependencies:
+      modal:
+        specifier: ^0.6.3
+        version: 0.6.3
 
 packages:
 

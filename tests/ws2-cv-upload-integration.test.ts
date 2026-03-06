@@ -13,35 +13,37 @@ function readFile(...segments: string[]): string {
 }
 
 // ========== DB Schema: candidates table columns ==========
+// Schema lives in packages/db; src/db/schema.ts is a re-export shim.
+const DB_SCHEMA_PATH = "packages/db/src/schema.ts";
 
 describe("DB schema — candidates CV columns", () => {
   it("has resumeRaw column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("resumeRaw");
   });
 
   it("has resumeParsedAt column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("resumeParsedAt");
   });
 
   it("has skillsStructured column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("skillsStructured");
   });
 
   it("has education column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("education");
   });
 
   it("has certifications column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("certifications");
   });
 
   it("has languageSkills column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("languageSkills");
   });
 });
