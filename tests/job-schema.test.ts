@@ -93,6 +93,20 @@ describe("Unified Job Schema", () => {
     expect(result.conditions).toEqual([]);
   });
 
+  it("should accept endClient and default status to open", () => {
+    const result = unifiedJobSchema.parse({
+      title: "Data Engineer",
+      externalId: "status-1",
+      externalUrl: "https://example.com/job/status-1",
+      description: "Een mooie opdracht voor een ervaren data engineer.",
+      company: "Between",
+      endClient: "Gemeente Utrecht",
+    });
+
+    expect(result.endClient).toBe("Gemeente Utrecht");
+    expect(result.status).toBe("open");
+  });
+
   it("should coerce date strings to Date objects", () => {
     const job = {
       title: "PM",
