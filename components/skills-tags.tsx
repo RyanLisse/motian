@@ -71,23 +71,36 @@ function SkillTag({
   isDimmed?: boolean;
   onClick?: () => void;
 }) {
-  const tag = (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium border transition-all cursor-pointer",
-        variant === "hard"
-          ? "bg-primary/10 text-primary border-primary/20"
-          : "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
-        isActive && "ring-2 ring-primary ring-offset-1 shadow-sm",
-        isDimmed && "opacity-40",
-      )}
-    >
+  const isInteractive = typeof onClick === "function";
+  const sharedClassName = cn(
+    "inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium border transition-all",
+    variant === "hard"
+      ? "bg-primary/10 text-primary border-primary/20"
+      : "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+    isActive && "ring-2 ring-primary ring-offset-1 shadow-sm",
+    isDimmed && "opacity-40",
+    isInteractive && "cursor-pointer",
+  );
+
+  const inner = (
+    <>
       {skill.name}
       <ProficiencyDots level={skill.proficiency} />
       {skill.evidence && <Info className="ml-1 h-3 w-3 opacity-50" />}
+    </>
+  );
+
+  const tag = isInteractive ? (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={isActive ?? false}
+      className={sharedClassName}
+    >
+      {inner}
     </button>
+  ) : (
+    <span className={sharedClassName}>{inner}</span>
   );
 
   if (!skill.evidence) return tag;

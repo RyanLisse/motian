@@ -26,7 +26,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
-import type { StructuredSkills } from "@/src/schemas/candidate-intelligence";
+import {
+  type StructuredSkills,
+  structuredSkillsSchema,
+} from "@/src/schemas/candidate-intelligence";
 
 export const dynamic = "force-dynamic";
 
@@ -157,7 +160,10 @@ export default async function ProfessionalDetailPage({ params }: Props) {
   }
 
   const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
-  const structuredSkills = candidate.skillsStructured as StructuredSkills | null;
+  const structuredSkillsParsed = structuredSkillsSchema.safeParse(candidate.skillsStructured);
+  const structuredSkills: StructuredSkills | null = structuredSkillsParsed.success
+    ? structuredSkillsParsed.data
+    : null;
   const experienceEntries = getExperienceEntries(candidate.experience);
   const languages = getLanguageSkills(candidate.languageSkills);
   const yearsExp = computeYearsExperience(candidate.experience);
@@ -452,7 +458,9 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                                   <span>Betrouwbaarheid: {Math.round(recConf)}%</span>
                                 )}
                                 {model && <span>Model: {model}</span>}
-                                {!recConf && !model && <span>Geen aanvullende metadata</span>}
+                                {recConf == null && !model && (
+                                  <span>Geen aanvullende metadata</span>
+                                )}
                               </div>
                             </div>
                           </details>

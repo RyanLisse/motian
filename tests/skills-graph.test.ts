@@ -261,9 +261,9 @@ describe("Skills graph — profile integration", () => {
     expect(source).toContain("skillsStructured");
   });
 
-  it("casts skillsStructured to StructuredSkills type", () => {
+  it("validates skillsStructured defensively with safeParse", () => {
     const source = readFile("app/professionals/[id]/page.tsx");
-    expect(source).toContain("as StructuredSkills");
+    expect(source).toContain("structuredSkillsSchema.safeParse");
   });
 
   it("checks for valid structured skills before rendering", () => {
