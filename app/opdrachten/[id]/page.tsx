@@ -552,6 +552,12 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
             {/* Action buttons */}
             <div className="space-y-2">
+              <Link href={`/matching?jobId=${job.id}`} className="block w-full">
+                <Button variant="outline" className="w-full border-border font-semibold h-10">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Match kandidaten
+                </Button>
+              </Link>
               <LinkCandidatesDialog
                 jobId={job.id}
                 jobTitle={job.title}

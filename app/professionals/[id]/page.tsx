@@ -1,8 +1,20 @@
 import { desc, eq } from "drizzle-orm";
-import { ArrowLeft, Briefcase, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Bookmark,
+  Briefcase,
+  Globe,
+  Mail,
+  MessageCircle,
+  Phone,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CandidateNotes } from "@/components/candidate-notes";
+import { EmploymentCard } from "@/components/candidate-profile/employment-card";
+import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
+import { OpenToOffersRing } from "@/components/candidate-profile/open-to-offers-ring";
 import { CvDocumentViewerLazy } from "@/components/cv-document-viewer-lazy";
 import { CvDropZone } from "@/components/cv-drop-zone";
 import { DeleteCandidateButton } from "@/components/delete-candidate-button";
@@ -10,6 +22,7 @@ import { EditCandidateFields } from "@/components/edit-candidate-fields";
 import { SkillsRadar } from "@/components/skills-radar";
 import { SkillsTags } from "@/components/skills-tags";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
 import type { StructuredSkills } from "@/src/schemas/candidate-intelligence";
@@ -19,12 +32,6 @@ export const dynamic = "force-dynamic";
 interface Props {
   params: Promise<{ id: string }>;
 }
-
-const availabilityLabels: Record<string, string> = {
-  direct: "Direct beschikbaar",
-  "1_maand": "Binnen 1 maand",
-  "3_maanden": "Binnen 3 maanden",
-};
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
@@ -38,10 +45,93 @@ const statusLabels: Record<string, string> = {
   rejected: "Afgewezen",
 };
 
+/** Map availability to an "open to offers" percentage for the ring. */
+function availabilityToPercentage(availability: string | null): number {
+  switch (availability) {
+    case "direct":
+      return 90;
+    case "1_maand":
+      return 70;
+    case "3_maanden":
+      return 50;
+    default:
+      return 60;
+  }
+}
+
+/** Parse experience JSON into a uniform shape (parser or legacy). */
+function getExperienceEntries(experience: unknown): Array<{
+  title?: string;
+  company?: string;
+  period?: { start?: string; end?: string };
+  responsibilities?: string[];
+  duration?: string;
+  location?: string;
+}> {
+  if (!Array.isArray(experience)) return [];
+  return experience.map((entry) => {
+    if (entry && typeof entry === "object") {
+      const e = entry as Record<string, unknown>;
+      const period =
+        e.period && typeof e.period === "object"
+          ? (e.period as { start?: string; end?: string })
+          : undefined;
+      return {
+        title: typeof e.title === "string" ? e.title : undefined,
+        company: typeof e.company === "string" ? e.company : undefined,
+        period,
+        responsibilities: Array.isArray(e.responsibilities)
+          ? (e.responsibilities as string[])
+          : undefined,
+        duration: typeof e.duration === "string" ? e.duration : undefined,
+        location: typeof e.location === "string" ? e.location : undefined,
+      };
+    }
+    return {};
+  });
+}
+
+/** Compute total years of experience from experience array (rough). */
+function computeYearsExperience(experience: unknown): string | null {
+  const entries = getExperienceEntries(experience);
+  if (entries.length === 0) return null;
+  let totalMonths = 0;
+  for (const e of entries) {
+    if (e.period?.start && e.period?.end) {
+      const start = e.period.start.slice(0, 4);
+      const end =
+        e.period.end === "heden" ? new Date().getFullYear().toString() : e.period.end.slice(0, 4);
+      const s = Number.parseInt(start, 10);
+      const n = Number.parseInt(end, 10);
+      if (!Number.isNaN(s) && !Number.isNaN(n)) totalMonths += (n - s) * 12;
+    }
+  }
+  if (totalMonths === 0) return null;
+  const years = Math.floor(totalMonths / 12);
+  if (years >= 5) return "5+ jaar";
+  if (years >= 3) return "3+ jaar";
+  if (years >= 1) return "1+ jaar";
+  return "< 1 jaar";
+}
+
+/** Language skills from DB: array of { language, level }. */
+function getLanguageSkills(languageSkills: unknown): Array<{ language: string; level: string }> {
+  if (!Array.isArray(languageSkills)) return [];
+  return languageSkills
+    .filter((x) => x && typeof x === "object")
+    .map((x) => {
+      const o = x as Record<string, unknown>;
+      return {
+        language: typeof o.language === "string" ? o.language : "",
+        level: typeof o.level === "string" ? o.level : "",
+      };
+    })
+    .filter((l) => l.language);
+}
+
 export default async function ProfessionalDetailPage({ params }: Props) {
   const { id } = await params;
 
-  // Fetch candidate + their matches with joined job data
   const [candidateRows, matchRows] = await Promise.all([
     db.select().from(candidates).where(eq(candidates.id, id)).limit(1),
     db
@@ -66,13 +156,29 @@ export default async function ProfessionalDetailPage({ params }: Props) {
   }
 
   const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
+  const structuredSkills = candidate.skillsStructured as StructuredSkills | null;
+  const experienceEntries = getExperienceEntries(candidate.experience);
+  const languages = getLanguageSkills(candidate.languageSkills);
+  const yearsExp = computeYearsExperience(candidate.experience);
+  const openToOffersPct = availabilityToPercentage(candidate.availability);
+  const preferences = (candidate.preferences as Record<string, unknown>) ?? {};
+  const websiteUrl =
+    (typeof preferences.website === "string" && preferences.website) ||
+    candidate.linkedinUrl ||
+    null;
+
+  const matchChartData = matchRows.map((row) => ({
+    jobTitle: row.job?.title ?? "Vacature",
+    score: row.match.matchScore,
+    jobId: row.job?.id,
+  }));
 
   return (
     <CvDropZone candidateId={candidate.id}>
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
-          {/* Back link + delete */}
-          <div className="flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 py-6">
+          {/* Back + delete */}
+          <div className="flex items-center justify-between mb-6">
             <Link
               href="/professionals"
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -83,225 +189,302 @@ export default async function ProfessionalDetailPage({ params }: Props) {
             <DeleteCandidateButton candidateId={candidate.id} candidateName={candidate.name} />
           </div>
 
-          {/* Header */}
-          <div>
-            <h1 className="text-xl font-bold text-foreground mb-2">{candidate.name}</h1>
-            <div className="flex items-center gap-2 flex-wrap">
+          {/* Header: Open to offers (left), name + role (center), website + actions (right) */}
+          <div className="flex flex-wrap items-start gap-4 justify-between mb-8">
+            <OpenToOffersRing percentage={openToOffersPct} label="Open voor aanbiedingen" />
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <h1 className="text-2xl font-bold text-foreground">{candidate.name}</h1>
               {candidate.role && (
-                <Badge
-                  variant="outline"
-                  className="border-border text-muted-foreground bg-transparent text-xs"
-                >
+                <p className="text-base font-semibold text-muted-foreground mt-0.5">
                   {candidate.role}
-                </Badge>
+                </p>
               )}
-              {candidate.availability && (
-                <Badge
-                  variant="outline"
-                  className={
-                    candidate.availability === "direct"
-                      ? "bg-primary/10 text-primary border-primary/20 text-xs"
-                      : "border-border text-muted-foreground bg-transparent text-xs"
-                  }
+            </div>
+            <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
+              {websiteUrl && (
+                <a
+                  href={websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
                 >
-                  {availabilityLabels[candidate.availability] ?? candidate.availability}
-                </Badge>
+                  <Globe className="h-4 w-4 shrink-0" />
+                  <span className="truncate max-w-[200px]">{websiteUrl}</span>
+                </a>
               )}
-              {candidate.source && (
-                <Badge
-                  variant="outline"
-                  className="capitalize border-border text-muted-foreground bg-transparent text-xs"
-                >
-                  {candidate.source}
-                </Badge>
-              )}
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" className="gap-1.5" disabled>
+                  <MessageCircle className="h-4 w-4" />
+                  Bericht (binnenkort)
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Bookmark className="h-4 w-4" />
+                  Kandidaat opslaan
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Profielsamenvatting (AI/parser) */}
-          {(candidate.profileSummary ?? candidate.headline) && (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-sm font-semibold text-foreground mb-2">Profielsamenvatting</h3>
-              <p className="text-sm text-muted-foreground whitespace-pre-line">
-                {candidate.profileSummary ?? candidate.headline}
-              </p>
-            </div>
-          )}
-
-          {/* Editable profile fields */}
-          <EditCandidateFields
-            candidateId={candidate.id}
-            initialData={{
-              name: candidate.name,
-              email: candidate.email,
-              phone: candidate.phone,
-              role: candidate.role,
-              location: candidate.location,
-              hourlyRate: candidate.hourlyRate,
-              availability: candidate.availability,
-              linkedinUrl: candidate.linkedinUrl,
-            }}
-          />
-
-          {/* CV Document Viewer */}
-          {candidate.resumeUrl && (
-            <CvDocumentViewerLazy url={candidate.resumeUrl} candidateName={candidate.name} />
-          )}
-
-          {/* Vaardigheden — structured or legacy */}
-          {(() => {
-            const structuredSkills = candidate.skillsStructured as StructuredSkills | null;
-
-            if (
-              structuredSkills &&
-              (structuredSkills.hard.length > 0 || structuredSkills.soft.length > 0)
-            ) {
-              return (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-4">Vaardigheden</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-card border border-border rounded-xl p-4">
-                      <SkillsRadar skills={structuredSkills} />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left column: About, Employments, Edit, CV, Notes, Matches */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* About */}
+              <section>
+                <h2 className="text-lg font-semibold text-foreground mb-3">Overzicht</h2>
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {candidate.profileSummary ?? candidate.headline ?? "Geen samenvatting."}
+                  </p>
+                  {languages.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {languages.map((lang) => (
+                        <span
+                          key={`${lang.language}-${lang.level}`}
+                          className="text-xs text-muted-foreground"
+                        >
+                          {lang.language} ({lang.level})
+                        </span>
+                      ))}
                     </div>
-                    <div className="bg-card border border-border rounded-xl p-4">
-                      <SkillsTags skills={structuredSkills} />
-                    </div>
-                  </div>
+                  )}
                 </div>
-              );
-            }
+              </section>
 
-            // Legacy fallback: flat skills[] array
-            if (skills.length > 0) {
-              return (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {skills.map((skill) => (
-                      <Badge
-                        key={skill}
-                        variant="outline"
-                        className="bg-primary/10 text-primary border-primary/20 text-xs"
-                      >
-                        {skill}
-                      </Badge>
+              {/* Employments */}
+              {experienceEntries.length > 0 && (
+                <section>
+                  <h2 className="text-lg font-semibold text-foreground mb-3">Werkervaring</h2>
+                  <div className="space-y-3">
+                    {experienceEntries.map((entry, i) => (
+                      <EmploymentCard
+                        key={`${entry.company ?? ""}-${entry.title ?? ""}-${i}`}
+                        entry={entry}
+                        location={entry.location ?? candidate.location ?? undefined}
+                      />
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Upload een CV om vaardigheden met proficiency-scores te extraheren
-                  </p>
+                </section>
+              )}
+
+              <EditCandidateFields
+                candidateId={candidate.id}
+                initialData={{
+                  name: candidate.name,
+                  email: candidate.email,
+                  phone: candidate.phone,
+                  role: candidate.role,
+                  location: candidate.location,
+                  hourlyRate: candidate.hourlyRate,
+                  availability: candidate.availability,
+                  linkedinUrl: candidate.linkedinUrl,
+                }}
+              />
+
+              {candidate.resumeUrl && (
+                <CvDocumentViewerLazy url={candidate.resumeUrl} candidateName={candidate.name} />
+              )}
+
+              <CandidateNotes candidateId={candidate.id} initialNotes={candidate.notes} />
+
+              {/* Matches list + chart */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Matches ({matchRows.length})
+                  </h2>
                 </div>
-              );
-            }
-
-            return (
-              <div>
-                <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
-                <div className="bg-card border border-border rounded-xl p-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Nog geen vaardigheden — upload een CV om vaardigheden te extraheren
-                  </p>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Notes with append form */}
-          <CandidateNotes candidateId={candidate.id} initialNotes={candidate.notes} />
-
-          {/* Matches */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">
-                Matches ({matchRows.length})
-              </h3>
+                {matchRows.length === 0 ? (
+                  <div className="rounded-xl border border-border bg-card p-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Nog geen matches voor deze kandidaat
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-border bg-card p-4">
+                      <MatchScoresChart data={matchChartData} />
+                    </div>
+                    <div className="space-y-3">
+                      {matchRows.map((row) => (
+                        <div
+                          key={row.match.id}
+                          className="rounded-xl border border-border bg-card p-4 hover:border-primary/40 hover:bg-accent transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex-1 min-w-0">
+                              {row.job ? (
+                                <Link
+                                  href={`/opdrachten/${row.job.id}`}
+                                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                                >
+                                  {row.job.title}
+                                </Link>
+                              ) : (
+                                <span className="text-sm font-semibold text-muted-foreground">
+                                  Vacature verwijderd
+                                </span>
+                              )}
+                              {row.job?.company && (
+                                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                                  <Briefcase className="h-3 w-3" />
+                                  {row.job.company}
+                                </p>
+                              )}
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] shrink-0 ${statusColors[row.match.status] ?? "border-border text-muted-foreground"}`}
+                            >
+                              {statusLabels[row.match.status] ?? row.match.status}
+                            </Badge>
+                          </div>
+                          <div className="mb-2">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-muted-foreground">Match score</span>
+                              <span
+                                className={
+                                  row.match.matchScore >= 80
+                                    ? "text-primary font-medium"
+                                    : row.match.matchScore >= 60
+                                      ? "text-yellow-500 font-medium"
+                                      : "text-red-500 font-medium"
+                                }
+                              >
+                                {Math.round(row.match.matchScore)}%
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  row.match.matchScore >= 80
+                                    ? "bg-primary"
+                                    : row.match.matchScore >= 60
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
+                                }`}
+                                style={{
+                                  width: `${Math.min(100, Math.round(row.match.matchScore))}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          {row.match.reasoning && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
+                              {row.match.reasoning}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
             </div>
 
-            {matchRows.length === 0 ? (
-              <div className="bg-card border border-border rounded-xl p-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Nog geen matches voor deze kandidaat
+            {/* Right column: Market value, Years exp, Social, Skills (radar + tags), Contacts */}
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border p-4 bg-red-50 dark:bg-red-950/20">
+                <p className="text-xs font-medium text-muted-foreground">Marktwaarde</p>
+                <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mt-0.5">
+                  Binnenkort…
                 </p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {matchRows.map((row) => (
-                  <div
-                    key={row.match.id}
-                    className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-accent transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex-1 min-w-0">
-                        {row.job ? (
-                          <Link
-                            href={`/opdrachten/${row.job.id}`}
-                            className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
-                          >
-                            {row.job.title}
-                          </Link>
-                        ) : (
-                          <span className="text-sm font-semibold text-muted-foreground">
-                            Vacature verwijderd
-                          </span>
-                        )}
-                        {row.job?.company && (
-                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                            <Briefcase className="h-3 w-3" />
-                            {row.job.company}
-                          </p>
-                        )}
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] shrink-0 ${statusColors[row.match.status] ?? "border-border text-muted-foreground"}`}
-                      >
-                        {statusLabels[row.match.status] ?? row.match.status}
-                      </Badge>
-                    </div>
-
-                    {/* Score bar */}
-                    <div className="mb-2">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">Match score</span>
-                        <span
-                          className={
-                            row.match.matchScore >= 80
-                              ? "text-primary font-medium"
-                              : row.match.matchScore >= 60
-                                ? "text-yellow-500 font-medium"
-                                : "text-red-500 font-medium"
-                          }
-                        >
-                          {Math.round(row.match.matchScore)}%
-                        </span>
-                      </div>
-                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            row.match.matchScore >= 80
-                              ? "bg-primary"
-                              : row.match.matchScore >= 60
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
-                          }`}
-                          style={{
-                            width: `${Math.min(100, Math.round(row.match.matchScore))}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Reasoning */}
-                    {row.match.reasoning && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
-                        {row.match.reasoning}
-                      </p>
-                    )}
-                  </div>
-                ))}
+              <div className="rounded-xl border border-border p-4 bg-blue-50 dark:bg-blue-950/20">
+                <p className="text-xs font-medium text-muted-foreground">Jaren ervaring</p>
+                <p className="text-sm font-medium text-foreground mt-0.5">{yearsExp ?? "—"}</p>
               </div>
-            )}
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Sociale media</h3>
+                <div className="flex flex-wrap gap-2">
+                  {candidate.linkedinUrl ? (
+                    <a
+                      href={
+                        candidate.linkedinUrl.startsWith("http")
+                          ? candidate.linkedinUrl
+                          : `https://${candidate.linkedinUrl}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center size-9 rounded-full bg-[#0A66C2] text-white hover:opacity-90"
+                    >
+                      <span className="sr-only">LinkedIn profiel openen</span>
+                      <svg className="size-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <title>LinkedIn</title>
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                      </svg>
+                    </a>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Geen links</span>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
+                {(() => {
+                  if (
+                    structuredSkills &&
+                    (structuredSkills.hard.length > 0 || structuredSkills.soft.length > 0)
+                  ) {
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 space-y-4">
+                        <div className="min-h-[200px]">
+                          <SkillsRadar skills={structuredSkills} />
+                        </div>
+                        <div>
+                          <SkillsTags skills={structuredSkills} />
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (skills.length > 0) {
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {skills.map((skill) => (
+                          <Badge
+                            key={skill}
+                            variant="outline"
+                            className="bg-primary/10 text-primary border-primary/20 text-xs"
+                          >
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      Nog geen vaardigheden — Upload een CV om vaardigheden te extraheren
+                    </p>
+                  );
+                })()}
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Contact</h3>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  {candidate.phone && (
+                    <p className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 shrink-0" />
+                      {candidate.phone}
+                    </p>
+                  )}
+                  {candidate.email && (
+                    <p className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 shrink-0" />
+                      <a
+                        href={`mailto:${candidate.email}`}
+                        className="hover:text-foreground truncate"
+                      >
+                        {candidate.email}
+                      </a>
+                    </p>
+                  )}
+                  {!candidate.phone && !candidate.email && (
+                    <p className="text-xs">Geen contactgegevens</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="h-8" />
