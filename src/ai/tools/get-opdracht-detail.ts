@@ -1,10 +1,7 @@
 import { tool } from "ai";
-import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/src/db";
-import { applications } from "@/src/db/schema";
 import { withJobCanonicalSkills } from "@/src/services/esco";
-import { getJobById } from "@/src/services/jobs";
+import { getActivePipelineCount, getJobById } from "@/src/services/jobs";
 
 export const getOpdrachtDetail = tool({
   description:
@@ -17,25 +14,16 @@ export const getOpdrachtDetail = tool({
     if (!job) return { error: "Opdracht niet gevonden" };
 
     // Fetch canonical skills and active pipeline count in parallel
-    const [jobWithCanonicalSkills, pipelineResult] = await Promise.all([
+    const [jobWithCanonicalSkills, pipelineCount] = await Promise.all([
       withJobCanonicalSkills(job),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(applications)
-        .where(
-          and(
-            eq(applications.jobId, id),
-            isNull(applications.deletedAt),
-            ne(applications.stage, "rejected"),
-          ),
-        ),
+      getActivePipelineCount(id),
     ]);
 
     // Return rich detail, excluding rawPayload and embedding (too large)
     const { rawPayload, embedding, ...detail } = jobWithCanonicalSkills;
     return {
       ...detail,
-      pipelineCount: pipelineResult[0]?.count ?? 0,
+      pipelineCount,
     };
   },
 });

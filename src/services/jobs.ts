@@ -1,6 +1,6 @@
-import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "../db";
-import { jobs } from "../db/schema";
+import { applications, jobs } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
 
 // ========== Types ==========
@@ -427,6 +427,21 @@ export async function listActiveJobs(limit?: number): Promise<Job[]> {
     )
     .orderBy(desc(jobs.scrapedAt))
     .limit(safeLimit);
+}
+
+/** Aantal actieve (niet-verwijderde, niet-afgewezen) sollicitaties voor een opdracht. */
+export async function getActivePipelineCount(jobId: string): Promise<number> {
+  const result = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(applications)
+    .where(
+      and(
+        eq(applications.jobId, jobId),
+        isNull(applications.deletedAt),
+        ne(applications.stage, "rejected"),
+      ),
+    );
+  return result[0]?.count ?? 0;
 }
 
 /** Opdracht soft-deleten. Retourneert true als gevonden en verwijderd. */
