@@ -95,7 +95,7 @@ export function JobListItem({
                     className="h-5 rounded-md bg-primary/10 text-primary border-primary/20 px-2 text-[10px] font-medium flex items-center gap-0.5"
                   >
                     <Users className="h-2.5 w-2.5" />
-                    {pipelineCount} in pipeline
+                    {pipelineCount} in de pipeline
                   </Badge>
                 )}
               </div>

@@ -113,6 +113,8 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   ]);
 
   // Build pipeline summary
+  // Pipeline stages: only active stages count toward totalPipeline.
+  // "rejected" is excluded from the active pipeline (consistent with overzicht page).
   const pipelineStages = [
     { key: "new", label: "Nieuw", color: "bg-yellow-500" },
     { key: "screening", label: "Screening", color: "bg-blue-500" },
@@ -124,7 +126,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   for (const row of pipelineCounts) {
     stageCountMap[row.stage] = row.count;
   }
-  const totalPipeline = pipelineCounts.reduce((s, r) => s + r.count, 0);
+  // Active pipeline total excludes rejected — "pipeline" = candidates still in process
+  const totalPipeline = pipelineStages.reduce((s, st) => s + (stageCountMap[st.key] ?? 0), 0);
+  const rejectedCount = stageCountMap.rejected ?? 0;
 
   const related = companyRelated.length > 0 ? companyRelated : genericRelated;
 
@@ -601,7 +605,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                                       ? "Aanbod"
                                       : row.stage === "hired"
                                         ? "Geplaatst"
-                                        : row.stage}
+                                        : row.stage === "rejected"
+                                          ? "Afgewezen"
+                                          : row.stage}
                             </Badge>
                           </div>
                         </div>
@@ -619,6 +625,16 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                         {stageCountMap.new} nieuwe kandidaten screenen
                         <ArrowRight className="h-3 w-3" />
                       </Link>
+                    </div>
+                  )}
+
+                  {/* Rejected count shown separately from active pipeline */}
+                  {rejectedCount > 0 && (
+                    <div className="border-t border-border pt-2.5">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-red-500" />
+                        {rejectedCount} afgewezen
+                      </span>
                     </div>
                   )}
                 </>

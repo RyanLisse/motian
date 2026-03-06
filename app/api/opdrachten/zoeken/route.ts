@@ -56,11 +56,12 @@ export async function GET(req: NextRequest) {
 
   const whereClause = and(...conditions);
 
-  // Pipeline count subquery: count active applications per job
+  // Active pipeline count: excludes rejected (consistent with detail/overzicht pages)
   const pipelineCountSq = sql<number>`(
     select count(*)::int from ${applications}
     where ${applications.jobId} = ${jobs.id}
       and ${applications.deletedAt} is null
+      and ${applications.stage} != 'rejected'
   )`;
 
   const [rows, countResult] = await Promise.all([
