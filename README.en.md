@@ -158,6 +158,8 @@ sequenceDiagram
     Note over DB: Jobs now searchable via<br/>text ILIKE + vector cosine
 ```
 
+Resilience rollout: scrape failures are recorded in `scrape_results`, `0 listings` counts as a failed run, AI enrichment uses retry/backoff, and `scraper-health-check` resets recovered circuit breakers.
+
 ### Multi-Surface Agent Architecture
 
 Motian offers **4 agent surfaces** sharing the same service layer:
@@ -457,6 +459,7 @@ gantt
     section Maintenance
     Data Retention Cleanup    :02:00, 30min
     Vacancy Expiry Check      :03:00, 15min
+    Scraper Health Check      :06:00, 10min
 
     section Scraping (every 4 hours)
     Platform Scrape Pipeline  :00:00, 45min
@@ -480,7 +483,7 @@ gantt
 | **Embeddings**      | GPT-5 Nano `text-embedding-3-small` | 512-dimensional job/candidate vectors     |
 | **CV Parsing & Matching** | Gemini 3 Flash            | CV parsing, enrichment, structured matching    |
 | **Judge Verdict**   | Grok 4                          | Independent AI review of match results         |
-| **Background Jobs** | Trigger.dev v4                  | Cron (every 4h), long-running scrape tasks     |
+| **Background Jobs** | Trigger.dev v4                  | Cron (every 4h), retries, and circuit-breaker health checks |
 | **File Storage**    | Vercel Blob                     | CV files (PDF/DOCX)                            |
 | **Styling**         | Tailwind CSS 4 + shadcn/ui      | Design system with dark/light themes           |
 | **Validation**      | Zod                             | Schema validation for scraped data             |
@@ -905,6 +908,8 @@ The project is configured for Vercel + Trigger.dev deployment:
   - Scrape pipeline — every 4 hours (`0 */4 * * *`)
   - Vacancy expiry check — daily
   - Data retention cleanup — daily
+  - Scraper health check — daily (resets circuit breakers after recent successful runs)
+  - Slack notifications — on-demand task with retry on delivery failures
 - **Environment**: Set all vars from `.env.example` in Vercel + Trigger.dev dashboards
 - **Build**: `pnpm build` (automatic on push)
 

@@ -166,7 +166,7 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 
 - `motian-m4a` — No real-time updates (implement SSE)
 - `motian-572` — Dual unique constraint risk in normalize.ts upsert
-- `motian-6ad` — AI enrichment has no retry logic
+- `motian-6ad` — AI enrichment resilience improved with retry/backoff; audit remaining edge cases
 - `motian-bxq` — GDPR gaps (contacts not covered, no audit trail)
 - `motian-cyf` — No candidate embeddings (vector matching impossible)
 - `motian-d5v` — LIKE wildcards not escaped in search inputs
@@ -177,7 +177,7 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 
 - `motian-ocy` — Migrate middleware.ts to proxy.ts (Next.js 16)
 - `motian-u3r` — Hardcoded platform list in 3+ files
-- `motian-clg` — No monitoring/alerting (circuit breaker is silent)
+- `motian-clg` — Monitoring/alerting partially rolled out; expand beyond current Sentry/Slack/circuit-breaker signals
 - `motian-392` — Search is basic (no full-text tsvector/GIN)
 - `motian-nbh` — Test coverage is structural only
 - `motian-55q` — Sidebar nav missing Interviews and Messages
@@ -196,13 +196,16 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 | DB Schema       | `src/db/schema.ts`                 | 8 tables, pgvector, dual unique indexes on jobs                         |
 | DB Connection   | `src/db/index.ts`                  | Neon serverless driver                                                  |
 | Normalize       | `src/services/normalize.ts`        | Upsert on (platform, externalId), 2nd unique on (platform, externalUrl) |
-| AI Enrichment   | `src/services/ai-enrichment.ts`    | Gemini 2.5 flash-lite, no retry, 100ms delay                            |
+| AI Enrichment   | `src/services/ai-enrichment.ts`    | Gemini 2.5 flash-lite, retry/backoff via `src/lib/retry.ts`, 100ms delay |
+| Retry Helper    | `src/lib/retry.ts`                 | Exponential backoff + jitter for 429/500/503/network errors             |
 | Embeddings      | `src/services/embedding.ts`        | text-embedding-3-small, 512 dims, jobs only                             |
 | Scoring         | `src/services/scoring.ts`          | Keyword matching, extracted weight constants                            |
 | GDPR            | `src/services/gdpr.ts`             | Art 15/17 for candidates only                                           |
 | Jobs Service    | `src/services/jobs.ts`             | ILIKE unescaped, hybridSearch with RRF                                  |
 | Candidates      | `src/services/candidates.ts`       | ILIKE unescaped                                                         |
-| Scrape Pipeline | `src/services/scrape-pipeline.ts`  | Hardcoded switch on platform names                                      |
+| Scrape Pipeline | `src/services/scrape-pipeline.ts`  | Records failures, treats 0 listings as failed, hardcoded platform switch |
+| Scraper Health  | `trigger/scraper-health.ts`        | Daily auto-reset for recovered circuit breakers                         |
+| Slack Alerts    | `trigger/slack-notifications.ts`   | Trigger.dev task with retry for delivery failures                       |
 | Striive Scraper | `src/services/scrapers/striive.ts` | scrapeViaModal is a stub                                                |
 | AI Agent        | `src/ai/agent.ts`                  | System prompt builder, tool registry                                    |
 | AI Tools        | `src/ai/tools/*.ts`                | 7 tools (query, create, trigger, etc.)                                  |

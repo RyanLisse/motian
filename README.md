@@ -158,6 +158,8 @@ sequenceDiagram
     Note over DB: Vacatures nu doorzoekbaar via<br/>tekst ILIKE + vector cosine
 ```
 
+Resilience rollout: scrape fouten worden vastgelegd in `scrape_results`, `0 listings` telt als mislukte run, AI-verrijking gebruikt retry/backoff, en `scraper-health-check` reset herstelde circuit breakers.
+
 ### Multi-Surface Agent Architectuur
 
 Motian biedt **4 agent-oppervlakken** die dezelfde service laag delen:
@@ -457,6 +459,7 @@ gantt
     section Onderhoud
     Data Retentie Opschoning      :02:00, 30min
     Vacature Verloopcontrole      :03:00, 15min
+    Scraper Health Check          :06:00, 10min
 
     section Scraping (elke 4 uur)
     Platform Scrape Pipeline      :00:00, 45min
@@ -480,7 +483,7 @@ gantt
 | **Embeddings**     | GPT-5 Nano `text-embedding-3-small` | 512-dimensionale job/kandidaat vectoren |
 | **CV Parsing & Matching** | Gemini 3 Flash           | CV parsing, verrijking, gestructureerd matchen |
 | **Judge Verdict**  | Grok 4                          | Onafhankelijke AI beoordeling van matches |
-| **Achtergrondtaken** | Trigger.dev v4                | Cron (elke 4u), langlopende scrape taken  |
+| **Achtergrondtaken** | Trigger.dev v4                | Cron (elke 4u), retries en circuit-breaker health checks |
 | **Bestandsopslag** | Vercel Blob                     | CV bestanden (PDF/DOCX)                   |
 | **Styling**        | Tailwind CSS 4 + shadcn/ui      | Design systeem met donker/licht thema     |
 | **Validatie**      | Zod                             | Schema validatie voor gescrapete data     |
@@ -907,6 +910,8 @@ Het project is geconfigureerd voor Vercel + Trigger.dev deployment:
   - Scrape pipeline — elke 4 uur (`0 */4 * * *`)
   - Vacature verloopcontrole — dagelijks
   - Data retentie opschoning — dagelijks
+  - Scraper health check — dagelijks (herstelt circuit breakers na recente succesvolle runs)
+  - Slack notificaties — on-demand taak met retry bij afleverfouten
 - **Omgeving**: Stel alle variabelen uit `.env.example` in via Vercel + Trigger.dev dashboards
 - **Build**: `pnpm build` (automatisch bij push)
 

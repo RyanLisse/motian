@@ -7,7 +7,7 @@ AI-Assisted Recruitment Operations Platform built with Next.js 16, React 19, Dri
 ## System Overview
 
 ```
-External Sources          Trigger.dev (8 scheduled tasks)    Neon PostgreSQL
+External Sources          Trigger.dev (8 tasks)              Neon PostgreSQL
 +--------------+     +-----------------------------+     +-------------------+
 | Striive      |---->| scrape-pipeline (4h)        |---->| jobs              |
 | Flextender   |---->| embeddings-batch (1h)       |     | candidates        |
@@ -39,7 +39,7 @@ CV Upload (SSE)      | slack-notification (on-demand)|     | scraper_configs   |
 
 **Pipeline**: `runScrapePipeline()` → `normalizeAndSaveJobs()` (Zod) → `enrichJobsBatch()` (Gemini) → `generateEmbeddings()` (GPT-5 Nano)
 
-**Error handling**: Scrapers throw on failure (never return `[]`). Pipeline treats `listings.length === 0` as failed. Circuit breaker via `consecutiveFailures` counter in `scraper_configs`.
+**Error handling**: Scrapers throw on failure (never return `[]`). Pipeline treats `listings.length === 0` as failed, records failures in `scrape_results`, AI enrichment uses retry/backoff, and circuit breakers auto-reset via `scraper-health-check` after recent successful runs.
 
 ## CV Analysis Pipeline
 
@@ -140,7 +140,7 @@ Location: `src/mcp/server.ts` + `src/mcp/tools/`
 
 Start: `pnpm mcp`
 
-## Trigger.dev Scheduled Tasks (8 total)
+## Trigger.dev Tasks (8 total)
 
 | Task ID | Schedule | Purpose | File |
 |---------|----------|---------|------|
@@ -168,7 +168,7 @@ Neon PostgreSQL with pgvector extension. 10 tables in `src/db/schema.ts`:
 | Table | Purpose | Key Fields |
 |-------|---------|------------|
 | `jobs` | Vacatures with 512d embeddings | platform, external_id, title, company, requirements, embedding |
-| `candidates` | Professionals with embeddings | name, email, skills, resume_raw, embedding, consent_granted |
+| `candidates` | Candidates with embeddings | name, email, skills, resume_raw, embedding, consent_granted |
 | `job_matches` | AI match scores + reasoning | match_score, recommendation, criteria_breakdown, risk_profile |
 | `applications` | Pipeline: new → screening → interview → offer → hired | stage, job_id, candidate_id, match_id |
 | `interviews` | Scheduled with feedback + rating (1-5) | application_id, scheduled_at, type, status, rating |
