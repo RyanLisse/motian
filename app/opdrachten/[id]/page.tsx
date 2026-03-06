@@ -1,5 +1,16 @@
-import { and, desc, eq, isNull, ne } from "drizzle-orm";
-import { Calendar, Euro, ExternalLink, Link2, MapPin, Monitor, Sparkles } from "lucide-react";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import {
+  ArrowRight,
+  Calendar,
+  Euro,
+  ExternalLink,
+  Kanban,
+  Link2,
+  MapPin,
+  Monitor,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
@@ -8,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { db } from "@/src/db";
-import { jobs } from "@/src/db/schema";
+import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
@@ -59,8 +70,8 @@ export default async function OpdrachtDetailPage({ params }: Props) {
     notFound();
   }
 
-  // Fetch company-related and generic related jobs in parallel
-  const [companyRelated, genericRelated] = await Promise.all([
+  // Fetch company-related jobs, generic related jobs, and pipeline data in parallel
+  const [companyRelated, genericRelated, pipelineCounts, recentPipelineRows] = await Promise.all([
     job.company
       ? db
           .select()
@@ -75,7 +86,49 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       .where(and(isNull(jobs.deletedAt), ne(jobs.id, id)))
       .orderBy(desc(jobs.scrapedAt))
       .limit(4),
+    // Pipeline counts per stage for this job
+    db
+      .select({
+        stage: applications.stage,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(applications)
+      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+      .groupBy(applications.stage),
+    // Recent pipeline entries for this job (last 3)
+    db
+      .select({
+        id: applications.id,
+        stage: applications.stage,
+        candidateName: candidates.name,
+        matchScore: jobMatches.matchScore,
+        createdAt: applications.createdAt,
+      })
+      .from(applications)
+      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
+      .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
+      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+      .orderBy(desc(applications.createdAt))
+      .limit(3),
   ]);
+
+  // Build pipeline summary
+  // Pipeline stages: only active stages count toward totalPipeline.
+  // "rejected" is excluded from the active pipeline (consistent with overzicht page).
+  const pipelineStages = [
+    { key: "new", label: "Nieuw", color: "bg-yellow-500" },
+    { key: "screening", label: "Screening", color: "bg-blue-500" },
+    { key: "interview", label: "Interview", color: "bg-purple-500" },
+    { key: "offer", label: "Aanbod", color: "bg-orange-500" },
+    { key: "hired", label: "Geplaatst", color: "bg-primary" },
+  ];
+  const stageCountMap: Record<string, number> = {};
+  for (const row of pipelineCounts) {
+    stageCountMap[row.stage] = row.count;
+  }
+  // Active pipeline total excludes rejected — "pipeline" = candidates still in process
+  const totalPipeline = pipelineStages.reduce((s, st) => s + (stageCountMap[st.key] ?? 0), 0);
+  const rejectedCount = stageCountMap.rejected ?? 0;
 
   const related = companyRelated.length > 0 ? companyRelated : genericRelated;
 
@@ -442,6 +495,152 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               )}
             </div>
 
+            {/* Pipeline summary — command center */}
+            <div className="bg-card border border-border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Kanban className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Pipeline</h3>
+                  {totalPipeline > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-primary/10 text-primary border-primary/20"
+                    >
+                      {totalPipeline} kandidaten
+                    </Badge>
+                  )}
+                </div>
+                <Link
+                  href={`/pipeline?vacature=${job.id}`}
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  Bekijk pipeline <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+
+              {totalPipeline === 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Nog geen kandidaten in de pipeline.
+                  </p>
+                  <Link
+                    href={`/matching?jobId=${job.id}`}
+                    className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Start met matchen
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {/* Stage progress bar */}
+                  <div className="flex gap-0.5 h-2 rounded-full overflow-hidden bg-muted mb-3">
+                    {pipelineStages.map((stage) => {
+                      const count = stageCountMap[stage.key] ?? 0;
+                      if (count === 0) return null;
+                      const pct = (count / totalPipeline) * 100;
+                      return (
+                        <div
+                          key={stage.key}
+                          className={`${stage.color} transition-all`}
+                          style={{ width: `${pct}%` }}
+                          title={`${stage.label}: ${count}`}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Stage counts */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mb-3">
+                    {pipelineStages.map((stage) => {
+                      const count = stageCountMap[stage.key] ?? 0;
+                      if (count === 0) return null;
+                      return (
+                        <span key={stage.key} className="flex items-center gap-1.5">
+                          <span className={`h-2 w-2 rounded-full ${stage.color}`} />
+                          {stage.label}: {count}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {/* Recent candidates in pipeline */}
+                  {recentPipelineRows.length > 0 && (
+                    <div className="border-t border-border pt-2.5 space-y-2">
+                      {recentPipelineRows.map((row) => (
+                        <div key={row.id} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-foreground truncate">
+                              {row.candidateName ?? "Onbekend"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {row.matchScore != null && (
+                              <Badge
+                                variant="outline"
+                                className={`text-[9px] px-1.5 py-0 ${
+                                  row.matchScore >= 80
+                                    ? "bg-primary/10 text-primary border-primary/20"
+                                    : row.matchScore >= 60
+                                      ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                                      : "bg-muted text-muted-foreground"
+                                }`}
+                              >
+                                {Math.round(row.matchScore)}%
+                              </Badge>
+                            )}
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 border-border text-muted-foreground capitalize"
+                            >
+                              {row.stage === "new"
+                                ? "Nieuw"
+                                : row.stage === "screening"
+                                  ? "Screening"
+                                  : row.stage === "interview"
+                                    ? "Interview"
+                                    : row.stage === "offer"
+                                      ? "Aanbod"
+                                      : row.stage === "hired"
+                                        ? "Geplaatst"
+                                        : row.stage === "rejected"
+                                          ? "Afgewezen"
+                                          : row.stage}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Next best action hint */}
+                  {(stageCountMap.new ?? 0) > 0 && (
+                    <div className="border-t border-border pt-2.5">
+                      <Link
+                        href={`/pipeline?vacature=${job.id}`}
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
+                      >
+                        {stageCountMap.new} nieuwe kandidaten screenen
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Rejected count shown separately from active pipeline */}
+                  {rejectedCount > 0 && (
+                    <div className="border-t border-border pt-2.5">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-red-500" />
+                        {rejectedCount} afgewezen
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
             {/* Mobile opdrachtdetails (visible below xl) */}
             <div className="bg-card border border-border rounded-lg p-4 xl:hidden">
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">
@@ -550,6 +749,44 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
             <Separator className="bg-border" />
 
+            {/* Pipeline mini-summary (sidebar) */}
+            {totalPipeline > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Pipeline
+                </h3>
+                <div className="flex gap-0.5 h-1.5 rounded-full overflow-hidden bg-muted">
+                  {pipelineStages.map((stage) => {
+                    const count = stageCountMap[stage.key] ?? 0;
+                    if (count === 0) return null;
+                    const pct = (count / totalPipeline) * 100;
+                    return (
+                      <div
+                        key={stage.key}
+                        className={`${stage.color}`}
+                        style={{ width: `${pct}%` }}
+                        title={`${stage.label}: ${count}`}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                  {pipelineStages.map((stage) => {
+                    const count = stageCountMap[stage.key] ?? 0;
+                    if (count === 0) return null;
+                    return (
+                      <span key={stage.key} className="flex items-center gap-1">
+                        <span className={`h-1.5 w-1.5 rounded-full ${stage.color}`} />
+                        {count} {stage.label.toLowerCase()}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <Separator className="bg-border" />
+
             {/* Action buttons */}
             <div className="space-y-2">
               <Link href={`/matching?jobId=${job.id}`} className="block w-full">
@@ -568,12 +805,20 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                   </Button>
                 }
               />
-              <Button
-                variant="outline"
-                className="w-full border-primary text-primary hover:bg-primary/10 font-semibold h-10"
-              >
-                Interesse
-              </Button>
+              <Link href={`/pipeline?vacature=${job.id}`} className="block w-full">
+                <Button variant="outline" className="w-full border-border font-semibold h-10">
+                  <Kanban className="h-4 w-4 mr-2" />
+                  Bekijk pipeline
+                  {totalPipeline > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="ml-2 text-[9px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20"
+                    >
+                      {totalPipeline}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
             </div>
           </div>
         </aside>
@@ -586,16 +831,24 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             trigger={
               <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
                 <Link2 className="h-4 w-4 mr-2" />
-                Koppel aan kandidaat
+                Koppelen
               </Button>
             }
           />
-          <Button
-            variant="outline"
-            className="flex-1 border-primary text-primary hover:bg-primary/10 font-semibold h-11"
-          >
-            Interesse
-          </Button>
+          <Link href={`/pipeline?vacature=${job.id}`} className="flex-1">
+            <Button variant="outline" className="w-full border-border font-semibold h-11">
+              <Kanban className="h-4 w-4 mr-2" />
+              Pipeline
+              {totalPipeline > 0 && (
+                <Badge
+                  variant="outline"
+                  className="ml-1 text-[9px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20"
+                >
+                  {totalPipeline}
+                </Badge>
+              )}
+            </Button>
+          </Link>
         </div>
       </div>
     </DroppableVacancy>

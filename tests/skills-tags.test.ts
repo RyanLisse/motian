@@ -47,4 +47,18 @@ describe("Skills tags component", () => {
     expect(source).toContain("text-primary");
     expect(source).toContain("bg-card");
   });
+
+  it("shows evidence affordance for explainability", () => {
+    const source = readFile("components/skills-tags.tsx");
+    expect(source).toContain("Bron: CV-analyse");
+    expect(source).toContain("TooltipContent");
+    expect(source).toContain("Info");
+    expect(source).toContain("proficiencyLabels");
+  });
+
+  it("supports active skill highlighting for linked experience filtering", () => {
+    const source = readFile("components/skills-tags.tsx");
+    expect(source).toContain("activeSkill");
+    expect(source).toContain("onSkillClick");
+  });
 });

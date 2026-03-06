@@ -4,6 +4,7 @@ import {
   Bookmark,
   Briefcase,
   Globe,
+  Info,
   Mail,
   MessageCircle,
   Phone,
@@ -15,17 +16,20 @@ import { CandidateNotes } from "@/components/candidate-notes";
 import { EmploymentCard } from "@/components/candidate-profile/employment-card";
 import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
 import { OpenToOffersRing } from "@/components/candidate-profile/open-to-offers-ring";
+import { SkillsExperienceSection } from "@/components/candidate-profile/skills-experience-section";
 import { CvDocumentViewerLazy } from "@/components/cv-document-viewer-lazy";
 import { CvDropZone } from "@/components/cv-drop-zone";
 import { DeleteCandidateButton } from "@/components/delete-candidate-button";
 import { EditCandidateFields } from "@/components/edit-candidate-fields";
 import { SkillsRadar } from "@/components/skills-radar";
-import { SkillsTags } from "@/components/skills-tags";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { db } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
-import type { StructuredSkills } from "@/src/schemas/candidate-intelligence";
+import {
+  type StructuredSkills,
+  structuredSkillsSchema,
+} from "@/src/schemas/candidate-intelligence";
 
 export const dynamic = "force-dynamic";
 
@@ -156,7 +160,10 @@ export default async function ProfessionalDetailPage({ params }: Props) {
   }
 
   const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
-  const structuredSkills = candidate.skillsStructured as StructuredSkills | null;
+  const structuredSkillsParsed = structuredSkillsSchema.safeParse(candidate.skillsStructured);
+  const structuredSkills: StructuredSkills | null = structuredSkillsParsed.success
+    ? structuredSkillsParsed.data
+    : null;
   const experienceEntries = getExperienceEntries(candidate.experience);
   const languages = getLanguageSkills(candidate.languageSkills);
   const yearsExp = computeYearsExperience(candidate.experience);
@@ -172,6 +179,34 @@ export default async function ProfessionalDetailPage({ params }: Props) {
     score: row.match.matchScore,
     jobId: row.job?.id,
   }));
+
+  /** Human-friendly recommendation label */
+  const recommendationLabel = (rec: string | null): string => {
+    switch (rec) {
+      case "go":
+        return "Aanbevolen";
+      case "conditional":
+        return "Voorwaardelijk";
+      case "no-go":
+        return "Niet aanbevolen";
+      default:
+        return "";
+    }
+  };
+
+  /** Color class for recommendation */
+  const recommendationColor = (rec: string | null): string => {
+    switch (rec) {
+      case "go":
+        return "text-primary";
+      case "conditional":
+        return "text-yellow-600 dark:text-yellow-400";
+      case "no-go":
+        return "text-red-500";
+      default:
+        return "text-muted-foreground";
+    }
+  };
 
   return (
     <CvDropZone candidateId={candidate.id}>
@@ -250,20 +285,29 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 </div>
               </section>
 
-              {/* Employments */}
-              {experienceEntries.length > 0 && (
-                <section>
-                  <h2 className="text-lg font-semibold text-foreground mb-3">Werkervaring</h2>
-                  <div className="space-y-3">
-                    {experienceEntries.map((entry, i) => (
-                      <EmploymentCard
-                        key={`${entry.company ?? ""}-${entry.title ?? ""}-${i}`}
-                        entry={entry}
-                        location={entry.location ?? candidate.location ?? undefined}
-                      />
-                    ))}
-                  </div>
-                </section>
+              {/* Skills + Employments — unified interactive section */}
+              {structuredSkills &&
+              (structuredSkills.hard.length > 0 || structuredSkills.soft.length > 0) ? (
+                <SkillsExperienceSection
+                  experienceEntries={experienceEntries}
+                  structuredSkills={structuredSkills}
+                  candidateLocation={candidate.location}
+                />
+              ) : (
+                experienceEntries.length > 0 && (
+                  <section>
+                    <h2 className="text-lg font-semibold text-foreground mb-3">Werkervaring</h2>
+                    <div className="space-y-3">
+                      {experienceEntries.map((entry, i) => (
+                        <EmploymentCard
+                          key={`${entry.company ?? ""}-${entry.title ?? ""}-${i}`}
+                          entry={entry}
+                          location={entry.location ?? candidate.location ?? undefined}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )
               )}
 
               <EditCandidateFields
@@ -296,8 +340,12 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 </div>
                 {matchRows.length === 0 ? (
                   <div className="rounded-xl border border-border bg-card p-6 text-center">
+                    <Sparkles className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">
                       Nog geen matches voor deze kandidaat
+                    </p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">
+                      Matches worden automatisch berekend wanneer vacatures beschikbaar zijn
                     </p>
                   </div>
                 ) : (
@@ -306,76 +354,118 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                       <MatchScoresChart data={matchChartData} />
                     </div>
                     <div className="space-y-3">
-                      {matchRows.map((row) => (
-                        <div
-                          key={row.match.id}
-                          className="rounded-xl border border-border bg-card p-4 hover:border-primary/40 hover:bg-accent transition-colors"
-                        >
-                          <div className="flex items-start justify-between gap-3 mb-3">
-                            <div className="flex-1 min-w-0">
-                              {row.job ? (
-                                <Link
-                                  href={`/opdrachten/${row.job.id}`}
-                                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
-                                >
-                                  {row.job.title}
-                                </Link>
-                              ) : (
-                                <span className="text-sm font-semibold text-muted-foreground">
-                                  Vacature verwijderd
-                                </span>
-                              )}
-                              {row.job?.company && (
-                                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                                  <Briefcase className="h-3 w-3" />
-                                  {row.job.company}
+                      {matchRows.map((row) => {
+                        const rec = row.match.recommendation;
+                        const recConf = row.match.recommendationConfidence;
+                        const model = row.match.assessmentModel;
+
+                        return (
+                          <details
+                            key={row.match.id}
+                            className="group rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-accent transition-colors"
+                          >
+                            <summary className="p-4 cursor-pointer list-none">
+                              <div className="flex items-start justify-between gap-3 mb-3">
+                                <div className="flex-1 min-w-0">
+                                  {row.job ? (
+                                    <Link
+                                      href={`/opdrachten/${row.job.id}`}
+                                      className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                                    >
+                                      {row.job.title}
+                                    </Link>
+                                  ) : (
+                                    <span className="text-sm font-semibold text-muted-foreground">
+                                      Vacature verwijderd
+                                    </span>
+                                  )}
+                                  {row.job?.company && (
+                                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                                      <Briefcase className="h-3 w-3" />
+                                      {row.job.company}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {rec && (
+                                    <span
+                                      className={`text-[10px] font-medium ${recommendationColor(rec)}`}
+                                    >
+                                      {recommendationLabel(rec)}
+                                    </span>
+                                  )}
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] ${statusColors[row.match.status] ?? "border-border text-muted-foreground"}`}
+                                  >
+                                    {statusLabels[row.match.status] ?? row.match.status}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="mb-1">
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="text-muted-foreground">Match score</span>
+                                  <span
+                                    className={
+                                      row.match.matchScore >= 80
+                                        ? "text-primary font-medium"
+                                        : row.match.matchScore >= 60
+                                          ? "text-yellow-500 font-medium"
+                                          : "text-red-500 font-medium"
+                                    }
+                                  >
+                                    {Math.round(row.match.matchScore)}%
+                                  </span>
+                                </div>
+                                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      row.match.matchScore >= 80
+                                        ? "bg-primary"
+                                        : row.match.matchScore >= 60
+                                          ? "bg-yellow-500"
+                                          : "bg-red-500"
+                                    }`}
+                                    style={{
+                                      width: `${Math.min(100, Math.round(row.match.matchScore))}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              {row.match.reasoning && (
+                                <p className="text-xs text-muted-foreground line-clamp-2 mt-2 group-open:hidden">
+                                  {row.match.reasoning}
                                 </p>
                               )}
+                            </summary>
+
+                            {/* Expanded detail */}
+                            <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+                              {row.match.reasoning && (
+                                <div>
+                                  <p className="text-xs font-medium text-foreground mb-1">
+                                    Toelichting
+                                  </p>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {row.match.reasoning}
+                                  </p>
+                                </div>
+                              )}
+                              {/* Confidence + model provenance */}
+                              <div className="flex items-center gap-3 text-[10px] text-muted-foreground/70 pt-1 border-t border-border/30">
+                                <Info className="h-3 w-3 shrink-0" />
+                                {recConf != null && (
+                                  <span>Betrouwbaarheid: {Math.round(recConf)}%</span>
+                                )}
+                                {model && <span>Model: {model}</span>}
+                                {recConf == null && !model && (
+                                  <span>Geen aanvullende metadata</span>
+                                )}
+                              </div>
                             </div>
-                            <Badge
-                              variant="outline"
-                              className={`text-[10px] shrink-0 ${statusColors[row.match.status] ?? "border-border text-muted-foreground"}`}
-                            >
-                              {statusLabels[row.match.status] ?? row.match.status}
-                            </Badge>
-                          </div>
-                          <div className="mb-2">
-                            <div className="flex items-center justify-between text-xs mb-1">
-                              <span className="text-muted-foreground">Match score</span>
-                              <span
-                                className={
-                                  row.match.matchScore >= 80
-                                    ? "text-primary font-medium"
-                                    : row.match.matchScore >= 60
-                                      ? "text-yellow-500 font-medium"
-                                      : "text-red-500 font-medium"
-                                }
-                              >
-                                {Math.round(row.match.matchScore)}%
-                              </span>
-                            </div>
-                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  row.match.matchScore >= 80
-                                    ? "bg-primary"
-                                    : row.match.matchScore >= 60
-                                      ? "bg-yellow-500"
-                                      : "bg-red-500"
-                                }`}
-                                style={{
-                                  width: `${Math.min(100, Math.round(row.match.matchScore))}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                          {row.match.reasoning && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
-                              {row.match.reasoning}
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                          </details>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -426,14 +516,11 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                     structuredSkills &&
                     (structuredSkills.hard.length > 0 || structuredSkills.soft.length > 0)
                   ) {
+                    // Structured skills shown in unified section (left column);
+                    // sidebar shows radar only for quick overview
                     return (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 space-y-4">
-                        <div className="min-h-[200px]">
-                          <SkillsRadar skills={structuredSkills} />
-                        </div>
-                        <div>
-                          <SkillsTags skills={structuredSkills} />
-                        </div>
+                      <div className="min-h-[200px]">
+                        <SkillsRadar skills={structuredSkills} />
                       </div>
                     );
                   }

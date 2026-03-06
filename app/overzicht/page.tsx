@@ -5,17 +5,22 @@ import {
   BarChart3,
   Briefcase,
   Building2,
+  CheckCircle2,
   Clock,
+  Filter,
+  Inbox,
+  Kanban,
   MapPin,
   RefreshCw,
   TrendingUp,
+  Users,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
-import { jobs, scrapeResults, scraperConfigs } from "@/src/db/schema";
+import { applications, jobs, scrapeResults, scraperConfigs } from "@/src/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -24,63 +29,92 @@ export default async function OverzichtPage() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   // Fetch all dashboard data in parallel (consolidated counts to reduce DB connections)
-  const [platformCounts, recentJobs, activeScrapers, recentScrapes, topCompanies, locationCounts] =
-    await Promise.all([
-      // Jobs per platform (includes weeklyNew to eliminate separate jobStats query)
-      db
-        .select({
-          platform: jobs.platform,
-          count: sql<number>`count(*)::int`,
-          weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
-        })
-        .from(jobs)
-        .where(isNull(jobs.deletedAt))
-        .groupBy(jobs.platform)
-        .orderBy(sql`count(*) desc`),
-      // Last 5 jobs
-      db
-        .select({
-          id: jobs.id,
-          title: jobs.title,
-          company: jobs.company,
-          platform: jobs.platform,
-          location: jobs.location,
-          scrapedAt: jobs.scrapedAt,
-        })
-        .from(jobs)
-        .where(isNull(jobs.deletedAt))
-        .orderBy(desc(jobs.scrapedAt))
-        .limit(5),
-      // Active scraper configs
-      db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
-      // Recent scrape results
-      db.select().from(scrapeResults).orderBy(desc(scrapeResults.runAt)).limit(5),
-      // Top companies by job count
-      db
-        .select({
-          company: jobs.company,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(jobs)
-        .where(and(isNull(jobs.deletedAt), sql`${jobs.company} is not null`))
-        .groupBy(jobs.company)
-        .orderBy(sql`count(*) desc`)
-        .limit(5),
-      // Top locations
-      db
-        .select({
-          province: jobs.province,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(jobs)
-        .where(and(isNull(jobs.deletedAt), sql`${jobs.province} is not null`))
-        .groupBy(jobs.province)
-        .orderBy(sql`count(*) desc`)
-        .limit(5),
-    ]);
+  const [
+    platformCounts,
+    recentJobs,
+    activeScrapers,
+    recentScrapes,
+    topCompanies,
+    locationCounts,
+    pipelineStageCounts,
+  ] = await Promise.all([
+    // Jobs per platform (includes weeklyNew to eliminate separate jobStats query)
+    db
+      .select({
+        platform: jobs.platform,
+        count: sql<number>`count(*)::int`,
+        weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
+      })
+      .from(jobs)
+      .where(isNull(jobs.deletedAt))
+      .groupBy(jobs.platform)
+      .orderBy(sql`count(*) desc`),
+    // Last 5 jobs
+    db
+      .select({
+        id: jobs.id,
+        title: jobs.title,
+        company: jobs.company,
+        platform: jobs.platform,
+        location: jobs.location,
+        scrapedAt: jobs.scrapedAt,
+      })
+      .from(jobs)
+      .where(isNull(jobs.deletedAt))
+      .orderBy(desc(jobs.scrapedAt))
+      .limit(5),
+    // Active scraper configs
+    db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
+    // Recent scrape results
+    db.select().from(scrapeResults).orderBy(desc(scrapeResults.runAt)).limit(5),
+    // Top companies by job count
+    db
+      .select({
+        company: jobs.company,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(jobs)
+      .where(and(isNull(jobs.deletedAt), sql`${jobs.company} is not null`))
+      .groupBy(jobs.company)
+      .orderBy(sql`count(*) desc`)
+      .limit(5),
+    // Top locations
+    db
+      .select({
+        province: jobs.province,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(jobs)
+      .where(and(isNull(jobs.deletedAt), sql`${jobs.province} is not null`))
+      .groupBy(jobs.province)
+      .orderBy(sql`count(*) desc`)
+      .limit(5),
+    // Pipeline stage counts
+    db
+      .select({
+        stage: applications.stage,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(applications)
+      .where(isNull(applications.deletedAt))
+      .groupBy(applications.stage),
+  ]);
 
   const totalJobs = platformCounts.reduce((s, p) => s + p.count, 0);
   const weeklyNew = platformCounts.reduce((s, p) => s + p.weeklyNew, 0);
+
+  // Pipeline stats
+  const pipelineMap: Record<string, number> = {};
+  for (const row of pipelineStageCounts) {
+    pipelineMap[row.stage] = row.count;
+  }
+  const pipelineNew = pipelineMap.new ?? 0;
+  const pipelineScreening = pipelineMap.screening ?? 0;
+  const pipelineInterview = pipelineMap.interview ?? 0;
+  const pipelineOffer = pipelineMap.offer ?? 0;
+  const pipelineHired = pipelineMap.hired ?? 0;
+  const pipelineTotal =
+    pipelineNew + pipelineScreening + pipelineInterview + pipelineOffer + pipelineHired;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -122,6 +156,70 @@ export default async function OverzichtPage() {
             href="/scraper"
           />
         </div>
+
+        {/* Pipeline overview */}
+        {pipelineTotal > 0 && (
+          <DashboardCard
+            title="Pipeline overzicht"
+            icon={<Kanban className="h-4 w-4" />}
+            action={
+              <Link
+                href="/pipeline"
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                Bekijk pipeline <ArrowRight className="h-3 w-3" />
+              </Link>
+            }
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <KPICard
+                icon={<Inbox className="h-4 w-4" />}
+                label="Nieuw"
+                value={pipelineNew}
+                compact
+                iconClassName="text-yellow-500/60"
+                valueClassName="text-yellow-500"
+                href="/pipeline?fase=new&weergave=lijst"
+              />
+              <KPICard
+                icon={<Filter className="h-4 w-4" />}
+                label="Screening"
+                value={pipelineScreening}
+                compact
+                iconClassName="text-blue-500/60"
+                valueClassName="text-blue-500"
+                href="/pipeline?fase=screening&weergave=lijst"
+              />
+              <KPICard
+                icon={<Users className="h-4 w-4" />}
+                label="Interview"
+                value={pipelineInterview}
+                compact
+                iconClassName="text-purple-500/60"
+                valueClassName="text-purple-500"
+                href="/pipeline?fase=interview&weergave=lijst"
+              />
+              <KPICard
+                icon={<Briefcase className="h-4 w-4" />}
+                label="Aanbod"
+                value={pipelineOffer}
+                compact
+                iconClassName="text-orange-500/60"
+                valueClassName="text-orange-500"
+                href="/pipeline?fase=offer&weergave=lijst"
+              />
+              <KPICard
+                icon={<CheckCircle2 className="h-4 w-4" />}
+                label="Geplaatst"
+                value={pipelineHired}
+                compact
+                iconClassName="text-primary/60"
+                valueClassName="text-primary"
+                href="/pipeline?fase=hired&weergave=lijst"
+              />
+            </div>
+          </DashboardCard>
+        )}
 
         {/* Main grid: 2 columns */}
         <div className="grid gap-6 lg:grid-cols-3">

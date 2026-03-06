@@ -333,7 +333,8 @@ describe("Zod schema coverage", () => {
           source,
         ) ||
         // Simpler catch-all: any export that references z. on the right-hand side
-        /export\s+const\s+\w+\s*=\s*z\./.test(source);
+        // Allow optional whitespace (including newlines) between z and . for chained style
+        /export\s+const\s+\w+\s*=\s*z\s*\./.test(source);
 
       if (!hasZodExport) {
         filesWithNoSchema.push(path.relative(ROOT, file));

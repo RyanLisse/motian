@@ -2,7 +2,7 @@ import { desc, isNull, sql } from "drizzle-orm";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { db } from "@/src/db";
-import { jobs } from "@/src/db/schema";
+import { applications, jobs } from "@/src/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +18,13 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
         platform: jobs.platform,
         workArrangement: jobs.workArrangement,
         contractType: jobs.contractType,
+        // Active pipeline count: excludes rejected (consistent with detail/overzicht pages)
+        pipelineCount: sql<number>`(
+          select count(*)::int from ${applications}
+          where ${applications.jobId} = ${jobs.id}
+            and ${applications.deletedAt} is null
+            and ${applications.stage} != 'rejected'
+        )`,
       })
       .from(jobs)
       .where(isNull(jobs.deletedAt))

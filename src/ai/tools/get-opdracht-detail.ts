@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { withJobCanonicalSkills } from "@/src/services/esco";
-import { getJobById } from "@/src/services/jobs";
+import { getActivePipelineCount, getJobById } from "@/src/services/jobs";
 
 export const getOpdrachtDetail = tool({
   description:
@@ -12,10 +12,18 @@ export const getOpdrachtDetail = tool({
   execute: async ({ id }) => {
     const job = await getJobById(id);
     if (!job) return { error: "Opdracht niet gevonden" };
-    const jobWithCanonicalSkills = await withJobCanonicalSkills(job);
+
+    // Fetch canonical skills and active pipeline count in parallel
+    const [jobWithCanonicalSkills, pipelineCount] = await Promise.all([
+      withJobCanonicalSkills(job),
+      getActivePipelineCount(id),
+    ]);
 
     // Return rich detail, excluding rawPayload and embedding (too large)
     const { rawPayload, embedding, ...detail } = jobWithCanonicalSkills;
-    return detail;
+    return {
+      ...detail,
+      pipelineCount,
+    };
   },
 });

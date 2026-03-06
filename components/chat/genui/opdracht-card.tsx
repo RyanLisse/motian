@@ -15,6 +15,7 @@ type JobOutput = {
   rateMax?: number | null;
   applicationDeadline?: string | Date | null;
   postedAt?: string | Date | null;
+  pipelineCount?: number;
 };
 
 function isJobOutput(o: unknown): o is JobOutput {
@@ -50,9 +51,13 @@ export function OpdrachtGenUICard({ output }: { output: unknown }) {
     applicationDeadline: toDate(output.applicationDeadline),
     postedAt: toDate(output.postedAt),
   };
+  const pipelineCount =
+    typeof (output as JobOutput).pipelineCount === "number"
+      ? (output as JobOutput).pipelineCount
+      : undefined;
   return (
     <div className="my-1.5">
-      <JobCard job={job} />
+      <JobCard job={job} pipelineCount={pipelineCount} />
     </div>
   );
 }

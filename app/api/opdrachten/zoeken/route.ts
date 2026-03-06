@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
-import { jobs } from "@/src/db/schema";
+import { applications, jobs } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
 import { parsePagination } from "@/src/lib/pagination";
 
@@ -56,6 +56,14 @@ export async function GET(req: NextRequest) {
 
   const whereClause = and(...conditions);
 
+  // Active pipeline count: excludes rejected (consistent with detail/overzicht pages)
+  const pipelineCountSq = sql<number>`(
+    select count(*)::int from ${applications}
+    where ${applications.jobId} = ${jobs.id}
+      and ${applications.deletedAt} is null
+      and ${applications.stage} != 'rejected'
+  )`;
+
   const [rows, countResult] = await Promise.all([
     db
       .select({
@@ -66,6 +74,7 @@ export async function GET(req: NextRequest) {
         platform: jobs.platform,
         workArrangement: jobs.workArrangement,
         contractType: jobs.contractType,
+        pipelineCount: pipelineCountSq,
       })
       .from(jobs)
       .where(whereClause)

@@ -230,7 +230,8 @@ describe("Skills graph — tag cloud", () => {
 
   it("shows empty state message", () => {
     const source = readFile("components/skills-tags.tsx");
-    expect(source).toContain("Geen vaardigheden");
+    expect(source).toContain("Geen harde vaardigheden gevonden in het CV");
+    expect(source).toContain("Geen zachte vaardigheden gevonden in het CV");
   });
 
   it("renders proficiency dots 0-4", () => {
@@ -250,9 +251,9 @@ describe("Skills graph — profile integration", () => {
     expect(source).toContain("SkillsRadar");
   });
 
-  it("candidate profile page imports SkillsTags", () => {
+  it("candidate profile page imports SkillsExperienceSection", () => {
     const source = readFile("app/professionals/[id]/page.tsx");
-    expect(source).toContain("SkillsTags");
+    expect(source).toContain("SkillsExperienceSection");
   });
 
   it("candidate profile reads skillsStructured field", () => {
@@ -260,9 +261,9 @@ describe("Skills graph — profile integration", () => {
     expect(source).toContain("skillsStructured");
   });
 
-  it("casts skillsStructured to StructuredSkills type", () => {
+  it("validates skillsStructured defensively with safeParse", () => {
     const source = readFile("app/professionals/[id]/page.tsx");
-    expect(source).toContain("as StructuredSkills");
+    expect(source).toContain("structuredSkillsSchema.safeParse");
   });
 
   it("checks for valid structured skills before rendering", () => {
@@ -271,10 +272,10 @@ describe("Skills graph — profile integration", () => {
     expect(source).toContain("structuredSkills.hard.length > 0");
   });
 
-  it("renders radar and tags in grid layout", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
-    expect(source).toContain("grid");
-    expect(source).toContain("md:grid-cols-2");
+  it("renders skills tags inside the shared recruiter decision section", () => {
+    const source = readFile("components/candidate-profile/skills-experience-section.tsx");
+    expect(source).toContain("SkillsTags");
+    expect(source).toContain("EmploymentCard");
   });
 
   it("wraps components in card styling", () => {
@@ -389,7 +390,7 @@ describe("Skills graph — integration scenarios", () => {
 
   it("profile page dynamically picks component based on data presence", () => {
     const source = readFile("app/professionals/[id]/page.tsx");
-    expect(source).toContain("(() => {");
-    expect(source).toContain("return (");
+    expect(source).toContain("structuredSkills &&");
+    expect(source).toContain("SkillsExperienceSection");
   });
 });

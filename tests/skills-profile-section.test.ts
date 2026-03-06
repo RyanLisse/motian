@@ -13,9 +13,9 @@ describe("Skills section on professional detail page", () => {
     expect(source).toContain("SkillsRadar");
   });
 
-  it("imports SkillsTags component", () => {
+  it("imports SkillsExperienceSection for the unified recruiter flow", () => {
     const source = readFile("app/professionals/[id]/page.tsx");
-    expect(source).toContain("SkillsTags");
+    expect(source).toContain("SkillsExperienceSection");
   });
 
   it("reads skillsStructured from candidate", () => {
@@ -31,5 +31,11 @@ describe("Skills section on professional detail page", () => {
   it("has empty state message in Dutch", () => {
     const source = readFile("app/professionals/[id]/page.tsx");
     expect(source).toContain("Nog geen vaardigheden");
+  });
+
+  it("keeps the interactive skill filters inside the shared section component", () => {
+    const source = readFile("components/candidate-profile/skills-experience-section.tsx");
+    expect(source).toContain("activeSkill");
+    expect(source).toContain("Filter wissen");
   });
 });
