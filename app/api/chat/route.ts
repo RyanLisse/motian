@@ -1,4 +1,4 @@
-import { convertToModelMessages, stepCountIs } from "ai";
+import { convertToModelMessages, generateObject, stepCountIs } from "ai";
 import { after } from "next/server";
 import { z } from "zod";
 import { buildSystemPrompt, recruitmentTools } from "@/src/ai/agent";
@@ -54,12 +54,30 @@ export async function POST(req: Request) {
     const preview =
       typeof lastUserMsg?.content === "string" ? lastUserMsg.content.slice(0, 100) : null;
 
-    // Extract title from first user message (only set once)
     const firstUserMsg = body.messages.find((m: { role: string }) => m.role === "user");
-    const title =
-      typeof firstUserMsg?.content === "string" ? firstUserMsg.content.slice(0, 60) : null;
 
     after(async () => {
+      let title: string | null = null;
+
+      if (body.messages.length === 1 && firstUserMsg && typeof firstUserMsg.content === "string") {
+        try {
+          const titleResult = await generateObject({
+            model: resolveChatModel("gemini-3.1-flash-lite"),
+            schema: z.object({
+              title: z
+                .string()
+                .max(50)
+                .describe("Korte titel voor dit gesprek in 3-6 woorden, Nederlands"),
+            }),
+            prompt: `Genereer een korte titel (3-6 woorden) voor dit gesprek. Gebruikersvraag: "${firstUserMsg.content.slice(0, 200)}"`,
+          });
+          title = titleResult.object.title;
+        } catch (err) {
+          console.error("[chat] Title generation failed:", err);
+          title = firstUserMsg.content.slice(0, 50);
+        }
+      }
+
       try {
         await db
           .insert(chatSessions)
