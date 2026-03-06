@@ -94,10 +94,12 @@ export const jobs = pgTable(
     // === Kern informatie ===
     title: text("title").notNull(),
     company: text("company"), // Opdrachtgever: "Belastingdienst", "Rabobank"
+    endClient: text("end_client"), // Eindopdrachtgever / aanbestedende dienst
     contractLabel: text("contract_label"), // Broker/tussenpersoon: "Between", "Striive"
     location: text("location"), // "Utrecht - Utrecht", "Den Haag - Zuid-Holland"
     province: text("province"), // Geëxtraheerd uit location
     description: text("description"),
+    status: text("status").notNull().default("open"), // "open" | "closed"
 
     // === Tarieven & Posities ===
     rateMin: integer("rate_min"),
@@ -165,6 +167,9 @@ export const jobs = pgTable(
     ),
     titleBtreeIdx: index("idx_jobs_title_btree").on(table.title),
     platformIdx: index("idx_jobs_platform").on(table.platform),
+    statusIdx: index("idx_jobs_status").on(table.status),
+    endClientIdx: index("idx_jobs_end_client").on(table.endClient),
+    statusEndClientIdx: index("idx_jobs_status_end_client").on(table.status, table.endClient),
     scrapedAtIdx: index("idx_jobs_scraped_at").on(table.scrapedAt),
     deletedAtIdx: index("idx_jobs_deleted_at").on(table.deletedAt),
     deadlineIdx: index("idx_jobs_deadline").on(table.applicationDeadline),

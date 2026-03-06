@@ -15,6 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DEFAULT_OPDRACHTEN_LIMIT,
+  MAX_OPDRACHTEN_LIMIT,
+  normalizeOpdrachtenStatus,
+  OPDRACHTEN_PAGE_SIZE_OPTIONS,
+} from "@/src/lib/opdrachten-filters";
 
 interface SidebarJob {
   id: string;
@@ -31,6 +37,7 @@ interface SearchResponse {
   jobs: SidebarJob[];
   total: number;
   page: number;
+  perPage: number;
   totalPages: number;
 }
 
@@ -38,6 +45,7 @@ interface OpdrachtenSidebarProps {
   jobs: SidebarJob[];
   totalCount: number;
   platforms: string[];
+  endClients: string[];
 }
 
 const PROVINCES = [
@@ -68,27 +76,43 @@ function pushOpdrachtenParams(
   overrides: Record<string, string>,
 ) {
   const p = new URLSearchParams(searchParams);
-  for (const [k, v] of Object.entries(overrides)) p.set(k, v);
-  router.push(`/opdrachten?${p.toString()}`);
+  for (const [k, v] of Object.entries(overrides)) {
+    if (k === "pagina") p.delete("page");
+    if (k === "limit") p.delete("perPage");
+
+    if (v) {
+      p.set(k, v);
+    } else {
+      p.delete(k);
+    }
+  }
+  const query = p.toString();
+  router.push(query ? `/opdrachten?${query}` : "/opdrachten");
 }
 
 async function searchJobs(
   q: string,
   platform: string,
+  endClient: string,
+  status: string,
   provincie: string,
   contractType: string,
   tariefMin: string,
   tariefMax: string,
   page: number,
+  limit: number,
 ): Promise<SearchResponse> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (platform) params.set("platform", platform);
+  if (endClient) params.set("endClient", endClient);
+  if (status !== "open") params.set("status", status);
   if (provincie) params.set("provincie", provincie);
   if (contractType) params.set("contractType", contractType);
   if (tariefMin) params.set("tariefMin", tariefMin);
   if (tariefMax) params.set("tariefMax", tariefMax);
   if (page > 1) params.set("pagina", String(page));
+  if (limit !== DEFAULT_OPDRACHTEN_LIMIT) params.set("limit", String(limit));
 
   const res = await fetch(`/api/opdrachten/zoeken?${params.toString()}`);
   if (!res.ok) throw new Error("Search failed");
@@ -99,6 +123,7 @@ export function OpdrachtenSidebar({
   jobs: initialJobs,
   totalCount: initialTotal,
   platforms,
+  endClients,
 }: OpdrachtenSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -110,11 +135,30 @@ export function OpdrachtenSidebar({
   // URL as source of truth for TanStack Query: key and fetch use searchParams so e.g. top-opdrachtgevers link shows correct results immediately
   const q = searchParams.get("q") ?? "";
   const platform = searchParams.get("platform") ?? "";
+  const endClient = searchParams.get("endClient") ?? "";
+  const status = normalizeOpdrachtenStatus(searchParams.get("status"));
   const provincie = searchParams.get("provincie") ?? "";
   const contractType = searchParams.get("contractType") ?? "";
   const tariefMinParam = searchParams.get("tariefMin") ?? "";
   const tariefMaxParam = searchParams.get("tariefMax") ?? "";
-  const pageParam = Math.max(1, Number.parseInt(searchParams.get("pagina") ?? "1", 10) || 1);
+  const pageParam =
+    Math.max(
+      1,
+      Number.parseInt(searchParams.get("pagina") ?? searchParams.get("page") ?? "1", 10),
+    ) || 1;
+  const limitParam =
+    Math.min(
+      MAX_OPDRACHTEN_LIMIT,
+      Math.max(
+        1,
+        Number.parseInt(
+          searchParams.get("limit") ??
+            searchParams.get("perPage") ??
+            String(DEFAULT_OPDRACHTEN_LIMIT),
+          10,
+        ),
+      ),
+    ) || DEFAULT_OPDRACHTEN_LIMIT;
 
   const [inputValue, setInputValue] = useState(q);
   const [sortBy, setSortBy] = useState("nieuwst");
@@ -151,27 +195,36 @@ export function OpdrachtenSidebar({
       "opdrachten-search",
       q,
       platform,
+      endClient,
+      status,
       provincie,
       contractType,
       deferredTariefMin,
       deferredTariefMax,
       pageParam,
+      limitParam,
     ],
     queryFn: () =>
       searchJobs(
         q,
         platform,
+        endClient,
+        status,
         provincie,
         contractType,
         deferredTariefMin,
         deferredTariefMax,
         pageParam,
+        limitParam,
       ),
     placeholderData: (prev) => prev,
     initialData:
       pageParam === 1 &&
+      limitParam === DEFAULT_OPDRACHTEN_LIMIT &&
       !q &&
       !platform &&
+      !endClient &&
+      status === "open" &&
       !provincie &&
       !contractType &&
       !deferredTariefMin &&
@@ -180,13 +233,15 @@ export function OpdrachtenSidebar({
             jobs: initialJobs,
             total: initialTotal,
             page: 1,
-            totalPages: Math.ceil(initialTotal / 10),
+            perPage: DEFAULT_OPDRACHTEN_LIMIT,
+            totalPages: Math.ceil(initialTotal / DEFAULT_OPDRACHTEN_LIMIT),
           }
         : undefined,
   });
 
   const displayJobs = data?.jobs ?? initialJobs;
   const displayTotal = data?.total ?? initialTotal;
+  const displayPerPage = data?.perPage ?? limitParam;
   const totalPages = data?.totalPages ?? 1;
 
   const handleFilterChange = (paramKey: string, value: string) => {
@@ -221,17 +276,58 @@ export function OpdrachtenSidebar({
             onValueChange={(v) => handleFilterChange("platform", v === "__all__" ? "" : v)}
           >
             <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
-              <SelectValue placeholder="Opdrachtgever" />
+              <SelectValue placeholder="Platform" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border">
               <SelectItem value="__all__" className="text-foreground text-xs">
-                Alle opdrachtgevers
+                Alle platforms
               </SelectItem>
               {platforms.map((p) => (
                 <SelectItem key={p} value={p} className="capitalize text-foreground text-xs">
                   {p}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={endClient || undefined}
+            onValueChange={(v) => handleFilterChange("endClient", v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
+              <SelectValue placeholder="Eindopdrachtgever" />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border">
+              <SelectItem value="__all__" className="text-foreground text-xs">
+                Alle eindopdrachtgevers
+              </SelectItem>
+              {endClients.map((client) => (
+                <SelectItem key={client} value={client} className="text-foreground text-xs">
+                  {client}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="px-3 pb-2 flex items-center gap-1.5 shrink-0">
+          <Select
+            value={status}
+            onValueChange={(v) => handleFilterChange("status", v === "open" ? "" : v)}
+          >
+            <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border">
+              <SelectItem value="open" className="text-foreground text-xs">
+                Open
+              </SelectItem>
+              <SelectItem value="closed" className="text-foreground text-xs">
+                Gesloten
+              </SelectItem>
+              <SelectItem value="all" className="text-foreground text-xs">
+                Alles
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -259,11 +355,33 @@ export function OpdrachtenSidebar({
           <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
             {displayTotal} vacatures
           </p>
-          {totalPages > 1 && (
-            <p className="text-[10px] text-muted-foreground">
-              {pageParam}/{totalPages}
-            </p>
-          )}
+          <div className="flex items-center gap-2">
+            <Select
+              value={String(displayPerPage)}
+              onValueChange={(v) =>
+                pushOpdrachtenParams(searchParams, router, {
+                  limit: v === String(DEFAULT_OPDRACHTEN_LIMIT) ? "" : v,
+                  pagina: "1",
+                })
+              }
+            >
+              <SelectTrigger className="h-7 w-[76px] bg-card border-border text-foreground text-[10px] px-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                {OPDRACHTEN_PAGE_SIZE_OPTIONS.map((value) => (
+                  <SelectItem key={value} value={String(value)} className="text-foreground text-xs">
+                    {value} / pg
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {totalPages > 1 && (
+              <p className="text-[10px] text-muted-foreground">
+                {pageParam}/{totalPages}
+              </p>
+            )}
+          </div>
         </div>
 
         <ScrollArea className="flex-1">
@@ -359,7 +477,7 @@ export function OpdrachtenSidebar({
                 htmlFor="opdrachten-opdrachtgever"
                 className="mb-2 block text-sm font-medium text-foreground"
               >
-                Opdrachtgever
+                Platform
               </label>
               <Select
                 value={platform || "__all__"}
@@ -369,17 +487,78 @@ export function OpdrachtenSidebar({
                   id="opdrachten-opdrachtgever"
                   className="h-11 rounded-lg border-border bg-background text-left text-sm"
                 >
-                  <SelectValue placeholder="Alle opdrachtgevers" />
+                  <SelectValue placeholder="Alle platforms" />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
                   <SelectItem value="__all__" className="text-foreground">
-                    Alle opdrachtgevers
+                    Alle platforms
                   </SelectItem>
                   {platforms.map((p) => (
                     <SelectItem key={p} value={p} className="capitalize text-foreground">
                       {p}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="opdrachten-eindopdrachtgever"
+                className="mb-2 block text-sm font-medium text-foreground"
+              >
+                Eindopdrachtgever
+              </label>
+              <Select
+                value={endClient || "__all__"}
+                onValueChange={(v) => handleFilterChange("endClient", v === "__all__" ? "" : v)}
+              >
+                <SelectTrigger
+                  id="opdrachten-eindopdrachtgever"
+                  className="h-11 rounded-lg border-border bg-background text-left text-sm"
+                >
+                  <SelectValue placeholder="Alle eindopdrachtgevers" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="__all__" className="text-foreground">
+                    Alle eindopdrachtgevers
+                  </SelectItem>
+                  {endClients.map((client) => (
+                    <SelectItem key={client} value={client} className="text-foreground">
+                      {client}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="opdrachten-status"
+                className="mb-2 block text-sm font-medium text-foreground"
+              >
+                Status
+              </label>
+              <Select
+                value={status}
+                onValueChange={(v) => handleFilterChange("status", v === "open" ? "" : v)}
+              >
+                <SelectTrigger
+                  id="opdrachten-status"
+                  className="h-11 rounded-lg border-border bg-background text-left text-sm"
+                >
+                  <SelectValue placeholder="Open" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="open" className="text-foreground">
+                    Open
+                  </SelectItem>
+                  <SelectItem value="closed" className="text-foreground">
+                    Gesloten
+                  </SelectItem>
+                  <SelectItem value="all" className="text-foreground">
+                    Alles
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -484,6 +663,27 @@ export function OpdrachtenSidebar({
               {displayTotal} opdrachten weergegeven
             </div>
             <div className="ml-auto flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Per pagina:</span>
+              <Select
+                value={String(displayPerPage)}
+                onValueChange={(v) =>
+                  pushOpdrachtenParams(searchParams, router, {
+                    limit: v === String(DEFAULT_OPDRACHTEN_LIMIT) ? "" : v,
+                    pagina: "1",
+                  })
+                }
+              >
+                <SelectTrigger className="h-10 w-[110px] rounded-full border-border bg-background text-sm font-semibold text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  {OPDRACHTEN_PAGE_SIZE_OPTIONS.map((value) => (
+                    <SelectItem key={value} value={String(value)}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <span className="text-sm text-muted-foreground">Sorteren:</span>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="h-10 w-[210px] rounded-full border-primary/40 bg-background text-sm font-semibold text-primary">

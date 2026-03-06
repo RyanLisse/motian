@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, ne, or, sql } f
 import { db } from "../db";
 import { applications, jobs } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
+import { normalizeOpdrachtenStatus, type OpdrachtenStatus } from "../lib/opdrachten-filters";
 
 // ========== Types ==========
 
@@ -10,6 +11,14 @@ export type Job = typeof jobs.$inferSelect;
 export type SearchJobsOptions = {
   platform?: string;
   limit?: number;
+  endClient?: string;
+  status?: OpdrachtenStatus;
+};
+
+type SearchJobsByTitleOptions = {
+  limit?: number;
+  endClient?: string;
+  status?: OpdrachtenStatus;
 };
 
 // ========== Service Functions ==========
@@ -26,9 +35,19 @@ export async function getJobById(id: string): Promise<Job | null> {
 
 /** Opdrachten zoeken op titel/omschrijving met full-text search (tsvector/GIN).
  *  Falls back to ILIKE if the FTS query produces no results. */
-export async function searchJobsByTitle(query: string, limit?: number): Promise<Job[]> {
-  const safeLimit = Math.min(limit ?? 50, 100);
+export async function searchJobsByTitle(
+  query: string,
+  limitOrOptions?: number | SearchJobsByTitleOptions,
+): Promise<Job[]> {
+  const options =
+    typeof limitOrOptions === "number" ? { limit: limitOrOptions } : (limitOrOptions ?? {});
+  const safeLimit = Math.min(options.limit ?? 50, 100);
   const tsInput = toTsQueryInput(query);
+  const conditions = [buildVisibilityCondition(normalizeOpdrachtenStatus(options.status))];
+
+  if (options.endClient) {
+    conditions.push(buildEndClientCondition(options.endClient));
+  }
 
   // Try full-text search first (uses GIN index)
   if (tsInput) {
@@ -37,7 +56,7 @@ export async function searchJobsByTitle(query: string, limit?: number): Promise<
       .from(jobs)
       .where(
         and(
-          isNull(jobs.deletedAt),
+          ...conditions,
           sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, '')) @@ to_tsquery('dutch', ${tsInput})`,
         ),
       )
@@ -58,7 +77,7 @@ export async function searchJobsByTitle(query: string, limit?: number): Promise<
   return db
     .select()
     .from(jobs)
-    .where(and(isNull(jobs.deletedAt), titleConditions))
+    .where(and(...conditions, titleConditions))
     .orderBy(desc(jobs.scrapedAt))
     .limit(safeLimit);
 }
@@ -67,10 +86,14 @@ export async function searchJobsByTitle(query: string, limit?: number): Promise<
 export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
 
-  const conditions = [isNull(jobs.deletedAt)];
+  const conditions = [buildVisibilityCondition(normalizeOpdrachtenStatus(opts.status))];
 
   if (opts.platform) {
     conditions.push(eq(jobs.platform, opts.platform));
+  }
+
+  if (opts.endClient) {
+    conditions.push(buildEndClientCondition(opts.endClient));
   }
 
   return db
@@ -99,11 +122,36 @@ const sortByMap: Record<ListJobsSortBy, ReturnType<typeof desc>> = {
   startdatum: asc(jobs.startDate),
 };
 
+function buildVisibilityCondition(status: OpdrachtenStatus) {
+  const visibleCondition = isNull(jobs.deletedAt);
+  const openCondition = and(visibleCondition, eq(jobs.status, "open"));
+  const closedCondition = and(visibleCondition, eq(jobs.status, "closed"));
+
+  if (status === "closed") {
+    return closedCondition;
+  }
+
+  if (status === "all") {
+    return visibleCondition;
+  }
+
+  return openCondition;
+}
+
+function buildEndClientCondition(endClient: string) {
+  return or(
+    eq(jobs.endClient, endClient),
+    and(isNull(jobs.endClient), eq(jobs.company, endClient)),
+  );
+}
+
 export async function listJobs(
   opts: {
     limit?: number;
     offset?: number;
     platform?: string;
+    endClient?: string;
+    status?: OpdrachtenStatus;
     q?: string;
     province?: string;
     rateMin?: number;
@@ -122,11 +170,16 @@ export async function listJobs(
 ): Promise<{ data: Job[]; total: number }> {
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = opts.offset ?? 0;
+  const status = normalizeOpdrachtenStatus(opts.status);
 
-  const conditions = [isNull(jobs.deletedAt)];
+  const conditions = [buildVisibilityCondition(status)];
 
   if (opts.platform) {
     conditions.push(eq(jobs.platform, opts.platform));
+  }
+
+  if (opts.endClient) {
+    conditions.push(buildEndClientCondition(opts.endClient));
   }
 
   if (opts.q) {
@@ -265,6 +318,8 @@ export async function hybridSearch(
   opts: {
     limit?: number;
     platform?: string;
+    endClient?: string;
+    status?: OpdrachtenStatus;
     province?: string;
     rateMin?: number;
     rateMax?: number;
@@ -278,13 +333,18 @@ export async function hybridSearch(
 ): Promise<Array<Job & { score: number }>> {
   const limit = Math.min(opts.limit ?? 20, 100);
   const k = 60; // RRF constant — higher = more weight to lower-ranked results
+  const status = normalizeOpdrachtenStatus(opts.status);
 
   // Fetch more candidates to allow for post-filtering
   const fetchSize = Math.min(limit * 3, 100);
 
   // Run text search + vector search in parallel
   const [textResults, vectorResults] = await Promise.all([
-    searchJobsByTitle(query, fetchSize),
+    searchJobsByTitle(query, {
+      limit: fetchSize,
+      endClient: opts.endClient,
+      status,
+    }),
     (async () => {
       try {
         const { findSimilarJobs } = await import("./embedding");
@@ -316,10 +376,19 @@ export async function hybridSearch(
   // Fetch full job objects for any vector-only results
   const vectorOnlyIds = [...scoreMap.entries()].filter(([, v]) => !v.job).map(([id]) => id);
   if (vectorOnlyIds.length > 0) {
+    const conditions = [
+      buildVisibilityCondition(status),
+      or(...vectorOnlyIds.map((id) => eq(jobs.id, id))),
+    ];
+
+    if (opts.endClient) {
+      conditions.splice(1, 0, buildEndClientCondition(opts.endClient));
+    }
+
     const fetched = await db
       .select()
       .from(jobs)
-      .where(and(isNull(jobs.deletedAt), or(...vectorOnlyIds.map((id) => eq(jobs.id, id)))));
+      .where(and(...conditions));
     const fetchMap = new Map(fetched.map((j) => [j.id, j]));
     for (const [id, entry] of scoreMap) {
       const fetched = fetchMap.get(id);
@@ -337,7 +406,15 @@ export async function hybridSearch(
     .filter(([, v]) => {
       const job = v.job;
       if (!job) return false;
+      if (status !== "all" && job.status !== status) return false;
       if (opts.platform && job.platform !== opts.platform) return false;
+      if (
+        opts.endClient &&
+        job.endClient !== opts.endClient &&
+        !(job.endClient == null && job.company === opts.endClient)
+      ) {
+        return false;
+      }
       // Province: case-insensitive partial match (DB stores "Utrecht - Utrecht" or "Utrecht")
       if (
         provinceLower &&
@@ -414,17 +491,11 @@ function getSortComparator(sortBy: ListJobsSortBy): (a: Job, b: Job) => number {
 /** Alle actieve (niet-verwijderde, deadline niet verstreken) jobs ophalen. Hogere limiet voor batch matching. */
 export async function listActiveJobs(limit?: number): Promise<Job[]> {
   const safeLimit = Math.min(limit ?? 200, 500);
-  const now = new Date();
 
   return db
     .select()
     .from(jobs)
-    .where(
-      and(
-        isNull(jobs.deletedAt),
-        or(isNull(jobs.applicationDeadline), gte(jobs.applicationDeadline, now)),
-      ),
-    )
+    .where(buildVisibilityCondition("open"))
     .orderBy(desc(jobs.scrapedAt))
     .limit(safeLimit);
 }
