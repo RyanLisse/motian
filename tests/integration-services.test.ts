@@ -115,18 +115,14 @@ describe("Event Bus", () => {
 // ─── 3. GDPR types and export structure ──────────────────────────────
 
 describe("GDPR module structure", () => {
-  it(
-    "exports expected functions",
-    async () => {
-      const gdpr = await import("../src/services/gdpr");
-      expect(typeof gdpr.exportCandidateData).toBe("function");
-      expect(typeof gdpr.eraseCandidateData).toBe("function");
-      expect(typeof gdpr.findExpiredRetentionCandidates).toBe("function");
-      expect(typeof gdpr.scrubContactData).toBe("function");
-      expect(typeof gdpr.getAuditLog).toBe("function");
-    },
-    15_000,
-  );
+  it("exports expected functions", async () => {
+    const gdpr = await import("../src/services/gdpr");
+    expect(typeof gdpr.exportCandidateData).toBe("function");
+    expect(typeof gdpr.eraseCandidateData).toBe("function");
+    expect(typeof gdpr.findExpiredRetentionCandidates).toBe("function");
+    expect(typeof gdpr.scrubContactData).toBe("function");
+    expect(typeof gdpr.getAuditLog).toBe("function");
+  }, 15_000);
 });
 
 // ─── 4. Schema exports ──────────────────────────────────────────────

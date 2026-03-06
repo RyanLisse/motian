@@ -173,82 +173,87 @@ function ChatSession({
   );
 
   return (
-    <>
+    <div className="relative flex flex-1 flex-col overflow-hidden">
       <ChatMessages
         messages={messages}
         status={status}
         onSuggestion={(text) => sendMessage({ text })}
       />
 
-      {/* Upload status banner */}
-      {uploadState !== "idle" && (
-        <div
-          className={`flex items-center gap-2 border-t px-4 py-2 text-sm ${
-            uploadState === "error"
-              ? "border-destructive/20 bg-destructive/5 text-destructive"
-              : uploadState === "success"
-                ? "border-primary/20 bg-primary/5 text-primary"
-                : "border-border bg-muted/50 text-muted-foreground"
-          }`}
-        >
-          {uploadState === "uploading" && (
-            <>
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-              <span className="truncate">
-                <span className="font-medium">{uploadFileName}</span> — CV wordt verwerkt &
-                kandidaat wordt aangemaakt...
-              </span>
-            </>
-          )}
-          {uploadState === "success" && (
-            <>
-              <Check className="h-4 w-4 shrink-0" />
-              <span className="truncate">{uploadResult}</span>
-            </>
-          )}
-          {uploadState === "error" && (
-            <>
-              <X className="h-4 w-4 shrink-0" />
-              <span className="truncate">{uploadResult}</span>
-              <button
-                type="button"
-                onClick={() => setUploadState("idle")}
-                className="ml-auto shrink-0 rounded p-0.5 hover:bg-destructive/10"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Chat input with file upload */}
-      <div className="border-t border-border p-2 sm:p-3">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        <PromptInput onSubmit={handleSubmit}>
-          <PromptInputTextarea placeholder="Stel een vraag of upload een CV..." />
-          <PromptInputFooter>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadState === "uploading"}
-              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-              title="CV/document uploaden (PDF, Word)"
+      {/* Floating Chat Input Container */}
+      <div className="absolute inset-x-0 bottom-0 z-10 mx-auto w-full max-w-3xl px-4 pb-4 sm:pb-6">
+        <div className="flex flex-col gap-2 rounded-3xl border border-border/50 bg-muted/30 shadow-sm focus-within:ring-1 focus-within:ring-ring/40 transition-shadow">
+          {/* Upload status banner */}
+          {uploadState !== "idle" && (
+            <div
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm ${
+                uploadState === "error"
+                  ? "bg-destructive/5 text-destructive"
+                  : uploadState === "success"
+                    ? "bg-primary/5 text-primary"
+                    : "bg-muted/50 text-muted-foreground"
+              }`}
             >
-              <Paperclip className="h-4 w-4" />
-              <span className="hidden sm:inline">Document</span>
-            </button>
-            <PromptInputSubmit status={status} onStop={stop} />
-          </PromptInputFooter>
-        </PromptInput>
+              {uploadState === "uploading" && (
+                <>
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                  <span className="truncate">
+                    <span className="font-medium">{uploadFileName}</span> — CV wordt verwerkt &
+                    kandidaat wordt aangemaakt...
+                  </span>
+                </>
+              )}
+              {uploadState === "success" && (
+                <>
+                  <Check className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{uploadResult}</span>
+                </>
+              )}
+              {uploadState === "error" && (
+                <>
+                  <X className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{uploadResult}</span>
+                  <button
+                    type="button"
+                    onClick={() => setUploadState("idle")}
+                    className="ml-auto shrink-0 rounded p-0.5 hover:bg-destructive/10"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Chat input with file upload */}
+          <div className="p-2 sm:p-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <PromptInput onSubmit={handleSubmit}>
+              <PromptInputTextarea placeholder="Stel een vraag of upload een CV..." />
+              <PromptInputFooter>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadState === "uploading"}
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                  title="CV/document uploaden (PDF, Word)"
+                >
+                  <Paperclip className="h-4 w-4" />
+                  <span className="hidden sm:inline">Document</span>
+                </button>
+                <PromptInputSubmit status={status} onStop={stop} />
+              </PromptInputFooter>
+            </PromptInput>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
