@@ -1,35 +1,55 @@
-/**
- * Regressietests voor search/ranking (Fase 4).
- * Controleert dat listJobs en hybridSearch het verwachte response-shape behouden.
- * Vereist geldige DATABASE_URL (zoals in CI).
- */
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockListJobsImpl, mockHybridSearchImpl } = vi.hoisted(() => ({
+  mockListJobsImpl: vi.fn(),
+  mockHybridSearchImpl: vi.fn(),
+}));
+
+vi.mock("../src/services/jobs/list", () => ({
+  listActiveJobs: vi.fn(),
+  listJobs: mockListJobsImpl,
+}));
+
+vi.mock("../src/services/jobs/search", () => ({
+  hybridSearch: mockHybridSearchImpl,
+  searchJobs: vi.fn(),
+  searchJobsByTitle: vi.fn(),
+}));
+
 import { hybridSearch, listJobs } from "../src/services/jobs";
 
 describe("search/ranking API shape regression", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockListJobsImpl.mockResolvedValue({
+      data: [{ id: "job-1", title: "Ranked listing", platform: "opdrachtoverheid" }],
+      total: 1,
+    });
+    mockHybridSearchImpl.mockResolvedValue([
+      { id: "job-2", title: "Hybrid ranked", platform: "opdrachtoverheid", score: 0.61 },
+    ]);
+  });
+
   it("listJobs returns { data: Job[], total: number }", async () => {
     const result = await listJobs({ limit: 2, offset: 0 });
     expect(result).toHaveProperty("data");
     expect(result).toHaveProperty("total");
     expect(Array.isArray(result.data)).toBe(true);
     expect(typeof result.total).toBe("number");
-    if (result.data.length > 0) {
-      const first = result.data[0] as Record<string, unknown>;
-      expect(first).toHaveProperty("id");
-      expect(first).toHaveProperty("title");
-      expect(first).toHaveProperty("platform");
-    }
+    expect(result.data[0]).toMatchObject({
+      id: "job-1",
+      title: "Ranked listing",
+      platform: "opdrachtoverheid",
+    });
   });
 
   it("hybridSearch returns array of Job & { score }", async () => {
     const result = await hybridSearch("test", { limit: 2 });
     expect(Array.isArray(result)).toBe(true);
-    if (result.length > 0) {
-      const first = result[0] as Record<string, unknown>;
-      expect(first).toHaveProperty("id");
-      expect(first).toHaveProperty("title");
-      expect(first).toHaveProperty("score");
-      expect(typeof (first as { score?: number }).score).toBe("number");
-    }
+    expect(result[0]).toMatchObject({
+      id: "job-2",
+      title: "Hybrid ranked",
+      score: 0.61,
+    });
   });
 });

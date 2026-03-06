@@ -16,10 +16,30 @@ const { mockLimit, mockDb } = vi.hoisted(() => {
       }),
     }),
   };
-  return { mockLimit, mockDb };
+
+  return {
+    mockDb,
+    mockLimit,
+  };
 });
 
-vi.mock("../src/db", () => ({ db: mockDb }));
+vi.mock("@motian/db", () => ({
+  db: mockDb,
+  candidateSkills: {},
+  escoSkills: {
+    uri: "escoSkills.uri",
+    preferredLabelEn: "escoSkills.preferredLabelEn",
+    preferredLabelNl: "escoSkills.preferredLabelNl",
+  },
+  jobSkills: {},
+  skillAliases: {
+    escoUri: "skillAliases.escoUri",
+    confidence: "skillAliases.confidence",
+    normalizedAlias: "skillAliases.normalizedAlias",
+    language: "skillAliases.language",
+  },
+  skillMappings: {},
+}));
 
 import { mapSkillInput } from "../src/services/esco.js";
 

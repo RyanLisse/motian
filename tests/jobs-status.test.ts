@@ -14,7 +14,7 @@ describe("job status helpers", () => {
     ).toBe("open");
   });
 
-  it("marks vacatures as gesloten when both deadline and end date are voorbij", () => {
+  it("marks vacatures as closed when both deadline and end date are voorbij", () => {
     const now = new Date("2026-03-06T12:00:00.000Z");
 
     expect(
@@ -23,7 +23,7 @@ describe("job status helpers", () => {
         endDate: new Date("2026-03-05T00:00:00.000Z"),
         now,
       }),
-    ).toBe("gesloten");
+    ).toBe("closed");
   });
 
   it("treats vacatures without known end markers as open so they stay visible", () => {
@@ -37,8 +37,9 @@ describe("job status helpers", () => {
   });
 
   it("normalizes Dutch and English status filters", () => {
-    expect(normalizeJobStatusFilter("closed")).toBe("gesloten");
+    expect(normalizeJobStatusFilter("closed")).toBe("closed");
+    expect(normalizeJobStatusFilter("gesloten")).toBe("closed");
     expect(normalizeJobStatusFilter("open")).toBe("open");
-    expect(normalizeJobStatusFilter("all")).toBeUndefined();
+    expect(normalizeJobStatusFilter("all")).toBe("all");
   });
 });
