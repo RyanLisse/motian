@@ -5,8 +5,10 @@ import type {
 
 /**
  * Fire-and-forget Slack notification via Trigger.dev.
- * Dynamically imports to avoid bundling Trigger.dev SDK in edge routes.
  * Safe to call even when Slack is not configured — the task handles gracefully.
+ *
+ * Exception to no-inline-imports: dynamic import is intentional to avoid bundling
+ * Trigger.dev SDK in edge routes (Vercel Edge, middleware). Documented per rule.
  */
 export function notifySlack(type: SlackNotificationType, data: Record<string, unknown>): void {
   const payload: SlackNotificationPayload = { type, data };

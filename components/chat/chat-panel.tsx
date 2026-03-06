@@ -18,9 +18,21 @@ import { ChatMessages } from "./chat-messages";
 
 const SESSION_KEY = "motian-fab-session";
 
+function isStorageAvailable(): boolean {
+  try {
+    if (typeof window === "undefined" || window.sessionStorage == null) return false;
+    const k = "__motian_storage_test__";
+    window.sessionStorage.setItem(k, "1");
+    window.sessionStorage.removeItem(k);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function getOrCreateSessionId(): string {
   try {
-    if (typeof window === "undefined") return "";
+    if (!isStorageAvailable()) return nanoid();
     const existing = sessionStorage.getItem(SESSION_KEY);
     if (existing) return existing;
     const id = nanoid();
@@ -204,16 +216,25 @@ export function ChatPanel() {
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState("");
   useEffect(() => {
-    setSessionId(getOrCreateSessionId());
+    const t = setTimeout(() => {
+      try {
+        setSessionId(getOrCreateSessionId());
+      } catch {
+        setSessionId(nanoid());
+      }
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
   const ctx = useChatContext();
 
   const handleNewSession = useCallback(() => {
     const id = nanoid();
-    try {
-      sessionStorage.setItem(SESSION_KEY, id);
-    } catch {
-      // Storage not available (e.g. private or iframe)
+    if (isStorageAvailable()) {
+      try {
+        sessionStorage.setItem(SESSION_KEY, id);
+      } catch {
+        // Storage not available (e.g. private or iframe)
+      }
     }
     setSessionId(id);
   }, []);

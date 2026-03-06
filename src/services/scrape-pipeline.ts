@@ -77,6 +77,7 @@ export async function runScrapePipeline(
       durationMs,
       status,
       errors: result.errors,
+      jobIds: result.jobIds,
     });
   } catch (recordErr) {
     console.error(`[scrape-pipeline] recordScrapeResult mislukt voor ${platform}:`, recordErr);

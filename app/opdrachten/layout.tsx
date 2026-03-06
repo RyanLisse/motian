@@ -11,7 +11,6 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
   const activeJobsCondition = and(isNull(jobs.deletedAt), eq(jobs.status, "open"));
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
-  // Fetch sidebar jobs + consolidated meta to reduce DB connections
   const [sidebarJobs, countResult, metaResult] = await Promise.all([
     db
       .select({
@@ -22,7 +21,6 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
         platform: jobs.platform,
         workArrangement: jobs.workArrangement,
         contractType: jobs.contractType,
-        // Active pipeline count: excludes rejected (consistent with detail/overzicht pages)
         pipelineCount: sql<number>`(
           select count(*)::int from ${applications}
           where ${applications.jobId} = ${jobs.id}

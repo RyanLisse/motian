@@ -28,6 +28,14 @@ test-watch:
 typecheck:
 	pnpm exec tsc --noEmit
 
+# Run Biome lint check
+lint:
+	pnpm lint
+
+# Run Biome lint with auto-fix
+lint-fix:
+	pnpm lint:fix
+
 # ── Database ─────────────────────────────────────
 
 # Generate Drizzle database migrations
@@ -61,6 +69,20 @@ dashboard:
 # Open opdrachten in browser
 opdrachten:
 	open http://localhost:3001/opdrachten
+
+# Open chat in browser
+chat:
+	open http://localhost:3001/chat
+
+# ── Metrics & benchmarks ──────────────────────────
+
+# Capture baseline metrics (build time, env); writes docs/metrics/baseline-YYYY-MM-DD.md
+baseline-metrics:
+	pnpm baseline:metrics
+
+# Benchmark hybrid search (requires DATABASE_URL); writes docs/metrics/hybrid-search-benchmark-latest.json
+benchmark-hybrid-search:
+	pnpm benchmark:hybrid-search
 
 # ── CLI & MCP & TUI ───────────────────────────────
 
@@ -134,17 +156,13 @@ harness-gap title:
 
 # ── Voice Agent (LiveKit) ─────────────────────
 
-# Install voice agent dependencies
-voice-install:
-	cd agent && pnpm install
-
-# Start the voice agent (connects to LiveKit Cloud)
+# Start the voice agent in development (connects to LiveKit Cloud)
 voice-dev:
-	cd agent && pnpm dev
+	pnpm voice-agent:dev
 
-# Build the voice agent for production
-voice-build:
-	cd agent && pnpm build
+# Start the voice agent for production
+voice-start:
+	pnpm voice-agent:start
 
 # ── Planning & Orchestration ────────────────────
 

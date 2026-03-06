@@ -1,12 +1,7 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
-// Allowed origins for CORS — set ALLOWED_ORIGINS env var as comma-separated list
-const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
-
+// CORS for /api is handled per-request in proxy.ts (all ALLOWED_ORIGINS supported)
 const nextConfig: NextConfig = {
   // Server components can import DB directly
   serverExternalPackages: ["pg"],
@@ -14,30 +9,6 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "2mb",
     },
-  },
-  async headers() {
-    // In dev, allow localhost; in prod, only explicitly allowed origins
-    const origin =
-      allowedOrigins.length > 0
-        ? allowedOrigins[0]
-        : process.env.NODE_ENV === "development"
-          ? "http://localhost:3001"
-          : "";
-
-    if (!origin) return [];
-
-    return [
-      {
-        // CORS headers for API routes — allows Chrome extension + app requests
-        source: "/api/:path*",
-        headers: [
-          { key: "Access-Control-Allow-Origin", value: origin },
-          { key: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS" },
-          { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization" },
-          { key: "Vary", value: "Origin" },
-        ],
-      },
-    ];
   },
 };
 

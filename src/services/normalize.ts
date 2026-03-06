@@ -11,10 +11,11 @@ export type RawScrapedListing = Record<string, unknown>;
 export async function normalizeAndSaveJobs(
   platform: string,
   listings: Record<string, unknown>[],
-): Promise<{ jobsNew: number; duplicates: number; errors: string[] }> {
+): Promise<{ jobsNew: number; duplicates: number; errors: string[]; jobIds: string[] }> {
   let jobsNew = 0;
   let duplicates = 0;
   const errors: string[] = [];
+  const allJobIds: string[] = [];
 
   // Stap 1: Valideer alle listings
   const validItems: Array<{
@@ -111,6 +112,9 @@ export async function normalizeAndSaveJobs(
             isNew: sql<boolean>`xmax = 0`.as("is_new"),
           });
 
+        for (const row of result) {
+          allJobIds.push(row.id);
+        }
         const inserted = result.filter((r) => r.isNew).length;
         const updated = result.length - inserted;
         jobsNew += inserted;
@@ -133,5 +137,5 @@ export async function normalizeAndSaveJobs(
     }
   }
 
-  return { jobsNew, duplicates, errors };
+  return { jobsNew, duplicates, errors, jobIds: allJobIds };
 }

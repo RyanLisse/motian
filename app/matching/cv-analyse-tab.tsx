@@ -417,9 +417,11 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Drop zone */}
-      <button
-        type="button"
+      {/* Drop zone: div so React Flow Controls (buttons) are not nested inside a button */}
+      {/* biome-ignore lint/a11y/useSemanticElements: avoid button nesting with React Flow zoom controls */}
+      <div
+        role="button"
+        tabIndex={0}
         aria-label="CV uploaden"
         onClick={handleDropZoneClick}
         onKeyDown={handleDropZoneKeyDown}
@@ -466,7 +468,7 @@ export function CvAnalyseTab({ recentAnalyses }: CvAnalyseTabProps) {
           onChange={handleFileInputChange}
           tabIndex={-1}
         />
-      </button>
+      </div>
 
       {/* Error state */}
       {status === "error" && message && (

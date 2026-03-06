@@ -71,12 +71,14 @@ Independent AI review of the structured result. Provides own score and motivatio
 
 ## Hybrid Search
 
-`hybridSearch()` in `src/services/jobs.ts` combines two strategies via Reciprocal Rank Fusion (RRF):
+Unified job search lives in `src/services/jobs/` (modules: `repository`, `filters`, `stats`, `list`, `search`) with a barrel at `src/services/jobs.ts`. All UI, chat, MCP, voice, and CLI surfaces use `searchJobsUnified()` for parity.
+
+`hybridSearch()` in `src/services/jobs/search.ts` combines two strategies via Reciprocal Rank Fusion (RRF):
 
 1. **Text search** (`searchJobsByTitle`): ILIKE with multi-word OR splitting
 2. **Vector search** (`findSimilarJobs`): 512d embeddings with pgvector cosine distance
 
-RRF formula: `score = sum(1 / (k + rank))` with k=60.
+RRF formula: `score = sum(1 / (k + rank))` with k=60. Benchmark: `just benchmark-hybrid-search` (writes `docs/metrics/hybrid-search-benchmark-latest.json`).
 
 ## AI Models
 

@@ -12,6 +12,7 @@ export async function recordScrapeResult(data: {
   durationMs: number;
   status: string;
   errors: string[];
+  jobIds?: string[];
 }): Promise<void> {
   // Stap 1: Zoek config ID voor dit platform
   const configs = await db
@@ -36,6 +37,7 @@ export async function recordScrapeResult(data: {
     duplicates: data.duplicates,
     status: data.status,
     errors: data.errors,
+    jobIds: data.jobIds?.length ? data.jobIds : null,
   });
 
   // Stap 3: Update config lastRunAt + lastRunStatus + circuit breaker

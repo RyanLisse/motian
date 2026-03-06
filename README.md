@@ -221,7 +221,7 @@ graph LR
     end
 
     subgraph Diensten["📦 Service Laag"]
-        S1[hybridSearch]
+        S1[searchJobsUnified / hybridSearch]
         S2[getJobById]
         S3[findSimilarJobs]
         S4[Drizzle Queries]
@@ -552,7 +552,8 @@ motian/
 │   │   ├── normalize.ts          # Zod validatie + upsert
 │   │   ├── ai-enrichment.ts      # Gemini-aangedreven verrijking
 │   │   ├── embedding.ts          # OpenAI vector generatie
-│   │   ├── jobs.ts               # Vacature queries + hybride zoeken
+│   │   ├── jobs.ts               # Barrel: vacature-API (searchJobsUnified, listJobs, hybridSearch)
+│   │   ├── jobs/                 # Vacature service modules (repository, filters, stats, list, search)
 │   │   ├── auto-matching.ts      # 3-laags matching engine
 │   │   ├── structured-matching.ts # Gemini gestructureerd matchen
 │   │   ├── match-judge.ts        # Grok onafhankelijke beoordeling
@@ -847,19 +848,33 @@ just scrape-platform flextender
 # Gezondheidscheck
 just health
 
-# Dashboard openen
-just dashboard
+# Pagina's in browser openen
+just dashboard            # Overzicht
+just opdrachten          # Vacatures
+just chat                # AI Chat
 
-# Voice agent starten (LiveKit)
-pnpm voice-agent:dev       # Ontwikkelmodus
-pnpm voice-agent:start     # Productiemodus
+# Lint en typecheck
+just lint                # Biome lint
+just lint-fix            # Biome lint met auto-fix
+just typecheck           # TypeScript controle
 
-# MCP server starten
+# Browserverificatie (optioneel; vereist agent-browser CLI)
+# agent-browser open http://localhost:3001/ && agent-browser snapshot -i
+
+# Metrics en benchmarks (zie docs/metrics/README.md)
+just baseline-metrics    # Baseline vastleggen (buildtijd, env)
+just benchmark-hybrid-search   # hybridSearch benchmark (vereist DATABASE_URL)
+
+# Voice agent (LiveKit)
+just voice-dev           # Ontwikkelmodus
+just voice-start         # Productiemodus
+
+# MCP server en CLI
 pnpm mcp
-
-# CLI starten
 pnpm cli
 ```
+
+Voor een overzicht van alle Just-taken: `just --list`.
 
 ---
 

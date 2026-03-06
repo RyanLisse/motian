@@ -9,6 +9,7 @@ import {
   jobs,
   messages,
 } from "../db/schema";
+import { escapeLike } from "../lib/helpers";
 
 // ========== Types ==========
 
@@ -215,7 +216,7 @@ export async function scrubContactData(
   identifier: string,
   requestedBy: string = "system",
 ): Promise<{ scrubbed: number }> {
-  const pattern = `%${identifier}%`;
+  const pattern = `%${escapeLike(identifier)}%`;
 
   // Find jobs where agent or recruiter matches the identifier (email or name)
   const matchingJobs = await db
@@ -281,7 +282,7 @@ export async function exportContactData(
     recruiterContact: unknown;
   }[];
 }> {
-  const pattern = `%${identifier}%`;
+  const pattern = `%${escapeLike(identifier)}%`;
   const matches = await db
     .select({
       id: jobs.id,

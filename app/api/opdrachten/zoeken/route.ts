@@ -36,7 +36,6 @@ export async function GET(req: NextRequest) {
     status === "closed" ? closedCondition : status === "all" ? visibleCondition : openCondition,
   ];
 
-  // Multi-field search with ILIKE across title, company, description, location
   if (q.length >= 2) {
     const pattern = `%${escapeLike(q)}%`;
     const searchCondition = or(
@@ -76,8 +75,6 @@ export async function GET(req: NextRequest) {
   }
 
   const whereClause = and(...conditions);
-
-  // Active pipeline count: excludes rejected (consistent with detail/overzicht pages)
   const pipelineCountSq = sql<number>`(
     select count(*)::int from ${applications}
     where ${applications.jobId} = ${jobs.id}

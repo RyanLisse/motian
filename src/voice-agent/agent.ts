@@ -40,7 +40,7 @@ import {
   listInterviews,
   updateInterview,
 } from "../services/interviews.js";
-import { deleteJob, getJobById, listJobs, updateJob } from "../services/jobs.js";
+import { deleteJob, getJobById, searchJobsUnified, updateJob } from "../services/jobs.js";
 import { deleteMatch, getMatchById, listMatches, updateMatchStatus } from "../services/matches.js";
 import { createMessage, deleteMessage, listMessages } from "../services/messages.js";
 import {
@@ -121,7 +121,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
             sortBy,
             limit,
           }) => {
-            const result = await listJobs({
+            const result = await searchJobsUnified({
               q: query,
               platform,
               province: provincie,

@@ -1,5 +1,5 @@
-import { stripHtml } from "../../lib/html";
-import type { RawScrapedListing } from "../normalize";
+import type { RawScrapedListing } from "./types";
+import { stripHtml } from "./strip-html";
 
 const PAGE_URL = "https://www.flextender.nl/opdrachten/";
 const AJAX_URL = "https://www.flextender.nl/wp-admin/admin-ajax.php";

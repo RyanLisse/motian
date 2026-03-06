@@ -221,7 +221,7 @@ graph LR
     end
 
     subgraph Services["📦 Service Layer"]
-        S1[hybridSearch]
+        S1[searchJobsUnified / hybridSearch]
         S2[getJobById]
         S3[findSimilarJobs]
         S4[Drizzle Queries]
@@ -550,7 +550,8 @@ motian/
 │   │   ├── normalize.ts          # Zod validation + upsert
 │   │   ├── ai-enrichment.ts      # Gemini-powered enrichment
 │   │   ├── embedding.ts          # OpenAI vector generation
-│   │   ├── jobs.ts               # Job queries + hybrid search
+│   │   ├── jobs.ts               # Barrel: job API (searchJobsUnified, listJobs, hybridSearch)
+│   │   ├── jobs/                 # Job service modules (repository, filters, stats, list, search)
 │   │   ├── auto-matching.ts      # 3-layer matching engine
 │   │   ├── structured-matching.ts # Gemini structured matching
 │   │   ├── match-judge.ts        # Grok independent judge verdict
@@ -845,19 +846,33 @@ just scrape-platform flextender
 # Health check
 just health
 
-# Open dashboard
-just dashboard
+# Open pages in browser
+just dashboard            # Overview
+just opdrachten           # Vacancies
+just chat                 # AI Chat
 
-# Start voice agent (LiveKit)
-pnpm voice-agent:dev       # Development mode
-pnpm voice-agent:start     # Production mode
+# Lint and typecheck
+just lint                 # Biome lint
+just lint-fix             # Biome lint with auto-fix
+just typecheck            # TypeScript check
 
-# Start MCP server
+# Browser verification (optional; requires agent-browser CLI)
+# agent-browser open http://localhost:3001/ && agent-browser snapshot -i
+
+# Metrics and benchmarks (see docs/metrics/README.md)
+just baseline-metrics     # Record baseline (build time, env)
+just benchmark-hybrid-search   # hybridSearch benchmark (requires DATABASE_URL)
+
+# Voice agent (LiveKit)
+just voice-dev            # Development mode
+just voice-start          # Production mode
+
+# MCP server and CLI
 pnpm mcp
-
-# Start CLI
 pnpm cli
 ```
+
+For a list of all Just tasks: `just --list`.
 
 ---
 

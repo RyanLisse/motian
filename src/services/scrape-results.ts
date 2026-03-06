@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs, scrapeResults } from "../db/schema";
 
@@ -57,11 +57,84 @@ export type GetTimeSeriesOptions = {
 
 // ========== Service Functions ==========
 
+const scrapeResultColumns = {
+  id: scrapeResults.id,
+  configId: scrapeResults.configId,
+  platform: scrapeResults.platform,
+  runAt: scrapeResults.runAt,
+  durationMs: scrapeResults.durationMs,
+  jobsFound: scrapeResults.jobsFound,
+  jobsNew: scrapeResults.jobsNew,
+  duplicates: scrapeResults.duplicates,
+  status: scrapeResults.status,
+  errors: scrapeResults.errors,
+  jobIds: scrapeResults.jobIds,
+} as const;
+
+/** Eén scrape-run ophalen op id */
+export async function getRunById(id: string): Promise<ScrapeResult | null> {
+  const rows = await db
+    .select(scrapeResultColumns)
+    .from(scrapeResults)
+    .where(eq(scrapeResults.id, id))
+    .limit(1);
+  return (rows[0] ?? null) as ScrapeResult | null;
+}
+
+/** Jobs ophalen die bij een run horen (summary: id, title, company, etc.; full: inclusief rawPayload) */
+export async function getJobsForRun(
+  jobIds: string[] | unknown[] | null,
+  opts: { includeRawPayload?: boolean } = {},
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    company: string | null;
+    externalId: string;
+    externalUrl: string | null;
+    location: string | null;
+    rawPayload?: Record<string, unknown> | null;
+  }>
+> {
+  const ids = Array.isArray(jobIds)
+    ? jobIds.reduce<string[]>((accumulator, id) => {
+        if (typeof id === "string") {
+          accumulator.push(id);
+        }
+        return accumulator;
+      }, [])
+    : [];
+  if (ids.length === 0) return [];
+  const baseCols = {
+    id: jobs.id,
+    title: jobs.title,
+    company: jobs.company,
+    externalId: jobs.externalId,
+    externalUrl: jobs.externalUrl,
+    location: jobs.location,
+  };
+  const rows = opts.includeRawPayload
+    ? await db
+        .select({ ...baseCols, rawPayload: jobs.rawPayload })
+        .from(jobs)
+        .where(inArray(jobs.id, ids))
+    : await db.select(baseCols).from(jobs).where(inArray(jobs.id, ids));
+  return rows as Array<{
+    id: string;
+    title: string;
+    company: string | null;
+    externalId: string;
+    externalUrl: string | null;
+    location: string | null;
+    rawPayload?: Record<string, unknown> | null;
+  }>;
+}
+
 /** Scrape resultaten ophalen, optioneel gefilterd op platform en gelimiteerd */
 export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeResult[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
 
-  const baseQuery = db.select().from(scrapeResults);
+  const baseQuery = db.select(scrapeResultColumns).from(scrapeResults);
   const filtered = opts.platform
     ? baseQuery.where(eq(scrapeResults.platform, opts.platform))
     : baseQuery;

@@ -12,37 +12,40 @@ function readFile(...segments: string[]): string {
   return fs.readFileSync(path.join(ROOT, ...segments), "utf-8");
 }
 
+// Schema lives in packages/db; src/db/schema.ts is a re-export shim.
+const DB_SCHEMA_PATH = "packages/db/src/schema.ts";
+
 // ============================================================
 // Schema column completeness — jobMatches table in schema.ts
 // ============================================================
 describe("jobMatches schema columns", () => {
   it("has criteriaBreakdown column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("criteriaBreakdown");
   });
 
   it("has riskProfile column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("riskProfile");
   });
 
   it("has recommendation column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("recommendation");
   });
 
   it("has assessmentModel column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("assessmentModel");
   });
 
   it("has recommendationConfidence column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("recommendationConfidence");
   });
 
   it("has enrichmentSuggestions column", () => {
-    const source = readFile("src/db/schema.ts");
+    const source = readFile(DB_SCHEMA_PATH);
     expect(source).toContain("enrichmentSuggestions");
   });
 });
