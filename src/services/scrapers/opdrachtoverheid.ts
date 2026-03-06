@@ -23,6 +23,7 @@ type OpdrachtoverheidLocation = {
 type OpdrachtoverheidTender = {
   vacancies_location?: OpdrachtoverheidLocation;
   contract_type?: string;
+  tender_active?: boolean | null;
   tender_requirements?: string | null;
   tender_competences?: string | null;
   tender_maximum_tariff?: number;
@@ -97,19 +98,8 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
           offset: 0,
           disjunction: 0,
           user_coordinates: {},
-          filters: {
-            and_filters: [
-              {
-                filters: [
-                  {
-                    field_name: "tender_active",
-                    operator: "eq",
-                    value: true,
-                  },
-                ],
-              },
-            ],
-          },
+          // Fetch both open and closed tenders so `tender_active` can be persisted.
+          filters: { and_filters: [] },
         }),
       });
 
@@ -121,129 +111,9 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
       const data = (await res.json()) as OpdrachtoverheidApiResponse;
       const allTenders = data.negometrix_tenders ?? [];
 
-      console.log(`Opdrachtoverheid API: ${allTenders.length} actieve opdrachten`);
+      console.log(`Opdrachtoverheid API: ${allTenders.length} opdrachten opgehaald`);
 
-      const listings: RawScrapedListing[] = allTenders.map((t) => {
-        const loc = t.vacancies_location ?? {};
-        const empType = (t.contract_type ?? "").toLowerCase();
-
-        const contractType =
-          empType.includes("freelance") || empType === "temporary"
-            ? "freelance"
-            : empType.includes("detachering") || empType.includes("loondienst")
-              ? "interim"
-              : undefined;
-
-        const allowsSubcontracting =
-          empType.includes("freelance") || empType === "temporary" ? true : undefined;
-
-        const requirements = parseHtmlList(t.tender_requirements);
-        const competences = parseHtmlList(t.tender_competences);
-
-        // === Rate logic: tariff = indicative, maximum_tariff = ceiling ===
-        const rawMaxTariff = t.tender_maximum_tariff ?? 0;
-        const maxTariff = rawMaxTariff > 0 ? Math.round(rawMaxTariff) : undefined;
-        const rawBaseTariff = t.tender_tariff ? parseFloat(String(t.tender_tariff)) : 0;
-        const baseTariff = rawBaseTariff > 0 ? Math.round(rawBaseTariff) : undefined;
-        const rateMax = maxTariff ?? baseTariff;
-        const rateMin = maxTariff && baseTariff && baseTariff < maxTariff ? baseTariff : undefined;
-
-        // === Hours: tender_hours_week (100%), with optional min/max range ===
-        const rawMaxHours = t.tender_max_hours ?? 0;
-        const rawHoursWeek = t.tender_hours_week ?? 0;
-        const hoursPerWeek =
-          rawMaxHours > 0
-            ? Math.round(rawMaxHours)
-            : rawHoursWeek > 0
-              ? Math.round(rawHoursWeek)
-              : undefined;
-        const rawMinHours = t.tender_min_hours ?? 0;
-        const minHoursPerWeek =
-          rawMinHours > 0 && rawMinHours < (hoursPerWeek ?? Number.POSITIVE_INFINITY)
-            ? Math.round(rawMinHours)
-            : undefined;
-
-        // === Extension from tender_other_information ===
-        const otherInfo = stripHtml(t.tender_other_information);
-        let extensionPossible: boolean | undefined;
-        if (otherInfo) {
-          const lower = otherInfo.toLowerCase();
-          if (lower.includes("verleng")) {
-            extensionPossible =
-              !lower.includes("geen verlenging") && !lower.includes("niet verleng");
-          }
-        }
-
-        // === Work arrangement from tender_hybrid_working ===
-        const workArrangement = t.tender_hybrid_working === true ? ("hybride" as const) : undefined;
-
-        // === Attachments from tender_document ===
-        const attachments: Array<{ url: string; description: string }> = [];
-        if (t.tender_document) {
-          attachments.push({ url: t.tender_document, description: t.tender_document });
-        }
-
-        return {
-          title: t.tender_name || t.tender_buying_organization,
-          company: t.tender_buying_organization,
-          location: loc.city
-            ? `${loc.city}${loc.province ? ` - ${loc.province}` : ""}`
-            : (loc.province ?? undefined),
-          province: loc.province ?? undefined,
-          description: ensureMinLength(
-            stripHtml(t.tender_description_html) ||
-              stripHtml(t.tender_overview) ||
-              t.tender_description ||
-              [stripHtml(t.tender_team), stripHtml(t.tender_interview), otherInfo]
-                .filter(Boolean)
-                .join("\n\n") ||
-              t.tender_name ||
-              "Geen beschrijving beschikbaar voor deze opdracht",
-          ),
-          externalId: t.web_key || t.tender_id?.toString() || "",
-          externalUrl: t.opdracht_overheid_url || `https://www.opdrachtoverheid.nl/`,
-          rateMax,
-          rateMin,
-          startDate: validDate(t.tender_start_date),
-          endDate: validDate(t.tender_end_date),
-          applicationDeadline: validDate(t.tender_date) ?? validDate(t.tender_end_date),
-          postedAt: validDate(t.tender_first_seen),
-          contractType,
-          allowsSubcontracting,
-          workArrangement,
-          contractLabel: t.tender_category != null ? CATEGORY_MAP[t.tender_category] : undefined,
-          positionsAvailable: parseInt(String(t.tender_number_of_professionals ?? 1), 10) || 1,
-          requirements:
-            requirements.length > 0
-              ? requirements.map((r) => ({ description: r, isKnockout: true }))
-              : [],
-          competences: competences.length > 0 ? competences : [],
-
-          // === Verrijkte Data (new columns) ===
-          hoursPerWeek,
-          minHoursPerWeek,
-          extensionPossible,
-          countryCode: "NL",
-          attachments,
-
-          // === Locatie & Organisatie ===
-          latitude: loc.latitude ? parseFloat(loc.latitude) : undefined,
-          longitude: loc.longitude ? parseFloat(loc.longitude) : undefined,
-          postcode: loc.postcode ?? undefined,
-          companyLogoUrl: loc.avatar
-            ? `https://kbenp-match-api.azurewebsites.net/images/${loc.avatar}`
-            : undefined,
-
-          // === Opdracht Kenmerken ===
-          sourceUrl: t.tender_url ?? undefined,
-          sourcePlatform: t.tender_source ?? undefined,
-          durationMonths: computeDurationMonths(t.tender_start_date, t.tender_end_date),
-          categories: (t.tender_categories ?? [])
-            .map((category) => category.tender_category_obj?.type)
-            .filter(Boolean),
-          companyAddress: loc.company_address ?? undefined,
-        };
-      });
+      const listings: RawScrapedListing[] = allTenders.map(mapOpdrachtoverheidTenderToListing);
 
       const validListings = listings.filter(
         (listing) => (listing.externalId as string)?.length > 0,
@@ -268,6 +138,121 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
 
   // Unreachable — while loop always returns or throws — but satisfies TypeScript
   throw new Error("Opdrachtoverheid scrape: onverwacht einde van retry-loop");
+}
+
+export function mapTenderActiveToStatus(
+  tenderActive: boolean | null | undefined,
+): "open" | "closed" {
+  return tenderActive === false ? "closed" : "open";
+}
+
+export function mapOpdrachtoverheidTenderToListing(t: OpdrachtoverheidTender): RawScrapedListing {
+  const loc = t.vacancies_location ?? {};
+  const empType = (t.contract_type ?? "").toLowerCase();
+
+  const contractType =
+    empType.includes("freelance") || empType === "temporary"
+      ? "freelance"
+      : empType.includes("detachering") || empType.includes("loondienst")
+        ? "interim"
+        : undefined;
+
+  const allowsSubcontracting =
+    empType.includes("freelance") || empType === "temporary" ? true : undefined;
+
+  const requirements = parseHtmlList(t.tender_requirements);
+  const competences = parseHtmlList(t.tender_competences);
+  const rawMaxTariff = t.tender_maximum_tariff ?? 0;
+  const maxTariff = rawMaxTariff > 0 ? Math.round(rawMaxTariff) : undefined;
+  const rawBaseTariff = t.tender_tariff ? parseFloat(String(t.tender_tariff)) : 0;
+  const baseTariff = rawBaseTariff > 0 ? Math.round(rawBaseTariff) : undefined;
+  const rateMax = maxTariff ?? baseTariff;
+  const rateMin = maxTariff && baseTariff && baseTariff < maxTariff ? baseTariff : undefined;
+  const rawMaxHours = t.tender_max_hours ?? 0;
+  const rawHoursWeek = t.tender_hours_week ?? 0;
+  const hoursPerWeek =
+    rawMaxHours > 0
+      ? Math.round(rawMaxHours)
+      : rawHoursWeek > 0
+        ? Math.round(rawHoursWeek)
+        : undefined;
+  const rawMinHours = t.tender_min_hours ?? 0;
+  const minHoursPerWeek =
+    rawMinHours > 0 && rawMinHours < (hoursPerWeek ?? Number.POSITIVE_INFINITY)
+      ? Math.round(rawMinHours)
+      : undefined;
+
+  const otherInfo = stripHtml(t.tender_other_information);
+  let extensionPossible: boolean | undefined;
+  if (otherInfo) {
+    const lower = otherInfo.toLowerCase();
+    if (lower.includes("verleng")) {
+      extensionPossible = !lower.includes("geen verlenging") && !lower.includes("niet verleng");
+    }
+  }
+
+  const workArrangement = t.tender_hybrid_working === true ? ("hybride" as const) : undefined;
+  const attachments: Array<{ url: string; description: string }> = [];
+  if (t.tender_document) {
+    attachments.push({ url: t.tender_document, description: t.tender_document });
+  }
+
+  return {
+    title: t.tender_name || t.tender_buying_organization,
+    company: t.tender_buying_organization,
+    endClient: t.tender_buying_organization,
+    status: mapTenderActiveToStatus(t.tender_active),
+    location: loc.city
+      ? `${loc.city}${loc.province ? ` - ${loc.province}` : ""}`
+      : (loc.province ?? undefined),
+    province: loc.province ?? undefined,
+    description: ensureMinLength(
+      stripHtml(t.tender_description_html) ||
+        stripHtml(t.tender_overview) ||
+        t.tender_description ||
+        [stripHtml(t.tender_team), stripHtml(t.tender_interview), otherInfo]
+          .filter(Boolean)
+          .join("\n\n") ||
+        t.tender_name ||
+        "Geen beschrijving beschikbaar voor deze opdracht",
+    ),
+    externalId: t.web_key || t.tender_id?.toString() || "",
+    externalUrl: t.opdracht_overheid_url || "https://www.opdrachtoverheid.nl/",
+    rateMax,
+    rateMin,
+    startDate: validDate(t.tender_start_date),
+    endDate: validDate(t.tender_end_date),
+    applicationDeadline: validDate(t.tender_date) ?? validDate(t.tender_end_date),
+    postedAt: validDate(t.tender_first_seen),
+    contractType,
+    allowsSubcontracting,
+    workArrangement,
+    contractLabel: t.tender_category != null ? CATEGORY_MAP[t.tender_category] : undefined,
+    positionsAvailable: parseInt(String(t.tender_number_of_professionals ?? 1), 10) || 1,
+    requirements:
+      requirements.length > 0
+        ? requirements.map((r) => ({ description: r, isKnockout: true }))
+        : [],
+    competences: competences.length > 0 ? competences : [],
+    hoursPerWeek,
+    minHoursPerWeek,
+    extensionPossible,
+    countryCode: "NL",
+    attachments,
+    latitude: loc.latitude ? parseFloat(loc.latitude) : undefined,
+    longitude: loc.longitude ? parseFloat(loc.longitude) : undefined,
+    postcode: loc.postcode ?? undefined,
+    companyLogoUrl: loc.avatar
+      ? `https://kbenp-match-api.azurewebsites.net/images/${loc.avatar}`
+      : undefined,
+    sourceUrl: t.tender_url ?? undefined,
+    sourcePlatform: t.tender_source ?? undefined,
+    durationMonths: computeDurationMonths(t.tender_start_date, t.tender_end_date),
+    categories: (t.tender_categories ?? [])
+      .map((category) => category.tender_category_obj?.type)
+      .filter(Boolean),
+    companyAddress: loc.company_address ?? undefined,
+  };
 }
 
 /** Compute duration in months from start/end date strings */

@@ -13,6 +13,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  DEFAULT_OPDRACHTEN_LIMIT,
+  normalizeOpdrachtenStatus,
+  OPDRACHTEN_PAGE_SIZE_OPTIONS,
+} from "@/src/lib/opdrachten-filters";
 
 const PROVINCES = [
   "Noord-Holland",
@@ -40,11 +45,15 @@ interface FiltersProps {
   query: string;
   platform: string;
   platforms: string[];
+  endClient: string;
+  endClients: string[];
+  status: string;
   provincie: string;
   tariefMin: string;
   tariefMax: string;
   contractType: string;
   page: number;
+  limit: number;
   totalPages: number;
 }
 
@@ -52,11 +61,15 @@ export function OpdrachtenFilters({
   query,
   platform,
   platforms,
+  endClient,
+  endClients,
+  status,
   provincie,
   tariefMin,
   tariefMax,
   contractType,
   page,
+  limit,
   totalPages,
 }: FiltersProps) {
   const router = useRouter();
@@ -68,6 +81,8 @@ export function OpdrachtenFilters({
     (updates: Record<string, string>) => {
       const params = new URLSearchParams(searchParams.toString());
       for (const [key, value] of Object.entries(updates)) {
+        if (key === "pagina") params.delete("page");
+        if (key === "limit") params.delete("perPage");
         if (value) {
           params.set(key, value);
         } else {
@@ -76,13 +91,17 @@ export function OpdrachtenFilters({
       }
       if (!("pagina" in updates)) {
         params.delete("pagina");
+        params.delete("page");
       }
       startTransition(() => {
-        router.push(`/opdrachten?${params.toString()}`);
+        const query = params.toString();
+        router.push(query ? `/opdrachten?${query}` : "/opdrachten");
       });
     },
     [router, searchParams],
   );
+
+  const normalizedStatus = normalizeOpdrachtenStatus(status);
 
   return (
     <div className="w-full bg-secondary border-b border-border px-4 md:px-6 lg:px-8 py-3">
@@ -119,17 +138,56 @@ export function OpdrachtenFilters({
             onValueChange={(value) => updateParams({ platform: value === "all" ? "" : value })}
           >
             <SelectTrigger className="w-[150px] h-9 bg-card border-border text-foreground text-sm">
-              <SelectValue placeholder="Opdrachtgever" />
+              <SelectValue placeholder="Platform" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border">
               <SelectItem value="all" className="text-foreground">
-                Alle opdrachtgevers
+                Alle platforms
               </SelectItem>
               {platforms.map((p) => (
                 <SelectItem key={p} value={p} className="capitalize text-foreground">
                   {p}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={endClient || "all"}
+            onValueChange={(value) => updateParams({ endClient: value === "all" ? "" : value })}
+          >
+            <SelectTrigger className="w-[190px] h-9 bg-card border-border text-foreground text-sm">
+              <SelectValue placeholder="Eindopdrachtgever" />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border">
+              <SelectItem value="all" className="text-foreground">
+                Alle eindopdrachtgevers
+              </SelectItem>
+              {endClients.map((client) => (
+                <SelectItem key={client} value={client} className="text-foreground">
+                  {client}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={normalizedStatus}
+            onValueChange={(value) => updateParams({ status: value === "open" ? "" : value })}
+          >
+            <SelectTrigger className="w-[140px] h-9 bg-card border-border text-foreground text-sm">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border">
+              <SelectItem value="open" className="text-foreground">
+                Open
+              </SelectItem>
+              <SelectItem value="closed" className="text-foreground">
+                Gesloten
+              </SelectItem>
+              <SelectItem value="all" className="text-foreground">
+                Alles
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -212,6 +270,30 @@ export function OpdrachtenFilters({
             >
               Zoekopdracht opslaan
             </label>
+          </div>
+
+          <div className="flex items-center gap-2 px-2 border-l border-border ml-1">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Per pagina</span>
+            <Select
+              value={String(limit || DEFAULT_OPDRACHTEN_LIMIT)}
+              onValueChange={(value) =>
+                updateParams({
+                  limit: value === String(DEFAULT_OPDRACHTEN_LIMIT) ? "" : value,
+                  pagina: "1",
+                })
+              }
+            >
+              <SelectTrigger className="w-[88px] h-9 bg-card border-border text-foreground text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                {OPDRACHTEN_PAGE_SIZE_OPTIONS.map((value) => (
+                  <SelectItem key={value} value={String(value)} className="text-foreground">
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

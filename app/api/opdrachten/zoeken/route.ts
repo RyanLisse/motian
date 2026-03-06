@@ -3,6 +3,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { applications, jobs } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
+import {
+  DEFAULT_OPDRACHTEN_LIMIT,
+  MAX_OPDRACHTEN_LIMIT,
+  normalizeOpdrachtenStatus,
+} from "@/src/lib/opdrachten-filters";
 import { parsePagination } from "@/src/lib/pagination";
 
 export const dynamic = "force-dynamic";
@@ -11,15 +16,25 @@ export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   const q = params.get("q")?.trim() ?? "";
   const platform = params.get("platform") ?? "";
+  const endClient = params.get("endClient") ?? "";
+  const status = normalizeOpdrachtenStatus(params.get("status"));
   const provincie = params.get("provincie") ?? "";
   const contractType = params.get("contractType") ?? "";
   const tariefMinParam = params.get("tariefMin");
   const tariefMaxParam = params.get("tariefMax");
   const tariefMin = tariefMinParam ? Number.parseInt(tariefMinParam, 10) : undefined;
   const tariefMax = tariefMaxParam ? Number.parseInt(tariefMaxParam, 10) : undefined;
-  const { page, limit, offset } = parsePagination(params, { limit: 10 });
+  const { page, limit, offset } = parsePagination(params, {
+    limit: DEFAULT_OPDRACHTEN_LIMIT,
+    maxLimit: MAX_OPDRACHTEN_LIMIT,
+  });
+  const visibleCondition = isNull(jobs.deletedAt);
+  const openCondition = and(visibleCondition, eq(jobs.status, "open"));
+  const closedCondition = and(visibleCondition, eq(jobs.status, "closed"));
 
-  const conditions = [isNull(jobs.deletedAt)];
+  const conditions = [
+    status === "closed" ? closedCondition : status === "all" ? visibleCondition : openCondition,
+  ];
 
   // Multi-field search with ILIKE across title, company, description, location
   if (q.length >= 2) {
@@ -36,6 +51,12 @@ export async function GET(req: NextRequest) {
 
   if (platform) {
     conditions.push(eq(jobs.platform, platform));
+  }
+
+  if (endClient) {
+    conditions.push(
+      or(eq(jobs.endClient, endClient), and(isNull(jobs.endClient), eq(jobs.company, endClient))),
+    );
   }
 
   if (provincie) {
