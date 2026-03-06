@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { publish } from "@/src/lib/event-bus";
 import { autoMatchCandidateToJobs } from "@/src/services/auto-matching";
+import type { Candidate } from "@/src/services/candidates";
 import {
   addNoteToCandidate,
   createCandidate,
@@ -25,14 +26,26 @@ export const zoekKandidaten = tool({
     limit: z.number().optional().default(20).describe("Max resultaten (standaard 20)"),
   }),
   execute: async ({ query, location, skills, role, limit }) => {
+    let results: Candidate[];
     if (query || location || skills || role) {
-      const results = await searchCandidates({ query, location, skills, role, limit });
-      return { total: results.length, kandidaten: await withCandidatesCanonicalSkills(results) };
+      results = await searchCandidates({ query, location, skills, role, limit });
+    } else {
+      results = await listCandidates(limit);
     }
-    const results = await listCandidates(limit);
-    return { total: results.length, kandidaten: await withCandidatesCanonicalSkills(results) };
+    const withSkills = await withCandidatesCanonicalSkills(results);
+    const kandidaten = withSkills.map((c) => normalizeCandidateForDisplay(c));
+    return { total: kandidaten.length, kandidaten };
   },
 });
+
+/** Normaliseer kandidaat voor AI-weergave: profileSummary altijd een string (geen null). */
+function normalizeCandidateForDisplay<
+  T extends { profileSummary?: string | null; headline?: string | null },
+>(c: T): T & { profileSummary: string } {
+  const profileSummary =
+    c.profileSummary?.trim() || c.headline?.trim() || "Geen samenvatting beschikbaar.";
+  return { ...c, profileSummary };
+}
 
 export const getKandidaatDetail = tool({
   description:
@@ -43,7 +56,8 @@ export const getKandidaatDetail = tool({
   execute: async ({ id }) => {
     const candidate = await getCandidateById(id);
     if (!candidate) return { error: "Kandidaat niet gevonden" };
-    return withCandidateCanonicalSkills(candidate);
+    const withSkills = await withCandidateCanonicalSkills(candidate);
+    return normalizeCandidateForDisplay(withSkills);
   },
 });
 
