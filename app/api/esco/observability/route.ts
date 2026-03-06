@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { getEscoMappingStats, getReviewQueueSummary } from "@/src/services/esco";
+
+export const dynamic = "force-dynamic";
 
 /**
  * GET /api/esco/observability
  * Metrics and review backlog for ESCO mapping/scoring observability.
  */
 export async function GET() {
+  const { getEscoMappingStats, getReviewQueueSummary } = await import("@/src/services/esco");
   const [mappingStats, reviewQueue] = await Promise.all([
     getEscoMappingStats(),
     getReviewQueueSummary(),
