@@ -68,9 +68,10 @@ const scrapeResultColumns = {
   duplicates: scrapeResults.duplicates,
   status: scrapeResults.status,
   errors: scrapeResults.errors,
+  jobIds: scrapeResults.jobIds,
 } as const;
 
-/** Eén scrape-run ophalen op id (columns only; job_ids omitted for DB compatibility) */
+/** Eén scrape-run ophalen op id */
 export async function getRunById(id: string): Promise<ScrapeResult | null> {
   const rows = await db
     .select(scrapeResultColumns)
@@ -129,7 +130,7 @@ export async function getJobsForRun(
   }>;
 }
 
-/** Scrape resultaten ophalen, optioneel gefilterd op platform en gelimiteerd (job_ids omitted for DB compatibility) */
+/** Scrape resultaten ophalen, optioneel gefilterd op platform en gelimiteerd */
 export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeResult[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
 
@@ -138,7 +139,7 @@ export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeRe
     ? baseQuery.where(eq(scrapeResults.platform, opts.platform))
     : baseQuery;
 
-  return filtered.orderBy(desc(scrapeResults.runAt)).limit(limit) as Promise<ScrapeResult[]>;
+  return filtered.orderBy(desc(scrapeResults.runAt)).limit(limit);
 }
 
 /** Bereken analytics per platform over alle scrape resultaten */

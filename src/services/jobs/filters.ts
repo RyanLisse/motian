@@ -1,4 +1,4 @@
-import { and, asc, desc, gte, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { jobs } from "../../db/schema";
 import type { Job } from "./repository";
 
@@ -10,7 +10,7 @@ export type ListJobsSortBy =
   | "geplaatst"
   | "startdatum";
 
-export type JobStatus = "open" | "gesloten";
+export type JobStatus = "open" | "closed" | "all";
 
 const LIST_JOBS_SORT_VALUES: ListJobsSortBy[] = [
   "nieuwste",
@@ -34,8 +34,8 @@ export function normalizeJobStatusFilter(value?: string | null): JobStatus | und
   if (!value) return undefined;
 
   const normalized = value.trim().toLowerCase();
-  if (normalized === "all" || normalized === "alles") return undefined;
-  if (normalized === "closed" || normalized === "gesloten") return "gesloten";
+  if (normalized === "all" || normalized === "alles") return "all";
+  if (normalized === "closed" || normalized === "gesloten") return "closed";
   if (normalized === "open") return "open";
   return undefined;
 }
@@ -48,38 +48,39 @@ export function normalizeListJobsSortBy(value?: string | null): ListJobsSortBy |
 }
 
 export function deriveJobStatus({
+  status,
   applicationDeadline,
   endDate,
   now = new Date(),
 }: {
+  status?: string | null;
   applicationDeadline?: Date | null;
   endDate?: Date | null;
   now?: Date;
 }): JobStatus {
+  if (status === "open" || status === "closed") {
+    return status;
+  }
+
   if (applicationDeadline) {
-    return applicationDeadline >= now ? "open" : "gesloten";
+    return applicationDeadline >= now ? "open" : "closed";
   }
 
   if (endDate) {
-    return endDate >= now ? "open" : "gesloten";
+    return endDate >= now ? "open" : "closed";
   }
 
   return "open";
 }
 
-export function getJobStatusCondition(status: JobStatus, now: Date) {
-  if (status === "gesloten") {
-    return or(
-      sql`${jobs.applicationDeadline} < ${now}`,
-      and(isNull(jobs.applicationDeadline), sql`${jobs.endDate} < ${now}`),
-    );
+export function getJobStatusCondition(status: JobStatus) {
+  const visibleCondition = isNull(jobs.deletedAt);
+
+  if (status === "all") {
+    return visibleCondition;
   }
 
-  return or(
-    gte(jobs.applicationDeadline, now),
-    and(isNull(jobs.applicationDeadline), isNull(jobs.endDate)),
-    and(isNull(jobs.applicationDeadline), gte(jobs.endDate, now)),
-  );
+  return and(visibleCondition, eq(jobs.status, status));
 }
 
 function getTimestamp(d: Date | string | null | undefined, fallback: number): number {

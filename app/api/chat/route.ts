@@ -1,5 +1,5 @@
-import { convertToModelMessages, stepCountIs } from "ai";
-import { eq, sql } from "drizzle-orm";
+import { convertToModelMessages, generateObject, stepCountIs } from "ai";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { after } from "next/server";
 import { z } from "zod";
 import { buildSystemPrompt, getRecruitmentTools } from "@/src/ai/agent";
@@ -73,7 +73,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Persist conversation using after() — runs after response streams, guaranteed to complete
   if (sessionId) {
     const lastMessages = body.messages.slice(-MAX_STORED_MESSAGES);
     const lastUserMsg = [...body.messages]
@@ -81,11 +80,9 @@ export async function POST(req: Request) {
       .find((m: { role: string }) => m.role === "user");
     const preview =
       typeof lastUserMsg?.content === "string" ? lastUserMsg.content.slice(0, 100) : null;
-
-    // Extract title from first user message (only set once)
     const firstUserMsg = body.messages.find((m: { role: string }) => m.role === "user");
-    const title =
-      typeof firstUserMsg?.content === "string" ? firstUserMsg.content.slice(0, 60) : null;
+    const shouldGenerateTitle =
+      body.messages.length === 1 && firstUserMsg && typeof firstUserMsg.content === "string";
 
     after(async () => {
       try {
@@ -96,7 +93,7 @@ export async function POST(req: Request) {
             messages: lastMessages,
             context: ctx,
             messageCount: lastMessages.length,
-            title,
+            title: null,
             lastMessagePreview: preview,
           })
           .onConflictDoUpdate({
@@ -111,7 +108,45 @@ export async function POST(req: Request) {
           });
       } catch (err) {
         console.error("[chat] Session persistence failed:", err);
+        return;
       }
+
+      if (!shouldGenerateTitle) {
+        return;
+      }
+
+      void (async () => {
+        let title: string | null = null;
+
+        try {
+          const titleResult = await generateObject({
+            model: resolveChatModel("gemini-3.1-flash-lite"),
+            schema: z.object({
+              title: z
+                .string()
+                .max(50)
+                .describe("Korte titel voor dit gesprek in 3-6 woorden, Nederlands"),
+            }),
+            prompt: `Genereer een korte titel (3-6 woorden) voor dit gesprek. Gebruikersvraag: "${firstUserMsg.content.slice(0, 200)}"`,
+          });
+          title = titleResult.object.title;
+        } catch (err) {
+          console.error("[chat] Title generation failed:", err);
+          return;
+        }
+
+        try {
+          await db
+            .update(chatSessions)
+            .set({
+              title,
+              updatedAt: new Date(),
+            })
+            .where(and(eq(chatSessions.sessionId, sessionId), isNull(chatSessions.title)));
+        } catch (err) {
+          console.error("[chat] Title update failed:", err);
+        }
+      })();
     });
   }
 
@@ -138,7 +173,6 @@ export async function POST(req: Request) {
         const completion = usage.completionTokens ?? 0;
         const delta = prompt + completion;
         if (delta <= 0) return;
-        // Structured AI-cost log for baseline and Fase 4 SLO/budget
         console.log(
           JSON.stringify({
             flow: "chat",

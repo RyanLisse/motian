@@ -4,24 +4,38 @@ import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import {
+  ArrowUp,
   Check,
-  ChevronDown,
+  Gauge,
   Loader2,
   Menu,
   Mic,
   PanelLeftClose,
-  Paperclip,
   Plus,
+  Square,
   X,
+  Zap,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   PromptInput,
+  PromptInputActionAddAttachments,
+  PromptInputActionMenu,
+  PromptInputActionMenuContent,
+  PromptInputActionMenuItem,
+  PromptInputActionMenuTrigger,
+  PromptInputButton,
   PromptInputFooter,
   type PromptInputMessage,
+  PromptInputSelect,
+  PromptInputSelectContent,
+  PromptInputSelectItem,
+  PromptInputSelectTrigger,
+  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
+  PromptInputTools,
 } from "@/src/components/ai-elements/prompt-input";
 import { useChatContext } from "./chat-context-provider";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
@@ -35,6 +49,13 @@ const CHAT_MODELS = [
   { id: "grok-4", label: "Grok 4", provider: "xAI" },
 ] as const;
 
+const MODE_OPTIONS = [
+  { id: "snel", label: "Snel", icon: Zap },
+  { id: "gemiddeld", label: "Gemiddeld", icon: Gauge },
+  { id: "grondig", label: "Grondig", icon: Gauge },
+] as const;
+
+type SpeedMode = (typeof MODE_OPTIONS)[number]["id"];
 type UploadState = "idle" | "uploading" | "success" | "error";
 
 function ChatSession({
@@ -42,18 +63,25 @@ function ChatSession({
   initialMessages,
   ctx,
   modelId,
+  setModelId,
+  onToggleVoice,
 }: {
   sessionId: string;
   initialMessages?: UIMessage[];
   ctx: { route: string; entityId: string | null; entityType: string | null };
   modelId: string;
+  setModelId: (id: string) => void;
+  onToggleVoice: () => void;
 }) {
+  const [speedMode, setSpeedMode] = useState<SpeedMode>("gemiddeld");
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
         body: {
           model: modelId,
+          speedMode,
           context: {
             route: ctx.route,
             entityId: ctx.entityId,
@@ -62,7 +90,7 @@ function ChatSession({
           },
         },
       }),
-    [modelId, ctx.route, ctx.entityId, ctx.entityType, sessionId],
+    [modelId, speedMode, ctx.route, ctx.entityId, ctx.entityType, sessionId],
   );
 
   const { messages, sendMessage, status, stop } = useChat({
@@ -182,75 +210,134 @@ function ChatSession({
 
       {/* Floating Chat Input Container */}
       <div className="absolute inset-x-0 bottom-0 z-10 mx-auto w-full max-w-3xl px-4 pb-4 sm:pb-6">
-        <div className="flex flex-col gap-2 rounded-3xl border border-border/50 bg-muted/30 shadow-sm focus-within:ring-1 focus-within:ring-ring/40 transition-shadow">
-          {/* Upload status banner */}
-          {uploadState !== "idle" && (
-            <div
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm ${
-                uploadState === "error"
-                  ? "bg-destructive/5 text-destructive"
-                  : uploadState === "success"
-                    ? "bg-primary/5 text-primary"
-                    : "bg-muted/50 text-muted-foreground"
-              }`}
-            >
-              {uploadState === "uploading" && (
-                <>
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                  <span className="truncate">
-                    <span className="font-medium">{uploadFileName}</span> — CV wordt verwerkt &
-                    kandidaat wordt aangemaakt...
-                  </span>
-                </>
-              )}
-              {uploadState === "success" && (
-                <>
-                  <Check className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{uploadResult}</span>
-                </>
-              )}
-              {uploadState === "error" && (
-                <>
-                  <X className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{uploadResult}</span>
-                  <button
-                    type="button"
-                    onClick={() => setUploadState("idle")}
-                    className="ml-auto shrink-0 rounded p-0.5 hover:bg-destructive/10"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Chat input with file upload */}
-          <div className="p-2 sm:p-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <PromptInput onSubmit={handleSubmit}>
-              <PromptInputTextarea placeholder="Stel een vraag of upload een CV..." />
-              <PromptInputFooter>
+        {/* Upload status banner */}
+        {uploadState !== "idle" && (
+          <div
+            className={`mb-2 flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm ${
+              uploadState === "error"
+                ? "bg-destructive/10 text-destructive"
+                : uploadState === "success"
+                  ? "bg-primary/10 text-primary"
+                  : "bg-muted/60 text-muted-foreground"
+            }`}
+          >
+            {uploadState === "uploading" && (
+              <>
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                <span className="truncate">
+                  <span className="font-medium">{uploadFileName}</span> — CV wordt verwerkt &
+                  kandidaat wordt aangemaakt...
+                </span>
+              </>
+            )}
+            {uploadState === "success" && (
+              <>
+                <Check className="h-4 w-4 shrink-0" />
+                <span className="truncate">{uploadResult}</span>
+              </>
+            )}
+            {uploadState === "error" && (
+              <>
+                <X className="h-4 w-4 shrink-0" />
+                <span className="truncate">{uploadResult}</span>
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadState === "uploading"}
-                  className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                  title="CV/document uploaden (PDF, Word)"
+                  onClick={() => setUploadState("idle")}
+                  className="ml-auto shrink-0 rounded p-0.5 hover:bg-destructive/10"
                 >
-                  <Paperclip className="h-4 w-4" />
-                  <span className="hidden sm:inline">Document</span>
+                  <X className="h-3 w-3" />
                 </button>
-                <PromptInputSubmit status={status} onStop={stop} />
-              </PromptInputFooter>
-            </PromptInput>
+              </>
+            )}
           </div>
+        )}
+
+        {/* Hidden file input for CV upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        <div className="rounded-3xl border border-border/50 bg-muted/30 shadow-sm transition-shadow focus-within:ring-1 focus-within:ring-ring/40">
+          <PromptInput onSubmit={handleSubmit}>
+            <PromptInputTextarea placeholder="Vraag om vervolgwijzigingen" />
+            <PromptInputFooter className="px-2 pb-2 pt-0">
+              {/* Left side: + menu, model picker, mode picker */}
+              <PromptInputTools>
+                <PromptInputActionMenu>
+                  <PromptInputActionMenuTrigger tooltip="Bijlage toevoegen" />
+                  <PromptInputActionMenuContent>
+                    <PromptInputActionAddAttachments label="Foto's of bestanden" />
+                    <PromptInputActionMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }}
+                    >
+                      CV uploaden (PDF, Word)
+                    </PromptInputActionMenuItem>
+                  </PromptInputActionMenuContent>
+                </PromptInputActionMenu>
+
+                <PromptInputSelect value={modelId} onValueChange={setModelId}>
+                  <PromptInputSelectTrigger className="h-8 w-auto gap-1 px-2 text-xs">
+                    <Zap className="h-3.5 w-3.5" />
+                    <PromptInputSelectValue />
+                  </PromptInputSelectTrigger>
+                  <PromptInputSelectContent>
+                    {CHAT_MODELS.map((m) => (
+                      <PromptInputSelectItem key={m.id} value={m.id}>
+                        <span>{m.label}</span>
+                        <span className="ml-2 text-[10px] text-muted-foreground">{m.provider}</span>
+                      </PromptInputSelectItem>
+                    ))}
+                  </PromptInputSelectContent>
+                </PromptInputSelect>
+
+                <PromptInputSelect
+                  value={speedMode}
+                  onValueChange={(v) => setSpeedMode(v as SpeedMode)}
+                >
+                  <PromptInputSelectTrigger className="h-8 w-auto gap-1 px-2 text-xs">
+                    <Gauge className="h-3.5 w-3.5" />
+                    <PromptInputSelectValue />
+                  </PromptInputSelectTrigger>
+                  <PromptInputSelectContent>
+                    {MODE_OPTIONS.map((m) => (
+                      <PromptInputSelectItem key={m.id} value={m.id}>
+                        {m.label}
+                      </PromptInputSelectItem>
+                    ))}
+                  </PromptInputSelectContent>
+                </PromptInputSelect>
+              </PromptInputTools>
+
+              {/* Right side: mic button, send button */}
+              <PromptInputTools>
+                <PromptInputButton tooltip="Spraakassistent" onClick={onToggleVoice}>
+                  <Mic className="h-4 w-4" />
+                </PromptInputButton>
+                <PromptInputSubmit
+                  status={status}
+                  onStop={stop}
+                  className="rounded-full"
+                  variant="default"
+                  size="icon-sm"
+                >
+                  {status === "submitted" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : status === "streaming" ? (
+                    <Square className="h-3.5 w-3.5" />
+                  ) : (
+                    <ArrowUp className="h-4 w-4" />
+                  )}
+                </PromptInputSubmit>
+              </PromptInputTools>
+            </PromptInputFooter>
+          </PromptInput>
         </div>
       </div>
     </div>
@@ -263,7 +350,6 @@ export function ChatPageContent() {
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modelId, setModelId] = useState<string>(CHAT_MODELS[0].id);
-  const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [mode, setMode] = useState<"text" | "voice">("text");
 
   const handleSelectSession = useCallback(async (id: string) => {
@@ -278,7 +364,6 @@ export function ChatPageContent() {
       setInitialMessages(undefined);
       setSessionId(id);
     }
-    // Close sidebar on mobile after selection
     setSidebarOpen(false);
   }, []);
 
@@ -316,83 +401,26 @@ export function ChatPageContent() {
 
       {/* Main chat area */}
       <div className="flex min-w-0 flex-1 flex-col">
+        {/* Simplified header — sidebar toggle + new chat only */}
         <header className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 sm:px-4">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen((prev) => !prev)}
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title="Gesprekken"
-            >
-              {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </button>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title="Gesprekken"
+          >
+            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
 
-            {/* Model picker */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setModelPickerOpen((p) => !p)}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
-              >
-                {CHAT_MODELS.find((m) => m.id === modelId)?.label ?? "Model"}
-                <ChevronDown className="h-3 w-3 text-muted-foreground" />
-              </button>
-              {modelPickerOpen && (
-                <>
-                  <button
-                    type="button"
-                    className="fixed inset-0 z-50"
-                    onClick={() => setModelPickerOpen(false)}
-                    aria-label="Sluit"
-                  />
-                  <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-popover py-1 shadow-lg">
-                    {CHAT_MODELS.map((m) => (
-                      <button
-                        type="button"
-                        key={m.id}
-                        onClick={() => {
-                          setModelId(m.id);
-                          setModelPickerOpen(false);
-                        }}
-                        className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors hover:bg-accent ${
-                          modelId === m.id ? "text-primary" : "text-foreground"
-                        }`}
-                      >
-                        <span className="font-medium">{m.label}</span>
-                        <span className="text-[10px] text-muted-foreground">{m.provider}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            {/* Voice mode toggle */}
-            <button
-              type="button"
-              onClick={() => setMode((m) => (m === "text" ? "voice" : "text"))}
-              className={`rounded-md p-1.5 transition-colors ${
-                mode === "voice"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-              title={mode === "voice" ? "Terug naar tekst" : "Spraakassistent"}
-            >
-              <Mic className="h-4 w-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={handleNewSession}
-              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title="Nieuw gesprek"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Nieuw gesprek</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleNewSession}
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title="Nieuw gesprek"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Nieuw gesprek</span>
+          </button>
         </header>
 
         {/* Voice or text mode */}
@@ -405,6 +433,8 @@ export function ChatPageContent() {
             initialMessages={initialMessages}
             ctx={ctx}
             modelId={modelId}
+            setModelId={setModelId}
+            onToggleVoice={() => setMode("voice")}
           />
         )}
       </div>

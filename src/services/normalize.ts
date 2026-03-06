@@ -55,10 +55,12 @@ export async function normalizeAndSaveJobs(
             set: {
               title: sql`excluded.title`,
               company: sql`excluded.company`,
+              endClient: sql`excluded.end_client`,
               contractLabel: sql`excluded.contract_label`,
               location: sql`excluded.location`,
               province: sql`excluded.province`,
               description: sql`excluded.description`,
+              status: sql`excluded.status`,
               clientReferenceCode: sql`excluded.client_reference_code`,
               rateMin: sql`excluded.rate_min`,
               rateMax: sql`excluded.rate_max`,

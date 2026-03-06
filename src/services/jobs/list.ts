@@ -16,6 +16,7 @@ export type ListJobsOptions = {
   offset?: number;
   platform?: string;
   company?: string;
+  endClient?: string;
   category?: string;
   status?: JobStatus;
   q?: string;
@@ -41,18 +42,19 @@ export async function listJobs(
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = opts.offset ?? 0;
-  const now = new Date();
-
-  const conditions = [isNull(jobs.deletedAt)];
+  const conditions = [getJobStatusCondition(opts.status ?? "open")];
 
   if (opts.platform) conditions.push(eq(jobs.platform, opts.platform));
   if (opts.company) conditions.push(eq(jobs.company, opts.company));
-  if (opts.category) conditions.push(sql`${jobs.categories} ? ${opts.category}`);
-
-  if (opts.status) {
-    const statusCondition = getJobStatusCondition(opts.status, now);
-    if (statusCondition) conditions.push(statusCondition);
+  if (opts.endClient) {
+    conditions.push(
+      or(
+        eq(jobs.endClient, opts.endClient),
+        and(isNull(jobs.endClient), eq(jobs.company, opts.endClient)),
+      ),
+    );
   }
+  if (opts.category) conditions.push(sql`${jobs.categories} ? ${opts.category}`);
 
   if (opts.q) {
     const tsInput = toTsQueryInput(opts.q);
@@ -118,7 +120,7 @@ export async function listActiveJobs(limit?: number): Promise<Job[]> {
   return db
     .select()
     .from(jobs)
-    .where(and(isNull(jobs.deletedAt), getJobStatusCondition("open", new Date())))
+    .where(getJobStatusCondition("open"))
     .orderBy(desc(jobs.scrapedAt))
     .limit(safeLimit);
 }

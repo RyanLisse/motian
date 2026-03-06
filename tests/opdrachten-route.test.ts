@@ -1,17 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSearchJobsUnified, mockWithJobsCanonicalSkills } = vi.hoisted(() => ({
-  mockSearchJobsUnified: vi.fn(),
+const { mockListJobs, mockWithJobsCanonicalSkills } = vi.hoisted(() => ({
+  mockListJobs: vi.fn(),
   mockWithJobsCanonicalSkills: vi.fn(),
 }));
 
 vi.mock("../src/services/jobs", () => ({
-  searchJobsUnified: mockSearchJobsUnified,
-  normalizeJobStatusFilter: (value?: string | null) => {
-    if (!value || value === "all") return undefined;
-    return value === "closed" ? "gesloten" : value;
-  },
-  normalizeListJobsSortBy: (value?: string | null) => value ?? undefined,
+  listJobs: mockListJobs,
 }));
 
 vi.mock("../src/services/esco", () => ({
@@ -23,29 +18,27 @@ import { GET } from "../app/api/opdrachten/route";
 describe("GET /api/opdrachten", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSearchJobsUnified.mockResolvedValue({ data: [], total: 0 });
+    mockListJobs.mockResolvedValue({ data: [], total: 0 });
     mockWithJobsCanonicalSkills.mockResolvedValue([]);
   });
 
-  it("parses company, status, category, sorting and perPage filters", async () => {
+  it("parses endClient, status, and pagination filters", async () => {
     const request = new Request(
-      "http://localhost/api/opdrachten?q=manager&platform=opdrachtoverheid&company=Belastingdienst&status=gesloten&category=ICT&sortBy=deadline&pagina=2&perPage=25",
+      "http://localhost/api/opdrachten?q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=Utrecht&contractType=interim&tariefMin=80&tariefMax=120&pagina=2&perPage=25",
     );
 
     const response = await GET(request);
     const body = await response.json();
 
-    expect(mockSearchJobsUnified).toHaveBeenCalledWith({
+    expect(mockListJobs).toHaveBeenCalledWith({
       q: "manager",
       platform: "opdrachtoverheid",
-      company: "Belastingdienst",
-      status: "gesloten",
-      category: "ICT",
-      sortBy: "deadline",
-      province: undefined,
-      rateMin: undefined,
-      rateMax: undefined,
-      contractType: undefined,
+      endClient: "Gemeente Utrecht",
+      status: "closed",
+      province: "Utrecht",
+      rateMin: 80,
+      rateMax: 120,
+      contractType: "interim",
       limit: 25,
       offset: 25,
     });
