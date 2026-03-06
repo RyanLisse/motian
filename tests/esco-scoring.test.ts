@@ -34,9 +34,7 @@ describe("computeEscoSkillScore", () => {
   });
 
   it("returns score 0 and guardrailFallback true when candidate skills are empty", () => {
-    const result = computeEscoSkillScore([], [
-      jobSkill("http://data.europa.eu/esco/skill/react"),
-    ]);
+    const result = computeEscoSkillScore([], [jobSkill("http://data.europa.eu/esco/skill/react")]);
     expect(result.skillScore).toBe(0);
     expect(result.guardrailFallback).toBe(true);
     expect(result.reasoning).toMatch(/kandidaat|fallback|legacy/i);
@@ -58,10 +56,7 @@ describe("computeEscoSkillScore", () => {
     const otherUri = "http://data.europa.eu/esco/skill/other";
     const result = computeEscoSkillScore(
       [candidateSkill(otherUri)],
-      [
-        jobSkill(jobUri, { critical: true, label: "CriticalSkill" }),
-        jobSkill(otherUri),
-      ],
+      [jobSkill(jobUri, { critical: true, label: "CriticalSkill" }), jobSkill(otherUri)],
     );
     expect(result.skillScore).toBe(0);
     expect(result.guardrailFallback).toBe(true);

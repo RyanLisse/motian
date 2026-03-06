@@ -1,5 +1,5 @@
 import { withApiHandler } from "@/src/lib/api-handler";
-import { parsePagination, paginatedResponse } from "@/src/lib/pagination";
+import { paginatedResponse, parsePagination } from "@/src/lib/pagination";
 import { withJobsCanonicalSkills } from "@/src/services/esco";
 import { listJobs } from "@/src/services/jobs";
 
@@ -29,7 +29,5 @@ export const GET = withApiHandler(async (request: Request) => {
   });
 
   const data = await withJobsCanonicalSkills(result.data);
-  return Response.json(
-    paginatedResponse(data, result.total, { page, limit, offset }),
-  );
+  return Response.json(paginatedResponse(data, result.total, { page, limit, offset }));
 });

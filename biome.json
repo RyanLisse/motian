@@ -31,5 +31,26 @@
       "tests/**/*.ts",
       "*.json"
     ]
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["components/agents-ui/**"],
+      "linter": {
+        "rules": {
+          "correctness": { "useHookAtTopLevel": "off", "useExhaustiveDependencies": "off" },
+          "style": { "noNonNullAssertion": "off" },
+          "suspicious": { "noAssignInExpressions": "off", "noArrayIndexKey": "off" },
+          "a11y": { "useAriaPropsSupportedByRole": "off", "noAutofocus": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["components/chat/chat-history-sidebar.tsx", "components/ui/button-group.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": { "useSemanticElements": "off" }
+        }
+      }
+    }
+  ]
 }

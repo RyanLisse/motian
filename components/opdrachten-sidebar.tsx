@@ -2,8 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, RotateCcw, Search } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { useDeferredValue, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { JobListItem } from "@/components/job-list-item";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,16 @@ const CONTRACT_TYPES = [
   { value: "opdracht", label: "Opdracht" },
 ];
 
+function pushOpdrachtenParams(
+  searchParams: URLSearchParams,
+  router: ReturnType<typeof useRouter>,
+  overrides: Record<string, string>,
+) {
+  const p = new URLSearchParams(searchParams);
+  for (const [k, v] of Object.entries(overrides)) p.set(k, v);
+  router.push(`/opdrachten?${p.toString()}`);
+}
+
 async function searchJobs(
   q: string,
   platform: string,
@@ -90,48 +100,76 @@ export function OpdrachtenSidebar({
   platforms,
 }: OpdrachtenSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const isOverviewPage = pathname === "/opdrachten";
   const match = pathname.match(/^\/opdrachten\/(.+)$/);
   const activeId = match?.[1] ?? null;
 
-  const [query, setQuery] = useState("");
-  const [platform, setPlatform] = useState("");
-  const [provincie, setProvincie] = useState("");
-  const [contractType, setContractType] = useState("");
-  const [tariefMin, setTariefMin] = useState("");
-  const [tariefMax, setTariefMax] = useState("");
-  const [sortBy, setSortBy] = useState("nieuwst");
-  const [page, setPage] = useState(1);
+  // URL as source of truth for TanStack Query: key and fetch use searchParams so e.g. top-opdrachtgevers link shows correct results immediately
+  const q = searchParams.get("q") ?? "";
+  const platform = searchParams.get("platform") ?? "";
+  const provincie = searchParams.get("provincie") ?? "";
+  const contractType = searchParams.get("contractType") ?? "";
+  const tariefMinParam = searchParams.get("tariefMin") ?? "";
+  const tariefMaxParam = searchParams.get("tariefMax") ?? "";
+  const pageParam = Math.max(1, Number.parseInt(searchParams.get("pagina") ?? "1", 10) || 1);
 
-  const deferredQuery = useDeferredValue(query);
-  const deferredTariefMin = useDeferredValue(tariefMin);
-  const deferredTariefMax = useDeferredValue(tariefMax);
+  const [inputValue, setInputValue] = useState(q);
+  const [sortBy, setSortBy] = useState("nieuwst");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setInputValue(q);
+  }, [q]);
+
+  // Debounce search input: push to URL after 300ms so queryKey updates (only when user typed, not when we synced from URL)
+  useEffect(() => {
+    if (inputValue === q) {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      pushOpdrachtenParams(searchParams, router, { q: inputValue, pagina: "1" });
+      debounceRef.current = null;
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [inputValue, q, searchParams, router]);
+
+  const deferredTariefMin = useDeferredValue(tariefMinParam);
+  const deferredTariefMax = useDeferredValue(tariefMaxParam);
 
   const { data, isFetching } = useQuery({
     queryKey: [
       "opdrachten-search",
-      deferredQuery,
+      q,
       platform,
       provincie,
       contractType,
       deferredTariefMin,
       deferredTariefMax,
-      page,
+      pageParam,
     ],
     queryFn: () =>
       searchJobs(
-        deferredQuery,
+        q,
         platform,
         provincie,
         contractType,
         deferredTariefMin,
         deferredTariefMax,
-        page,
+        pageParam,
       ),
     placeholderData: (prev) => prev,
     initialData:
-      page === 1 &&
-      !deferredQuery &&
+      pageParam === 1 &&
+      !q &&
       !platform &&
       !provincie &&
       !contractType &&
@@ -150,19 +188,12 @@ export function OpdrachtenSidebar({
   const displayTotal = data?.total ?? initialTotal;
   const totalPages = data?.totalPages ?? 1;
 
-  const handleFilterChange = (setter: (v: string) => void, value: string) => {
-    setter(value);
-    setPage(1);
+  const handleFilterChange = (paramKey: string, value: string) => {
+    pushOpdrachtenParams(searchParams, router, { [paramKey]: value, pagina: "1" });
   };
 
   const resetFilters = () => {
-    setQuery("");
-    setPlatform("");
-    setProvincie("");
-    setContractType("");
-    setTariefMin("");
-    setTariefMax("");
-    setPage(1);
+    router.push("/opdrachten");
   };
 
   if (!isOverviewPage) {
@@ -173,11 +204,8 @@ export function OpdrachtenSidebar({
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Zoek vacatures..."
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(1);
-              }}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
               className="pl-8 h-8 bg-card border-border text-xs text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
             />
             {isFetching && (
@@ -189,7 +217,7 @@ export function OpdrachtenSidebar({
         <div className="px-3 pb-2 flex items-center gap-1.5 shrink-0">
           <Select
             value={platform || undefined}
-            onValueChange={(v) => handleFilterChange(setPlatform, v === "__all__" ? "" : v)}
+            onValueChange={(v) => handleFilterChange("platform", v === "__all__" ? "" : v)}
           >
             <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
               <SelectValue placeholder="Opdrachtgever" />
@@ -208,7 +236,7 @@ export function OpdrachtenSidebar({
 
           <Select
             value={provincie || undefined}
-            onValueChange={(v) => handleFilterChange(setProvincie, v === "__all__" ? "" : v)}
+            onValueChange={(v) => handleFilterChange("provincie", v === "__all__" ? "" : v)}
           >
             <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
               <SelectValue placeholder="Provincie" />
@@ -232,7 +260,7 @@ export function OpdrachtenSidebar({
           </p>
           {totalPages > 1 && (
             <p className="text-[10px] text-muted-foreground">
-              {page}/{totalPages}
+              {pageParam}/{totalPages}
             </p>
           )}
         </div>
@@ -255,8 +283,10 @@ export function OpdrachtenSidebar({
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-accent text-xs"
-              disabled={page <= 1 || isFetching}
-              onClick={() => setPage((p) => p - 1)}
+              disabled={pageParam <= 1 || isFetching}
+              onClick={() =>
+                pushOpdrachtenParams(searchParams, router, { pagina: String(pageParam - 1) })
+              }
             >
               <ChevronLeft className="h-3.5 w-3.5 mr-1" />
               Vorige
@@ -265,8 +295,10 @@ export function OpdrachtenSidebar({
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-accent text-xs"
-              disabled={page >= totalPages || isFetching}
-              onClick={() => setPage((p) => p + 1)}
+              disabled={pageParam >= totalPages || isFetching}
+              onClick={() =>
+                pushOpdrachtenParams(searchParams, router, { pagina: String(pageParam + 1) })
+              }
             >
               Volgende
               <ChevronRight className="h-3.5 w-3.5 ml-1" />
@@ -305,11 +337,8 @@ export function OpdrachtenSidebar({
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="opdrachten-zoekterm"
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setPage(1);
-                  }}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
                   placeholder="Zoek vacature..."
                   className="h-11 rounded-lg border-border bg-background pl-10 text-sm"
                 />
@@ -328,7 +357,7 @@ export function OpdrachtenSidebar({
               </label>
               <Select
                 value={platform || "__all__"}
-                onValueChange={(v) => handleFilterChange(setPlatform, v === "__all__" ? "" : v)}
+                onValueChange={(v) => handleFilterChange("platform", v === "__all__" ? "" : v)}
               >
                 <SelectTrigger
                   id="opdrachten-opdrachtgever"
@@ -358,7 +387,7 @@ export function OpdrachtenSidebar({
               </label>
               <Select
                 value={provincie || "__all__"}
-                onValueChange={(v) => handleFilterChange(setProvincie, v === "__all__" ? "" : v)}
+                onValueChange={(v) => handleFilterChange("provincie", v === "__all__" ? "" : v)}
               >
                 <SelectTrigger
                   id="opdrachten-locatie"
@@ -388,7 +417,7 @@ export function OpdrachtenSidebar({
               </label>
               <Select
                 value={contractType || "__all__"}
-                onValueChange={(v) => handleFilterChange(setContractType, v === "__all__" ? "" : v)}
+                onValueChange={(v) => handleFilterChange("contractType", v === "__all__" ? "" : v)}
               >
                 <SelectTrigger
                   id="opdrachten-contracttype"
@@ -416,22 +445,26 @@ export function OpdrachtenSidebar({
                   type="number"
                   inputMode="numeric"
                   placeholder="Min"
-                  value={tariefMin}
-                  onChange={(e) => {
-                    setTariefMin(e.target.value);
-                    setPage(1);
-                  }}
+                  value={tariefMinParam}
+                  onChange={(e) =>
+                    pushOpdrachtenParams(searchParams, router, {
+                      tariefMin: e.target.value,
+                      pagina: "1",
+                    })
+                  }
                   className="h-11 rounded-lg border-border bg-background text-sm"
                 />
                 <Input
                   type="number"
                   inputMode="numeric"
                   placeholder="Max"
-                  value={tariefMax}
-                  onChange={(e) => {
-                    setTariefMax(e.target.value);
-                    setPage(1);
-                  }}
+                  value={tariefMaxParam}
+                  onChange={(e) =>
+                    pushOpdrachtenParams(searchParams, router, {
+                      tariefMax: e.target.value,
+                      pagina: "1",
+                    })
+                  }
                   className="h-11 rounded-lg border-border bg-background text-sm"
                 />
               </div>
@@ -482,21 +515,25 @@ export function OpdrachtenSidebar({
                 variant="outline"
                 size="sm"
                 className="h-9 border-border bg-background text-foreground"
-                disabled={page <= 1 || isFetching}
-                onClick={() => setPage((p) => p - 1)}
+                disabled={pageParam <= 1 || isFetching}
+                onClick={() =>
+                  pushOpdrachtenParams(searchParams, router, { pagina: String(pageParam - 1) })
+                }
               >
                 <ChevronLeft className="mr-1 h-4 w-4" />
                 Vorige
               </Button>
               <p className="text-sm text-muted-foreground">
-                Pagina {page} van {totalPages}
+                Pagina {pageParam} van {totalPages}
               </p>
               <Button
                 variant="outline"
                 size="sm"
                 className="h-9 border-border bg-background text-foreground"
-                disabled={page >= totalPages || isFetching}
-                onClick={() => setPage((p) => p + 1)}
+                disabled={pageParam >= totalPages || isFetching}
+                onClick={() =>
+                  pushOpdrachtenParams(searchParams, router, { pagina: String(pageParam + 1) })
+                }
               >
                 Volgende
                 <ChevronRight className="ml-1 h-4 w-4" />

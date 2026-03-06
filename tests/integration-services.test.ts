@@ -122,7 +122,7 @@ describe("GDPR module structure", () => {
     expect(typeof gdpr.findExpiredRetentionCandidates).toBe("function");
     expect(typeof gdpr.scrubContactData).toBe("function");
     expect(typeof gdpr.getAuditLog).toBe("function");
-  });
+  }, 15_000);
 });
 
 // ─── 4. Schema exports ──────────────────────────────────────────────

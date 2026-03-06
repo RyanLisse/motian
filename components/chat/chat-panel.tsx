@@ -19,12 +19,16 @@ import { ChatMessages } from "./chat-messages";
 const SESSION_KEY = "motian-fab-session";
 
 function getOrCreateSessionId(): string {
-  if (typeof window === "undefined") return "";
-  const existing = sessionStorage.getItem(SESSION_KEY);
-  if (existing) return existing;
-  const id = nanoid();
-  sessionStorage.setItem(SESSION_KEY, id);
-  return id;
+  try {
+    if (typeof window === "undefined") return "";
+    const existing = sessionStorage.getItem(SESSION_KEY);
+    if (existing) return existing;
+    const id = nanoid();
+    sessionStorage.setItem(SESSION_KEY, id);
+    return id;
+  } catch {
+    return nanoid();
+  }
 }
 
 type UploadState = "idle" | "uploading" | "success" | "error";
@@ -138,68 +142,79 @@ function ChatPanelInner({
   );
 
   return (
-    <>
+    <div className="relative flex flex-1 flex-col overflow-hidden">
       <ChatMessages
         messages={messages}
         status={status}
         onSuggestion={(text) => sendMessage({ text })}
       />
 
-      {/* Upload status */}
-      {uploadState !== "idle" && (
-        <div
-          className={`flex items-center gap-2 border-t px-3 py-1.5 text-xs ${
-            uploadState === "error"
-              ? "border-destructive/20 bg-destructive/5 text-destructive"
-              : uploadState === "success"
-                ? "border-primary/20 bg-primary/5 text-primary"
-                : "border-border bg-muted/50 text-muted-foreground"
-          }`}
-        >
-          {uploadState === "uploading" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {uploadState === "success" && <Check className="h-3.5 w-3.5" />}
-          {uploadState === "error" && <X className="h-3.5 w-3.5" />}
-          <span className="truncate">{uploadResult ?? "Verwerken..."}</span>
-        </div>
-      )}
-
-      <div className="border-t border-border p-2">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        <PromptInput onSubmit={handleSubmit}>
-          <PromptInputTextarea placeholder="Stel een vraag of upload een CV..." />
-          <PromptInputFooter>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadState === "uploading"}
-              className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-              title="CV/document uploaden"
+      <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-3 sm:pb-4">
+        <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+          {/* Upload status */}
+          {uploadState !== "idle" && (
+            <div
+              className={`flex items-center gap-2 px-3 py-2 text-xs ${
+                uploadState === "error"
+                  ? "bg-destructive/5 text-destructive"
+                  : uploadState === "success"
+                    ? "bg-primary/5 text-primary"
+                    : "bg-muted/50 text-muted-foreground"
+              }`}
             >
-              <Paperclip className="h-3.5 w-3.5" />
-            </button>
-            <PromptInputSubmit status={status} onStop={stop} />
-          </PromptInputFooter>
-        </PromptInput>
+              {uploadState === "uploading" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {uploadState === "success" && <Check className="h-3.5 w-3.5" />}
+              {uploadState === "error" && <X className="h-3.5 w-3.5" />}
+              <span className="truncate">{uploadResult ?? "Verwerken..."}</span>
+            </div>
+          )}
+
+          <div className="p-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <PromptInput onSubmit={handleSubmit}>
+              <PromptInputTextarea placeholder="Stel een vraag of upload een CV..." />
+              <PromptInputFooter>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadState === "uploading"}
+                  className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                  title="CV/document uploaden"
+                >
+                  <Paperclip className="h-3.5 w-3.5" />
+                </button>
+                <PromptInputSubmit status={status} onStop={stop} />
+              </PromptInputFooter>
+            </PromptInput>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
 export function ChatPanel() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [sessionId, setSessionId] = useState(getOrCreateSessionId);
+  const [sessionId, setSessionId] = useState("");
+  useEffect(() => {
+    setSessionId(getOrCreateSessionId());
+  }, []);
   const ctx = useChatContext();
 
   const handleNewSession = useCallback(() => {
     const id = nanoid();
-    sessionStorage.setItem(SESSION_KEY, id);
+    try {
+      sessionStorage.setItem(SESSION_KEY, id);
+    } catch {
+      // Storage not available (e.g. private or iframe)
+    }
     setSessionId(id);
   }, []);
 
@@ -222,7 +237,7 @@ export function ChatPanel() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  if (pathname === "/chat") return null;
+  if (pathname === "/chat" || pathname === "/opdrachten") return null;
 
   return (
     <>
@@ -274,8 +289,14 @@ export function ChatPanel() {
           </div>
         </div>
 
-        {/* Chat content — key forces remount on session change */}
-        <ChatPanelInner key={sessionId} ctx={ctx} sessionId={sessionId} />
+        {/* Chat content — key forces remount on session change; only mount when sessionId is ready (avoids storage access during SSR/hydration) */}
+        {sessionId ? (
+          <ChatPanelInner key={sessionId} ctx={ctx} sessionId={sessionId} />
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-4">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
       </div>
     </>
   );

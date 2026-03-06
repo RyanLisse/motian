@@ -2,8 +2,8 @@ import { sql } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { syncJobEscoSkills } from "./esco";
 import { unifiedJobSchema } from "../schemas/job";
+import { syncJobEscoSkills } from "./esco";
 
 /** Permissive type for scraped data — Zod validates at runtime via safeParse */
 export type RawScrapedListing = Record<string, unknown>;

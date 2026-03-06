@@ -3,7 +3,7 @@
 import type { AgentState, TrackReferenceOrPlaceholder } from "@livekit/components-react";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { LocalAudioTrack, RemoteAudioTrack } from "livekit-client";
-import React, { type ComponentProps, useMemo } from "react";
+import { type ComponentProps, useMemo } from "react";
 
 import { ReactShaderToy } from "@/components/agents-ui/react-shader-toy";
 import { useAgentAudioVisualizerAura } from "@/hooks/agents-ui/use-agent-audio-visualizer-aura";
@@ -21,7 +21,7 @@ function hexToRgb(hexColor: string) {
 
       return color;
     }
-  } catch (error) {
+  } catch (_error) {
     console.error(
       `Invalid hex color '${hexColor}'.\nFalling back to default color '${DEFAULT_COLOR}'.`,
     );
