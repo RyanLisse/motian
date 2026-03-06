@@ -235,7 +235,7 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 - 4 test failures are pre-existing: 3 tests check for literal `"gemini-"` string in source but the code uses a `geminiFlash` alias from `src/lib/ai-models.ts`; 1 structural test flags an English `candidates` API route segment.
 - The Justfile uses `zsh` as its shell — use `pnpm` commands directly instead if `zsh` is not installed.
 - `bv` (Bead Viewer) without flags launches an interactive TUI that will block the session. Always use `bv --robot-*` flags.
-- The sidebar nav calls `/kandidaten` but the actual route is `/professionals` (Talent Pool submenu).
+- The candidate page route is `/kandidaten` (Dutch, consistent with other routes like `/opdrachten`). A redirect from the legacy `/professionals` path is configured for backward compatibility.
 
 <!-- TRIGGER.DEV basic START -->
 

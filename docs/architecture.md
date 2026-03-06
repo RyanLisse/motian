@@ -188,7 +188,7 @@ Next.js 16 App Router with Tailwind CSS v4, Radix UI (shadcn/ui), React 19.
 |-------|---------|
 | `/opdrachten` | Filterable job listing with platform/province/rate filters |
 | `/opdrachten/[id]` | Job detail with formatted descriptions and competence badges |
-| `/professionals` | Candidate directory with CV upload/delete |
+| `/kandidaten` | Candidate directory with CV upload/delete (legacy `/professionals` redirects here) |
 | `/matching` | AI matching: CV Analyse tab (drag-and-drop) + Koppelen tab |
 | `/pipeline` | Scrape history and status |
 | `/scraper` | Scraper configuration and manual triggers |

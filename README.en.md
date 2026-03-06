@@ -516,7 +516,7 @@ motian/
 │   │   ├── reports/              # Platform reports
 │   │   └── gezondheid/           # Health check
 │   ├── opdrachten/               # Job listing & detail pages
-│   ├── professionals/            # Candidate directory
+│   ├── kandidaten/               # Candidate directory (redirect from /professionals)
 │   ├── matching/                 # AI matching dashboard
 │   ├── pipeline/                 # Scrape history
 │   ├── scraper/                  # Scraper configuration UI
@@ -612,7 +612,7 @@ Each scraper implements a common interface and is orchestrated by `runScrapePipe
 | `/overzicht`       | Dashboard      | KPI overview with aggregate statistics                             |
 | `/opdrachten`      | Vacancies      | Filterable job listing with platform, province, and rate filters   |
 | `/opdrachten/[id]` | Vacancy Detail | Full job details with formatted descriptions and competence badges |
-| `/professionals`   | Candidates     | Candidate directory and profiles                                   |
+| `/kandidaten`      | Candidates     | Candidate directory and profiles (legacy `/professionals` redirects here) |
 | `/matching`        | AI Matching    | CV Analyse (drag-and-drop SSE) + Koppelen tab with 3-layer matching |
 | `/pipeline`        | Pipeline       | Scrape run history and status monitoring                           |
 | `/scraper`         | Configuration  | Platform scraper settings and manual triggers                      |
