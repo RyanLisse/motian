@@ -202,7 +202,7 @@ export async function autoMatchCandidateToJobs(
   const freshCandidate = await getCandidateById(candidateId);
   if (!freshCandidate) throw new Error("Kandidaat niet gevonden na embedding");
 
-  const activeJobs = await listActiveJobs(200);
+  const activeJobs = await listActiveJobs(500);
   if (activeJobs.length === 0) return [];
 
   const useEscoScoring =
@@ -247,7 +247,7 @@ export async function autoMatchJobToCandidates(
   const job = await getJobById(jobId);
   if (!job) throw new Error("Opdracht niet gevonden");
 
-  const activeCandidates = await listActiveCandidates(200);
+  const activeCandidates = await listActiveCandidates(500);
   if (activeCandidates.length === 0) return [];
 
   const useEscoScoringJob =

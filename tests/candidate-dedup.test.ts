@@ -39,4 +39,10 @@ describe("Candidate deduplication", () => {
     expect(source).toContain("existing.role");
     expect(source).toContain("existing.location");
   });
+
+  it("enrichCandidateFromCV refreshes candidate embeddings after CV updates", () => {
+    const source = readFile("src/services/candidates.ts");
+    expect(source).toContain('const { embedCandidate } = await import("./embedding")');
+    expect(source).toContain("await embedCandidate(candidate.id)");
+  });
 });

@@ -287,15 +287,16 @@ describe("cv-upload save route import wiring", () => {
     expect(source).toContain("candidate-intelligence");
   });
 
-  it("imports createCandidate from candidates service", () => {
+  it("imports intakeCandidate from candidate-intake service", () => {
     const source = readFile("app/api/cv-upload/save/route.ts");
-    expect(source).toContain("createCandidate");
-    expect(source).toContain("candidates");
+    expect(source).toContain("intakeCandidate");
+    expect(source).toContain("candidate-intake");
   });
 
-  it("imports enrichCandidateFromCV from candidates service", () => {
+  it("prechecks existing candidates before intake", () => {
     const source = readFile("app/api/cv-upload/save/route.ts");
-    expect(source).toContain("enrichCandidateFromCV");
+    expect(source).toContain("getCandidateById");
+    expect(source).toContain("Kandidaat niet gevonden");
   });
 });
 

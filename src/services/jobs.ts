@@ -26,6 +26,7 @@ export type UnifiedJobSearchOptions = {
   q?: string;
   platform?: string;
   company?: string;
+  endClient?: string;
   category?: string;
   status?: JobStatus;
   province?: string;
@@ -79,6 +80,7 @@ export async function searchJobsUnified(
       offset: opts.offset,
       platform: opts.platform,
       company: opts.company,
+      endClient: opts.endClient,
       category: opts.category,
       status: opts.status,
       province: opts.province,
