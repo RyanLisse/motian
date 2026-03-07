@@ -69,7 +69,7 @@
     "zod-to-json-schema": "^3.25.1"
   },
   "scripts": {
-    "dev": "next dev --port 3001",
+    "dev": "next dev --port 3002",
     "build": "next build",
     "test": "vitest run",
     "test:watch": "vitest",
