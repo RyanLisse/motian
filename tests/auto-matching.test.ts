@@ -19,7 +19,9 @@ vi.mock("../src/services/candidates", () => ({
   getCandidateById: mockGetCandidateById,
   listActiveCandidates: mockListActiveCandidates,
 }));
-vi.mock("../src/services/embedding", () => ({ embedCandidate: mockEmbedCandidate }));
+vi.mock("../src/services/embedding", () => ({
+  embedCandidate: mockEmbedCandidate,
+}));
 vi.mock("../src/services/esco", () => ({
   getCandidateSkills: vi.fn(),
   getCandidateSkillsForCandidateIds: vi.fn(),
@@ -36,11 +38,16 @@ vi.mock("../src/services/matches", () => ({
   createMatch: vi.fn(),
   getMatchByJobAndCandidate: vi.fn(),
 }));
-vi.mock("../src/services/requirement-extraction", () => ({ extractRequirements: vi.fn() }));
+vi.mock("../src/services/requirement-extraction", () => ({
+  extractRequirements: vi.fn(),
+}));
 vi.mock("../src/services/scoring", () => ({ computeMatchScore: vi.fn() }));
 vi.mock("../src/services/structured-matching", () => ({ runStructuredMatch: vi.fn() }));
 
-import { autoMatchCandidateToJobs, autoMatchJobToCandidates } from "../src/services/auto-matching.js";
+import {
+  autoMatchCandidateToJobs,
+  autoMatchJobToCandidates,
+} from "../src/services/auto-matching.js";
 
 describe("auto-matching prefilter limits", () => {
   beforeEach(() => {

@@ -2,7 +2,7 @@ import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { db } from "../db";
 import { applications, candidates, jobMatches } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
-import { type Candidate, type CandidateMatchingStatus } from "./candidates";
+import type { Candidate, CandidateMatchingStatus } from "./candidates";
 
 export type MatchingInboxItem = Candidate & {
   activeApplicationCount: number;

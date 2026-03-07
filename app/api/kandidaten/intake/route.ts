@@ -44,6 +44,7 @@ const intakeSchema = z
 export const POST = withApiHandler(async (request: Request) => {
   const body = await request.json();
   const parsed = intakeSchema.safeParse(body);
+
   if (!parsed.success) {
     return Response.json(
       { error: "Ongeldige invoer", details: parsed.error.flatten() },
@@ -53,6 +54,7 @@ export const POST = withApiHandler(async (request: Request) => {
 
   if (parsed.data.existingCandidateId) {
     const existingCandidate = await getCandidateById(parsed.data.existingCandidateId);
+
     if (!existingCandidate) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
@@ -64,5 +66,7 @@ export const POST = withApiHandler(async (request: Request) => {
   revalidatePath("/professionals");
   revalidatePath(`/professionals/${result.candidate.id}`);
 
-  return Response.json(result, { status: parsed.data.existingCandidateId ? 200 : 201 });
+  return Response.json(result, {
+    status: parsed.data.existingCandidateId ? 200 : 201,
+  });
 });

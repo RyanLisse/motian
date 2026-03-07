@@ -17,7 +17,10 @@ export const POST = withApiHandler(
     revalidatePath("/professionals");
     revalidatePath(`/professionals/${id}`);
 
-    return Response.json({ candidate, matchingStatus: candidate.matchingStatus });
+    return Response.json({
+      candidate,
+      matchingStatus: candidate.matchingStatus,
+    });
   },
   { logPrefix: "POST /api/kandidaten/[id]/geen-match error" },
 );

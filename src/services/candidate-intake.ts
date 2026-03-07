@@ -1,15 +1,18 @@
-import { structuredSkillsSchema, type ParsedCV, type StructuredSkill } from "../schemas/candidate-intelligence";
-import { listApplications } from "./applications";
-import { autoMatchCandidateToJobs, type AutoMatchResult } from "./auto-matching";
 import {
-  type Candidate,
-  type CandidateMatchingStatus,
+  type ParsedCV,
+  type StructuredSkill,
+  structuredSkillsSchema,
+} from "../schemas/candidate-intelligence";
+import { listApplications } from "./applications";
+import type { AutoMatchResult } from "./auto-matching";
+import { autoMatchCandidateToJobs } from "./auto-matching";
+import type { Candidate, CandidateMatchingStatus, CreateCandidateData } from "./candidates";
+import {
   createCandidate,
   enrichCandidateFromCV,
   getCandidateById,
   isCandidateMatchingStatus,
   updateCandidateMatchingStatus,
-  type CreateCandidateData,
 } from "./candidates";
 
 type CandidateStructuredProfileMeta = {
@@ -127,15 +130,23 @@ function buildCandidateProfile(candidate: Candidate): CandidateProfile {
 }
 
 function getEffectiveScore(match: AutoMatchResult): number {
-  return match.judgeVerdict?.adjustedScore ?? match.structuredResult?.overallScore ?? match.quickScore;
+  return (
+    match.judgeVerdict?.adjustedScore ?? match.structuredResult?.overallScore ?? match.quickScore
+  );
 }
 
-function getEffectiveRecommendation(match: AutoMatchResult): CandidateIntakeMatch["recommendation"] {
-  return match.judgeVerdict?.adjustedRecommendation ?? match.structuredResult?.recommendation ?? null;
+function getEffectiveRecommendation(
+  match: AutoMatchResult,
+): CandidateIntakeMatch["recommendation"] {
+  return (
+    match.judgeVerdict?.adjustedRecommendation ?? match.structuredResult?.recommendation ?? null
+  );
 }
 
 function selectRecommendation(matches: AutoMatchResult[]): AutoMatchResult | null {
-  const byScore = [...matches].sort((left, right) => getEffectiveScore(right) - getEffectiveScore(left));
+  const byScore = [...matches].sort(
+    (left, right) => getEffectiveScore(right) - getEffectiveScore(left),
+  );
   return (
     byScore.find((match) => getEffectiveRecommendation(match) === "go") ??
     byScore.find((match) => getEffectiveRecommendation(match) === "conditional") ??
@@ -152,7 +163,8 @@ function mapMatch(match: AutoMatchResult, linkedJobIds: Set<string>): CandidateI
     location: match.location,
     quickScore: match.quickScore,
     matchId: match.matchId,
-    reasoning: match.judgeVerdict?.reasoning ?? match.structuredResult?.recommendationReasoning ?? null,
+    reasoning:
+      match.judgeVerdict?.reasoning ?? match.structuredResult?.recommendationReasoning ?? null,
     recommendation: getEffectiveRecommendation(match),
     recommendationConfidence:
       match.structuredResult?.recommendationConfidence ?? match.judgeVerdict?.confidence ?? null,
@@ -231,8 +243,12 @@ export async function reviewCandidateMatches(
   };
 }
 
-export async function intakeCandidate(input: CandidateIntakeInput): Promise<CandidateMatchReviewResult> {
-  let candidate = input.existingCandidateId ? await getCandidateById(input.existingCandidateId) : null;
+export async function intakeCandidate(
+  input: CandidateIntakeInput,
+): Promise<CandidateMatchReviewResult> {
+  let candidate = input.existingCandidateId
+    ? await getCandidateById(input.existingCandidateId)
+    : null;
 
   if (input.existingCandidateId && !candidate) {
     throw new Error("Kandidaat niet gevonden");
@@ -254,5 +270,8 @@ export async function intakeCandidate(input: CandidateIntakeInput): Promise<Cand
     }
   }
 
-  return reviewCandidateMatches(candidate.id, { topN: 5, matchingStatus: "open" });
+  return reviewCandidateMatches(candidate.id, {
+    topN: 5,
+    matchingStatus: "open",
+  });
 }

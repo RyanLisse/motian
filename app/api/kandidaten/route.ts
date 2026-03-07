@@ -54,7 +54,11 @@ export const GET = withApiHandler(async (request: Request) => {
       limit,
       offset,
     });
-    const total = await countMatchingInboxCandidates({ status: matchingStatus, query: q, location });
+    const total = await countMatchingInboxCandidates({
+      status: matchingStatus,
+      query: q,
+      location,
+    });
     const dataWithCanonicalSkills = await withCandidatesCanonicalSkills(data);
 
     return Response.json(

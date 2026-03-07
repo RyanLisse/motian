@@ -263,7 +263,9 @@ describe("buildCandidateEmbeddingText", () => {
       resumeRaw: null,
     });
 
-    expect(text).toContain("Notities: Beschikbaar voor Kadaster DataOps opdrachten en sterk in Azure.");
+    expect(text).toContain(
+      "Notities: Beschikbaar voor Kadaster DataOps opdrachten en sterk in Azure.",
+    );
   });
 });
 

@@ -3,9 +3,9 @@
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { WizardIntakeResult } from "@/components/candidate-wizard/types";
 import { WizardStepLinking } from "@/components/candidate-wizard/wizard-step-linking";
 import { WizardStepProfile } from "@/components/candidate-wizard/wizard-step-profile";
-import type { WizardIntakeResult } from "@/components/candidate-wizard/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,9 +61,7 @@ export function AddCandidateWizard() {
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle>
-            {step === "profile" ? "Kandidaat intake" : "Review & koppelen"}
-          </DialogTitle>
+          <DialogTitle>{step === "profile" ? "Kandidaat intake" : "Review & koppelen"}</DialogTitle>
           <DialogDescription>
             {step === "profile"
               ? "Start via CV upload of handmatige intake en bouw direct een matchbaar kandidaatprofiel op."
