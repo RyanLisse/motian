@@ -64,9 +64,7 @@ describe("GET /api/salesforce-feed", () => {
     expect(body).toContain("<Id>job-1</Id>");
     expect(body).toContain("<Name>R&amp;D &lt;Lead&gt;</Name>");
     expect(body).toContain("<Remote__c>true</Remote__c>");
-    expect(body).toContain(
-      "<LastModifiedDate>2026-03-01T00:00:00.000Z</LastModifiedDate>",
-    );
+    expect(body).toContain("<LastModifiedDate>2026-03-01T00:00:00.000Z</LastModifiedDate>");
   });
 
   it("rejects unsupported entities", async () => {

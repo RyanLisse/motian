@@ -18,7 +18,9 @@ export const GET = withApiHandler(
 
     if (entityParam && !parsedEntity) {
       return Response.json(
-        { error: "Ongeldige entity. Gebruik jobs, candidates of applications." },
+        {
+          error: "Ongeldige entity. Gebruik jobs, candidates of applications.",
+        },
         { status: 400 },
       );
     }
@@ -26,7 +28,9 @@ export const GET = withApiHandler(
     const updatedSince = parseUpdatedSinceParam(params.get("updatedSince"));
     if (params.get("updatedSince") && updatedSince === null) {
       return Response.json(
-        { error: "Ongeldige updatedSince. Gebruik een geldige ISO 8601 datum." },
+        {
+          error: "Ongeldige updatedSince. Gebruik een geldige ISO 8601 datum.",
+        },
         { status: 400 },
       );
     }

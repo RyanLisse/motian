@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
+import { afterEach, describe, expect, it } from "vitest";
 import { proxy } from "../proxy";
 
 describe("Salesforce feed auth via proxy", () => {
@@ -20,6 +20,8 @@ describe("Salesforce feed auth via proxy", () => {
     const response = proxy(new NextRequest("http://localhost/api/salesforce-feed"));
 
     expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ error: "Niet geautoriseerd" });
+    await expect(response.json()).resolves.toEqual({
+      error: "Niet geautoriseerd",
+    });
   });
 });

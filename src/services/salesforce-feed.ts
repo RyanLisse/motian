@@ -24,9 +24,7 @@ export type SalesforceFeedQuery = {
   offset: number;
 };
 
-export function parseSalesforceFeedEntity(
-  value?: string | null,
-): SalesforceFeedEntity | undefined {
+export function parseSalesforceFeedEntity(value?: string | null): SalesforceFeedEntity | undefined {
   if (!value) return undefined;
 
   const normalized = value.trim().toLowerCase();
@@ -78,10 +76,7 @@ export function buildSalesforceFeedXml(records: SalesforceFeedRecord[]): string 
     .map((record) => {
       const fields = Object.entries(record.fields)
         .filter(hasXmlValue)
-        .map(
-          ([key, value]) =>
-            `    <${key}>${escapeXml(formatXmlValue(value))}</${key}>`,
-        )
+        .map(([key, value]) => `    <${key}>${escapeXml(formatXmlValue(value))}</${key}>`)
         .join("\n");
 
       return [`  <sObject>`, `    <type>${record.objectType}</type>`, fields, `  </sObject>`]
@@ -297,7 +292,6 @@ export async function getSalesforceFeed(
       return getJobsFeed(query);
     case "candidates":
       return getCandidatesFeed(query);
-    case "applications":
     default:
       return getApplicationsFeed(query);
   }
