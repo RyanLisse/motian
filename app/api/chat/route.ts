@@ -1,5 +1,6 @@
-import { convertToModelMessages, generateObject, stepCountIs } from "ai";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { convertToModelMessages, generateObject, stepCountIs, type UIMessage } from "ai";
+import { and, eq, isNull } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { after } from "next/server";
 import { z } from "zod";
 import { buildSystemPrompt, getRecruitmentTools } from "@/src/ai/agent";
@@ -7,9 +8,15 @@ import { db } from "@/src/db";
 import { chatSessions } from "@/src/db/schema";
 import { resolveChatModel, tracedStreamText as streamText } from "@/src/lib/ai-models";
 import { rateLimit } from "@/src/lib/rate-limit";
+import {
+  type ChatSessionContext,
+  getRecentMessagesForContext,
+  getSessionTokenUsage,
+  incrementSessionTokens,
+  persistMessages,
+} from "@/src/services/chat-sessions";
 
 const limiter = rateLimit({ interval: 60_000, limit: 20 });
-const MAX_STORED_MESSAGES = 50;
 
 /** Optioneel max tokens per sessie (env CHAT_MAX_TOKENS_PER_SESSION). Bij overschrijding: 429 + fallbackmelding. */
 const CHAT_MAX_TOKENS_PER_SESSION = (() => {
@@ -28,6 +35,24 @@ const contextSchema = z
   })
   .nullish();
 
+function getMessageText(message: UIMessage): string {
+  const textParts = Array.isArray(message.parts)
+    ? message.parts
+        .filter((part): part is Extract<UIMessage["parts"][number], { type: "text" }> => {
+          return part.type === "text" && typeof part.text === "string";
+        })
+        .map((part) => part.text.trim())
+        .filter(Boolean)
+    : [];
+
+  if (textParts.length > 0) {
+    return textParts.join("\n").trim();
+  }
+
+  const legacyContent = (message as UIMessage & { content?: unknown }).content;
+  return typeof legacyContent === "string" ? legacyContent.trim() : "";
+}
+
 export async function POST(req: Request) {
   const ip =
     req.headers.get("x-real-ip") ??
@@ -42,7 +67,13 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  if (!body || !Array.isArray(body.messages)) {
+  const requestMessages = Array.isArray(body?.messages)
+    ? (body.messages as UIMessage[])
+    : body?.message
+      ? ([body.message] as UIMessage[])
+      : [];
+
+  if (!body || requestMessages.length === 0) {
     return Response.json({ error: "Ongeldige aanvraag" }, { status: 400 });
   }
 
@@ -51,17 +82,17 @@ export async function POST(req: Request) {
     return Response.json({ error: "Ongeldige context" }, { status: 400 });
   }
 
-  const ctx = contextResult.data ?? undefined;
+  const ctx = (contextResult.data ?? undefined) as ChatSessionContext | undefined;
   const sessionId = ctx?.sessionId;
+  const latestUserMessage = [...requestMessages]
+    .reverse()
+    .find((message) => message.role === "user");
+  const latestUserText = latestUserMessage ? getMessageText(latestUserMessage) : "";
+  const existingSessionMessages = sessionId ? await getRecentMessagesForContext(sessionId, 1) : [];
 
   // AI-budget (Fase 4): als er een sessielimiet is en we hebben een sessionId, check tokensUsed
   if (sessionId && CHAT_MAX_TOKENS_PER_SESSION != null) {
-    const [row] = await db
-      .select({ tokensUsed: chatSessions.tokensUsed })
-      .from(chatSessions)
-      .where(eq(chatSessions.sessionId, sessionId))
-      .limit(1);
-    const used = row?.tokensUsed ?? 0;
+    const used = await getSessionTokenUsage(sessionId);
     if (used >= CHAT_MAX_TOKENS_PER_SESSION) {
       return Response.json(
         {
@@ -74,48 +105,19 @@ export async function POST(req: Request) {
   }
 
   if (sessionId) {
-    const lastMessages = body.messages.slice(-MAX_STORED_MESSAGES);
-    const lastUserMsg = [...body.messages]
-      .reverse()
-      .find((m: { role: string }) => m.role === "user");
-    const preview =
-      typeof lastUserMsg?.content === "string" ? lastUserMsg.content.slice(0, 100) : null;
-    const firstUserMsg = body.messages.find((m: { role: string }) => m.role === "user");
+    await persistMessages({
+      sessionId,
+      context: ctx,
+      messages: requestMessages,
+    });
+
     const shouldGenerateTitle =
-      body.messages.length === 1 && firstUserMsg && typeof firstUserMsg.content === "string";
+      existingSessionMessages.length === 0 &&
+      latestUserText.length > 0 &&
+      requestMessages.filter((message) => message.role === "user").length === 1;
 
-    after(async () => {
-      try {
-        await db
-          .insert(chatSessions)
-          .values({
-            sessionId,
-            messages: lastMessages,
-            context: ctx,
-            messageCount: lastMessages.length,
-            title: null,
-            lastMessagePreview: preview,
-          })
-          .onConflictDoUpdate({
-            target: chatSessions.sessionId,
-            set: {
-              messages: lastMessages,
-              context: ctx,
-              messageCount: lastMessages.length,
-              lastMessagePreview: preview,
-              updatedAt: new Date(),
-            },
-          });
-      } catch (err) {
-        console.error("[chat] Session persistence failed:", err);
-        return;
-      }
-
-      if (!shouldGenerateTitle) {
-        return;
-      }
-
-      void (async () => {
+    if (shouldGenerateTitle) {
+      after(async () => {
         let title: string | null = null;
 
         try {
@@ -127,7 +129,7 @@ export async function POST(req: Request) {
                 .max(50)
                 .describe("Korte titel voor dit gesprek in 3-6 woorden, Nederlands"),
             }),
-            prompt: `Genereer een korte titel (3-6 woorden) voor dit gesprek. Gebruikersvraag: "${firstUserMsg.content.slice(0, 200)}"`,
+            prompt: `Genereer een korte titel (3-6 woorden) voor dit gesprek. Gebruikersvraag: "${latestUserText.slice(0, 200)}"`,
           });
           title = titleResult.object.title;
         } catch (err) {
@@ -146,9 +148,11 @@ export async function POST(req: Request) {
         } catch (err) {
           console.error("[chat] Title update failed:", err);
         }
-      })();
-    });
+      });
+    }
   }
+
+  const modelMessages = sessionId ? await getRecentMessagesForContext(sessionId) : requestMessages;
 
   const system = await buildSystemPrompt(ctx);
   const model = resolveChatModel(body.model);
@@ -156,7 +160,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model,
     system,
-    messages: await convertToModelMessages(body.messages),
+    messages: await convertToModelMessages(modelMessages),
     tools: getRecruitmentTools(ctx),
     stopWhen: stepCountIs(5),
   });
@@ -182,14 +186,9 @@ export async function POST(req: Request) {
             sessionId,
           }),
         );
+
         try {
-          await db
-            .update(chatSessions)
-            .set({
-              tokensUsed: sql`coalesce(${chatSessions.tokensUsed}, 0) + ${delta}`,
-              updatedAt: new Date(),
-            })
-            .where(eq(chatSessions.sessionId, sessionId));
+          await incrementSessionTokens(sessionId, delta);
         } catch (err) {
           console.error("[chat] Token usage update failed:", err);
         }
@@ -198,7 +197,24 @@ export async function POST(req: Request) {
   }
 
   return result.toUIMessageStreamResponse({
+    originalMessages: requestMessages,
+    generateMessageId: nanoid,
     sendReasoning: true,
     sendSources: true,
+    onFinish: async ({ responseMessage }) => {
+      if (!sessionId || !responseMessage) {
+        return;
+      }
+
+      try {
+        await persistMessages({
+          sessionId,
+          context: ctx,
+          messages: [responseMessage],
+        });
+      } catch (err) {
+        console.error("[chat] Assistant message persistence failed:", err);
+      }
+    },
   });
 }

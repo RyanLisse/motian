@@ -1,8 +1,5 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import type { UIMessage } from "ai";
-import { DefaultChatTransport } from "ai";
 import {
   ArrowUp,
   Check,
@@ -17,7 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   PromptInput,
   PromptInputActionAddAttachments,
@@ -40,6 +37,7 @@ import {
 import { useChatContext } from "./chat-context-provider";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { ChatMessages } from "./chat-messages";
+import { useChatThread } from "./use-chat-thread";
 import { VoiceSession } from "./voice-session";
 
 const CHAT_MODELS = [
@@ -55,48 +53,83 @@ const MODE_OPTIONS = [
   { id: "grondig", label: "Grondig", icon: Gauge },
 ] as const;
 
+const SESSION_KEY = "motian-chat-session";
+
+function isStorageAvailable(): boolean {
+  try {
+    if (typeof window === "undefined" || window.sessionStorage == null) return false;
+    const key = "__motian_chat_page_storage_test__";
+    window.sessionStorage.setItem(key, "1");
+    window.sessionStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function persistSessionId(sessionId: string) {
+  if (!isStorageAvailable()) return;
+
+  try {
+    window.sessionStorage.setItem(SESSION_KEY, sessionId);
+  } catch {
+    // Storage not available (e.g. private mode)
+  }
+}
+
+function getOrCreateSessionId(): string {
+  try {
+    if (!isStorageAvailable()) return nanoid();
+    const existing = window.sessionStorage.getItem(SESSION_KEY);
+    if (existing) return existing;
+
+    const sessionId = nanoid();
+    window.sessionStorage.setItem(SESSION_KEY, sessionId);
+    return sessionId;
+  } catch {
+    return nanoid();
+  }
+}
+
 type SpeedMode = (typeof MODE_OPTIONS)[number]["id"];
 type UploadState = "idle" | "uploading" | "success" | "error";
 
 function ChatSession({
   sessionId,
-  initialMessages,
   ctx,
   modelId,
   setModelId,
+  onSessionActivity,
   onToggleVoice,
 }: {
   sessionId: string;
-  initialMessages?: UIMessage[];
-  ctx: { route: string; entityId: string | null; entityType: string | null };
+  ctx: { route: string; entityId: string | null; entityType: "opdracht" | "kandidaat" | null };
   modelId: string;
   setModelId: (id: string) => void;
+  onSessionActivity?: () => void;
   onToggleVoice: () => void;
 }) {
   const [speedMode, setSpeedMode] = useState<SpeedMode>("gemiddeld");
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        body: {
-          model: modelId,
-          speedMode,
-          context: {
-            route: ctx.route,
-            entityId: ctx.entityId,
-            entityType: ctx.entityType,
-            sessionId,
-          },
-        },
-      }),
-    [modelId, speedMode, ctx.route, ctx.entityId, ctx.entityType, sessionId],
+  const { messages, sendMessage, status, stop, hasMoreHistory, loadingOlder, loadOlder } =
+    useChatThread({
+      sessionId,
+      context: ctx,
+      modelId,
+      speedMode,
+      onSessionActivity,
+    });
+
+  const handleSuggestion = useCallback(
+    (text: string) => {
+      sendMessage({ text });
+    },
+    [sendMessage],
   );
 
-  const { messages, sendMessage, status, stop } = useChat({
-    messages: initialMessages,
-    transport,
-  });
+  const handleLoadOlder = useCallback(() => {
+    void loadOlder();
+  }, [loadOlder]);
 
   // File upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -205,7 +238,10 @@ function ChatSession({
       <ChatMessages
         messages={messages}
         status={status}
-        onSuggestion={(text) => sendMessage({ text })}
+        onSuggestion={handleSuggestion}
+        hasOlderMessages={hasMoreHistory}
+        loadingOlder={loadingOlder}
+        onLoadOlder={handleLoadOlder}
       />
 
       {/* Floating Chat Input Container */}
@@ -346,31 +382,35 @@ function ChatSession({
 
 export function ChatPageContent() {
   const ctx = useChatContext();
-  const [sessionId, setSessionId] = useState(() => nanoid());
-  const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>();
+  const [sessionId, setSessionId] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modelId, setModelId] = useState<string>(CHAT_MODELS[0].id);
   const [mode, setMode] = useState<"text" | "voice">("text");
+  const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
 
-  const handleSelectSession = useCallback(async (id: string) => {
-    try {
-      const res = await fetch(`/api/chat-sessies/${id}`);
-      if (res.ok) {
-        const session = await res.json();
-        setInitialMessages(session.messages ?? []);
-        setSessionId(id);
-      }
-    } catch {
-      setInitialMessages(undefined);
-      setSessionId(id);
-    }
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSessionId(getOrCreateSessionId());
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  const handleSelectSession = useCallback((id: string) => {
+    persistSessionId(id);
+    setSessionId(id);
     setSidebarOpen(false);
   }, []);
 
   const handleNewSession = useCallback(() => {
-    setInitialMessages(undefined);
-    setSessionId(nanoid());
+    const nextSessionId = nanoid();
+    persistSessionId(nextSessionId);
+    setSessionId(nextSessionId);
     setSidebarOpen(false);
+  }, []);
+
+  const handleSessionActivity = useCallback(() => {
+    setHistoryRefreshToken((current) => current + 1);
   }, []);
 
   return (
@@ -392,10 +432,11 @@ export function ChatPageContent() {
         }`}
       >
         <ChatHistorySidebar
-          activeSessionId={sessionId}
+          activeSessionId={sessionId || null}
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
           onClose={() => setSidebarOpen(false)}
+          refreshToken={historyRefreshToken}
         />
       </div>
 
@@ -426,16 +467,20 @@ export function ChatPageContent() {
         {/* Voice or text mode */}
         {mode === "voice" ? (
           <VoiceSession onClose={() => setMode("text")} />
-        ) : (
+        ) : sessionId ? (
           <ChatSession
             key={`${sessionId}-${modelId}`}
             sessionId={sessionId}
-            initialMessages={initialMessages}
             ctx={ctx}
             modelId={modelId}
             setModelId={setModelId}
+            onSessionActivity={handleSessionActivity}
             onToggleVoice={() => setMode("voice")}
           />
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-4">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
         )}
       </div>
     </div>

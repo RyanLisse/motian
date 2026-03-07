@@ -18,6 +18,7 @@ type Props = {
   onSelectSession: (sessionId: string) => void;
   onNewSession: () => void;
   onClose?: () => void;
+  refreshToken?: number;
 };
 
 function timeAgo(dateStr: string | null): string {
@@ -38,26 +39,40 @@ export function ChatHistorySidebar({
   onSelectSession,
   onNewSession,
   onClose,
+  refreshToken,
 }: Props) {
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchSessions = useCallback(async () => {
     try {
-      const res = await fetch("/api/chat-sessies?limit=20");
+      const params = new URLSearchParams({ limit: "20" });
+      if (refreshToken != null) {
+        params.set("refresh", String(refreshToken));
+      }
+
+      const res = await fetch(`/api/chat-sessies?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setSessions(data.sessions ?? []);
       }
     } catch (err) {
       console.error("[ChatHistorySidebar] Fetch sessions failed:", err);
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }, [refreshToken]);
 
   useEffect(() => {
-    fetchSessions();
+    let cancelled = false;
+
+    void fetchSessions().finally(() => {
+      if (!cancelled) {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [fetchSessions]);
 
   const handleDelete = useCallback(async (e: React.MouseEvent, sessionId: string) => {
