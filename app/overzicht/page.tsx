@@ -1,4 +1,3 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   Activity,
   ArrowRight,
@@ -19,17 +18,12 @@ import {
 import Link from "next/link";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
-import { db } from "@/src/db";
-import { applications, jobs, scrapeResults, scraperConfigs } from "@/src/db/schema";
+import { getOverviewData } from "./data";
 
 export const dynamic = "force-dynamic";
 
 export default async function OverzichtPage() {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  // Fetch all dashboard data in parallel (consolidated counts to reduce DB connections)
-  const [
+  const {
     platformCounts,
     recentJobs,
     activeScrapers,
@@ -37,83 +31,7 @@ export default async function OverzichtPage() {
     topCompanies,
     locationCounts,
     pipelineStageCounts,
-  ] = await Promise.all([
-    // Jobs per platform (includes weeklyNew to eliminate separate jobStats query)
-    db
-      .select({
-        platform: jobs.platform,
-        count: sql<number>`count(*)::int`,
-        weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
-      })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt))
-      .groupBy(jobs.platform)
-      .orderBy(sql`count(*) desc`),
-    // Last 5 jobs
-    db
-      .select({
-        id: jobs.id,
-        title: jobs.title,
-        company: jobs.company,
-        platform: jobs.platform,
-        location: jobs.location,
-        scrapedAt: jobs.scrapedAt,
-      })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt))
-      .orderBy(desc(jobs.scrapedAt))
-      .limit(5),
-    // Active scraper configs
-    db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
-    // Recent scrape results (explicit columns for DBs without job_ids)
-    db
-      .select({
-        id: scrapeResults.id,
-        configId: scrapeResults.configId,
-        platform: scrapeResults.platform,
-        runAt: scrapeResults.runAt,
-        durationMs: scrapeResults.durationMs,
-        jobsFound: scrapeResults.jobsFound,
-        jobsNew: scrapeResults.jobsNew,
-        duplicates: scrapeResults.duplicates,
-        status: scrapeResults.status,
-        errors: scrapeResults.errors,
-      })
-      .from(scrapeResults)
-      .orderBy(desc(scrapeResults.runAt))
-      .limit(5),
-    // Top companies by job count
-    db
-      .select({
-        company: jobs.company,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.company} is not null`))
-      .groupBy(jobs.company)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
-    // Top locations
-    db
-      .select({
-        province: jobs.province,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.province} is not null`))
-      .groupBy(jobs.province)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
-    // Pipeline stage counts
-    db
-      .select({
-        stage: applications.stage,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(applications)
-      .where(isNull(applications.deletedAt))
-      .groupBy(applications.stage),
-  ]);
+  } = await getOverviewData();
 
   const totalJobs = platformCounts.reduce((s, p) => s + p.count, 0);
   const weeklyNew = platformCounts.reduce((s, p) => s + p.weeklyNew, 0);
