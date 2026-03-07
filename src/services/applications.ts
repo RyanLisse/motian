@@ -4,6 +4,17 @@ import { applications } from "../db/schema";
 
 export type Application = typeof applications.$inferSelect;
 
+type ApplicationInsertExecutor = Pick<typeof db, "insert">;
+
+type CreateApplicationInput = {
+  jobId: string;
+  candidateId: string;
+  matchId?: string;
+  source?: string;
+  stage?: string;
+  notes?: string;
+};
+
 const VALID_STAGES = ["new", "screening", "interview", "offer", "hired", "rejected"];
 
 export type ListApplicationsOpts = {
@@ -78,6 +89,30 @@ export async function createApplication(data: {
   return rows[0];
 }
 
+async function insertApplicationIfMissing(
+  executor: ApplicationInsertExecutor,
+  data: CreateApplicationInput,
+): Promise<Application | null> {
+  const stage = data.stage && VALID_STAGES.includes(data.stage) ? data.stage : "new";
+  const rows = await executor
+    .insert(applications)
+    .values({
+      jobId: data.jobId,
+      candidateId: data.candidateId,
+      matchId: data.matchId ?? null,
+      source: data.source ?? "manual",
+      notes: data.notes ?? null,
+      stage,
+    })
+    .onConflictDoNothing({
+      target: [applications.jobId, applications.candidateId],
+      where: isNull(applications.deletedAt),
+    })
+    .returning();
+
+  return rows[0] ?? null;
+}
+
 export type CreateApplicationsFromMatchesResult = {
   created: Application[];
   alreadyLinked: string[];
@@ -94,32 +129,25 @@ export async function createApplicationsFromMatches(
   stage: string = "screening",
 ): Promise<CreateApplicationsFromMatchesResult> {
   if (!VALID_STAGES.includes(stage)) stage = "screening";
-  const existing = await listApplications({ candidateId });
-  const existingJobIds = new Set(existing.map((a) => a.jobId).filter(Boolean) as string[]);
-  const created: Application[] = [];
-  const alreadyLinked: string[] = [];
-  for (const { jobId, matchId } of matches) {
-    if (existingJobIds.has(jobId)) {
-      alreadyLinked.push(jobId);
-      continue;
-    }
-    try {
-      const app = await createApplication({
+  return db.transaction(async (tx) => {
+    const created: Application[] = [];
+    const alreadyLinked: string[] = [];
+
+    for (const { jobId, matchId } of matches) {
+      const application = await insertApplicationIfMissing(tx, {
         jobId,
         candidateId,
         matchId: matchId ?? undefined,
         source: "match",
         stage,
       });
-      created.push(app);
-      existingJobIds.add(jobId);
-    } catch (err) {
-      const msg = String(err);
-      if (msg.includes("unique") || msg.includes("duplicate")) alreadyLinked.push(jobId);
-      else throw err;
+
+      if (application) created.push(application);
+      else alreadyLinked.push(jobId);
     }
-  }
-  return { created, alreadyLinked };
+
+    return { created, alreadyLinked };
+  });
 }
 
 export type CreateApplicationsForJobResult = {
@@ -136,34 +164,25 @@ export async function createApplicationsForJob(
   stage: string = "screening",
 ): Promise<CreateApplicationsForJobResult> {
   if (!VALID_STAGES.includes(stage)) stage = "screening";
-  const existing = await listApplications({ jobId });
-  const existingCandidateIds = new Set(
-    existing.map((a) => a.candidateId).filter(Boolean) as string[],
-  );
-  const created: Application[] = [];
-  const alreadyLinked: string[] = [];
-  for (const { candidateId, matchId } of pairs) {
-    if (existingCandidateIds.has(candidateId)) {
-      alreadyLinked.push(candidateId);
-      continue;
-    }
-    try {
-      const app = await createApplication({
+  return db.transaction(async (tx) => {
+    const created: Application[] = [];
+    const alreadyLinked: string[] = [];
+
+    for (const { candidateId, matchId } of pairs) {
+      const application = await insertApplicationIfMissing(tx, {
         jobId,
         candidateId,
         matchId: matchId ?? undefined,
         source: "match",
         stage,
       });
-      created.push(app);
-      existingCandidateIds.add(candidateId);
-    } catch (err) {
-      const msg = String(err);
-      if (msg.includes("unique") || msg.includes("duplicate")) alreadyLinked.push(candidateId);
-      else throw err;
+
+      if (application) created.push(application);
+      else alreadyLinked.push(candidateId);
     }
-  }
-  return { created, alreadyLinked };
+
+    return { created, alreadyLinked };
+  });
 }
 
 export async function updateApplicationStage(

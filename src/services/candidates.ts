@@ -9,6 +9,10 @@ import { syncCandidateEscoSkills } from "./esco";
 
 export type Candidate = typeof candidates.$inferSelect;
 
+export const CANDIDATE_MATCHING_STATUSES = ["open", "in_review", "linked", "no_match"] as const;
+
+export type CandidateMatchingStatus = (typeof CANDIDATE_MATCHING_STATUSES)[number];
+
 export type SearchCandidatesOptions = {
   query?: string;
   location?: string;
@@ -42,6 +46,10 @@ export type CreateCandidateData = {
   experience?: { title: string; company: string; duration: string }[];
   education?: { school: string; degree: string; duration: string }[];
 };
+
+export function isCandidateMatchingStatus(value: string): value is CandidateMatchingStatus {
+  return CANDIDATE_MATCHING_STATUSES.includes(value as CandidateMatchingStatus);
+}
 
 // ========== Service Functions ==========
 
@@ -225,7 +233,46 @@ export async function updateCandidate(
     skillsStructured: candidate.skillsStructured,
   });
 
+  try {
+    const { embedCandidate } = await import("./embedding");
+    await embedCandidate(candidate.id);
+  } catch (err) {
+    console.error(`[Candidates] Embedding refresh error for ${candidate.id}:`, err);
+  }
+
   return candidate;
+}
+
+export async function updateCandidateMatchingStatus(
+  id: string,
+  status: CandidateMatchingStatus,
+  options: {
+    lastMatchedAt?: Date | null;
+    matchingStatusUpdatedAt?: Date;
+  } = {},
+): Promise<Candidate | null> {
+  const updates: {
+    matchingStatus: CandidateMatchingStatus;
+    matchingStatusUpdatedAt: Date;
+    updatedAt: Date;
+    lastMatchedAt?: Date | null;
+  } = {
+    matchingStatus: status,
+    matchingStatusUpdatedAt: options.matchingStatusUpdatedAt ?? new Date(),
+    updatedAt: new Date(),
+  };
+
+  if (options.lastMatchedAt !== undefined) {
+    updates.lastMatchedAt = options.lastMatchedAt;
+  }
+
+  const rows = await db
+    .update(candidates)
+    .set(updates)
+    .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
+    .returning();
+
+  return rows[0] ?? null;
 }
 
 /** Alle actieve (niet-verwijderde) kandidaten ophalen. Hogere limiet voor batch matching. */

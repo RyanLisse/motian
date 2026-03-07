@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockListJobs, mockWithJobsCanonicalSkills } = vi.hoisted(() => ({
-  mockListJobs: vi.fn(),
+const { mockSearchJobsUnified, mockWithJobsCanonicalSkills } = vi.hoisted(() => ({
+  mockSearchJobsUnified: vi.fn(),
   mockWithJobsCanonicalSkills: vi.fn(),
 }));
 
 vi.mock("../src/services/jobs", () => ({
-  listJobs: mockListJobs,
+  searchJobsUnified: mockSearchJobsUnified,
 }));
 
 vi.mock("../src/services/esco", () => ({
@@ -18,7 +18,7 @@ import { GET } from "../app/api/opdrachten/route";
 describe("GET /api/opdrachten", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockListJobs.mockResolvedValue({ data: [], total: 0 });
+    mockSearchJobsUnified.mockResolvedValue({ data: [], total: 0 });
     mockWithJobsCanonicalSkills.mockResolvedValue([]);
   });
 
@@ -30,7 +30,7 @@ describe("GET /api/opdrachten", () => {
     const response = await GET(request);
     const body = await response.json();
 
-    expect(mockListJobs).toHaveBeenCalledWith({
+    expect(mockSearchJobsUnified).toHaveBeenCalledWith({
       q: "manager",
       platform: "opdrachtoverheid",
       endClient: "Gemeente Utrecht",

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
 import { publish } from "@/src/lib/event-bus";
 import { createApplicationsForJob } from "@/src/services/applications";
+import { updateCandidateMatchingStatus } from "@/src/services/candidates";
 import { getMatchById } from "@/src/services/matches";
 
 export const dynamic = "force-dynamic";
@@ -51,9 +52,21 @@ export const POST = withApiHandler(
       );
     }
     const result = await createApplicationsForJob(jobId, pairs, "screening");
+    const linkedCandidateIds = new Set([
+      ...result.created
+        .map((application) => application.candidateId)
+        .filter((candidateId): candidateId is string => candidateId != null),
+      ...result.alreadyLinked,
+    ]);
+    await Promise.all(
+      [...linkedCandidateIds].map((candidateId) =>
+        updateCandidateMatchingStatus(candidateId, "linked"),
+      ),
+    );
     for (const app of result.created) {
       publish("application:created", { applicationId: app.id });
     }
+    revalidatePath("/matching");
     revalidatePath("/professionals");
     revalidatePath("/pipeline");
     revalidatePath("/overzicht");

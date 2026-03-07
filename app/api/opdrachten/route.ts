@@ -6,7 +6,7 @@ import {
 } from "@/src/lib/opdrachten-filters";
 import { paginatedResponse, parsePagination } from "@/src/lib/pagination";
 import { withJobsCanonicalSkills } from "@/src/services/esco";
-import { listJobs } from "@/src/services/jobs";
+import { searchJobsUnified } from "@/src/services/jobs";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export const GET = withApiHandler(async (request: Request) => {
     maxLimit: MAX_OPDRACHTEN_LIMIT,
   });
 
-  const result = await listJobs({
+  const result = await searchJobsUnified({
     q,
     platform,
     endClient,

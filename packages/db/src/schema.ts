@@ -180,6 +180,11 @@ export const candidates = pgTable(
     embedding: vector("embedding", { dimensions: 512 }),
     resumeRaw: text("resume_raw"),
     resumeParsedAt: timestamp("resume_parsed_at", { withTimezone: true }),
+    matchingStatus: text("matching_status").notNull().default("open"),
+    lastMatchedAt: timestamp("last_matched_at", { withTimezone: true }),
+    matchingStatusUpdatedAt: timestamp("matching_status_updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     skillsStructured: jsonb("skills_structured"),
     education: jsonb("education"),
     certifications: jsonb("certifications"),
@@ -194,6 +199,8 @@ export const candidates = pgTable(
     emailUniqueIdx: uniqueIndex("uq_candidates_email")
       .on(table.email)
       .where(sql`email IS NOT NULL`),
+    matchingStatusIdx: index("idx_candidates_matching_status").on(table.matchingStatus),
+    lastMatchedAtIdx: index("idx_candidates_last_matched_at").on(table.lastMatchedAt),
     nameIdx: index("idx_candidates_name").on(table.name),
     provinceIdx: index("idx_candidates_province").on(table.province),
     deletedAtIdx: index("idx_candidates_deleted_at").on(table.deletedAt),
@@ -397,10 +404,9 @@ export const applications = pgTable(
     jobIdIdx: index("idx_applications_job_id").on(table.jobId),
     candidateIdIdx: index("idx_applications_candidate_id").on(table.candidateId),
     stageIdx: index("idx_applications_stage").on(table.stage),
-    jobCandidateUniqueIdx: uniqueIndex("uq_applications_job_candidate").on(
-      table.jobId,
-      table.candidateId,
-    ),
+    jobCandidateUniqueIdx: uniqueIndex("uq_applications_job_candidate_active")
+      .on(table.jobId, table.candidateId)
+      .where(sql`${table.deletedAt} IS NULL`),
   }),
 );
 

@@ -1,5 +1,5 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { and, isNull } from "drizzle-orm";
+import { and, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 import { embedCandidatesBatch, embedJob } from "@/src/services/embedding";
@@ -21,7 +21,16 @@ export const embeddingsBatchTask = schedules.task({
     const jobsWithout = await db
       .select({ id: jobs.id, title: jobs.title })
       .from(jobs)
-      .where(and(isNull(jobs.embedding), isNull(jobs.deletedAt)))
+      .where(
+        and(
+          isNull(jobs.embedding),
+          isNull(jobs.deletedAt),
+          or(
+            isNotNull(jobs.descriptionSummary),
+            sql`nullif(trim(${jobs.description}), '') is not null`,
+          ),
+        ),
+      )
       .limit(50);
 
     let jobsEmbedded = 0;

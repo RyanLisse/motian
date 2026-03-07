@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Candidate } from "../src/services/candidates";
-import { buildCandidateEmbeddingText, buildJobEmbeddingText } from "../src/services/embedding.js";
+import {
+  buildCandidateEmbeddingText,
+  buildJobEmbeddingText,
+  getJobEmbeddingSourceText,
+} from "../src/services/embedding.js";
 
 import type { Job } from "../src/services/jobs";
 import { computeMatchScore } from "../src/services/scoring.js";
@@ -138,6 +142,7 @@ describe("buildJobEmbeddingText", () => {
     const text = buildJobEmbeddingText({
       title: "Data Engineer",
       descriptionSummary: { nl: "Data pipeline bouwen", en: "Build data pipeline" },
+      description: null,
       categories: ["ICT", "Data & Analytics"],
       requirements: [{ description: "Python Spark ervaring" }],
     });
@@ -149,10 +154,33 @@ describe("buildJobEmbeddingText", () => {
     expect(text).toContain("Python Spark ervaring");
   });
 
+  it("falls back to raw description when summary is missing", () => {
+    const text = buildJobEmbeddingText({
+      title: "Data Engineer",
+      descriptionSummary: null,
+      description: "  Bouw en beheer data pipelines voor rapportages en integraties.  ",
+      categories: [],
+      requirements: [],
+    });
+
+    expect(text).toContain("Data Engineer");
+    expect(text).toContain("Bouw en beheer data pipelines voor rapportages en integraties.");
+  });
+
+  it("returns null source text when summary and description are missing", () => {
+    expect(
+      getJobEmbeddingSourceText({
+        descriptionSummary: null,
+        description: "   ",
+      }),
+    ).toBeNull();
+  });
+
   it("handles missing optional fields", () => {
     const text = buildJobEmbeddingText({
       title: "Tester",
       descriptionSummary: null,
+      description: null,
       categories: [],
       requirements: [],
     });
@@ -169,6 +197,8 @@ describe("buildCandidateEmbeddingText", () => {
       skills: ["Python", "Django", "PostgreSQL"],
       experience: [{ title: "Backend Developer at Acme" }],
       location: "Utrecht",
+      profileSummary: null,
+      resumeRaw: null,
     });
 
     expect(text).toContain("Python Developer");
@@ -184,6 +214,8 @@ describe("buildCandidateEmbeddingText", () => {
       skills: [],
       experience: [],
       location: null,
+      profileSummary: null,
+      resumeRaw: null,
     });
 
     expect(text).toBe("");
@@ -196,9 +228,42 @@ describe("buildCandidateEmbeddingText", () => {
       skills: [],
       experience: ["5 jaar Python development"],
       location: null,
+      profileSummary: null,
+      resumeRaw: null,
     });
 
     expect(text).toContain("5 jaar Python development");
+  });
+
+  it("includes CV-derived summary and bounded CV text", () => {
+    const text = buildCandidateEmbeddingText({
+      name: "Jan",
+      role: null,
+      skills: [],
+      experience: [],
+      location: null,
+      profileSummary: "Senior data engineer met ETL-ervaring.",
+      resumeRaw: ` ${"Python Spark ETL ervaring. ".repeat(150)} `,
+    });
+
+    expect(text).toContain("Profiel: Senior data engineer met ETL-ervaring.");
+    expect(text).toContain("CV: Python Spark ETL ervaring.");
+    expect(text.length).toBeLessThan(2_200);
+  });
+
+  it("includes recruiter notes in candidate embedding text", () => {
+    const text = buildCandidateEmbeddingText({
+      name: "Jan",
+      role: "DevOps Engineer",
+      skills: [],
+      experience: [],
+      location: null,
+      profileSummary: null,
+      notes: "Beschikbaar voor Kadaster DataOps opdrachten en sterk in Azure.",
+      resumeRaw: null,
+    });
+
+    expect(text).toContain("Notities: Beschikbaar voor Kadaster DataOps opdrachten en sterk in Azure.");
   });
 });
 

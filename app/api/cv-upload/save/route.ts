@@ -2,8 +2,8 @@ import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { parsedCVSchema } from "@/src/schemas/candidate-intelligence";
-import { autoMatchCandidateToJobs } from "@/src/services/auto-matching";
-import { type Candidate, createCandidate, enrichCandidateFromCV } from "@/src/services/candidates";
+import { intakeCandidate } from "@/src/services/candidate-intake";
+import { getCandidateById } from "@/src/services/candidates";
 
 export const dynamic = "force-dynamic";
 
@@ -26,61 +26,42 @@ export async function POST(request: NextRequest) {
     }
 
     const { parsed, fileUrl, existingCandidateId, resumeRaw } = result.data;
-
-    let candidate: Candidate | null = null;
-
     if (existingCandidateId) {
-      // Enrich existing candidate
-      candidate = await enrichCandidateFromCV(
-        existingCandidateId,
-        parsed,
-        resumeRaw ?? "",
-        fileUrl,
-      );
-      if (!candidate) {
+      const existingCandidate = await getCandidateById(existingCandidateId);
+      if (!existingCandidate) {
         return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
       }
-    } else {
-      // Create new candidate (profileSummary = AI-samenvatting uit CV, notes voor vrije notities)
-      candidate = await createCandidate({
-        name: parsed.name,
-        email: parsed.email ?? undefined,
-        phone: parsed.phone ?? undefined,
-        role: parsed.role,
-        skills: [
-          ...parsed.skills.hard.map((s) => s.name),
-          ...parsed.skills.soft.map((s) => s.name),
-        ],
-        location: parsed.location ?? undefined,
-        profileSummary: parsed.introduction,
-        source: "cv-upload",
-      });
-
-      // Enrich with structured data + store CV file URL (zet ook profileSummary bij bestaande)
-      if (candidate) {
-        await enrichCandidateFromCV(candidate.id, parsed, resumeRaw ?? "", fileUrl);
-      }
     }
 
-    // Auto-match met vacatures zodat matches op het profiel zichtbaar zijn
-    if (candidate) {
-      try {
-        await autoMatchCandidateToJobs(candidate.id, 5);
-      } catch (err) {
-        console.warn("[CV Save] Auto-match overgeslagen:", err);
-      }
-      revalidatePath("/professionals");
-      revalidatePath(`/professionals/${candidate.id}`);
-    }
+    const intake = await intakeCandidate({
+      existingCandidateId,
+      parsed,
+      resumeRaw,
+      fileUrl,
+    });
+
+    revalidatePath("/matching");
+    revalidatePath("/professionals");
+    revalidatePath(`/professionals/${intake.candidate.id}`);
 
     return Response.json({
       message: existingCandidateId ? "Kandidaat verrijkt" : "Kandidaat aangemaakt",
-      candidate,
+      candidate: intake.candidate,
+      profile: intake.profile,
+      matches: intake.matches,
+      recommendation: intake.recommendation,
+      matchingStatus: intake.matchingStatus,
+      alreadyLinked: intake.alreadyLinked,
       fileUrl,
-      candidateId: candidate?.id ?? null,
+      candidateId: intake.candidate.id,
     });
   } catch (err) {
     console.error("[CV Save]", err);
+
+    if (err instanceof Error && err.message === "Kandidaat niet gevonden") {
+      return Response.json({ error: err.message }, { status: 404 });
+    }
+
     return Response.json({ error: "Opslaan mislukt" }, { status: 500 });
   }
 }

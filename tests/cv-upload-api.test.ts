@@ -51,9 +51,17 @@ describe("CV save API route", () => {
     expect(source).toContain("parsedCVSchema");
   });
 
-  it("supports creating new and enriching existing candidates", () => {
+  it("delegates candidate persistence and matching to intakeCandidate", () => {
     const source = readFile("app/api/cv-upload/save/route.ts");
-    expect(source).toContain("createCandidate");
-    expect(source).toContain("enrichCandidateFromCV");
+    expect(source).toContain("intakeCandidate");
+    expect(source).toContain("matchingStatus");
+    expect(source).toContain("recommendation");
+    expect(source).toContain("matches");
+  });
+
+  it("returns 404 when an existing candidate id is missing", () => {
+    const source = readFile("app/api/cv-upload/save/route.ts");
+    expect(source).toContain("getCandidateById");
+    expect(source).toContain("Kandidaat niet gevonden");
   });
 });

@@ -5,10 +5,15 @@ import { paginatedResponse, parsePagination } from "@/src/lib/pagination";
 import {
   countCandidates,
   createCandidate,
+  isCandidateMatchingStatus,
   listCandidates,
   searchCandidates,
 } from "@/src/services/candidates";
 import { withCandidateCanonicalSkills, withCandidatesCanonicalSkills } from "@/src/services/esco";
+import {
+  countMatchingInboxCandidates,
+  listMatchingInboxCandidates,
+} from "@/src/services/matching-inbox";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +42,25 @@ export const GET = withApiHandler(async (request: Request) => {
   const params = new URL(request.url).searchParams;
   const q = params.get("q") ?? undefined;
   const location = params.get("locatie") ?? params.get("location") ?? undefined;
+  const rawStatus = params.get("matchingStatus") ?? params.get("status");
   const { page, limit, offset } = parsePagination(params);
+  const matchingStatus = rawStatus && isCandidateMatchingStatus(rawStatus) ? rawStatus : undefined;
+
+  if (matchingStatus) {
+    const data = await listMatchingInboxCandidates({
+      status: matchingStatus,
+      query: q,
+      location,
+      limit,
+      offset,
+    });
+    const total = await countMatchingInboxCandidates({ status: matchingStatus, query: q, location });
+    const dataWithCanonicalSkills = await withCandidatesCanonicalSkills(data);
+
+    return Response.json(
+      paginatedResponse(dataWithCanonicalSkills, total, { page, limit, offset }),
+    );
+  }
 
   const useSearch = Boolean(q || location);
   const data = useSearch
@@ -59,6 +82,7 @@ export const POST = withApiHandler(async (request: Request) => {
     );
   }
   const candidate = await createCandidate(parsed.data);
+  revalidatePath("/matching");
   revalidatePath("/professionals");
   return Response.json({ data: await withCandidateCanonicalSkills(candidate) }, { status: 201 });
 });
