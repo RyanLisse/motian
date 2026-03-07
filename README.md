@@ -791,6 +791,8 @@ STRIIVE_PASSWORD=...
 
 # Beveiliging
 ENCRYPTION_KEY=...   # openssl rand -base64 32
+API_SECRET=...       # Bearer token voor externe API clients
+ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
 
 # Google AI (Gemini — CV parsing & verrijking)
 GOOGLE_GENERATIVE_AI_API_KEY=AIza...
@@ -812,6 +814,13 @@ SLACK_CHANNEL_ID=C0...
 LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=API...
 LIVEKIT_API_SECRET=...
+
+# Openbare API / docs base URL (optioneel, anders request-origin)
+PUBLIC_API_BASE_URL=http://localhost:3001
+
+# Externe host binding voor lokale dev/start
+HOSTNAME=0.0.0.0
+PORT=3001
 ```
 
 ### Database Opzet
@@ -827,7 +836,7 @@ pnpm db:generate
 ### Ontwikkeling
 
 ```bash
-# Dev server starten (poort 3001)
+# Dev server starten (poort 3001, extern bereikbaar via HOSTNAME)
 just dev
 # of
 pnpm dev
@@ -892,8 +901,14 @@ Voor een overzicht van alle Just-taken: `just --list`.
 
 Alle API routes gebruiken **Nederlandse padnamen**.
 
+- OpenAPI JSON: `/api/openapi`
+- Interactieve Scalar docs: `/api-docs`
+- Externe clients moeten een `Authorization: Bearer <API_SECRET>` header meesturen voor beschermde routes.
+- Cross-origin requests blijven allowlist-gebaseerd via `ALLOWED_ORIGINS`.
+
 | Endpoint                     | Methode   | Beschrijving                               |
 | ---------------------------- | --------- | ------------------------------------------ |
+| `/api/openapi`               | GET       | OpenAPI JSON documentatie                  |
 | `/api/chat`                  | POST      | AI chat streaming (Vercel AI SDK)          |
 | `/api/opdrachten`            | GET/POST  | Vacatures ophalen/aanmaken                 |
 | `/api/opdrachten/[id]`       | GET/PATCH | Vacature ophalen/bijwerken                 |
@@ -919,6 +934,8 @@ Alle API routes gebruiken **Nederlandse padnamen**.
 | `/api/embeddings/backfill`   | POST      | Ontbrekende embeddings genereren           |
 | `/api/events`                | GET       | SSE event stream                           |
 | `/api/reports`               | GET       | Platform rapporten genereren               |
+
+Open `/api-docs` in de hoofdapp voor interactieve API-documentatie op basis van Scalar.
 
 ---
 

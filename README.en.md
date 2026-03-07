@@ -795,6 +795,8 @@ X_AI_API_KEY=xai-...
 
 # Security
 ENCRYPTION_KEY=...   # openssl rand -base64 32
+API_SECRET=...       # Bearer token for external API clients
+ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
 
 # Sentry (error tracking)
 SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
@@ -810,6 +812,13 @@ SLACK_CHANNEL_ID=C0...
 LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=API...
 LIVEKIT_API_SECRET=...
+
+# Public API / docs base URL (optional, otherwise request origin)
+PUBLIC_API_BASE_URL=http://localhost:3001
+
+# External host binding for local dev/start
+HOSTNAME=0.0.0.0
+PORT=3001
 ```
 
 ### Database Setup
@@ -825,7 +834,7 @@ pnpm db:generate
 ### Development
 
 ```bash
-# Start dev server (port 3001)
+# Start dev server (port 3001, externally reachable via HOSTNAME)
 just dev
 # or
 pnpm dev
@@ -890,8 +899,14 @@ For a list of all Just tasks: `just --list`.
 
 All API routes use **Dutch path naming** convention.
 
+- OpenAPI JSON: `/api/openapi`
+- Interactive Scalar docs: `/api-docs`
+- External clients should send `Authorization: Bearer <API_SECRET>` for protected routes.
+- Cross-origin requests remain allowlist-based through `ALLOWED_ORIGINS`.
+
 | Endpoint                     | Method    | Description                            |
 | ---------------------------- | --------- | -------------------------------------- |
+| `/api/openapi`               | GET       | OpenAPI JSON document                  |
 | `/api/chat`                  | POST      | AI chat streaming (Vercel AI SDK)      |
 | `/api/opdrachten`            | GET/POST  | List/create vacancies                  |
 | `/api/opdrachten/[id]`       | GET/PATCH | Get/update vacancy                     |
@@ -917,6 +932,8 @@ All API routes use **Dutch path naming** convention.
 | `/api/cron/vacancy-expiry`   | GET       | Expire old vacancies                   |
 | `/api/cron/data-retention`   | GET       | GDPR data cleanup                      |
 | `/api/revalidate`            | POST      | Cache revalidation                     |
+
+Open `/api-docs` in the main app for interactive Scalar-based API documentation.
 
 ---
 
