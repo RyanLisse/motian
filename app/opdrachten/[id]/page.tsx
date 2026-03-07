@@ -577,8 +577,8 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Zie direct wie gekoppeld is, welke fase aandacht vraagt en open meteen de
-                    juiste vervolgstap.
+                    Zie direct wie gekoppeld is, welke fase aandacht vraagt en open meteen de juiste
+                    vervolgstap.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -589,7 +589,10 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                     </Button>
                   </Link>
                   <Link href={pipelineHref}>
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Button
+                      size="sm"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
                       <Kanban className="h-4 w-4 mr-2" />
                       Bekijk pipeline
                     </Button>
@@ -752,8 +755,9 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
                   {rejectedCount > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      {rejectedCount} afgewezen kandidaat{rejectedCount === 1 ? " blijft" : "en blijven"}{" "}
-                      beschikbaar in de volledige pipelinehistorie.
+                      {rejectedCount} afgewezen kandidaat
+                      {rejectedCount === 1 ? " blijft" : "en blijven"} beschikbaar in de volledige
+                      pipelinehistorie.
                     </p>
                   )}
                 </>

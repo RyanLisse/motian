@@ -102,6 +102,11 @@ graph TB
         THEME[Dark/Light Theme]
     end
 
+    subgraph Integrations["🔁 External Integrations"]
+        FEED["/api/salesforce-feed<br/>Read-only XML export"]
+        SF[Salesforce]
+    end
+
     FX --> SC
     ST --> SC
     OO --> SC
@@ -128,6 +133,11 @@ graph TB
     VAD --> VLLM
     CHAT --> PAGES
     PAGES --> THEME
+
+    JOBS --> FEED
+    CAND --> FEED
+    APP --> FEED
+    FEED --> SF
 ```
 
 ### Data Flow — Scrape-to-Search Pipeline
@@ -893,6 +903,7 @@ All API routes use **Dutch path naming** convention.
 | `/api/cv-analyse`            | POST      | CV analysis SSE pipeline (upload, parse, match) |
 | `/api/cv-file`               | GET       | Retrieve CV file                               |
 | `/api/cv-upload`             | POST      | Upload CV file to Vercel Blob                  |
+| `/api/salesforce-feed`       | GET       | Read-only XML export for Salesforce pull integrations |
 | `/api/embeddings/backfill`   | POST      | Generate missing embeddings                    |
 | `/api/events`                | GET       | SSE event stream                               |
 | `/api/reports`               | GET       | Generate platform reports                      |
@@ -906,6 +917,18 @@ All API routes use **Dutch path naming** convention.
 | `/api/cron/vacancy-expiry`   | GET       | Expire old vacancies                   |
 | `/api/cron/data-retention`   | GET       | GDPR data cleanup                      |
 | `/api/revalidate`            | POST      | Cache revalidation                     |
+
+---
+
+## Salesforce XML Feed
+
+Motian exposes a live **read-only XML feed** for **pull-based Salesforce integrations** at `https://motian.vercel.app/api/salesforce-feed`. This is a **custom XML export**, not an OData endpoint.
+
+- **Default entity**: `applications`
+- **Supported entities**: `applications`, `jobs`, `candidates`
+- **Supported query params**: `entity`, `id`, `updatedSince`, `status`, `page`, `limit`
+- **Salesforce object mapping**: `Application__c`, `Job__c`, `Candidate__c`
+- **Auth**: the route reuses shared `/api/*` bearer auth via `API_SECRET`, but production currently appears publicly reachable because `API_SECRET` is likely unset there
 
 ---
 

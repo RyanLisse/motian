@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import {
-  ArrowRight,
   ArrowLeft,
+  ArrowRight,
   Bookmark,
   Briefcase,
   Globe,
@@ -384,189 +384,191 @@ export default async function ProfessionalDetailPage({ params }: Props) {
             </div>
           </div>
 
-            <section className="mb-8">
-              <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Briefcase className="h-4 w-4 text-primary" />
-                      <h2 className="text-lg font-semibold text-foreground">Recruiter context</h2>
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] bg-primary/10 text-primary border-primary/20"
-                      >
-                        {activeApplications.length > 0
-                          ? `${activeApplications.length} actief`
-                          : recruiterApplications.length > 0
-                            ? `${recruiterApplications.length} gekoppeld`
-                            : "Nog leeg"}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Actieve sollicitaties, gekoppelde vacatures en de eerstvolgende
-                      recruiteractie voor deze kandidaat.
-                    </p>
+          <section className="mb-8">
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Briefcase className="h-4 w-4 text-primary" />
+                    <h2 className="text-lg font-semibold text-foreground">Recruiter context</h2>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-primary/10 text-primary border-primary/20"
+                    >
+                      {activeApplications.length > 0
+                        ? `${activeApplications.length} actief`
+                        : recruiterApplications.length > 0
+                          ? `${recruiterApplications.length} gekoppeld`
+                          : "Nog leeg"}
+                    </Badge>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Link href={primaryWorkflowAction.href}>
-                      <Button variant="secondary" size="sm" className="gap-1.5">
-                        <Briefcase className="h-4 w-4" />
-                        {primaryWorkflowAction.label}
+                  <p className="text-sm text-muted-foreground">
+                    Actieve sollicitaties, gekoppelde vacatures en de eerstvolgende recruiteractie
+                    voor deze kandidaat.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={primaryWorkflowAction.href}>
+                    <Button variant="secondary" size="sm" className="gap-1.5">
+                      <Briefcase className="h-4 w-4" />
+                      {primaryWorkflowAction.label}
+                    </Button>
+                  </Link>
+                  {primaryActiveApplication?.job?.id && (
+                    <Link href={`/opdrachten/${primaryActiveApplication.job.id}`}>
+                      <Button variant="outline" size="sm" className="gap-1.5">
+                        <ArrowRight className="h-4 w-4" />
+                        Open vacature
                       </Button>
                     </Link>
-                    {primaryActiveApplication?.job?.id && (
-                      <Link href={`/opdrachten/${primaryActiveApplication.job.id}`}>
-                        <Button variant="outline" size="sm" className="gap-1.5">
-                          <ArrowRight className="h-4 w-4" />
-                          Open vacature
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
+                  )}
                 </div>
+              </div>
 
-                {activeApplications.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    {recruiterApplications.length > 0
-                      ? "Er zijn momenteel geen actieve sollicitaties meer. Gebruik matches om een nieuwe workflow te starten."
-                      : "Nog geen actieve sollicitaties gekoppeld. Gebruik matches om deze kandidaat aan relevante vacatures te verbinden."}
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Actieve sollicitaties
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {activeApplicationStages.map((stage) => {
-                          const count = applicationStageCountMap[stage] ?? 0;
-                          if (count === 0) return null;
-                          return (
-                            <Badge
-                              key={stage}
-                              variant="outline"
-                              className={applicationStageColors[stage]}
-                            >
-                              {count} {applicationStageLabels[stage].toLowerCase()}
-                            </Badge>
-                          );
-                        })}
-                      </div>
+              {activeApplications.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  {recruiterApplications.length > 0
+                    ? "Er zijn momenteel geen actieve sollicitaties meer. Gebruik matches om een nieuwe workflow te starten."
+                    : "Nog geen actieve sollicitaties gekoppeld. Gebruik matches om deze kandidaat aan relevante vacatures te verbinden."}
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Actieve sollicitaties
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {activeApplicationStages.map((stage) => {
+                        const count = applicationStageCountMap[stage] ?? 0;
+                        if (count === 0) return null;
+                        return (
+                          <Badge
+                            key={stage}
+                            variant="outline"
+                            className={applicationStageColors[stage]}
+                          >
+                            {count} {applicationStageLabels[stage].toLowerCase()}
+                          </Badge>
+                        );
+                      })}
                     </div>
+                  </div>
 
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      {activeApplications.map((row) => (
-                        <div
-                          key={row.application.id}
-                          className="rounded-xl border border-border bg-background/60 p-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              {row.job?.id ? (
-                                <Link
-                                  href={`/opdrachten/${row.job.id}`}
-                                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
-                                >
-                                  {row.job.title}
-                                </Link>
-                              ) : (
-                                <p className="text-sm font-semibold text-muted-foreground">
-                                  Vacature verwijderd
-                                </p>
-                              )}
-                              {(row.job?.company || row.job?.location) && (
-                                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                                  {[row.job?.company, row.job?.location].filter(Boolean).join(" • ")}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap justify-end gap-1.5">
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    {activeApplications.map((row) => (
+                      <div
+                        key={row.application.id}
+                        className="rounded-xl border border-border bg-background/60 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            {row.job?.id ? (
+                              <Link
+                                href={`/opdrachten/${row.job.id}`}
+                                className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                              >
+                                {row.job.title}
+                              </Link>
+                            ) : (
+                              <p className="text-sm font-semibold text-muted-foreground">
+                                Vacature verwijderd
+                              </p>
+                            )}
+                            {(row.job?.company || row.job?.location) && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                                {[row.job?.company, row.job?.location].filter(Boolean).join(" • ")}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap justify-end gap-1.5">
+                            <Badge
+                              variant="outline"
+                              className={
+                                applicationStageColors[row.application.stage] ??
+                                "border-border text-muted-foreground"
+                              }
+                            >
+                              {applicationStageLabels[row.application.stage] ??
+                                row.application.stage}
+                            </Badge>
+                            {row.linkedMatch?.status && (
                               <Badge
                                 variant="outline"
                                 className={
-                                  applicationStageColors[row.application.stage] ??
+                                  statusColors[row.linkedMatch.status] ??
                                   "border-border text-muted-foreground"
                                 }
                               >
-                                {applicationStageLabels[row.application.stage] ??
-                                  row.application.stage}
+                                {statusLabels[row.linkedMatch.status] ?? row.linkedMatch.status}
                               </Badge>
-                              {row.linkedMatch?.status && (
-                                <Badge
-                                  variant="outline"
-                                  className={
-                                    statusColors[row.linkedMatch.status] ??
-                                    "border-border text-muted-foreground"
-                                  }
-                                >
-                                  {statusLabels[row.linkedMatch.status] ?? row.linkedMatch.status}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                            {row.linkedMatch?.matchScore != null && (
-                              <span className="font-medium text-foreground">
-                                {Math.round(row.linkedMatch.matchScore)}% match
-                              </span>
-                            )}
-                            {row.application.source && (
-                              <span>
-                                Bron: {applicationSourceLabels[row.application.source] ?? row.application.source}
-                              </span>
-                            )}
-                            {row.application.createdAt && (
-                              <span>
-                                Gestart op{" "}
-                                {new Date(row.application.createdAt).toLocaleDateString("nl-NL", {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                })}
-                              </span>
-                            )}
-                          </div>
-
-                          {row.linkedMatch?.recommendation && (
-                            <p className="text-xs text-muted-foreground mt-3">
-                              AI advies: {recommendationLabel(row.linkedMatch.recommendation)}
-                            </p>
-                          )}
-
-                          <div className="mt-3 flex flex-wrap gap-3 text-xs">
-                            {row.job?.id && (
-                              <Link
-                                href={`/pipeline?vacature=${row.job.id}&fase=${row.application.stage}`}
-                                className="text-primary hover:underline"
-                              >
-                                Open fase
-                              </Link>
-                            )}
-                            {row.job?.id && (
-                              <Link
-                                href={`/opdrachten/${row.job.id}`}
-                                className="text-primary hover:underline"
-                              >
-                                Vacature
-                              </Link>
                             )}
                           </div>
                         </div>
-                      ))}
-                    </div>
 
-                    {rejectedApplicationCount > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {rejectedApplicationCount} afgewezen sollicitatie
-                        {rejectedApplicationCount === 1 ? " staat" : "s staan"} nog in de
-                        workflowhistorie.
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </section>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          {row.linkedMatch?.matchScore != null && (
+                            <span className="font-medium text-foreground">
+                              {Math.round(row.linkedMatch.matchScore)}% match
+                            </span>
+                          )}
+                          {row.application.source && (
+                            <span>
+                              Bron:{" "}
+                              {applicationSourceLabels[row.application.source] ??
+                                row.application.source}
+                            </span>
+                          )}
+                          {row.application.createdAt && (
+                            <span>
+                              Gestart op{" "}
+                              {new Date(row.application.createdAt).toLocaleDateString("nl-NL", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          )}
+                        </div>
+
+                        {row.linkedMatch?.recommendation && (
+                          <p className="text-xs text-muted-foreground mt-3">
+                            AI advies: {recommendationLabel(row.linkedMatch.recommendation)}
+                          </p>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-3 text-xs">
+                          {row.job?.id && (
+                            <Link
+                              href={`/pipeline?vacature=${row.job.id}&fase=${row.application.stage}`}
+                              className="text-primary hover:underline"
+                            >
+                              Open fase
+                            </Link>
+                          )}
+                          {row.job?.id && (
+                            <Link
+                              href={`/opdrachten/${row.job.id}`}
+                              className="text-primary hover:underline"
+                            >
+                              Vacature
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {rejectedApplicationCount > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {rejectedApplicationCount} afgewezen sollicitatie
+                      {rejectedApplicationCount === 1 ? " staat" : "s staan"} nog in de
+                      workflowhistorie.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left column: About, Employments, Edit, CV, Notes, Matches */}
