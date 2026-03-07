@@ -159,6 +159,37 @@ describe("Matching linking flow — structural assertions", () => {
     expect(source).toContain("Al in pipeline");
   });
 
+  it("matching page is candidate-centric with inbox status tabs", () => {
+    const source = readFile("app/matching/page.tsx");
+    expect(source).toContain("matchingStatus");
+    expect(source).toContain("Open");
+    expect(source).toContain("In behandeling");
+    expect(source).toContain("Gekoppeld");
+    expect(source).toContain("Geen match");
+    expect(source).toContain("AddCandidateWizard");
+  });
+
+  it("matching page keeps report and detail surfaces on candidate cards", () => {
+    const source = readFile("app/matching/page.tsx");
+    expect(source).toContain("ReportButton");
+    expect(source).toContain("MatchDetail");
+    expect(source).toContain("marienne-v1");
+    expect(source).toContain("criteriaBreakdown");
+  });
+
+  it("wizard linking supports explicit no-match persistence", () => {
+    const source = readFile("components/candidate-wizard/wizard-step-linking.tsx");
+    expect(source).toContain("/geen-match");
+    expect(source).toContain("markNoMatch");
+  });
+
+  it("wizard linking supports manual vacancy search and jobIds linking", () => {
+    const source = readFile("components/candidate-wizard/wizard-step-linking.tsx");
+    expect(source).toContain("/api/opdrachten?q=");
+    expect(source).toContain("jobIds");
+    expect(source).toContain("recommendedMatchId");
+  });
+
   it("opdracht detail CTA says 'Koppel aan kandidaat' (desktop)", () => {
     const source = readFile("app/opdrachten/[id]/page.tsx");
     expect(source).toContain("Koppel aan kandidaat");

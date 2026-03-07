@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { WizardIntakeResult } from "@/components/candidate-wizard/types";
 import { WizardStepLinking } from "@/components/candidate-wizard/wizard-step-linking";
 import { WizardStepProfile } from "@/components/candidate-wizard/wizard-step-profile";
 import { Button } from "@/components/ui/button";
@@ -21,31 +22,31 @@ export function AddCandidateWizard() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("profile");
-  const [candidateId, setCandidateId] = useState<string | null>(null);
+  const [intakeResult, setIntakeResult] = useState<WizardIntakeResult | null>(null);
 
-  const handleProfileSubmit = (id: string) => {
-    setCandidateId(id);
+  const handleProfileSubmit = (result: WizardIntakeResult) => {
+    setIntakeResult(result);
     setStep("linking");
   };
 
   const handleLinkingComplete = () => {
     setOpen(false);
     setStep("profile");
-    setCandidateId(null);
+    setIntakeResult(null);
     router.refresh();
   };
 
   const handleLinkingSkip = () => {
     setOpen(false);
     setStep("profile");
-    setCandidateId(null);
+    setIntakeResult(null);
     router.refresh();
   };
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       setStep("profile");
-      setCandidateId(null);
+      setIntakeResult(null);
     }
     setOpen(next);
   };
@@ -58,23 +59,21 @@ export function AddCandidateWizard() {
           Kandidaat toevoegen
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle>
-            {step === "profile" ? "Kandidaat toevoegen" : "Vacatures koppelen"}
-          </DialogTitle>
+          <DialogTitle>{step === "profile" ? "Kandidaat intake" : "Review & koppelen"}</DialogTitle>
           <DialogDescription>
             {step === "profile"
-              ? "Voeg een nieuwe kandidaat toe. Daarna kun je direct passende vacatures koppelen."
-              : "Selecteer de vacatures waaraan je deze kandidaat wilt koppelen."}
+              ? "Start via CV upload of handmatige intake en bouw direct een matchbaar kandidaatprofiel op."
+              : "Beoordeel het profiel, bekijk de topmatches en koppel direct door naar screening."}
           </DialogDescription>
         </DialogHeader>
         {step === "profile" && (
           <WizardStepProfile onSubmit={handleProfileSubmit} onCancel={() => setOpen(false)} />
         )}
-        {step === "linking" && candidateId && (
+        {step === "linking" && intakeResult && (
           <WizardStepLinking
-            candidateId={candidateId}
+            intake={intakeResult}
             onComplete={handleLinkingComplete}
             onSkip={handleLinkingSkip}
           />

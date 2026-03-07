@@ -4,6 +4,17 @@ import { applications } from "../db/schema";
 
 export type Application = typeof applications.$inferSelect;
 
+type ApplicationInsertExecutor = Pick<typeof db, "insert">;
+
+type CreateApplicationInput = {
+  jobId: string;
+  candidateId: string;
+  matchId?: string;
+  source?: string;
+  stage?: string;
+  notes?: string;
+};
+
 const VALID_STAGES = ["new", "screening", "interview", "offer", "hired", "rejected"];
 
 export type ListApplicationsOpts = {
@@ -73,23 +84,7 @@ export async function getApplicationByJobAndCandidate(
   return rows[0] ?? null;
 }
 
-function isApplicationUniqueViolation(error: unknown): boolean {
-  const message = String(error).toLowerCase();
-  return (
-    message.includes("uq_applications_job_candidate") ||
-    message.includes("unique") ||
-    message.includes("duplicate")
-  );
-}
-
-export async function createApplication(data: {
-  jobId: string;
-  candidateId: string;
-  matchId?: string;
-  source?: string;
-  stage?: string;
-  notes?: string;
-}): Promise<Application> {
+export async function createApplication(data: CreateApplicationInput): Promise<Application> {
   const stage = data.stage && VALID_STAGES.includes(data.stage) ? data.stage : "new";
   const rows = await db
     .insert(applications)
@@ -103,6 +98,30 @@ export async function createApplication(data: {
     })
     .returning();
   return rows[0];
+}
+
+async function insertApplicationIfMissing(
+  executor: ApplicationInsertExecutor,
+  data: CreateApplicationInput,
+): Promise<Application | null> {
+  const stage = data.stage && VALID_STAGES.includes(data.stage) ? data.stage : "new";
+  const rows = await executor
+    .insert(applications)
+    .values({
+      jobId: data.jobId,
+      candidateId: data.candidateId,
+      matchId: data.matchId ?? null,
+      source: data.source ?? "manual",
+      notes: data.notes ?? null,
+      stage,
+    })
+    .onConflictDoNothing({
+      target: [applications.jobId, applications.candidateId],
+      where: isNull(applications.deletedAt),
+    })
+    .returning();
+
+  return rows[0] ?? null;
 }
 
 export async function createOrReuseApplicationForMatch(data: {
@@ -128,34 +147,34 @@ export async function createOrReuseApplicationForMatch(data: {
     return { application: rows[0] ?? existing, created: false };
   }
 
-  try {
-    const application = await createApplication({
-      jobId: data.jobId,
-      candidateId: data.candidateId,
-      matchId: data.matchId ?? undefined,
-      source: "match",
-      stage,
-    });
+  const application = await insertApplicationIfMissing(db, {
+    jobId: data.jobId,
+    candidateId: data.candidateId,
+    matchId: data.matchId ?? undefined,
+    source: "match",
+    stage,
+  });
 
+  if (application) {
     return { application, created: true };
-  } catch (error) {
-    if (!isApplicationUniqueViolation(error)) throw error;
-
-    const concurrent = await getApplicationByJobAndCandidate(data.jobId, data.candidateId);
-    if (!concurrent) throw error;
-
-    if (!data.matchId || concurrent.matchId === data.matchId) {
-      return { application: concurrent, created: false };
-    }
-
-    const rows = await db
-      .update(applications)
-      .set({ matchId: data.matchId, updatedAt: new Date() })
-      .where(and(eq(applications.id, concurrent.id), isNull(applications.deletedAt)))
-      .returning();
-
-    return { application: rows[0] ?? concurrent, created: false };
   }
+
+  const concurrent = await getApplicationByJobAndCandidate(data.jobId, data.candidateId);
+  if (!concurrent) {
+    throw new Error("Application insert was skipped but no existing application was found.");
+  }
+
+  if (!data.matchId || concurrent.matchId === data.matchId) {
+    return { application: concurrent, created: false };
+  }
+
+  const rows = await db
+    .update(applications)
+    .set({ matchId: data.matchId, updatedAt: new Date() })
+    .where(and(eq(applications.id, concurrent.id), isNull(applications.deletedAt)))
+    .returning();
+
+  return { application: rows[0] ?? concurrent, created: false };
 }
 
 export type CreateApplicationsFromMatchesResult = {

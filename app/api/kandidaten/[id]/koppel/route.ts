@@ -4,6 +4,7 @@ import { withApiHandler } from "@/src/lib/api-handler";
 import { publish } from "@/src/lib/event-bus";
 import { koppelBodySchema } from "@/src/schemas/koppeling";
 import { createApplicationsFromMatches } from "@/src/services/applications";
+import { updateCandidateMatchingStatus } from "@/src/services/candidates";
 import { getMatchById } from "@/src/services/matches";
 
 export const dynamic = "force-dynamic";
@@ -42,9 +43,13 @@ export const POST = withApiHandler(
       );
     }
     const result = await createApplicationsFromMatches(candidateId, pairs, "screening");
+    if (result.created.length > 0 || result.alreadyLinked.length > 0) {
+      await updateCandidateMatchingStatus(candidateId, "linked");
+    }
     for (const app of result.created) {
       publish("application:created", { applicationId: app.id });
     }
+    revalidatePath("/matching");
     revalidatePath("/professionals");
     revalidatePath("/pipeline");
     revalidatePath("/overzicht");

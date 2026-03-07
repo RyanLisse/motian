@@ -46,6 +46,7 @@ describe("searchJobsUnified", () => {
       offset: undefined,
       platform: undefined,
       company: undefined,
+      endClient: undefined,
       category: undefined,
       status: undefined,
       province: undefined,
@@ -64,6 +65,16 @@ describe("searchJobsUnified", () => {
       platform: "opdrachtoverheid",
     });
     expect(first).not.toHaveProperty("score");
+  });
+
+  it("forwards endClient on the non-search listing path", async () => {
+    await searchJobsUnified({ endClient: "Gemeente Utrecht", limit: 5 });
+    expect(mockListJobs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endClient: "Gemeente Utrecht",
+        limit: 5,
+      }),
+    );
   });
 
   it("with q: hybrid search shape (items have score)", async () => {

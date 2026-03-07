@@ -1,4 +1,3 @@
-import { and, asc, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import {
   Activity,
   ArrowRight,
@@ -20,15 +19,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
-import { db } from "@/src/db";
-import {
-  applications,
-  candidates,
-  interviews,
-  jobs,
-  scrapeResults,
-  scraperConfigs,
-} from "@/src/db/schema";
+import { getOverviewData } from "./data";
 
 export const dynamic = "force-dynamic";
 
@@ -52,12 +43,7 @@ const PRIORITY_TONE_STYLES = {
 } as const;
 
 export default async function OverzichtPage() {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const now = new Date();
-
-  const [
+  const {
     platformCounts,
     recentJobs,
     activeScrapers,
@@ -65,85 +51,7 @@ export default async function OverzichtPage() {
     pipelineStageCounts,
     upcomingInterviewCountResult,
     upcomingInterviews,
-  ] = await Promise.all([
-    db
-      .select({
-        platform: jobs.platform,
-        count: sql<number>`count(*)::int`,
-        weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
-      })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt))
-      .groupBy(jobs.platform)
-      .orderBy(sql`count(*) desc`),
-    db
-      .select({
-        id: jobs.id,
-        title: jobs.title,
-        company: jobs.company,
-        platform: jobs.platform,
-        location: jobs.location,
-        scrapedAt: jobs.scrapedAt,
-      })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt))
-      .orderBy(desc(jobs.scrapedAt))
-      .limit(5),
-    db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
-    db
-      .select({
-        id: scrapeResults.id,
-        platform: scrapeResults.platform,
-        runAt: scrapeResults.runAt,
-        jobsFound: scrapeResults.jobsFound,
-        jobsNew: scrapeResults.jobsNew,
-        duplicates: scrapeResults.duplicates,
-        status: scrapeResults.status,
-      })
-      .from(scrapeResults)
-      .orderBy(desc(scrapeResults.runAt))
-      .limit(4),
-    db
-      .select({
-        stage: applications.stage,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(applications)
-      .where(isNull(applications.deletedAt))
-      .groupBy(applications.stage),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(interviews)
-      .where(
-        and(
-          isNull(interviews.deletedAt),
-          eq(interviews.status, "scheduled"),
-          gte(interviews.scheduledAt, now),
-        ),
-      ),
-    db
-      .select({
-        id: interviews.id,
-        scheduledAt: interviews.scheduledAt,
-        type: interviews.type,
-        candidateName: candidates.name,
-        jobTitle: jobs.title,
-        jobCompany: jobs.company,
-      })
-      .from(interviews)
-      .innerJoin(applications, eq(interviews.applicationId, applications.id))
-      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
-      .leftJoin(jobs, eq(applications.jobId, jobs.id))
-      .where(
-        and(
-          isNull(interviews.deletedAt),
-          eq(interviews.status, "scheduled"),
-          gte(interviews.scheduledAt, now),
-        ),
-      )
-      .orderBy(asc(interviews.scheduledAt))
-      .limit(4),
-  ]);
+  } = await getOverviewData();
 
   const totalJobs = platformCounts.reduce((sum, row) => sum + row.count, 0);
   const weeklyNew = platformCounts.reduce((sum, row) => sum + row.weeklyNew, 0);

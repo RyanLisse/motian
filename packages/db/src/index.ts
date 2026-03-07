@@ -2,6 +2,9 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { getPoolSslConfig } from "./pool-config";
 
+const MISSING_DATABASE_URL_ERROR =
+  "DATABASE_URL is not set. Add it to .env.local (see .env.example). Without it, database-backed routes will fail when they try to access the database.";
+
 function normalizeConnectionString(url: string): string {
   try {
     const parsed = new URL(url);
@@ -16,26 +19,57 @@ function normalizeConnectionString(url: string): string {
   }
 }
 
-const rawUrl = process.env.DATABASE_URL?.trim() ?? "";
-if (!rawUrl) {
-  throw new Error(
-    "DATABASE_URL is not set. Add it to .env.local (see .env.example). Without it, database pages (e.g. /overzicht) will fail with SASL/connection errors.",
-  );
+function getConnectionString(): string {
+  const rawUrl = process.env.DATABASE_URL?.trim() ?? "";
+  if (!rawUrl) {
+    throw new Error(MISSING_DATABASE_URL_ERROR);
+  }
+
+  return normalizeConnectionString(rawUrl);
 }
-const connectionString = normalizeConnectionString(rawUrl);
 
-const pool = new Pool({
-  connectionString,
-  max: 20,
-  idleTimeoutMillis: 20_000,
-  connectionTimeoutMillis: 10_000,
-  ssl: getPoolSslConfig(connectionString),
-});
+function createDatabaseClient() {
+  const connectionString = getConnectionString();
+  const pool = new Pool({
+    connectionString,
+    max: 20,
+    idleTimeoutMillis: 20_000,
+    connectionTimeoutMillis: 10_000,
+    ssl: getPoolSslConfig(connectionString),
+  });
 
-// Prevent silent crashes on dropped connections
-pool.on("error", (err) => {
-  console.error("Onverwachte pool fout:", err.message);
-});
+  // Prevent silent crashes on dropped connections
+  pool.on("error", (err) => {
+    console.error("Onverwachte pool fout:", err.message);
+  });
 
-export const db = drizzle(pool);
+  return drizzle(pool);
+}
+
+type DatabaseClient = ReturnType<typeof createDatabaseClient>;
+
+let databaseClient: DatabaseClient | undefined;
+
+function getDatabaseClient(): DatabaseClient {
+  databaseClient ??= createDatabaseClient();
+  return databaseClient;
+}
+
+export const db = new Proxy({} as DatabaseClient, {
+  get(_target, prop, receiver) {
+    const client = getDatabaseClient();
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+  has(_target, prop) {
+    return prop in getDatabaseClient();
+  },
+  ownKeys() {
+    return Reflect.ownKeys(getDatabaseClient());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Object.getOwnPropertyDescriptor(getDatabaseClient(), prop);
+  },
+}) as DatabaseClient;
+
 export * from "./schema";

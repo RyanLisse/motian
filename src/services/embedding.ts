@@ -14,26 +14,41 @@ const EMBEDDING_MODEL = embeddingModel;
 const EMBEDDING_OPTIONS = { openai: { dimensions: 512 } };
 
 const BATCH_SIZE = 100;
+const MAX_JOB_DESCRIPTION_EMBEDDING_CHARS = 4_000;
+const MIN_JOB_EMBEDDING_SOURCE_CHARS = 5;
+const MAX_RESUME_EMBEDDING_CHARS = 2_000;
+
+function toBoundedJobDescriptionText(description: string | null | undefined): string | null {
+  if (typeof description !== "string") return null;
+
+  const normalized = description.replace(/\s+/g, " ").trim();
+  if (normalized.length === 0) return null;
+
+  return normalized.slice(0, MAX_JOB_DESCRIPTION_EMBEDDING_CHARS);
+}
+
+function toBoundedResumeText(resumeRaw: string | null | undefined): string | null {
+  if (typeof resumeRaw !== "string") return null;
+
+  const normalized = resumeRaw.replace(/\s+/g, " ").trim();
+  if (normalized.length === 0) return null;
+
+  return normalized.slice(0, MAX_RESUME_EMBEDDING_CHARS);
+}
 
 // ========== Text Preparation ==========
 
 export function buildJobEmbeddingText(job: {
   title: string;
   descriptionSummary: unknown;
+  description?: string | null;
   categories: unknown;
   requirements: unknown;
 }): string {
   const parts: string[] = [job.title];
+  const sourceText = getJobEmbeddingSourceText(job);
 
-  if (
-    job.descriptionSummary &&
-    typeof job.descriptionSummary === "object" &&
-    job.descriptionSummary !== null
-  ) {
-    const summary = job.descriptionSummary as { nl?: string; en?: string };
-    if (summary.nl) parts.push(summary.nl);
-    if (summary.en) parts.push(summary.en);
-  }
+  if (sourceText) parts.push(sourceText);
 
   if (Array.isArray(job.categories) && job.categories.length > 0) {
     parts.push(`Categorieën: ${job.categories.join(", ")}`);
@@ -53,6 +68,26 @@ export function buildJobEmbeddingText(job: {
   }
 
   return parts.join("\n");
+}
+
+export function getJobEmbeddingSourceText(job: {
+  descriptionSummary: unknown;
+  description?: string | null;
+}): string | null {
+  if (
+    job.descriptionSummary &&
+    typeof job.descriptionSummary === "object" &&
+    job.descriptionSummary !== null
+  ) {
+    const summary = job.descriptionSummary as { nl?: string; en?: string };
+    const summaryParts = [summary.nl, summary.en].filter(
+      (part): part is string => typeof part === "string" && part.trim().length > 0,
+    );
+
+    if (summaryParts.length > 0) return summaryParts.join("\n");
+  }
+
+  return toBoundedJobDescriptionText(job.description);
 }
 
 // ========== Single Embedding ==========
@@ -104,6 +139,7 @@ export async function embedJob(jobId: string): Promise<boolean> {
       id: jobs.id,
       title: jobs.title,
       descriptionSummary: jobs.descriptionSummary,
+      description: jobs.description,
       categories: jobs.categories,
       requirements: jobs.requirements,
     })
@@ -111,7 +147,10 @@ export async function embedJob(jobId: string): Promise<boolean> {
     .where(eq(jobs.id, jobId))
     .limit(1);
 
-  if (!job || !job.descriptionSummary) return false;
+  if (!job) return false;
+
+  const sourceText = getJobEmbeddingSourceText(job);
+  if (!sourceText || sourceText.length < MIN_JOB_EMBEDDING_SOURCE_CHARS) return false;
 
   const text = buildJobEmbeddingText(job);
   const embedding = await generateEmbedding(text);
@@ -129,10 +168,14 @@ export function buildCandidateEmbeddingText(candidate: {
   skills: unknown;
   experience: unknown;
   location: string | null;
+  profileSummary?: string | null;
+  notes?: string | null;
+  resumeRaw?: string | null;
 }): string {
   const parts: string[] = [];
 
   if (candidate.role) parts.push(candidate.role);
+  if (candidate.profileSummary) parts.push(`Profiel: ${candidate.profileSummary}`);
 
   if (Array.isArray(candidate.skills) && candidate.skills.length > 0) {
     parts.push(`Skills: ${candidate.skills.join(", ")}`);
@@ -156,6 +199,12 @@ export function buildCandidateEmbeddingText(candidate: {
 
   if (candidate.location) parts.push(candidate.location);
 
+  const notes = candidate.notes?.replace(/\s+/g, " ").trim();
+  if (notes) parts.push(`Notities: ${notes}`);
+
+  const resumeText = toBoundedResumeText(candidate.resumeRaw);
+  if (resumeText) parts.push(`CV: ${resumeText}`);
+
   return parts.join("\n");
 }
 
@@ -170,6 +219,9 @@ export async function embedCandidate(candidateId: string): Promise<boolean> {
       skills: candidates.skills,
       experience: candidates.experience,
       location: candidates.location,
+      profileSummary: candidates.profileSummary,
+      notes: candidates.notes,
+      resumeRaw: candidates.resumeRaw,
     })
     .from(candidates)
     .where(eq(candidates.id, candidateId))
@@ -204,6 +256,9 @@ export async function embedCandidatesBatch(opts: {
       skills: candidates.skills,
       experience: candidates.experience,
       location: candidates.location,
+      profileSummary: candidates.profileSummary,
+      notes: candidates.notes,
+      resumeRaw: candidates.resumeRaw,
     })
     .from(candidates)
     .where(and(isNull(candidates.deletedAt), isNull(candidates.embedding)))
