@@ -1,7 +1,5 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
 import { Check, Loader2, MessageSquare, Paperclip, RotateCcw, X } from "lucide-react";
 import { nanoid } from "nanoid";
 import { usePathname } from "next/navigation";
@@ -15,6 +13,7 @@ import {
 } from "@/src/components/ai-elements/prompt-input";
 import { useChatContext } from "./chat-context-provider";
 import { ChatMessages } from "./chat-messages";
+import { useChatThread } from "./use-chat-thread";
 
 const SESSION_KEY = "motian-fab-session";
 
@@ -45,26 +44,29 @@ function getOrCreateSessionId(): string {
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 
-function ChatPanelInner({
+function ChatWidgetInner({
   ctx,
   sessionId,
 }: {
-  ctx: { route: string; entityId: string | null; entityType: string | null };
+  ctx: { route: string; entityId: string | null; entityType: "opdracht" | "kandidaat" | null };
   sessionId: string;
 }) {
-  const { messages, sendMessage, status, stop } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: {
-        context: {
-          route: ctx.route,
-          entityId: ctx.entityId,
-          entityType: ctx.entityType,
-          sessionId,
-        },
-      },
-    }),
-  });
+  const { messages, sendMessage, status, stop, hasMoreHistory, loadingOlder, loadOlder } =
+    useChatThread({
+      sessionId,
+      context: ctx,
+    });
+
+  const handleSuggestion = useCallback(
+    (text: string) => {
+      sendMessage({ text });
+    },
+    [sendMessage],
+  );
+
+  const handleLoadOlder = useCallback(() => {
+    void loadOlder();
+  }, [loadOlder]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadState, setUploadState] = useState<UploadState>("idle");
@@ -158,12 +160,14 @@ function ChatPanelInner({
       <ChatMessages
         messages={messages}
         status={status}
-        onSuggestion={(text) => sendMessage({ text })}
+        onSuggestion={handleSuggestion}
+        hasOlderMessages={hasMoreHistory}
+        loadingOlder={loadingOlder}
+        onLoadOlder={handleLoadOlder}
       />
 
       <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-3 sm:pb-4">
-        <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-background shadow-lg overflow-hidden">
-          {/* Upload status */}
+        <div className="flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-background shadow-lg">
           {uploadState !== "idle" && (
             <div
               className={`flex items-center gap-2 px-3 py-2 text-xs ${
@@ -211,10 +215,11 @@ function ChatPanelInner({
   );
 }
 
-export function ChatPanel() {
+export function ChatWidget() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState("");
+
   useEffect(() => {
     const t = setTimeout(() => {
       try {
@@ -225,6 +230,7 @@ export function ChatPanel() {
     }, 0);
     return () => clearTimeout(t);
   }, []);
+
   const ctx = useChatContext();
 
   const handleNewSession = useCallback(() => {
@@ -239,7 +245,6 @@ export function ChatPanel() {
     setSessionId(id);
   }, []);
 
-  // Cmd+J / Ctrl+J toggle
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "j") {
@@ -262,7 +267,6 @@ export function ChatPanel() {
 
   return (
     <>
-      {/* FAB button */}
       {!open && (
         <button
           type="button"
@@ -274,13 +278,11 @@ export function ChatPanel() {
         </button>
       )}
 
-      {/* Slide-in panel */}
       <div
         className={`fixed inset-y-0 right-0 z-50 flex w-full sm:w-[400px] flex-col border-l border-border bg-background shadow-2xl transition-transform duration-300 ease-in-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        {/* Header */}
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground">Motian AI</span>
@@ -310,9 +312,8 @@ export function ChatPanel() {
           </div>
         </div>
 
-        {/* Chat content — key forces remount on session change; only mount when sessionId is ready (avoids storage access during SSR/hydration) */}
         {sessionId ? (
-          <ChatPanelInner key={sessionId} ctx={ctx} sessionId={sessionId} />
+          <ChatWidgetInner key={sessionId} ctx={ctx} sessionId={sessionId} />
         ) : (
           <div className="flex flex-1 items-center justify-center p-4">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

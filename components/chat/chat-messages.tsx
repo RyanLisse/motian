@@ -4,6 +4,7 @@ import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import {
   Brain,
   Briefcase,
+  ChevronUp,
   ExternalLink,
   FileText,
   Loader2,
@@ -14,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Conversation,
@@ -34,6 +36,9 @@ type Props = {
   messages: UIMessage[];
   status: string;
   onSuggestion?: (text: string) => void;
+  hasOlderMessages?: boolean;
+  loadingOlder?: boolean;
+  onLoadOlder?: () => void;
 };
 
 const QUICK_ACTIONS = [
@@ -139,7 +144,14 @@ function SourceDocumentBlock({ title, mediaType }: { title: string; mediaType: s
   );
 }
 
-export function ChatMessages({ messages, status, onSuggestion }: Props) {
+export function ChatMessages({
+  messages,
+  status,
+  onSuggestion,
+  hasOlderMessages = false,
+  loadingOlder = false,
+  onLoadOlder,
+}: Props) {
   const hasUserMessage = messages.some((m) => m.role === "user");
 
   return (
@@ -150,6 +162,26 @@ export function ChatMessages({ messages, status, onSuggestion }: Props) {
           !hasUserMessage && "flex flex-col justify-center min-h-[calc(100vh-160px)]",
         )}
       >
+        {(hasOlderMessages || loadingOlder) && (
+          <div className="flex justify-center pb-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onLoadOlder}
+              disabled={loadingOlder}
+              className="rounded-full"
+            >
+              {loadingOlder ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ChevronUp className="h-4 w-4" />
+              )}
+              Oudere berichten laden
+            </Button>
+          </div>
+        )}
+
         {messages.map((message) => (
           <Message key={message.id} from={message.role}>
             <MessageContent>
