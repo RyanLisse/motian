@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   Activity,
   ArrowRight,
@@ -20,100 +20,186 @@ import Link from "next/link";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
-import { applications, jobs, scrapeResults, scraperConfigs } from "@/src/db/schema";
 
 export const dynamic = "force-dynamic";
+
+type PlatformCount = {
+  platform: string;
+  count: number;
+  weeklyNew: number;
+};
+
+type RecentJob = {
+  id: string;
+  title: string;
+  company: string | null;
+  platform: string;
+  location: string | null;
+  scrapedAt: string | Date | null;
+};
+
+type ActiveScraper = {
+  platform: string;
+};
+
+type RecentScrape = {
+  id: string;
+  configId: string | null;
+  platform: string;
+  runAt: string | Date | null;
+  durationMs: number | null;
+  jobsFound: number | null;
+  jobsNew: number | null;
+  duplicates: number | null;
+  status: string;
+  errors: unknown;
+};
+
+type CompanyCount = {
+  company: string | null;
+  count: number;
+};
+
+type ProvinceCount = {
+  province: string | null;
+  count: number;
+};
+
+type PipelineStageCount = {
+  stage: string;
+  count: number;
+};
 
 export default async function OverzichtPage() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  // Fetch all dashboard data in parallel (consolidated counts to reduce DB connections)
-  const [
-    platformCounts,
-    recentJobs,
-    activeScrapers,
-    recentScrapes,
-    topCompanies,
-    locationCounts,
-    pipelineStageCounts,
-  ] = await Promise.all([
-    // Jobs per platform (includes weeklyNew to eliminate separate jobStats query)
-    db
-      .select({
-        platform: jobs.platform,
-        count: sql<number>`count(*)::int`,
-        weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
-      })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt))
-      .groupBy(jobs.platform)
-      .orderBy(sql`count(*) desc`),
-    // Last 5 jobs
-    db
-      .select({
-        id: jobs.id,
-        title: jobs.title,
-        company: jobs.company,
-        platform: jobs.platform,
-        location: jobs.location,
-        scrapedAt: jobs.scrapedAt,
-      })
-      .from(jobs)
-      .where(isNull(jobs.deletedAt))
-      .orderBy(desc(jobs.scrapedAt))
-      .limit(5),
-    // Active scraper configs
-    db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
-    // Recent scrape results (explicit columns for DBs without job_ids)
-    db
-      .select({
-        id: scrapeResults.id,
-        configId: scrapeResults.configId,
-        platform: scrapeResults.platform,
-        runAt: scrapeResults.runAt,
-        durationMs: scrapeResults.durationMs,
-        jobsFound: scrapeResults.jobsFound,
-        jobsNew: scrapeResults.jobsNew,
-        duplicates: scrapeResults.duplicates,
-        status: scrapeResults.status,
-        errors: scrapeResults.errors,
-      })
-      .from(scrapeResults)
-      .orderBy(desc(scrapeResults.runAt))
-      .limit(5),
-    // Top companies by job count
-    db
-      .select({
-        company: jobs.company,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.company} is not null`))
-      .groupBy(jobs.company)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
-    // Top locations
-    db
-      .select({
-        province: jobs.province,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.province} is not null`))
-      .groupBy(jobs.province)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
-    // Pipeline stage counts
-    db
-      .select({
-        stage: applications.stage,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(applications)
-      .where(isNull(applications.deletedAt))
-      .groupBy(applications.stage),
+  // Collapse dashboard fan-out into two round-trips so Sentry does not see this route as N+1-like.
+  const [jobsDashboardResult, scraperDashboardResult] = await Promise.all([
+    db.execute(sql`
+      WITH filtered_jobs AS (
+        SELECT
+          id,
+          title,
+          company,
+          platform,
+          location,
+          province,
+          scraped_at AS "scrapedAt"
+        FROM jobs
+        WHERE deleted_at IS NULL
+      ),
+      platform_counts AS (
+        SELECT
+          platform,
+          count(*)::int AS count,
+          count(*) FILTER (WHERE "scrapedAt" >= ${sevenDaysAgo})::int AS "weeklyNew"
+        FROM filtered_jobs
+        GROUP BY platform
+      ),
+      recent_jobs AS (
+        SELECT id, title, company, platform, location, "scrapedAt"
+        FROM filtered_jobs
+        ORDER BY "scrapedAt" DESC
+        LIMIT 5
+      ),
+      top_companies AS (
+        SELECT company, count(*)::int AS count
+        FROM filtered_jobs
+        WHERE company IS NOT NULL
+        GROUP BY company
+        ORDER BY count(*) DESC
+        LIMIT 5
+      ),
+      location_counts AS (
+        SELECT province, count(*)::int AS count
+        FROM filtered_jobs
+        WHERE province IS NOT NULL
+        GROUP BY province
+        ORDER BY count(*) DESC
+        LIMIT 5
+      ),
+      pipeline_stage_counts AS (
+        SELECT stage, count(*)::int AS count
+        FROM applications
+        WHERE deleted_at IS NULL
+        GROUP BY stage
+      )
+      SELECT
+        coalesce(
+          (SELECT json_agg(pc ORDER BY pc.count DESC) FROM platform_counts pc),
+          '[]'::json
+        ) AS "platformCounts",
+        coalesce(
+          (SELECT json_agg(rj ORDER BY rj."scrapedAt" DESC) FROM recent_jobs rj),
+          '[]'::json
+        ) AS "recentJobs",
+        coalesce(
+          (SELECT json_agg(tc ORDER BY tc.count DESC) FROM top_companies tc),
+          '[]'::json
+        ) AS "topCompanies",
+        coalesce(
+          (SELECT json_agg(lc ORDER BY lc.count DESC) FROM location_counts lc),
+          '[]'::json
+        ) AS "locationCounts",
+        coalesce(
+          (SELECT json_agg(psc ORDER BY psc.stage) FROM pipeline_stage_counts psc),
+          '[]'::json
+        ) AS "pipelineStageCounts"
+    `),
+    db.execute(sql`
+      WITH active_scrapers AS (
+        SELECT platform
+        FROM scraper_configs
+        WHERE is_active = true
+      ),
+      recent_scrapes AS (
+        SELECT
+          id,
+          config_id AS "configId",
+          platform,
+          run_at AS "runAt",
+          duration_ms AS "durationMs",
+          jobs_found AS "jobsFound",
+          jobs_new AS "jobsNew",
+          duplicates,
+          status,
+          errors
+        FROM scrape_results
+        ORDER BY run_at DESC
+        LIMIT 5
+      )
+      SELECT
+        coalesce(
+          (SELECT json_agg(s ORDER BY s.platform) FROM active_scrapers s),
+          '[]'::json
+        ) AS "activeScrapers",
+        coalesce(
+          (SELECT json_agg(rs ORDER BY rs."runAt" DESC) FROM recent_scrapes rs),
+          '[]'::json
+        ) AS "recentScrapes"
+    `),
   ]);
+
+  const jobsDashboard = (jobsDashboardResult.rows[0] ?? {}) as {
+    platformCounts?: PlatformCount[];
+    recentJobs?: RecentJob[];
+    topCompanies?: CompanyCount[];
+    locationCounts?: ProvinceCount[];
+    pipelineStageCounts?: PipelineStageCount[];
+  };
+  const scraperDashboard = (scraperDashboardResult.rows[0] ?? {}) as {
+    activeScrapers?: ActiveScraper[];
+    recentScrapes?: RecentScrape[];
+  };
+
+  const platformCounts = jobsDashboard.platformCounts ?? [];
+  const recentJobs = jobsDashboard.recentJobs ?? [];
+  const topCompanies = jobsDashboard.topCompanies ?? [];
+  const locationCounts = jobsDashboard.locationCounts ?? [];
+  const pipelineStageCounts = jobsDashboard.pipelineStageCounts ?? [];
+  const activeScrapers = scraperDashboard.activeScrapers ?? [];
+  const recentScrapes = scraperDashboard.recentScrapes ?? [];
 
   const totalJobs = platformCounts.reduce((s, p) => s + p.count, 0);
   const weeklyNew = platformCounts.reduce((s, p) => s + p.weeklyNew, 0);
