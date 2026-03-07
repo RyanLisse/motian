@@ -3,9 +3,11 @@
 import {
   Activity,
   Briefcase,
+  Calendar,
   GalleryVerticalEnd,
+  Kanban,
   LayoutDashboard,
-  MessageSquare,
+  Sparkles,
   Users,
   Zap,
 } from "lucide-react";
@@ -51,28 +53,24 @@ const data = {
       title: "Kandidaten",
       url: "/professionals",
       icon: Users,
-      items: [
-        {
-          title: "Talent Pool",
-          url: "/professionals",
-        },
-        {
-          title: "Pipeline",
-          url: "/pipeline",
-        },
-        {
-          title: "Interviews",
-          url: "/interviews",
-        },
-      ],
     },
     {
-      title: "Matching",
+      title: "Pipeline",
+      url: "/pipeline",
+      icon: Kanban,
+    },
+    {
+      title: "Interviews",
+      url: "/interviews",
+      icon: Calendar,
+    },
+    {
+      title: "Aanbevelingen",
       url: "/matching",
-      icon: Zap,
+      icon: Sparkles,
       items: [
         {
-          title: "AI Matching",
+          title: "Kandidaataanbevelingen",
           url: "/matching",
         },
         {
@@ -86,14 +84,14 @@ const data = {
       ],
     },
     {
-      title: "Scraper Analytics",
+      title: "Databronnen",
       url: "/scraper",
       icon: Activity,
     },
     {
-      title: "Chat",
+      title: "AI Assistent",
       url: "/chat",
-      icon: MessageSquare,
+      icon: Zap,
     },
   ],
 };

@@ -18,7 +18,7 @@ import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
-import { candidates, jobMatches, jobs } from "@/src/db/schema";
+import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 import type { CriterionResult } from "@/src/schemas/matching";
 import { getGradedCandidates } from "@/src/services/grading";
@@ -53,8 +53,17 @@ const statusColors: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  pending: "In afwachting",
-  approved: "Goedgekeurd",
+  pending: "Aanbevolen",
+  approved: "In pipeline",
+  rejected: "Afgewezen",
+};
+
+const stageLabels: Record<string, string> = {
+  new: "Nieuw",
+  screening: "Screening",
+  interview: "Interview",
+  offer: "Aanbod",
+  hired: "Geplaatst",
   rejected: "Afgewezen",
 };
 
@@ -111,7 +120,7 @@ export default async function MatchingPage({ searchParams }: Props) {
           <div>
             <h1 className="text-xl font-bold text-foreground">Matching</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              AI-gestuurde matching — beoordeel kandidaat-vacature matches
+              AI-aanbevelingen — voeg kandidaten toe aan de pipeline
             </p>
           </div>
 
@@ -160,7 +169,7 @@ export default async function MatchingPage({ searchParams }: Props) {
           <div>
             <h1 className="text-xl font-bold text-foreground">Matching</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              AI-gestuurde matching — beoordeel kandidaat-vacature matches
+              AI-aanbevelingen — voeg kandidaten toe aan de pipeline
             </p>
           </div>
 
@@ -191,6 +200,7 @@ export default async function MatchingPage({ searchParams }: Props) {
       .select({
         match: jobMatches,
         job: { id: jobs.id, title: jobs.title, company: jobs.company },
+        application: { id: applications.id, stage: applications.stage },
         candidate: {
           id: candidates.id,
           name: candidates.name,
@@ -199,6 +209,14 @@ export default async function MatchingPage({ searchParams }: Props) {
       })
       .from(jobMatches)
       .leftJoin(jobs, eq(jobMatches.jobId, jobs.id))
+      .leftJoin(
+        applications,
+        and(
+          eq(applications.jobId, jobMatches.jobId),
+          eq(applications.candidateId, jobMatches.candidateId),
+          isNull(applications.deletedAt),
+        ),
+      )
       .leftJoin(candidates, eq(jobMatches.candidateId, candidates.id))
       .where(whereClause)
       .orderBy(desc(jobMatches.matchScore))
@@ -222,12 +240,12 @@ export default async function MatchingPage({ searchParams }: Props) {
   const rejectedCount = statusCounts[0]?.rejected ?? 0;
   const allCount = pendingCount + approvedCount + rejectedCount;
 
-  // Collect ALL approved candidate IDs for this job (not just current page)
+  // Collect ALL candidates already in the pipeline for this job (not just current page)
   const linkedCandidateIds = jobId
     ? await db
-        .select({ candidateId: jobMatches.candidateId })
-        .from(jobMatches)
-        .where(and(eq(jobMatches.jobId, jobId), eq(jobMatches.status, "approved")))
+        .select({ candidateId: applications.candidateId })
+        .from(applications)
+        .where(and(eq(applications.jobId, jobId), isNull(applications.deletedAt)))
         .then((rows) => rows.map((r) => r.candidateId).filter((id): id is string => Boolean(id)))
     : [];
 
@@ -237,7 +255,7 @@ export default async function MatchingPage({ searchParams }: Props) {
         <div>
           <h1 className="text-xl font-bold text-foreground">Matching</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            AI-gestuurde matching — beoordeel kandidaat-vacature matches
+            AI-aanbevelingen — voeg kandidaten toe aan de pipeline
           </p>
         </div>
 
@@ -247,7 +265,7 @@ export default async function MatchingPage({ searchParams }: Props) {
             <Link2 className="h-4 w-4 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">
-                Koppelen voor vacature:{" "}
+                Aanbevelingen voor vacature:{" "}
                 <Link
                   href={`/opdrachten/${jobContext.id}`}
                   className="text-primary hover:underline"
@@ -272,7 +290,7 @@ export default async function MatchingPage({ searchParams }: Props) {
         {jobId && !jobContext && (
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
             <p className="text-sm text-yellow-600">
-              Vacature niet gevonden. Je bekijkt alle matches.
+              Vacature niet gevonden. Je bekijkt alle aanbevelingen.
             </p>
           </div>
         )}
@@ -288,14 +306,14 @@ export default async function MatchingPage({ searchParams }: Props) {
           <KPICard icon={<BarChart3 className="h-4 w-4" />} label="Totaal" value={allCount} />
           <KPICard
             icon={<Clock className="h-4 w-4" />}
-            label="In afwachting"
+            label="Te beoordelen"
             value={pendingCount}
             iconClassName="text-yellow-500/60"
             valueClassName="text-yellow-500"
           />
           <KPICard
             icon={<CheckCircle2 className="h-4 w-4" />}
-            label="Goedgekeurd"
+            label="In pipeline"
             value={approvedCount}
             iconClassName="text-primary/60"
             valueClassName="text-primary"
@@ -312,8 +330,8 @@ export default async function MatchingPage({ searchParams }: Props) {
         <FilterTabs
           options={[
             { value: "", label: "Alle" },
-            { value: "pending", label: "In afwachting" },
-            { value: "approved", label: "Goedgekeurd" },
+            { value: "pending", label: "Te beoordelen" },
+            { value: "approved", label: "In pipeline" },
             { value: "rejected", label: "Afgewezen" },
           ]}
           activeValue={statusFilter}
@@ -324,7 +342,7 @@ export default async function MatchingPage({ searchParams }: Props) {
         {jobContext && <CandidateLinker jobId={jobId} linkedCandidateIds={linkedCandidateIds} />}
 
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{totalCount} matches gevonden</p>
+          <p className="text-sm text-muted-foreground">{totalCount} aanbevelingen gevonden</p>
           {totalPages > 1 && (
             <p className="text-sm text-muted-foreground">
               Pagina {page} van {totalPages}
@@ -338,15 +356,16 @@ export default async function MatchingPage({ searchParams }: Props) {
             title="Geen matches gevonden"
             subtitle={
               statusFilter
-                ? "Probeer een ander statusfilter"
+                ? "Probeer een ander intakefilter"
                 : jobContext
-                  ? "Er zijn nog geen matches voor deze vacature. Gebruik handmatig koppelen hierboven."
-                  : "Er zijn nog geen AI-matches gegenereerd"
+                  ? "Er zijn nog geen aanbevelingen voor deze vacature. Gebruik handmatig toevoegen hierboven."
+                  : "Er zijn nog geen AI-aanbevelingen gegenereerd"
             }
           />
         ) : (
           <div className="space-y-3">
             {matchRows.map((row) => {
+              const alreadyInPipeline = Boolean(row.application?.id);
               const score = Math.round(row.match.matchScore);
               const confidence = row.match.confidence ? Math.round(row.match.confidence) : null;
 
@@ -478,12 +497,23 @@ export default async function MatchingPage({ searchParams }: Props) {
                       {statusLabels[row.match.status] ?? row.match.status}
                     </Badge>
 
+                    {alreadyInPipeline && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        In pipeline
+                        {row.application?.stage
+                          ? ` · ${stageLabels[row.application.stage] ?? row.application.stage}`
+                          : ""}
+                      </Badge>
+                    )}
+
                     <div className="flex items-center gap-2">
                       {row.match.assessmentModel === "marienne-v1" &&
                         Boolean(row.match.criteriaBreakdown) && (
                           <ReportButton matchId={row.match.id} />
                         )}
-                      {row.match.status === "pending" && <MatchActions matchId={row.match.id} />}
+                      {row.match.status === "pending" && !alreadyInPipeline && (
+                        <MatchActions matchId={row.match.id} />
+                      )}
                     </div>
 
                     {row.match.reviewedAt && (

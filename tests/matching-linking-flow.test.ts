@@ -11,6 +11,10 @@ import {
   listMatches,
   updateMatchStatus,
 } from "../src/services/matches.js";
+import {
+  createOrReuseApplicationForMatch,
+  getApplicationByJobAndCandidate,
+} from "../src/services/applications.js";
 
 // ── Helpers ──────────────────────────────────────────────────────
 const ROOT = path.resolve(__dirname, "..");
@@ -41,6 +45,14 @@ describe("Matching linking flow — service exports compile", () => {
   it("listMatches is exported as a function", () => {
     expect(typeof listMatches).toBe("function");
   });
+
+  it("getApplicationByJobAndCandidate is exported as a function", () => {
+    expect(typeof getApplicationByJobAndCandidate).toBe("function");
+  });
+
+  it("createOrReuseApplicationForMatch is exported as a function", () => {
+    expect(typeof createOrReuseApplicationForMatch).toBe("function");
+  });
 });
 
 describe("Matching linking flow — schema structure", () => {
@@ -64,7 +76,7 @@ describe("Matching linking flow — structural assertions", () => {
   it("linkCandidateToJob handles existing match (approve path)", () => {
     const source = readFile("app/matching/actions.ts");
     expect(source).toContain("getMatchByJobAndCandidate");
-    expect(source).toContain('status: "approved"');
+    expect(source).toContain("createOrReuseApplicationForMatch");
   });
 
   it("linkCandidateToJob handles new match (atomic insert as approved)", () => {
@@ -73,11 +85,33 @@ describe("Matching linking flow — structural assertions", () => {
     expect(source).toContain('"Handmatige koppeling"');
     // Verify the insert includes status: "approved" directly — no intermediate pending state
     expect(source).toContain('status: "approved"');
+    expect(source).toContain("createOrReuseApplicationForMatch");
   });
 
   it("linkCandidateToJob handles unique constraint race condition", () => {
     const source = readFile("app/matching/actions.ts");
     expect(source).toContain("uq_job_matches_job_candidate");
+  });
+
+  it("actions.ts routes match approvals through the shared updateMatchStatus service", () => {
+    const source = readFile("app/matching/actions.ts");
+    expect(source).toContain('from "@/src/services/matches"');
+    expect(source).toContain("updateMatchStatus as updateMatchRecordStatus");
+    expect(source).toContain("updateMatchRecordStatus(matchId, status");
+  });
+
+  it("applications service can create or reuse a pipeline record for a match", () => {
+    const source = readFile("src/services/applications.ts");
+    expect(source).toContain("export async function createOrReuseApplicationForMatch");
+    expect(source).toContain("getApplicationByJobAndCandidate");
+    expect(source).toContain("matchId");
+    expect(source).toContain('source: "match"');
+  });
+
+  it("match status updates create or reuse an application when approved", () => {
+    const source = readFile("src/services/matches.ts");
+    expect(source).toContain("createOrReuseApplicationForMatch");
+    expect(source).toContain('status === "approved"');
   });
 
   it("candidate-linker.tsx exports CandidateLinker component", () => {
@@ -101,10 +135,28 @@ describe("Matching linking flow — structural assertions", () => {
     expect(source).toContain('import { CandidateLinker } from "./candidate-linker"');
   });
 
+  it("matching page surfaces when a recommendation is already in pipeline", () => {
+    const source = readFile("app/matching/page.tsx");
+    expect(source).toContain("applications");
+    expect(source).toContain("alreadyInPipeline");
+    expect(source).toContain("stageLabels");
+  });
+
   it("matching page preserves jobId in filter hrefs via buildQs", () => {
     const source = readFile("app/matching/page.tsx");
     expect(source).toContain("buildQs");
     expect(source).toContain("jobId");
+  });
+
+  it("matching UI copy frames approval as adding a recommendation to pipeline", () => {
+    const source = readFile("app/matching/match-actions.tsx");
+    expect(source).toContain("Voeg toe aan pipeline");
+  });
+
+  it("manual linker copy indicates pipeline intake state", () => {
+    const source = readFile("app/matching/candidate-linker.tsx");
+    expect(source).toContain("pipeline");
+    expect(source).toContain("Al in pipeline");
   });
 
   it("opdracht detail CTA says 'Koppel aan kandidaat' (desktop)", () => {

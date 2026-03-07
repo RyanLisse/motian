@@ -4,23 +4,22 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/src/db";
 import { jobMatches } from "@/src/db/schema";
+import { createOrReuseApplicationForMatch } from "@/src/services/applications";
 import { getCandidateById } from "@/src/services/candidates";
 import { getJobById } from "@/src/services/jobs";
-import { getMatchByJobAndCandidate } from "@/src/services/matches";
+import {
+  getMatchByJobAndCandidate,
+  updateMatchStatus as updateMatchRecordStatus,
+} from "@/src/services/matches";
 import { extractRequirements } from "@/src/services/requirement-extraction";
 import { runStructuredMatch } from "@/src/services/structured-matching";
 
 export async function updateMatchStatus(matchId: string, status: "approved" | "rejected") {
-  await db
-    .update(jobMatches)
-    .set({
-      status,
-      reviewedAt: new Date(),
-      reviewedBy: "system",
-    })
-    .where(eq(jobMatches.id, matchId));
+  const match = await updateMatchRecordStatus(matchId, status, "system");
+  if (!match) throw new Error("Match niet gevonden");
 
   revalidatePath("/matching");
+  revalidatePath("/pipeline");
 }
 
 /** Koppel een kandidaat aan een opdracht: bestaand match-record → approved, of nieuw record aanmaken. */
@@ -32,35 +31,44 @@ export async function linkCandidateToJob(
     const existing = await getMatchByJobAndCandidate(jobId, candidateId);
 
     if (existing) {
-      await db
-        .update(jobMatches)
-        .set({
+      await updateMatchRecordStatus(existing.id, "approved", "system");
+    } else {
+      // Insert directly as approved — single atomic operation, no intermediate "pending" state
+      const [match] = await db
+        .insert(jobMatches)
+        .values({
+          jobId,
+          candidateId,
+          matchScore: 0,
+          reasoning: "Handmatige koppeling",
+          model: "manual",
           status: "approved",
           reviewedAt: new Date(),
           reviewedBy: "system",
         })
-        .where(eq(jobMatches.id, existing.id));
-    } else {
-      // Insert directly as approved — single atomic operation, no intermediate "pending" state
-      await db.insert(jobMatches).values({
+        .returning();
+
+      await createOrReuseApplicationForMatch({
         jobId,
         candidateId,
-        matchScore: 0,
-        reasoning: "Handmatige koppeling",
-        model: "manual",
-        status: "approved",
-        reviewedAt: new Date(),
-        reviewedBy: "system",
+        matchId: match.id,
+        stage: "screening",
       });
     }
 
     revalidatePath("/matching");
+    revalidatePath("/pipeline");
     return { success: true };
   } catch (err) {
     // Handle unique constraint violation gracefully (race condition)
     const message = err instanceof Error ? err.message : "Onbekende fout";
     if (message.includes("uq_job_matches_job_candidate")) {
+      const concurrent = await getMatchByJobAndCandidate(jobId, candidateId);
+      if (concurrent) {
+        await updateMatchRecordStatus(concurrent.id, "approved", "system");
+      }
       revalidatePath("/matching");
+      revalidatePath("/pipeline");
       return { success: true }; // Idempotent: already linked
     }
     return { success: false, error: message };

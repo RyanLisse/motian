@@ -55,6 +55,33 @@ export async function getApplicationById(id: string): Promise<Application | null
   return rows[0] ?? null;
 }
 
+export async function getApplicationByJobAndCandidate(
+  jobId: string,
+  candidateId: string,
+): Promise<Application | null> {
+  const rows = await db
+    .select()
+    .from(applications)
+    .where(
+      and(
+        eq(applications.jobId, jobId),
+        eq(applications.candidateId, candidateId),
+        isNull(applications.deletedAt),
+      ),
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+function isApplicationUniqueViolation(error: unknown): boolean {
+  const message = String(error).toLowerCase();
+  return (
+    message.includes("uq_applications_job_candidate") ||
+    message.includes("unique") ||
+    message.includes("duplicate")
+  );
+}
+
 export async function createApplication(data: {
   jobId: string;
   candidateId: string;
@@ -78,6 +105,59 @@ export async function createApplication(data: {
   return rows[0];
 }
 
+export async function createOrReuseApplicationForMatch(data: {
+  jobId: string;
+  candidateId: string;
+  matchId?: string | null;
+  stage?: string;
+}): Promise<{ application: Application; created: boolean }> {
+  const stage = data.stage && VALID_STAGES.includes(data.stage) ? data.stage : "screening";
+  const existing = await getApplicationByJobAndCandidate(data.jobId, data.candidateId);
+
+  if (existing) {
+    if (!data.matchId || existing.matchId === data.matchId) {
+      return { application: existing, created: false };
+    }
+
+    const rows = await db
+      .update(applications)
+      .set({ matchId: data.matchId, updatedAt: new Date() })
+      .where(and(eq(applications.id, existing.id), isNull(applications.deletedAt)))
+      .returning();
+
+    return { application: rows[0] ?? existing, created: false };
+  }
+
+  try {
+    const application = await createApplication({
+      jobId: data.jobId,
+      candidateId: data.candidateId,
+      matchId: data.matchId ?? undefined,
+      source: "match",
+      stage,
+    });
+
+    return { application, created: true };
+  } catch (error) {
+    if (!isApplicationUniqueViolation(error)) throw error;
+
+    const concurrent = await getApplicationByJobAndCandidate(data.jobId, data.candidateId);
+    if (!concurrent) throw error;
+
+    if (!data.matchId || concurrent.matchId === data.matchId) {
+      return { application: concurrent, created: false };
+    }
+
+    const rows = await db
+      .update(applications)
+      .set({ matchId: data.matchId, updatedAt: new Date() })
+      .where(and(eq(applications.id, concurrent.id), isNull(applications.deletedAt)))
+      .returning();
+
+    return { application: rows[0] ?? concurrent, created: false };
+  }
+}
+
 export type CreateApplicationsFromMatchesResult = {
   created: Application[];
   alreadyLinked: string[];
@@ -94,31 +174,24 @@ export async function createApplicationsFromMatches(
   stage: string = "screening",
 ): Promise<CreateApplicationsFromMatchesResult> {
   if (!VALID_STAGES.includes(stage)) stage = "screening";
-  const existing = await listApplications({ candidateId });
-  const existingJobIds = new Set(existing.map((a) => a.jobId).filter(Boolean) as string[]);
   const created: Application[] = [];
   const alreadyLinked: string[] = [];
+
   for (const { jobId, matchId } of matches) {
-    if (existingJobIds.has(jobId)) {
+    const result = await createOrReuseApplicationForMatch({
+      jobId,
+      candidateId,
+      matchId: matchId ?? undefined,
+      stage,
+    });
+
+    if (result.created) {
+      created.push(result.application);
+    } else {
       alreadyLinked.push(jobId);
-      continue;
-    }
-    try {
-      const app = await createApplication({
-        jobId,
-        candidateId,
-        matchId: matchId ?? undefined,
-        source: "match",
-        stage,
-      });
-      created.push(app);
-      existingJobIds.add(jobId);
-    } catch (err) {
-      const msg = String(err);
-      if (msg.includes("unique") || msg.includes("duplicate")) alreadyLinked.push(jobId);
-      else throw err;
     }
   }
+
   return { created, alreadyLinked };
 }
 
@@ -136,33 +209,24 @@ export async function createApplicationsForJob(
   stage: string = "screening",
 ): Promise<CreateApplicationsForJobResult> {
   if (!VALID_STAGES.includes(stage)) stage = "screening";
-  const existing = await listApplications({ jobId });
-  const existingCandidateIds = new Set(
-    existing.map((a) => a.candidateId).filter(Boolean) as string[],
-  );
   const created: Application[] = [];
   const alreadyLinked: string[] = [];
+
   for (const { candidateId, matchId } of pairs) {
-    if (existingCandidateIds.has(candidateId)) {
+    const result = await createOrReuseApplicationForMatch({
+      jobId,
+      candidateId,
+      matchId: matchId ?? undefined,
+      stage,
+    });
+
+    if (result.created) {
+      created.push(result.application);
+    } else {
       alreadyLinked.push(candidateId);
-      continue;
-    }
-    try {
-      const app = await createApplication({
-        jobId,
-        candidateId,
-        matchId: matchId ?? undefined,
-        source: "match",
-        stage,
-      });
-      created.push(app);
-      existingCandidateIds.add(candidateId);
-    } catch (err) {
-      const msg = String(err);
-      if (msg.includes("unique") || msg.includes("duplicate")) alreadyLinked.push(candidateId);
-      else throw err;
     }
   }
+
   return { created, alreadyLinked };
 }
 

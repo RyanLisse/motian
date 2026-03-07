@@ -36,6 +36,59 @@ const arrangementLabels: Record<string, string> = {
   remote: "Remote",
 };
 
+const PIPELINE_STAGES = [
+  { key: "new", label: "Nieuw", color: "bg-yellow-500" },
+  { key: "screening", label: "Screening", color: "bg-blue-500" },
+  { key: "interview", label: "Interview", color: "bg-purple-500" },
+  { key: "offer", label: "Aanbod", color: "bg-orange-500" },
+  { key: "hired", label: "Geplaatst", color: "bg-primary" },
+] as const;
+
+const PIPELINE_STAGE_STYLES: Record<string, string> = {
+  new: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  screening: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  interview: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  offer: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+  hired: "bg-primary/10 text-primary border-primary/20",
+  rejected: "bg-red-500/10 text-red-500 border-red-500/20",
+};
+
+const PIPELINE_STAGE_LABELS: Record<string, string> = {
+  new: "Nieuw",
+  screening: "Screening",
+  interview: "Interview",
+  offer: "Aanbod",
+  hired: "Geplaatst",
+  rejected: "Afgewezen",
+};
+
+const MATCH_STATUS_STYLES: Record<string, string> = {
+  pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  approved: "bg-primary/10 text-primary border-primary/20",
+  rejected: "bg-red-500/10 text-red-500 border-red-500/20",
+};
+
+const MATCH_STATUS_LABELS: Record<string, string> = {
+  pending: "In afwachting",
+  approved: "Goedgekeurd",
+  rejected: "Afgewezen",
+};
+
+const APPLICATION_SOURCE_LABELS: Record<string, string> = {
+  manual: "Handmatig",
+  match: "AI match",
+  import: "Import",
+};
+
+const PIPELINE_STAGE_PRIORITY: Record<string, number> = {
+  new: 0,
+  screening: 1,
+  interview: 2,
+  offer: 3,
+  hired: 4,
+  rejected: 5,
+};
+
 function SectionBlock({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
 
@@ -95,40 +148,69 @@ export default async function OpdrachtDetailPage({ params }: Props) {
       .from(applications)
       .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
       .groupBy(applications.stage),
-    // Recent pipeline entries for this job (last 3)
+    // Recent linked candidates for this job
     db
       .select({
         id: applications.id,
         stage: applications.stage,
+        source: applications.source,
+        candidateId: candidates.id,
         candidateName: candidates.name,
+        candidateRole: candidates.role,
+        candidateLocation: candidates.location,
         matchScore: jobMatches.matchScore,
+        matchStatus: jobMatches.status,
         createdAt: applications.createdAt,
       })
       .from(applications)
       .leftJoin(candidates, eq(applications.candidateId, candidates.id))
       .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
       .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-      .orderBy(desc(applications.createdAt))
-      .limit(3),
+      .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
+      .limit(4),
   ]);
 
   // Build pipeline summary
   // Pipeline stages: only active stages count toward totalPipeline.
   // "rejected" is excluded from the active pipeline (consistent with overzicht page).
-  const pipelineStages = [
-    { key: "new", label: "Nieuw", color: "bg-yellow-500" },
-    { key: "screening", label: "Screening", color: "bg-blue-500" },
-    { key: "interview", label: "Interview", color: "bg-purple-500" },
-    { key: "offer", label: "Aanbod", color: "bg-orange-500" },
-    { key: "hired", label: "Geplaatst", color: "bg-primary" },
-  ];
   const stageCountMap: Record<string, number> = {};
   for (const row of pipelineCounts) {
     stageCountMap[row.stage] = row.count;
   }
   // Active pipeline total excludes rejected — "pipeline" = candidates still in process
-  const totalPipeline = pipelineStages.reduce((s, st) => s + (stageCountMap[st.key] ?? 0), 0);
+  const totalPipeline = PIPELINE_STAGES.reduce((s, st) => s + (stageCountMap[st.key] ?? 0), 0);
   const rejectedCount = stageCountMap.rejected ?? 0;
+  const recruiterCockpitRows = [...recentPipelineRows].sort((a, b) => {
+    const stageDelta =
+      (PIPELINE_STAGE_PRIORITY[a.stage] ?? Number.MAX_SAFE_INTEGER) -
+      (PIPELINE_STAGE_PRIORITY[b.stage] ?? Number.MAX_SAFE_INTEGER);
+    if (stageDelta !== 0) return stageDelta;
+    return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
+  });
+  const matchingHref = `/matching?jobId=${job.id}`;
+  const pipelineHref = `/pipeline?vacature=${job.id}`;
+  const nextPipelineAction =
+    (stageCountMap.new ?? 0) > 0
+      ? {
+          label: `${stageCountMap.new} nieuwe kandidaten screenen`,
+          href: `/pipeline?vacature=${job.id}&fase=new`,
+        }
+      : (stageCountMap.screening ?? 0) > 0
+        ? {
+            label: `${stageCountMap.screening} kandidaten opvolgen in screening`,
+            href: `/pipeline?vacature=${job.id}&fase=screening`,
+          }
+        : (stageCountMap.interview ?? 0) > 0
+          ? {
+              label: `${stageCountMap.interview} interviews voorbereiden`,
+              href: `/pipeline?vacature=${job.id}&fase=interview`,
+            }
+          : (stageCountMap.offer ?? 0) > 0
+            ? {
+                label: `${stageCountMap.offer} aanbiedingen opvolgen`,
+                href: `/pipeline?vacature=${job.id}&fase=offer`,
+              }
+            : null;
 
   const related = companyRelated.length > 0 ? companyRelated : genericRelated;
 
@@ -480,6 +562,204 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               )}
             </div>
 
+            {/* Recruiter cockpit */}
+            <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Users className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Recruiter cockpit</h3>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-primary/10 text-primary border-primary/20"
+                    >
+                      {totalPipeline > 0 ? `${totalPipeline} actief` : "Nog leeg"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Zie direct wie gekoppeld is, welke fase aandacht vraagt en open meteen de
+                    juiste vervolgstap.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={matchingHref}>
+                    <Button variant="outline" size="sm" className="border-border">
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Match kandidaten
+                    </Button>
+                  </Link>
+                  <Link href={pipelineHref}>
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                      <Kanban className="h-4 w-4 mr-2" />
+                      Bekijk pipeline
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              {totalPipeline === 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Nog geen kandidaten gekoppeld aan deze vacature.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Start met matchen of koppel handmatig een kandidaat om de workflow te openen.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {PIPELINE_STAGES.map((stage) => {
+                      const count = stageCountMap[stage.key] ?? 0;
+                      if (count === 0) return null;
+                      return (
+                        <div
+                          key={stage.key}
+                          className="rounded-lg border border-border bg-background/60 p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">{stage.label}</span>
+                            <span className={`h-2.5 w-2.5 rounded-full ${stage.color}`} />
+                          </div>
+                          <p className="text-lg font-semibold text-foreground mt-1">{count}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {nextPipelineAction && (
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-semibold text-primary uppercase tracking-wide">
+                          Volgende actie
+                        </p>
+                        <p className="text-sm text-foreground">{nextPipelineAction.label}</p>
+                      </div>
+                      <Link
+                        href={nextPipelineAction.href}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                      >
+                        Open fase
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  )}
+
+                  {recruiterCockpitRows.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Gekoppelde kandidaten
+                        </p>
+                        <Link
+                          href={pipelineHref}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          Alles bekijken
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {recruiterCockpitRows.map((row) => (
+                          <div
+                            key={row.id}
+                            className="rounded-lg border border-border bg-background/60 p-3"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                {row.candidateId ? (
+                                  <Link
+                                    href={`/professionals/${row.candidateId}`}
+                                    className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                                  >
+                                    {row.candidateName ?? "Onbekende kandidaat"}
+                                  </Link>
+                                ) : (
+                                  <p className="text-sm font-semibold text-foreground">
+                                    {row.candidateName ?? "Onbekende kandidaat"}
+                                  </p>
+                                )}
+                                {(row.candidateRole || row.candidateLocation) && (
+                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                                    {[row.candidateRole, row.candidateLocation]
+                                      .filter(Boolean)
+                                      .join(" • ")}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap justify-end gap-1.5">
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] ${PIPELINE_STAGE_STYLES[row.stage] ?? "border-border text-muted-foreground"}`}
+                                >
+                                  {PIPELINE_STAGE_LABELS[row.stage] ?? row.stage}
+                                </Badge>
+                                {row.matchStatus && (
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] ${MATCH_STATUS_STYLES[row.matchStatus] ?? "border-border text-muted-foreground"}`}
+                                  >
+                                    {MATCH_STATUS_LABELS[row.matchStatus] ?? row.matchStatus}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              {row.matchScore != null && (
+                                <span className="font-medium text-foreground">
+                                  {Math.round(row.matchScore)}% match
+                                </span>
+                              )}
+                              {row.source && (
+                                <span>
+                                  Bron: {APPLICATION_SOURCE_LABELS[row.source] ?? row.source}
+                                </span>
+                              )}
+                              {row.createdAt && (
+                                <span>
+                                  Gekoppeld op{" "}
+                                  {new Date(row.createdAt).toLocaleDateString("nl-NL", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-3 text-xs">
+                              {row.candidateId && (
+                                <Link
+                                  href={`/professionals/${row.candidateId}`}
+                                  className="text-primary hover:underline"
+                                >
+                                  Open profiel
+                                </Link>
+                              )}
+                              <Link
+                                href={`/pipeline?vacature=${job.id}&fase=${row.stage}`}
+                                className="text-primary hover:underline"
+                              >
+                                Open fase
+                              </Link>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {rejectedCount > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {rejectedCount} afgewezen kandidaat{rejectedCount === 1 ? " blijft" : "en blijven"}{" "}
+                      beschikbaar in de volledige pipelinehistorie.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
             {/* AI Summary */}
             <div className="bg-card border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -492,152 +772,6 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 <p className="text-sm text-muted-foreground italic">
                   Samenvatting wordt gegenereerd...
                 </p>
-              )}
-            </div>
-
-            {/* Pipeline summary — command center */}
-            <div className="bg-card border border-border rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Kanban className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground">Pipeline</h3>
-                  {totalPipeline > 0 && (
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] bg-primary/10 text-primary border-primary/20"
-                    >
-                      {totalPipeline} kandidaten
-                    </Badge>
-                  )}
-                </div>
-                <Link
-                  href={`/pipeline?vacature=${job.id}`}
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
-                >
-                  Bekijk pipeline <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-
-              {totalPipeline === 0 ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Nog geen kandidaten in de pipeline.
-                  </p>
-                  <Link
-                    href={`/matching?jobId=${job.id}`}
-                    className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Start met matchen
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  {/* Stage progress bar */}
-                  <div className="flex gap-0.5 h-2 rounded-full overflow-hidden bg-muted mb-3">
-                    {pipelineStages.map((stage) => {
-                      const count = stageCountMap[stage.key] ?? 0;
-                      if (count === 0) return null;
-                      const pct = (count / totalPipeline) * 100;
-                      return (
-                        <div
-                          key={stage.key}
-                          className={`${stage.color} transition-all`}
-                          style={{ width: `${pct}%` }}
-                          title={`${stage.label}: ${count}`}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* Stage counts */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mb-3">
-                    {pipelineStages.map((stage) => {
-                      const count = stageCountMap[stage.key] ?? 0;
-                      if (count === 0) return null;
-                      return (
-                        <span key={stage.key} className="flex items-center gap-1.5">
-                          <span className={`h-2 w-2 rounded-full ${stage.color}`} />
-                          {stage.label}: {count}
-                        </span>
-                      );
-                    })}
-                  </div>
-
-                  {/* Recent candidates in pipeline */}
-                  {recentPipelineRows.length > 0 && (
-                    <div className="border-t border-border pt-2.5 space-y-2">
-                      {recentPipelineRows.map((row) => (
-                        <div key={row.id} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-foreground truncate">
-                              {row.candidateName ?? "Onbekend"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {row.matchScore != null && (
-                              <Badge
-                                variant="outline"
-                                className={`text-[9px] px-1.5 py-0 ${
-                                  row.matchScore >= 80
-                                    ? "bg-primary/10 text-primary border-primary/20"
-                                    : row.matchScore >= 60
-                                      ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-                                      : "bg-muted text-muted-foreground"
-                                }`}
-                              >
-                                {Math.round(row.matchScore)}%
-                              </Badge>
-                            )}
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] px-1.5 py-0 border-border text-muted-foreground capitalize"
-                            >
-                              {row.stage === "new"
-                                ? "Nieuw"
-                                : row.stage === "screening"
-                                  ? "Screening"
-                                  : row.stage === "interview"
-                                    ? "Interview"
-                                    : row.stage === "offer"
-                                      ? "Aanbod"
-                                      : row.stage === "hired"
-                                        ? "Geplaatst"
-                                        : row.stage === "rejected"
-                                          ? "Afgewezen"
-                                          : row.stage}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Next best action hint */}
-                  {(stageCountMap.new ?? 0) > 0 && (
-                    <div className="border-t border-border pt-2.5">
-                      <Link
-                        href={`/pipeline?vacature=${job.id}`}
-                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
-                      >
-                        {stageCountMap.new} nieuwe kandidaten screenen
-                        <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    </div>
-                  )}
-
-                  {/* Rejected count shown separately from active pipeline */}
-                  {rejectedCount > 0 && (
-                    <div className="border-t border-border pt-2.5">
-                      <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-red-500" />
-                        {rejectedCount} afgewezen
-                      </span>
-                    </div>
-                  )}
-                </>
               )}
             </div>
 
@@ -756,7 +890,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                   Pipeline
                 </h3>
                 <div className="flex gap-0.5 h-1.5 rounded-full overflow-hidden bg-muted">
-                  {pipelineStages.map((stage) => {
+                  {PIPELINE_STAGES.map((stage) => {
                     const count = stageCountMap[stage.key] ?? 0;
                     if (count === 0) return null;
                     const pct = (count / totalPipeline) * 100;
@@ -771,7 +905,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                   })}
                 </div>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
-                  {pipelineStages.map((stage) => {
+                  {PIPELINE_STAGES.map((stage) => {
                     const count = stageCountMap[stage.key] ?? 0;
                     if (count === 0) return null;
                     return (

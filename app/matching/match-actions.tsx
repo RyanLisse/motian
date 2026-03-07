@@ -20,10 +20,10 @@ export function MatchActions({ matchId }: { matchId: string }) {
       <button
         type="button"
         onClick={() => handleAction("approved")}
-        className="h-7 px-3 flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors cursor-pointer"
+        className="h-7 px-3 flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors cursor-pointer whitespace-nowrap"
       >
         <CheckCircle2 className="h-3 w-3" />
-        Goedkeuren
+        Voeg toe aan pipeline
       </button>
       <button
         type="button"

@@ -1,6 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobMatches } from "../db/schema";
+import { createOrReuseApplicationForMatch } from "./applications";
 
 // ========== Types ==========
 
@@ -87,6 +88,18 @@ export async function updateMatchStatus(
   status: string,
   reviewedBy?: string,
 ): Promise<Match | null> {
+  const current = await getMatchById(id);
+  if (!current) return null;
+
+  if (status === "approved" && current.jobId && current.candidateId) {
+    await createOrReuseApplicationForMatch({
+      jobId: current.jobId,
+      candidateId: current.candidateId,
+      matchId: current.id,
+      stage: "screening",
+    });
+  }
+
   const rows = await db
     .update(jobMatches)
     .set({

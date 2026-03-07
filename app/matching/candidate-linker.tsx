@@ -58,7 +58,7 @@ export function CandidateLinker({ jobId, linkedCandidateIds }: CandidateLinkerPr
       if (result.success) {
         setLinked((prev) => new Set(prev).add(candidateId));
       } else {
-        setError(result.error ?? "Koppelen mislukt");
+        setError(result.error ?? "Toevoegen mislukt");
       }
       setLinkingId(null);
     });
@@ -68,7 +68,7 @@ export function CandidateLinker({ jobId, linkedCandidateIds }: CandidateLinkerPr
     <div className="bg-card border border-border rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
         <UserPlus className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Handmatig koppelen</h3>
+        <h3 className="text-sm font-semibold text-foreground">Handmatig toevoegen aan pipeline</h3>
       </div>
 
       <div className="flex gap-2">
@@ -118,7 +118,7 @@ export function CandidateLinker({ jobId, linkedCandidateIds }: CandidateLinkerPr
                 {isLinked ? (
                   <span className="flex items-center gap-1 text-xs text-primary shrink-0">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Gekoppeld
+                    Al in pipeline
                   </span>
                 ) : (
                   <Button
@@ -128,7 +128,7 @@ export function CandidateLinker({ jobId, linkedCandidateIds }: CandidateLinkerPr
                     disabled={isLinking}
                     className="h-7 px-2.5 text-xs shrink-0"
                   >
-                    {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : "Koppelen"}
+                    {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : "Toevoegen"}
                   </Button>
                 )}
               </div>

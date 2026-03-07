@@ -25,6 +25,9 @@ export const PATCH = withApiHandler(
       return Response.json({ error: "Match niet gevonden" }, { status: 404 });
     }
     revalidatePath("/matching");
+    if (result.data.status === "approved") {
+      revalidatePath("/pipeline");
+    }
     publish("match:updated", { matchId: id, status: result.data.status });
     return Response.json({ data: match });
   },

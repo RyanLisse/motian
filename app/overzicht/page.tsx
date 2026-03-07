@@ -1,10 +1,10 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import {
   Activity,
   ArrowRight,
-  BarChart3,
   Briefcase,
   Building2,
+  Calendar,
   CheckCircle2,
   Clock,
   Filter,
@@ -12,33 +12,60 @@ import {
   Kanban,
   MapPin,
   RefreshCw,
+  Sparkles,
   TrendingUp,
   Users,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/src/db";
-import { applications, jobs, scrapeResults, scraperConfigs } from "@/src/db/schema";
+import {
+  applications,
+  candidates,
+  interviews,
+  jobs,
+  scrapeResults,
+  scraperConfigs,
+} from "@/src/db/schema";
 
 export const dynamic = "force-dynamic";
+
+const PRIORITY_TONE_STYLES = {
+  amber: {
+    icon: "bg-yellow-500/10 text-yellow-600",
+    value: "text-yellow-600",
+  },
+  blue: {
+    icon: "bg-blue-500/10 text-blue-600",
+    value: "text-blue-600",
+  },
+  purple: {
+    icon: "bg-purple-500/10 text-purple-600",
+    value: "text-purple-600",
+  },
+  green: {
+    icon: "bg-emerald-500/10 text-emerald-600",
+    value: "text-emerald-600",
+  },
+} as const;
 
 export default async function OverzichtPage() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  // Fetch all dashboard data in parallel (consolidated counts to reduce DB connections)
+  const now = new Date();
+
   const [
     platformCounts,
     recentJobs,
     activeScrapers,
     recentScrapes,
-    topCompanies,
-    locationCounts,
     pipelineStageCounts,
+    upcomingInterviewCountResult,
+    upcomingInterviews,
   ] = await Promise.all([
-    // Jobs per platform (includes weeklyNew to eliminate separate jobStats query)
     db
       .select({
         platform: jobs.platform,
@@ -49,7 +76,6 @@ export default async function OverzichtPage() {
       .where(isNull(jobs.deletedAt))
       .groupBy(jobs.platform)
       .orderBy(sql`count(*) desc`),
-    // Last 5 jobs
     db
       .select({
         id: jobs.id,
@@ -63,48 +89,20 @@ export default async function OverzichtPage() {
       .where(isNull(jobs.deletedAt))
       .orderBy(desc(jobs.scrapedAt))
       .limit(5),
-    // Active scraper configs
     db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
-    // Recent scrape results (explicit columns for DBs without job_ids)
     db
       .select({
         id: scrapeResults.id,
-        configId: scrapeResults.configId,
         platform: scrapeResults.platform,
         runAt: scrapeResults.runAt,
-        durationMs: scrapeResults.durationMs,
         jobsFound: scrapeResults.jobsFound,
         jobsNew: scrapeResults.jobsNew,
         duplicates: scrapeResults.duplicates,
         status: scrapeResults.status,
-        errors: scrapeResults.errors,
       })
       .from(scrapeResults)
       .orderBy(desc(scrapeResults.runAt))
-      .limit(5),
-    // Top companies by job count
-    db
-      .select({
-        company: jobs.company,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.company} is not null`))
-      .groupBy(jobs.company)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
-    // Top locations
-    db
-      .select({
-        province: jobs.province,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.province} is not null`))
-      .groupBy(jobs.province)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
-    // Pipeline stage counts
+      .limit(4),
     db
       .select({
         stage: applications.stage,
@@ -113,16 +111,48 @@ export default async function OverzichtPage() {
       .from(applications)
       .where(isNull(applications.deletedAt))
       .groupBy(applications.stage),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(interviews)
+      .where(
+        and(
+          isNull(interviews.deletedAt),
+          eq(interviews.status, "scheduled"),
+          gte(interviews.scheduledAt, now),
+        ),
+      ),
+    db
+      .select({
+        id: interviews.id,
+        scheduledAt: interviews.scheduledAt,
+        type: interviews.type,
+        candidateName: candidates.name,
+        jobTitle: jobs.title,
+        jobCompany: jobs.company,
+      })
+      .from(interviews)
+      .innerJoin(applications, eq(interviews.applicationId, applications.id))
+      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
+      .leftJoin(jobs, eq(applications.jobId, jobs.id))
+      .where(
+        and(
+          isNull(interviews.deletedAt),
+          eq(interviews.status, "scheduled"),
+          gte(interviews.scheduledAt, now),
+        ),
+      )
+      .orderBy(asc(interviews.scheduledAt))
+      .limit(4),
   ]);
 
-  const totalJobs = platformCounts.reduce((s, p) => s + p.count, 0);
-  const weeklyNew = platformCounts.reduce((s, p) => s + p.weeklyNew, 0);
+  const totalJobs = platformCounts.reduce((sum, row) => sum + row.count, 0);
+  const weeklyNew = platformCounts.reduce((sum, row) => sum + row.weeklyNew, 0);
 
-  // Pipeline stats
   const pipelineMap: Record<string, number> = {};
   for (const row of pipelineStageCounts) {
     pipelineMap[row.stage] = row.count;
   }
+
   const pipelineNew = pipelineMap.new ?? 0;
   const pipelineScreening = pipelineMap.screening ?? 0;
   const pipelineInterview = pipelineMap.interview ?? 0;
@@ -131,22 +161,75 @@ export default async function OverzichtPage() {
   const pipelineTotal =
     pipelineNew + pipelineScreening + pipelineInterview + pipelineOffer + pipelineHired;
 
+  const upcomingInterviewsCount = upcomingInterviewCountResult[0]?.count ?? 0;
+
+  const recruiterFocus = [
+    {
+      title: "Nieuwe kandidaten screenen",
+      description: "Nieuwe instroom wacht op een eerste beoordeling in de pipeline.",
+      value: pipelineNew,
+      href: "/pipeline?fase=new&weergave=lijst",
+      icon: <Inbox className="h-4 w-4" />,
+      tone: "amber" as const,
+    },
+    {
+      title: "Screenings afronden",
+      description: "Kandidaten in screening hebben feedback of een volgende stap nodig.",
+      value: pipelineScreening,
+      href: "/pipeline?fase=screening&weergave=lijst",
+      icon: <Filter className="h-4 w-4" />,
+      tone: "blue" as const,
+    },
+    {
+      title: "Aankomende interviews",
+      description: "Bereid gesprekken voor en bewaak planning voor vandaag en daarna.",
+      value: upcomingInterviewsCount,
+      href: "/interviews",
+      icon: <Calendar className="h-4 w-4" />,
+      tone: "purple" as const,
+    },
+    {
+      title: "Nieuwe vacatures opvolgen",
+      description: "Bekijk verse instroom en bepaal direct waar sourcing of matching nodig is.",
+      value: weeklyNew,
+      href: "/opdrachten",
+      icon: <Briefcase className="h-4 w-4" />,
+      tone: "green" as const,
+    },
+  ];
+
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        {/* Page header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Overzicht</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Dashboard — realtime inzicht in vacatures en scrapers
-          </p>
+      <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Overzicht</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Je command center voor vacatures, kandidaten en opvolging.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: "Vacatures", href: "/opdrachten" },
+              { label: "Pipeline", href: "/pipeline" },
+              { label: "Interviews", href: "/interviews" },
+            ].map((shortcut) => (
+              <Link
+                key={shortcut.href}
+                href={shortcut.href}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                {shortcut.label}
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            ))}
+          </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KPICard
             icon={<Briefcase className="h-5 w-5" />}
-            label="Totaal vacatures"
+            label="Open vacatures"
             value={totalJobs}
             href="/opdrachten"
           />
@@ -159,227 +242,146 @@ export default async function OverzichtPage() {
             href="/opdrachten"
           />
           <KPICard
-            icon={<RefreshCw className="h-5 w-5" />}
-            label="Actieve scrapers"
-            value={activeScrapers.length}
-            href="/scraper"
+            icon={<Kanban className="h-5 w-5" />}
+            label="Kandidaten in pipeline"
+            value={pipelineTotal}
+            iconClassName="text-blue-500/60"
+            valueClassName="text-blue-500"
+            href="/pipeline"
           />
           <KPICard
-            icon={<Zap className="h-5 w-5" />}
-            label="Platforms"
-            value={platformCounts.length}
-            href="/scraper"
+            icon={<Calendar className="h-5 w-5" />}
+            label="Geplande interviews"
+            value={upcomingInterviewsCount}
+            iconClassName="text-purple-500/60"
+            valueClassName="text-purple-500"
+            href="/interviews"
           />
         </div>
 
-        {/* Pipeline overview */}
-        {pipelineTotal > 0 && (
-          <DashboardCard
-            title="Pipeline overzicht"
-            icon={<Kanban className="h-4 w-4" />}
-            action={
-              <Link
-                href="/pipeline"
-                className="text-xs text-primary hover:underline flex items-center gap-1"
-              >
-                Bekijk pipeline <ArrowRight className="h-3 w-3" />
-              </Link>
-            }
-          >
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              <KPICard
-                icon={<Inbox className="h-4 w-4" />}
-                label="Nieuw"
-                value={pipelineNew}
-                compact
-                iconClassName="text-yellow-500/60"
-                valueClassName="text-yellow-500"
-                href="/pipeline?fase=new&weergave=lijst"
-              />
-              <KPICard
-                icon={<Filter className="h-4 w-4" />}
-                label="Screening"
-                value={pipelineScreening}
-                compact
-                iconClassName="text-blue-500/60"
-                valueClassName="text-blue-500"
-                href="/pipeline?fase=screening&weergave=lijst"
-              />
-              <KPICard
-                icon={<Users className="h-4 w-4" />}
-                label="Interview"
-                value={pipelineInterview}
-                compact
-                iconClassName="text-purple-500/60"
-                valueClassName="text-purple-500"
-                href="/pipeline?fase=interview&weergave=lijst"
-              />
-              <KPICard
-                icon={<Briefcase className="h-4 w-4" />}
-                label="Aanbod"
-                value={pipelineOffer}
-                compact
-                iconClassName="text-orange-500/60"
-                valueClassName="text-orange-500"
-                href="/pipeline?fase=offer&weergave=lijst"
-              />
-              <KPICard
-                icon={<CheckCircle2 className="h-4 w-4" />}
-                label="Geplaatst"
-                value={pipelineHired}
-                compact
-                iconClassName="text-primary/60"
-                valueClassName="text-primary"
-                href="/pipeline?fase=hired&weergave=lijst"
-              />
-            </div>
-          </DashboardCard>
-        )}
+        <DashboardCard title="Wat vraagt nu aandacht?" icon={<Clock className="h-4 w-4" />}>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {recruiterFocus.map((item) => (
+              <PriorityLinkCard key={item.title} {...item} />
+            ))}
+          </div>
+        </DashboardCard>
 
-        {/* Main grid: 2 columns */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left: 2/3 width */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Platform breakdown */}
-            <DashboardCard title="Vacatures per platform" icon={<BarChart3 className="h-4 w-4" />}>
-              <div className="space-y-1">
-                {platformCounts.map((p) => {
-                  const percentage = totalJobs > 0 ? Math.round((p.count / totalJobs) * 100) : 0;
-                  return (
-                    <Link
-                      key={p.platform}
-                      href={`/opdrachten?platform=${encodeURIComponent(p.platform)}`}
-                      className="flex items-center gap-3 hover:bg-accent -mx-2 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <span
-                        className="text-sm text-foreground capitalize w-20 sm:w-36 shrink-0 truncate"
-                        title={p.platform}
-                      >
-                        {p.platform}
-                      </span>
-                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground w-16 text-right">
-                        {p.count} ({percentage}%)
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+        <div className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
+          <div className="space-y-6">
+            <DashboardCard
+              title="Pipeline waar je op stuurt"
+              icon={<Kanban className="h-4 w-4" />}
+              action={
+                <Link
+                  href="/pipeline"
+                  className="flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  Open pipeline <ArrowRight className="h-3 w-3" />
+                </Link>
+              }
+            >
+              {pipelineTotal === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  Nog geen kandidaten in de pipeline. Start vanuit vacatures of gebruik aanbevelingen.
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                  <KPICard
+                    icon={<Inbox className="h-4 w-4" />}
+                    label="Nieuw"
+                    value={pipelineNew}
+                    compact
+                    iconClassName="text-yellow-500/60"
+                    valueClassName="text-yellow-500"
+                    href="/pipeline?fase=new&weergave=lijst"
+                  />
+                  <KPICard
+                    icon={<Filter className="h-4 w-4" />}
+                    label="Screening"
+                    value={pipelineScreening}
+                    compact
+                    iconClassName="text-blue-500/60"
+                    valueClassName="text-blue-500"
+                    href="/pipeline?fase=screening&weergave=lijst"
+                  />
+                  <KPICard
+                    icon={<Users className="h-4 w-4" />}
+                    label="Interview"
+                    value={pipelineInterview}
+                    compact
+                    iconClassName="text-purple-500/60"
+                    valueClassName="text-purple-500"
+                    href="/pipeline?fase=interview&weergave=lijst"
+                  />
+                  <KPICard
+                    icon={<Briefcase className="h-4 w-4" />}
+                    label="Aanbod"
+                    value={pipelineOffer}
+                    compact
+                    iconClassName="text-orange-500/60"
+                    valueClassName="text-orange-500"
+                    href="/pipeline?fase=offer&weergave=lijst"
+                  />
+                  <KPICard
+                    icon={<CheckCircle2 className="h-4 w-4" />}
+                    label="Geplaatst"
+                    value={pipelineHired}
+                    compact
+                    iconClassName="text-primary/60"
+                    valueClassName="text-primary"
+                    href="/pipeline?fase=hired&weergave=lijst"
+                  />
+                </div>
+              )}
             </DashboardCard>
 
-            {/* Recent jobs */}
             <DashboardCard
-              title="Laatst toegevoegd"
-              icon={<Clock className="h-4 w-4" />}
+              title="Nieuwe vacatures om op te volgen"
+              icon={<Briefcase className="h-4 w-4" />}
               action={
                 <Link
                   href="/opdrachten"
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                  className="flex items-center gap-1 text-xs text-primary hover:underline"
                 >
                   Alle vacatures <ArrowRight className="h-3 w-3" />
                 </Link>
               }
             >
-              <div className="divide-y divide-border">
-                {recentJobs.map((job) => (
-                  <Link
-                    key={job.id}
-                    href={`/opdrachten/${job.id}`}
-                    className="flex items-start justify-between py-3 first:pt-0 last:pb-0 hover:bg-card -mx-4 px-4 transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground truncate">{job.title}</p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                        {job.company && (
-                          <span className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />
-                            {job.company}
-                          </span>
-                        )}
-                        {job.location && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {job.location}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 ml-3 text-[9px] border-border text-muted-foreground capitalize"
-                    >
-                      {job.platform}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            </DashboardCard>
-
-            {/* Recent scrapes */}
-            <DashboardCard
-              title="Scrape activiteit"
-              icon={<Activity className="h-4 w-4" />}
-              action={
-                <Link
-                  href="/scraper"
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
-                >
-                  Scraper dashboard <ArrowRight className="h-3 w-3" />
-                </Link>
-              }
-            >
-              {recentScrapes.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nog geen scrape resultaten
-                </p>
+              {recentJobs.length === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">Nog geen vacatures beschikbaar.</p>
               ) : (
-                <div className="space-y-0.5">
-                  {recentScrapes.map((s) => (
+                <div className="divide-y divide-border">
+                  {recentJobs.map((job) => (
                     <Link
-                      key={s.id}
-                      href="/scraper"
-                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between py-2 hover:bg-accent -mx-2 px-2 rounded-lg transition-colors cursor-pointer"
+                      key={job.id}
+                      href={`/opdrachten/${job.id}`}
+                      className="flex items-start justify-between gap-3 px-4 py-3 transition-colors first:pt-0 last:pb-0 hover:bg-accent -mx-4"
                     >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`h-2 w-2 rounded-full ${
-                            s.status === "success"
-                              ? "bg-primary"
-                              : s.status === "failed"
-                                ? "bg-red-500"
-                                : "bg-yellow-500"
-                          }`}
-                        />
-                        <span className="text-sm text-foreground capitalize">{s.platform}</span>
-                      </div>
-                      <div className="flex items-center gap-2 sm:gap-4 text-xs text-muted-foreground flex-wrap">
-                        <span>{s.jobsNew ?? 0} nieuw</span>
-                        <span>{s.jobsFound ?? 0} gevonden</span>
-                        {(() => {
-                          const skipped =
-                            (s.jobsFound ?? 0) - (s.jobsNew ?? 0) - (s.duplicates ?? 0);
-                          return skipped > 0 ? (
-                            <span title="Validatiefout of niet opgeslagen">
-                              {skipped} overgeslagen
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{job.title}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          {job.company && (
+                            <span className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {job.company}
                             </span>
-                          ) : null;
-                        })()}
-                        {s.runAt && (
-                          <span>
-                            {new Date(s.runAt).toLocaleString("nl-NL", {
-                              day: "numeric",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        )}
+                          )}
+                          {job.location && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {job.location}
+                            </span>
+                          )}
+                          {job.scrapedAt && <span>{formatDateTime(job.scrapedAt)}</span>}
+                        </div>
                       </div>
+                      <Badge
+                        variant="outline"
+                        className="ml-3 shrink-0 border-border text-[10px] capitalize text-muted-foreground"
+                      >
+                        {job.platform}
+                      </Badge>
                     </Link>
                   ))}
                 </div>
@@ -387,86 +389,165 @@ export default async function OverzichtPage() {
             </DashboardCard>
           </div>
 
-          {/* Right: 1/3 width */}
           <div className="space-y-6">
-            {/* Top companies */}
-            <DashboardCard title="Top opdrachtgevers" icon={<Building2 className="h-4 w-4" />}>
-              <div className="space-y-0.5">
-                {topCompanies.map((c, i) => (
-                  <Link
-                    key={c.company}
-                    href={`/opdrachten?q=${encodeURIComponent(c.company ?? "")}`}
-                    className="flex items-center justify-between hover:bg-accent -mx-2 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
-                      <span className="text-sm text-foreground truncate">{c.company}</span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 ml-2 text-[10px] border-border text-muted-foreground"
-                    >
-                      {c.count}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            </DashboardCard>
-
-            {/* Top locations */}
-            <DashboardCard title="Top provincies" icon={<MapPin className="h-4 w-4" />}>
-              <div className="space-y-0.5">
-                {locationCounts.map((l, i) => (
-                  <Link
-                    key={l.province}
-                    href={`/opdrachten?provincie=${encodeURIComponent(l.province ?? "")}`}
-                    className="flex items-center justify-between hover:bg-accent -mx-2 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
-                      <span className="text-sm text-foreground truncate">{l.province}</span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 ml-2 text-[10px] border-border text-muted-foreground"
-                    >
-                      {l.count}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            </DashboardCard>
-
-            {/* System status — derived from actual scrape results */}
-            <DashboardCard title="Systeem status" icon={<Zap className="h-4 w-4" />}>
-              <div className="space-y-1">
-                <StatusRow label="Database" status="online" />
-                {activeScrapers.map((s) => {
-                  const lastRun = recentScrapes.find((r) => r.platform === s.platform);
-                  const isHealthy = lastRun ? lastRun.status !== "failed" : false;
-                  return (
+            <DashboardCard
+              title="Aankomende interviews"
+              icon={<Calendar className="h-4 w-4" />}
+              action={
+                <Link
+                  href="/interviews"
+                  className="flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  Bekijk agenda <ArrowRight className="h-3 w-3" />
+                </Link>
+              }
+            >
+              {upcomingInterviews.length === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  Geen interviews gepland. Plan gesprekken vanuit de pipeline.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {upcomingInterviews.map((interview) => (
                     <Link
-                      key={s.platform}
-                      href="/scraper"
-                      className="block hover:bg-accent -mx-2 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                      key={interview.id}
+                      href="/interviews"
+                      className="block rounded-lg border border-border px-3 py-3 transition-colors hover:border-primary/30 hover:bg-accent"
                     >
-                      <StatusRow
-                        label={`${s.platform.charAt(0).toUpperCase()}${s.platform.slice(1)} scraper`}
-                        status={isHealthy ? "online" : "offline"}
-                      />
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {interview.candidateName ?? "Onbekende kandidaat"}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {interview.jobTitle ?? "Onbekende vacature"}
+                            {interview.jobCompany ? ` · ${interview.jobCompany}` : ""}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="shrink-0 border-border text-[10px]">
+                          {interview.type}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {formatDateTime(interview.scheduledAt)}
+                      </p>
                     </Link>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
             </DashboardCard>
           </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <DashboardCard
+            title="Aanbevelingen"
+            icon={<Sparkles className="h-4 w-4" />}
+            action={
+              <Link
+                href="/matching"
+                className="flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                Open aanbevelingen <ArrowRight className="h-3 w-3" />
+              </Link>
+            }
+          >
+            <p className="text-sm text-muted-foreground">
+              Gebruik aanbevelingen om kandidaten te koppelen, CV&apos;s te analyseren en sneller
+              longlists voor recruiters samen te stellen.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <QuickActionLink href="/matching" label="Kandidaataanbevelingen" />
+              <QuickActionLink href="/matching?tab=grading" label="AI Grading" />
+              <QuickActionLink href="/matching?tab=cv" label="CV Analyse" />
+            </div>
+          </DashboardCard>
+
+          <DashboardCard
+            title="Databronnen"
+            icon={<RefreshCw className="h-4 w-4" />}
+            action={
+              <Link
+                href="/scraper"
+                className="flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                Scraper dashboard <ArrowRight className="h-3 w-3" />
+              </Link>
+            }
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <KPICard
+                icon={<RefreshCw className="h-4 w-4" />}
+                label="Actieve bronnen"
+                value={activeScrapers.length}
+                compact
+                href="/scraper"
+              />
+              <KPICard
+                icon={<Activity className="h-4 w-4" />}
+                label="Platformen"
+                value={platformCounts.length}
+                compact
+                href="/scraper"
+              />
+            </div>
+            <div className="mt-4 space-y-1">
+              {recentScrapes.length === 0 ? (
+                <p className="py-2 text-sm text-muted-foreground">Nog geen bronactiviteit beschikbaar.</p>
+              ) : (
+                recentScrapes.map((scrape) => {
+                  const skipped =
+                    (scrape.jobsFound ?? 0) - (scrape.jobsNew ?? 0) - (scrape.duplicates ?? 0);
+
+                  return (
+                    <Link
+                      key={scrape.id}
+                      href="/scraper"
+                      className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div
+                          className={`h-2 w-2 rounded-full ${
+                            scrape.status === "success"
+                              ? "bg-primary"
+                              : scrape.status === "failed"
+                                ? "bg-red-500"
+                                : "bg-yellow-500"
+                          }`}
+                        />
+                        <span className="truncate text-sm capitalize text-foreground">
+                          {scrape.platform}
+                        </span>
+                      </div>
+                      <div className="text-right text-xs text-muted-foreground">
+                        <p>{scrape.jobsNew ?? 0} nieuw</p>
+                        <p>
+                          {scrape.jobsFound ?? 0} gevonden
+                          {skipped > 0 ? ` · ${skipped} overgeslagen` : ""}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </DashboardCard>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Sub-components ──────────────────────────────
+function formatDateTime(value: Date | string | null | undefined) {
+  if (!value) return "Onbekend moment";
+
+  return new Date(value).toLocaleString("nl-NL", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function DashboardCard({
   title,
@@ -475,13 +556,13 @@ function DashboardCard({
   children,
 }: {
   title: string;
-  icon: React.ReactNode;
-  action?: React.ReactNode;
-  children: React.ReactNode;
+  icon: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-muted-foreground">
           {icon}
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
@@ -493,24 +574,47 @@ function DashboardCard({
   );
 }
 
-function StatusRow({ label, status }: { label: string; status: "online" | "offline" }) {
+function PriorityLinkCard({
+  title,
+  description,
+  value,
+  href,
+  icon,
+  tone,
+}: {
+  title: string;
+  description: string;
+  value: number;
+  href: string;
+  icon: ReactNode;
+  tone: keyof typeof PRIORITY_TONE_STYLES;
+}) {
+  const styles = PRIORITY_TONE_STYLES[tone];
+
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-1.5">
-        <div
-          className={`h-1.5 w-1.5 rounded-full ${
-            status === "online" ? "bg-primary animate-pulse" : "bg-muted-foreground"
-          }`}
-        />
-        <span
-          className={`text-xs font-mono ${
-            status === "online" ? "text-primary" : "text-muted-foreground"
-          }`}
-        >
-          {status === "online" ? "Online" : "Offline"}
-        </span>
+    <Link
+      href={href}
+      className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${styles.icon}`}>
+          {icon}
+        </div>
+        <span className={`text-2xl font-bold ${styles.value}`}>{value}</span>
       </div>
-    </div>
+      <h4 className="mt-3 text-sm font-semibold text-foreground">{title}</h4>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+    </Link>
+  );
+}
+
+function QuickActionLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+    >
+      {label}
+    </Link>
   );
 }
