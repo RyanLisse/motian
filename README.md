@@ -102,6 +102,11 @@ graph TB
         THEME[Donker/Licht Thema]
     end
 
+    subgraph Integraties["🔁 Externe Integraties"]
+        FEED["/api/salesforce-feed<br/>Read-only XML export"]
+        SF[Salesforce]
+    end
+
     FX --> SC
     ST --> SC
     OO --> SC
@@ -128,6 +133,11 @@ graph TB
     VAD --> VLLM
     CHAT --> PAGES
     PAGES --> THEME
+
+    JOBS --> FEED
+    CAND --> FEED
+    APP --> FEED
+    FEED --> SF
 ```
 
 ### Dataflow — Van Scrape tot Zoeken
@@ -905,9 +915,22 @@ Alle API routes gebruiken **Nederlandse padnamen**.
 | `/api/revalidate`            | POST      | Cache hervalidatie                         |
 | `/api/cv-file`               | GET       | CV bestand ophalen                         |
 | `/api/cv-upload`             | POST      | CV bestand uploaden naar Vercel Blob       |
+| `/api/salesforce-feed`       | GET       | Read-only XML export voor Salesforce pull-integraties |
 | `/api/embeddings/backfill`   | POST      | Ontbrekende embeddings genereren           |
 | `/api/events`                | GET       | SSE event stream                           |
 | `/api/reports`               | GET       | Platform rapporten genereren               |
+
+---
+
+## Salesforce XML Feed
+
+Motian publiceert een live **read-only XML feed** voor **pull-based Salesforce integraties** op `https://motian.vercel.app/api/salesforce-feed`. Dit is een **custom XML export**, geen OData endpoint.
+
+- **Standaard entity**: `applications`
+- **Ondersteunde entities**: `applications`, `jobs`, `candidates`
+- **Ondersteunde query params**: `entity`, `id`, `updatedSince`, `status`, `page`, `limit`
+- **Salesforce object mapping**: `Application__c`, `Job__c`, `Candidate__c`
+- **Authenticatie**: de route hergebruikt de gedeelde `/api/*` bearer auth via `API_SECRET`, maar productie lijkt momenteel publiek bereikbaar omdat `API_SECRET` daar waarschijnlijk niet is ingesteld
 
 ---
 

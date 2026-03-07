@@ -7,16 +7,16 @@ AI-Assisted Recruitment Operations Platform built with Next.js 16, React 19, Dri
 ## System Overview
 
 ```
-External Sources          Trigger.dev (8 scheduled tasks)    Neon PostgreSQL
-+--------------+     +-----------------------------+     +-------------------+
-| Striive      |---->| scrape-pipeline (4h)        |---->| jobs              |
-| Flextender   |---->| embeddings-batch (1h)       |     | candidates        |
-| Opdrachtovhd |---->| vacancy-expiry (daily)      |     | job_matches       |
-| Indeed (TBD) |     | data-retention (daily)      |     | applications      |
-| LinkedIn(TBD)|     | scraper-health (daily)      |     | interviews        |
-+--------------+     | candidate-dedup (weekly)     |     | messages          |
-                     | match-staleness (weekly)     |     | chat_sessions     |
-CV Upload (SSE)      | slack-notification (on-demand)|     | scraper_configs   |
+External Sources          Trigger.dev (8 scheduled tasks)    Neon PostgreSQL          Salesforce Pull Integration
++--------------+     +-----------------------------+     +-------------------+     +------------------------+
+| Striive      |---->| scrape-pipeline (4h)        |---->| jobs              |---->| /api/salesforce-feed   |
+| Flextender   |---->| embeddings-batch (1h)       |     | candidates        |---->| read-only XML export   |
+| Opdrachtovhd |---->| vacancy-expiry (daily)      |     | job_matches       |     | applications default   |
+| Indeed (TBD) |     | data-retention (daily)      |     | applications      |     | jobs, candidates       |
+| LinkedIn(TBD)|     | scraper-health (daily)      |     | interviews        |     +------------------------+
++--------------+     | candidate-dedup (weekly)    |     | messages          |
+                     | match-staleness (weekly)    |     | chat_sessions     |
+CV Upload (SSE)      | slack-notification (on-demand)|    | scraper_configs   |
 +--------------+     +-----------------------------+     | scrape_results    |
 | Upload Blob  |                                         | gdpr_audit_log    |
 | Parse Gemini |     3-Layer Matching Engine              +-------------------+
@@ -79,6 +79,24 @@ Unified job search lives in `src/services/jobs/` (modules: `repository`, `filter
 2. **Vector search** (`findSimilarJobs`): 512d embeddings with pgvector cosine distance
 
 RRF formula: `score = sum(1 / (k + rank))` with k=60. Benchmark: `just benchmark-hybrid-search` (writes `docs/metrics/hybrid-search-benchmark-latest.json`).
+
+## Salesforce XML Feed
+
+`/api/salesforce-feed` is a live **read-only XML export** for **pull-based Salesforce integrations**. It reads from Motian records and returns a custom `<sObjects>` XML document, so it should be treated as a bespoke feed rather than an OData surface.
+
+Live URL: `https://motian.vercel.app/api/salesforce-feed`
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/salesforce-feed` | GET | Export `applications` (default), `jobs`, or `candidates` as Salesforce-friendly XML |
+
+| Motian entity | Salesforce object | Notes |
+|---------------|-------------------|-------|
+| `applications` | `Application__c` | Default entity |
+| `jobs` | `Job__c` | Supports status + updatedSince filtering |
+| `candidates` | `Candidate__c` | Supports status + updatedSince filtering |
+
+Supported query params: `entity`, `id`, `updatedSince`, `status`, `page`, `limit`.
 
 ## AI Models
 
@@ -159,7 +177,8 @@ Start: `pnpm mcp`
 
 - **CORS**: Environment-based origin whitelist via `ALLOWED_ORIGINS` (no wildcard)
 - **Rate limiting**: Applied to all sensitive endpoints (GDPR 5/min, CV upload 10/min, matching 10/min, chat 20/min, scraping 5/5min)
-- **Auth**: CRON_SECRET bearer token on internal endpoints; `x-requested-by` header on GDPR routes
+- **Auth**: shared `/api/*` bearer auth via `API_SECRET` in `proxy.ts`; `/api/gezondheid` and `/api/cron` bypass that gate, internal cron routes additionally use `CRON_SECRET`, and GDPR routes require `x-requested-by`
+- **Salesforce feed nuance**: `/api/salesforce-feed` inherits the shared bearer-token gate, but if `API_SECRET` is unset the proxy allows the request through, which explains why production currently appears publicly reachable
 - **Zod validation**: All API inputs validated with typed schemas (no `z.any()`)
 - **Encryption**: Scraper auth configs encrypted at rest via `src/lib/crypto.ts`
 
