@@ -5,16 +5,16 @@ import { describe, expect, it } from "vitest";
 import { jobMatches } from "../src/db/schema.js";
 // ── Service imports (no Next.js dependency) ─────────────────────
 import {
+  createOrReuseApplicationForMatch,
+  getApplicationByJobAndCandidate,
+} from "../src/services/applications.js";
+import {
   createMatch,
   getMatchByJobAndCandidate,
   getMatchesForJob,
   listMatches,
   updateMatchStatus,
 } from "../src/services/matches.js";
-import {
-  createOrReuseApplicationForMatch,
-  getApplicationByJobAndCandidate,
-} from "../src/services/applications.js";
 
 // ── Helpers ──────────────────────────────────────────────────────
 const ROOT = path.resolve(__dirname, "..");
