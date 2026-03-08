@@ -9,52 +9,49 @@ function readFile(...segments: string[]): string {
 
 describe("Match detail UI component", () => {
   it("exports MatchDetail component", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain("export function MatchDetail");
   });
 
   it("displays knock-out criteria with pass/fail icons", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain("CheckCircle2");
     expect(source).toContain("XCircle");
     expect(source).toContain("knockout");
   });
 
   it("displays gunningscriteria with star ratings", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain("Star");
     expect(source).toContain("gunning");
   });
 
   it("shows risk profile section", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain("Risicoprofiel");
     expect(source).toContain("AlertTriangle");
   });
 
   it("shows enrichment suggestions", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain("Aanbevelingen");
     expect(source).toContain("Lightbulb");
   });
 
   it("uses Dutch recommendation labels", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain("Doorgaan");
     expect(source).toContain("Niet doorgaan");
     expect(source).toContain("Voorwaardelijk");
   });
 });
 
-describe("Matching page integration", () => {
-  it("imports MatchDetail component", () => {
-    const source = readFile("app/matching/page.tsx");
+describe("Candidate detail integration", () => {
+  it("renders the shared match detail and report surfaces inside the matches section", () => {
+    const source = readFile("app/professionals/[id]/page.tsx");
     expect(source).toContain("MatchDetail");
-  });
-
-  it("conditionally renders MatchDetail for marienne-v1 models", () => {
-    const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("marienne-v1");
+    expect(source).toContain("ReportButton");
+    expect(source).toContain('<section id="matches">');
     expect(source).toContain("criteriaBreakdown");
   });
 });

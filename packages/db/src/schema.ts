@@ -479,6 +479,33 @@ export const chatSessions = pgTable(
   }),
 );
 
+export const chatSessionMessages = pgTable(
+  "chat_session_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: text("session_id").notNull(),
+    messageId: text("message_id").notNull(),
+    role: text("role").notNull(),
+    message: jsonb("message").notNull(),
+    orderIndex: integer("order_index").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    sessionMessageUniqueIdx: uniqueIndex("uq_chat_session_messages_session_message_id").on(
+      table.sessionId,
+      table.messageId,
+    ),
+    sessionOrderUniqueIdx: uniqueIndex("uq_chat_session_messages_session_order_index").on(
+      table.sessionId,
+      table.orderIndex,
+    ),
+    sessionOrderIdx: index("idx_chat_session_messages_session_order").on(
+      table.sessionId,
+      table.orderIndex,
+    ),
+  }),
+);
+
 // ========== Berichten ==========
 export const messages = pgTable(
   "messages",

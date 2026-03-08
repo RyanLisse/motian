@@ -102,6 +102,11 @@ graph TB
         THEME[Dark/Light Theme]
     end
 
+    subgraph Integrations["🔁 External Integrations"]
+        FEED["/api/salesforce-feed<br/>Read-only XML export"]
+        SF[Salesforce]
+    end
+
     FX --> SC
     ST --> SC
     OO --> SC
@@ -128,6 +133,11 @@ graph TB
     VAD --> VLLM
     CHAT --> PAGES
     PAGES --> THEME
+
+    JOBS --> FEED
+    CAND --> FEED
+    APP --> FEED
+    FEED --> SF
 ```
 
 ### Data Flow — Scrape-to-Search Pipeline
@@ -785,6 +795,8 @@ X_AI_API_KEY=xai-...
 
 # Security
 ENCRYPTION_KEY=...   # openssl rand -base64 32
+API_SECRET=...       # Bearer token for external API clients
+ALLOWED_ORIGINS=http://localhost:3002,http://127.0.0.1:3002
 
 # Sentry (error tracking)
 SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
@@ -800,6 +812,13 @@ SLACK_CHANNEL_ID=C0...
 LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=API...
 LIVEKIT_API_SECRET=...
+
+# Public API / docs base URL (optional, otherwise request origin)
+PUBLIC_API_BASE_URL=http://localhost:3002
+
+# External host binding for local dev/start
+HOSTNAME=0.0.0.0
+PORT=3002
 ```
 
 ### Database Setup
@@ -815,7 +834,7 @@ pnpm db:generate
 ### Development
 
 ```bash
-# Start dev server (port 3001)
+# Start dev server (default port 3002, externally reachable via HOSTNAME; override with PORT)
 just dev
 # or
 pnpm dev
@@ -857,7 +876,7 @@ just lint-fix             # Biome lint with auto-fix
 just typecheck            # TypeScript check
 
 # Browser verification (optional; requires agent-browser CLI)
-# agent-browser open http://localhost:3001/ && agent-browser snapshot -i
+# agent-browser open http://localhost:3002/ && agent-browser snapshot -i
 
 # Metrics and benchmarks (see docs/metrics/README.md)
 just baseline-metrics     # Record baseline (build time, env)
@@ -880,8 +899,14 @@ For a list of all Just tasks: `just --list`.
 
 All API routes use **Dutch path naming** convention.
 
+- OpenAPI JSON: `/api/openapi`
+- Interactive Scalar docs: `/api-docs`
+- External clients should send `Authorization: Bearer <API_SECRET>` for protected routes.
+- Cross-origin requests remain allowlist-based through `ALLOWED_ORIGINS`.
+
 | Endpoint                     | Method    | Description                            |
 | ---------------------------- | --------- | -------------------------------------- |
+| `/api/openapi`               | GET       | OpenAPI JSON document                  |
 | `/api/chat`                  | POST      | AI chat streaming (Vercel AI SDK)      |
 | `/api/opdrachten`            | GET/POST  | List/create vacancies                  |
 | `/api/opdrachten/[id]`       | GET/PATCH | Get/update vacancy                     |
@@ -893,6 +918,7 @@ All API routes use **Dutch path naming** convention.
 | `/api/cv-analyse`            | POST      | CV analysis SSE pipeline (upload, parse, match) |
 | `/api/cv-file`               | GET       | Retrieve CV file                               |
 | `/api/cv-upload`             | POST      | Upload CV file to Vercel Blob                  |
+| `/api/salesforce-feed`       | GET       | Read-only XML export for Salesforce pull integrations |
 | `/api/embeddings/backfill`   | POST      | Generate missing embeddings                    |
 | `/api/events`                | GET       | SSE event stream                               |
 | `/api/reports`               | GET       | Generate platform reports                      |
@@ -906,6 +932,20 @@ All API routes use **Dutch path naming** convention.
 | `/api/cron/vacancy-expiry`   | GET       | Expire old vacancies                   |
 | `/api/cron/data-retention`   | GET       | GDPR data cleanup                      |
 | `/api/revalidate`            | POST      | Cache revalidation                     |
+
+Open `/api-docs` in the main app for interactive Scalar-based API documentation.
+
+---
+
+## Salesforce XML Feed
+
+Motian exposes a live **read-only XML feed** for **pull-based Salesforce integrations** at `https://motian.vercel.app/api/salesforce-feed`. This is a **custom XML export**, not an OData endpoint.
+
+- **Default entity**: `applications`
+- **Supported entities**: `applications`, `jobs`, `candidates`
+- **Supported query params**: `entity`, `id`, `updatedSince`, `status`, `page`, `limit`
+- **Salesforce object mapping**: `Application__c`, `Job__c`, `Candidate__c`
+- **Auth**: the route reuses shared `/api/*` bearer auth via `API_SECRET`, but production currently appears publicly reachable because `API_SECRET` is likely unset there
 
 ---
 

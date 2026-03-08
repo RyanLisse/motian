@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { StructuredMatchOutput } from "@/src/schemas/matching";
 
@@ -40,6 +41,7 @@ interface AutoMatchResultsProps {
 }
 
 export function AutoMatchResults({ candidateId }: AutoMatchResultsProps) {
+  const router = useRouter();
   const [status, setStatus] = useState<"loading" | "done" | "error">("loading");
   const [phase, setPhase] = useState<"scanning" | "matching">("scanning");
   const [matches, setMatches] = useState<AutoMatchResult[]>([]);
@@ -72,6 +74,7 @@ export function AutoMatchResults({ candidateId }: AutoMatchResultsProps) {
         const data = await res.json();
         setMatches(data.matches ?? []);
         setStatus("done");
+        router.refresh();
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Onbekende fout");
@@ -84,7 +87,7 @@ export function AutoMatchResults({ candidateId }: AutoMatchResultsProps) {
     return () => {
       cancelled = true;
     };
-  }, [candidateId]);
+  }, [candidateId, router]);
 
   if (status === "loading") {
     return (
@@ -136,13 +139,13 @@ export function AutoMatchResults({ candidateId }: AutoMatchResultsProps) {
       </div>
 
       {matches.map((match) => (
-        <MatchCard key={match.jobId} match={match} />
+        <MatchCard key={match.jobId} match={match} candidateId={candidateId} />
       ))}
     </div>
   );
 }
 
-function MatchCard({ match }: { match: AutoMatchResult }) {
+function MatchCard({ match, candidateId }: { match: AutoMatchResult; candidateId: string }) {
   const sr = match.structuredResult;
   const recommendation = sr?.recommendation;
 
@@ -241,10 +244,10 @@ function MatchCard({ match }: { match: AutoMatchResult }) {
         </Link>
         {match.matchId && (
           <Link
-            href={`/matching/${match.matchId}`}
+            href={`/professionals/${candidateId}#matches`}
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
           >
-            Bekijk match
+            Bekijk matchkansen
             <ExternalLink className="h-3 w-3" />
           </Link>
         )}

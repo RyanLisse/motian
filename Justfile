@@ -8,11 +8,11 @@ default:
 
 # Clean up ports
 cleanup-ports:
-	-npx -y kill-port 3001
+	-npx -y kill-port ${PORT:-3001}
 
 # Start the Next.js development server
 dev: cleanup-ports
-	pnpm next dev --port 3001
+	pnpm next dev --hostname ${HOSTNAME:-0.0.0.0} --port ${PORT:-3001}
 
 # ── Testing ──────────────────────────────────────
 

@@ -12,14 +12,14 @@ describe("chat route title persistence", () => {
   it("persists the session before title generation and updates title conditionally", () => {
     const source = readFile("app/api/chat/route.ts");
 
-    const insertIndex = source.indexOf("await db\n          .insert(chatSessions)");
+    const persistIndex = source.indexOf("await persistMessages({");
     const generateIndex = source.indexOf("await generateObject({");
 
-    expect(insertIndex).toBeGreaterThan(-1);
+    expect(persistIndex).toBeGreaterThan(-1);
     expect(generateIndex).toBeGreaterThan(-1);
-    expect(insertIndex).toBeLessThan(generateIndex);
+    expect(persistIndex).toBeLessThan(generateIndex);
 
-    expect(source).toContain("void (async () => {");
+    expect(source).toContain("after(async () => {");
     expect(source).toContain(".update(chatSessions)");
     expect(source).toContain("isNull(chatSessions.title)");
   });

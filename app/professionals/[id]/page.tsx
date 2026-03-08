@@ -13,17 +13,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MatchDetail } from "@/app/matching/match-detail";
-import { ReportButton } from "@/app/matching/report-button";
 import { CandidateNotes } from "@/components/candidate-notes";
 import { EmploymentCard } from "@/components/candidate-profile/employment-card";
 import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
 import { OpenToOffersRing } from "@/components/candidate-profile/open-to-offers-ring";
 import { SkillsExperienceSection } from "@/components/candidate-profile/skills-experience-section";
+import { CandidateRecommendationPanel } from "@/components/candidate-recommendation-panel";
+import type { MatchSuggestionItem } from "@/components/candidate-wizard/types";
 import { CvDocumentViewerLazy } from "@/components/cv-document-viewer-lazy";
 import { CvDropZone } from "@/components/cv-drop-zone";
 import { DeleteCandidateButton } from "@/components/delete-candidate-button";
 import { EditCandidateFields } from "@/components/edit-candidate-fields";
+import { MatchDetail } from "@/components/matching/match-detail";
+import { ReportButton } from "@/components/matching/report-button";
 import { SkillsRadar } from "@/components/skills-radar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -285,7 +287,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         href: `/pipeline?vacature=${primaryActiveApplication.job.id}&fase=${primaryActiveApplication.application.stage}`,
         label: "Open fase",
       }
-    : { href: `/professionals/${candidate.id}#matches`, label: "Bekijk matches" };
+    : { href: `/professionals/${candidate.id}#matches`, label: "Bekijk matchkansen" };
   const applicationStageCountMap: Record<string, number> = {};
   for (const row of recruiterApplications) {
     applicationStageCountMap[row.application.stage] =
@@ -304,6 +306,47 @@ export default async function ProfessionalDetailPage({ params }: Props) {
     score: row.match.matchScore,
     jobId: row.job?.id,
   }));
+  const recommendationMatches: MatchSuggestionItem[] = remainingMatchRows.flatMap((row) => {
+    if (!row.job?.id) return [];
+
+    const recommendation =
+      row.match.recommendation === "go" ||
+      row.match.recommendation === "no-go" ||
+      row.match.recommendation === "conditional"
+        ? row.match.recommendation
+        : null;
+    const criteriaBreakdown = Array.isArray(row.match.criteriaBreakdown)
+      ? (row.match.criteriaBreakdown as CriterionResult[])
+      : [];
+    const riskProfile = Array.isArray(row.match.riskProfile)
+      ? (row.match.riskProfile as string[])
+      : [];
+    const enrichmentSuggestions = Array.isArray(row.match.enrichmentSuggestions)
+      ? (row.match.enrichmentSuggestions as string[])
+      : [];
+
+    return [
+      {
+        matchId: row.match.id,
+        jobId: row.job.id,
+        jobTitle: row.job.title,
+        company: row.job.company,
+        location: row.job.location,
+        quickScore: row.match.matchScore,
+        reasoning: row.match.reasoning ?? null,
+        isLinked: linkedMatchIds.has(row.match.id),
+        recommendation,
+        recommendationConfidence: row.match.recommendationConfidence ?? null,
+        recommendationSource: recommendation ? "backend" : "score",
+        criteriaBreakdown,
+        riskProfile,
+        enrichmentSuggestions,
+        assessmentModel: row.match.assessmentModel ?? null,
+        status: row.match.status,
+        reviewedAt: row.match.reviewedAt ? row.match.reviewedAt.toISOString() : null,
+      },
+    ];
+  });
 
   /** Human-friendly recommendation label */
   const recommendationLabel = (rec: string | null): string => {
@@ -643,6 +686,12 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
               <CandidateNotes candidateId={candidate.id} initialNotes={candidate.notes} />
 
+              <CandidateRecommendationPanel
+                candidateId={candidate.id}
+                hasResume={Boolean(candidate.resumeUrl || candidate.resumeRaw)}
+                initialMatches={recommendationMatches}
+              />
+
               {/* Matches list + chart */}
               <section id="matches">
                 <div className="mb-4 flex items-center gap-2">
@@ -663,7 +712,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground/70">
                       {activeApplications.length > 0
-                        ? "De gelinkte matchcontext staat hierboven in Recruiter context"
+                        ? "De gelinkte matchcontext staat hierboven in Recruiteroverzicht"
                         : "Matches worden automatisch berekend wanneer vacatures beschikbaar zijn"}
                     </p>
                   </div>
@@ -671,7 +720,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                   <div className="space-y-4">
                     {activeApplications.length > 0 && (
                       <p className="text-sm text-muted-foreground">
-                        Gelinkte matches staan hierboven in Recruiter context.
+                        Gelinkte matches staan hierboven in Recruiteroverzicht.
                       </p>
                     )}
                     <div className="rounded-xl border border-border bg-card p-4">

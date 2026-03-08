@@ -1,8 +1,11 @@
 "use client";
 
 import { Clock, MessageSquare, Plus, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+
+const TITLE_REFRESH_DELAY_MS = 1200;
+const MAX_TITLE_REFRESH_ATTEMPTS = 3;
 
 type ChatSessionSummary = {
   id: string;
@@ -18,6 +21,7 @@ type Props = {
   onSelectSession: (sessionId: string) => void;
   onNewSession: () => void;
   onClose?: () => void;
+  refreshToken?: number;
 };
 
 function timeAgo(dateStr: string | null): string {
@@ -38,27 +42,71 @@ export function ChatHistorySidebar({
   onSelectSession,
   onNewSession,
   onClose,
+  refreshToken,
 }: Props) {
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const titleRefreshAttemptRef = useRef(0);
+  const titleRefreshKeyRef = useRef<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     try {
-      const res = await fetch("/api/chat-sessies?limit=20");
+      const params = new URLSearchParams({ limit: "20" });
+      if (refreshToken != null) {
+        params.set("refresh", String(refreshToken));
+      }
+
+      const res = await fetch(`/api/chat-sessies?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setSessions(data.sessions ?? []);
       }
     } catch (err) {
       console.error("[ChatHistorySidebar] Fetch sessions failed:", err);
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }, [refreshToken]);
 
   useEffect(() => {
-    fetchSessions();
+    let cancelled = false;
+
+    void fetchSessions().finally(() => {
+      if (!cancelled) {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [fetchSessions]);
+
+  useEffect(() => {
+    const refreshKey = `${activeSessionId ?? ""}:${refreshToken ?? ""}`;
+    if (titleRefreshKeyRef.current !== refreshKey) {
+      titleRefreshKeyRef.current = refreshKey;
+      titleRefreshAttemptRef.current = 0;
+    }
+
+    const activeSession = sessions.find((session) => session.sessionId === activeSessionId);
+    const shouldRefreshTitle =
+      Boolean(activeSessionId) &&
+      activeSession != null &&
+      !activeSession.title &&
+      titleRefreshAttemptRef.current < MAX_TITLE_REFRESH_ATTEMPTS;
+
+    if (!shouldRefreshTitle) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      titleRefreshAttemptRef.current += 1;
+      void fetchSessions();
+    }, TITLE_REFRESH_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [activeSessionId, fetchSessions, refreshToken, sessions]);
 
   const handleDelete = useCallback(async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();

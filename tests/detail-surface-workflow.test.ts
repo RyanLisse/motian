@@ -46,6 +46,9 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(source).toContain('variant="inline"');
     expect(source).toContain('id="recruiter-cockpit"');
     expect(source).toContain('id="ai-grading"');
+    expect(source).toContain("Recruiter cockpit");
+    expect(source).toContain("Volgende actie");
+    expect(source).toContain("Gekoppelde kandidaten");
     expect(source).toContain("AI aanbevelingen");
     expect(source).toContain("AI Grading");
     expect(source).toContain("source: applications.source");

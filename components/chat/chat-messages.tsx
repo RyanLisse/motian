@@ -332,6 +332,7 @@ export function ChatMessages({
                     text: string;
                     state?: "streaming" | "done";
                   };
+
                   return (
                     <ReasoningBlock
                       key={partKey}
@@ -348,6 +349,7 @@ export function ChatMessages({
                     url: string;
                     title?: string;
                   };
+
                   return (
                     <SourceUrlBlock
                       key={partKey}
@@ -364,6 +366,7 @@ export function ChatMessages({
                     mediaType: string;
                     title: string;
                   };
+
                   return (
                     <SourceDocumentBlock
                       key={partKey}
@@ -398,6 +401,7 @@ export function ChatMessages({
                         : "Er is iets misgegaan bij deze actie.";
                     return <ToolErrorBlock key={partKey} message={messageText} />;
                   }
+
                   if (
                     toolPart.state === "output-available" &&
                     GenUICard &&
@@ -410,8 +414,10 @@ export function ChatMessages({
                           : "Niet gevonden.";
                       return <ToolErrorBlock key={partKey} message={messageText} />;
                     }
+
                     return <GenUICard key={partKey} output={toolPart.output} />;
                   }
+
                   return (
                     <ChatToolCall
                       key={partKey}

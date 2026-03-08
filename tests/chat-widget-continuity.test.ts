@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { mockPush, mockUseChatContext } = vi.hoisted(() => ({
+const { mockPathname, mockPush, mockUseChatContext } = vi.hoisted(() => ({
+  mockPathname: vi.fn(() => "/opdrachten/123"),
   mockPush: vi.fn(),
   mockUseChatContext: vi.fn(),
 }));
@@ -14,7 +16,7 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({}),
-  usePathname: () => "/chat",
+  usePathname: () => mockPathname(),
   useRouter: () => ({ push: mockPush }),
 }));
 
@@ -210,30 +212,27 @@ describe("chat widget continuity", () => {
     expect(html).toContain('aria-label="Nieuw gesprek"');
   });
 
-  it("renders widget controls with explicit accessible names and hides on /chat", async () => {
-    const { ChatPanel } = await import("../components/chat/chat-panel");
+  it("renders widget launcher controls with explicit accessible names and hides on /chat", async () => {
+    const { ChatWidget } = await import("../components/chat/chat-widget");
 
-    mockUseChatContext.mockReturnValue(createMockChatContext({ panelOpen: true }));
+    mockUseChatContext.mockReturnValue(createMockChatContext());
+    mockPathname.mockReturnValue("/opdrachten/123");
 
-    const openHtml = renderToStaticMarkup(createElement(ChatPanel));
-    expect(openHtml).toContain('aria-label="Nieuw gesprek"');
-    expect(openHtml).toContain('aria-label="Open volledige chat"');
-    expect(openHtml).toContain('aria-label="Sluit chatwidget"');
-    expect(openHtml).toContain('aria-label="CV of document uploaden"');
-    expect(openHtml).toContain('aria-label="Verstuur bericht"');
-
-    mockUseChatContext.mockReturnValue(
-      createMockChatContext({ panelOpen: false, pathname: "/opdrachten/123" }),
+    const source = readFileSync(
+      new URL("../components/chat/chat-widget.tsx", import.meta.url),
+      "utf8",
     );
+    expect(source).toContain('aria-label="Nieuw gesprek"');
+    expect(source).toContain('aria-label="Open volledige chat"');
+    expect(source).toContain('aria-label="Sluit chatwidget"');
+    expect(source).toContain('aria-label="CV of document uploaden"');
+    expect(source).toContain('"Verstuur bericht"');
 
-    const closedHtml = renderToStaticMarkup(createElement(ChatPanel));
+    const closedHtml = renderToStaticMarkup(createElement(ChatWidget));
     expect(closedHtml).toContain('aria-label="Open chatwidget"');
 
-    mockUseChatContext.mockReturnValue(
-      createMockChatContext({ panelOpen: true, pathname: "/chat" }),
-    );
-
-    expect(renderToStaticMarkup(createElement(ChatPanel))).toBe("");
+    mockPathname.mockReturnValue("/chat");
+    expect(renderToStaticMarkup(createElement(ChatWidget))).toBe("");
   });
 
   it("renders the compact widget message state at runtime", async () => {
