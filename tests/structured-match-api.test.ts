@@ -18,16 +18,16 @@ describe("Structured match API route", () => {
     expect(source).toContain("z.string().uuid()");
   });
 
-  it("calls extractRequirements and runStructuredMatch", () => {
+  it("delegates the structured workflow to the shared review service", () => {
     const source = readFile("app/api/matches/structured/route.ts");
-    expect(source).toContain("extractRequirements");
-    expect(source).toContain("runStructuredMatch");
+    expect(source).toContain("runStructuredMatchReview");
+    expect(source).toContain("revalidateStructuredMatchViews");
   });
 
-  it("stores results in jobMatches", () => {
+  it("preserves the API success response shape", () => {
     const source = readFile("app/api/matches/structured/route.ts");
-    expect(source).toContain("criteriaBreakdown");
-    expect(source).toContain("marienne-v1");
+    expect(source).toContain('message: "Gestructureerde beoordeling voltooid"');
+    expect(source).toContain("result: outcome.result");
   });
 
   it("publishes event for SSE", () => {
@@ -37,13 +37,22 @@ describe("Structured match API route", () => {
 });
 
 describe("Structured match server action", () => {
-  it("runStructuredMatchAction is exported", () => {
-    const source = readFile("app/matching/actions.ts");
+  it("runStructuredMatchAction is exported from shared match-review action", () => {
+    const source = readFile("src/actions/match-review.ts");
     expect(source).toContain("export async function runStructuredMatchAction");
   });
 
-  it("calls extractRequirements", () => {
-    const source = readFile("app/matching/actions.ts");
-    expect(source).toContain("extractRequirements");
+  it("delegates the structured workflow to the shared review service", () => {
+    const source = readFile("src/actions/match-review.ts");
+    expect(source).toContain("runStructuredMatchReview(jobId, candidateId)");
+    expect(source).toContain(
+      "revalidateStructuredMatchViews(jobId, candidateId, { includePipeline: true })",
+    );
+  });
+
+  it("preserves the server action result contract", () => {
+    const source = readFile("src/actions/match-review.ts");
+    expect(source).toContain("Promise<{ success: boolean; error?: string }>");
+    expect(source).toContain("return { success: true }");
   });
 });

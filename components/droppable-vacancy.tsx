@@ -3,7 +3,7 @@
 import { Check, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type DragEvent, useCallback, useState } from "react";
-import { linkCandidateToJob } from "@/app/matching/actions";
+import { linkCandidateToJob } from "@/src/actions/match-linking";
 
 interface DroppableVacancyProps {
   jobId: string;

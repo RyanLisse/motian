@@ -53,24 +53,32 @@ describe("Report view page", () => {
 
 describe("Report button component", () => {
   it("report-button.tsx exports ReportButton", () => {
-    const source = readFile("app/matching/report-button.tsx");
+    const source = readFile("components/matching/report-button.tsx");
     expect(source).toContain("export function ReportButton");
   });
 
   it("report-button.tsx calls /api/reports", () => {
-    const source = readFile("app/matching/report-button.tsx");
+    const source = readFile("components/matching/report-button.tsx");
     expect(source).toContain("/api/reports");
   });
 
   it("report-button.tsx is a client component", () => {
-    const source = readFile("app/matching/report-button.tsx");
+    const source = readFile("components/matching/report-button.tsx");
     expect(source).toContain('"use client"');
   });
 });
 
-describe("Matching page integration", () => {
-  it("matching/page.tsx imports ReportButton", () => {
+describe("Legacy matching route redirect", () => {
+  it("redirects job-scoped grading requests into the vacature detail flow", () => {
     const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("ReportButton");
+    expect(source).toContain('import { redirect } from "next/navigation"');
+    expect(source).toContain('tab === "grading"');
+    expect(source).toContain("#ai-grading");
+  });
+
+  it("redirects non-job requests to professionals instead of rendering a standalone page", () => {
+    const source = readFile("app/matching/page.tsx");
+    expect(source).toContain("#recruiter-cockpit");
+    expect(source).toContain('redirect("/professionals")');
   });
 });

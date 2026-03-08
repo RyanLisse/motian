@@ -42,6 +42,7 @@ export const POST = withApiHandler(
         { status: 400 },
       );
     }
+    const touchedJobIds = [...new Set(pairs.map((pair) => pair.jobId))];
     const result = await createApplicationsFromMatches(candidateId, pairs, "screening");
     if (result.created.length > 0 || result.alreadyLinked.length > 0) {
       await updateCandidateMatchingStatus(candidateId, "linked");
@@ -49,12 +50,14 @@ export const POST = withApiHandler(
     for (const app of result.created) {
       publish("application:created", { applicationId: app.id });
     }
-    revalidatePath("/matching");
     revalidatePath("/professionals");
     revalidatePath("/pipeline");
     revalidatePath("/overzicht");
     revalidatePath("/opdrachten");
     revalidatePath(`/professionals/${candidateId}`);
+    for (const jobId of touchedJobIds) {
+      revalidatePath(`/opdrachten/${jobId}`);
+    }
     return Response.json({
       created: result.created.length,
       alreadyLinked: result.alreadyLinked,

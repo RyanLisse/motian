@@ -30,7 +30,6 @@ export function ReportButton({ matchId }: ReportButtonProps) {
       if (data.url) {
         window.open(data.url, "_blank", "noopener");
       } else {
-        // Fallback: open markdown as blob
         const blob = new Blob([data.markdown], { type: "text/markdown" });
         const url = URL.createObjectURL(blob);
         window.open(url, "_blank");

@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, UserPlus } from "lucide-react";
+import { Award, Loader2, Sparkles, UserPlus } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { CandidateMatchItem } from "@/components/candidate-wizard/candidate-match-card";
@@ -24,6 +25,8 @@ interface LinkCandidatesDialogProps {
 
 export function LinkCandidatesDialog({ jobId, jobTitle, trigger }: LinkCandidatesDialogProps) {
   const router = useRouter();
+  const recruiterCockpitHref = `/opdrachten/${jobId}#recruiter-cockpit`;
+  const gradingHref = `/opdrachten/${jobId}#ai-grading`;
   const [open, setOpen] = useState(false);
   const [matches, setMatches] = useState<CandidateMatchItem[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -119,9 +122,24 @@ export function LinkCandidatesDialog({ jobId, jobTitle, trigger }: LinkCandidate
         <DialogHeader>
           <DialogTitle>Kandidaten koppelen aan vacature</DialogTitle>
           <DialogDescription>
-            Top-3 passende kandidaten voor &quot;{jobTitle}&quot;. Selecteer wie je wilt koppelen.
+            Top-3 passende kandidaten voor &quot;{jobTitle}&quot;. Selecteer wie je wilt koppelen of
+            open eerst de recruiter cockpit of AI grading op de vacaturepagina voor extra context.
           </DialogDescription>
         </DialogHeader>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={recruiterCockpitHref} onClick={() => setOpen(false)}>
+              <Sparkles className="h-4 w-4" />
+              Recruiter cockpit
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={gradingHref} onClick={() => setOpen(false)}>
+              <Award className="h-4 w-4" />
+              AI Grading
+            </Link>
+          </Button>
+        </div>
         {loading ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Bezig met matchen...</p>

@@ -7,7 +7,6 @@ import {
   Inbox,
   Kanban,
   List,
-  Sparkles,
   Users,
   XCircle,
 } from "lucide-react";
@@ -237,11 +236,17 @@ export default async function PipelinePage({ searchParams }: Props) {
   // Determine next-best-action for the recruiter
   const nextAction = (() => {
     if (allCount === 0) {
-      return {
-        label: vacature ? "Match kandidaten" : "Koppel kandidaten aan vacatures",
-        href: vacature ? `/matching?jobId=${vacatureId}` : "/matching",
-        icon: "sparkles" as const,
-      };
+      return vacature
+        ? {
+            label: "Open vacature",
+            href: `/opdrachten/${vacatureId}`,
+            icon: "briefcase" as const,
+          }
+        : {
+            label: "Bekijk kandidaten",
+            href: "/professionals",
+            icon: "users" as const,
+          };
     }
     if (newCount > 0) {
       return {
@@ -386,7 +391,6 @@ export default async function PipelinePage({ searchParams }: Props) {
           <Link href={nextAction.href}>
             <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center justify-between hover:bg-primary/10 transition-colors group">
               <div className="flex items-center gap-2.5">
-                {nextAction.icon === "sparkles" && <Sparkles className="h-4 w-4 text-primary" />}
                 {nextAction.icon === "inbox" && <Inbox className="h-4 w-4 text-yellow-500" />}
                 {nextAction.icon === "users" && <Users className="h-4 w-4 text-purple-500" />}
                 {nextAction.icon === "briefcase" && (
