@@ -429,6 +429,7 @@ function ChatSession({
   surfaceConfig,
   onSessionActivity,
   onToggleVoice,
+  currentOrigin,
 }: {
   sessionId: string;
   ctx: ChatSurfaceContext;
@@ -437,6 +438,7 @@ function ChatSession({
   surfaceConfig: ChatSurfaceConfig;
   onSessionActivity?: () => void;
   onToggleVoice: () => void;
+  currentOrigin?: string | null;
 }) {
   const [speedMode, setSpeedMode] = useState<SpeedMode>("gemiddeld");
 
@@ -466,6 +468,7 @@ function ChatSession({
         <ChatMessages
           messages={messages}
           status={status}
+          currentOrigin={currentOrigin}
           onSuggestion={handleSuggestion}
           hasOlderMessages={hasMoreHistory}
           loadingOlder={loadingOlder}
@@ -495,7 +498,7 @@ function ChatSession({
   );
 }
 
-export function ChatPageContent() {
+export function ChatPageContent({ currentOrigin = null }: { currentOrigin?: string | null }) {
   const ctx = useChatContext();
   const surfaceConfig = getChatSurfaceConfig(ctx);
   const [sessionId, setSessionId] = useState("");
@@ -578,6 +581,7 @@ export function ChatPageContent() {
             surfaceConfig={surfaceConfig}
             onSessionActivity={handleSessionActivity}
             onToggleVoice={() => setMode("voice")}
+            currentOrigin={currentOrigin}
           />
         ) : (
           <div

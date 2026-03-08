@@ -64,6 +64,33 @@ describe("chat job links", () => {
     expect(rewritten).toContain(`<a href="https://external.example/job">Externe bron</a>`);
   });
 
+  it("preserves inline code spans and fenced code blocks while still rewriting real links", () => {
+    const rewritten = rewriteChatJobLinks(
+      [
+        `Open [Bekijk vacature](/opdrachten/${JOB_ID}).`,
+        "",
+        `Inline code: \`[Bekijk vacature](/opdrachten/${JOB_ID})\` en \`<a href="https://motian.nl/opdracht/${JOB_ID}">Bekijk opdracht</a>\``,
+        "",
+        "```md",
+        `[Bekijk vacature](/opdrachten/${JOB_ID})`,
+        `<a href="https://motian.nl/opdracht/${JOB_ID}">Bekijk opdracht</a>`,
+        "```",
+      ].join("\n"),
+      "https://motian.local",
+    );
+
+    expect(rewritten.match(/<motian-job-link\b/g) ?? []).toHaveLength(1);
+    expect(rewritten).toContain(`\`[Bekijk vacature](/opdrachten/${JOB_ID})\``);
+    expect(rewritten).toContain(
+      `\`<a href="https://motian.nl/opdracht/${JOB_ID}">Bekijk opdracht</a>\``,
+    );
+    expect(rewritten).toContain("```md");
+    expect(rewritten).toContain(`[Bekijk vacature](/opdrachten/${JOB_ID})`);
+    expect(rewritten).toContain(
+      `<a href="https://motian.nl/opdracht/${JOB_ID}">Bekijk opdracht</a>`,
+    );
+  });
+
   it("renders internal job links as direct app anchors while external links stay on the safety path", () => {
     const html = renderToStaticMarkup(
       createElement(

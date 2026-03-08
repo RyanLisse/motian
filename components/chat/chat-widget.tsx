@@ -47,9 +47,11 @@ type UploadState = "idle" | "uploading" | "success" | "error";
 function ChatWidgetInner({
   ctx,
   sessionId,
+  currentOrigin,
 }: {
   ctx: { route: string; entityId: string | null; entityType: "opdracht" | "kandidaat" | null };
   sessionId: string;
+  currentOrigin?: string | null;
 }) {
   const { messages, sendMessage, status, stop, hasMoreHistory, loadingOlder, loadOlder } =
     useChatThread({
@@ -160,6 +162,7 @@ function ChatWidgetInner({
       <ChatMessages
         messages={messages}
         status={status}
+        currentOrigin={currentOrigin}
         onSuggestion={handleSuggestion}
         hasOlderMessages={hasMoreHistory}
         loadingOlder={loadingOlder}
@@ -215,7 +218,7 @@ function ChatWidgetInner({
   );
 }
 
-export function ChatWidget() {
+export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState("");
@@ -313,7 +316,12 @@ export function ChatWidget() {
         </div>
 
         {sessionId ? (
-          <ChatWidgetInner key={sessionId} ctx={ctx} sessionId={sessionId} />
+          <ChatWidgetInner
+            key={sessionId}
+            ctx={ctx}
+            sessionId={sessionId}
+            currentOrigin={currentOrigin}
+          />
         ) : (
           <div className="flex flex-1 items-center justify-center p-4">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

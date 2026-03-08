@@ -75,7 +75,7 @@ pnpm lint                         # Biome lint check (MUST PASS before commit)
 pnpm lint:fix                     # Auto-fix lint issues
 pnpm build                        # Next.js production build
 pnpm test                         # Run vitest tests
-pnpm dev                          # Start dev server (port 3001)
+pnpm dev                          # Start dev server (port 3002 by default)
 pnpm db:generate                  # Generate Drizzle migration
 pnpm db:push                      # Push schema to Neon
 pnpm voice-agent:dev              # Start LiveKit voice agent (dev)
@@ -219,7 +219,7 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 
 | Service | Command | Notes |
 |---------|---------|-------|
-| Next.js dev server | `pnpm dev` (port 3001) | Requires `.env.local`. Turbopack hot-reload. |
+| Next.js dev server | `pnpm dev` (port 3002 by default) | Requires `.env.local`. Turbopack hot-reload. |
 | Lint | `pnpm lint` | Biome — see `biome.json`. Pre-existing errors exist in the codebase (formatting). |
 | Tests | `pnpm test` | Vitest — `tests/**/*.test.ts`. A few structural/string-match tests may fail due to model abstraction indirection. |
 

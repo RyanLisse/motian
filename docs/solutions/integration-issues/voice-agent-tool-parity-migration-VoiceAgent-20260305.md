@@ -29,7 +29,7 @@ The LiveKit voice agent had only 3 broken tools while the chat agent had 40 and 
 ## Symptoms
 
 - Voice agent had only 3 tools (job search, candidate search, match) — all broken due to stale API contracts
-- Voice agent called `fetch("http://localhost:3001/api/...")` — required the Next.js dev server to be running
+- Voice agent called `fetch("http://localhost:3002/api/...")` — required the Next.js dev server to be running
 - When new tools were added to the service layer, voice agent was never updated
 - Documentation was severely outdated:
   - Chat described as "Zijpaneel" (sidepanel with Cmd+J) when it was already a full-screen `/chat` page
@@ -74,7 +74,7 @@ export default defineAgent({
 **`src/voice-agent/agent.ts`** — 35 tools with direct service imports:
 ```typescript
 // Before (broken — called HTTP endpoints):
-const response = await fetch("http://localhost:3001/api/opdrachten");
+const response = await fetch("http://localhost:3002/api/opdrachten");
 const data = await response.json();
 
 // After (fixed — direct service imports):

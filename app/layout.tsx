@@ -4,6 +4,7 @@ import "./globals.css";
 import { ChatContextProvider } from "@/components/chat/chat-context-provider";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { SidebarLayout } from "@/components/sidebar-layout";
+import { getStableChatOrigin } from "@/src/lib/chat-origin";
 import { Providers } from "./providers";
 
 const inter = Inter({
@@ -30,6 +31,8 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const currentOrigin = getStableChatOrigin();
+
   return (
     <html lang="nl" suppressHydrationWarning>
       <body
@@ -38,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <ChatContextProvider>
             <SidebarLayout>{children}</SidebarLayout>
-            <ChatWidget />
+            <ChatWidget currentOrigin={currentOrigin} />
           </ChatContextProvider>
         </Providers>
       </body>

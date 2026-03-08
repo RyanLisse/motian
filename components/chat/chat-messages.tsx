@@ -49,6 +49,7 @@ export type ChatSuggestion = {
 type Props = {
   messages: UIMessage[];
   status: ChatStatus;
+  currentOrigin?: string | null;
   onSuggestion?: (text: string) => void;
   hasOlderMessages?: boolean;
   loadingOlder?: boolean;
@@ -229,6 +230,7 @@ function FollowUpPromptButton({
 export function ChatMessages({
   messages,
   status,
+  currentOrigin,
   onSuggestion,
   hasOlderMessages = false,
   loadingOlder = false,
@@ -241,7 +243,6 @@ export function ChatMessages({
 }: Props) {
   const hasUserMessage = messages.some((message) => message.role === "user");
   const showFollowUpPrompts = hasUserMessage && status === "ready" && followUpPrompts.length > 0;
-  const currentOrigin = typeof window === "undefined" ? null : window.location.origin;
 
   return (
     <Conversation className="flex-1" aria-label={conversationLabel}>

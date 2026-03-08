@@ -73,7 +73,42 @@ export function normalizeChatJobHref(
 }
 
 export function rewriteChatJobLinks(markdown: string, currentOrigin?: string | null): string {
-  return rewriteHtmlJobLinks(rewriteMarkdownJobLinks(markdown, currentOrigin), currentOrigin);
+  return rewriteOutsideLiteralCode(markdown, (segment) =>
+    rewriteHtmlJobLinks(rewriteMarkdownJobLinks(segment, currentOrigin), currentOrigin),
+  );
+}
+
+function rewriteOutsideLiteralCode(
+  markdown: string,
+  rewriteSegment: (segment: string) => string,
+): string {
+  const segments: string[] = [];
+  let cursor = 0;
+
+  while (cursor < markdown.length) {
+    const fencedRange = findFencedCodeBlock(markdown, cursor);
+    const codeSpanRange = findInlineCodeSpan(markdown, cursor);
+    let nextProtectedRange = fencedRange ?? codeSpanRange;
+
+    if (fencedRange && codeSpanRange) {
+      nextProtectedRange = fencedRange.start <= codeSpanRange.start ? fencedRange : codeSpanRange;
+    }
+
+    if (nextProtectedRange) {
+      if (nextProtectedRange.start > cursor) {
+        segments.push(rewriteSegment(markdown.slice(cursor, nextProtectedRange.start)));
+      }
+
+      segments.push(markdown.slice(nextProtectedRange.start, nextProtectedRange.end));
+      cursor = nextProtectedRange.end;
+      continue;
+    }
+
+    segments.push(rewriteSegment(markdown.slice(cursor)));
+    break;
+  }
+
+  return segments.join("");
 }
 
 function rewriteMarkdownJobLinks(markdown: string, currentOrigin?: string | null): string {
@@ -108,6 +143,147 @@ function rewriteHtmlJobLinks(markdown: string, currentOrigin?: string | null): s
       return `<${INTERNAL_JOB_TAG} href="${escapeHtmlAttribute(internalHref)}">${content}</${INTERNAL_JOB_TAG}>`;
     },
   );
+}
+
+function findFencedCodeBlock(
+  markdown: string,
+  fromIndex: number,
+): { start: number; end: number } | null {
+  let lineStart = fromIndex;
+
+  if (lineStart > 0 && markdown[lineStart - 1] !== "\n") {
+    const nextLineBreak = markdown.indexOf("\n", lineStart);
+
+    if (nextLineBreak === -1) {
+      return null;
+    }
+
+    lineStart = nextLineBreak + 1;
+  }
+
+  while (lineStart < markdown.length) {
+    const lineEnd = markdown.indexOf("\n", lineStart);
+    const nextLineStart = lineEnd === -1 ? markdown.length : lineEnd + 1;
+    const line = markdown.slice(lineStart, lineEnd === -1 ? markdown.length : lineEnd);
+    const openingFence = parseFenceLine(line);
+
+    if (openingFence) {
+      let searchStart = nextLineStart;
+
+      while (searchStart <= markdown.length) {
+        const searchLineEnd = markdown.indexOf("\n", searchStart);
+        const searchNextLineStart = searchLineEnd === -1 ? markdown.length : searchLineEnd + 1;
+        const searchLine = markdown.slice(
+          searchStart,
+          searchLineEnd === -1 ? markdown.length : searchLineEnd,
+        );
+
+        if (isClosingFenceLine(searchLine, openingFence.marker, openingFence.length)) {
+          return { start: lineStart, end: searchNextLineStart };
+        }
+
+        if (searchLineEnd === -1) {
+          return { start: lineStart, end: markdown.length };
+        }
+
+        searchStart = searchNextLineStart;
+      }
+
+      return { start: lineStart, end: markdown.length };
+    }
+
+    if (lineEnd === -1) {
+      return null;
+    }
+
+    lineStart = nextLineStart;
+  }
+
+  return null;
+}
+
+function findInlineCodeSpan(
+  markdown: string,
+  fromIndex: number,
+): { start: number; end: number } | null {
+  let cursor = fromIndex;
+
+  while (cursor < markdown.length) {
+    if (markdown[cursor] !== "`") {
+      cursor += 1;
+      continue;
+    }
+
+    const fenceLength = countRepeatedCharacter(markdown, cursor, "`");
+    const closingIndex = markdown.indexOf("`".repeat(fenceLength), cursor + fenceLength);
+
+    if (closingIndex === -1) {
+      cursor += fenceLength;
+      continue;
+    }
+
+    return { start: cursor, end: closingIndex + fenceLength };
+  }
+
+  return null;
+}
+
+function parseFenceLine(line: string): { marker: "`" | "~"; length: number } | null {
+  const indentationLength = getFenceIndentationLength(line);
+
+  if (indentationLength === null) {
+    return null;
+  }
+
+  const marker = line[indentationLength];
+
+  if (marker !== "`" && marker !== "~") {
+    return null;
+  }
+
+  const fenceLength = countRepeatedCharacter(line, indentationLength, marker);
+
+  if (fenceLength < 3) {
+    return null;
+  }
+
+  return { marker, length: fenceLength };
+}
+
+function isClosingFenceLine(line: string, marker: "`" | "~", minimumLength: number): boolean {
+  const indentationLength = getFenceIndentationLength(line);
+
+  if (indentationLength === null || line[indentationLength] !== marker) {
+    return false;
+  }
+
+  const fenceLength = countRepeatedCharacter(line, indentationLength, marker);
+
+  if (fenceLength < minimumLength) {
+    return false;
+  }
+
+  return line.slice(indentationLength + fenceLength).trim().length === 0;
+}
+
+function getFenceIndentationLength(line: string): number | null {
+  let index = 0;
+
+  while (index < line.length && line[index] === " ") {
+    index += 1;
+  }
+
+  return index <= 3 ? index : null;
+}
+
+function countRepeatedCharacter(input: string, startIndex: number, character: string): number {
+  let index = startIndex;
+
+  while (input[index] === character) {
+    index += 1;
+  }
+
+  return index - startIndex;
 }
 
 function matchJobPath(pathname: string): string | null {
