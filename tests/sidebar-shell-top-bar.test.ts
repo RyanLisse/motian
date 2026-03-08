@@ -42,8 +42,8 @@ describe("sidebar shell top-bar refactor", () => {
     expect(candidateDetailSource).toContain('<section id="matches">');
     expect(widgetSource).toContain("CHAT_WIDGET_OPEN_EVENT");
     expect(widgetSource).toContain("currentOrigin={currentOrigin}");
-    expect(widgetSource).toContain("PromptInputProvider");
-    expect(widgetSource).toContain("useChatCvUpload");
-    expect(widgetSource).toContain("globalDrop");
+    expect(widgetSource).toContain("type=\"file\"");
+    expect(widgetSource).toContain("accept=\".pdf,.docx");
+    expect(widgetSource).toContain("handleFileChange");
   });
 });
