@@ -21,8 +21,9 @@ describe("chat surface review regressions", () => {
   it("keeps only the explicit CV upload path in the full-page chat composer", () => {
     const source = readFile("src", "components", "ai-elements", "chat-prompt-composer.tsx");
 
-    expect(source).toContain("<PromptInput allowAttachments={false} onSubmit={handleSubmit}>");
-    expect(source).toContain("allowAttachments={false}");
+    expect(source).toContain("globalDrop");
+    expect(source).toContain("onError={cvUpload.handlePromptInputError}");
+    expect(source).toContain("ChatCvUploadStatusBanner");
     expect(source).toContain("CV uploaden");
     expect(source).not.toContain("PromptInputActionAddAttachments");
     expect(source).not.toContain("usePromptInputAttachments");
@@ -40,10 +41,11 @@ describe("chat surface review regressions", () => {
   it("disables generic attachment intake in the chat widget while keeping the explicit CV upload control", () => {
     const source = readFile("components", "chat", "chat-widget.tsx");
 
-    expect(source).toContain("<PromptInput allowAttachments={false} onSubmit={handleSubmit}>");
-    expect(source).toContain("<PromptInputTextarea");
-    expect(source).toContain("allowAttachments={false}");
+    expect(source).toContain("PromptInputProvider");
+    expect(source).toContain("useChatCvUpload");
+    expect(source).toContain("ChatCvDropOverlay");
+    expect(source).toContain("globalDrop");
     expect(source).toContain('title="CV/document uploaden"');
-    expect(source).toContain("fileInputRef.current?.click()");
+    expect(source).toContain("cvUpload.openFileDialog");
   });
 });

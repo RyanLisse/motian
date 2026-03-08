@@ -1,17 +1,24 @@
 "use client";
 
-import { Check, Loader2, Maximize2, MessageSquare, Paperclip, RotateCcw, X } from "lucide-react";
+import { Loader2, Maximize2, MessageSquare, Paperclip, RotateCcw, X } from "lucide-react";
 import { nanoid } from "nanoid";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   PromptInput,
   PromptInputFooter,
   type PromptInputMessage,
+  PromptInputProvider,
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/src/components/ai-elements/prompt-input";
+import {
+  ChatCvDropOverlay,
+  ChatCvUploadStatusBanner,
+  useChatCvUpload,
+} from "@/src/components/ai-elements/use-chat-cv-upload";
+import { CV_UPLOAD_ACCEPT, CV_UPLOAD_MAX_SIZE_BYTES } from "@/src/lib/cv-upload";
 import { useChatContext } from "./chat-context-provider";
 import { ChatMessages } from "./chat-messages";
 import { useChatThread } from "./use-chat-thread";
@@ -19,8 +26,6 @@ import { useChatThread } from "./use-chat-thread";
 const SESSION_KEY = "motian-fab-session";
 const FULL_PAGE_SESSION_KEY = "motian-chat-session";
 const CHAT_WIDGET_OPEN_EVENT = "motian-chat-open";
-
-type UploadState = "idle" | "uploading" | "success" | "error";
 
 function isStorageAvailable(): boolean {
   try {
@@ -58,6 +63,104 @@ function getOrCreateSessionId(): string {
   }
 }
 
+function ChatWidgetSurface({
+  currentOrigin,
+  hasMoreHistory,
+  loadingOlder,
+  messages,
+  onLoadOlder,
+  onSuggestion,
+  sendMessage,
+  status,
+  stop,
+}: {
+  currentOrigin?: string | null;
+  hasMoreHistory: boolean;
+  loadingOlder: boolean;
+  messages: Parameters<typeof ChatMessages>[0]["messages"];
+  onLoadOlder: () => void;
+  onSuggestion: (text: string) => void;
+  sendMessage: (message: { text: string }) => void;
+  status: Parameters<typeof ChatMessages>[0]["status"];
+  stop: () => void;
+}) {
+  const cvUpload = useChatCvUpload({ onSendMessage: sendMessage });
+
+  const handleSubmit = useCallback(
+    (message: PromptInputMessage) => {
+      const text = message.text.trim();
+      if (!text) {
+        return;
+      }
+      sendMessage({ text });
+    },
+    [sendMessage],
+  );
+
+  return (
+    <div className="relative flex flex-1 flex-col overflow-hidden">
+      <ChatCvDropOverlay active={cvUpload.isDraggingFile} variant="widget" />
+
+      <ChatMessages
+        layout="widget"
+        messages={messages}
+        status={status}
+        currentOrigin={currentOrigin}
+        onSuggestion={onSuggestion}
+        hasOlderMessages={hasMoreHistory}
+        loadingOlder={loadingOlder}
+        onLoadOlder={onLoadOlder}
+      />
+
+      <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-3 sm:pb-4">
+        <div className="flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-background shadow-lg">
+          <ChatCvUploadStatusBanner
+            clearFeedback={cvUpload.clearFeedback}
+            uploadFileName={cvUpload.uploadFileName}
+            uploadMessage={cvUpload.uploadMessage}
+            uploadState={cvUpload.uploadState}
+            variant="widget"
+          />
+
+          <div className="p-2">
+            <PromptInput
+              accept={CV_UPLOAD_ACCEPT}
+              globalDrop
+              maxFileSize={CV_UPLOAD_MAX_SIZE_BYTES}
+              maxFiles={1}
+              onError={cvUpload.handlePromptInputError}
+              onSubmit={handleSubmit}
+            >
+              <PromptInputTextarea placeholder="Stel een vraag of upload een CV..." />
+              <PromptInputFooter>
+                <button
+                  type="button"
+                  onClick={cvUpload.openFileDialog}
+                  disabled={cvUpload.uploadState === "uploading"}
+                  aria-label="CV of document uploaden"
+                  className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                  title="CV/document uploaden"
+                >
+                  <Paperclip className="h-3.5 w-3.5" />
+                </button>
+                <PromptInputSubmit
+                  status={status}
+                  onStop={stop}
+                  aria-label={
+                    status === "submitted" || status === "streaming"
+                      ? "Stop antwoord"
+                      : "Verstuur bericht"
+                  }
+                />
+              </PromptInputFooter>
+            </PromptInput>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChatWidgetInner({
   ctx,
   sessionId,
@@ -84,164 +187,20 @@ function ChatWidgetInner({
     void loadOlder();
   }, [loadOlder]);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadState, setUploadState] = useState<UploadState>("idle");
-  const [uploadResult, setUploadResult] = useState<string | null>(null);
-
-  const handleSubmit = useCallback(
-    (message: PromptInputMessage) => {
-      const text = message.text.trim();
-      if (!text) return;
-      sendMessage({ text });
-    },
-    [sendMessage],
-  );
-
-  const handleFileUpload = useCallback(
-    async (file: File) => {
-      const validTypes = [
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ];
-      if (!validTypes.includes(file.type)) {
-        setUploadState("error");
-        setUploadResult("Alleen PDF en Word (.docx)");
-        return;
-      }
-      if (file.size > 20 * 1024 * 1024) {
-        setUploadState("error");
-        setUploadResult("Max 20MB");
-        return;
-      }
-
-      setUploadState("uploading");
-      setUploadResult(null);
-
-      try {
-        const formData = new FormData();
-        formData.append("cv", file);
-        const uploadRes = await fetch("/api/cv-upload", { method: "POST", body: formData });
-        if (!uploadRes.ok) {
-          const json = await uploadRes.json();
-          throw new Error(json.error ?? "Upload mislukt");
-        }
-        const { parsed, fileUrl, duplicates } = await uploadRes.json();
-
-        const saveRes = await fetch("/api/cv-upload/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ parsed, fileUrl, existingCandidateId: duplicates?.exact?.id }),
-        });
-        if (!saveRes.ok) throw new Error("Opslaan mislukt");
-        const saveData = await saveRes.json();
-
-        const action = duplicates?.exact ? "bijgewerkt" : "toegevoegd aan talentpool";
-        setUploadState("success");
-        setUploadResult(`${parsed.name} ${action}`);
-
-        const skillsList = [
-          ...parsed.skills.hard.map((s: { name: string }) => s.name),
-          ...parsed.skills.soft.map((s: { name: string }) => s.name),
-        ]
-          .slice(0, 8)
-          .join(", ");
-
-        sendMessage({
-          text: `CV geüpload: ${parsed.name} (${parsed.role}), ${action}. Vaardigheden: ${skillsList}. ID: ${saveData.candidateId}. Geef samenvatting en zoek vacatures.`,
-        });
-
-        setTimeout(() => {
-          setUploadState("idle");
-          setUploadResult(null);
-        }, 4000);
-      } catch (err) {
-        setUploadState("error");
-        setUploadResult(err instanceof Error ? err.message : "Upload mislukt");
-      }
-    },
-    [sendMessage],
-  );
-
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) handleFileUpload(file);
-      e.target.value = "";
-    },
-    [handleFileUpload],
-  );
-
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden">
-      <ChatMessages
-        layout="widget"
-        messages={messages}
-        status={status}
+    <PromptInputProvider>
+      <ChatWidgetSurface
         currentOrigin={currentOrigin}
-        onSuggestion={handleSuggestion}
-        hasOlderMessages={hasMoreHistory}
+        hasMoreHistory={hasMoreHistory}
         loadingOlder={loadingOlder}
+        messages={messages}
         onLoadOlder={handleLoadOlder}
+        onSuggestion={handleSuggestion}
+        sendMessage={sendMessage}
+        status={status}
+        stop={stop}
       />
-
-      <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-3 sm:pb-4">
-        <div className="flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-background shadow-lg">
-          {uploadState !== "idle" && (
-            <div
-              className={`flex items-center gap-2 px-3 py-2 text-xs ${
-                uploadState === "error"
-                  ? "bg-destructive/5 text-destructive"
-                  : uploadState === "success"
-                    ? "bg-primary/5 text-primary"
-                    : "bg-muted/50 text-muted-foreground"
-              }`}
-            >
-              {uploadState === "uploading" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {uploadState === "success" && <Check className="h-3.5 w-3.5" />}
-              {uploadState === "error" && <X className="h-3.5 w-3.5" />}
-              <span className="truncate">{uploadResult ?? "Verwerken..."}</span>
-            </div>
-          )}
-
-          <div className="p-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <PromptInput allowAttachments={false} onSubmit={handleSubmit}>
-              <PromptInputTextarea
-                allowAttachments={false}
-                placeholder="Stel een vraag of upload een CV..."
-              />
-              <PromptInputFooter>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadState === "uploading"}
-                  aria-label="CV of document uploaden"
-                  className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                  title="CV/document uploaden"
-                >
-                  <Paperclip className="h-3.5 w-3.5" />
-                </button>
-                <PromptInputSubmit
-                  status={status}
-                  onStop={stop}
-                  aria-label={
-                    status === "submitted" || status === "streaming"
-                      ? "Stop antwoord"
-                      : "Verstuur bericht"
-                  }
-                />
-              </PromptInputFooter>
-            </PromptInput>
-          </div>
-        </div>
-      </div>
-    </div>
+    </PromptInputProvider>
   );
 }
 

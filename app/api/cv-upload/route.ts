@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { validateCvUploadFile } from "@/src/lib/cv-upload";
 import { uploadFile } from "@/src/lib/file-storage";
 import { rateLimit } from "@/src/lib/rate-limit";
 import { findDuplicateCandidate } from "@/src/services/candidates";
@@ -7,13 +8,6 @@ import { parseCV } from "@/src/services/cv-parser";
 export const dynamic = "force-dynamic";
 
 const limiter = rateLimit({ interval: 60_000, limit: 10 });
-
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-] as const;
-
-const MAX_SIZE_MB = 20;
 
 export async function POST(request: NextRequest) {
   const ip =
@@ -45,22 +39,12 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Geen bestand ontvangen" }, { status: 400 });
     }
 
-    // Validate type
-    const mimeType = file.type;
-    if (!ALLOWED_TYPES.includes(mimeType as (typeof ALLOWED_TYPES)[number])) {
-      return Response.json(
-        { error: "Ongeldig bestandstype. Alleen PDF en Word (.docx) zijn toegestaan." },
-        { status: 400 },
-      );
+    const validation = validateCvUploadFile(file);
+    if (!validation.ok) {
+      return Response.json({ error: validation.message }, { status: 400 });
     }
 
-    // Validate size
-    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      return Response.json(
-        { error: `Bestand te groot. Maximaal ${MAX_SIZE_MB}MB toegestaan.` },
-        { status: 400 },
-      );
-    }
+    const mimeType = validation.mimeType;
 
     // Upload to blob storage
     const buffer = Buffer.from(await file.arrayBuffer());

@@ -22,6 +22,12 @@ import { nanoid } from "nanoid";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ChatPromptComposer } from "@/src/components/ai-elements/chat-prompt-composer";
+import { PromptInputProvider } from "@/src/components/ai-elements/prompt-input";
+import {
+  ChatCvDropOverlay,
+  type ChatCvUploadController,
+  useChatCvUpload,
+} from "@/src/components/ai-elements/use-chat-cv-upload";
 import { useChatContext } from "./chat-context-provider";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { ChatMessages, type ChatSuggestion } from "./chat-messages";
@@ -399,6 +405,7 @@ function ChatComposer({
   placeholder,
   composerHint,
   composerContextHint,
+  cvUpload,
 }: {
   modelId: string;
   setModelId: (id: string) => void;
@@ -411,11 +418,13 @@ function ChatComposer({
   placeholder: string;
   composerHint: string;
   composerContextHint?: string;
+  cvUpload: ChatCvUploadController;
 }) {
   return (
     <ChatPromptComposer
       composerContextHint={composerContextHint}
       composerHint={composerHint}
+      cvUpload={cvUpload}
       modelId={modelId}
       modelOptions={CHAT_MODELS}
       onModelIdChange={setModelId}
@@ -428,6 +437,80 @@ function ChatComposer({
       speedOptions={MODE_OPTIONS}
       status={status}
     />
+  );
+}
+
+function ChatSessionSurface({
+  currentOrigin,
+  hasMoreHistory,
+  loadingOlder,
+  messages,
+  modelId,
+  onLoadOlder,
+  onSuggestion,
+  onToggleVoice,
+  sendMessage,
+  setModelId,
+  setSpeedMode,
+  speedMode,
+  status,
+  stop,
+  surfaceConfig,
+}: {
+  currentOrigin?: string | null;
+  hasMoreHistory: boolean;
+  loadingOlder: boolean;
+  messages: Parameters<typeof ChatMessages>[0]["messages"];
+  modelId: string;
+  onLoadOlder: () => void;
+  onSuggestion: (text: string) => void;
+  onToggleVoice: () => void;
+  sendMessage: (message: { text: string }) => void;
+  setModelId: (id: string) => void;
+  setSpeedMode: (mode: SpeedMode) => void;
+  speedMode: SpeedMode;
+  status: ChatStatus;
+  stop: () => void;
+  surfaceConfig: ChatSurfaceConfig;
+}) {
+  const cvUpload = useChatCvUpload({ onSendMessage: sendMessage });
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <ChatCvDropOverlay active={cvUpload.isDraggingFile} variant="page" />
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        <ChatMessages
+          messages={messages}
+          status={status}
+          currentOrigin={currentOrigin}
+          onSuggestion={onSuggestion}
+          hasOlderMessages={hasMoreHistory}
+          loadingOlder={loadingOlder}
+          onLoadOlder={onLoadOlder}
+          emptyStateTitle={surfaceConfig.emptyStateTitle}
+          emptyStateDescription={surfaceConfig.emptyStateDescription}
+          emptyStatePrompts={surfaceConfig.starterPrompts}
+          followUpPrompts={surfaceConfig.followUpPrompts}
+          conversationLabel={surfaceConfig.conversationLabel}
+        />
+      </div>
+
+      <ChatComposer
+        cvUpload={cvUpload}
+        modelId={modelId}
+        setModelId={setModelId}
+        speedMode={speedMode}
+        setSpeedMode={setSpeedMode}
+        status={status}
+        stop={stop}
+        sendMessage={sendMessage}
+        onToggleVoice={onToggleVoice}
+        placeholder={surfaceConfig.composerPlaceholder}
+        composerHint={surfaceConfig.composerHint}
+        composerContextHint={surfaceConfig.composerContextHint}
+      />
+    </div>
   );
 }
 
@@ -473,38 +556,25 @@ function ChatSession({
   }, [loadOlder]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
-      <div className="flex min-h-0 flex-1 flex-col">
-        <ChatMessages
-          messages={messages}
-          status={status}
-          currentOrigin={currentOrigin}
-          onSuggestion={handleSuggestion}
-          hasOlderMessages={hasMoreHistory}
-          loadingOlder={loadingOlder}
-          onLoadOlder={handleLoadOlder}
-          emptyStateTitle={surfaceConfig.emptyStateTitle}
-          emptyStateDescription={surfaceConfig.emptyStateDescription}
-          emptyStatePrompts={surfaceConfig.starterPrompts}
-          followUpPrompts={surfaceConfig.followUpPrompts}
-          conversationLabel={surfaceConfig.conversationLabel}
-        />
-      </div>
-
-      <ChatComposer
+    <PromptInputProvider>
+      <ChatSessionSurface
+        currentOrigin={currentOrigin}
+        hasMoreHistory={hasMoreHistory}
+        loadingOlder={loadingOlder}
+        messages={messages}
         modelId={modelId}
+        onLoadOlder={handleLoadOlder}
+        onSuggestion={handleSuggestion}
+        onToggleVoice={onToggleVoice}
+        sendMessage={sendMessage}
         setModelId={setModelId}
-        speedMode={speedMode}
         setSpeedMode={setSpeedMode}
+        speedMode={speedMode}
         status={status}
         stop={stop}
-        sendMessage={sendMessage}
-        onToggleVoice={onToggleVoice}
-        placeholder={surfaceConfig.composerPlaceholder}
-        composerHint={surfaceConfig.composerHint}
-        composerContextHint={surfaceConfig.composerContextHint}
+        surfaceConfig={surfaceConfig}
       />
-    </div>
+    </PromptInputProvider>
   );
 }
 
