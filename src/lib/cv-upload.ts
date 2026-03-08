@@ -62,6 +62,17 @@ export function validateCvUploadFile(file: CvUploadFileLike): CvUploadValidation
   const mimeType = file.type.trim().toLowerCase();
   const extension = getFileExtension(file.name);
 
+  if (mimeType === "application/pdf" || extension === ".pdf") {
+    return { ok: true, mimeType: "application/pdf" };
+  }
+
+  if (extension === ".docx") {
+    return {
+      ok: true,
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    };
+  }
+
   if (extension === ".doc" || LEGACY_DOC_MIME_TYPES.includes(mimeType as never)) {
     return {
       ok: false,
@@ -71,14 +82,7 @@ export function validateCvUploadFile(file: CvUploadFileLike): CvUploadValidation
     };
   }
 
-  if (mimeType === "application/pdf" || extension === ".pdf") {
-    return { ok: true, mimeType: "application/pdf" };
-  }
-
-  if (
-    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    extension === ".docx"
-  ) {
+  if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
     return {
       ok: true,
       mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

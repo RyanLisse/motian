@@ -145,29 +145,35 @@ export function useChatCvUpload({
   resetDelayMs?: number;
 }): ChatCvUploadController {
   const attachments = usePromptInputAttachments();
+  const activeUploadControllerRef = useRef<AbortController | null>(null);
+  const activeUploadIdRef = useRef(0);
   const dragDepthRef = useRef(0);
   const handledAttachmentIdsRef = useRef<Set<string>>(new Set());
+  const isMountedRef = useRef(false);
+  const onSendMessageRef = useRef(onSendMessage);
   const resetTimerRef = useRef<number | null>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
 
-  const clearFeedback = useCallback(() => {
+  const clearResetTimer = useCallback(() => {
     if (resetTimerRef.current !== null) {
       window.clearTimeout(resetTimerRef.current);
       resetTimerRef.current = null;
     }
+  }, []);
+
+  const clearFeedback = useCallback(() => {
+    clearResetTimer();
 
     setUploadState("idle");
     setUploadFileName(null);
     setUploadMessage(null);
-  }, []);
+  }, [clearResetTimer]);
 
   const scheduleReset = useCallback(() => {
-    if (resetTimerRef.current !== null) {
-      window.clearTimeout(resetTimerRef.current);
-    }
+    clearResetTimer();
 
     resetTimerRef.current = window.setTimeout(() => {
       setUploadState("idle");
@@ -175,16 +181,31 @@ export function useChatCvUpload({
       setUploadMessage(null);
       resetTimerRef.current = null;
     }, resetDelayMs);
-  }, [resetDelayMs]);
+  }, [clearResetTimer, resetDelayMs]);
 
-  useEffect(
-    () => () => {
-      if (resetTimerRef.current !== null) {
-        window.clearTimeout(resetTimerRef.current);
-      }
-    },
-    [],
-  );
+  const isUploadCurrent = useCallback((uploadId: number, controller: AbortController) => {
+    return (
+      isMountedRef.current &&
+      activeUploadIdRef.current === uploadId &&
+      activeUploadControllerRef.current === controller &&
+      !controller.signal.aborted
+    );
+  }, []);
+
+  useEffect(() => {
+    onSendMessageRef.current = onSendMessage;
+  }, [onSendMessage]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      clearResetTimer();
+      activeUploadControllerRef.current?.abort();
+      activeUploadControllerRef.current = null;
+    };
+  }, [clearResetTimer]);
 
   useEffect(() => {
     if (attachments.files.length === 0) {
@@ -233,6 +254,8 @@ export function useChatCvUpload({
 
   const uploadCvFile = useCallback(
     async (file: File) => {
+      clearResetTimer();
+
       const validation = validateCvUploadFile(file);
 
       if (!validation.ok) {
@@ -242,6 +265,12 @@ export function useChatCvUpload({
         scheduleReset();
         return;
       }
+
+      activeUploadControllerRef.current?.abort();
+      const controller = new AbortController();
+      const uploadId = activeUploadIdRef.current + 1;
+      activeUploadIdRef.current = uploadId;
+      activeUploadControllerRef.current = controller;
 
       setUploadState("uploading");
       setUploadFileName(file.name);
@@ -254,7 +283,12 @@ export function useChatCvUpload({
         const uploadRes = await fetch("/api/cv-upload", {
           method: "POST",
           body: formData,
+          signal: controller.signal,
         });
+
+        if (!isUploadCurrent(uploadId, controller)) {
+          return;
+        }
 
         if (!uploadRes.ok) {
           const body = (await uploadRes.json().catch(() => null)) as { error?: string } | null;
@@ -274,6 +308,10 @@ export function useChatCvUpload({
           };
         };
 
+        if (!isUploadCurrent(uploadId, controller)) {
+          return;
+        }
+
         const saveRes = await fetch("/api/cv-upload/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -282,7 +320,12 @@ export function useChatCvUpload({
             fileUrl,
             parsed,
           }),
+          signal: controller.signal,
         });
+
+        if (!isUploadCurrent(uploadId, controller)) {
+          return;
+        }
 
         if (!saveRes.ok) {
           const body = (await saveRes.json().catch(() => null)) as { error?: string } | null;
@@ -290,23 +333,40 @@ export function useChatCvUpload({
         }
 
         const saveData = (await saveRes.json()) as { candidateId: string };
+
+        if (!isUploadCurrent(uploadId, controller)) {
+          return;
+        }
+
         const summary = buildCvSummaryMessage({
           candidateId: saveData.candidateId,
           duplicates,
           parsed,
         });
 
+        if (!isUploadCurrent(uploadId, controller)) {
+          return;
+        }
+
         setUploadState("success");
         setUploadMessage(`${parsed.name} ${summary.action}`);
-        onSendMessage({ text: summary.text });
+        onSendMessageRef.current({ text: summary.text });
         scheduleReset();
       } catch (error) {
+        if (!isUploadCurrent(uploadId, controller)) {
+          return;
+        }
+
         setUploadState("error");
         setUploadMessage(error instanceof Error ? error.message : "Upload mislukt");
         scheduleReset();
+      } finally {
+        if (activeUploadControllerRef.current === controller) {
+          activeUploadControllerRef.current = null;
+        }
       }
     },
-    [onSendMessage, scheduleReset],
+    [clearResetTimer, isUploadCurrent, scheduleReset],
   );
 
   useEffect(() => {
@@ -322,6 +382,7 @@ export function useChatCvUpload({
 
     if (uploadState === "uploading") {
       attachments.clear();
+      clearResetTimer();
       setUploadState("error");
       setUploadFileName(nextAttachment.filename ?? null);
       setUploadMessage("Er wordt al een CV geüpload. Wacht even tot deze upload klaar is.");
@@ -332,6 +393,7 @@ export function useChatCvUpload({
     attachments.clear();
 
     if (!(nextAttachment.file instanceof File)) {
+      clearResetTimer();
       setUploadState("error");
       setUploadFileName(nextAttachment.filename ?? null);
       setUploadMessage("Bestand kon niet worden gelezen. Probeer het opnieuw.");
@@ -340,16 +402,17 @@ export function useChatCvUpload({
     }
 
     void uploadCvFile(nextAttachment.file);
-  }, [attachments, scheduleReset, uploadCvFile, uploadState]);
+  }, [attachments, clearResetTimer, scheduleReset, uploadCvFile, uploadState]);
 
   const handlePromptInputError = useCallback(
     (error: PromptInputAttachmentError) => {
+      clearResetTimer();
       setUploadState("error");
       setUploadFileName(null);
       setUploadMessage(mapPromptInputError(error));
       scheduleReset();
     },
-    [scheduleReset],
+    [clearResetTimer, scheduleReset],
   );
 
   return {

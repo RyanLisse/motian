@@ -38,8 +38,10 @@ describe("chat prompt composer preset", () => {
     expect(summary.text).toContain("Boolean search, ATS, Stakeholdermanagement");
   });
 
-  it("accepts pdf/docx via extension fallback and keeps .doc explicitly unsupported", () => {
-    expect(validateCvUploadFile({ name: "resume.docx", size: 1024, type: "" })).toEqual({
+  it("accepts docx by extension before legacy Word mime fallback and keeps .doc unsupported", () => {
+    expect(
+      validateCvUploadFile({ name: "resume.docx", size: 1024, type: "application/msword" }),
+    ).toEqual({
       ok: true,
       mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
@@ -100,6 +102,7 @@ describe("chat prompt composer preset", () => {
     expect(source).toContain("ChatCvUploadStatusBanner");
     expect(source).toContain("accept={CV_UPLOAD_ACCEPT}");
     expect(source).toContain("globalDrop");
+    expect(source).toContain("{open ? (");
     expect(source).toContain("onClick={cvUpload.openFileDialog}");
     expect(source).not.toContain('type="file"');
   });

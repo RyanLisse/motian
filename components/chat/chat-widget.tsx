@@ -337,18 +337,20 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
           </div>
         </div>
 
-        {sessionId ? (
-          <ChatWidgetInner
-            key={sessionId}
-            ctx={activeContext}
-            sessionId={sessionId}
-            currentOrigin={currentOrigin}
-          />
-        ) : (
-          <div className="flex flex-1 items-center justify-center p-4">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        )}
+        {open ? (
+          sessionId ? (
+            <ChatWidgetInner
+              key={sessionId}
+              ctx={activeContext}
+              sessionId={sessionId}
+              currentOrigin={currentOrigin}
+            />
+          ) : (
+            <div className="flex flex-1 items-center justify-center p-4">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )
+        ) : null}
       </div>
     </>
   );
