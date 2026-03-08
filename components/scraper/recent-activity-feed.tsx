@@ -19,8 +19,8 @@ function formatActivityDate(value: Date | null) {
 
 export function RecentActivityFeed({ activities }: { activities: ScraperActivityItem[] }) {
   return (
-    <Card className="bg-card border-border">
-      <CardHeader>
+    <Card className="min-w-0 overflow-hidden bg-card border-border">
+      <CardHeader className="min-w-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <Clock4 className="h-4 w-4 text-muted-foreground" />
           Recente activiteit en logs
@@ -29,17 +29,20 @@ export function RecentActivityFeed({ activities }: { activities: ScraperActivity
           De nieuwste runs met status, aantallen en de laatste fout- of waarschuwingsmelding.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-w-0 overflow-hidden">
         {activities.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-8 text-sm text-muted-foreground">
             Nog geen activiteit zichtbaar.
           </div>
         ) : (
-          <ScrollArea className="max-h-[420px] pr-4">
-            <div className="space-y-3">
+          <ScrollArea className="w-full max-h-[420px] overflow-hidden [&>[data-slot=scroll-area-viewport]]:max-h-[420px]">
+            <div className="min-w-0 space-y-3 pr-4">
               {activities.map((activity) => (
-                <div key={activity.id} className="rounded-xl border border-border bg-muted/20 p-4">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div
+                  key={activity.id}
+                  className="min-w-0 rounded-xl border border-border bg-muted/20 p-4"
+                >
+                  <div className="min-w-0 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <PlatformBadge platform={activity.platform} className="text-[10px]" />
@@ -49,10 +52,14 @@ export function RecentActivityFeed({ activities }: { activities: ScraperActivity
                         </span>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-foreground">{activity.title}</p>
-                        <p className="text-xs text-muted-foreground">{activity.message}</p>
+                        <p className="break-words text-sm font-medium text-foreground">
+                          {activity.title}
+                        </p>
+                        <p className="break-words text-xs text-muted-foreground">
+                          {activity.message}
+                        </p>
                       </div>
-                      <p className="text-sm text-foreground">
+                      <p className="break-words text-sm text-foreground">
                         {activity.jobsFound} gevonden · {activity.jobsNew} nieuw ·{" "}
                         {activity.duplicates} bijgewerkt
                         {activity.skipped > 0 ? ` · ${activity.skipped} overgeslagen` : ""}
@@ -78,7 +85,7 @@ export function RecentActivityFeed({ activities }: { activities: ScraperActivity
 
                     <Link
                       href={activity.href}
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                      className="inline-flex shrink-0 items-center gap-1 text-xs text-primary hover:underline"
                     >
                       Run-details
                       <ArrowRight className="h-3 w-3" />
