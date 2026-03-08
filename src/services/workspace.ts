@@ -19,8 +19,8 @@ export async function getWorkspaceSummary(): Promise<WorkspaceSummary> {
   const [allCounts, health] = await Promise.all([
     db
       .select({
-        jobsTotal: sql<number>`(select count(*)::int from jobs where deleted_at is null)`,
-        jobsWithEmbedding: sql<number>`(select count(embedding)::int from jobs where deleted_at is null)`,
+        jobsTotal: sql<number>`(select count(*)::int from jobs)`,
+        jobsWithEmbedding: sql<number>`(select count(embedding)::int from jobs)`,
         candidatesTotal: sql<number>`(select count(*)::int from candidates where deleted_at is null)`,
         matchesTotal: sql<number>`(select count(*)::int from job_matches)`,
         matchesPending: sql<number>`(select count(*) filter (where status = 'pending')::int from job_matches)`,

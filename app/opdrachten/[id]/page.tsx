@@ -185,11 +185,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   const resolvedSearchParams = await searchParams;
 
   // Fetch current job
-  const rows = await db
-    .select()
-    .from(jobs)
-    .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
-    .limit(1);
+  const rows = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
 
   const job = rows[0] as typeof jobs.$inferSelect | undefined;
 
@@ -204,14 +200,14 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
         ? db
             .select()
             .from(jobs)
-            .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
+            .where(and(eq(jobs.status, "open"), ne(jobs.id, id), eq(jobs.company, job.company)))
             .orderBy(desc(jobs.scrapedAt))
             .limit(4)
         : Promise.resolve([]),
       db
         .select()
         .from(jobs)
-        .where(and(isNull(jobs.deletedAt), ne(jobs.id, id)))
+        .where(and(eq(jobs.status, "open"), ne(jobs.id, id)))
         .orderBy(desc(jobs.scrapedAt))
         .limit(4),
       // Pipeline counts per stage for this job

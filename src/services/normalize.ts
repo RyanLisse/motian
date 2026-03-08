@@ -102,6 +102,10 @@ export async function normalizeAndSaveJobs(
               categories: sql`excluded.categories`,
               companyAddress: sql`excluded.company_address`,
               scrapedAt: sql`now()`,
+              archivedAt: sql`case
+                when excluded.status = 'archived' then coalesce(${jobs.archivedAt}, ${jobs.deletedAt}, now())
+                else null
+              end`,
               deletedAt: sql`null`,
               rawPayload: sql`excluded.raw_payload`,
             },
