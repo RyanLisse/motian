@@ -102,6 +102,11 @@ graph TB
         THEME[Donker/Licht Thema]
     end
 
+    subgraph Integraties["🔁 Externe Integraties"]
+        FEED["/api/salesforce-feed<br/>Read-only XML export"]
+        SF[Salesforce]
+    end
+
     FX --> SC
     ST --> SC
     OO --> SC
@@ -128,6 +133,11 @@ graph TB
     VAD --> VLLM
     CHAT --> PAGES
     PAGES --> THEME
+
+    JOBS --> FEED
+    CAND --> FEED
+    APP --> FEED
+    FEED --> SF
 ```
 
 ### Dataflow — Van Scrape tot Zoeken
@@ -781,6 +791,8 @@ STRIIVE_PASSWORD=...
 
 # Beveiliging
 ENCRYPTION_KEY=...   # openssl rand -base64 32
+API_SECRET=...       # Bearer token voor externe API clients
+ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
 
 # Google AI (Gemini — CV parsing & verrijking)
 GOOGLE_GENERATIVE_AI_API_KEY=AIza...
@@ -802,6 +814,13 @@ SLACK_CHANNEL_ID=C0...
 LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=API...
 LIVEKIT_API_SECRET=...
+
+# Openbare API / docs base URL (optioneel, anders request-origin)
+PUBLIC_API_BASE_URL=http://localhost:3001
+
+# Externe host binding voor lokale dev/start
+HOSTNAME=0.0.0.0
+PORT=3001
 ```
 
 ### Database Opzet
@@ -817,7 +836,7 @@ pnpm db:generate
 ### Ontwikkeling
 
 ```bash
-# Dev server starten (poort 3001)
+# Dev server starten (poort 3001, extern bereikbaar via HOSTNAME)
 just dev
 # of
 pnpm dev
@@ -882,8 +901,14 @@ Voor een overzicht van alle Just-taken: `just --list`.
 
 Alle API routes gebruiken **Nederlandse padnamen**.
 
+- OpenAPI JSON: `/api/openapi`
+- Interactieve Scalar docs: `/api-docs`
+- Externe clients moeten een `Authorization: Bearer <API_SECRET>` header meesturen voor beschermde routes.
+- Cross-origin requests blijven allowlist-gebaseerd via `ALLOWED_ORIGINS`.
+
 | Endpoint                     | Methode   | Beschrijving                               |
 | ---------------------------- | --------- | ------------------------------------------ |
+| `/api/openapi`               | GET       | OpenAPI JSON documentatie                  |
 | `/api/chat`                  | POST      | AI chat streaming (Vercel AI SDK)          |
 | `/api/opdrachten`            | GET/POST  | Vacatures ophalen/aanmaken                 |
 | `/api/opdrachten/[id]`       | GET/PATCH | Vacature ophalen/bijwerken                 |
@@ -905,9 +930,24 @@ Alle API routes gebruiken **Nederlandse padnamen**.
 | `/api/revalidate`            | POST      | Cache hervalidatie                         |
 | `/api/cv-file`               | GET       | CV bestand ophalen                         |
 | `/api/cv-upload`             | POST      | CV bestand uploaden naar Vercel Blob       |
+| `/api/salesforce-feed`       | GET       | Read-only XML export voor Salesforce pull-integraties |
 | `/api/embeddings/backfill`   | POST      | Ontbrekende embeddings genereren           |
 | `/api/events`                | GET       | SSE event stream                           |
 | `/api/reports`               | GET       | Platform rapporten genereren               |
+
+Open `/api-docs` in de hoofdapp voor interactieve API-documentatie op basis van Scalar.
+
+---
+
+## Salesforce XML Feed
+
+Motian publiceert een live **read-only XML feed** voor **pull-based Salesforce integraties** op `https://motian.vercel.app/api/salesforce-feed`. Dit is een **custom XML export**, geen OData endpoint.
+
+- **Standaard entity**: `applications`
+- **Ondersteunde entities**: `applications`, `jobs`, `candidates`
+- **Ondersteunde query params**: `entity`, `id`, `updatedSince`, `status`, `page`, `limit`
+- **Salesforce object mapping**: `Application__c`, `Job__c`, `Candidate__c`
+- **Authenticatie**: de route hergebruikt de gedeelde `/api/*` bearer auth via `API_SECRET`, maar productie lijkt momenteel publiek bereikbaar omdat `API_SECRET` daar waarschijnlijk niet is ingesteld
 
 ---
 
