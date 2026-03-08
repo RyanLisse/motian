@@ -2,6 +2,8 @@ import { desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs, scrapeResults } from "../db/schema";
 
+type ScrapeResultsReader = Pick<typeof db, "select">;
+
 // ========== Types ==========
 
 export type ScrapeResult = typeof scrapeResults.$inferSelect;
@@ -143,9 +145,9 @@ export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeRe
 }
 
 /** Bereken analytics per platform over alle scrape resultaten */
-export async function getAnalytics(): Promise<ScrapeAnalytics> {
+export async function getAnalytics(database: ScrapeResultsReader = db): Promise<ScrapeAnalytics> {
   const [rows, uniqueJobsResult, overallDuration] = await Promise.all([
-    db
+    database
       .select({
         platform: scrapeResults.platform,
         totalRuns: sql<number>`count(*)::int`,
@@ -159,11 +161,11 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
       })
       .from(scrapeResults)
       .groupBy(scrapeResults.platform),
-    db
+    database
       .select({ count: sql<number>`count(*)::int` })
       .from(jobs)
       .where(sql`${jobs.deletedAt} is null`),
-    db
+    database
       .select({
         avgMs: sql<number>`(coalesce(round(avg(${scrapeResults.durationMs})), 0))::int`,
       })
@@ -204,6 +206,7 @@ export async function getAnalytics(): Promise<ScrapeAnalytics> {
 
 export async function getTimeSeriesAnalytics(
   opts: GetTimeSeriesOptions = {},
+  database: ScrapeResultsReader = db,
 ): Promise<TimeSeriesPoint[]> {
   const now = new Date();
   const startDate = opts.startDate ?? new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -220,7 +223,7 @@ export async function getTimeSeriesAnalytics(
     conditions.push(sql`${scrapeResults.platform} = ${opts.platform}`);
   }
 
-  const rows = await db
+  const rows = await database
     .select({
       date: sql<string>`date_trunc('${sql.raw(truncFn)}', ${scrapeResults.runAt})::date::text`,
       platform: scrapeResults.platform,

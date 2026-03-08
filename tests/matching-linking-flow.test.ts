@@ -3,11 +3,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 // ── Schema imports ───────────────────────────────────────────────
 import { jobMatches } from "../src/db/schema.js";
-// ── Service imports (no Next.js dependency) ─────────────────────
 import {
   createOrReuseApplicationForMatch,
   getApplicationByJobAndCandidate,
 } from "../src/services/applications.js";
+// ── Service imports (no Next.js dependency) ─────────────────────
 import {
   createMatch,
   getMatchByJobAndCandidate,

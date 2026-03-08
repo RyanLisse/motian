@@ -792,7 +792,7 @@ STRIIVE_PASSWORD=...
 # Beveiliging
 ENCRYPTION_KEY=...   # openssl rand -base64 32
 API_SECRET=...       # Bearer token voor externe API clients
-ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
+ALLOWED_ORIGINS=http://localhost:3002,http://127.0.0.1:3002
 
 # Google AI (Gemini — CV parsing & verrijking)
 GOOGLE_GENERATIVE_AI_API_KEY=AIza...
@@ -816,11 +816,11 @@ LIVEKIT_API_KEY=API...
 LIVEKIT_API_SECRET=...
 
 # Openbare API / docs base URL (optioneel, anders request-origin)
-PUBLIC_API_BASE_URL=http://localhost:3001
+PUBLIC_API_BASE_URL=http://localhost:3002
 
 # Externe host binding voor lokale dev/start
 HOSTNAME=0.0.0.0
-PORT=3001
+PORT=3002
 ```
 
 ### Database Opzet
@@ -836,7 +836,7 @@ pnpm db:generate
 ### Ontwikkeling
 
 ```bash
-# Dev server starten (poort 3001, extern bereikbaar via HOSTNAME)
+# Dev server starten (standaard poort 3002, extern bereikbaar via HOSTNAME; override met PORT)
 just dev
 # of
 pnpm dev
@@ -878,7 +878,7 @@ just lint-fix            # Biome lint met auto-fix
 just typecheck           # TypeScript controle
 
 # Browserverificatie (optioneel; vereist agent-browser CLI)
-# agent-browser open http://localhost:3001/ && agent-browser snapshot -i
+# agent-browser open http://localhost:3002/ && agent-browser snapshot -i
 
 # Metrics en benchmarks (zie docs/metrics/README.md)
 just baseline-metrics    # Baseline vastleggen (buildtijd, env)
