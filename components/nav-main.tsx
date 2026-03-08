@@ -25,6 +25,7 @@ export function NavMain({
     icon?: LucideIcon;
     isActive?: boolean;
     badge?: { text: string; variant: string };
+    tooltip?: string;
     items?: { title: string; url: string }[];
   }[];
 }) {
@@ -47,7 +48,7 @@ export function NavMain({
               >
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
-                    <SidebarMenuButton tooltip={item.title} isActive={isActive}>
+                    <SidebarMenuButton tooltip={item.tooltip ?? item.title} isActive={isActive}>
                       {item.icon && <item.icon />}
                       <span>{item.title}</span>
                       {item.badge && (
@@ -78,7 +79,7 @@ export function NavMain({
 
           return (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
+              <SidebarMenuButton asChild tooltip={item.tooltip ?? item.title} isActive={isActive}>
                 <Link href={item.url}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>

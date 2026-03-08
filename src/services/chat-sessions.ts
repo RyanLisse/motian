@@ -77,6 +77,7 @@ function getSafeMetadata(metadata: unknown): Record<string, unknown> {
   if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
     return metadata as Record<string, unknown>;
   }
+
   return {};
 }
 
@@ -111,6 +112,7 @@ function getMessageText(message: UIMessage): string {
 
 export function getLastUserPreview(messages: UIMessage[]): string | null {
   const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
+
   if (!lastUserMessage) return null;
 
   const preview = getMessageText(lastUserMessage).slice(0, 100).trim();
@@ -144,9 +146,11 @@ export function decodeSessionListCursor(cursor?: string | null): SessionListCurs
     const parsed = JSON.parse(
       Buffer.from(cursor, "base64url").toString("utf8"),
     ) as SessionListCursor;
+
     if (typeof parsed.updatedAt !== "string" || typeof parsed.sessionId !== "string") {
       return null;
     }
+
     return parsed;
   } catch {
     return null;
@@ -163,7 +167,7 @@ export function decodeMessageCursor(cursor?: string | null): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
-function isMissingChatSessionMessagesRelationError(error: unknown): boolean {
+export function isChatSessionMessagesTableMissing(error: unknown): boolean {
   if (!error || typeof error !== "object") {
     return false;
   }
@@ -171,10 +175,13 @@ function isMissingChatSessionMessagesRelationError(error: unknown): boolean {
   const code = "code" in error ? error.code : undefined;
   const relation = "relation" in error ? error.relation : undefined;
   const message = "message" in error && typeof error.message === "string" ? error.message : "";
+  const cause = "cause" in error ? error.cause : undefined;
 
   return (
-    code === POSTGRES_MISSING_RELATION_ERROR_CODE &&
-    (relation === CHAT_SESSION_MESSAGES_TABLE || message.includes(CHAT_SESSION_MESSAGES_TABLE))
+    (code === POSTGRES_MISSING_RELATION_ERROR_CODE &&
+      (relation === CHAT_SESSION_MESSAGES_TABLE ||
+        message.includes(CHAT_SESSION_MESSAGES_TABLE))) ||
+    (cause ? isChatSessionMessagesTableMissing(cause) : false)
   );
 }
 
@@ -191,7 +198,7 @@ async function withChatSessionMessageCompatibility<T>(
     chatSessionMessagesMode = "normalized";
     return result;
   } catch (error) {
-    if (!isMissingChatSessionMessagesRelationError(error)) {
+    if (!isChatSessionMessagesTableMissing(error)) {
       throw error;
     }
 
@@ -295,6 +302,7 @@ async function migrateLegacySessionMessagesToNormalizedStore(sessionId: string) 
 
 function toPersistedMessage(message: unknown, orderIndex: number): UIMessage {
   const normalized = message as UIMessage & { metadata?: unknown };
+
   return {
     ...normalized,
     metadata: {
@@ -304,9 +312,6 @@ function toPersistedMessage(message: unknown, orderIndex: number): UIMessage {
   };
 }
 
-// ========== Service Functions ==========
-
-/** Recente chat sessies ophalen, cursor-paginated op laatst bijgewerkt. */
 export async function listSessions(options?: {
   limit?: number;
   cursor?: string | null;
@@ -572,7 +577,6 @@ export async function incrementSessionTokens(sessionId: string, delta: number) {
     .where(eq(chatSessions.sessionId, sessionId));
 }
 
-/** Eén chat sessie ophalen op sessionId, inclusief een lazy-loaded berichtenpagina. */
 export async function getSession(
   sessionId: string,
   options?: { limit?: number; cursor?: string | null },
@@ -648,7 +652,6 @@ export async function getSession(
   );
 }
 
-/** Chat sessie verwijderen op sessionId. Geeft true als verwijderd. */
 export async function deleteSession(sessionId: string): Promise<boolean> {
   const result = await withChatSessionMessageCompatibility(
     async () => {

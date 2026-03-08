@@ -46,9 +46,11 @@ export type ChatSuggestion = {
   toneClassName: string;
 };
 
+type ChatMessagesStatus = ChatStatus | "submitted" | "streaming" | "ready" | "error";
+
 type Props = {
   messages: UIMessage[];
-  status: ChatStatus;
+  status: ChatMessagesStatus;
   currentOrigin?: string | null;
   onSuggestion?: (text: string) => void;
   hasOlderMessages?: boolean;
