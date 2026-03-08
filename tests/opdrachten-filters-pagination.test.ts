@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  applyOpdrachtenFilterOverrides,
+  buildOpdrachtenFilterHref,
+} from "../src/lib/opdrachten-filter-url";
+import {
   DEFAULT_OPDRACHTEN_LIMIT,
   getHoursRangeForBucket,
   getOpdrachtenServiceSort,
@@ -135,14 +139,64 @@ describe("Opdrachten shared filter parsing", () => {
   });
 });
 
+describe("Opdrachten filter URL helpers", () => {
+  it("preserves endClient params while clearing pagination aliases on detail routes", () => {
+    const href = buildOpdrachtenFilterHref(
+      "/opdrachten/job-123",
+      new URLSearchParams("q=java&page=2&perPage=25&endClient=Gemeente%20Utrecht"),
+      { endClient: "Gemeente Amsterdam", pagina: "1" },
+    );
+    const url = new URL(href, "http://localhost");
+
+    expect(url.pathname).toBe("/opdrachten/job-123");
+    expect(url.searchParams.get("q")).toBe("java");
+    expect(url.searchParams.get("endClient")).toBe("Gemeente Amsterdam");
+    expect(url.searchParams.get("pagina")).toBe("1");
+    expect(url.searchParams.get("page")).toBeNull();
+    expect(url.searchParams.get("perPage")).toBe("25");
+  });
+
+  it("removes the endClient filter cleanly when all clients are selected", () => {
+    const href = buildOpdrachtenFilterHref(
+      "/opdrachten",
+      new URLSearchParams("endClient=Gemeente%20Utrecht&sort=deadline_desc"),
+      { endClient: "" },
+    );
+    const url = new URL(href, "http://localhost");
+
+    expect(url.pathname).toBe("/opdrachten");
+    expect(url.searchParams.get("endClient")).toBeNull();
+    expect(url.searchParams.get("sort")).toBe("deadline_desc");
+  });
+
+  it("trims and deduplicates override values before building the next URL", () => {
+    const nextParams = applyOpdrachtenFilterOverrides(new URLSearchParams("page=3&region=zuid"), {
+      endClient: "  Gemeente Utrecht  ",
+      regio: [" randstad ", "", "randstad", " noord "],
+      pagina: " 1 ",
+    });
+
+    expect(nextParams.get("endClient")).toBe("Gemeente Utrecht");
+    expect(nextParams.getAll("regio")).toEqual(["randstad", "noord"]);
+    expect(nextParams.get("pagina")).toBe("1");
+    expect(nextParams.get("page")).toBeNull();
+    expect(nextParams.get("region")).toBeNull();
+  });
+});
+
 describe("Opdrachten UI/API contracts", () => {
   it("sidebar exposes enhanced recruiter filters and URL-backed sorting", () => {
     const source = readFile("components", "opdrachten-sidebar.tsx");
     const normalizedSource = source.replace(/\s+/g, " ");
     const filtersSource = readFile("src", "lib", "opdrachten-filters.ts");
+    const filterUrlSource = readFile("src", "lib", "opdrachten-filter-url.ts");
+    const comboboxSource = readFile("components", "ui", "searchable-combobox.tsx");
 
     expect(source).toContain('placeholder="Platform"');
-    expect(source).toContain('placeholder="Eindopdrachtgever"');
+    expect(source).toContain("SearchableCombobox");
+    expect(source).toContain('searchPlaceholder="Zoek eindopdrachtgever..."');
+    expect(source).toContain('clearLabel="Alle eindopdrachtgevers"');
+    expect(source).toContain('triggerId="opdrachten-eindopdrachtgever"');
     expect(source).toContain('placeholder="Sortering"');
     expect(source).toContain("CompactMultiSelectFilter");
     expect(source).toContain("FilterChecklist");
@@ -169,12 +223,29 @@ describe("Opdrachten UI/API contracts", () => {
     expect(source).toContain('params.append("vakgebied", vakgebied);');
     expect(source).toContain('params.set("urenPerWeekMin", urenPerWeekMin)');
     expect(source).toContain('params.set("urenPerWeekMax", urenPerWeekMax)');
+    expect(source).toContain("buildOpdrachtenFilterHref");
+    expect(filterUrlSource).toContain('pagina: ["page"]');
     expect(source).toContain(
       `Straal wordt toegepast vanaf \${provinceAnchor.label} (\${provinceAnchor.province}).`,
     );
     expect(source).toContain('searchParams.get("page")');
     expect(source).toContain('searchParams.get("perPage")');
     expect(source).toContain("DEFAULT_OPDRACHTEN_LIMIT");
+    expect(comboboxSource).toContain("id={triggerId}");
+    expect(comboboxSource).toContain('aria-haspopup="listbox"');
+  });
+
+  it("detail page wires a shared end-client combobox into the existing context-aware navigation", () => {
+    const detailPage = readFile("app", "opdrachten", "[id]", "page.tsx");
+    const detailFilter = readFile("components", "opdracht-detail-end-client-filter.tsx");
+
+    expect(detailPage).toContain("OpdrachtDetailEndClientFilter");
+    expect(detailPage).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
+    expect(detailPage).toContain("groupBy(persistedEndClient)");
+    expect(detailFilter).toContain("SearchableCombobox");
+    expect(detailFilter).toContain('searchPlaceholder="Zoek eindopdrachtgever..."');
+    expect(detailFilter).toContain("Open gefilterde lijst");
+    expect(detailFilter).toContain("buildOpdrachtenFilterHref");
   });
 
   it("API routes consume the shared opdrachten parser and preserve pagination response shape", () => {
@@ -228,7 +299,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(shell).toContain("contents md:flex");
     expect(sidebar).toContain("const buildDetailHref = (jobId: string)");
     expect(sidebar).toContain("href={buildDetailHref(job.id)}");
-    expect(sidebar).toContain('pathname.startsWith("/opdrachten/") ? pathname : "/opdrachten"');
+    expect(sidebar).toContain("getOpdrachtenBasePath(pathname)");
     expect(sidebar).toContain("deadlines vragen aandacht");
     expect(listItem).toContain("href?: string");
     expect(listItem).toContain(`const detailHref = href ?? \`/opdrachten/\${job.id}\``);
