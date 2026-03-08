@@ -61,7 +61,7 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - Biome for linting/formatting (NOT eslint/prettier)
 
 ## Build Commands
-- `pnpm dev` - Start Next.js dev server (port 3001)
+- `pnpm dev` - Start Next.js dev server (port 3002 by default; override with `PORT`)
 - `pnpm test` - Run tests
 - `pnpm test:coverage` - Run tests with coverage
 - `pnpm lint` - Biome lint check

@@ -335,6 +335,7 @@ export interface PromptInputMessage {
 }
 
 export type PromptInputProps = Omit<HTMLAttributes<HTMLFormElement>, "onSubmit" | "onError"> & {
+  allowAttachments?: boolean;
   // e.g., "image/*" or leave undefined for any
   accept?: string;
   multiple?: boolean;
@@ -354,6 +355,7 @@ export type PromptInputProps = Omit<HTMLAttributes<HTMLFormElement>, "onSubmit" 
 };
 
 export const PromptInput = ({
+  allowAttachments = true,
   className,
   accept,
   multiple,
@@ -516,28 +518,70 @@ export const PromptInput = ({
     [matchesAccept, maxFileSize, maxFiles, onError, files.length, controller],
   );
 
-  const clearAttachments = useCallback(
-    () =>
-      usingProvider
-        ? controller?.attachments.clear()
-        : setItems((prev) => {
-            for (const file of prev) {
-              if (file.url) {
-                URL.revokeObjectURL(file.url);
-              }
-            }
-            return [];
-          }),
-    [usingProvider, controller],
-  );
+  const clearAttachments = useCallback(() => {
+    if (!allowAttachments) {
+      return;
+    }
+
+    if (usingProvider) {
+      controller?.attachments.clear();
+      return;
+    }
+
+    setItems((prev) => {
+      for (const file of prev) {
+        if (file.url) {
+          URL.revokeObjectURL(file.url);
+        }
+      }
+      return [];
+    });
+  }, [allowAttachments, usingProvider, controller]);
 
   const clearReferencedSources = useCallback(() => setReferencedSources([]), []);
 
-  const add = usingProvider ? addWithProviderValidation : addLocal;
-  const remove = usingProvider ? controller.attachments.remove : removeLocal;
-  const openFileDialog = usingProvider
-    ? controller.attachments.openFileDialog
-    : openFileDialogLocal;
+  const add = useCallback(
+    (fileList: File[] | FileList) => {
+      if (!allowAttachments) {
+        return;
+      }
+
+      if (usingProvider) {
+        addWithProviderValidation(fileList);
+        return;
+      }
+
+      addLocal(fileList);
+    },
+    [allowAttachments, usingProvider, addWithProviderValidation, addLocal],
+  );
+  const remove = useCallback(
+    (id: string) => {
+      if (!allowAttachments) {
+        return;
+      }
+
+      if (usingProvider) {
+        controller?.attachments.remove(id);
+        return;
+      }
+
+      removeLocal(id);
+    },
+    [allowAttachments, usingProvider, controller, removeLocal],
+  );
+  const openFileDialog = useCallback(() => {
+    if (!allowAttachments) {
+      return;
+    }
+
+    if (usingProvider) {
+      controller?.attachments.openFileDialog();
+      return;
+    }
+
+    openFileDialogLocal();
+  }, [allowAttachments, usingProvider, controller, openFileDialogLocal]);
 
   const clear = useCallback(() => {
     clearAttachments();
@@ -546,22 +590,30 @@ export const PromptInput = ({
 
   // Let provider know about our hidden file input so external menus can call openFileDialog()
   useEffect(() => {
-    if (!usingProvider) {
+    if (!usingProvider || !allowAttachments) {
       return;
     }
     controller.__registerFileInput(inputRef, () => inputRef.current?.click());
-  }, [usingProvider, controller]);
+  }, [allowAttachments, usingProvider, controller]);
 
   // Note: File input cannot be programmatically set for security reasons
   // The syncHiddenInput prop is no longer functional
   useEffect(() => {
+    if (!allowAttachments) {
+      return;
+    }
+
     if (syncHiddenInput && inputRef.current && files.length === 0) {
       inputRef.current.value = "";
     }
-  }, [files, syncHiddenInput]);
+  }, [allowAttachments, files, syncHiddenInput]);
 
   // Attach drop handlers on nearest form and document (opt-in)
   useEffect(() => {
+    if (!allowAttachments) {
+      return;
+    }
+
     const form = formRef.current;
     if (!form) {
       return;
@@ -590,10 +642,10 @@ export const PromptInput = ({
       form.removeEventListener("dragover", onDragOver);
       form.removeEventListener("drop", onDrop);
     };
-  }, [add, globalDrop]);
+  }, [allowAttachments, add, globalDrop]);
 
   useEffect(() => {
-    if (!globalDrop) {
+    if (!allowAttachments || !globalDrop) {
       return;
     }
 
@@ -616,7 +668,7 @@ export const PromptInput = ({
       document.removeEventListener("dragover", onDragOver);
       document.removeEventListener("drop", onDrop);
     };
-  }, [add, globalDrop]);
+  }, [allowAttachments, add, globalDrop]);
 
   useEffect(
     () => () => {
@@ -648,11 +700,11 @@ export const PromptInput = ({
       add,
       clear: clearAttachments,
       fileInputRef: inputRef,
-      files: files.map((item) => ({ ...item, id: item.id })),
+      files: allowAttachments ? files.map((item) => ({ ...item, id: item.id })) : [],
       openFileDialog,
       remove,
     }),
-    [files, add, remove, clearAttachments, openFileDialog],
+    [allowAttachments, files, add, remove, clearAttachments, openFileDialog],
   );
 
   const refsCtx = useMemo<ReferencedSourcesContext>(
@@ -690,19 +742,21 @@ export const PromptInput = ({
 
       try {
         // Convert blob URLs to data URLs asynchronously
-        const convertedFiles: FileUIPart[] = await Promise.all(
-          files.map(async ({ id: _id, ...item }) => {
-            if (item.url?.startsWith("blob:")) {
-              const dataUrl = await convertBlobUrlToDataUrl(item.url);
-              // If conversion failed, keep the original blob URL
-              return {
-                ...item,
-                url: dataUrl ?? item.url,
-              };
-            }
-            return item;
-          }),
-        );
+        const convertedFiles: FileUIPart[] = allowAttachments
+          ? await Promise.all(
+              files.map(async ({ id: _id, ...item }) => {
+                if (item.url?.startsWith("blob:")) {
+                  const dataUrl = await convertBlobUrlToDataUrl(item.url);
+                  // If conversion failed, keep the original blob URL
+                  return {
+                    ...item,
+                    url: dataUrl ?? item.url,
+                  };
+                }
+                return item;
+              }),
+            )
+          : [];
 
         const result = onSubmit({ files: convertedFiles, text }, event);
 
@@ -728,22 +782,24 @@ export const PromptInput = ({
         // Don't clear on error - user may want to retry
       }
     },
-    [usingProvider, controller, files, onSubmit, clear],
+    [allowAttachments, usingProvider, controller, files, onSubmit, clear],
   );
 
   // Render with or without local provider
   const inner = (
     <>
-      <input
-        accept={accept}
-        aria-label="Upload files"
-        className="hidden"
-        multiple={multiple}
-        onChange={handleChange}
-        ref={inputRef}
-        title="Upload files"
-        type="file"
-      />
+      {allowAttachments ? (
+        <input
+          accept={accept}
+          aria-label="Upload files"
+          className="hidden"
+          multiple={multiple}
+          onChange={handleChange}
+          ref={inputRef}
+          title="Upload files"
+          type="file"
+        />
+      ) : null}
       <form className={cn("w-full", className)} onSubmit={handleSubmit} ref={formRef} {...props}>
         <InputGroup className="overflow-hidden border-none bg-transparent shadow-none focus-within:ring-0">
           {children}
@@ -772,9 +828,12 @@ export const PromptInputBody = ({ className, ...props }: PromptInputBodyProps) =
   <div className={cn("contents", className)} {...props} />
 );
 
-export type PromptInputTextareaProps = ComponentProps<typeof InputGroupTextarea>;
+export type PromptInputTextareaProps = ComponentProps<typeof InputGroupTextarea> & {
+  allowAttachments?: boolean;
+};
 
 export const PromptInputTextarea = ({
+  allowAttachments = true,
   onChange,
   onKeyDown,
   className,
@@ -817,7 +876,12 @@ export const PromptInputTextarea = ({
       }
 
       // Remove last attachment when Backspace is pressed and textarea is empty
-      if (e.key === "Backspace" && e.currentTarget.value === "" && attachments.files.length > 0) {
+      if (
+        allowAttachments &&
+        e.key === "Backspace" &&
+        e.currentTarget.value === "" &&
+        attachments.files.length > 0
+      ) {
         e.preventDefault();
         const lastAttachment = attachments.files.at(-1);
         if (lastAttachment) {
@@ -825,11 +889,15 @@ export const PromptInputTextarea = ({
         }
       }
     },
-    [onKeyDown, isComposing, attachments],
+    [allowAttachments, onKeyDown, isComposing, attachments],
   );
 
   const handlePaste: ClipboardEventHandler<HTMLTextAreaElement> = useCallback(
     (event) => {
+      if (!allowAttachments) {
+        return;
+      }
+
       const items = event.clipboardData?.items;
 
       if (!items) {
@@ -852,7 +920,7 @@ export const PromptInputTextarea = ({
         attachments.add(files);
       }
     },
-    [attachments],
+    [allowAttachments, attachments],
   );
 
   const handleCompositionEnd = useCallback(() => setIsComposing(false), []);

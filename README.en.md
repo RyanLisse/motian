@@ -796,7 +796,7 @@ X_AI_API_KEY=xai-...
 # Security
 ENCRYPTION_KEY=...   # openssl rand -base64 32
 API_SECRET=...       # Bearer token for external API clients
-ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
+ALLOWED_ORIGINS=http://localhost:3002,http://127.0.0.1:3002
 
 # Sentry (error tracking)
 SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
@@ -814,11 +814,11 @@ LIVEKIT_API_KEY=API...
 LIVEKIT_API_SECRET=...
 
 # Public API / docs base URL (optional, otherwise request origin)
-PUBLIC_API_BASE_URL=http://localhost:3001
+PUBLIC_API_BASE_URL=http://localhost:3002
 
 # External host binding for local dev/start
 HOSTNAME=0.0.0.0
-PORT=3001
+PORT=3002
 ```
 
 ### Database Setup
@@ -834,7 +834,7 @@ pnpm db:generate
 ### Development
 
 ```bash
-# Start dev server (port 3001, externally reachable via HOSTNAME)
+# Start dev server (default port 3002, externally reachable via HOSTNAME; override with PORT)
 just dev
 # or
 pnpm dev
@@ -876,7 +876,7 @@ just lint-fix             # Biome lint with auto-fix
 just typecheck            # TypeScript check
 
 # Browser verification (optional; requires agent-browser CLI)
-# agent-browser open http://localhost:3001/ && agent-browser snapshot -i
+# agent-browser open http://localhost:3002/ && agent-browser snapshot -i
 
 # Metrics and benchmarks (see docs/metrics/README.md)
 just baseline-metrics     # Record baseline (build time, env)
