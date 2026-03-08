@@ -31,7 +31,7 @@ const PAGE_TARGETS: PageTarget[] = [
   { path: "/overzicht", slug: "overzicht" },
   { path: "/opdrachten", slug: "opdrachten" },
   { path: "/professionals", slug: "professionals" },
-  { path: "/matching", slug: "matching" },
+  { path: "/pipeline", slug: "pipeline" },
 ];
 
 // ---------------------------------------------------------------------------

@@ -62,8 +62,9 @@ export const POST = withApiHandler(async (request: Request) => {
 
   const result = await intakeCandidate(parsed.data);
 
-  revalidatePath("/matching");
   revalidatePath("/professionals");
+  revalidatePath("/opdrachten");
+  revalidatePath("/overzicht");
   revalidatePath(`/professionals/${result.candidate.id}`);
 
   return Response.json(result, {

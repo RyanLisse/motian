@@ -222,49 +222,25 @@ describe("structured-matching.ts imports", () => {
 // Pipeline wiring in actions.ts
 // ============================================================
 describe("actions.ts pipeline wiring", () => {
-  it("imports both extractRequirements and runStructuredMatch", () => {
-    const source = readFile("app/matching/actions.ts");
-    expect(source).toContain("extractRequirements");
-    expect(source).toContain("runStructuredMatch");
+  it("delegates the structured workflow to the shared review service", () => {
+    const source = readFile("src/actions/match-review.ts");
+    expect(source).toContain("runStructuredMatchReview(jobId, candidateId)");
+    expect(source).toContain("revalidateStructuredMatchViews");
   });
 
-  it("calls extractRequirements before runStructuredMatch in runStructuredMatchAction", () => {
-    const source = readFile("app/matching/actions.ts");
-    const extractPos = source.indexOf("extractRequirements");
-    const matchPos = source.indexOf("runStructuredMatch");
-    expect(extractPos).toBeGreaterThan(-1);
-    expect(matchPos).toBeGreaterThan(-1);
-    expect(extractPos).toBeLessThan(matchPos);
-  });
-
-  it("stores assessmentModel as marienne-v1", () => {
-    const source = readFile("app/matching/actions.ts");
-    expect(source).toContain('"marienne-v1"');
-  });
-
-  it("stores criteriaBreakdown from match result", () => {
-    const source = readFile("app/matching/actions.ts");
+  it("routes the persisted Marienne fields through the shared review service", () => {
+    const source = readFile("src/services/structured-match-review.ts");
+    expect(source).toContain("assessmentModel: STRUCTURED_MATCH_MODEL");
     expect(source).toContain("criteriaBreakdown");
-  });
-
-  it("stores riskProfile from match result", () => {
-    const source = readFile("app/matching/actions.ts");
     expect(source).toContain("riskProfile");
-  });
-
-  it("stores enrichmentSuggestions from match result", () => {
-    const source = readFile("app/matching/actions.ts");
     expect(source).toContain("enrichmentSuggestions");
-  });
-
-  it("stores recommendation from match result", () => {
-    const source = readFile("app/matching/actions.ts");
     expect(source).toContain("recommendation");
+    expect(source).toContain("recommendationConfidence");
   });
 
-  it("stores recommendationConfidence from match result", () => {
-    const source = readFile("app/matching/actions.ts");
-    expect(source).toContain("recommendationConfidence");
+  it("keeps pipeline revalidation in the action-specific wrapper", () => {
+    const source = readFile("src/actions/match-review.ts");
+    expect(source).toContain("includePipeline: true");
   });
 });
 
@@ -273,24 +249,24 @@ describe("actions.ts pipeline wiring", () => {
 // ============================================================
 describe("match-detail.tsx recommendation type handling", () => {
   it("handles go recommendation type in recColors", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     // go is an unquoted object key in the source
     expect(source).toMatch(/go:\s*["']/);
   });
 
   it("handles no-go recommendation type in recColors", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain('"no-go"');
   });
 
   it("handles conditional recommendation type in recColors", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     // conditional is an unquoted object key in the source
     expect(source).toMatch(/conditional:\s*["']/);
   });
 
   it("maps go to Dutch label Doorgaan", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     const goLabelPos = source.indexOf("Doorgaan");
     // go appears as an unquoted key: "go:"
     const goKeyPos = source.indexOf("go:");
@@ -299,17 +275,17 @@ describe("match-detail.tsx recommendation type handling", () => {
   });
 
   it("maps no-go to Dutch label Niet doorgaan", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain("Niet doorgaan");
   });
 
   it("maps conditional to Dutch label Voorwaardelijk", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain("Voorwaardelijk");
   });
 
   it("renders process tier section (Proceseisen)", () => {
-    const source = readFile("app/matching/match-detail.tsx");
+    const source = readFile("components/matching/match-detail.tsx");
     expect(source).toContain("process");
     expect(source).toContain("Proceseisen");
   });

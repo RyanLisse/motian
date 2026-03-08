@@ -8,12 +8,13 @@ function readFile(...segments: string[]): string {
   return fs.readFileSync(path.join(ROOT, ...segments), "utf-8");
 }
 
-describe("candidate intake and matching inbox API routes", () => {
+describe("candidate intake and routing API routes", () => {
   it("manual intake route delegates to intakeCandidate", () => {
     const source = readFile("app/api/kandidaten/intake/route.ts");
     expect(source).toContain("intakeCandidate");
     expect(source).toContain("existingCandidateId");
-    expect(source).toContain("/matching");
+    expect(source).toContain('revalidatePath("/opdrachten")');
+    expect(source).toContain('revalidatePath("/overzicht")');
   });
 
   it("manual intake route preserves 404 for missing existing candidates", () => {

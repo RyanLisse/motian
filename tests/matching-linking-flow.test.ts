@@ -68,33 +68,41 @@ describe("Matching linking flow — schema structure", () => {
 });
 
 describe("Matching linking flow — structural assertions", () => {
-  it("actions.ts exports linkCandidateToJob", () => {
-    const source = readFile("app/matching/actions.ts");
+  it("shared match-linking action exports linkCandidateToJob", () => {
+    const source = readFile("src/actions/match-linking.ts");
     expect(source).toContain("export async function linkCandidateToJob");
   });
 
   it("linkCandidateToJob handles existing match (approve path)", () => {
-    const source = readFile("app/matching/actions.ts");
+    const source = readFile("src/actions/match-linking.ts");
     expect(source).toContain("getMatchByJobAndCandidate");
+    expect(source).toContain('updateMatchStatus(existing.id, "approved", "system")');
     expect(source).toContain("createOrReuseApplicationForMatch");
   });
 
   it("linkCandidateToJob handles new match (atomic insert as approved)", () => {
-    const source = readFile("app/matching/actions.ts");
-    expect(source).toContain("db.insert(jobMatches)");
+    const source = readFile("src/actions/match-linking.ts");
+    expect(source).toContain(".insert(jobMatches)");
     expect(source).toContain('"Handmatige koppeling"');
-    // Verify the insert includes status: "approved" directly — no intermediate pending state
     expect(source).toContain('status: "approved"');
     expect(source).toContain("createOrReuseApplicationForMatch");
   });
 
   it("linkCandidateToJob handles unique constraint race condition", () => {
-    const source = readFile("app/matching/actions.ts");
+    const source = readFile("src/actions/match-linking.ts");
     expect(source).toContain("uq_job_matches_job_candidate");
   });
 
-  it("actions.ts routes match approvals through the shared updateMatchStatus service", () => {
-    const source = readFile("app/matching/actions.ts");
+  it("shared match-linking action revalidates recruiter and candidate surfaces", () => {
+    const source = readFile("src/actions/match-linking.ts");
+    expect(source).toContain('revalidatePath("/professionals")');
+    expect(source).toContain('revalidatePath("/opdrachten")');
+    expect(source).toContain('revalidatePath("/pipeline")');
+    expect(source).toContain('revalidatePath("/overzicht")');
+  });
+
+  it("shared match-review action routes match approvals through the shared updateMatchStatus service", () => {
+    const source = readFile("src/actions/match-review.ts");
     expect(source).toContain('from "@/src/services/matches"');
     expect(source).toContain("updateMatchStatus as updateMatchRecordStatus");
     expect(source).toContain("updateMatchRecordStatus(matchId, status");
@@ -114,67 +122,20 @@ describe("Matching linking flow — structural assertions", () => {
     expect(source).toContain('status === "approved"');
   });
 
-  it("candidate-linker.tsx exports CandidateLinker component", () => {
-    const source = readFile("app/matching/candidate-linker.tsx");
-    expect(source).toContain("export function CandidateLinker");
-  });
-
-  it("candidate-linker.tsx calls linkCandidateToJob", () => {
-    const source = readFile("app/matching/candidate-linker.tsx");
-    expect(source).toContain("linkCandidateToJob");
-  });
-
-  it("matching page reads jobId from searchParams", () => {
-    const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("jobId");
-    expect(source).toContain("params.jobId");
-  });
-
-  it("matching page includes CandidateLinker import", () => {
-    const source = readFile("app/matching/page.tsx");
-    expect(source).toContain('import { CandidateLinker } from "./candidate-linker"');
-  });
-
-  it("matching page surfaces when a recommendation is already in pipeline", () => {
-    const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("applications");
-    expect(source).toContain("alreadyInPipeline");
-    expect(source).toContain("stageLabels");
-  });
-
-  it("matching page preserves jobId in filter hrefs via buildQs", () => {
-    const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("buildQs");
-    expect(source).toContain("jobId");
-  });
-
-  it("matching UI copy frames approval as adding a recommendation to pipeline", () => {
-    const source = readFile("app/matching/match-actions.tsx");
-    expect(source).toContain("Voeg toe aan pipeline");
-  });
-
-  it("manual linker copy indicates pipeline intake state", () => {
-    const source = readFile("app/matching/candidate-linker.tsx");
-    expect(source).toContain("pipeline");
-    expect(source).toContain("Al in pipeline");
-  });
-
-  it("matching page is candidate-centric with inbox status tabs", () => {
-    const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("matchingStatus");
-    expect(source).toContain("Open");
-    expect(source).toContain("In behandeling");
-    expect(source).toContain("Gekoppeld");
-    expect(source).toContain("Geen match");
-    expect(source).toContain("AddCandidateWizard");
-  });
-
-  it("matching page keeps report and detail surfaces on candidate cards", () => {
-    const source = readFile("app/matching/page.tsx");
+  it("candidate detail keeps report and structured detail surfaces inside the matches section", () => {
+    const source = readFile("app/professionals/[id]/page.tsx");
     expect(source).toContain("ReportButton");
     expect(source).toContain("MatchDetail");
-    expect(source).toContain("marienne-v1");
-    expect(source).toContain("criteriaBreakdown");
+    expect(source).toContain('<section id="matches">');
+  });
+
+  it("legacy matching route redirects job-scoped requests into vacancy detail anchors", () => {
+    const source = readFile("app/matching/page.tsx");
+    expect(source).toContain("jobId");
+    expect(source).toContain('tab === "grading"');
+    expect(source).toContain("#ai-grading");
+    expect(source).toContain("#recruiter-cockpit");
+    expect(source).toContain('redirect("/professionals")');
   });
 
   it("wizard linking supports explicit no-match persistence", () => {
@@ -196,9 +157,38 @@ describe("Matching linking flow — structural assertions", () => {
     expect(source).not.toContain(">Reageren<");
   });
 
-  it("opdracht detail CTA links to /matching with jobId", () => {
+  it("opdracht detail surfaces recruiter cockpit and grading anchors", () => {
     const source = readFile("app/opdrachten/[id]/page.tsx");
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing that template literal exists in source
-    expect(source).toContain("/matching?jobId=${job.id}");
+    expect(source).toContain('id="recruiter-cockpit"');
+    expect(source).toContain('id="ai-grading"');
+    expect(source).toContain("const gradingHref =");
+    expect(source).toContain("#ai-grading");
+    expect(source).toContain("AI Grading");
+  });
+
+  it("link candidates dialog points to recruiter cockpit and grading instead of standalone matching", () => {
+    const source = readFile("components/link-candidates-dialog.tsx");
+    expect(source).toContain("const recruiterCockpitHref =");
+    expect(source).toContain("const gradingHref =");
+    expect(source).toContain("#recruiter-cockpit");
+    expect(source).toContain("#ai-grading");
+    expect(source).toContain("Recruiter cockpit");
+    expect(source).toContain("AI Grading");
+    expect(source).not.toContain("/matching");
+  });
+
+  it("chat and auto-match UI route users back into candidate or vacancy context", () => {
+    const cardSource = readFile("components/chat/genui/match-card.tsx");
+    const autoMatchSource = readFile("components/auto-match-results.tsx");
+
+    expect(cardSource).toContain("#matches");
+    expect(cardSource).toContain("#recruiter-cockpit");
+    expect(cardSource).toContain("Open matchkansen →");
+    expect(cardSource).toContain("Open vacaturecontext →");
+    expect(cardSource).not.toContain("/matching");
+
+    expect(autoMatchSource).toContain("href={`/professionals/");
+    expect(autoMatchSource).toContain("#matches`}");
+    expect(autoMatchSource).toContain("Bekijk matchkansen");
   });
 });

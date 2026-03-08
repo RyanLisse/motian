@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import {
   ArrowRight,
+  Award,
   Calendar,
   Euro,
   ExternalLink,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AIGrading } from "@/components/ai-grading";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { LinkCandidatesDialog } from "@/components/link-candidates-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { db } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
+import { getGradedCandidates } from "@/src/services/grading";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -124,51 +127,53 @@ export default async function OpdrachtDetailPage({ params }: Props) {
   }
 
   // Fetch company-related jobs, generic related jobs, and pipeline data in parallel
-  const [companyRelated, genericRelated, pipelineCounts, recentPipelineRows] = await Promise.all([
-    job.company
-      ? db
-          .select()
-          .from(jobs)
-          .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
-          .orderBy(desc(jobs.scrapedAt))
-          .limit(4)
-      : Promise.resolve([]),
-    db
-      .select()
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), ne(jobs.id, id)))
-      .orderBy(desc(jobs.scrapedAt))
-      .limit(4),
-    // Pipeline counts per stage for this job
-    db
-      .select({
-        stage: applications.stage,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(applications)
-      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-      .groupBy(applications.stage),
-    // Recent linked candidates for this job
-    db
-      .select({
-        id: applications.id,
-        stage: applications.stage,
-        source: applications.source,
-        candidateId: candidates.id,
-        candidateName: candidates.name,
-        candidateRole: candidates.role,
-        candidateLocation: candidates.location,
-        matchScore: jobMatches.matchScore,
-        matchStatus: jobMatches.status,
-        createdAt: applications.createdAt,
-      })
-      .from(applications)
-      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
-      .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
-      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-      .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
-      .limit(4),
-  ]);
+  const [companyRelated, genericRelated, pipelineCounts, recentPipelineRows, gradedCandidates] =
+    await Promise.all([
+      job.company
+        ? db
+            .select()
+            .from(jobs)
+            .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
+            .orderBy(desc(jobs.scrapedAt))
+            .limit(4)
+        : Promise.resolve([]),
+      db
+        .select()
+        .from(jobs)
+        .where(and(isNull(jobs.deletedAt), ne(jobs.id, id)))
+        .orderBy(desc(jobs.scrapedAt))
+        .limit(4),
+      // Pipeline counts per stage for this job
+      db
+        .select({
+          stage: applications.stage,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(applications)
+        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+        .groupBy(applications.stage),
+      // Recent linked candidates for this job
+      db
+        .select({
+          id: applications.id,
+          stage: applications.stage,
+          source: applications.source,
+          candidateId: candidates.id,
+          candidateName: candidates.name,
+          candidateRole: candidates.role,
+          candidateLocation: candidates.location,
+          matchScore: jobMatches.matchScore,
+          matchStatus: jobMatches.status,
+          createdAt: applications.createdAt,
+        })
+        .from(applications)
+        .leftJoin(candidates, eq(applications.candidateId, candidates.id))
+        .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
+        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+        .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
+        .limit(4),
+      getGradedCandidates({ jobId: job.id, limit: 12 }),
+    ]);
 
   // Build pipeline summary
   // Pipeline stages: only active stages count toward totalPipeline.
@@ -187,7 +192,7 @@ export default async function OpdrachtDetailPage({ params }: Props) {
     if (stageDelta !== 0) return stageDelta;
     return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
   });
-  const matchingHref = `/matching?jobId=${job.id}`;
+  const gradingHref = `/opdrachten/${job.id}#ai-grading`;
   const pipelineHref = `/pipeline?vacature=${job.id}`;
   const nextPipelineAction =
     (stageCountMap.new ?? 0) > 0
@@ -563,7 +568,10 @@ export default async function OpdrachtDetailPage({ params }: Props) {
             </div>
 
             {/* Recruiter cockpit */}
-            <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+            <div
+              id="recruiter-cockpit"
+              className="bg-card border border-border rounded-lg p-4 space-y-4 scroll-mt-24"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -577,15 +585,25 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Zie direct wie gekoppeld is, welke fase aandacht vraagt en open meteen de juiste
-                    vervolgstap.
+                    Zie direct wie gekoppeld is, welke fase aandacht vraagt en open vanuit deze
+                    vacature meteen kandidaat-aanbevelingen, grading of de volgende vervolgstap.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Link href={matchingHref}>
+                  <LinkCandidatesDialog
+                    jobId={job.id}
+                    jobTitle={job.title}
+                    trigger={
+                      <Button variant="outline" size="sm" className="border-border">
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        AI aanbevelingen
+                      </Button>
+                    }
+                  />
+                  <Link href={gradingHref}>
                     <Button variant="outline" size="sm" className="border-border">
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Match kandidaten
+                      <Award className="h-4 w-4 mr-2" />
+                      AI Grading
                     </Button>
                   </Link>
                   <Link href={pipelineHref}>
@@ -764,6 +782,10 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               )}
             </div>
 
+            <section id="ai-grading" className="scroll-mt-24">
+              <AIGrading candidates={gradedCandidates} />
+            </section>
+
             {/* AI Summary */}
             <div className="bg-card border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -927,10 +949,10 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
             {/* Action buttons */}
             <div className="space-y-2">
-              <Link href={`/matching?jobId=${job.id}`} className="block w-full">
+              <Link href={gradingHref} className="block w-full">
                 <Button variant="outline" className="w-full border-border font-semibold h-10">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Match kandidaten
+                  <Award className="h-4 w-4 mr-2" />
+                  AI Grading
                 </Button>
               </Link>
               <LinkCandidatesDialog

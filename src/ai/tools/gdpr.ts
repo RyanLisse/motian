@@ -35,7 +35,8 @@ export const wisKandidaatData = tool({
     }
     const result = await eraseCandidateData(candidateId, "ai-agent");
     revalidatePath("/professionals");
-    revalidatePath("/matching");
+    revalidatePath("/opdrachten");
+    revalidatePath("/overzicht");
     revalidatePath("/pipeline");
     revalidatePath("/messages");
     publish("candidate:erased", { candidateId });

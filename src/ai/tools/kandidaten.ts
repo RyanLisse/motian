@@ -148,7 +148,9 @@ export const autoMatchKandidaat = tool({
       if (results.length === 0) {
         return { message: "Geen geschikte vacatures gevonden", matches: [] };
       }
-      revalidatePath("/matching");
+      revalidatePath("/professionals");
+      revalidatePath("/opdrachten");
+      revalidatePath("/overzicht");
       revalidatePath(`/professionals/${id}`);
       publish("match:created", { candidateId: id, count: results.length });
       return { total: results.length, matches: results };

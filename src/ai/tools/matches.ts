@@ -10,6 +10,23 @@ import {
   updateMatchStatus,
 } from "@/src/services/matches";
 
+function revalidateMatchViews(
+  match: { jobId?: string | null; candidateId?: string | null } | null,
+) {
+  revalidatePath("/professionals");
+  revalidatePath("/opdrachten");
+  revalidatePath("/pipeline");
+  revalidatePath("/overzicht");
+
+  if (match?.candidateId) {
+    revalidatePath(`/professionals/${match.candidateId}`);
+  }
+
+  if (match?.jobId) {
+    revalidatePath(`/opdrachten/${match.jobId}`);
+  }
+}
+
 export const zoekMatches = tool({
   description:
     "Zoek en filter matches tussen opdrachten en kandidaten. Gebruik dit om matches te vinden op basis van opdracht, kandidaat of status.",
@@ -53,8 +70,7 @@ export const keurMatchGoed = tool({
   execute: async ({ id, reviewedBy }) => {
     const match = await updateMatchStatus(id, "approved", reviewedBy);
     if (!match) return { error: "Match niet gevonden" };
-    revalidatePath("/matching");
-    revalidatePath(`/matching/${id}`);
+    revalidateMatchViews(match);
     publish("match:updated", { id, status: "approved" });
     return match;
   },
@@ -70,8 +86,7 @@ export const wijsMatchAf = tool({
   execute: async ({ id, reviewedBy }) => {
     const match = await updateMatchStatus(id, "rejected", reviewedBy);
     if (!match) return { error: "Match niet gevonden" };
-    revalidatePath("/matching");
-    revalidatePath(`/matching/${id}`);
+    revalidateMatchViews(match);
     publish("match:updated", { id, status: "rejected" });
     return match;
   },
@@ -100,7 +115,7 @@ export const maakMatchAan = tool({
         recommendation,
         model: "manual-agent",
       });
-      revalidatePath("/matching");
+      revalidateMatchViews(match);
       publish("match:created", { id: match.id, jobId, candidateId, matchScore });
       return match;
     } catch (err) {
@@ -120,9 +135,11 @@ export const verwijderMatch = tool({
     id: z.string().uuid().describe("UUID van de match om te verwijderen"),
   }),
   execute: async ({ id }) => {
+    const existing = await getMatchById(id);
+    if (!existing) return { error: "Match niet gevonden of kon niet worden verwijderd" };
     const success = await deleteMatch(id);
     if (!success) return { error: "Match niet gevonden of kon niet worden verwijderd" };
-    revalidatePath("/matching");
+    revalidateMatchViews(existing);
     publish("match:deleted", { id });
     return { success: true, message: "Match succesvol verwijderd" };
   },

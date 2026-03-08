@@ -18,10 +18,14 @@ import { EmploymentCard } from "@/components/candidate-profile/employment-card";
 import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
 import { OpenToOffersRing } from "@/components/candidate-profile/open-to-offers-ring";
 import { SkillsExperienceSection } from "@/components/candidate-profile/skills-experience-section";
+import { CandidateRecommendationPanel } from "@/components/candidate-recommendation-panel";
+import type { MatchSuggestionItem } from "@/components/candidate-wizard/types";
 import { CvDocumentViewerLazy } from "@/components/cv-document-viewer-lazy";
 import { CvDropZone } from "@/components/cv-drop-zone";
 import { DeleteCandidateButton } from "@/components/delete-candidate-button";
 import { EditCandidateFields } from "@/components/edit-candidate-fields";
+import { MatchDetail } from "@/components/matching/match-detail";
+import { ReportButton } from "@/components/matching/report-button";
 import { SkillsRadar } from "@/components/skills-radar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +35,7 @@ import {
   type StructuredSkills,
   structuredSkillsSchema,
 } from "@/src/schemas/candidate-intelligence";
+import type { CriterionResult } from "@/src/schemas/matching";
 
 export const dynamic = "force-dynamic";
 
@@ -282,7 +287,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         href: `/pipeline?vacature=${primaryActiveApplication.job.id}&fase=${primaryActiveApplication.application.stage}`,
         label: "Open fase",
       }
-    : { href: "/matching", label: "Bekijk matches" };
+    : { href: `/professionals/${candidate.id}#matches`, label: "Bekijk matchkansen" };
   const applicationStageCountMap: Record<string, number> = {};
   for (const row of recruiterApplications) {
     applicationStageCountMap[row.application.stage] =
@@ -293,6 +298,11 @@ export default async function ProfessionalDetailPage({ params }: Props) {
       .map((row) => row.linkedMatch?.id)
       .filter((matchId): matchId is string => Boolean(matchId)),
   );
+  const linkedJobIds = new Set(
+    recruiterApplications
+      .map((row) => row.job?.id)
+      .filter((jobId): jobId is string => Boolean(jobId)),
+  );
   const remainingMatchRows = activeApplications.length
     ? matchRows.filter((row) => !linkedMatchIds.has(row.match.id))
     : matchRows;
@@ -301,6 +311,28 @@ export default async function ProfessionalDetailPage({ params }: Props) {
     score: row.match.matchScore,
     jobId: row.job?.id,
   }));
+  const recommendationMatches: MatchSuggestionItem[] = remainingMatchRows
+    .filter((row) => row.job?.id)
+    .slice(0, 5)
+    .map((row) => ({
+      jobId: row.job?.id ?? "",
+      jobTitle: row.job?.title ?? "Vacature",
+      company: row.job?.company ?? null,
+      location: row.job?.location ?? null,
+      quickScore: row.match.matchScore,
+      matchId: row.match.id,
+      reasoning: row.match.reasoning ?? null,
+      isLinked: row.job?.id ? linkedJobIds.has(row.job.id) : false,
+      recommendation:
+        row.match.recommendation === "go" ||
+        row.match.recommendation === "conditional" ||
+        row.match.recommendation === "no-go"
+          ? row.match.recommendation
+          : null,
+      recommendationConfidence: row.match.recommendationConfidence ?? null,
+      recommendationSource: row.match.recommendation ? "backend" : "score",
+      status: row.match.status,
+    }));
 
   /** Human-friendly recommendation label */
   const recommendationLabel = (rec: string | null): string => {
@@ -570,6 +602,12 @@ export default async function ProfessionalDetailPage({ params }: Props) {
             </div>
           </section>
 
+          <CandidateRecommendationPanel
+            candidateId={candidate.id}
+            hasResume={Boolean(candidate.resumeUrl)}
+            initialMatches={recommendationMatches}
+          />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left column: About, Employments, Edit, CV, Notes, Matches */}
             <div className="lg:col-span-2 space-y-6">
@@ -641,7 +679,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
               <CandidateNotes candidateId={candidate.id} initialNotes={candidate.notes} />
 
               {/* Matches list + chart */}
-              <section>
+              <section id="matches">
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="h-4 w-4 text-primary" />
                   <h2 className="text-lg font-semibold text-foreground">
@@ -679,6 +717,16 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                         const rec = row.match.recommendation;
                         const recConf = row.match.recommendationConfidence;
                         const model = row.match.assessmentModel;
+                        const criteriaBreakdown = Array.isArray(row.match.criteriaBreakdown)
+                          ? (row.match.criteriaBreakdown as CriterionResult[])
+                          : [];
+                        const riskProfile = Array.isArray(row.match.riskProfile)
+                          ? (row.match.riskProfile as string[])
+                          : [];
+                        const enrichmentSuggestions = Array.isArray(row.match.enrichmentSuggestions)
+                          ? (row.match.enrichmentSuggestions as string[])
+                          : [];
+                        const hasStructuredMatch = criteriaBreakdown.length > 0;
 
                         return (
                           <details
@@ -762,6 +810,10 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
                             {/* Expanded detail */}
                             <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-xs font-medium text-foreground">Matchcontext</p>
+                                <ReportButton matchId={row.match.id} />
+                              </div>
                               {row.match.reasoning && (
                                 <div>
                                   <p className="text-xs font-medium text-foreground mb-1">
@@ -771,6 +823,28 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                                     {row.match.reasoning}
                                   </p>
                                 </div>
+                              )}
+                              {hasStructuredMatch && (
+                                <MatchDetail
+                                  criteriaBreakdown={criteriaBreakdown}
+                                  overallScore={row.match.matchScore}
+                                  knockoutsPassed={criteriaBreakdown
+                                    .filter((criterion) => criterion.tier === "knockout")
+                                    .every((criterion) => criterion.passed === true)}
+                                  riskProfile={riskProfile}
+                                  enrichmentSuggestions={enrichmentSuggestions}
+                                  recommendation={
+                                    row.match.recommendation === "go" ||
+                                    row.match.recommendation === "no-go" ||
+                                    row.match.recommendation === "conditional"
+                                      ? row.match.recommendation
+                                      : "conditional"
+                                  }
+                                  recommendationReasoning={
+                                    row.match.reasoning ?? "Geen toelichting beschikbaar"
+                                  }
+                                  recommendationConfidence={row.match.recommendationConfidence ?? 0}
+                                />
                               )}
                               {/* Confidence + model provenance */}
                               <div className="flex items-center gap-3 text-[10px] text-muted-foreground/70 pt-1 border-t border-border/30">

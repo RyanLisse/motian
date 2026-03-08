@@ -11,7 +11,6 @@ import {
   Kanban,
   MapPin,
   RefreshCw,
-  Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -191,8 +190,8 @@ export default async function OverzichtPage() {
             >
               {pipelineTotal === 0 ? (
                 <p className="py-4 text-sm text-muted-foreground">
-                  Nog geen kandidaten in de pipeline. Start vanuit vacatures of gebruik
-                  aanbevelingen.
+                  Nog geen kandidaten in de pipeline. Start vanuit vacatures of open het
+                  kandidatenoverzicht.
                 </p>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -350,30 +349,7 @@ export default async function OverzichtPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <DashboardCard
-            title="Aanbevelingen"
-            icon={<Sparkles className="h-4 w-4" />}
-            action={
-              <Link
-                href="/matching"
-                className="flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                Open aanbevelingen <ArrowRight className="h-3 w-3" />
-              </Link>
-            }
-          >
-            <p className="text-sm text-muted-foreground">
-              Gebruik aanbevelingen om kandidaten te koppelen, CV&apos;s te analyseren en sneller
-              longlists voor recruiters samen te stellen.
-            </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <QuickActionLink href="/matching" label="Kandidaataanbevelingen" />
-              <QuickActionLink href="/matching?tab=grading" label="AI Grading" />
-              <QuickActionLink href="/matching?tab=cv" label="CV Analyse" />
-            </div>
-          </DashboardCard>
-
+        <div className="grid gap-6">
           <DashboardCard
             title="Databronnen"
             icon={<RefreshCw className="h-4 w-4" />}
@@ -517,17 +493,6 @@ function PriorityLinkCard({
       </div>
       <h4 className="mt-3 text-sm font-semibold text-foreground">{title}</h4>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-    </Link>
-  );
-}
-
-function QuickActionLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-    >
-      {label}
     </Link>
   );
 }
