@@ -27,6 +27,7 @@ import { db } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
 import { getGradedCandidates } from "@/src/services/grading";
+import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -210,8 +211,8 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
           .from(jobs)
           .where(
             and(
+              getVisibleVacancyCondition(),
               eq(jobs.status, "open"),
-              isNull(jobs.deletedAt),
               ne(jobs.id, id),
               eq(jobs.company, job.company),
             ),
@@ -222,7 +223,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
     db
       .select()
       .from(jobs)
-      .where(and(eq(jobs.status, "open"), isNull(jobs.deletedAt), ne(jobs.id, id)))
+      .where(and(getVisibleVacancyCondition(), eq(jobs.status, "open"), ne(jobs.id, id)))
       .orderBy(desc(jobs.scrapedAt))
       .limit(4),
     // Pipeline counts per stage for this job
@@ -258,7 +259,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
     db
       .select({ endClient: persistedEndClient })
       .from(jobs)
-      .where(isNull(jobs.deletedAt))
+      .where(getVisibleVacancyCondition())
       .groupBy(persistedEndClient)
       .orderBy(persistedEndClient),
   ]);
