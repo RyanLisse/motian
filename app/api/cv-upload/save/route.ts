@@ -40,8 +40,9 @@ export async function POST(request: NextRequest) {
       fileUrl,
     });
 
-    revalidatePath("/matching");
     revalidatePath("/professionals");
+    revalidatePath("/opdrachten");
+    revalidatePath("/overzicht");
     revalidatePath(`/professionals/${intake.candidate.id}`);
 
     return Response.json({

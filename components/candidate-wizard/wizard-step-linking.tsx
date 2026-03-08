@@ -456,7 +456,7 @@ export function WizardStepLinking({ intake, onComplete, onSkip }: WizardStepLink
       <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs text-muted-foreground">
           {noImmediateLink
-            ? "Geen directe koppeling geselecteerd. De kandidaat blijft in de talentpool en kan later vanuit de matching inbox opnieuw worden opgepakt."
+            ? "Geen directe koppeling geselecteerd. De kandidaat blijft in de talentpool en kan later vanuit het kandidaatdossier of een vacature opnieuw worden opgepakt."
             : `${selectedMatchCount} topmatch${selectedMatchCount === 1 ? "" : "es"} en ${selectedJobCount} handmatige vacature${selectedJobCount === 1 ? "" : "s"} geselecteerd.`}
         </div>
         <div className="flex justify-end gap-2">

@@ -142,7 +142,7 @@ FIRECRAWL_API_KEY=fc-XXXXXXXXXXXXXXXXXXXXXXXX
 MOTIA_API_URL=http://localhost:3000
 
 # Next.js URL (voor cache revalidatie vanuit Motia steps)
-NEXT_URL=http://localhost:3001
+NEXT_URL=http://localhost:3002
 
 # Encryptie (voor authConfig in DB — genereer met: openssl rand -base64 32)
 ENCRYPTION_KEY=jouw_encryptie_sleutel_hier
@@ -1258,7 +1258,7 @@ export const handler: Handlers["RevalidateCache"] = async (input, { logger }) =>
 ```
 
 > **Next.js API route nodig:** `app/api/revalidate/route.ts` met `revalidateTag()` call.
-> Voeg `NEXT_URL=http://localhost:3001` toe aan `.env`.
+> Voeg `NEXT_URL=http://localhost:3002` toe aan `.env`.
 
 ### 2.6 PATCH Scraper Config (Agent-Native: toggle actief/inactief)
 

@@ -32,7 +32,16 @@ export function MatchGenUICard({ output }: { output: unknown }) {
   }
   if (!isMatchOutput(output)) return null;
   const statusLabel = statusLabels[output.status] ?? output.status;
-  const href = output.jobId ? `/matching?jobId=${output.jobId}` : "/matching";
+  const href = output.candidateId
+    ? `/professionals/${output.candidateId}#matches`
+    : output.jobId
+      ? `/opdrachten/${output.jobId}#recruiter-cockpit`
+      : "/professionals";
+  const ctaLabel = output.candidateId
+    ? "Open matchkansen →"
+    : output.jobId
+      ? "Open vacaturecontext →"
+      : "Open kandidaten →";
   return (
     <Link href={href}>
       <div className="my-1.5 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer">
@@ -46,7 +55,7 @@ export function MatchGenUICard({ output }: { output: unknown }) {
               <p className="text-xs text-muted-foreground mt-0.5">Status: {statusLabel}</p>
             </div>
           </div>
-          <span className="text-xs text-muted-foreground shrink-0">Bekijk in matching →</span>
+          <span className="text-xs text-muted-foreground shrink-0">{ctaLabel}</span>
         </div>
       </div>
     </Link>

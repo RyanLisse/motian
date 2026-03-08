@@ -15,6 +15,8 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(source).toContain("Recruiter cockpit");
     expect(source).toContain("Volgende actie");
     expect(source).toContain("Gekoppelde kandidaten");
+    expect(source).toContain("AI aanbevelingen");
+    expect(source).toContain("AI Grading");
     expect(source).toContain("source: applications.source");
     // biome-ignore lint/suspicious/noTemplateCurlyInString: asserting source contains a template literal
     expect(source).toContain("/professionals/${row.candidateId}");

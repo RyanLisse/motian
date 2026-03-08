@@ -3,7 +3,8 @@ import { getOverviewData } from "../app/overzicht/data";
 import type { db } from "../src/db";
 
 function createAwaitableQuery<T>(result: T) {
-  const chain = Object.assign(Promise.resolve(result), {
+  const promise = Promise.resolve(result);
+  const chain = Object.assign(promise, {
     from: vi.fn(() => chain),
     where: vi.fn(() => chain),
     groupBy: vi.fn(() => chain),

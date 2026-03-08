@@ -41,7 +41,7 @@ Equivalent AI tools are available in the main app:
 
 ## Environment
 
-- `MOTIAN_BASE_URL` (optional): defaults to `http://localhost:3001`
+- `MOTIAN_BASE_URL` (optional): defaults to `http://localhost:3002`
 - `MOTIAN_API_SECRET` (optional): bearer token for protected API environments
 
 Scaffolded with `bun create tui --template react`.

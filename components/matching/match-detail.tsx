@@ -43,7 +43,6 @@ export function MatchDetail({
 
   return (
     <div className="space-y-4">
-      {/* Header - recommendation badge + score + confidence */}
       <div className="flex items-center gap-3 flex-wrap">
         <Badge variant="outline" className={`text-xs ${recColors[recommendation] ?? ""}`}>
           {recLabels[recommendation] ?? recommendation}
@@ -52,7 +51,6 @@ export function MatchDetail({
         <span className="text-xs text-muted-foreground">{recommendationConfidence}% zekerheid</span>
       </div>
 
-      {/* Knock-out alert if failed */}
       {!knockoutsPassed && (
         <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
           <XCircle className="h-4 w-4 text-red-500 shrink-0" />
@@ -60,7 +58,6 @@ export function MatchDetail({
         </div>
       )}
 
-      {/* Knockouts section */}
       {knockouts.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">
@@ -99,7 +96,6 @@ export function MatchDetail({
         </div>
       )}
 
-      {/* Gunning section with stars */}
       {gunning.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">
@@ -137,7 +133,6 @@ export function MatchDetail({
         </div>
       )}
 
-      {/* Process requirements */}
       {process.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">
@@ -159,7 +154,6 @@ export function MatchDetail({
         </div>
       )}
 
-      {/* Risk profile */}
       {riskProfile.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -180,7 +174,6 @@ export function MatchDetail({
         </div>
       )}
 
-      {/* Enrichment suggestions */}
       {enrichmentSuggestions.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -197,7 +190,6 @@ export function MatchDetail({
         </div>
       )}
 
-      {/* Reasoning */}
       <div className="bg-card border border-border rounded-lg px-3 py-2">
         <p className="text-xs text-muted-foreground italic">{recommendationReasoning}</p>
       </div>

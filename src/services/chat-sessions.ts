@@ -41,6 +41,8 @@ const chatSessionSummarySelection = {
   createdAt: chatSessions.createdAt,
 };
 
+// ========== Types ==========
+
 export type ChatSessionSummary = {
   id: string;
   sessionId: string;

@@ -7,7 +7,6 @@ import {
   GalleryVerticalEnd,
   Kanban,
   LayoutDashboard,
-  Sparkles,
   Users,
   Zap,
 } from "lucide-react";
@@ -63,25 +62,6 @@ const data = {
       title: "Interviews",
       url: "/interviews",
       icon: Calendar,
-    },
-    {
-      title: "Aanbevelingen",
-      url: "/matching",
-      icon: Sparkles,
-      items: [
-        {
-          title: "Kandidaataanbevelingen",
-          url: "/matching",
-        },
-        {
-          title: "AI Grading",
-          url: "/matching?tab=grading",
-        },
-        {
-          title: "CV Analyse",
-          url: "/matching?tab=cv",
-        },
-      ],
     },
     {
       title: "Databronnen",
