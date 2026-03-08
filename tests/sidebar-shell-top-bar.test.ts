@@ -31,10 +31,18 @@ describe("sidebar shell top-bar refactor", () => {
     const userSource = readFile("components", "nav-user.tsx");
     const widgetSource = readFile("components", "chat", "chat-widget.tsx");
 
+    expect(sidebarSource).toContain('title: "Interviews"');
+    expect(sidebarSource).toContain('title: "Aanbevelingen"');
+    expect(sidebarSource).toContain('title: "Kandidaataanbevelingen"');
     expect(sidebarSource).toContain('badge: { text: "⌘J"');
     expect(sidebarSource).toContain('tooltip: "AI Assistent openen (⌘/Ctrl+J)"');
     expect(userSource).toContain("motian-chat-open");
     expect(userSource).toContain("⌘J");
     expect(widgetSource).toContain("CHAT_WIDGET_OPEN_EVENT");
+    expect(widgetSource).toContain("currentOrigin={currentOrigin}");
+    expect(widgetSource).toContain(
+      "<PromptInput allowAttachments={false} onSubmit={handleSubmit}>",
+    );
+    expect(widgetSource).toContain("allowAttachments={false}");
   });
 });

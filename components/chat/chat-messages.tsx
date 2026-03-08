@@ -35,6 +35,7 @@ const GENUI_COMPONENTS: Record<string, React.ComponentType<{ output: unknown }>>
 type Props = {
   messages: UIMessage[];
   status: string;
+  currentOrigin?: string | null;
   onSuggestion?: (text: string) => void;
   hasOlderMessages?: boolean;
   loadingOlder?: boolean;
