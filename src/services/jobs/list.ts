@@ -1,7 +1,8 @@
-import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, ilike, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { jobs } from "../../db/schema";
 import { escapeLike, toTsQueryInput } from "../../lib/helpers";
+import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
 import { LIST_SLO_MS, logSlowQuery } from "../../lib/query-observability";
 import {
   getJobStatusCondition,
@@ -9,6 +10,7 @@ import {
   type JobStatus,
   type ListJobsSortBy,
 } from "./filters";
+import { buildJobFilterConditions } from "./query-filters";
 import type { Job } from "./repository";
 
 export type ListJobsOptions = {
@@ -18,13 +20,20 @@ export type ListJobsOptions = {
   company?: string;
   endClient?: string;
   category?: string;
+  categories?: string[];
   status?: JobStatus;
   q?: string;
   province?: string;
+  region?: OpdrachtenRegion;
+  regions?: OpdrachtenRegion[];
   rateMin?: number;
   rateMax?: number;
   contractType?: string;
   workArrangement?: string;
+  hoursPerWeekBucket?: OpdrachtenHoursBucket;
+  minHoursPerWeek?: number;
+  maxHoursPerWeek?: number;
+  radiusKm?: number;
   hasDescription?: boolean;
   sortBy?: ListJobsSortBy;
   postedAfter?: Date | string;
@@ -42,19 +51,32 @@ export async function listJobs(
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = opts.offset ?? 0;
-  const conditions = [getJobStatusCondition(opts.status ?? "open")];
-
-  if (opts.platform) conditions.push(eq(jobs.platform, opts.platform));
-  if (opts.company) conditions.push(eq(jobs.company, opts.company));
-  if (opts.endClient) {
-    conditions.push(
-      or(
-        eq(jobs.endClient, opts.endClient),
-        and(isNull(jobs.endClient), eq(jobs.company, opts.endClient)),
-      ),
-    );
-  }
-  if (opts.category) conditions.push(sql`${jobs.categories} ? ${opts.category}`);
+  const conditions = buildJobFilterConditions({
+    platform: opts.platform,
+    company: opts.company,
+    endClient: opts.endClient,
+    category: opts.category,
+    categories: opts.categories,
+    status: opts.status,
+    province: opts.province,
+    region: opts.region,
+    regions: opts.regions,
+    rateMin: opts.rateMin,
+    rateMax: opts.rateMax,
+    contractType: opts.contractType,
+    workArrangement: opts.workArrangement,
+    hasDescription: opts.hasDescription,
+    postedAfter: opts.postedAfter,
+    postedBefore: opts.postedBefore,
+    deadlineAfter: opts.deadlineAfter,
+    deadlineBefore: opts.deadlineBefore,
+    startDateAfter: opts.startDateAfter,
+    startDateBefore: opts.startDateBefore,
+    hoursPerWeekBucket: opts.hoursPerWeekBucket,
+    minHoursPerWeek: opts.minHoursPerWeek,
+    maxHoursPerWeek: opts.maxHoursPerWeek,
+    radiusKm: opts.radiusKm,
+  });
 
   if (opts.q) {
     const tsInput = toTsQueryInput(opts.q);
@@ -66,29 +88,6 @@ export async function listJobs(
       conditions.push(ilike(jobs.title, `%${escapeLike(opts.q)}%`));
     }
   }
-
-  if (opts.province) {
-    const provinceMatch = or(
-      ilike(jobs.province, `%${escapeLike(opts.province)}%`),
-      ilike(jobs.location, `%${escapeLike(opts.province)}%`),
-    );
-    if (provinceMatch) conditions.push(provinceMatch);
-  }
-
-  if (opts.rateMin != null) conditions.push(gte(jobs.rateMax, opts.rateMin));
-  if (opts.rateMax != null) conditions.push(lte(jobs.rateMin, opts.rateMax));
-  if (opts.contractType) conditions.push(eq(jobs.contractType, opts.contractType));
-  if (opts.workArrangement) conditions.push(eq(jobs.workArrangement, opts.workArrangement));
-  if (opts.hasDescription) conditions.push(isNotNull(jobs.description));
-
-  if (opts.postedAfter) conditions.push(gte(jobs.postedAt, new Date(opts.postedAfter)));
-  if (opts.postedBefore) conditions.push(lte(jobs.postedAt, new Date(opts.postedBefore)));
-  if (opts.deadlineAfter)
-    conditions.push(gte(jobs.applicationDeadline, new Date(opts.deadlineAfter)));
-  if (opts.deadlineBefore)
-    conditions.push(lte(jobs.applicationDeadline, new Date(opts.deadlineBefore)));
-  if (opts.startDateAfter) conditions.push(gte(jobs.startDate, new Date(opts.startDateAfter)));
-  if (opts.startDateBefore) conditions.push(lte(jobs.startDate, new Date(opts.startDateBefore)));
 
   const whereClause = and(...conditions);
 

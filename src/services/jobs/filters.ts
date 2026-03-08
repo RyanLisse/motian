@@ -7,6 +7,7 @@ export type ListJobsSortBy =
   | "tarief_hoog"
   | "tarief_laag"
   | "deadline"
+  | "deadline_desc"
   | "geplaatst"
   | "startdatum";
 
@@ -17,6 +18,7 @@ const LIST_JOBS_SORT_VALUES: ListJobsSortBy[] = [
   "tarief_hoog",
   "tarief_laag",
   "deadline",
+  "deadline_desc",
   "geplaatst",
   "startdatum",
 ];
@@ -26,6 +28,7 @@ const sortByMap: Record<ListJobsSortBy, ReturnType<typeof desc>> = {
   tarief_hoog: sql`CASE WHEN ${jobs.rateMax} > 500 THEN NULL ELSE ${jobs.rateMax} END DESC NULLS LAST`,
   tarief_laag: sql`${jobs.rateMin} ASC NULLS LAST`,
   deadline: asc(jobs.applicationDeadline),
+  deadline_desc: desc(jobs.applicationDeadline),
   geplaatst: desc(jobs.postedAt),
   startdatum: asc(jobs.startDate),
 };
@@ -90,6 +93,8 @@ function getTimestamp(d: Date | string | null | undefined, fallback: number): nu
 
 export function getSortComparator(sortBy: ListJobsSortBy): (a: Job, b: Job) => number {
   switch (sortBy) {
+    case "nieuwste":
+      return (a, b) => getTimestamp(b.scrapedAt, 0) - getTimestamp(a.scrapedAt, 0);
     case "tarief_hoog":
       return (a, b) => {
         const aRate = a.rateMax && a.rateMax <= 500 ? a.rateMax : 0;
@@ -103,6 +108,9 @@ export function getSortComparator(sortBy: ListJobsSortBy): (a: Job, b: Job) => n
       return (a, b) =>
         getTimestamp(a.applicationDeadline, Number.MAX_SAFE_INTEGER) -
         getTimestamp(b.applicationDeadline, Number.MAX_SAFE_INTEGER);
+    case "deadline_desc":
+      return (a, b) =>
+        getTimestamp(b.applicationDeadline, 0) - getTimestamp(a.applicationDeadline, 0);
     case "geplaatst":
       return (a, b) => getTimestamp(b.postedAt, 0) - getTimestamp(a.postedAt, 0);
     case "startdatum":

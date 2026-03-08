@@ -38,17 +38,22 @@ vi.mock("../src/db/schema", () => ({
     description: "jobs.description",
     location: "jobs.location",
     province: "jobs.province",
+    categories: "jobs.categories",
     platform: "jobs.platform",
     status: "jobs.status",
     deletedAt: "jobs.deletedAt",
     scrapedAt: "jobs.scrapedAt",
     rateMin: "jobs.rateMin",
     rateMax: "jobs.rateMax",
+    hoursPerWeek: "jobs.hoursPerWeek",
+    minHoursPerWeek: "jobs.minHoursPerWeek",
     applicationDeadline: "jobs.applicationDeadline",
     postedAt: "jobs.postedAt",
     startDate: "jobs.startDate",
     contractType: "jobs.contractType",
     workArrangement: "jobs.workArrangement",
+    latitude: "jobs.latitude",
+    longitude: "jobs.longitude",
   },
   applications: {
     jobId: "applications.jobId",
@@ -194,6 +199,81 @@ describe("jobs service status and endClient filters", () => {
           (value as { type: string }).type === "eq" &&
           (value as { column: string }).column === "jobs.status" &&
           (value as { value: string }).value === "open",
+      ),
+    ).toBe(true);
+  });
+
+  it("derives region filters from province-backed values", async () => {
+    await listJobs({ region: "randstad" });
+
+    const whereClause = mockCountWhere.mock.calls[0]?.[0];
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
+          (value as { type: string }).type === "eq" &&
+          (value as { column: string }).column === "jobs.province" &&
+          (value as { value: string }).value === "Utrecht",
+      ),
+    ).toBe(true);
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
+          (value as { type: string }).type === "eq" &&
+          (value as { column: string }).column === "jobs.province" &&
+          (value as { value: string }).value === "Noord-Holland",
+      ),
+    ).toBe(true);
+  });
+
+  it("applies hours overlap and radius filters from explicit province anchors", async () => {
+    await listJobs({ province: "Utrecht", hoursPerWeekBucket: "24_32", radiusKm: 25 });
+
+    const whereClause = mockCountWhere.mock.calls[0]?.[0];
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
+          (value as { type: string }).type === "eq" &&
+          (value as { column: string }).column === "jobs.province" &&
+          (value as { value: string }).value === "Utrecht",
+      ),
+    ).toBe(true);
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
+          (value as { type: string }).type === "sql" &&
+          Array.isArray((value as { values?: unknown[] }).values) &&
+          (value as { values: unknown[] }).values.includes(24) &&
+          (value as { values: unknown[] }).values.includes(32),
+      ),
+    ).toBe(true);
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
+          (value as { type: string }).type === "sql" &&
+          Array.isArray((value as { values?: unknown[] }).values) &&
+          (value as { values: unknown[] }).values.includes(52.0907) &&
+          (value as { values: unknown[] }).values.includes(5.1214) &&
+          (value as { values: unknown[] }).values.includes(25),
       ),
     ).toBe(true);
   });

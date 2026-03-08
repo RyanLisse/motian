@@ -53,6 +53,7 @@ type Props = {
   status: ChatMessagesStatus;
   currentOrigin?: string | null;
   onSuggestion?: (text: string) => void;
+  layout?: "page" | "widget";
   hasOlderMessages?: boolean;
   loadingOlder?: boolean;
   onLoadOlder?: () => void;
@@ -252,6 +253,7 @@ export function ChatMessages({
   status,
   currentOrigin,
   onSuggestion,
+  layout = "page",
   hasOlderMessages = false,
   loadingOlder = false,
   onLoadOlder,
@@ -262,14 +264,21 @@ export function ChatMessages({
   conversationLabel = "Chatgesprek met Motian AI",
 }: Props) {
   const hasUserMessage = messages.some((message) => message.role === "user");
+  const isWidget = layout === "widget";
   const showFollowUpPrompts = hasUserMessage && status === "ready" && followUpPrompts.length > 0;
 
   return (
     <Conversation className="flex-1" aria-label={conversationLabel}>
       <ConversationContent
         className={cn(
-          "mx-auto flex w-full max-w-4xl gap-4 px-3 py-4 sm:px-4 sm:py-6",
-          !hasUserMessage && "min-h-full justify-center",
+          "mx-auto flex w-full gap-4",
+          isWidget
+            ? "max-w-3xl px-3 py-4 pb-28 sm:px-4 sm:pb-32"
+            : "max-w-4xl px-3 py-4 pb-32 sm:px-4 sm:py-6 sm:pb-40",
+          !hasUserMessage &&
+            (isWidget
+              ? "flex min-h-full flex-col justify-center"
+              : "flex min-h-[calc(100vh-160px)] flex-col justify-center"),
         )}
       >
         {hasOlderMessages || loadingOlder ? (
@@ -392,7 +401,6 @@ export function ChatMessages({
                       typeof (toolPart.output as { error: unknown }).error === "string"
                         ? (toolPart.output as { error: string }).error
                         : "Er is iets misgegaan bij deze actie.";
-
                     return <ToolErrorBlock key={partKey} message={messageText} />;
                   }
 
@@ -406,7 +414,6 @@ export function ChatMessages({
                         typeof (toolPart.output as { error: unknown }).error === "string"
                           ? (toolPart.output as { error: string }).error
                           : "Niet gevonden.";
-
                       return <ToolErrorBlock key={partKey} message={messageText} />;
                     }
 
@@ -460,8 +467,18 @@ export function ChatMessages({
         ) : null}
 
         {!hasUserMessage ? (
-          <section className="mx-auto flex w-full max-w-3xl flex-1 items-center justify-center py-2 sm:py-6">
-            <div className="w-full rounded-[28px] border border-border/70 bg-card/95 p-5 shadow-sm sm:p-8">
+          <section
+            className={cn(
+              "mx-auto flex w-full flex-1 items-center justify-center py-2 sm:py-6",
+              isWidget ? "max-w-3xl" : "max-w-4xl",
+            )}
+          >
+            <div
+              className={cn(
+                "w-full rounded-[28px] border border-border/70 bg-card/95 p-5 shadow-sm sm:p-8",
+                isWidget && "rounded-3xl p-4 sm:p-5",
+              )}
+            >
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-3">
                   <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
@@ -484,7 +501,12 @@ export function ChatMessages({
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div
+                className={cn(
+                  "grid gap-3",
+                  isWidget ? "grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4",
+                )}
+              >
                 {emptyStatePrompts.map((suggestion) => (
                   <SuggestedPromptCard
                     key={suggestion.label}

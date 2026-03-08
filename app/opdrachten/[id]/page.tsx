@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Award,
   Calendar,
+  Clock,
   Euro,
   ExternalLink,
   Kanban,
@@ -17,6 +18,7 @@ import { notFound } from "next/navigation";
 import { AIGrading } from "@/components/ai-grading";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { LinkCandidatesDialog } from "@/components/link-candidates-dialog";
+import { OpdrachtenDetailSheet } from "@/components/opdrachten-detail-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -31,6 +33,7 @@ export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 const arrangementLabels: Record<string, string> = {
@@ -83,6 +86,8 @@ const APPLICATION_SOURCE_LABELS: Record<string, string> = {
   import: "Import",
 };
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
 const PIPELINE_STAGE_PRIORITY: Record<string, number> = {
   new: 0,
   screening: 1,
@@ -91,6 +96,71 @@ const PIPELINE_STAGE_PRIORITY: Record<string, number> = {
   hired: 4,
   rejected: 5,
 };
+
+const PIPELINE_NEXT_STEP_HINTS: Record<string, string> = {
+  new: "Kies wie door mag naar screening",
+  screening: "Werk de shortlist naar interview toe",
+  interview: "Plan het eerstvolgende interviewmoment",
+  offer: "Volg het openstaande aanbod op",
+  hired: "Houd de plaatsing warm tot de startdatum",
+  rejected: "Bekijk de historie als extra context",
+};
+
+function getDeadlineState(deadline?: Date | string | null) {
+  if (!deadline) return null;
+
+  const parsedDeadline = new Date(deadline);
+  if (Number.isNaN(parsedDeadline.getTime())) return null;
+
+  const deadlineDay = new Date(parsedDeadline);
+  deadlineDay.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const remainingDays = Math.round((deadlineDay.getTime() - today.getTime()) / DAY_IN_MS);
+  const formattedDate = parsedDeadline.toLocaleDateString("nl-NL", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  if (remainingDays < 0) {
+    return {
+      label: "Deadline verlopen",
+      hint: `De vacature sloot op ${formattedDate}. Gebruik vooral bestaande koppelingen als context.`,
+      className: "border-destructive/20 bg-destructive/10 text-destructive",
+    };
+  }
+
+  if (remainingDays === 0) {
+    return {
+      label: "Sluit vandaag",
+      hint: "Beslis vandaag wie je wilt opvolgen of koppelen.",
+      className: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    };
+  }
+
+  if (remainingDays === 1) {
+    return {
+      label: "Sluit morgen",
+      hint: "Rond vandaag nog je shortlist of eerste screening af.",
+      className: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    };
+  }
+
+  if (remainingDays <= 3) {
+    return {
+      label: `Nog ${remainingDays} dagen`,
+      hint: "Plan deze week je eerstvolgende stap richting screening of interview.",
+      className: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    };
+  }
+
+  return {
+    label: `Deadline ${formattedDate}`,
+    hint: "Nog voldoende tijd, maar een vroege shortlist versnelt opvolging.",
+    className: "border-border bg-background text-muted-foreground",
+  };
+}
 
 function SectionBlock({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
@@ -110,8 +180,9 @@ function SectionBlock({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-export default async function OpdrachtDetailPage({ params }: Props) {
+export default async function OpdrachtDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
 
   // Fetch current job
   const rows = await db
@@ -216,8 +287,22 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 href: `/pipeline?vacature=${job.id}&fase=offer`,
               }
             : null;
+  const deadlineState = getDeadlineState(job.applicationDeadline);
 
   const related = companyRelated.length > 0 ? companyRelated : genericRelated;
+  const currentListParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
+    const values = Array.isArray(value) ? value : [value];
+    for (const entry of values) {
+      if (entry) currentListParams.append(key, entry);
+    }
+  }
+
+  const listQuery = currentListParams.toString();
+  const listHref = listQuery ? `/opdrachten?${listQuery}` : "/opdrachten";
+  const buildDetailHref = (jobId: string) =>
+    listQuery ? `/opdrachten/${jobId}?${listQuery}` : `/opdrachten/${jobId}`;
 
   // Extract jsonb fields — items can be strings or {isKnockout, description} objects
   const toStrings = (arr: unknown, clean = false): string[] => {
@@ -473,24 +558,25 @@ export default async function OpdrachtDetailPage({ params }: Props) {
 
   return (
     <DroppableVacancy jobId={job.id} jobTitle={job.title}>
-      <div className="flex flex-1 overflow-hidden">
-        {/* Center: Job detail */}
-        <main className="flex-1 overflow-y-auto pb-[72px] xl:pb-0">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
-            {/* Back link */}
+      <OpdrachtenDetailSheet
+        title={job.title}
+        description={job.company ?? undefined}
+        listHref={listHref}
+      >
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="border-b border-border bg-background/95 px-4 py-4 sm:px-6">
             <Link
-              href="/opdrachten"
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              href={listHref}
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               &larr; Terug naar vacatures
             </Link>
 
-            {/* Header */}
-            <div>
-              <div className="flex items-center gap-2 flex-wrap mb-3">
+            <div className="mt-4">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
                 <Badge
                   variant="outline"
-                  className="capitalize border-border text-muted-foreground bg-transparent text-xs"
+                  className="bg-transparent text-xs capitalize text-muted-foreground"
                 >
                   {job.platform}
                 </Badge>
@@ -499,8 +585,8 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                     variant="outline"
                     className={
                       job.workArrangement === "remote"
-                        ? "bg-primary/10 text-primary border-primary/20 text-xs"
-                        : "border-border text-muted-foreground bg-transparent text-xs"
+                        ? "border-primary/20 bg-primary/10 text-xs text-primary"
+                        : "bg-transparent text-xs text-muted-foreground"
                     }
                   >
                     {arrangementLabels[job.workArrangement] ?? job.workArrangement}
@@ -509,44 +595,60 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 {job.contractType && (
                   <Badge
                     variant="outline"
-                    className="capitalize border-border text-muted-foreground bg-transparent text-xs"
+                    className="bg-transparent text-xs capitalize text-muted-foreground"
                   >
                     {job.contractType}
                   </Badge>
                 )}
                 {job.contractLabel && (
-                  <Badge
-                    variant="outline"
-                    className="border-border text-muted-foreground bg-transparent text-xs"
-                  >
+                  <Badge variant="outline" className="bg-transparent text-xs text-muted-foreground">
                     {job.contractLabel}
                   </Badge>
                 )}
+                {deadlineState ? (
+                  <Badge variant="outline" className={`gap-1 text-xs ${deadlineState.className}`}>
+                    <Clock className="h-3 w-3" />
+                    {deadlineState.label}
+                  </Badge>
+                ) : null}
+                <Badge
+                  variant="outline"
+                  className={
+                    totalPipeline > 0
+                      ? "border-primary/20 bg-primary/10 text-xs text-primary"
+                      : "border-dashed border-border bg-transparent text-xs text-muted-foreground"
+                  }
+                >
+                  {totalPipeline > 0
+                    ? `${totalPipeline} actief in shortlist`
+                    : "Nog geen shortlist"}
+                </Badge>
                 <div className="ml-auto">
                   <JsonViewer data={job as unknown as Record<string, unknown>} />
                 </div>
               </div>
-              <h1 className="text-lg sm:text-xl font-bold text-foreground mb-1">{job.title}</h1>
-              {job.company && <p className="text-sm text-muted-foreground">{job.company}</p>}
+              <h1 className="text-lg font-bold text-foreground sm:text-xl">{job.title}</h1>
+              {job.company ? (
+                <p className="mt-1 text-sm text-muted-foreground">{job.company}</p>
+              ) : null}
             </div>
 
-            {/* Meta row with icons */}
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
               {job.location && (
                 <span className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
                   {job.location}
                 </span>
               )}
               {job.workArrangement && (
                 <span className="flex items-center gap-1.5">
-                  <Monitor className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
                   {arrangementLabels[job.workArrangement] ?? job.workArrangement}
                 </span>
               )}
               {(job.rateMin || job.rateMax) && (
                 <span className="flex items-center gap-1.5">
-                  <Euro className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Euro className="h-4 w-4 shrink-0 text-muted-foreground" />
                   {job.rateMin && job.rateMax
                     ? `EUR ${job.rateMin} - ${job.rateMax} per uur`
                     : job.rateMax
@@ -556,8 +658,8 @@ export default async function OpdrachtDetailPage({ params }: Props) {
               )}
               {job.startDate && (
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  {"Start "}
+                  <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  Start{" "}
                   {new Date(job.startDate).toLocaleDateString("nl-NL", {
                     day: "numeric",
                     month: "short",
@@ -566,451 +668,432 @@ export default async function OpdrachtDetailPage({ params }: Props) {
                 </span>
               )}
             </div>
+          </div>
 
-            {/* Recruiter cockpit */}
-            <div
-              id="recruiter-cockpit"
-              className="bg-card border border-border rounded-lg p-4 space-y-4 scroll-mt-24"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Users className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold text-foreground">Recruiter cockpit</h3>
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] bg-primary/10 text-primary border-primary/20"
-                    >
-                      {totalPipeline > 0 ? `${totalPipeline} actief` : "Nog leeg"}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Zie direct wie gekoppeld is, welke fase aandacht vraagt en open vanuit deze
-                    vacature meteen kandidaat-aanbevelingen, grading of de volgende vervolgstap.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <LinkCandidatesDialog
-                    jobId={job.id}
-                    jobTitle={job.title}
-                    trigger={
-                      <Button variant="outline" size="sm" className="border-border">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        AI aanbevelingen
-                      </Button>
-                    }
-                  />
-                  <Link href={gradingHref}>
-                    <Button variant="outline" size="sm" className="border-border">
-                      <Award className="h-4 w-4 mr-2" />
-                      AI Grading
-                    </Button>
-                  </Link>
-                  <Link href={pipelineHref}>
-                    <Button
-                      size="sm"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                    >
-                      <Kanban className="h-4 w-4 mr-2" />
-                      Bekijk pipeline
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              {totalPipeline === 0 ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Nog geen kandidaten gekoppeld aan deze vacature.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Start met matchen of koppel handmatig een kandidaat om de workflow te openen.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {PIPELINE_STAGES.map((stage) => {
-                      const count = stageCountMap[stage.key] ?? 0;
-                      if (count === 0) return null;
-                      return (
-                        <div
-                          key={stage.key}
-                          className="rounded-lg border border-border bg-background/60 p-3"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs text-muted-foreground">{stage.label}</span>
-                            <span className={`h-2.5 w-2.5 rounded-full ${stage.color}`} />
-                          </div>
-                          <p className="text-lg font-semibold text-foreground mt-1">{count}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {nextPipelineAction && (
-                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="text-xs font-semibold text-primary uppercase tracking-wide">
-                          Volgende actie
-                        </p>
-                        <p className="text-sm text-foreground">{nextPipelineAction.label}</p>
-                      </div>
-                      <Link
-                        href={nextPipelineAction.href}
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-5">
+              <section
+                id="recruiter-cockpit"
+                className="scroll-mt-24 rounded-lg border border-border bg-card p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="mb-1 flex items-center gap-2">
+                      <Users className="h-4 w-4 text-primary" />
+                      <h2 className="text-sm font-semibold text-foreground">Recruiter cockpit</h2>
+                      <Badge
+                        variant="outline"
+                        className="border-primary/20 bg-primary/10 text-[10px] text-primary"
                       >
-                        Open fase
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
+                        {totalPipeline > 0 ? `${totalPipeline} actief` : "Nog leeg"}
+                      </Badge>
                     </div>
-                  )}
-
-                  {recruiterCockpitRows.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          Gekoppelde kandidaten
-                        </p>
-                        <Link
-                          href={pipelineHref}
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                        >
-                          Alles bekijken
-                          <ArrowRight className="h-3 w-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Zie direct welke fase aandacht vraagt en open vanuit deze vacature meteen AI
+                      aanbevelingen, grading of de juiste vervolgstap.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <LinkCandidatesDialog
+                      jobId={job.id}
+                      jobTitle={job.title}
+                      trigger={
+                        <Button variant="outline" size="sm" className="border-border">
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          AI aanbevelingen
+                        </Button>
+                      }
+                    />
+                    <Button asChild variant="outline" size="sm" className="border-border">
+                      <Link href={gradingHref}>
+                        <Award className="mr-2 h-4 w-4" />
+                        AI Grading
+                      </Link>
+                    </Button>
+                    {totalPipeline > 0 ? (
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        <Link href={pipelineHref}>
+                          <Kanban className="mr-2 h-4 w-4" />
+                          Bekijk pipeline
                         </Link>
-                      </div>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {recruiterCockpitRows.map((row) => (
+                      </Button>
+                    ) : (
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        <a href="#koppel-kandidaten">
+                          <Link2 className="mr-2 h-4 w-4" />
+                          Koppel aan kandidaat
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg border border-border bg-background/60 p-3">
+                    <p className="text-xs text-muted-foreground">Deadline</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {deadlineState?.label ?? "Geen deadline bekend"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {deadlineState?.hint ??
+                        "Zonder harde sluitdatum kun je tempo bepalen vanuit de shortlist."}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-background/60 p-3">
+                    <p className="text-xs text-muted-foreground">Shortlist</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {totalPipeline > 0
+                        ? `${totalPipeline} kandidaat${totalPipeline === 1 ? "" : "en"} actief`
+                        : "Nog geen shortlist"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {totalPipeline > 0
+                        ? "Open de pipeline om te zien wie nu aandacht vraagt."
+                        : "Gebruik AI aanbevelingen of topmatches hieronder om screening te starten."}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-background/60 p-3">
+                    <p className="text-xs text-muted-foreground">Direct doen</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {nextPipelineAction?.label ?? "Koppel top-3 matches aan screening"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {nextPipelineAction
+                        ? "De snelste route naar de eerstvolgende recruiteractie."
+                        : "Selecties hieronder komen direct in screening terecht."}
+                    </p>
+                  </div>
+                </div>
+
+                {totalPipeline === 0 ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Nog geen kandidaten gekoppeld aan deze vacature.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Start met de top-3 suggesties hieronder of open matching voor extra opties.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      {PIPELINE_STAGES.map((stage) => {
+                        const count = stageCountMap[stage.key] ?? 0;
+                        if (count === 0) return null;
+                        return (
                           <div
-                            key={row.id}
+                            key={stage.key}
                             className="rounded-lg border border-border bg-background/60 p-3"
                           >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                {row.candidateId ? (
-                                  <Link
-                                    href={`/professionals/${row.candidateId}`}
-                                    className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
-                                  >
-                                    {row.candidateName ?? "Onbekende kandidaat"}
-                                  </Link>
-                                ) : (
-                                  <p className="text-sm font-semibold text-foreground">
-                                    {row.candidateName ?? "Onbekende kandidaat"}
-                                  </p>
-                                )}
-                                {(row.candidateRole || row.candidateLocation) && (
-                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                                    {[row.candidateRole, row.candidateLocation]
-                                      .filter(Boolean)
-                                      .join(" • ")}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap justify-end gap-1.5">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] ${PIPELINE_STAGE_STYLES[row.stage] ?? "border-border text-muted-foreground"}`}
-                                >
-                                  {PIPELINE_STAGE_LABELS[row.stage] ?? row.stage}
-                                </Badge>
-                                {row.matchStatus && (
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-[10px] ${MATCH_STATUS_STYLES[row.matchStatus] ?? "border-border text-muted-foreground"}`}
-                                  >
-                                    {MATCH_STATUS_LABELS[row.matchStatus] ?? row.matchStatus}
-                                  </Badge>
-                                )}
-                              </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-muted-foreground">{stage.label}</span>
+                              <span className={`h-2.5 w-2.5 rounded-full ${stage.color}`} />
                             </div>
-
-                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                              {row.matchScore != null && (
-                                <span className="font-medium text-foreground">
-                                  {Math.round(row.matchScore)}% match
-                                </span>
-                              )}
-                              {row.source && (
-                                <span>
-                                  Bron: {APPLICATION_SOURCE_LABELS[row.source] ?? row.source}
-                                </span>
-                              )}
-                              {row.createdAt && (
-                                <span>
-                                  Gekoppeld op{" "}
-                                  {new Date(row.createdAt).toLocaleDateString("nl-NL", {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  })}
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap gap-3 text-xs">
-                              {row.candidateId && (
-                                <Link
-                                  href={`/professionals/${row.candidateId}`}
-                                  className="text-primary hover:underline"
-                                >
-                                  Open profiel
-                                </Link>
-                              )}
-                              <Link
-                                href={`/pipeline?vacature=${job.id}&fase=${row.stage}`}
-                                className="text-primary hover:underline"
-                              >
-                                Open fase
-                              </Link>
-                            </div>
+                            <p className="mt-1 text-lg font-semibold text-foreground">{count}</p>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  )}
 
-                  {rejectedCount > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {rejectedCount} afgewezen kandidaat
-                      {rejectedCount === 1 ? " blijft" : "en blijven"} beschikbaar in de volledige
-                      pipelinehistorie.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-
-            <section id="ai-grading" className="scroll-mt-24">
-              <AIGrading candidates={gradedCandidates} />
-            </section>
-
-            {/* AI Summary */}
-            <div className="bg-card border border-border rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">AI Samenvatting</h3>
-              </div>
-              {aiPreview ? (
-                <p className="text-sm text-muted-foreground leading-relaxed">{aiPreview}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">
-                  Samenvatting wordt gegenereerd...
-                </p>
-              )}
-            </div>
-
-            {/* Mobile opdrachtdetails (visible below xl) */}
-            <div className="bg-card border border-border rounded-lg p-4 xl:hidden">
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">
-                Opdrachtdetails
-              </h3>
-              <JobDetailFields job={job} variant="mobile" />
-            </div>
-
-            {/* Tags / key requirements badges (short competences only) */}
-            {competencesList.filter((c) => stripHtml(c).length < 60).length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {competencesList
-                  .filter((c) => stripHtml(c).length < 60)
-                  .slice(0, 8)
-                  .map((comp) => (
-                    <Badge
-                      key={comp}
-                      variant="outline"
-                      className="bg-primary/10 text-primary border-primary/20 text-xs"
-                    >
-                      {stripHtml(comp)}
-                    </Badge>
-                  ))}
-              </div>
-            )}
-
-            <Separator className="bg-border" />
-
-            {/* Description */}
-            {cleanDescription && (
-              <div>
-                <h3 className="text-base font-semibold text-foreground mb-3">
-                  Functiebeschrijving
-                </h3>
-                <div
-                  className="text-sm text-muted-foreground leading-relaxed max-w-none [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-foreground [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-3 [&_h3]:mb-1 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-foreground [&_b]:font-semibold [&_b]:text-foreground [&_a]:text-primary [&_a]:underline [&_span]:inline"
-                  // biome-ignore lint/security/noDangerouslySetInnerHtml: Job descriptions from scrapers contain formatted HTML that must be rendered; content is sanitized by stripHtml in the scraper pipeline
-                  dangerouslySetInnerHTML={{ __html: cleanDescription }}
-                />
-              </div>
-            )}
-
-            {/* Structured sections */}
-            <SectionBlock title="Functie-eisen" items={requirementsList} />
-            <SectionBlock title="Wensen" items={wishesList} />
-            <SectionBlock title="Competenties" items={competencesList} />
-            <SectionBlock title="Wat bieden we" items={plainConditions} />
-
-            {/* External link */}
-            {job.externalUrl && (
-              <a href={job.externalUrl} target="_blank" rel="noopener noreferrer">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Bekijk op {job.platform}
-                </Button>
-              </a>
-            )}
-
-            <Separator className="bg-border" />
-
-            {/* Related jobs */}
-            {related.length > 0 && (
-              <div>
-                <h3 className="text-base font-semibold text-foreground mb-4">
-                  Vergelijkbare vacatures
-                </h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {related.map((rJob) => (
-                    <Link key={rJob.id} href={`/opdrachten/${rJob.id}`}>
-                      <div className="bg-card border border-border rounded-lg p-3 hover:border-primary/30 hover:bg-accent transition-colors cursor-pointer">
-                        <h4 className="text-sm font-semibold text-foreground line-clamp-2 mb-1">
-                          {rJob.title}
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          {rJob.company || rJob.platform}
-                        </p>
-                        {rJob.location && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                            <MapPin className="h-3 w-3" />
-                            {rJob.location}
+                    {nextPipelineAction ? (
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                            Volgende actie
                           </p>
-                        )}
+                          <p className="text-sm text-foreground">{nextPipelineAction.label}</p>
+                        </div>
+                        <Link
+                          href={nextPipelineAction.href}
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                        >
+                          Open fase
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
                       </div>
-                    </Link>
-                  ))}
+                    ) : null}
+                  </>
+                )}
+              </section>
+
+              <section className="rounded-lg border border-border bg-card p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground">
+                      Vacaturedetails
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Alle kernvelden van deze vacature in één compacte panelweergave.
+                    </p>
+                  </div>
+                  {job.externalUrl ? (
+                    <Button asChild variant="outline" size="sm" className="border-border">
+                      <a href={job.externalUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Bekijk op {job.platform}
+                      </a>
+                    </Button>
+                  ) : null}
                 </div>
-              </div>
-            )}
 
-            <div className="h-8" />
-          </div>
-        </main>
+                <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <JobDetailFields job={job} variant="desktop" metaFields={metaFields} />
+                </dl>
+              </section>
 
-        {/* Right sidebar: Opdrachtdetails (desktop xl+ only) */}
-        <aside className="w-[300px] border-l border-border bg-sidebar overflow-y-auto shrink-0 hidden xl:block">
-          <div className="p-5 space-y-5">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              Opdrachtdetails
-            </h3>
+              <section className="rounded-lg border border-border bg-card p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Gekoppelde kandidaten</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Kandidaten die al aan deze vacature gekoppeld zijn.
+                    </p>
+                  </div>
+                  <Link
+                    href={pipelineHref}
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    Alles bekijken
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
 
-            <JobDetailFields job={job} variant="desktop" metaFields={metaFields} />
-
-            <Separator className="bg-border" />
-
-            {/* Pipeline mini-summary (sidebar) */}
-            {totalPipeline > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Pipeline
-                </h3>
-                <div className="flex gap-0.5 h-1.5 rounded-full overflow-hidden bg-muted">
-                  {PIPELINE_STAGES.map((stage) => {
-                    const count = stageCountMap[stage.key] ?? 0;
-                    if (count === 0) return null;
-                    const pct = (count / totalPipeline) * 100;
-                    return (
+                {recruiterCockpitRows.length === 0 ? (
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Nog geen kandidaten gekoppeld aan deze vacature.
+                  </p>
+                ) : (
+                  <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                    {recruiterCockpitRows.map((row) => (
                       <div
-                        key={stage.key}
-                        className={`${stage.color}`}
-                        style={{ width: `${pct}%` }}
-                        title={`${stage.label}: ${count}`}
-                      />
-                    );
-                  })}
-                </div>
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
-                  {PIPELINE_STAGES.map((stage) => {
-                    const count = stageCountMap[stage.key] ?? 0;
-                    if (count === 0) return null;
-                    return (
-                      <span key={stage.key} className="flex items-center gap-1">
-                        <span className={`h-1.5 w-1.5 rounded-full ${stage.color}`} />
-                        {count} {stage.label.toLowerCase()}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                        key={row.id}
+                        className="rounded-lg border border-border bg-background/60 p-3"
+                      >
+                        {PIPELINE_NEXT_STEP_HINTS[row.stage] ? (
+                          <div className="mb-3 rounded-md border border-border/70 bg-card px-2.5 py-2">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Volgende stap
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-foreground">
+                              {PIPELINE_NEXT_STEP_HINTS[row.stage]}
+                            </p>
+                          </div>
+                        ) : null}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            {row.candidateId ? (
+                              <Link
+                                href={`/professionals/${row.candidateId}`}
+                                className="text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                              >
+                                {row.candidateName ?? "Onbekende kandidaat"}
+                              </Link>
+                            ) : (
+                              <p className="text-sm font-semibold text-foreground">
+                                {row.candidateName ?? "Onbekende kandidaat"}
+                              </p>
+                            )}
+                            {row.candidateRole || row.candidateLocation ? (
+                              <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                                {[row.candidateRole, row.candidateLocation]
+                                  .filter(Boolean)
+                                  .join(" • ")}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap justify-end gap-1.5">
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] ${PIPELINE_STAGE_STYLES[row.stage] ?? "border-border text-muted-foreground"}`}
+                            >
+                              {PIPELINE_STAGE_LABELS[row.stage] ?? row.stage}
+                            </Badge>
+                            {row.matchStatus ? (
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] ${MATCH_STATUS_STYLES[row.matchStatus] ?? "border-border text-muted-foreground"}`}
+                              >
+                                {MATCH_STATUS_LABELS[row.matchStatus] ?? row.matchStatus}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </div>
 
-            <Separator className="bg-border" />
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          {row.matchScore != null ? (
+                            <span className="font-medium text-foreground">
+                              {Math.round(row.matchScore)}% match
+                            </span>
+                          ) : null}
+                          {row.source ? (
+                            <span>Bron: {APPLICATION_SOURCE_LABELS[row.source] ?? row.source}</span>
+                          ) : null}
+                          {row.createdAt ? (
+                            <span>
+                              Gekoppeld op{" "}
+                              {new Date(row.createdAt).toLocaleDateString("nl-NL", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          ) : null}
+                        </div>
 
-            {/* Action buttons */}
-            <div className="space-y-2">
-              <Link href={gradingHref} className="block w-full">
-                <Button variant="outline" className="w-full border-border font-semibold h-10">
-                  <Award className="h-4 w-4 mr-2" />
-                  AI Grading
-                </Button>
-              </Link>
-              <LinkCandidatesDialog
-                jobId={job.id}
-                jobTitle={job.title}
-                trigger={
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10">
-                    <Link2 className="h-4 w-4 mr-2" />
-                    Koppel aan kandidaat
+                        <div className="mt-3 flex flex-wrap gap-3 text-xs">
+                          {row.candidateId ? (
+                            <Link
+                              href={`/professionals/${row.candidateId}`}
+                              className="text-primary hover:underline"
+                            >
+                              Open profiel
+                            </Link>
+                          ) : null}
+                          <Link
+                            href={`/pipeline?vacature=${job.id}&fase=${row.stage}`}
+                            className="text-primary hover:underline"
+                          >
+                            Open fase
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {rejectedCount > 0 ? (
+                  <p className="mt-4 text-xs text-muted-foreground">
+                    {rejectedCount} afgewezen kandidaat
+                    {rejectedCount === 1 ? " blijft" : "en blijven"} beschikbaar in de volledige
+                    pipelinehistorie.
+                  </p>
+                ) : null}
+              </section>
+
+              <section
+                id="koppel-kandidaten"
+                className="rounded-lg border border-border bg-card p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Link2 className="h-4 w-4 text-primary" />
+                      <h2 className="text-sm font-semibold text-foreground">
+                        Nog te koppelen kandidaten
+                      </h2>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Selecties uit de top-3 gaan direct naar screening. Open recruiter context of
+                      grading voor extra onderbouwing.
+                    </p>
+                  </div>
+                  <Button asChild variant="outline" size="sm" className="border-border">
+                    <Link href={gradingHref}>
+                      <Award className="mr-2 h-4 w-4" />
+                      Open AI Grading
+                    </Link>
                   </Button>
-                }
-              />
-              <Link href={`/pipeline?vacature=${job.id}`} className="block w-full">
-                <Button variant="outline" className="w-full border-border font-semibold h-10">
-                  <Kanban className="h-4 w-4 mr-2" />
-                  Bekijk pipeline
-                  {totalPipeline > 0 && (
-                    <Badge
-                      variant="outline"
-                      className="ml-2 text-[9px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20"
-                    >
-                      {totalPipeline}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
+                </div>
+
+                <div className="mt-4">
+                  <LinkCandidatesDialog jobId={job.id} jobTitle={job.title} variant="inline" />
+                </div>
+              </section>
+
+              <section id="ai-grading" className="scroll-mt-24">
+                <AIGrading candidates={gradedCandidates} />
+              </section>
+
+              <section className="rounded-lg border border-border bg-card p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h2 className="text-sm font-semibold text-foreground">AI Samenvatting</h2>
+                </div>
+                {aiPreview ? (
+                  <p className="text-sm leading-relaxed text-muted-foreground">{aiPreview}</p>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground">
+                    Samenvatting wordt gegenereerd...
+                  </p>
+                )}
+              </section>
+
+              {competencesList.filter((c) => stripHtml(c).length < 60).length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {competencesList
+                    .filter((c) => stripHtml(c).length < 60)
+                    .slice(0, 8)
+                    .map((comp) => (
+                      <Badge
+                        key={comp}
+                        variant="outline"
+                        className="border-primary/20 bg-primary/10 text-xs text-primary"
+                      >
+                        {stripHtml(comp)}
+                      </Badge>
+                    ))}
+                </div>
+              ) : null}
+
+              <Separator className="bg-border" />
+
+              {cleanDescription ? (
+                <section>
+                  <h2 className="mb-3 text-base font-semibold text-foreground">
+                    Functiebeschrijving
+                  </h2>
+                  <div
+                    className="max-w-none text-sm leading-relaxed text-muted-foreground [&_a]:text-primary [&_a]:underline [&_b]:font-semibold [&_b]:text-foreground [&_h1]:mb-2 [&_h1]:mt-4 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-foreground [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-foreground [&_li]:mb-1 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_span]:inline [&_strong]:font-semibold [&_strong]:text-foreground [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5"
+                    // biome-ignore lint/security/noDangerouslySetInnerHtml: Job descriptions from scrapers contain formatted HTML that must be rendered; content is sanitized by stripHtml in the scraper pipeline
+                    dangerouslySetInnerHTML={{ __html: cleanDescription }}
+                  />
+                </section>
+              ) : null}
+
+              <SectionBlock title="Functie-eisen" items={requirementsList} />
+              <SectionBlock title="Wensen" items={wishesList} />
+              <SectionBlock title="Competenties" items={competencesList} />
+              <SectionBlock title="Wat bieden we" items={plainConditions} />
+
+              {related.length > 0 ? (
+                <section>
+                  <h2 className="mb-4 text-base font-semibold text-foreground">
+                    Vergelijkbare vacatures
+                  </h2>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {related.map((rJob) => (
+                      <Link key={rJob.id} href={buildDetailHref(rJob.id)}>
+                        <div className="cursor-pointer rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/30 hover:bg-accent">
+                          <h3 className="mb-1 line-clamp-2 text-sm font-semibold text-foreground">
+                            {rJob.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {rJob.company || rJob.platform}
+                          </p>
+                          {rJob.location ? (
+                            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3" />
+                              {rJob.location}
+                            </p>
+                          ) : null}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
             </div>
           </div>
-        </aside>
-
-        {/* Mobile sticky bottom action bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 flex gap-2 xl:hidden z-50">
-          <LinkCandidatesDialog
-            jobId={job.id}
-            jobTitle={job.title}
-            trigger={
-              <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
-                <Link2 className="h-4 w-4 mr-2" />
-                Koppelen
-              </Button>
-            }
-          />
-          <Link href={`/pipeline?vacature=${job.id}`} className="flex-1">
-            <Button variant="outline" className="w-full border-border font-semibold h-11">
-              <Kanban className="h-4 w-4 mr-2" />
-              Pipeline
-              {totalPipeline > 0 && (
-                <Badge
-                  variant="outline"
-                  className="ml-1 text-[9px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20"
-                >
-                  {totalPipeline}
-                </Badge>
-              )}
-            </Button>
-          </Link>
         </div>
-      </div>
+      </OpdrachtenDetailSheet>
     </DroppableVacancy>
   );
 }

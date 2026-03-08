@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockListJobs, mockHybridSearch } = vi.hoisted(() => ({
+const { mockListJobs, mockHybridSearch, mockHybridSearchWithTotal } = vi.hoisted(() => ({
   mockListJobs: vi.fn(),
   mockHybridSearch: vi.fn(),
+  mockHybridSearchWithTotal: vi.fn(),
 }));
 
 vi.mock("../src/services/jobs/list", () => ({
@@ -12,6 +13,7 @@ vi.mock("../src/services/jobs/list", () => ({
 
 vi.mock("../src/services/jobs/search", () => ({
   hybridSearch: mockHybridSearch,
+  hybridSearchWithTotal: mockHybridSearchWithTotal,
   searchJobs: vi.fn(),
   searchJobsByTitle: vi.fn(),
 }));
@@ -28,6 +30,10 @@ describe("searchJobsUnified", () => {
     mockHybridSearch.mockResolvedValue([
       { id: "job-2", title: "Hybrid job", platform: "opdrachtoverheid", score: 0.88 },
     ]);
+    mockHybridSearchWithTotal.mockResolvedValue({
+      data: [{ id: "job-2", title: "Hybrid job", platform: "opdrachtoverheid", score: 0.88 }],
+      total: 7,
+    });
   });
 
   it("returns { data, total } with data array and number total", async () => {
@@ -50,10 +56,13 @@ describe("searchJobsUnified", () => {
       category: undefined,
       status: undefined,
       province: undefined,
+      region: undefined,
       rateMin: undefined,
       rateMax: undefined,
       contractType: undefined,
       workArrangement: undefined,
+      hoursPerWeekBucket: undefined,
+      radiusKm: undefined,
       postedAfter: undefined,
       deadlineBefore: undefined,
       startDateAfter: undefined,
@@ -79,24 +88,40 @@ describe("searchJobsUnified", () => {
 
   it("with q: hybrid search shape (items have score)", async () => {
     const result = await searchJobsUnified({ q: "test", limit: 2 });
-    expect(mockHybridSearch).toHaveBeenCalledWith("test", {
-      limit: 2,
-      platform: undefined,
-      province: undefined,
-      rateMin: undefined,
-      rateMax: undefined,
-      contractType: undefined,
-      workArrangement: undefined,
-      postedAfter: undefined,
-      deadlineBefore: undefined,
-      startDateAfter: undefined,
-      sortBy: undefined,
-    });
+    expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
+      "test",
+      expect.objectContaining({
+        limit: 2,
+        offset: undefined,
+        platform: undefined,
+        company: undefined,
+        endClient: undefined,
+        category: undefined,
+        categories: undefined,
+        status: undefined,
+        province: undefined,
+        region: undefined,
+        regions: undefined,
+        rateMin: undefined,
+        rateMax: undefined,
+        contractType: undefined,
+        workArrangement: undefined,
+        hoursPerWeekBucket: undefined,
+        minHoursPerWeek: undefined,
+        maxHoursPerWeek: undefined,
+        radiusKm: undefined,
+        postedAfter: undefined,
+        deadlineBefore: undefined,
+        startDateAfter: undefined,
+        sortBy: undefined,
+      }),
+    );
     expect(result.data[0]).toMatchObject({
       id: "job-2",
       title: "Hybrid job",
       score: 0.88,
     });
+    expect(result.total).toBe(7);
   });
 
   it("accepts sortBy and returns deterministic ordering", async () => {
@@ -123,5 +148,82 @@ describe("searchJobsUnified", () => {
     for (const job of result.data) {
       expect((job as { platform?: string }).platform).toBe("opdrachtoverheid");
     }
+  });
+
+  it("forwards enhanced recruiter filters on both list and hybrid paths", async () => {
+    await searchJobsUnified({
+      endClient: "Gemeente Utrecht",
+      category: "ICT",
+      status: "closed",
+      province: "Utrecht",
+      region: "randstad",
+      hoursPerWeekBucket: "24_32",
+      radiusKm: 25,
+      sortBy: "deadline",
+      limit: 5,
+    });
+
+    expect(mockListJobs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endClient: "Gemeente Utrecht",
+        category: "ICT",
+        status: "closed",
+        province: "Utrecht",
+        region: "randstad",
+        hoursPerWeekBucket: "24_32",
+        radiusKm: 25,
+        sortBy: "deadline",
+        limit: 5,
+      }),
+    );
+
+    await searchJobsUnified({
+      q: "manager",
+      endClient: "Gemeente Utrecht",
+      category: "ICT",
+      status: "closed",
+      province: "Utrecht",
+      region: "randstad",
+      hoursPerWeekBucket: "24_32",
+      radiusKm: 25,
+      sortBy: "deadline",
+      limit: 5,
+    });
+
+    expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
+      "manager",
+      expect.objectContaining({
+        endClient: "Gemeente Utrecht",
+        category: "ICT",
+        status: "closed",
+        province: "Utrecht",
+        region: "randstad",
+        hoursPerWeekBucket: "24_32",
+        radiusKm: 25,
+        sortBy: "deadline",
+        limit: 5,
+      }),
+    );
+  });
+
+  it("forwards company and offset to hybrid search and preserves the full total", async () => {
+    const result = await searchJobsUnified({
+      q: "manager",
+      company: "Motian",
+      endClient: "Gemeente Utrecht",
+      limit: 5,
+      offset: 10,
+    });
+
+    expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
+      "manager",
+      expect.objectContaining({
+        company: "Motian",
+        endClient: "Gemeente Utrecht",
+        limit: 5,
+        offset: 10,
+      }),
+    );
+    expect(result.total).toBe(7);
   });
 });

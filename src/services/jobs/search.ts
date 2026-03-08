@@ -1,9 +1,11 @@
-import { and, desc, eq, gte, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { jobs } from "../../db/schema";
 import { escapeLike, toTsQueryInput } from "../../lib/helpers";
+import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
 import { logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
 import { getSortComparator, type ListJobsSortBy } from "./filters";
+import { buildJobFilterConditions } from "./query-filters";
 import type { Job } from "./repository";
 
 export type SearchJobsOptions = {
@@ -13,40 +15,64 @@ export type SearchJobsOptions = {
 
 export type HybridSearchOptions = {
   limit?: number;
+  offset?: number;
   platform?: string;
+  company?: string;
+  endClient?: string;
+  category?: string;
+  categories?: string[];
+  status?: "open" | "closed" | "all";
   province?: string;
+  region?: OpdrachtenRegion;
+  regions?: OpdrachtenRegion[];
   rateMin?: number;
   rateMax?: number;
   contractType?: string;
   workArrangement?: string;
+  postedBefore?: Date | string;
+  deadlineAfter?: Date | string;
   sortBy?: ListJobsSortBy;
   postedAfter?: Date | string;
   deadlineBefore?: Date | string;
   startDateAfter?: Date | string;
+  startDateBefore?: Date | string;
+  hoursPerWeekBucket?: OpdrachtenHoursBucket;
+  minHoursPerWeek?: number;
+  maxHoursPerWeek?: number;
+  radiusKm?: number;
+};
+
+export type HybridSearchResult = {
+  data: Array<Job & { score: number }>;
+  total: number;
 };
 
 function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
-  const conditions = [];
-
-  if (opts.platform) conditions.push(eq(jobs.platform, opts.platform));
-  if (opts.province) {
-    conditions.push(
-      or(
-        ilike(jobs.province, `%${escapeLike(opts.province)}%`),
-        ilike(jobs.location, `%${escapeLike(opts.province)}%`),
-      ),
-    );
-  }
-  if (opts.rateMin != null) conditions.push(gte(jobs.rateMax, opts.rateMin));
-  if (opts.rateMax != null) conditions.push(lte(jobs.rateMin, opts.rateMax));
-  if (opts.contractType) conditions.push(eq(jobs.contractType, opts.contractType));
-  if (opts.workArrangement) conditions.push(eq(jobs.workArrangement, opts.workArrangement));
-  if (opts.postedAfter) conditions.push(gte(jobs.postedAt, new Date(opts.postedAfter)));
-  if (opts.deadlineBefore)
-    conditions.push(lte(jobs.applicationDeadline, new Date(opts.deadlineBefore)));
-  if (opts.startDateAfter) conditions.push(gte(jobs.startDate, new Date(opts.startDateAfter)));
-
-  return conditions;
+  return buildJobFilterConditions({
+    platform: opts.platform,
+    company: opts.company,
+    endClient: opts.endClient,
+    category: opts.category,
+    categories: opts.categories,
+    status: opts.status,
+    province: opts.province,
+    region: opts.region,
+    regions: opts.regions,
+    rateMin: opts.rateMin,
+    rateMax: opts.rateMax,
+    contractType: opts.contractType,
+    workArrangement: opts.workArrangement,
+    postedAfter: opts.postedAfter,
+    postedBefore: opts.postedBefore,
+    deadlineAfter: opts.deadlineAfter,
+    deadlineBefore: opts.deadlineBefore,
+    startDateAfter: opts.startDateAfter,
+    startDateBefore: opts.startDateBefore,
+    hoursPerWeekBucket: opts.hoursPerWeekBucket,
+    minHoursPerWeek: opts.minHoursPerWeek,
+    maxHoursPerWeek: opts.maxHoursPerWeek,
+    radiusKm: opts.radiusKm,
+  });
 }
 
 /** Opdrachten zoeken op titel/omschrijving met full-text search (tsvector/GIN).
@@ -103,14 +129,15 @@ export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
 }
 
 /** Hybrid zoeken: combineert tekst (ILIKE) + vector (pgvector) met Reciprocal Rank Fusion. */
-export async function hybridSearch(
+export async function hybridSearchWithTotal(
   query: string,
   opts: HybridSearchOptions = {},
-): Promise<Array<Job & { score: number }>> {
+): Promise<HybridSearchResult> {
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 20, 100);
+  const offset = Math.max(opts.offset ?? 0, 0);
   const k = 60;
-  const fetchSize = Math.min(limit * 3, 100);
+  const fetchSize = Math.min(Math.max((offset + limit) * 3, limit * 3), 100);
 
   const [textResults, vectorResults] = await Promise.all([
     searchJobsByTitle(query, fetchSize),
@@ -144,7 +171,7 @@ export async function hybridSearch(
       query: query.slice(0, 80),
       results: 0,
     });
-    return [];
+    return { data: [], total: 0 };
   }
 
   const fetchedJobs = await db
@@ -167,7 +194,7 @@ export async function hybridSearch(
     .sort((a, b) => b[1].rrfScore - a[1].rrfScore)
     .filter(([, value]) => value.job);
 
-  if (opts.sortBy && opts.sortBy !== "nieuwste") {
+  if (opts.sortBy) {
     const sortFn = getSortComparator(opts.sortBy);
     filtered.sort((a, b) => {
       const jobA = a[1].job;
@@ -177,13 +204,23 @@ export async function hybridSearch(
     });
   }
 
-  const result = filtered.slice(0, limit).map(([, value]) => ({
+  const total = filtered.length;
+  const data = filtered.slice(offset, offset + limit).map(([, value]) => ({
     ...(value.job as NonNullable<typeof value.job>),
     score: Math.round(value.rrfScore * 10000) / 10000,
   }));
   logSlowQuery("hybridSearch", Date.now() - start, SEARCH_SLO_MS, {
     query: query.slice(0, 80),
-    results: result.length,
+    results: data.length,
+    total,
+    offset,
   });
-  return result;
+  return { data, total };
+}
+
+export async function hybridSearch(
+  query: string,
+  opts: HybridSearchOptions = {},
+): Promise<Array<Job & { score: number }>> {
+  return (await hybridSearchWithTotal(query, opts)).data;
 }

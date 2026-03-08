@@ -298,11 +298,6 @@ export default async function ProfessionalDetailPage({ params }: Props) {
       .map((row) => row.linkedMatch?.id)
       .filter((matchId): matchId is string => Boolean(matchId)),
   );
-  const linkedJobIds = new Set(
-    recruiterApplications
-      .map((row) => row.job?.id)
-      .filter((jobId): jobId is string => Boolean(jobId)),
-  );
   const remainingMatchRows = activeApplications.length
     ? matchRows.filter((row) => !linkedMatchIds.has(row.match.id))
     : matchRows;
@@ -311,28 +306,47 @@ export default async function ProfessionalDetailPage({ params }: Props) {
     score: row.match.matchScore,
     jobId: row.job?.id,
   }));
-  const recommendationMatches: MatchSuggestionItem[] = remainingMatchRows
-    .filter((row) => row.job?.id)
-    .slice(0, 5)
-    .map((row) => ({
-      jobId: row.job?.id ?? "",
-      jobTitle: row.job?.title ?? "Vacature",
-      company: row.job?.company ?? null,
-      location: row.job?.location ?? null,
-      quickScore: row.match.matchScore,
-      matchId: row.match.id,
-      reasoning: row.match.reasoning ?? null,
-      isLinked: row.job?.id ? linkedJobIds.has(row.job.id) : false,
-      recommendation:
-        row.match.recommendation === "go" ||
-        row.match.recommendation === "conditional" ||
-        row.match.recommendation === "no-go"
-          ? row.match.recommendation
-          : null,
-      recommendationConfidence: row.match.recommendationConfidence ?? null,
-      recommendationSource: row.match.recommendation ? "backend" : "score",
-      status: row.match.status,
-    }));
+  const recommendationMatches: MatchSuggestionItem[] = remainingMatchRows.flatMap((row) => {
+    if (!row.job?.id) return [];
+
+    const recommendation =
+      row.match.recommendation === "go" ||
+      row.match.recommendation === "no-go" ||
+      row.match.recommendation === "conditional"
+        ? row.match.recommendation
+        : null;
+    const criteriaBreakdown = Array.isArray(row.match.criteriaBreakdown)
+      ? (row.match.criteriaBreakdown as CriterionResult[])
+      : [];
+    const riskProfile = Array.isArray(row.match.riskProfile)
+      ? (row.match.riskProfile as string[])
+      : [];
+    const enrichmentSuggestions = Array.isArray(row.match.enrichmentSuggestions)
+      ? (row.match.enrichmentSuggestions as string[])
+      : [];
+
+    return [
+      {
+        matchId: row.match.id,
+        jobId: row.job.id,
+        jobTitle: row.job.title,
+        company: row.job.company,
+        location: row.job.location,
+        quickScore: row.match.matchScore,
+        reasoning: row.match.reasoning ?? null,
+        isLinked: linkedMatchIds.has(row.match.id),
+        recommendation,
+        recommendationConfidence: row.match.recommendationConfidence ?? null,
+        recommendationSource: recommendation ? "backend" : "score",
+        criteriaBreakdown,
+        riskProfile,
+        enrichmentSuggestions,
+        assessmentModel: row.match.assessmentModel ?? null,
+        status: row.match.status,
+        reviewedAt: row.match.reviewedAt ? row.match.reviewedAt.toISOString() : null,
+      },
+    ];
+  });
 
   /** Human-friendly recommendation label */
   const recommendationLabel = (rec: string | null): string => {
@@ -402,12 +416,12 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 </a>
               )}
               <div className="flex gap-2">
-                <Link href={primaryWorkflowAction.href}>
-                  <Button variant="secondary" size="sm" className="gap-1.5">
+                <Button asChild variant="secondary" size="sm" className="gap-1.5">
+                  <Link href={primaryWorkflowAction.href}>
                     <MessageCircle className="h-4 w-4" />
                     {primaryWorkflowAction.label}
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <Bookmark className="h-4 w-4" />
                   Kandidaat opslaan
@@ -422,7 +436,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Briefcase className="h-4 w-4 text-primary" />
-                    <h2 className="text-lg font-semibold text-foreground">Recruiter context</h2>
+                    <h2 className="text-lg font-semibold text-foreground">Recruiteroverzicht</h2>
                     <Badge
                       variant="outline"
                       className="text-[10px] bg-primary/10 text-primary border-primary/20"
@@ -440,19 +454,19 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Link href={primaryWorkflowAction.href}>
-                    <Button variant="secondary" size="sm" className="gap-1.5">
+                  <Button asChild variant="secondary" size="sm" className="gap-1.5">
+                    <Link href={primaryWorkflowAction.href}>
                       <Briefcase className="h-4 w-4" />
                       {primaryWorkflowAction.label}
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                   {primaryActiveApplication?.job?.id && (
-                    <Link href={`/opdrachten/${primaryActiveApplication.job.id}`}>
-                      <Button variant="outline" size="sm" className="gap-1.5">
+                    <Button asChild variant="outline" size="sm" className="gap-1.5">
+                      <Link href={`/opdrachten/${primaryActiveApplication.job.id}`}>
                         <ArrowRight className="h-4 w-4" />
                         Open vacature
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -602,20 +616,14 @@ export default async function ProfessionalDetailPage({ params }: Props) {
             </div>
           </section>
 
-          <CandidateRecommendationPanel
-            candidateId={candidate.id}
-            hasResume={Boolean(candidate.resumeUrl)}
-            initialMatches={recommendationMatches}
-          />
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             {/* Left column: About, Employments, Edit, CV, Notes, Matches */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 lg:col-span-2">
               {/* About */}
               <section>
-                <h2 className="text-lg font-semibold text-foreground mb-3">Overzicht</h2>
+                <h2 className="mb-3 text-lg font-semibold text-foreground">Overzicht</h2>
                 <div className="rounded-xl border border-border bg-card p-4">
-                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                  <p className="whitespace-pre-line text-sm text-muted-foreground">
                     {candidate.headline ?? "Geen samenvatting."}
                   </p>
                   {languages.length > 0 && (
@@ -644,7 +652,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
               ) : (
                 experienceEntries.length > 0 && (
                   <section>
-                    <h2 className="text-lg font-semibold text-foreground mb-3">Werkervaring</h2>
+                    <h2 className="mb-3 text-lg font-semibold text-foreground">Werkervaring</h2>
                     <div className="space-y-3">
                       {experienceEntries.map((entry, i) => (
                         <EmploymentCard
@@ -678,9 +686,15 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
               <CandidateNotes candidateId={candidate.id} initialNotes={candidate.notes} />
 
+              <CandidateRecommendationPanel
+                candidateId={candidate.id}
+                hasResume={Boolean(candidate.resumeUrl || candidate.resumeRaw)}
+                initialMatches={recommendationMatches}
+              />
+
               {/* Matches list + chart */}
               <section id="matches">
-                <div className="flex items-center gap-2 mb-4">
+                <div className="mb-4 flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
                   <h2 className="text-lg font-semibold text-foreground">
                     {activeApplications.length > 0
@@ -690,15 +704,15 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 </div>
                 {remainingMatchRows.length === 0 ? (
                   <div className="rounded-xl border border-border bg-card p-6 text-center">
-                    <Sparkles className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                    <Sparkles className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
                     <p className="text-sm text-muted-foreground">
                       {activeApplications.length > 0
                         ? "Alle bekende matches zijn al gekoppeld aan sollicitaties"
                         : "Nog geen matches voor deze kandidaat"}
                     </p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground/70">
                       {activeApplications.length > 0
-                        ? "De gelinkte matchcontext staat hierboven in Recruiter context"
+                        ? "De gelinkte matchcontext staat hierboven in Recruiteroverzicht"
                         : "Matches worden automatisch berekend wanneer vacatures beschikbaar zijn"}
                     </p>
                   </div>
@@ -706,7 +720,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                   <div className="space-y-4">
                     {activeApplications.length > 0 && (
                       <p className="text-sm text-muted-foreground">
-                        Gelinkte matches staan hierboven in Recruiter context.
+                        Gelinkte matches staan hierboven in Recruiteroverzicht.
                       </p>
                     )}
                     <div className="rounded-xl border border-border bg-card p-4">
@@ -731,15 +745,15 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                         return (
                           <details
                             key={row.match.id}
-                            className="group rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-accent transition-colors"
+                            className="group rounded-xl border border-border bg-card transition-colors hover:border-primary/40 hover:bg-accent"
                           >
-                            <summary className="p-4 cursor-pointer list-none">
-                              <div className="flex items-start justify-between gap-3 mb-3">
-                                <div className="flex-1 min-w-0">
+                            <summary className="list-none cursor-pointer p-4">
+                              <div className="mb-3 flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
                                   {row.job ? (
                                     <Link
                                       href={`/opdrachten/${row.job.id}`}
-                                      className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                                      className="text-sm font-semibold text-foreground transition-colors hover:text-primary"
                                     >
                                       {row.job.title}
                                     </Link>
@@ -749,13 +763,13 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                                     </span>
                                   )}
                                   {row.job?.company && (
-                                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                                    <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                                       <Briefcase className="h-3 w-3" />
                                       {row.job.company}
                                     </p>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex shrink-0 items-center gap-2">
                                   {rec && (
                                     <span
                                       className={`text-[10px] font-medium ${recommendationColor(rec)}`}
@@ -772,21 +786,21 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                                 </div>
                               </div>
                               <div className="mb-1">
-                                <div className="flex items-center justify-between text-xs mb-1">
+                                <div className="mb-1 flex items-center justify-between text-xs">
                                   <span className="text-muted-foreground">Match score</span>
                                   <span
                                     className={
                                       row.match.matchScore >= 80
-                                        ? "text-primary font-medium"
+                                        ? "font-medium text-primary"
                                         : row.match.matchScore >= 60
-                                          ? "text-yellow-500 font-medium"
-                                          : "text-red-500 font-medium"
+                                          ? "font-medium text-yellow-500"
+                                          : "font-medium text-red-500"
                                     }
                                   >
                                     {Math.round(row.match.matchScore)}%
                                   </span>
                                 </div>
-                                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                                   <div
                                     className={`h-full rounded-full transition-all ${
                                       row.match.matchScore >= 80
@@ -802,29 +816,29 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                                 </div>
                               </div>
                               {row.match.reasoning && (
-                                <p className="text-xs text-muted-foreground line-clamp-2 mt-2 group-open:hidden">
+                                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground group-open:hidden">
                                   {row.match.reasoning}
                                 </p>
                               )}
                             </summary>
 
                             {/* Expanded detail */}
-                            <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+                            <div className="space-y-3 border-t border-border/50 px-4 pt-3 pb-4">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <p className="text-xs font-medium text-foreground">Matchcontext</p>
                                 <ReportButton matchId={row.match.id} />
                               </div>
                               {row.match.reasoning && (
                                 <div>
-                                  <p className="text-xs font-medium text-foreground mb-1">
+                                  <p className="mb-1 text-xs font-medium text-foreground">
                                     Toelichting
                                   </p>
-                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                  <p className="text-xs leading-relaxed text-muted-foreground">
                                     {row.match.reasoning}
                                   </p>
                                 </div>
                               )}
-                              {hasStructuredMatch && (
+                              {hasStructuredMatch ? (
                                 <MatchDetail
                                   criteriaBreakdown={criteriaBreakdown}
                                   overallScore={row.match.matchScore}
@@ -845,9 +859,9 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                                   }
                                   recommendationConfidence={row.match.recommendationConfidence ?? 0}
                                 />
-                              )}
+                              ) : null}
                               {/* Confidence + model provenance */}
-                              <div className="flex items-center gap-3 text-[10px] text-muted-foreground/70 pt-1 border-t border-border/30">
+                              <div className="flex items-center gap-3 border-t border-border/30 pt-1 text-[10px] text-muted-foreground/70">
                                 <Info className="h-3 w-3 shrink-0" />
                                 {recConf != null && (
                                   <span>Betrouwbaarheid: {Math.round(recConf)}%</span>
@@ -869,18 +883,18 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
             {/* Right column: Market value, Years exp, Social, Skills (radar + tags), Contacts */}
             <div className="space-y-4">
-              <div className="rounded-xl border border-border p-4 bg-red-50 dark:bg-red-950/20">
+              <div className="rounded-xl border border-border bg-red-50 p-4 dark:bg-red-950/20">
                 <p className="text-xs font-medium text-muted-foreground">Marktwaarde</p>
-                <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mt-0.5">
+                <p className="mt-0.5 text-sm font-medium text-orange-600 dark:text-orange-400">
                   Binnenkort…
                 </p>
               </div>
-              <div className="rounded-xl border border-border p-4 bg-blue-50 dark:bg-blue-950/20">
+              <div className="rounded-xl border border-border bg-blue-50 p-4 dark:bg-blue-950/20">
                 <p className="text-xs font-medium text-muted-foreground">Jaren ervaring</p>
-                <p className="text-sm font-medium text-foreground mt-0.5">{yearsExp ?? "—"}</p>
+                <p className="mt-0.5 text-sm font-medium text-foreground">{yearsExp ?? "—"}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Sociale media</h3>
+                <h3 className="mb-3 text-sm font-semibold text-foreground">Sociale media</h3>
                 <div className="flex flex-wrap gap-2">
                   {candidate.linkedinUrl ? (
                     <a
@@ -891,7 +905,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                       }
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center size-9 rounded-full bg-[#0A66C2] text-white hover:opacity-90"
+                      className="inline-flex size-9 items-center justify-center rounded-full bg-[#0A66C2] text-white hover:opacity-90"
                     >
                       <span className="sr-only">LinkedIn profiel openen</span>
                       <svg className="size-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -905,7 +919,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 </div>
               </div>
               <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Vaardigheden</h3>
+                <h3 className="mb-3 text-sm font-semibold text-foreground">Vaardigheden</h3>
                 {(() => {
                   if (
                     structuredSkills &&
@@ -926,7 +940,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                           <Badge
                             key={skill}
                             variant="outline"
-                            className="bg-primary/10 text-primary border-primary/20 text-xs"
+                            className="border-primary/20 bg-primary/10 text-xs text-primary"
                           >
                             {skill}
                           </Badge>
@@ -942,7 +956,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 })()}
               </div>
               <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Contact</h3>
+                <h3 className="mb-3 text-sm font-semibold text-foreground">Contact</h3>
                 <div className="space-y-2 text-sm text-muted-foreground">
                   {candidate.phone && (
                     <p className="flex items-center gap-2">
@@ -955,7 +969,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                       <Mail className="h-4 w-4 shrink-0" />
                       <a
                         href={`mailto:${candidate.email}`}
-                        className="hover:text-foreground truncate"
+                        className="truncate hover:text-foreground"
                       >
                         {candidate.email}
                       </a>

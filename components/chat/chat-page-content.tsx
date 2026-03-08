@@ -2,6 +2,7 @@
 
 import type { ChatStatus } from "ai";
 import {
+  ArrowUpRight,
   Brain,
   Briefcase,
   FileText,
@@ -18,6 +19,7 @@ import {
   Zap,
 } from "lucide-react";
 import { nanoid } from "nanoid";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ChatPromptComposer } from "@/src/components/ai-elements/chat-prompt-composer";
 import { useChatContext } from "./chat-context-provider";
@@ -83,6 +85,7 @@ type ChatSurfaceContext = {
   entityId: string | null;
   entityType: "opdracht" | "kandidaat" | null;
 };
+
 type ChatSurfaceConfig = {
   title: string;
   subtitle: string;
@@ -96,6 +99,13 @@ type ChatSurfaceConfig = {
   starterPrompts: ChatSuggestion[];
   followUpPrompts: ChatSuggestion[];
 };
+
+function getContextLabel(ctx: ChatSurfaceContext) {
+  if (ctx.entityType === "opdracht") return "Verder vanuit opdracht";
+  if (ctx.entityType === "kandidaat") return "Verder vanuit kandidaat";
+  if (ctx.route !== "/chat") return `Verder vanuit ${ctx.route}`;
+  return "Algemene chat";
+}
 
 const GENERAL_STARTER_PROMPTS: ChatSuggestion[] = [
   {
@@ -342,7 +352,7 @@ function ChatPageHeader({
             onClick={onToggleSidebar}
             aria-controls="chat-history-sidebar"
             aria-expanded={sidebarOpen}
-            aria-label={sidebarOpen ? "Verberg gesprekken" : "Toon gesprekken"}
+            aria-label={sidebarOpen ? "Sluit gesprekken" : "Open gesprekken"}
             className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -367,7 +377,7 @@ function ChatPageHeader({
           type="button"
           onClick={onNewSession}
           className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label="Start een nieuw gesprek"
+          aria-label="Nieuw gesprek"
         >
           <Plus className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Nieuw gesprek</span>
@@ -499,34 +509,53 @@ function ChatSession({
 }
 
 export function ChatPageContent({ currentOrigin = null }: { currentOrigin?: string | null }) {
-  const ctx = useChatContext();
-  const surfaceConfig = getChatSurfaceConfig(ctx);
+  const {
+    activeContext,
+    loadSession,
+    mode,
+    modelId,
+    sessionId: providerSessionId,
+    sessionLoadError,
+    setMode,
+    setModelId,
+    startNewSession,
+  } = useChatContext();
+  const surfaceConfig = getChatSurfaceConfig(activeContext);
   const [sessionId, setSessionId] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [modelId, setModelId] = useState<string>(CHAT_MODELS[0].id);
-  const [mode, setMode] = useState<"text" | "voice">("text");
   const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
+  const hasSourceContext = activeContext.route !== "/chat";
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      setSessionId(getOrCreateSessionId());
+      const nextSessionId = providerSessionId || getOrCreateSessionId();
+      persistSessionId(nextSessionId);
+      setSessionId(nextSessionId);
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, []);
+  }, [providerSessionId]);
 
-  const handleSelectSession = useCallback((id: string) => {
-    persistSessionId(id);
-    setSessionId(id);
-    setSidebarOpen(false);
-  }, []);
+  const handleSelectSession = useCallback(
+    async (id: string) => {
+      try {
+        await loadSession(id);
+        persistSessionId(id);
+        setSessionId(id);
+        setHistoryRefreshToken((current) => current + 1);
+        setSidebarOpen(false);
+      } catch {
+        // Keep the current conversation visible and leave the sidebar open so the user can retry.
+      }
+    },
+    [loadSession],
+  );
 
   const handleNewSession = useCallback(() => {
-    const nextSessionId = nanoid();
-    persistSessionId(nextSessionId);
-    setSessionId(nextSessionId);
+    startNewSession();
+    setHistoryRefreshToken((current) => current + 1);
     setSidebarOpen(false);
-  }, []);
+  }, [startNewSession]);
 
   const handleSessionActivity = useCallback(() => {
     setHistoryRefreshToken((current) => current + 1);
@@ -551,7 +580,7 @@ export function ChatPageContent({ currentOrigin = null }: { currentOrigin?: stri
         }`}
       >
         <ChatHistorySidebar
-          activeSessionId={sessionId || null}
+          activeSessionId={sessionId || providerSessionId || null}
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
           onClose={() => setSidebarOpen(false)}
@@ -569,13 +598,37 @@ export function ChatPageContent({ currentOrigin = null }: { currentOrigin?: stri
           onNewSession={handleNewSession}
         />
 
+        {hasSourceContext ? (
+          <div className="flex items-center gap-2 border-b border-border/70 px-3 py-2 text-xs text-muted-foreground sm:px-4">
+            <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] text-foreground">
+              {getContextLabel(activeContext)}
+            </span>
+            <Link
+              href={activeContext.route}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ArrowUpRight className="h-3.5 w-3.5" />
+              Bronpagina
+            </Link>
+          </div>
+        ) : null}
+
+        {sessionLoadError ? (
+          <div
+            role="alert"
+            className="border-b border-destructive/20 bg-destructive/5 px-4 py-2 text-sm text-destructive"
+          >
+            {sessionLoadError}
+          </div>
+        ) : null}
+
         {mode === "voice" ? (
           <VoiceSession onClose={() => setMode("text")} />
         ) : sessionId ? (
           <ChatSession
             key={`${sessionId}-${modelId}`}
             sessionId={sessionId}
-            ctx={ctx}
+            ctx={activeContext}
             modelId={modelId}
             setModelId={setModelId}
             surfaceConfig={surfaceConfig}
