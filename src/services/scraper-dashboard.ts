@@ -1,5 +1,5 @@
 import { runs } from "@trigger.dev/sdk";
-import { and, desc, gte, isNull, sql } from "drizzle-orm";
+import { desc, gte, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs, scrapeResults, scraperConfigs } from "../db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
@@ -745,7 +745,7 @@ export async function getScraperDashboardData(
             scrapedAt: jobs.scrapedAt,
           })
           .from(jobs)
-          .where(and(isNull(jobs.deletedAt), sql`${jobs.platform} is not null`)),
+          .where(sql`${jobs.platform} is not null`),
       ],
     );
 

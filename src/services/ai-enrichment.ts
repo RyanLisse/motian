@@ -5,6 +5,7 @@ import { db } from "../db";
 import { jobs } from "../db/schema";
 import { geminiFlashLite, tracedGenerateText as generateText } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
+import { getVisibleVacancyCondition } from "./jobs/filters";
 
 // ========== Schema ==========
 
@@ -114,7 +115,7 @@ export async function enrichJobsBatch(opts: {
   const errors: string[] = [];
 
   // Query jobs not yet enriched (descriptionSummary IS NULL as proxy)
-  const conditions = [isNull(jobs.deletedAt), isNull(jobs.descriptionSummary)];
+  const conditions = [getVisibleVacancyCondition(), isNull(jobs.descriptionSummary)];
   if (opts.platform) conditions.push(eq(jobs.platform, opts.platform));
 
   const unenriched = await db

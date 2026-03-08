@@ -1,14 +1,15 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { db } from "@/src/db";
 import { applications, jobs } from "@/src/db/schema";
 import { DEFAULT_OPDRACHTEN_LIMIT } from "@/src/lib/opdrachten-filters";
+import { getJobStatusCondition } from "@/src/services/jobs/filters";
 
 export const dynamic = "force-dynamic";
 
 export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
-  const activeJobsCondition = and(isNull(jobs.deletedAt), eq(jobs.status, "open"));
+  const activeJobsCondition = getJobStatusCondition("open");
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
   const [sidebarJobs, countResult, metaResult, categoryRows] = await Promise.all([
@@ -45,11 +46,11 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
         endClients: sql<string[]>`array_remove(array_agg(distinct ${persistedEndClient}), null)`,
       })
       .from(jobs)
-      .where(isNull(jobs.deletedAt)),
+      .where(activeJobsCondition),
     db.execute(sql`
       select distinct jsonb_array_elements_text(coalesce(${jobs.categories}, '[]'::jsonb)) as category
       from ${jobs}
-      where ${jobs.deletedAt} is null
+      where ${activeJobsCondition}
       order by category asc
     `),
   ]);

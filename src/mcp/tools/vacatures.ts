@@ -90,7 +90,7 @@ export const tools = [
   },
   {
     name: "verwijder_vacature",
-    description: "Verwijder een vacature (soft-delete).",
+    description: "Archiveer een vacature zonder deze uit de database te verwijderen.",
     inputSchema: zodToJsonSchema(verwijderVacatureSchema, { $refStrategy: "none" }),
   },
   {
@@ -142,8 +142,8 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   verwijder_vacature: async (raw) => {
     const { id } = verwijderVacatureSchema.parse(raw);
     const deleted = await deleteJob(id);
-    if (!deleted) return { error: "Vacature niet gevonden of al verwijderd" };
-    return { success: true, message: "Vacature verwijderd" };
+    if (!deleted) return { error: "Vacature niet gevonden of al gearchiveerd" };
+    return { success: true, message: "Vacature gearchiveerd" };
   },
 
   auto_match_vacature: async (raw) => {

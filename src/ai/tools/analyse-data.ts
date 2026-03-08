@@ -1,5 +1,5 @@
 import { tool } from "ai";
-import { and, isNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { jobs, scrapeResults } from "@/src/db/schema";
@@ -31,7 +31,6 @@ export const analyseData = tool({
             count: sql<number>`count(*)::int`,
           })
           .from(jobs)
-          .where(isNull(jobs.deletedAt))
           .groupBy(jobs.platform);
         return { analysis: "Opdrachten per platform", data: rows };
       }
@@ -52,7 +51,6 @@ export const analyseData = tool({
             zonderTarief: sql<number>`count(*) FILTER (WHERE rate_min IS NULL AND rate_max IS NULL)::int`,
           })
           .from(jobs)
-          .where(isNull(jobs.deletedAt))
           .groupBy(jobs.platform);
 
         // Overall cross-platform average (jobs with at least one rate field, excl. outliers)
@@ -62,8 +60,7 @@ export const analyseData = tool({
             metTarief: sql<number>`count(*) FILTER (WHERE rate_min IS NOT NULL OR rate_max IS NOT NULL)::int`,
             total: sql<number>`count(*)::int`,
           })
-          .from(jobs)
-          .where(isNull(jobs.deletedAt));
+          .from(jobs);
 
         return {
           analysis: "Gemiddelde tarieven per platform",
@@ -87,12 +84,7 @@ export const analyseData = tool({
             rateMax: jobs.rateMax,
           })
           .from(jobs)
-          .where(
-            and(
-              isNull(jobs.deletedAt),
-              sql`COALESCE(${jobs.rateMax}, ${jobs.rateMin}) IS NOT NULL`,
-            ),
-          )
+          .where(sql`COALESCE(${jobs.rateMax}, ${jobs.rateMin}) IS NOT NULL`)
           .orderBy(sql`COALESCE(${jobs.rateMax}, ${jobs.rateMin}) DESC NULLS LAST`)
           .limit(10);
         return {
@@ -108,8 +100,7 @@ export const analyseData = tool({
             withDescription: sql<number>`count(description)::int`,
             withEmbedding: sql<number>`count(embedding)::int`,
           })
-          .from(jobs)
-          .where(isNull(jobs.deletedAt));
+          .from(jobs);
         return { analysis: "Totaal overzicht", data: result };
       }
 
@@ -136,7 +127,6 @@ export const analyseData = tool({
             count: sql<number>`count(*)::int`,
           })
           .from(jobs)
-          .where(isNull(jobs.deletedAt))
           .groupBy(jobs.province)
           .orderBy(sql`count(*) DESC`);
         return { analysis: "Opdrachten per provincie", data: rows };
@@ -150,8 +140,7 @@ export const analyseData = tool({
             expired: sql<number>`count(*) FILTER (WHERE application_deadline < now())::int`,
             noDeadline: sql<number>`count(*) FILTER (WHERE application_deadline IS NULL)::int`,
           })
-          .from(jobs)
-          .where(isNull(jobs.deletedAt));
+          .from(jobs);
         return { analysis: "Deadline overzicht", data: rows[0] };
       }
 

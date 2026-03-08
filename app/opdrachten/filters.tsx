@@ -185,6 +185,9 @@ export function OpdrachtenFilters({
               <SelectItem value="closed" className="text-foreground">
                 Gesloten
               </SelectItem>
+              <SelectItem value="archived" className="text-foreground">
+                Gearchiveerd
+              </SelectItem>
               <SelectItem value="all" className="text-foreground">
                 Alles
               </SelectItem>

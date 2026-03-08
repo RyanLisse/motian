@@ -264,13 +264,13 @@ export const commands: Record<string, Command> = {
   },
 
   "vacatures:verwijder": {
-    description: "Verwijder een vacature (soft-delete)",
+    description: "Archiveer een vacature",
     usage: "--id <uuid>",
     handler: async (args) => {
       const id = requireArg(args, "id");
       const ok = await deleteJob(id);
       if (!ok) throw new Error("Vacature niet gevonden");
-      return { deleted: true, id };
+      return { archived: true, id };
     },
   },
 

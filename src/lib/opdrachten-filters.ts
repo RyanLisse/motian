@@ -57,7 +57,7 @@ export const OPDRACHTEN_SORT_OPTIONS = [
 
 export type OpdrachtenSort = (typeof OPDRACHTEN_SORT_OPTIONS)[number]["value"];
 
-export const OPDRACHTEN_STATUS_OPTIONS = ["open", "closed", "all"] as const;
+export const OPDRACHTEN_STATUS_OPTIONS = ["open", "closed", "archived", "all"] as const;
 
 export type OpdrachtenStatus = (typeof OPDRACHTEN_STATUS_OPTIONS)[number];
 
@@ -247,6 +247,7 @@ function parsePositiveIntegerFilter(value: string | null | undefined): number | 
 export function normalizeOpdrachtenStatus(value: string | null | undefined): OpdrachtenStatus {
   switch (value) {
     case "closed":
+    case "archived":
     case "all":
       return value;
     default:

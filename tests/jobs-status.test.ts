@@ -39,7 +39,20 @@ describe("job status helpers", () => {
   it("normalizes Dutch and English status filters", () => {
     expect(normalizeJobStatusFilter("closed")).toBe("closed");
     expect(normalizeJobStatusFilter("gesloten")).toBe("closed");
+    expect(normalizeJobStatusFilter("archived")).toBe("archived");
+    expect(normalizeJobStatusFilter("gearchiveerd")).toBe("archived");
     expect(normalizeJobStatusFilter("open")).toBe("open");
     expect(normalizeJobStatusFilter("all")).toBe("all");
+  });
+
+  it("preserves archived status when a vacature is intentionally archived", () => {
+    expect(
+      deriveJobStatus({
+        status: "archived",
+        applicationDeadline: new Date("2026-03-10T00:00:00.000Z"),
+        endDate: null,
+        now: new Date("2026-03-06T12:00:00.000Z"),
+      }),
+    ).toBe("archived");
   });
 });

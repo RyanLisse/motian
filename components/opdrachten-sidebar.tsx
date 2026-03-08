@@ -715,6 +715,9 @@ export function OpdrachtenSidebar({
               <SelectItem value="closed" className="text-foreground text-xs">
                 Gesloten
               </SelectItem>
+              <SelectItem value="archived" className="text-foreground text-xs">
+                Gearchiveerd
+              </SelectItem>
               <SelectItem value="all" className="text-foreground text-xs">
                 Alles
               </SelectItem>
@@ -1033,6 +1036,9 @@ export function OpdrachtenSidebar({
                   </SelectItem>
                   <SelectItem value="closed" className="text-foreground">
                     Gesloten
+                  </SelectItem>
+                  <SelectItem value="archived" className="text-foreground">
+                    Gearchiveerd
                   </SelectItem>
                   <SelectItem value="all" className="text-foreground">
                     Alles
