@@ -562,7 +562,7 @@ export const PromptInput = ({
       }
 
       if (usingProvider) {
-        controller.attachments.remove(id);
+        controller?.attachments.remove(id);
         return;
       }
 
@@ -576,7 +576,7 @@ export const PromptInput = ({
     }
 
     if (usingProvider) {
-      controller.attachments.openFileDialog();
+      controller?.attachments.openFileDialog();
       return;
     }
 
