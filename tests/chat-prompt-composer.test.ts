@@ -1,0 +1,64 @@
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import {
+  buildCvSummaryMessage,
+  normalizeChatPromptMessage,
+} from "@/src/components/ai-elements/chat-prompt-composer";
+
+const ROOT = path.resolve(__dirname, "..");
+
+function readFile(...segments: string[]): string {
+  return fs.readFileSync(path.join(ROOT, ...segments), "utf-8");
+}
+
+describe("chat prompt composer preset", () => {
+  it("keeps the chat submit contract compatible with PromptInputMessage", () => {
+    expect(normalizeChatPromptMessage({ files: [], text: "  hallo wereld  " })).toEqual({
+      text: "hallo wereld",
+    });
+    expect(normalizeChatPromptMessage({ files: [], text: "   " })).toBeNull();
+  });
+
+  it("builds the CV upload follow-up message with candidate context", () => {
+    const summary = buildCvSummaryMessage({
+      candidateId: "cand_123",
+      duplicates: { exact: { id: "existing_1" } },
+      parsed: {
+        name: "Jane Doe",
+        role: "Recruiter",
+        skills: {
+          hard: [{ name: "Boolean search" }, { name: "ATS" }],
+          soft: [{ name: "Stakeholdermanagement" }],
+        },
+      },
+    });
+
+    expect(summary.action).toBe("bijgewerkt");
+    expect(summary.text).toContain("Jane Doe");
+    expect(summary.text).toContain("Kandidaat ID: cand_123");
+    expect(summary.text).toContain("Boolean search, ATS, Stakeholdermanagement");
+  });
+
+  it("packages the local prompt-input primitives into a chat-ready wrapper", () => {
+    const source = readFile("src", "components", "ai-elements", "chat-prompt-composer.tsx");
+
+    expect(source).toContain("export function ChatPromptComposer");
+    expect(source).toContain("PromptInputActionAddAttachments");
+    expect(source).toContain("PromptInputSubmit");
+    expect(source).toContain("usePromptInputAttachments");
+    expect(source).toContain("CV uploaden (PDF, Word)");
+    expect(source).toContain("multiple onSubmit={handleSubmit}");
+  });
+
+  it("lets the full-page chat swap to the wrapper without changing submit flow", () => {
+    const source = readFile("components", "chat", "chat-page-content.tsx");
+
+    expect(source).toContain('from "@/src/components/ai-elements/chat-prompt-composer"');
+    expect(source).toContain("<ChatPromptComposer");
+    expect(source).toContain("modelOptions={CHAT_MODELS}");
+    expect(source).toContain("speedOptions={MODE_OPTIONS}");
+    expect(source).toContain("onSendMessage={sendMessage}");
+    expect(source).not.toContain("motian-chat-prompt-input");
+  });
+});
