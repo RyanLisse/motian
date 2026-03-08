@@ -30,14 +30,16 @@ describe("sidebar shell top-bar refactor", () => {
     const sidebarSource = readFile("components", "app-sidebar.tsx");
     const userSource = readFile("components", "nav-user.tsx");
     const widgetSource = readFile("components", "chat", "chat-widget.tsx");
+    const candidateDetailSource = readFile("app", "professionals", "[id]", "page.tsx");
 
     expect(sidebarSource).toContain('title: "Interviews"');
-    expect(sidebarSource).toContain('title: "Aanbevelingen"');
-    expect(sidebarSource).toContain('title: "Kandidaataanbevelingen"');
     expect(sidebarSource).toContain('badge: { text: "⌘J"');
     expect(sidebarSource).toContain('tooltip: "AI Assistent openen (⌘/Ctrl+J)"');
     expect(userSource).toContain("motian-chat-open");
     expect(userSource).toContain("⌘J");
+    expect(candidateDetailSource).toContain("CandidateRecommendationPanel");
+    expect(candidateDetailSource).toContain('label: "Bekijk matchkansen"');
+    expect(candidateDetailSource).toContain('<section id="matches">');
     expect(widgetSource).toContain("CHAT_WIDGET_OPEN_EVENT");
     expect(widgetSource).toContain("currentOrigin={currentOrigin}");
     expect(widgetSource).toContain(
