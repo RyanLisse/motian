@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronLeft, ChevronRight, Loader2, RotateCcw, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { JobListItem } from "@/components/job-list-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SearchableCombobox } from "@/components/ui/searchable-combobox";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { buildOpdrachtenFilterHref, getOpdrachtenBasePath } from "@/src/lib/opdrachten-filter-url";
 import {
   DEFAULT_OPDRACHTEN_LIMIT,
   getHoursRangeForBucket,
@@ -59,6 +61,14 @@ interface SearchResponse {
   totalPages: number;
 }
 
+type SearchResponsePayload = {
+  jobs?: unknown;
+  total?: unknown;
+  page?: unknown;
+  perPage?: unknown;
+  totalPages?: unknown;
+};
+
 interface OpdrachtenSidebarProps {
   jobs: SidebarJob[];
   totalCount: number;
@@ -75,18 +85,6 @@ const CONTRACT_TYPES = [
 ];
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-const PARAM_ALIASES: Record<string, string[]> = {
-  pagina: ["page"],
-  limit: ["perPage"],
-  provincie: ["province"],
-  regio: ["region"],
-  vakgebied: ["category"],
-  urenPerWeek: ["hours"],
-  urenPerWeekMin: ["hoursMin"],
-  urenPerWeekMax: ["hoursMax"],
-  straalKm: ["radiusKm"],
-};
-
 type FilterOverrideValue = string | string[];
 
 type FilterOption = {
@@ -110,27 +108,7 @@ function pushOpdrachtenParams(
   pathname: string,
   overrides: Record<string, FilterOverrideValue>,
 ) {
-  const p = new URLSearchParams(searchParams);
-  for (const [k, v] of Object.entries(overrides)) {
-    p.delete(k);
-
-    for (const alias of PARAM_ALIASES[k] ?? []) {
-      p.delete(alias);
-    }
-
-    if (Array.isArray(v)) {
-      v.filter(Boolean).forEach((item) => {
-        p.append(k, item);
-      });
-    } else if (v) {
-      p.set(k, v);
-    } else {
-      p.delete(k);
-    }
-  }
-  const query = p.toString();
-  const basePath = pathname.startsWith("/opdrachten/") ? pathname : "/opdrachten";
-  router.push(query ? `${basePath}?${query}` : basePath);
+  router.push(buildOpdrachtenFilterHref(pathname, searchParams, overrides));
 }
 
 function toggleFilterValue(values: string[], nextValue: string) {
@@ -148,6 +126,61 @@ function summarizeSelection(label: string, selectedLabels: string[]) {
 function summarizeHoursRange(minValue: string, maxValue: string) {
   if (!minValue && !maxValue) return "Alle uren";
   return `${minValue || "0"} - ${maxValue || "onbeperkt"} uur`;
+}
+
+function isSidebarJob(value: unknown): value is SidebarJob {
+  if (!value || typeof value !== "object") return false;
+
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.title === "string" &&
+    typeof candidate.platform === "string"
+  );
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function parseSearchResponse(payload: SearchResponsePayload): SearchResponse {
+  if (
+    !Array.isArray(payload.jobs) ||
+    !payload.jobs.every(isSidebarJob) ||
+    !isFiniteNumber(payload.total) ||
+    !isFiniteNumber(payload.page) ||
+    !isFiniteNumber(payload.perPage) ||
+    !isFiniteNumber(payload.totalPages)
+  ) {
+    throw new Error("Ongeldig zoekresultaat ontvangen.");
+  }
+
+  const jobs = payload.jobs as SidebarJob[];
+  const total = payload.total as number;
+  const page = payload.page as number;
+  const perPage = payload.perPage as number;
+  const totalPages = payload.totalPages as number;
+
+  return {
+    jobs,
+    total,
+    page,
+    perPage,
+    totalPages,
+  };
+}
+
+async function getSearchErrorMessage(response: Response) {
+  try {
+    const payload = (await response.json()) as { error?: string };
+    if (typeof payload.error === "string" && payload.error.trim()) {
+      return payload.error.trim();
+    }
+  } catch {
+    // Ignore non-JSON or malformed error payloads and fall back to the status-based message below.
+  }
+
+  return `Zoeken mislukt (${response.status}).`;
 }
 
 function FilterChecklist({
@@ -366,8 +399,11 @@ async function searchJobs({
   if (limit !== DEFAULT_OPDRACHTEN_LIMIT) params.set("limit", String(limit));
 
   const res = await fetch(`/api/opdrachten/zoeken?${params.toString()}`);
-  if (!res.ok) throw new Error("Search failed");
-  return res.json();
+  if (!res.ok) {
+    throw new Error(await getSearchErrorMessage(res));
+  }
+
+  return parseSearchResponse((await res.json()) as SearchResponsePayload);
 }
 
 export function OpdrachtenSidebar({
@@ -441,14 +477,22 @@ export function OpdrachtenSidebar({
   const [inputValue, setInputValue] = useState(q);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const provinceAnchor = getProvinceAnchor(provincie);
-  const regionOptions: FilterOption[] = OPDRACHTEN_REGION_OPTIONS.map((option) => ({
-    value: option.value,
-    label: option.label,
-  }));
-  const categoryOptions: FilterOption[] = categories.map((category) => ({
-    value: category,
-    label: category,
-  }));
+  const regionOptions = useMemo<FilterOption[]>(
+    () =>
+      OPDRACHTEN_REGION_OPTIONS.map((option) => ({
+        value: option.value,
+        label: option.label,
+      })),
+    [],
+  );
+  const categoryOptions = useMemo<FilterOption[]>(
+    () =>
+      categories.map((category) => ({
+        value: category,
+        label: category,
+      })),
+    [categories],
+  );
 
   useEffect(() => {
     setInputValue(q);
@@ -476,7 +520,7 @@ export function OpdrachtenSidebar({
   const deferredTariefMin = useDeferredValue(tariefMinParam);
   const deferredTariefMax = useDeferredValue(tariefMaxParam);
 
-  const { data, isFetching } = useQuery({
+  const { data, error, isFetching } = useQuery({
     queryKey: [
       "opdrachten-search",
       q,
@@ -550,6 +594,7 @@ export function OpdrachtenSidebar({
   const displayTotal = data?.total ?? initialTotal;
   const displayPerPage = data?.perPage ?? limitParam;
   const totalPages = data?.totalPages ?? 1;
+  const searchErrorMessage = error instanceof Error ? error.message : null;
   const detailQuery = searchParams.toString();
   const shortlistCount = displayJobs.filter((job) => (job.pipelineCount ?? 0) > 0).length;
   const urgentDeadlineCount = displayJobs.filter((job) =>
@@ -601,8 +646,7 @@ export function OpdrachtenSidebar({
   };
 
   const resetFilters = () => {
-    const basePath = pathname.startsWith("/opdrachten/") ? pathname : "/opdrachten";
-    router.push(basePath);
+    router.push(getOpdrachtenBasePath(pathname));
   };
 
   if (!isOverviewPage) {
@@ -643,24 +687,17 @@ export function OpdrachtenSidebar({
             </SelectContent>
           </Select>
 
-          <Select
+          <SearchableCombobox
             value={endClient || undefined}
-            onValueChange={(v) => handleFilterChange("endClient", v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
-              <SelectValue placeholder="Eindopdrachtgever" />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border">
-              <SelectItem value="__all__" className="text-foreground text-xs">
-                Alle eindopdrachtgevers
-              </SelectItem>
-              {endClients.map((client) => (
-                <SelectItem key={client} value={client} className="text-foreground text-xs">
-                  {client}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onValueChange={(value) => handleFilterChange("endClient", value)}
+            options={endClients}
+            placeholder="Eindopdrachtgever"
+            searchPlaceholder="Zoek eindopdrachtgever..."
+            emptyText="Geen eindopdrachtgevers gevonden."
+            clearLabel="Alle eindopdrachtgevers"
+            buttonClassName="h-7 flex-1 border-border bg-card px-2 text-[10px] text-foreground"
+            itemClassName="text-xs"
+          />
         </div>
 
         <div className="px-3 pb-2 flex items-center gap-1.5 shrink-0">
@@ -824,6 +861,10 @@ export function OpdrachtenSidebar({
           </div>
         </div>
 
+        {searchErrorMessage ? (
+          <div className="px-4 py-2 text-[11px] text-destructive">{searchErrorMessage}</div>
+        ) : null}
+
         <ScrollArea className="flex-1">
           {displayJobs.length === 0 ? (
             <div className="px-4 py-8 text-center text-xs text-muted-foreground">
@@ -955,27 +996,18 @@ export function OpdrachtenSidebar({
               >
                 Eindopdrachtgever
               </label>
-              <Select
-                value={endClient || "__all__"}
-                onValueChange={(v) => handleFilterChange("endClient", v === "__all__" ? "" : v)}
-              >
-                <SelectTrigger
-                  id="opdrachten-eindopdrachtgever"
-                  className="h-11 rounded-lg border-border bg-background text-left text-sm"
-                >
-                  <SelectValue placeholder="Alle eindopdrachtgevers" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="__all__" className="text-foreground">
-                    Alle eindopdrachtgevers
-                  </SelectItem>
-                  {endClients.map((client) => (
-                    <SelectItem key={client} value={client} className="text-foreground">
-                      {client}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableCombobox
+                value={endClient || undefined}
+                onValueChange={(value) => handleFilterChange("endClient", value)}
+                options={endClients}
+                placeholder="Alle eindopdrachtgevers"
+                searchPlaceholder="Zoek eindopdrachtgever..."
+                emptyText="Geen eindopdrachtgevers gevonden."
+                clearLabel="Alle eindopdrachtgevers"
+                buttonClassName="h-11 rounded-lg border-border bg-background text-left text-sm"
+                triggerId="opdrachten-eindopdrachtgever"
+                ariaLabel="Eindopdrachtgever"
+              />
             </div>
 
             <div>
@@ -1220,6 +1252,10 @@ export function OpdrachtenSidebar({
               </Select>
             </div>
           </div>
+
+          {searchErrorMessage ? (
+            <p className="mb-4 text-sm text-destructive">{searchErrorMessage}</p>
+          ) : null}
 
           <ScrollArea className="flex-1">
             {displayJobs.length === 0 ? (
