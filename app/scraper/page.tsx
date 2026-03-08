@@ -333,9 +333,9 @@ export default async function ScraperPage() {
           <RecentActivityFeed activities={activity} />
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+          <Card className="min-w-0 overflow-hidden bg-card border-border">
+            <CardHeader className="min-w-0 pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <CalendarClock className="h-4 w-4 text-muted-foreground" />
                 Planning per platform
@@ -345,78 +345,76 @@ export default async function ScraperPage() {
                 aandacht vragen.
               </p>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead>Platform</TableHead>
-                      <TableHead>Schema</TableHead>
-                      <TableHead>Laatste run</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Volgende run</TableHead>
-                      <TableHead>Signaal</TableHead>
+            <CardContent className="min-w-0">
+              <Table className="min-w-[760px]">
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead>Platform</TableHead>
+                    <TableHead>Schema</TableHead>
+                    <TableHead>Laatste run</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Volgende run</TableHead>
+                    <TableHead>Signaal</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {platforms.map((platform) => (
+                    <TableRow key={platform.platform} className="border-border">
+                      <TableCell>
+                        <PlatformBadge platform={platform.platform} className="text-[10px]" />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {platform.cronExpression ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDateTime(platform.lastRunAt)}
+                      </TableCell>
+                      <TableCell>
+                        {platform.circuitBreakerOpen ? (
+                          <Badge
+                            variant="outline"
+                            className="border-red-500/20 bg-red-500/10 text-[10px] text-red-500"
+                          >
+                            <AlertTriangle className="mr-1 h-3 w-3" />
+                            Circuit open
+                          </Badge>
+                        ) : platform.isOverdue ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500/20 bg-amber-500/10 text-[10px] text-amber-500"
+                          >
+                            <Clock className="mr-1 h-3 w-3" />
+                            Achterstallig
+                          </Badge>
+                        ) : (
+                          <StatusBadge status={platform.status} />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDateTime(platform.nextRunAt)}
+                      </TableCell>
+                      <TableCell className="max-w-[320px] whitespace-normal">
+                        <span className="break-words text-xs text-muted-foreground">
+                          {platform.signals[0]?.message ?? "Geen open signaal"}
+                        </span>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {platforms.map((platform) => (
-                      <TableRow key={platform.platform} className="border-border">
-                        <TableCell>
-                          <PlatformBadge platform={platform.platform} className="text-[10px]" />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          {platform.cronExpression ?? "-"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDateTime(platform.lastRunAt)}
-                        </TableCell>
-                        <TableCell>
-                          {platform.circuitBreakerOpen ? (
-                            <Badge
-                              variant="outline"
-                              className="border-red-500/20 bg-red-500/10 text-[10px] text-red-500"
-                            >
-                              <AlertTriangle className="mr-1 h-3 w-3" />
-                              Circuit open
-                            </Badge>
-                          ) : platform.isOverdue ? (
-                            <Badge
-                              variant="outline"
-                              className="border-amber-500/20 bg-amber-500/10 text-[10px] text-amber-500"
-                            >
-                              <Clock className="mr-1 h-3 w-3" />
-                              Achterstallig
-                            </Badge>
-                          ) : (
-                            <StatusBadge status={platform.status} />
-                          )}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDateTime(platform.nextRunAt)}
-                        </TableCell>
-                        <TableCell className="max-w-[320px]">
-                          <span className="text-xs text-muted-foreground">
-                            {platform.signals[0]?.message ?? "Geen open signaal"}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
+          <Card className="min-w-0 overflow-hidden bg-card border-border">
+            <CardHeader className="min-w-0 pb-3">
               <CardTitle className="text-base">Trigger.dev zichtbaarheid</CardTitle>
               <p className="text-sm text-muted-foreground">
                 Laatste taakruns van de automatisering achter de databronnen-monitoring.
               </p>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="min-w-0 space-y-3">
               {!trigger.available && (
-                <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                <div className="break-words rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
                   Trigger.dev informatie is nu niet beschikbaar.
                   {trigger.reason ? ` Reden: ${trigger.reason}` : ""}
                 </div>
@@ -428,23 +426,31 @@ export default async function ScraperPage() {
                 return (
                   <div
                     key={task.taskIdentifier}
-                    className="rounded-xl border border-border bg-muted/20 p-4"
+                    className="min-w-0 rounded-xl border border-border bg-muted/20 p-4"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-foreground">{task.label}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 break-words text-xs text-muted-foreground">
                           {task.cronExpression} · {task.timezone}
                         </p>
                       </div>
-                      <Badge variant="outline" className={status.className}>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "max-w-full whitespace-normal break-words text-center",
+                          status.className,
+                        )}
+                      >
                         {status.label}
                       </Badge>
                     </div>
                     <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                       <p>Laatste run: {formatDateTime(task.latestRun?.createdAt ?? null)}</p>
                       {task.latestRun?.error && (
-                        <p className="text-amber-600 dark:text-amber-400">{task.latestRun.error}</p>
+                        <p className="break-words text-amber-600 dark:text-amber-400">
+                          {task.latestRun.error}
+                        </p>
                       )}
                     </div>
                   </div>
