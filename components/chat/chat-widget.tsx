@@ -251,6 +251,7 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
   const { activeContext, prepareFullPageHandoff } = useChatContext();
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState("");
+  const hideLauncher = pathname === "/scraper";
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -302,11 +303,12 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
 
   return (
     <>
-      {!open && (
+      {!open && !hideLauncher && (
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Open chatwidget"
+          aria-haspopup="dialog"
           className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
           title="Open chatwidget (⌘J)"
         >
@@ -315,82 +317,84 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
       )}
 
       {open && (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] sm:hidden"
-          onClick={() => setOpen(false)}
-          aria-label="Sluit chat-widget"
-        />
-      )}
-
-      <div
-        className={cn(
-          "fixed inset-x-3 bottom-3 top-16 z-50 flex origin-bottom-right flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl transition-all duration-200 ease-out sm:inset-x-auto sm:right-6 sm:top-auto sm:h-[min(720px,calc(100vh-6rem))] sm:w-[420px]",
-          open
-            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-            : "pointer-events-none translate-y-4 scale-95 opacity-0",
-        )}
-      >
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground">Motian AI</span>
-              {activeContext.entityId ? (
-                <span className="rounded-full border border-primary/20 bg-primary/5 px-1.5 py-0.5 text-[10px] text-foreground">
-                  {activeContext.entityType}
-                </span>
-              ) : null}
-            </div>
-            {activeContext.route !== "/chat" ? (
-              <p className="truncate text-[11px] text-muted-foreground">
-                Context: {activeContext.route}
-              </p>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleNewSession}
-              aria-label="Nieuw gesprek"
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title="Nieuw gesprek"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={handleExpandToPage}
-              aria-label="Open volledige chat"
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title="Open volledige chat"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Sluit chatwidget"
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title="Sluiten (Esc)"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {sessionId ? (
-          <ChatWidgetInner
-            key={sessionId}
-            ctx={activeContext}
-            sessionId={sessionId}
-            currentOrigin={currentOrigin}
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] sm:hidden"
+            onClick={() => setOpen(false)}
+            aria-label="Sluit chat-widget"
           />
-        ) : (
-          <div className="flex flex-1 items-center justify-center p-4">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+
+          <div
+            role="dialog"
+            aria-label="Motian AI chatwidget"
+            className={cn(
+              "fixed inset-x-3 bottom-3 top-16 z-50 flex origin-bottom-right flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl transition-all duration-200 ease-out sm:inset-x-auto sm:right-6 sm:top-auto sm:h-[min(720px,calc(100vh-6rem))] sm:w-[420px]",
+              "pointer-events-auto translate-y-0 scale-100 opacity-100",
+            )}
+          >
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">Motian AI</span>
+                  {activeContext.entityId ? (
+                    <span className="rounded-full border border-primary/20 bg-primary/5 px-1.5 py-0.5 text-[10px] text-foreground">
+                      {activeContext.entityType}
+                    </span>
+                  ) : null}
+                </div>
+                {activeContext.route !== "/chat" ? (
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    Context: {activeContext.route}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleNewSession}
+                  aria-label="Nieuw gesprek"
+                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="Nieuw gesprek"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExpandToPage}
+                  aria-label="Open volledige chat"
+                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="Open volledige chat"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Sluit chatwidget"
+                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="Sluiten (Esc)"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {sessionId ? (
+              <ChatWidgetInner
+                key={sessionId}
+                ctx={activeContext}
+                sessionId={sessionId}
+                currentOrigin={currentOrigin}
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center p-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </>
   );
 }

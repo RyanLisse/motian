@@ -9,13 +9,15 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar />
-        <div className="pointer-events-none fixed left-3 top-3 z-40 md:hidden">
-          <SidebarTrigger
-            className="pointer-events-auto size-8 rounded-md border border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80"
-            title="Navigatie openen of sluiten (⌘/Ctrl+B)"
-          />
-        </div>
-        <SidebarInset className="overflow-x-hidden">{children}</SidebarInset>
+        <SidebarInset className="min-w-0 overflow-x-hidden">
+          <div className="sticky top-0 z-30 flex h-12 items-center border-b border-border/80 bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
+            <SidebarTrigger
+              className="size-8 rounded-md border border-border bg-background/95 shadow-sm"
+              title="Navigatie openen of sluiten (⌘/Ctrl+B)"
+            />
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>
   );

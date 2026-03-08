@@ -21,8 +21,9 @@ describe("chat surface review regressions", () => {
   it("keeps only the explicit CV upload path in the full-page chat composer", () => {
     const source = readFile("src", "components", "ai-elements", "chat-prompt-composer.tsx");
 
-    expect(source).toContain("<PromptInput allowAttachments={false} onSubmit={handleSubmit}>");
-    expect(source).toContain("allowAttachments={false}");
+    expect(source).toContain("globalDrop");
+    expect(source).toContain("onError={cvUpload.handlePromptInputError}");
+    expect(source).toContain("ChatCvUploadStatusBanner");
     expect(source).toContain("CV uploaden");
     expect(source).not.toContain("PromptInputActionAddAttachments");
     expect(source).not.toContain("usePromptInputAttachments");
@@ -40,10 +41,28 @@ describe("chat surface review regressions", () => {
   it("disables generic attachment intake in the chat widget while keeping the explicit CV upload control", () => {
     const source = readFile("components", "chat", "chat-widget.tsx");
 
-    expect(source).toContain("<PromptInput allowAttachments={false} onSubmit={handleSubmit}>");
-    expect(source).toContain("<PromptInputTextarea");
-    expect(source).toContain("allowAttachments={false}");
+    expect(source).toContain("PromptInputProvider");
+    expect(source).toContain("useChatCvUpload");
+    expect(source).toContain("ChatCvDropOverlay");
+    expect(source).toContain("globalDrop");
+    expect(source).toContain("{open ? (");
     expect(source).toContain('title="CV/document uploaden"');
-    expect(source).toContain("fileInputRef.current?.click()");
+    expect(source).toContain("cvUpload.openFileDialog");
+  });
+
+  it("guards the shared CV upload flow against stale timers and unmounted uploads", () => {
+    const source = readFile("src", "components", "ai-elements", "use-chat-cv-upload.tsx");
+
+    expect(source).toContain("const clearResetTimer = useCallback(() => {");
+    expect(source).toContain(
+      "const activeUploadControllerRef = useRef<AbortController | null>(null);",
+    );
+    expect(source).toContain(
+      "const isUploadCurrent = useCallback((uploadId: number, controller: AbortController) => {",
+    );
+    expect(source).toContain("activeUploadControllerRef.current?.abort();");
+    expect(source).toContain("const controller = new AbortController();");
+    expect(source).toContain("signal: controller.signal");
+    expect(source).toContain("onSendMessageRef.current({ text: summary.text });");
   });
 });

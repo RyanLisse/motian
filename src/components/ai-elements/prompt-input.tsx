@@ -86,8 +86,10 @@ const convertBlobUrlToDataUrl = async (url: string): Promise<string | null> => {
 // Provider Context & Types
 // ============================================================================
 
+export type PromptInputAttachment = FileUIPart & { id: string; file?: File };
+
 export interface AttachmentsContext {
-  files: (FileUIPart & { id: string })[];
+  files: PromptInputAttachment[];
   add: (files: File[] | FileList) => void;
   remove: (id: string) => void;
   clear: () => void;
@@ -153,7 +155,7 @@ export const PromptInputProvider = ({
   const clearInput = useCallback(() => setTextInput(""), []);
 
   // ----- attachments state (global when wrapped)
-  const [attachmentFiles, setAttachmentFiles] = useState<(FileUIPart & { id: string })[]>([]);
+  const [attachmentFiles, setAttachmentFiles] = useState<PromptInputAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // oxlint-disable-next-line eslint(no-empty-function)
   const openRef = useRef<() => void>(() => {});
@@ -167,6 +169,7 @@ export const PromptInputProvider = ({
     setAttachmentFiles((prev) => [
       ...prev,
       ...incoming.map((file) => ({
+        file,
         filename: file.name,
         id: nanoid(),
         mediaType: file.type,
@@ -377,7 +380,7 @@ export const PromptInput = ({
   const formRef = useRef<HTMLFormElement | null>(null);
 
   // ----- Local attachments (only used when no provider)
-  const [items, setItems] = useState<(FileUIPart & { id: string })[]>([]);
+  const [items, setItems] = useState<PromptInputAttachment[]>([]);
   const files = usingProvider ? controller.attachments.files : items;
 
   // ----- Local referenced sources (always local to PromptInput)
@@ -408,12 +411,20 @@ export const PromptInput = ({
         .filter(Boolean);
 
       return patterns.some((pattern) => {
-        if (pattern.endsWith("/*")) {
-          // e.g: image/* -> image/
-          const prefix = pattern.slice(0, -1);
-          return f.type.startsWith(prefix);
+        const normalizedPattern = pattern.toLowerCase();
+        const normalizedType = f.type.toLowerCase();
+        const normalizedName = f.name.toLowerCase();
+
+        if (normalizedPattern.startsWith(".")) {
+          return normalizedName.endsWith(normalizedPattern);
         }
-        return f.type === pattern;
+
+        if (normalizedPattern.endsWith("/*")) {
+          // e.g: image/* -> image/
+          const prefix = normalizedPattern.slice(0, -1);
+          return normalizedType.startsWith(prefix);
+        }
+        return normalizedType === normalizedPattern;
       });
     },
     [accept],
@@ -450,9 +461,10 @@ export const PromptInput = ({
             message: "Too many files. Some were not added.",
           });
         }
-        const next: (FileUIPart & { id: string })[] = [];
+        const next: PromptInputAttachment[] = [];
         for (const file of capped) {
           next.push({
+            file,
             filename: file.name,
             id: nanoid(),
             mediaType: file.type,
@@ -744,7 +756,7 @@ export const PromptInput = ({
         // Convert blob URLs to data URLs asynchronously
         const convertedFiles: FileUIPart[] = allowAttachments
           ? await Promise.all(
-              files.map(async ({ id: _id, ...item }) => {
+              files.map(async ({ id: _id, file: _file, ...item }) => {
                 if (item.url?.startsWith("blob:")) {
                   const dataUrl = await convertBlobUrlToDataUrl(item.url);
                   // If conversion failed, keep the original blob URL
