@@ -1,6 +1,8 @@
 "use client";
 
-import { ChevronsUpDown, LogOut, Settings } from "lucide-react";
+import { ChevronsUpDown, LogOut, MessageSquare, Moon, Settings, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -9,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -28,6 +31,10 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const initials = user.name
     .split(" ")
@@ -35,6 +42,7 @@ export function NavUser({
     .join("")
     .toUpperCase()
     .slice(0, 2);
+  const isDark = mounted && resolvedTheme === "dark";
 
   return (
     <SidebarMenu>
@@ -78,6 +86,16 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setTheme(isDark ? "light" : "dark")}>
+              {isDark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+              {isDark ? "Schakel naar lichte modus" : "Schakel naar donkere modus"}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => window.dispatchEvent(new Event("motian-chat-open"))}>
+              <MessageSquare className="mr-2 h-4 w-4" />
+              AI Assistent
+              <DropdownMenuShortcut>⌘J</DropdownMenuShortcut>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />

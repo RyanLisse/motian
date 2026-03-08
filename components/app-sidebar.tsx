@@ -72,6 +72,8 @@ const data = {
       title: "AI Assistent",
       url: "/chat",
       icon: Zap,
+      badge: { text: "⌘J", variant: "outline" },
+      tooltip: "AI Assistent openen (⌘/Ctrl+J)",
     },
   ],
 };

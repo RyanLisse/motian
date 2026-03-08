@@ -18,6 +18,7 @@ import { useChatThread } from "./use-chat-thread";
 
 const SESSION_KEY = "motian-fab-session";
 const FULL_PAGE_SESSION_KEY = "motian-chat-session";
+const CHAT_WIDGET_OPEN_EVENT = "motian-chat-open";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 
@@ -289,6 +290,13 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  useEffect(() => {
+    const handleOpen = () => setOpen(true);
+
+    window.addEventListener(CHAT_WIDGET_OPEN_EVENT, handleOpen);
+    return () => window.removeEventListener(CHAT_WIDGET_OPEN_EVENT, handleOpen);
+  }, []);
 
   if (pathname === "/chat" || pathname === "/opdrachten") return null;
 
