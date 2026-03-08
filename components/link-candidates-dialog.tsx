@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, UserPlus } from "lucide-react";
+import { Award, Loader2, Sparkles, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactElement, useCallback, useEffect, useState } from "react";
@@ -22,7 +22,6 @@ interface LinkCandidatesDialogProps {
   jobTitle: string;
   trigger?: ReactElement;
   variant?: "dialog" | "inline";
-  matchingHref?: string;
 }
 
 function getInitialSelection(items: CandidateMatchItem[]) {
@@ -33,7 +32,8 @@ function getInitialSelection(items: CandidateMatchItem[]) {
 function LinkCandidatesContent({
   variant,
   jobTitle,
-  matchingHref,
+  recruiterCockpitHref,
+  gradingHref,
   loading,
   error,
   matches,
@@ -45,7 +45,8 @@ function LinkCandidatesContent({
 }: {
   variant: "dialog" | "inline";
   jobTitle: string;
-  matchingHref?: string;
+  recruiterCockpitHref: string;
+  gradingHref: string;
   loading: boolean;
   error: string;
   matches: CandidateMatchItem[];
@@ -59,6 +60,9 @@ function LinkCandidatesContent({
     (match) => selected.has(match.matchId) && !match.isLinked,
   ).length;
   const hasAvailableMatches = matches.some((match) => !match.isLinked);
+  const handleContextNavigation = () => {
+    onClose?.();
+  };
 
   if (loading) {
     return (
@@ -89,6 +93,20 @@ function LinkCandidatesContent({
           screening wilt toevoegen.
         </p>
       ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline" size="sm">
+          <Link href={recruiterCockpitHref} onClick={handleContextNavigation}>
+            <Sparkles className="h-4 w-4" />
+            Recruiter cockpit
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href={gradingHref} onClick={handleContextNavigation}>
+            <Award className="h-4 w-4" />
+            AI Grading
+          </Link>
+        </Button>
+      </div>
       <div
         className={variant === "inline" ? "space-y-3" : "max-h-[50vh] space-y-3 overflow-y-auto"}
       >
@@ -104,13 +122,11 @@ function LinkCandidatesContent({
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {matchingHref ? (
-            <Link href={matchingHref} className="text-primary hover:underline">
-              Meer matches in matching
-            </Link>
-          ) : null}
           {variant === "inline" && hasAvailableMatches ? (
             <span>Geselecteerde kandidaten gaan direct naar screening.</span>
+          ) : null}
+          {variant === "dialog" ? (
+            <span>Open recruiter cockpit of grading voor extra vacaturecontext.</span>
           ) : null}
           {!hasAvailableMatches ? <span>Alle suggesties zijn al gekoppeld.</span> : null}
         </div>
@@ -143,9 +159,10 @@ export function LinkCandidatesDialog({
   jobTitle,
   trigger,
   variant = "dialog",
-  matchingHref,
 }: LinkCandidatesDialogProps) {
   const router = useRouter();
+  const recruiterCockpitHref = `/opdrachten/${jobId}#recruiter-cockpit`;
+  const gradingHref = `/opdrachten/${jobId}#ai-grading`;
   const [open, setOpen] = useState(false);
   const [matches, setMatches] = useState<CandidateMatchItem[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -244,7 +261,8 @@ export function LinkCandidatesDialog({
     <LinkCandidatesContent
       variant={variant}
       jobTitle={jobTitle}
-      matchingHref={matchingHref}
+      recruiterCockpitHref={recruiterCockpitHref}
+      gradingHref={gradingHref}
       loading={loading}
       error={error}
       matches={matches}
@@ -274,7 +292,8 @@ export function LinkCandidatesDialog({
         <DialogHeader>
           <DialogTitle>Kandidaten koppelen aan vacature</DialogTitle>
           <DialogDescription>
-            Top-3 passende kandidaten voor &quot;{jobTitle}&quot;. Selecteer wie je wilt koppelen.
+            Top-3 passende kandidaten voor &quot;{jobTitle}&quot;. Selecteer wie je wilt koppelen of
+            open eerst de recruiter cockpit of AI grading op de vacaturepagina voor extra context.
           </DialogDescription>
         </DialogHeader>
         {content}

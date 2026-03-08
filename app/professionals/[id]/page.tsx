@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MatchDetail } from "@/app/matching/match-detail";
+import { ReportButton } from "@/app/matching/report-button";
 import { CandidateNotes } from "@/components/candidate-notes";
 import { EmploymentCard } from "@/components/candidate-profile/employment-card";
 import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
@@ -31,6 +33,7 @@ import {
   type StructuredSkills,
   structuredSkillsSchema,
 } from "@/src/schemas/candidate-intelligence";
+import type { CriterionResult } from "@/src/schemas/matching";
 
 export const dynamic = "force-dynamic";
 
@@ -282,7 +285,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         href: `/pipeline?vacature=${primaryActiveApplication.job.id}&fase=${primaryActiveApplication.application.stage}`,
         label: "Open fase",
       }
-    : { href: "/matching", label: "Bekijk matches" };
+    : { href: `/professionals/${candidate.id}#matches`, label: "Bekijk matches" };
   const applicationStageCountMap: Record<string, number> = {};
   for (const row of recruiterApplications) {
     applicationStageCountMap[row.application.stage] =
@@ -641,7 +644,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
               <CandidateNotes candidateId={candidate.id} initialNotes={candidate.notes} />
 
               {/* Matches list + chart */}
-              <section>
+              <section id="matches">
                 <div className="mb-4 flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
                   <h2 className="text-lg font-semibold text-foreground">
@@ -679,6 +682,16 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                         const rec = row.match.recommendation;
                         const recConf = row.match.recommendationConfidence;
                         const model = row.match.assessmentModel;
+                        const criteriaBreakdown = Array.isArray(row.match.criteriaBreakdown)
+                          ? (row.match.criteriaBreakdown as CriterionResult[])
+                          : [];
+                        const riskProfile = Array.isArray(row.match.riskProfile)
+                          ? (row.match.riskProfile as string[])
+                          : [];
+                        const enrichmentSuggestions = Array.isArray(row.match.enrichmentSuggestions)
+                          ? (row.match.enrichmentSuggestions as string[])
+                          : [];
+                        const hasStructuredMatch = criteriaBreakdown.length > 0;
 
                         return (
                           <details
@@ -762,6 +775,10 @@ export default async function ProfessionalDetailPage({ params }: Props) {
 
                             {/* Expanded detail */}
                             <div className="space-y-3 border-t border-border/50 px-4 pt-3 pb-4">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-xs font-medium text-foreground">Matchcontext</p>
+                                <ReportButton matchId={row.match.id} />
+                              </div>
                               {row.match.reasoning && (
                                 <div>
                                   <p className="mb-1 text-xs font-medium text-foreground">
@@ -772,6 +789,28 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                                   </p>
                                 </div>
                               )}
+                              {hasStructuredMatch ? (
+                                <MatchDetail
+                                  criteriaBreakdown={criteriaBreakdown}
+                                  overallScore={row.match.matchScore}
+                                  knockoutsPassed={criteriaBreakdown
+                                    .filter((criterion) => criterion.tier === "knockout")
+                                    .every((criterion) => criterion.passed === true)}
+                                  riskProfile={riskProfile}
+                                  enrichmentSuggestions={enrichmentSuggestions}
+                                  recommendation={
+                                    row.match.recommendation === "go" ||
+                                    row.match.recommendation === "no-go" ||
+                                    row.match.recommendation === "conditional"
+                                      ? row.match.recommendation
+                                      : "conditional"
+                                  }
+                                  recommendationReasoning={
+                                    row.match.reasoning ?? "Geen toelichting beschikbaar"
+                                  }
+                                  recommendationConfidence={row.match.recommendationConfidence ?? 0}
+                                />
+                              ) : null}
                               {/* Confidence + model provenance */}
                               <div className="flex items-center gap-3 border-t border-border/30 pt-1 text-[10px] text-muted-foreground/70">
                                 <Info className="h-3 w-3 shrink-0" />

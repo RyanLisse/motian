@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import {
   ArrowRight,
+  Award,
   Calendar,
   Clock,
   Euro,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AIGrading } from "@/components/ai-grading";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { LinkCandidatesDialog } from "@/components/link-candidates-dialog";
 import { OpdrachtenDetailSheet } from "@/components/opdrachten-detail-sheet";
@@ -23,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { db } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
+import { getGradedCandidates } from "@/src/services/grading";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -195,51 +198,53 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   }
 
   // Fetch company-related jobs, generic related jobs, and pipeline data in parallel
-  const [companyRelated, genericRelated, pipelineCounts, recentPipelineRows] = await Promise.all([
-    job.company
-      ? db
-          .select()
-          .from(jobs)
-          .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
-          .orderBy(desc(jobs.scrapedAt))
-          .limit(4)
-      : Promise.resolve([]),
-    db
-      .select()
-      .from(jobs)
-      .where(and(isNull(jobs.deletedAt), ne(jobs.id, id)))
-      .orderBy(desc(jobs.scrapedAt))
-      .limit(4),
-    // Pipeline counts per stage for this job
-    db
-      .select({
-        stage: applications.stage,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(applications)
-      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-      .groupBy(applications.stage),
-    // Recent linked candidates for this job
-    db
-      .select({
-        id: applications.id,
-        stage: applications.stage,
-        source: applications.source,
-        candidateId: candidates.id,
-        candidateName: candidates.name,
-        candidateRole: candidates.role,
-        candidateLocation: candidates.location,
-        matchScore: jobMatches.matchScore,
-        matchStatus: jobMatches.status,
-        createdAt: applications.createdAt,
-      })
-      .from(applications)
-      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
-      .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
-      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-      .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
-      .limit(4),
-  ]);
+  const [companyRelated, genericRelated, pipelineCounts, recentPipelineRows, gradedCandidates] =
+    await Promise.all([
+      job.company
+        ? db
+            .select()
+            .from(jobs)
+            .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
+            .orderBy(desc(jobs.scrapedAt))
+            .limit(4)
+        : Promise.resolve([]),
+      db
+        .select()
+        .from(jobs)
+        .where(and(isNull(jobs.deletedAt), ne(jobs.id, id)))
+        .orderBy(desc(jobs.scrapedAt))
+        .limit(4),
+      // Pipeline counts per stage for this job
+      db
+        .select({
+          stage: applications.stage,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(applications)
+        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+        .groupBy(applications.stage),
+      // Recent linked candidates for this job
+      db
+        .select({
+          id: applications.id,
+          stage: applications.stage,
+          source: applications.source,
+          candidateId: candidates.id,
+          candidateName: candidates.name,
+          candidateRole: candidates.role,
+          candidateLocation: candidates.location,
+          matchScore: jobMatches.matchScore,
+          matchStatus: jobMatches.status,
+          createdAt: applications.createdAt,
+        })
+        .from(applications)
+        .leftJoin(candidates, eq(applications.candidateId, candidates.id))
+        .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
+        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+        .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
+        .limit(4),
+      getGradedCandidates({ jobId: job.id, limit: 12 }),
+    ]);
 
   // Build pipeline summary
   // Pipeline stages: only active stages count toward totalPipeline.
@@ -258,7 +263,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
     if (stageDelta !== 0) return stageDelta;
     return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
   });
-  const matchingHref = `/matching?jobId=${job.id}`;
+  const gradingHref = `/opdrachten/${job.id}#ai-grading`;
   const pipelineHref = `/pipeline?vacature=${job.id}`;
   const nextPipelineAction =
     (stageCountMap.new ?? 0) > 0
@@ -667,7 +672,10 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-5">
-              <section className="rounded-lg border border-border bg-card p-4">
+              <section
+                id="recruiter-cockpit"
+                className="scroll-mt-24 rounded-lg border border-border bg-card p-4"
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="mb-1 flex items-center gap-2">
@@ -681,48 +689,49 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Zie direct welke fase aandacht vraagt en open meteen de juiste vervolgstap.
+                      Zie direct welke fase aandacht vraagt en open vanuit deze vacature meteen AI
+                      aanbevelingen, grading of de juiste vervolgstap.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <LinkCandidatesDialog
+                      jobId={job.id}
+                      jobTitle={job.title}
+                      trigger={
+                        <Button variant="outline" size="sm" className="border-border">
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          AI aanbevelingen
+                        </Button>
+                      }
+                    />
+                    <Button asChild variant="outline" size="sm" className="border-border">
+                      <Link href={gradingHref}>
+                        <Award className="mr-2 h-4 w-4" />
+                        AI Grading
+                      </Link>
+                    </Button>
                     {totalPipeline > 0 ? (
-                      <>
-                        <Button asChild variant="outline" size="sm" className="border-border">
-                          <Link href={matchingHref}>
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            Koppel aan kandidaat
-                          </Link>
-                        </Button>
-                        <Button
-                          asChild
-                          size="sm"
-                          className="bg-primary text-primary-foreground hover:bg-primary/90"
-                        >
-                          <Link href={pipelineHref}>
-                            <Kanban className="mr-2 h-4 w-4" />
-                            Bekijk pipeline
-                          </Link>
-                        </Button>
-                      </>
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        <Link href={pipelineHref}>
+                          <Kanban className="mr-2 h-4 w-4" />
+                          Bekijk pipeline
+                        </Link>
+                      </Button>
                     ) : (
-                      <>
-                        <Button
-                          asChild
-                          size="sm"
-                          className="bg-primary text-primary-foreground hover:bg-primary/90"
-                        >
-                          <a href="#koppel-kandidaten">
-                            <Link2 className="mr-2 h-4 w-4" />
-                            Koppel topmatches
-                          </a>
-                        </Button>
-                        <Button asChild variant="outline" size="sm" className="border-border">
-                          <Link href={matchingHref}>
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            Koppel aan kandidaat
-                          </Link>
-                        </Button>
-                      </>
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        <a href="#koppel-kandidaten">
+                          <Link2 className="mr-2 h-4 w-4" />
+                          Koppel aan kandidaat
+                        </a>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -748,7 +757,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                     <p className="mt-1 text-xs text-muted-foreground">
                       {totalPipeline > 0
                         ? "Open de pipeline om te zien wie nu aandacht vraagt."
-                        : "Gebruik de topmatches hieronder om screening te starten."}
+                        : "Gebruik AI aanbevelingen of topmatches hieronder om screening te starten."}
                     </p>
                   </div>
                   <div className="rounded-lg border border-border bg-background/60 p-3">
@@ -982,26 +991,25 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                       </h2>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Selecties uit de top-3 gaan direct naar screening. Open matching voor extra
-                      opties.
+                      Selecties uit de top-3 gaan direct naar screening. Open recruiter context of
+                      grading voor extra onderbouwing.
                     </p>
                   </div>
                   <Button asChild variant="outline" size="sm" className="border-border">
-                    <Link href={matchingHref}>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Meer matches
+                    <Link href={gradingHref}>
+                      <Award className="mr-2 h-4 w-4" />
+                      Open AI Grading
                     </Link>
                   </Button>
                 </div>
 
                 <div className="mt-4">
-                  <LinkCandidatesDialog
-                    jobId={job.id}
-                    jobTitle={job.title}
-                    matchingHref={matchingHref}
-                    variant="inline"
-                  />
+                  <LinkCandidatesDialog jobId={job.id} jobTitle={job.title} variant="inline" />
                 </div>
+              </section>
+
+              <section id="ai-grading" className="scroll-mt-24">
+                <AIGrading candidates={gradedCandidates} />
               </section>
 
               <section className="rounded-lg border border-border bg-card p-4">

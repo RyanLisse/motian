@@ -369,16 +369,37 @@ describe("Matching linking flow — structural assertions", () => {
     expect(source).toContain("recommendedMatchId");
   });
 
+  it("candidate detail keeps report and structured detail surfaces inside the matches section", () => {
+    const source = readFile("app/professionals/[id]/page.tsx");
+    expect(source).toContain("ReportButton");
+    expect(source).toContain("MatchDetail");
+    expect(source).toContain('<section id="matches">');
+  });
+
   it("opdracht detail CTA says 'Koppel aan kandidaat' (desktop)", () => {
     const source = readFile("app/opdrachten/[id]/page.tsx");
     expect(source).toContain("Koppel aan kandidaat");
     expect(source).not.toContain(">Reageren<");
   });
 
-  it("opdracht detail CTA links to /matching with jobId", () => {
+  it("opdracht detail surfaces recruiter cockpit and grading anchors", () => {
     const source = readFile("app/opdrachten/[id]/page.tsx");
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: Testing that template literal exists in source
-    expect(source).toContain("/matching?jobId=${job.id}");
+    expect(source).toContain('id="recruiter-cockpit"');
+    expect(source).toContain('id="ai-grading"');
+    expect(source).toContain("const gradingHref =");
+    expect(source).toContain("#ai-grading");
+    expect(source).toContain("AI Grading");
+  });
+
+  it("link candidates dialog points to recruiter cockpit and grading instead of standalone matching", () => {
+    const source = readFile("components/link-candidates-dialog.tsx");
+    expect(source).toContain("const recruiterCockpitHref =");
+    expect(source).toContain("const gradingHref =");
+    expect(source).toContain("#recruiter-cockpit");
+    expect(source).toContain("#ai-grading");
+    expect(source).toContain("Recruiter cockpit");
+    expect(source).toContain("AI Grading");
+    expect(source).not.toContain("/matching");
   });
 });
 

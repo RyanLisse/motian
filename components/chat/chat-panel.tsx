@@ -16,7 +16,7 @@ import { ChatMessages } from "./chat-messages";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 
-function ChatPanelInner() {
+function ChatPanelInner({ currentOrigin = null }: { currentOrigin?: string | null }) {
   const { messages, sendMessage, status, stop } = useChatContext();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -112,6 +112,7 @@ function ChatPanelInner() {
         layout="widget"
         messages={messages}
         status={status}
+        currentOrigin={currentOrigin}
         onSuggestion={(text) => sendMessage({ text })}
       />
 
@@ -174,7 +175,7 @@ function ChatPanelInner() {
   );
 }
 
-export function ChatPanel() {
+export function ChatPanel({ currentOrigin = null }: { currentOrigin?: string | null }) {
   const router = useRouter();
   const {
     activeContext,
@@ -296,7 +297,7 @@ export function ChatPanel() {
         </div>
 
         {ready && sessionId ? (
-          <ChatPanelInner key={sessionId} />
+          <ChatPanelInner key={sessionId} currentOrigin={currentOrigin} />
         ) : (
           <div className="flex flex-1 items-center justify-center p-4">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

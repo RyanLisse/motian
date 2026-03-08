@@ -176,6 +176,24 @@ describe("chat widget continuity", () => {
     ).rejects.toThrow("Sessie laden mislukt");
   });
 
+  it("rewrites internal job links without touching literal code", async () => {
+    const { normalizeChatJobHref, rewriteChatJobLinks } = await vi.importActual<
+      typeof import("../components/chat/chat-message-links")
+    >("../components/chat/chat-message-links");
+
+    expect(normalizeChatJobHref("/opdrachten/12345678-1234-4123-8123-123456789abc")).toBe(
+      "/opdrachten/12345678-1234-4123-8123-123456789abc",
+    );
+
+    expect(
+      rewriteChatJobLinks(
+        "Bekijk [de opdracht](https://motian.ai/opdrachten/12345678-1234-4123-8123-123456789abc) en laat `[/opdrachten/12345678-1234-4123-8123-123456789abc](https://motian.ai/opdrachten/12345678-1234-4123-8123-123456789abc)` met rust.",
+      ),
+    ).toContain(
+      '<motian-job-link href="/opdrachten/12345678-1234-4123-8123-123456789abc">de opdracht</motian-job-link>',
+    );
+  });
+
   it("renders the full chat page with shared context and a visible load failure", async () => {
     const { ChatPageContent } = await import("../components/chat/chat-page-content");
 

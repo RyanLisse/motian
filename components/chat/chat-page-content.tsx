@@ -3,14 +3,22 @@
 import {
   ArrowUp,
   ArrowUpRight,
+  Brain,
+  Briefcase,
   Check,
+  FileText,
   Gauge,
   Loader2,
   Menu,
   Mic,
   PanelLeftClose,
   Plus,
+  Search,
+  Sparkles,
   Square,
+  TrendingUp,
+  Upload,
+  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -43,7 +51,7 @@ import {
   useChatContext,
 } from "./chat-context-provider";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
-import { ChatMessages } from "./chat-messages";
+import { ChatMessages, type ChatSuggestion } from "./chat-messages";
 import { VoiceSession } from "./voice-session";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
@@ -59,7 +67,231 @@ function getContextLabel(ctx: {
   return "Algemene chat";
 }
 
-function ChatSession({ onToggleVoice }: { onToggleVoice: () => void }) {
+type ChatSurfaceConfig = {
+  conversationLabel: string;
+  emptyStateTitle: string;
+  emptyStateDescription: string;
+  composerPlaceholder: string;
+  starterPrompts: ChatSuggestion[];
+  followUpPrompts: ChatSuggestion[];
+};
+
+const GENERAL_STARTER_PROMPTS: ChatSuggestion[] = [
+  {
+    icon: Search,
+    label: "Zoek vacatures",
+    description: "Start met een concrete zoekopdracht op regio, skill of platform.",
+    prompt: "Zoek Java vacatures in Utrecht met een uurtarief vanaf €90.",
+    toneClassName: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+  {
+    icon: Users,
+    label: "Maak een shortlist",
+    description: "Vraag om kandidaten met de juiste vaardigheden of beschikbaarheid.",
+    prompt: "Toon de 5 meest relevante kandidaten voor Java recruitment deze week.",
+    toneClassName: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    icon: TrendingUp,
+    label: "Analyseer de markt",
+    description: "Laat Motian tarieven, volumes of platformverschillen samenvatten.",
+    prompt: "Vat de huidige markttrends samen voor Java opdrachten in de Randstad.",
+    toneClassName: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  {
+    icon: Upload,
+    label: "Upload een CV",
+    description: "Importeer een kandidaatprofiel en laat direct een eerste analyse maken.",
+    prompt: "Hoe upload ik een CV en laat ik direct passende vacatures zoeken?",
+    toneClassName: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  },
+];
+
+const JOB_STARTER_PROMPTS: ChatSuggestion[] = [
+  {
+    icon: Briefcase,
+    label: "Vat deze opdracht samen",
+    description: "Krijg een recruiter-vriendelijke samenvatting met de kernvereisten.",
+    prompt: "Vat deze opdracht samen in 5 bullets voor een recruiter.",
+    toneClassName: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  },
+  {
+    icon: Users,
+    label: "Zoek passende kandidaten",
+    description: "Gebruik de huidige opdrachtcontext om sneller relevante matches te vinden.",
+    prompt: "Welke kandidaten passen het best bij deze opdracht? Geef een top 5 met motivatie.",
+    toneClassName: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    icon: Brain,
+    label: "Signaleer risico’s",
+    description: "Laat Motian gaten, blockers of vragen voor intake benoemen.",
+    prompt: "Welke risico’s of onduidelijkheden zie je in deze opdrachtomschrijving?",
+    toneClassName: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  {
+    icon: FileText,
+    label: "Maak outreach notes",
+    description: "Zet de opdracht om in heldere punten voor intake of kandidaatpitch.",
+    prompt: "Maak een korte intakebriefing voor deze opdracht die ik met een kandidaat kan delen.",
+    toneClassName: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  },
+];
+
+const CANDIDATE_STARTER_PROMPTS: ChatSuggestion[] = [
+  {
+    icon: Users,
+    label: "Vat dit profiel samen",
+    description: "Krijg direct een compact overzicht van ervaring, skills en opvallende punten.",
+    prompt: "Vat dit kandidaatprofiel samen in 5 recruiter bullets.",
+    toneClassName: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    icon: Briefcase,
+    label: "Zoek passende opdrachten",
+    description: "Gebruik het profiel als context om kansen of matches sneller te beoordelen.",
+    prompt: "Welke opdrachten passen het best bij deze kandidaat? Geef een top 5 met motivatie.",
+    toneClassName: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  },
+  {
+    icon: Brain,
+    label: "Benoem skill gaps",
+    description: "Laat Motian risico’s, ontbrekende ervaring of ontwikkelpunten aanwijzen.",
+    prompt: "Welke skill gaps of risico’s zie je in dit profiel voor senior opdrachten?",
+    toneClassName: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  {
+    icon: FileText,
+    label: "Schrijf een pitch",
+    description: "Genereer een korte klantgerichte introductie op basis van dit profiel.",
+    prompt: "Schrijf een korte pitch van deze kandidaat voor een potentiële klant.",
+    toneClassName: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  },
+];
+
+const GENERAL_FOLLOW_UP_PROMPTS: ChatSuggestion[] = [
+  {
+    icon: Sparkles,
+    label: "Vat het kort samen",
+    description: "",
+    prompt: "Vat dit kort samen in 3 punten.",
+    toneClassName: "bg-primary/10 text-primary",
+  },
+  {
+    icon: TrendingUp,
+    label: "Toon prioriteiten",
+    description: "",
+    prompt: "Welke acties zou jij als recruiter nu prioriteren?",
+    toneClassName: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  {
+    icon: Search,
+    label: "Ga een stap dieper",
+    description: "",
+    prompt: "Ga een stap dieper en geef concrete vervolgstappen.",
+    toneClassName: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+];
+
+const JOB_FOLLOW_UP_PROMPTS: ChatSuggestion[] = [
+  {
+    icon: Users,
+    label: "Rank de beste matches",
+    description: "",
+    prompt: "Rank de beste matches voor deze opdracht en leg per kandidaat uit waarom.",
+    toneClassName: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    icon: FileText,
+    label: "Maak screeningvragen",
+    description: "",
+    prompt: "Schrijf 5 screeningvragen voor kandidaten op deze opdracht.",
+    toneClassName: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  },
+  {
+    icon: Brain,
+    label: "Benoem blockers",
+    description: "",
+    prompt: "Welke blockers of verduidelijkingen moet ik ophalen voordat ik kandidaten voorstel?",
+    toneClassName: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+];
+
+const CANDIDATE_FOLLOW_UP_PROMPTS: ChatSuggestion[] = [
+  {
+    icon: Briefcase,
+    label: "Zoek de beste opdrachten",
+    description: "",
+    prompt: "Zoek de beste opdrachten voor deze kandidaat en motiveer de top 3.",
+    toneClassName: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  },
+  {
+    icon: FileText,
+    label: "Maak een klantpitch",
+    description: "",
+    prompt: "Maak een korte klantpitch voor deze kandidaat met focus op impact en ervaring.",
+    toneClassName: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  },
+  {
+    icon: Brain,
+    label: "Check risico’s",
+    description: "",
+    prompt:
+      "Welke risico’s of aandachtspunten moet ik meenemen bij het voorstellen van deze kandidaat?",
+    toneClassName: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+];
+
+function getChatSurfaceConfig(ctx: {
+  route: string;
+  entityId: string | null;
+  entityType: string | null;
+}): ChatSurfaceConfig {
+  switch (ctx.entityType) {
+    case "opdracht":
+      return {
+        conversationLabel: "Chatgesprek in opdrachtcontext",
+        emptyStateTitle: "Wat wil je weten over deze opdracht?",
+        emptyStateDescription:
+          "De huidige opdrachtcontext wordt automatisch meegenomen. Vraag om een samenvatting, matchanalyse of recruiter-ready vervolgactie.",
+        composerPlaceholder:
+          "Vraag om een samenvatting, matchanalyse of outreach voor deze opdracht",
+        starterPrompts: JOB_STARTER_PROMPTS,
+        followUpPrompts: JOB_FOLLOW_UP_PROMPTS,
+      };
+    case "kandidaat":
+      return {
+        conversationLabel: "Chatgesprek in kandidaatcontext",
+        emptyStateTitle: "Wat wil je uit dit profiel halen?",
+        emptyStateDescription:
+          "De huidige kandidaatcontext wordt automatisch meegenomen. Vraag om een profielsamenvatting, risicocheck of passende opdrachten.",
+        composerPlaceholder:
+          "Vraag om een profielsamenvatting, pitch of matchsuggestie voor deze kandidaat",
+        starterPrompts: CANDIDATE_STARTER_PROMPTS,
+        followUpPrompts: CANDIDATE_FOLLOW_UP_PROMPTS,
+      };
+    default:
+      return {
+        conversationLabel: "Chatgesprek met Motian AI",
+        emptyStateTitle: "Waar wil je vandaag op sturen?",
+        emptyStateDescription:
+          "Start met een concrete vraag of kies een starter hieronder om vacatures, kandidaten of marktdynamiek sneller te analyseren.",
+        composerPlaceholder: "Vraag om vacatures, kandidaten, analyses of hulp bij een CV-upload",
+        starterPrompts: GENERAL_STARTER_PROMPTS,
+        followUpPrompts: GENERAL_FOLLOW_UP_PROMPTS,
+      };
+  }
+}
+
+function ChatSession({
+  onToggleVoice,
+  surfaceConfig,
+  currentOrigin,
+}: {
+  onToggleVoice: () => void;
+  surfaceConfig: ChatSurfaceConfig;
+  currentOrigin?: string | null;
+}) {
   const { messages, modelId, sendMessage, setModelId, setSpeedMode, speedMode, status, stop } =
     useChatContext();
 
@@ -171,7 +403,13 @@ function ChatSession({ onToggleVoice }: { onToggleVoice: () => void }) {
         layout="page"
         messages={messages}
         status={status}
+        currentOrigin={currentOrigin}
         onSuggestion={(text) => sendMessage({ text })}
+        emptyStateTitle={surfaceConfig.emptyStateTitle}
+        emptyStateDescription={surfaceConfig.emptyStateDescription}
+        emptyStatePrompts={surfaceConfig.starterPrompts}
+        followUpPrompts={surfaceConfig.followUpPrompts}
+        conversationLabel={surfaceConfig.conversationLabel}
       />
 
       {/* Floating Chat Input Container */}
@@ -230,7 +468,7 @@ function ChatSession({ onToggleVoice }: { onToggleVoice: () => void }) {
 
         <div className="rounded-3xl border border-border/50 bg-muted/30 shadow-sm transition-shadow focus-within:ring-1 focus-within:ring-ring/40">
           <PromptInput onSubmit={handleSubmit}>
-            <PromptInputTextarea placeholder="Vraag om vervolgwijzigingen" />
+            <PromptInputTextarea placeholder={surfaceConfig.composerPlaceholder} />
             <PromptInputFooter className="px-2 pb-2 pt-0">
               {/* Left side: + menu, model picker, mode picker */}
               <PromptInputTools>
@@ -323,7 +561,7 @@ function ChatSession({ onToggleVoice }: { onToggleVoice: () => void }) {
   );
 }
 
-export function ChatPageContent() {
+export function ChatPageContent({ currentOrigin = null }: { currentOrigin?: string | null }) {
   const {
     activeContext,
     loadSession,
@@ -335,6 +573,7 @@ export function ChatPageContent() {
   } = useChatContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const hasSourceContext = activeContext.route !== "/chat";
+  const surfaceConfig = getChatSurfaceConfig(activeContext);
 
   const handleSelectSession = useCallback(
     async (id: string) => {
@@ -442,7 +681,9 @@ export function ChatPageContent() {
         ) : (
           <ChatSession
             key={sessionId || "chat-page-session"}
+            currentOrigin={currentOrigin}
             onToggleVoice={() => setMode("voice")}
+            surfaceConfig={surfaceConfig}
           />
         )}
       </div>

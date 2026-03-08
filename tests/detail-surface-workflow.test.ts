@@ -38,12 +38,19 @@ afterEach(() => {
 });
 
 describe("Detail surfaces recruiter workflow context", () => {
-  it("job detail page preserves repeated filters and keeps the inline linker wired", () => {
+  it("job detail page preserves filters while surfacing recruiter cockpit and grading", () => {
     const source = readFile("app/opdrachten/[id]/page.tsx");
 
     expect(source).toContain("currentListParams.append(key, entry)");
     expect(source).toContain('id="koppel-kandidaten"');
     expect(source).toContain('variant="inline"');
+    expect(source).toContain('id="recruiter-cockpit"');
+    expect(source).toContain('id="ai-grading"');
+    expect(source).toContain("AI aanbevelingen");
+    expect(source).toContain("AI Grading");
+    expect(source).toContain("source: applications.source");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: asserting source contains a template literal
+    expect(source).toContain("/professionals/${row.candidateId}");
   });
 
   it("OpdrachtenDetailSheet returns to the filtered list when the mobile sheet closes", async () => {
@@ -202,13 +209,14 @@ describe("Detail surfaces recruiter workflow context", () => {
         jobId: "job-1",
         jobTitle: "Manager Inhuur",
         variant: "inline",
-        matchingHref: "/matching?jobId=job-1",
       }),
     );
 
     expect(html).toContain("Alice Example");
     expect(html).toContain("Bob Example");
     expect(html).toContain("Koppel aan screening");
+    expect(html).toContain("Recruiter cockpit");
+    expect(html).toContain("AI Grading");
     expect(fetchMock).toHaveBeenCalledWith("/api/opdrachten/job-1/match-kandidaten", {
       method: "POST",
     });
@@ -260,10 +268,13 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(html).not.toContain("Nog te koppelen");
   });
 
-  it("candidate detail page labels the recruiter section in Dutch", () => {
+  it("candidate detail page keeps the recruiter section in Dutch and anchors match detail surfaces", () => {
     const source = readFile("app/professionals/[id]/page.tsx");
 
     expect(source).toContain("Recruiteroverzicht");
     expect(source).not.toContain("Recruiter context</h2>");
+    expect(source).toContain('<section id="matches">');
+    expect(source).toContain("ReportButton");
+    expect(source).toContain("MatchDetail");
   });
 });
