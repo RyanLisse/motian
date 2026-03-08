@@ -22,6 +22,11 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
         workArrangement: jobs.workArrangement,
         contractType: jobs.contractType,
         applicationDeadline: jobs.applicationDeadline,
+        hasPipeline: sql<boolean>`exists(
+          select 1 from ${applications}
+          where ${applications.jobId} = ${jobs.id}
+            and ${applications.deletedAt} is null
+        )`,
         pipelineCount: sql<number>`(
           select count(*)::int from ${applications}
           where ${applications.jobId} = ${jobs.id}

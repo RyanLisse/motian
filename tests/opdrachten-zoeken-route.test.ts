@@ -60,7 +60,9 @@ describe("GET /api/opdrachten/zoeken", () => {
       ],
       total: 1,
     });
-    mockGroupBy.mockResolvedValue([{ jobId: "job-1", pipelineCount: 3 }]);
+    mockGroupBy
+      .mockResolvedValueOnce([{ jobId: "job-1", pipelineCount: 3 }])
+      .mockResolvedValueOnce([{ jobId: "job-1" }]);
   });
 
   it("forwards the shared recruiter filter contract and returns compact recruiter jobs", async () => {
@@ -103,6 +105,7 @@ describe("GET /api/opdrachten/zoeken", () => {
           platform: "opdrachtoverheid",
           workArrangement: "hybride",
           contractType: "interim",
+          hasPipeline: true,
           pipelineCount: 3,
         },
       ],
@@ -123,5 +126,30 @@ describe("GET /api/opdrachten/zoeken", () => {
     expect(mockSearchJobsUnified).toHaveBeenCalledWith(
       expect.objectContaining({ q: "manager", sortBy: undefined }),
     );
+  });
+
+  it("keeps query searches on relevance when no sort param is provided", async () => {
+    const request = {
+      nextUrl: new URL("http://localhost/api/opdrachten/zoeken?q=manager"),
+    } as Parameters<typeof GET>[0];
+
+    await GET(request);
+
+    expect(mockSearchJobsUnified).toHaveBeenCalledWith(
+      expect.objectContaining({ q: "manager", sortBy: undefined }),
+    );
+  });
+
+  it("returns 400 for malformed pagination params before hitting the service layer", async () => {
+    const request = {
+      nextUrl: new URL("http://localhost/api/opdrachten/zoeken?page=abc"),
+    } as Parameters<typeof GET>[0];
+
+    const response = await GET(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Ongeldige parameters");
+    expect(mockSearchJobsUnified).not.toHaveBeenCalled();
   });
 });

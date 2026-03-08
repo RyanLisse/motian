@@ -12,6 +12,7 @@ vi.mock("../src/services/jobs/list", () => ({
 
 vi.mock("../src/services/jobs/search", () => ({
   hybridSearch: mockHybridSearchImpl,
+  hybridSearchWithTotal: vi.fn(),
   searchJobs: vi.fn(),
   searchJobsByTitle: vi.fn(),
 }));

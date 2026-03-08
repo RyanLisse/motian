@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const DEFAULT_OPDRACHTEN_LIMIT = 50;
 export const MAX_OPDRACHTEN_LIMIT = 100;
 export const OPDRACHTEN_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
@@ -96,6 +98,107 @@ const sortLookup = new Map(
   OPDRACHTEN_SORT_OPTIONS.map((option) => [option.value.toLowerCase(), option.value]),
 );
 
+function optionalQueryString(maxLength = 255) {
+  return z.preprocess((value) => {
+    if (value == null) return undefined;
+    if (typeof value !== "string") return value;
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : undefined;
+  }, z.string().max(maxLength).optional());
+}
+
+function optionalQueryStringArray(maxLength = 255) {
+  return z.preprocess((value) => {
+    if (value == null) return undefined;
+    const values = (Array.isArray(value) ? value : [value])
+      .filter((candidate): candidate is string => typeof candidate === "string")
+      .map((candidate) => candidate.trim())
+      .filter(Boolean);
+
+    return values.length > 0 ? values : undefined;
+  }, z.array(z.string().max(maxLength)).optional());
+}
+
+function optionalQueryNumber() {
+  return z.preprocess((value) => {
+    if (value == null || value === "") return undefined;
+    if (typeof value === "number") return value;
+    if (typeof value !== "string") return Number.NaN;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }, z.number().finite().optional());
+}
+
+function optionalPositiveIntegerQueryNumber() {
+  return z.preprocess((value) => {
+    if (value == null || value === "") return undefined;
+    if (typeof value === "number") return value;
+    if (typeof value !== "string") return Number.NaN;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }, z.number().int().positive().optional());
+}
+
+export const opdrachtenQuerySchema = z.object({
+  q: optionalQueryString(200),
+  platform: optionalQueryString(100),
+  endClient: optionalQueryString(200),
+  status: optionalQueryString(32),
+  provincie: optionalQueryString(64),
+  province: optionalQueryString(64),
+  regio: optionalQueryStringArray(64),
+  region: optionalQueryStringArray(64),
+  vakgebied: optionalQueryStringArray(100),
+  category: optionalQueryStringArray(100),
+  urenPerWeek: optionalQueryString(32),
+  hours: optionalQueryString(32),
+  urenPerWeekMin: optionalPositiveIntegerQueryNumber(),
+  hoursMin: optionalPositiveIntegerQueryNumber(),
+  urenPerWeekMax: optionalPositiveIntegerQueryNumber(),
+  hoursMax: optionalPositiveIntegerQueryNumber(),
+  straalKm: optionalPositiveIntegerQueryNumber(),
+  radiusKm: optionalPositiveIntegerQueryNumber(),
+  tariefMin: optionalQueryNumber(),
+  tariefMax: optionalQueryNumber(),
+  contractType: optionalQueryString(64),
+  sort: optionalQueryString(32),
+  pagina: optionalPositiveIntegerQueryNumber(),
+  page: optionalPositiveIntegerQueryNumber(),
+  limit: optionalPositiveIntegerQueryNumber(),
+  perPage: optionalPositiveIntegerQueryNumber(),
+});
+
+export function validateOpdrachtenQueryParams(params: URLSearchParams) {
+  return opdrachtenQuerySchema.safeParse({
+    q: params.get("q") ?? undefined,
+    platform: params.get("platform") ?? undefined,
+    endClient: params.get("endClient") ?? undefined,
+    status: params.get("status") ?? undefined,
+    provincie: params.get("provincie") ?? undefined,
+    province: params.get("province") ?? undefined,
+    regio: params.getAll("regio"),
+    region: params.getAll("region"),
+    vakgebied: params.getAll("vakgebied"),
+    category: params.getAll("category"),
+    urenPerWeek: params.get("urenPerWeek") ?? undefined,
+    hours: params.get("hours") ?? undefined,
+    urenPerWeekMin: params.get("urenPerWeekMin") ?? undefined,
+    hoursMin: params.get("hoursMin") ?? undefined,
+    urenPerWeekMax: params.get("urenPerWeekMax") ?? undefined,
+    hoursMax: params.get("hoursMax") ?? undefined,
+    straalKm: params.get("straalKm") ?? undefined,
+    radiusKm: params.get("radiusKm") ?? undefined,
+    tariefMin: params.get("tariefMin") ?? undefined,
+    tariefMax: params.get("tariefMax") ?? undefined,
+    contractType: params.get("contractType") ?? undefined,
+    sort: params.get("sort") ?? undefined,
+    pagina: params.get("pagina") ?? undefined,
+    page: params.get("page") ?? undefined,
+    limit: params.get("limit") ?? undefined,
+    perPage: params.get("perPage") ?? undefined,
+  });
+}
+
 function normalizeTextFilter(value: string | null | undefined): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
@@ -177,10 +280,20 @@ export function normalizeOpdrachtenSort(value: string | null | undefined): Opdra
   return sortLookup.get(value.trim().toLowerCase()) ?? "nieuwste";
 }
 
+export function hasExplicitOpdrachtenSort(params: URLSearchParams): boolean {
+  const value = params.get("sort");
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 export function getOpdrachtenServiceSort(
   sort: OpdrachtenSort,
   hasQuery: boolean,
+  hasExplicitSort = true,
 ): Exclude<OpdrachtenSort, "relevantie"> | undefined {
+  if (!hasExplicitSort) {
+    return hasQuery ? undefined : "nieuwste";
+  }
+
   if (sort === "relevantie") {
     return hasQuery ? undefined : "nieuwste";
   }

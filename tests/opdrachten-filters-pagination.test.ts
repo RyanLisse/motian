@@ -4,11 +4,14 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_OPDRACHTEN_LIMIT,
   getHoursRangeForBucket,
+  getOpdrachtenServiceSort,
+  hasExplicitOpdrachtenSort,
   MAX_OPDRACHTEN_LIMIT,
   normalizeOpdrachtenStatus,
   OPDRACHTEN_PAGE_SIZE_OPTIONS,
   OPDRACHTEN_SORT_OPTIONS,
   parseOpdrachtenFilters,
+  validateOpdrachtenQueryParams,
 } from "../src/lib/opdrachten-filters";
 import { parsePagination } from "../src/lib/pagination";
 
@@ -115,6 +118,21 @@ describe("Opdrachten shared filter parsing", () => {
       { value: "relevantie", label: "Relevantie" },
     ]);
   });
+
+  it("keeps missing sort distinct from explicit nieuwste for API routing", () => {
+    expect(hasExplicitOpdrachtenSort(new URLSearchParams())).toBe(false);
+    expect(hasExplicitOpdrachtenSort(new URLSearchParams("sort=nieuwste"))).toBe(true);
+    expect(getOpdrachtenServiceSort("nieuwste", true, false)).toBeUndefined();
+    expect(getOpdrachtenServiceSort("nieuwste", true, true)).toBe("nieuwste");
+  });
+
+  it("validates malformed opdrachten query params with zod", () => {
+    expect(validateOpdrachtenQueryParams(new URLSearchParams("page=abc")).success).toBe(false);
+    expect(validateOpdrachtenQueryParams(new URLSearchParams("page=2abc")).success).toBe(false);
+    expect(validateOpdrachtenQueryParams(new URLSearchParams("page=2&perPage=25")).success).toBe(
+      true,
+    );
+  });
 });
 
 describe("Opdrachten UI/API contracts", () => {
@@ -163,17 +181,17 @@ describe("Opdrachten UI/API contracts", () => {
     const listRoute = readFile("app", "api", "opdrachten", "route.ts");
     const searchRoute = readFile("app", "api", "opdrachten", "zoeken", "route.ts");
 
+    expect(listRoute).toContain("validateOpdrachtenQueryParams(params)");
     expect(listRoute).toContain("parseOpdrachtenFilters(params)");
     expect(listRoute).toContain("categories: filters.categories");
     expect(listRoute).toContain("regions: filters.regions");
     expect(listRoute).toContain("hoursPerWeekBucket: filters.hoursPerWeek");
     expect(listRoute).toContain("minHoursPerWeek: filters.hoursPerWeekMin");
     expect(listRoute).toContain("maxHoursPerWeek: filters.hoursPerWeekMax");
-    expect(listRoute).toContain(
-      "const sortBy = getOpdrachtenServiceSort(filters.sort, Boolean(filters.q?.trim()))",
-    );
+    expect(listRoute).toContain("hasExplicitOpdrachtenSort(params)");
     expect(listRoute).toContain("DEFAULT_OPDRACHTEN_LIMIT");
 
+    expect(searchRoute).toContain("validateOpdrachtenQueryParams(params)");
     expect(searchRoute).toContain("parseOpdrachtenFilters(params)");
     expect(searchRoute).toContain("categories: filters.categories");
     expect(searchRoute).toContain("regions: filters.regions");
@@ -181,9 +199,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(searchRoute).toContain("minHoursPerWeek: filters.hoursPerWeekMin");
     expect(searchRoute).toContain("maxHoursPerWeek: filters.hoursPerWeekMax");
     expect(searchRoute).toContain("radiusKm: filters.radiusKm");
-    expect(searchRoute).toContain(
-      "const sortBy = getOpdrachtenServiceSort(filters.sort, Boolean(filters.q?.trim()))",
-    );
+    expect(searchRoute).toContain("hasExplicitOpdrachtenSort(params)");
     expect(searchRoute).toContain("sortBy,");
     expect(searchRoute).toContain("searchJobsUnified({");
     expect(searchRoute).toContain("perPage: limit");

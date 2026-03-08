@@ -62,4 +62,25 @@ describe("GET /api/opdrachten", () => {
       expect.objectContaining({ q: "manager", sortBy: undefined }),
     );
   });
+
+  it("keeps query searches on relevance when no sort param is provided", async () => {
+    const request = new Request("http://localhost/api/opdrachten?q=manager");
+
+    await GET(request);
+
+    expect(mockSearchJobsUnified).toHaveBeenCalledWith(
+      expect.objectContaining({ q: "manager", sortBy: undefined }),
+    );
+  });
+
+  it("returns 400 for malformed pagination params before hitting the service layer", async () => {
+    const request = new Request("http://localhost/api/opdrachten?page=abc");
+
+    const response = await GET(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Ongeldige parameters");
+    expect(mockSearchJobsUnified).not.toHaveBeenCalled();
+  });
 });

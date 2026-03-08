@@ -209,6 +209,7 @@ function ChatSession({ onToggleVoice }: { onToggleVoice: () => void }) {
                 <button
                   type="button"
                   onClick={() => setUploadState("idle")}
+                  aria-label="Sluit uploadmelding"
                   className="ml-auto shrink-0 rounded p-0.5 hover:bg-destructive/10"
                 >
                   <X className="h-3 w-3" />
@@ -234,7 +235,10 @@ function ChatSession({ onToggleVoice }: { onToggleVoice: () => void }) {
               {/* Left side: + menu, model picker, mode picker */}
               <PromptInputTools>
                 <PromptInputActionMenu>
-                  <PromptInputActionMenuTrigger tooltip="Bijlage toevoegen" />
+                  <PromptInputActionMenuTrigger
+                    tooltip="Bijlage toevoegen"
+                    aria-label="Bijlage toevoegen"
+                  />
                   <PromptInputActionMenuContent>
                     <PromptInputActionAddAttachments label="Foto's of bestanden" />
                     <PromptInputActionMenuItem
@@ -283,12 +287,21 @@ function ChatSession({ onToggleVoice }: { onToggleVoice: () => void }) {
 
               {/* Right side: mic button, send button */}
               <PromptInputTools>
-                <PromptInputButton tooltip="Spraakassistent" onClick={onToggleVoice}>
+                <PromptInputButton
+                  tooltip="Spraakassistent"
+                  aria-label="Open spraakassistent"
+                  onClick={onToggleVoice}
+                >
                   <Mic className="h-4 w-4" />
                 </PromptInputButton>
                 <PromptInputSubmit
                   status={status}
                   onStop={stop}
+                  aria-label={
+                    status === "submitted" || status === "streaming"
+                      ? "Stop antwoord"
+                      : "Verstuur bericht"
+                  }
                   className="rounded-full"
                   variant="default"
                   size="icon-sm"
@@ -311,15 +324,27 @@ function ChatSession({ onToggleVoice }: { onToggleVoice: () => void }) {
 }
 
 export function ChatPageContent() {
-  const { activeContext, loadSession, mode, sessionId, setMode, startNewSession } =
-    useChatContext();
+  const {
+    activeContext,
+    loadSession,
+    mode,
+    sessionId,
+    sessionLoadError,
+    setMode,
+    startNewSession,
+  } = useChatContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const hasSourceContext = activeContext.route !== "/chat";
 
   const handleSelectSession = useCallback(
     async (id: string) => {
-      await loadSession(id);
-      setSidebarOpen(false);
+      try {
+        await loadSession(id);
+        setSidebarOpen(false);
+      } catch {
+        // Keep the current conversation visible and leave the sidebar open so the user
+        // can retry or choose a different session.
+      }
     },
     [loadSession],
   );
@@ -362,8 +387,9 @@ export function ChatPageContent() {
             <button
               type="button"
               onClick={() => setSidebarOpen((prev) => !prev)}
+              aria-label={sidebarOpen ? "Sluit gesprekken" : "Open gesprekken"}
               className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title="Gesprekken"
+              title={sidebarOpen ? "Sluit gesprekken" : "Open gesprekken"}
             >
               {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
@@ -393,6 +419,7 @@ export function ChatPageContent() {
           <button
             type="button"
             onClick={handleNewSession}
+            aria-label="Nieuw gesprek"
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             title="Nieuw gesprek"
           >
@@ -400,6 +427,15 @@ export function ChatPageContent() {
             <span className="hidden sm:inline">Nieuw gesprek</span>
           </button>
         </header>
+
+        {sessionLoadError ? (
+          <div
+            role="alert"
+            className="border-b border-destructive/20 bg-destructive/5 px-4 py-2 text-sm text-destructive"
+          >
+            {sessionLoadError}
+          </div>
+        ) : null}
 
         {mode === "voice" ? (
           <VoiceSession onClose={() => setMode("text")} />

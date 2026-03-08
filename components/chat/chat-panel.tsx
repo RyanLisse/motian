@@ -150,12 +150,21 @@ function ChatPanelInner() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadState === "uploading"}
+                  aria-label="CV of document uploaden"
                   className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                   title="CV/document uploaden"
                 >
                   <Paperclip className="h-3.5 w-3.5" />
                 </button>
-                <PromptInputSubmit status={status} onStop={stop} />
+                <PromptInputSubmit
+                  status={status}
+                  onStop={stop}
+                  aria-label={
+                    status === "submitted" || status === "streaming"
+                      ? "Stop antwoord"
+                      : "Verstuur bericht"
+                  }
+                />
               </PromptInputFooter>
             </PromptInput>
           </div>
@@ -214,8 +223,9 @@ export function ChatPanel() {
         <button
           type="button"
           onClick={() => setPanelOpen(true)}
+          aria-label="Open chatwidget"
           className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
-          title="Open AI Chat (⌘J)"
+          title="Open chatwidget (⌘J)"
         >
           <MessageSquare className="h-5 w-5" />
         </button>
@@ -258,6 +268,7 @@ export function ChatPanel() {
             <button
               type="button"
               onClick={handleNewSession}
+              aria-label="Nieuw gesprek"
               className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               title="Nieuw gesprek"
             >
@@ -266,6 +277,7 @@ export function ChatPanel() {
             <button
               type="button"
               onClick={handleExpandToPage}
+              aria-label="Open volledige chat"
               className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               title="Open volledige chat"
             >
@@ -274,6 +286,7 @@ export function ChatPanel() {
             <button
               type="button"
               onClick={() => setPanelOpen(false)}
+              aria-label="Sluit chatwidget"
               className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               title="Sluiten (Esc)"
             >

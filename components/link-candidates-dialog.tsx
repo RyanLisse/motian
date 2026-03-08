@@ -3,7 +3,7 @@
 import { Loader2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useState } from "react";
 import type { CandidateMatchItem } from "@/components/candidate-wizard/candidate-match-card";
 import { CandidateMatchCard } from "@/components/candidate-wizard/candidate-match-card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface LinkCandidatesDialogProps {
   jobId: string;
   jobTitle: string;
-  trigger?: ReactNode;
+  trigger?: ReactElement;
   variant?: "dialog" | "inline";
   matchingHref?: string;
 }

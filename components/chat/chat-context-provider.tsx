@@ -28,7 +28,7 @@ export const MODE_OPTIONS = [
   { id: "grondig", label: "Grondig" },
 ] as const;
 
-type ChatRouteContext = {
+export type ChatRouteContext = {
   route: string;
   entityType: "opdracht" | "kandidaat" | null;
   entityId: string | null;
@@ -78,7 +78,7 @@ function writeSessionStorage(key: string, value: string | null) {
   }
 }
 
-function resolveRouteContext(pathname: string, id: string | null): ChatRouteContext {
+export function resolveRouteContext(pathname: string, id: string | null): ChatRouteContext {
   if (pathname.startsWith("/opdrachten/") && id) {
     return { route: pathname, entityType: "opdracht", entityId: id };
   }
@@ -89,14 +89,18 @@ function resolveRouteContext(pathname: string, id: string | null): ChatRouteCont
   return { route: pathname, entityType: null, entityId: null };
 }
 
-function isChatRouteContext(value: unknown): value is ChatRouteContext {
+export function isInternalChatRoute(route: unknown): route is string {
+  return typeof route === "string" && route.startsWith("/") && !route.startsWith("//");
+}
+
+export function isChatRouteContext(value: unknown): value is ChatRouteContext {
   if (typeof value !== "object" || value == null) return false;
 
   const candidate = value as Record<string, unknown>;
   const entityType = candidate.entityType;
 
   return (
-    typeof candidate.route === "string" &&
+    isInternalChatRoute(candidate.route) &&
     (candidate.entityId == null || typeof candidate.entityId === "string") &&
     (entityType == null || entityType === "opdracht" || entityType === "kandidaat")
   );
@@ -107,6 +111,51 @@ type SessionResponse = {
   context?: unknown;
 };
 
+type LoadedSessionState = {
+  messages: UIMessage[];
+  mode: ChatSurfaceMode;
+  pinnedContext: ChatRouteContext | null;
+  sessionId: string;
+};
+
+export function resolveActiveContext(
+  pathname: string,
+  routeContext: ChatRouteContext,
+  pinnedContext: ChatRouteContext | null,
+) {
+  if (pathname === "/chat") {
+    return pinnedContext ?? routeContext;
+  }
+
+  return routeContext;
+}
+
+export function buildLoadedSessionState(
+  nextSessionId: string,
+  session: SessionResponse,
+): LoadedSessionState {
+  return {
+    messages: Array.isArray(session.messages) ? session.messages : [],
+    mode: "text",
+    pinnedContext: isChatRouteContext(session.context) ? session.context : null,
+    sessionId: nextSessionId,
+  };
+}
+
+export async function fetchChatSession(
+  nextSessionId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<LoadedSessionState> {
+  const response = await fetchImpl(`/api/chat-sessies/${nextSessionId}`);
+
+  if (!response.ok) {
+    throw new Error("Sessie laden mislukt");
+  }
+
+  const session = (await response.json()) as SessionResponse;
+  return buildLoadedSessionState(nextSessionId, session);
+}
+
 function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
   const [ready, setReady] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -115,6 +164,7 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
   const [speedMode, setSpeedMode] = useState<ChatSpeedMode>(DEFAULT_SPEED_MODE);
   const [mode, setMode] = useState<ChatSurfaceMode>("text");
   const [pinnedContext, setPinnedContext] = useState<ChatRouteContext | null>(null);
+  const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const storedSessionId = readSessionStorage(SESSION_KEY);
@@ -163,12 +213,10 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
     writeSessionStorage(PINNED_CONTEXT_KEY, pinnedContext ? JSON.stringify(pinnedContext) : null);
   }, [pinnedContext]);
 
-  const activeContext = useMemo(() => {
-    if (pathname === "/chat") {
-      return pinnedContext ?? routeContext;
-    }
-    return routeContext;
-  }, [pathname, pinnedContext, routeContext]);
+  const activeContext = useMemo(
+    () => resolveActiveContext(pathname, routeContext, pinnedContext),
+    [pathname, pinnedContext, routeContext],
+  );
 
   const transport = useMemo(
     () =>
@@ -207,6 +255,7 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
       setMessages([]);
       setSessionId(nanoid());
       setMode("text");
+      setSessionLoadError(null);
 
       if (!preservePinnedContext) {
         setPinnedContext(null);
@@ -218,22 +267,16 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
   const loadSession = useCallback(
     async (nextSessionId: string) => {
       try {
-        const response = await fetch(`/api/chat-sessies/${nextSessionId}`);
-        if (!response.ok) {
-          throw new Error("Session load failed");
-        }
+        const loadedSession = await fetchChatSession(nextSessionId);
 
-        const session = (await response.json()) as SessionResponse;
-
-        setMessages(Array.isArray(session.messages) ? session.messages : []);
-        setSessionId(nextSessionId);
-        setMode("text");
-        setPinnedContext(isChatRouteContext(session.context) ? session.context : null);
-      } catch {
-        setMessages([]);
-        setSessionId(nextSessionId);
-        setMode("text");
-        setPinnedContext(null);
+        setMessages(loadedSession.messages);
+        setSessionId(loadedSession.sessionId);
+        setMode(loadedSession.mode);
+        setPinnedContext(loadedSession.pinnedContext);
+        setSessionLoadError(null);
+      } catch (error) {
+        setSessionLoadError(error instanceof Error ? error.message : "Sessie laden mislukt");
+        throw error;
       }
     },
     [setMessages],
@@ -243,6 +286,7 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
     setPinnedContext(routeContext);
     setPanelOpen(false);
     setMode("text");
+    setSessionLoadError(null);
   }, [routeContext]);
 
   return {
@@ -256,6 +300,7 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
     ready,
     routeContext,
     sessionId,
+    sessionLoadError,
     setMode,
     setModelId,
     setPanelOpen,

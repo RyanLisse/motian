@@ -5,8 +5,10 @@ import { applications } from "@/src/db/schema";
 import {
   DEFAULT_OPDRACHTEN_LIMIT,
   getOpdrachtenServiceSort,
+  hasExplicitOpdrachtenSort,
   MAX_OPDRACHTEN_LIMIT,
   parseOpdrachtenFilters,
+  validateOpdrachtenQueryParams,
 } from "@/src/lib/opdrachten-filters";
 import { parsePagination } from "@/src/lib/pagination";
 import { searchJobsUnified } from "@/src/services/jobs";
@@ -18,14 +20,31 @@ type PipelineCountRow = {
   pipelineCount: number;
 };
 
+type LinkedJobRow = {
+  jobId: string;
+};
+
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
+  const validatedQuery = validateOpdrachtenQueryParams(params);
+
+  if (!validatedQuery.success) {
+    return NextResponse.json(
+      { error: "Ongeldige parameters", details: validatedQuery.error.flatten() },
+      { status: 400 },
+    );
+  }
+
   const filters = parseOpdrachtenFilters(params);
   const { page, limit, offset } = parsePagination(params, {
     limit: DEFAULT_OPDRACHTEN_LIMIT,
     maxLimit: MAX_OPDRACHTEN_LIMIT,
   });
-  const sortBy = getOpdrachtenServiceSort(filters.sort, Boolean(filters.q?.trim()));
+  const sortBy = getOpdrachtenServiceSort(
+    filters.sort,
+    Boolean(filters.q?.trim()),
+    hasExplicitOpdrachtenSort(params),
+  );
   const result = await searchJobsUnified({
     q: filters.q,
     platform: filters.platform,
@@ -47,28 +66,42 @@ export async function GET(req: NextRequest) {
   });
 
   const jobIds = result.data.map((job) => job.id);
-  const pipelineRows: PipelineCountRow[] =
+  const [pipelineRows, linkedJobRows]: [PipelineCountRow[], LinkedJobRow[]] =
     jobIds.length === 0
-      ? []
-      : await db
-          .select({
-            jobId: sql<string>`${applications.jobId}`,
-            pipelineCount: sql<number>`count(*)::int`,
-          })
-          .from(applications)
-          .where(
-            and(
-              inArray(applications.jobId, jobIds),
-              isNotNull(applications.jobId),
-              isNull(applications.deletedAt),
-              ne(applications.stage, "rejected"),
-            ),
-          )
-          .groupBy(applications.jobId);
+      ? [[], []]
+      : await Promise.all([
+          db
+            .select({
+              jobId: sql<string>`${applications.jobId}`,
+              pipelineCount: sql<number>`count(*)::int`,
+            })
+            .from(applications)
+            .where(
+              and(
+                inArray(applications.jobId, jobIds),
+                isNotNull(applications.jobId),
+                isNull(applications.deletedAt),
+                ne(applications.stage, "rejected"),
+              ),
+            )
+            .groupBy(applications.jobId),
+          db
+            .select({ jobId: sql<string>`${applications.jobId}` })
+            .from(applications)
+            .where(
+              and(
+                inArray(applications.jobId, jobIds),
+                isNotNull(applications.jobId),
+                isNull(applications.deletedAt),
+              ),
+            )
+            .groupBy(applications.jobId),
+        ]);
 
   const pipelineCountByJobId = new Map(
     pipelineRows.map((row: PipelineCountRow) => [row.jobId, row.pipelineCount]),
   );
+  const hasPipelineByJobId = new Set(linkedJobRows.map((row: LinkedJobRow) => row.jobId));
 
   const jobs = result.data.map((job) => ({
     id: job.id,
@@ -79,6 +112,7 @@ export async function GET(req: NextRequest) {
     workArrangement: job.workArrangement,
     contractType: job.contractType,
     applicationDeadline: job.applicationDeadline,
+    hasPipeline: hasPipelineByJobId.has(job.id),
     pipelineCount: pipelineCountByJobId.get(job.id) ?? 0,
   }));
 

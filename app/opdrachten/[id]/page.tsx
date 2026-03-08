@@ -109,7 +109,11 @@ function getDeadlineState(deadline?: Date | string | null) {
   const parsedDeadline = new Date(deadline);
   if (Number.isNaN(parsedDeadline.getTime())) return null;
 
-  const remainingDays = Math.ceil((parsedDeadline.getTime() - Date.now()) / DAY_IN_MS);
+  const deadlineDay = new Date(parsedDeadline);
+  deadlineDay.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const remainingDays = Math.round((deadlineDay.getTime() - today.getTime()) / DAY_IN_MS);
   const formattedDate = parsedDeadline.toLocaleDateString("nl-NL", {
     day: "numeric",
     month: "short",
@@ -284,9 +288,10 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   const currentListParams = new URLSearchParams();
 
   for (const [key, value] of Object.entries(resolvedSearchParams)) {
-    if (value === undefined || value === "") continue;
-    const normalizedValue = Array.isArray(value) ? value[0] : value;
-    if (normalizedValue) currentListParams.set(key, normalizedValue);
+    const values = Array.isArray(value) ? value : [value];
+    for (const entry of values) {
+      if (entry) currentListParams.append(key, entry);
+    }
   }
 
   const listQuery = currentListParams.toString();
@@ -682,21 +687,22 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                   <div className="flex flex-wrap gap-2">
                     {totalPipeline > 0 ? (
                       <>
-                        <Link href={matchingHref}>
-                          <Button variant="outline" size="sm" className="border-border">
+                        <Button asChild variant="outline" size="sm" className="border-border">
+                          <Link href={matchingHref}>
                             <Sparkles className="mr-2 h-4 w-4" />
                             Koppel aan kandidaat
-                          </Button>
-                        </Link>
-                        <Link href={pipelineHref}>
-                          <Button
-                            size="sm"
-                            className="bg-primary text-primary-foreground hover:bg-primary/90"
-                          >
+                          </Link>
+                        </Button>
+                        <Button
+                          asChild
+                          size="sm"
+                          className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                          <Link href={pipelineHref}>
                             <Kanban className="mr-2 h-4 w-4" />
                             Bekijk pipeline
-                          </Button>
-                        </Link>
+                          </Link>
+                        </Button>
                       </>
                     ) : (
                       <>
@@ -710,12 +716,12 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                             Koppel topmatches
                           </a>
                         </Button>
-                        <Link href={matchingHref}>
-                          <Button variant="outline" size="sm" className="border-border">
+                        <Button asChild variant="outline" size="sm" className="border-border">
+                          <Link href={matchingHref}>
                             <Sparkles className="mr-2 h-4 w-4" />
                             Koppel aan kandidaat
-                          </Button>
-                        </Link>
+                          </Link>
+                        </Button>
                       </>
                     )}
                   </div>
@@ -820,12 +826,12 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                     </p>
                   </div>
                   {job.externalUrl ? (
-                    <a href={job.externalUrl} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="border-border">
+                    <Button asChild variant="outline" size="sm" className="border-border">
+                      <a href={job.externalUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Bekijk op {job.platform}
-                      </Button>
-                    </a>
+                      </a>
+                    </Button>
                   ) : null}
                 </div>
 
@@ -980,12 +986,12 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                       opties.
                     </p>
                   </div>
-                  <Link href={matchingHref}>
-                    <Button variant="outline" size="sm" className="border-border">
+                  <Button asChild variant="outline" size="sm" className="border-border">
+                    <Link href={matchingHref}>
                       <Sparkles className="mr-2 h-4 w-4" />
                       Meer matches
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
 
                 <div className="mt-4">

@@ -17,6 +17,7 @@ import {
 import {
   type HybridSearchOptions,
   hybridSearch as hybridSearchImpl,
+  hybridSearchWithTotal as hybridSearchWithTotalImpl,
   type SearchJobsOptions,
   searchJobs,
   searchJobsByTitle,
@@ -114,7 +115,9 @@ export async function searchJobsUnified(
 
   const hybridOpts: HybridSearchOptions = {
     limit: opts.limit,
+    offset: opts.offset,
     platform: opts.platform,
+    company: opts.company,
     endClient: opts.endClient,
     category: opts.category,
     categories: opts.categories,
@@ -135,8 +138,8 @@ export async function searchJobsUnified(
     startDateAfter: opts.startDateAfter,
     sortBy: opts.sortBy,
   };
-  const data = await hybridSearchImpl(query, hybridOpts);
-  return { data, total: data.length };
+  const result = await hybridSearchWithTotalImpl(query, hybridOpts);
+  return { data: result.data, total: result.total };
 }
 
 export async function getJobById(id: string): Promise<Job | null> {

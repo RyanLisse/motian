@@ -21,6 +21,8 @@ interface JobListItemProps {
   variant?: "compact" | "card";
   /** Number of candidates in pipeline for this job */
   pipelineCount?: number;
+  /** Whether this job already has workflow history, even when no active pipeline remains */
+  hasPipeline?: boolean;
   href?: string;
 }
 
@@ -43,7 +45,11 @@ function getDeadlineMeta(deadline?: Date | string | null) {
   const parsedDeadline = new Date(deadline);
   if (Number.isNaN(parsedDeadline.getTime())) return null;
 
-  const remainingDays = Math.ceil((parsedDeadline.getTime() - Date.now()) / DAY_IN_MS);
+  const deadlineDay = new Date(parsedDeadline);
+  deadlineDay.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const remainingDays = Math.round((deadlineDay.getTime() - today.getTime()) / DAY_IN_MS);
   const formattedDate = parsedDeadline.toLocaleDateString("nl-NL", {
     day: "numeric",
     month: "short",
@@ -93,12 +99,18 @@ export function JobListItem({
   isActive,
   variant = "compact",
   pipelineCount,
+  hasPipeline,
   href,
 }: JobListItemProps) {
   const detailHref = href ?? `/opdrachten/${job.id}`;
   const deadlineMeta = getDeadlineMeta(job.applicationDeadline);
-  const hasPipeline = (pipelineCount ?? 0) > 0;
-  const actionLabel = hasPipeline ? "Open shortlist" : "Bekijk en koppel";
+  const hasLinkedWorkflow = hasPipeline ?? (pipelineCount ?? 0) > 0;
+  const hasActivePipeline = (pipelineCount ?? 0) > 0;
+  const actionLabel = hasLinkedWorkflow
+    ? hasActivePipeline
+      ? "Open shortlist"
+      : "Open workflow"
+    : "Bekijk en koppel";
 
   if (variant === "card") {
     return (
@@ -161,13 +173,13 @@ export function JobListItem({
                     {contractLabels[job.contractType] ?? job.contractType}
                   </Badge>
                 )}
-                {hasPipeline ? (
+                {hasLinkedWorkflow ? (
                   <Badge
                     variant="outline"
                     className="h-5 rounded-md bg-primary/10 text-primary border-primary/20 px-2 text-[10px] font-medium flex items-center gap-0.5"
                   >
                     <Users className="h-2.5 w-2.5" />
-                    {pipelineCount} in de pipeline
+                    {hasActivePipeline ? `${pipelineCount} in de pipeline` : "Workflow gekoppeld"}
                   </Badge>
                 ) : (
                   <Badge
@@ -237,13 +249,13 @@ export function JobListItem({
                 {arrangementLabels[job.workArrangement] ?? job.workArrangement}
               </Badge>
             )}
-            {hasPipeline ? (
+            {hasLinkedWorkflow ? (
               <Badge
                 variant="outline"
                 className="text-[9px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20 flex items-center gap-0.5"
               >
                 <Users className="h-2.5 w-2.5" />
-                {pipelineCount}
+                {hasActivePipeline ? pipelineCount : "Gekoppeld"}
               </Badge>
             ) : (
               <Badge

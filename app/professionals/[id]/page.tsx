@@ -370,12 +370,12 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 </a>
               )}
               <div className="flex gap-2">
-                <Link href={primaryWorkflowAction.href}>
-                  <Button variant="secondary" size="sm" className="gap-1.5">
+                <Button asChild variant="secondary" size="sm" className="gap-1.5">
+                  <Link href={primaryWorkflowAction.href}>
                     <MessageCircle className="h-4 w-4" />
                     {primaryWorkflowAction.label}
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <Bookmark className="h-4 w-4" />
                   Kandidaat opslaan
@@ -390,7 +390,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Briefcase className="h-4 w-4 text-primary" />
-                    <h2 className="text-lg font-semibold text-foreground">Recruiter context</h2>
+                    <h2 className="text-lg font-semibold text-foreground">Recruiteroverzicht</h2>
                     <Badge
                       variant="outline"
                       className="text-[10px] bg-primary/10 text-primary border-primary/20"
@@ -408,19 +408,19 @@ export default async function ProfessionalDetailPage({ params }: Props) {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Link href={primaryWorkflowAction.href}>
-                    <Button variant="secondary" size="sm" className="gap-1.5">
+                  <Button asChild variant="secondary" size="sm" className="gap-1.5">
+                    <Link href={primaryWorkflowAction.href}>
                       <Briefcase className="h-4 w-4" />
                       {primaryWorkflowAction.label}
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                   {primaryActiveApplication?.job?.id && (
-                    <Link href={`/opdrachten/${primaryActiveApplication.job.id}`}>
-                      <Button variant="outline" size="sm" className="gap-1.5">
+                    <Button asChild variant="outline" size="sm" className="gap-1.5">
+                      <Link href={`/opdrachten/${primaryActiveApplication.job.id}`}>
                         <ArrowRight className="h-4 w-4" />
                         Open vacature
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
                 </div>
               </div>

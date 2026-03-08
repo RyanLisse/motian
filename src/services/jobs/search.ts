@@ -15,7 +15,9 @@ export type SearchJobsOptions = {
 
 export type HybridSearchOptions = {
   limit?: number;
+  offset?: number;
   platform?: string;
+  company?: string;
   endClient?: string;
   category?: string;
   categories?: string[];
@@ -40,9 +42,15 @@ export type HybridSearchOptions = {
   radiusKm?: number;
 };
 
+export type HybridSearchResult = {
+  data: Array<Job & { score: number }>;
+  total: number;
+};
+
 function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
   return buildJobFilterConditions({
     platform: opts.platform,
+    company: opts.company,
     endClient: opts.endClient,
     category: opts.category,
     categories: opts.categories,
@@ -121,14 +129,15 @@ export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
 }
 
 /** Hybrid zoeken: combineert tekst (ILIKE) + vector (pgvector) met Reciprocal Rank Fusion. */
-export async function hybridSearch(
+export async function hybridSearchWithTotal(
   query: string,
   opts: HybridSearchOptions = {},
-): Promise<Array<Job & { score: number }>> {
+): Promise<HybridSearchResult> {
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 20, 100);
+  const offset = Math.max(opts.offset ?? 0, 0);
   const k = 60;
-  const fetchSize = Math.min(limit * 3, 100);
+  const fetchSize = Math.min(Math.max((offset + limit) * 3, limit * 3), 100);
 
   const [textResults, vectorResults] = await Promise.all([
     searchJobsByTitle(query, fetchSize),
@@ -162,7 +171,7 @@ export async function hybridSearch(
       query: query.slice(0, 80),
       results: 0,
     });
-    return [];
+    return { data: [], total: 0 };
   }
 
   const fetchedJobs = await db
@@ -195,13 +204,23 @@ export async function hybridSearch(
     });
   }
 
-  const result = filtered.slice(0, limit).map(([, value]) => ({
+  const total = filtered.length;
+  const data = filtered.slice(offset, offset + limit).map(([, value]) => ({
     ...(value.job as NonNullable<typeof value.job>),
     score: Math.round(value.rrfScore * 10000) / 10000,
   }));
   logSlowQuery("hybridSearch", Date.now() - start, SEARCH_SLO_MS, {
     query: query.slice(0, 80),
-    results: result.length,
+    results: data.length,
+    total,
+    offset,
   });
-  return result;
+  return { data, total };
+}
+
+export async function hybridSearch(
+  query: string,
+  opts: HybridSearchOptions = {},
+): Promise<Array<Job & { score: number }>> {
+  return (await hybridSearchWithTotal(query, opts)).data;
 }

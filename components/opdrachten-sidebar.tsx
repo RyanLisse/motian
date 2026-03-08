@@ -48,6 +48,7 @@ interface SidebarJob {
   contractType: string | null;
   applicationDeadline?: Date | string | null;
   pipelineCount?: number;
+  hasPipeline?: boolean;
 }
 
 interface SearchResponse {
@@ -834,6 +835,7 @@ export function OpdrachtenSidebar({
                 key={job.id}
                 job={job}
                 isActive={job.id === activeId}
+                hasPipeline={job.hasPipeline}
                 pipelineCount={job.pipelineCount}
                 href={buildDetailHref(job.id)}
               />
@@ -1232,6 +1234,7 @@ export function OpdrachtenSidebar({
                     job={job}
                     isActive={job.id === activeId}
                     variant="card"
+                    hasPipeline={job.hasPipeline}
                     pipelineCount={job.pipelineCount}
                     href={buildDetailHref(job.id)}
                   />
