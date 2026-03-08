@@ -34,6 +34,7 @@ type Props = {
   messages: UIMessage[];
   status: string;
   onSuggestion?: (text: string) => void;
+  layout?: "page" | "widget";
 };
 
 const QUICK_ACTIONS = [
@@ -139,15 +140,20 @@ function SourceDocumentBlock({ title, mediaType }: { title: string; mediaType: s
   );
 }
 
-export function ChatMessages({ messages, status, onSuggestion }: Props) {
+export function ChatMessages({ messages, status, onSuggestion, layout = "page" }: Props) {
   const hasUserMessage = messages.some((m) => m.role === "user");
+  const isWidget = layout === "widget";
 
   return (
     <Conversation className="flex-1">
       <ConversationContent
         className={cn(
-          "mx-auto w-full max-w-3xl gap-4 px-4 py-6 pb-32 sm:pb-40 relative",
-          !hasUserMessage && "flex flex-col justify-center min-h-[calc(100vh-160px)]",
+          "relative mx-auto w-full max-w-3xl gap-4 px-4 py-6 pb-32 sm:pb-40",
+          isWidget && "max-w-none px-3 py-4 pb-28 sm:pb-32",
+          !hasUserMessage &&
+            (isWidget
+              ? "flex min-h-full flex-col justify-center"
+              : "flex min-h-[calc(100vh-160px)] flex-col justify-center"),
         )}
       >
         {messages.map((message) => (
@@ -281,11 +287,12 @@ export function ChatMessages({ messages, status, onSuggestion }: Props) {
           <div
             className={cn(
               "flex w-full max-w-2xl flex-col items-center gap-5 self-center animate-in fade-in slide-in-from-bottom-4",
-              messages.length === 0 ? "mt-[2vh]" : "mt-6",
+              isWidget && "max-w-none gap-4",
+              messages.length === 0 ? (isWidget ? "mt-0" : "mt-[2vh]") : "mt-6",
             )}
           >
             {messages.length === 0 && (
-              <div className="flex flex-col items-center gap-2 text-center mb-2">
+              <div className="mb-2 flex flex-col items-center gap-2 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/10">
                   <Sparkles className="h-6 w-6 text-primary" />
                 </div>
@@ -301,7 +308,7 @@ export function ChatMessages({ messages, status, onSuggestion }: Props) {
             )}
 
             {/* Quick action grid */}
-            <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className={cn("grid w-full grid-cols-2 gap-2", !isWidget && "sm:grid-cols-3")}>
               {QUICK_ACTIONS.map((action) => (
                 <button
                   type="button"

@@ -1,3 +1,4 @@
+import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../lib/opdrachten-filters";
 import {
   deriveJobStatus,
   type JobStatus,
@@ -28,12 +29,19 @@ export type UnifiedJobSearchOptions = {
   company?: string;
   endClient?: string;
   category?: string;
+  categories?: string[];
   status?: JobStatus;
   province?: string;
+  region?: OpdrachtenRegion;
+  regions?: OpdrachtenRegion[];
   rateMin?: number;
   rateMax?: number;
   contractType?: string;
   workArrangement?: string;
+  hoursPerWeekBucket?: OpdrachtenHoursBucket;
+  minHoursPerWeek?: number;
+  maxHoursPerWeek?: number;
+  radiusKm?: number;
   postedAfter?: Date | string;
   deadlineBefore?: Date | string;
   startDateAfter?: Date | string;
@@ -82,12 +90,19 @@ export async function searchJobsUnified(
       company: opts.company,
       endClient: opts.endClient,
       category: opts.category,
+      categories: opts.categories,
       status: opts.status,
       province: opts.province,
+      region: opts.region,
+      regions: opts.regions,
       rateMin: opts.rateMin,
       rateMax: opts.rateMax,
       contractType: opts.contractType,
       workArrangement: opts.workArrangement,
+      hoursPerWeekBucket: opts.hoursPerWeekBucket,
+      minHoursPerWeek: opts.minHoursPerWeek,
+      maxHoursPerWeek: opts.maxHoursPerWeek,
+      radiusKm: opts.radiusKm,
       postedAfter: opts.postedAfter,
       deadlineBefore: opts.deadlineBefore,
       startDateAfter: opts.startDateAfter,
@@ -100,11 +115,21 @@ export async function searchJobsUnified(
   const hybridOpts: HybridSearchOptions = {
     limit: opts.limit,
     platform: opts.platform,
+    endClient: opts.endClient,
+    category: opts.category,
+    categories: opts.categories,
+    status: opts.status,
     province: opts.province,
+    region: opts.region,
+    regions: opts.regions,
     rateMin: opts.rateMin,
     rateMax: opts.rateMax,
     contractType: opts.contractType,
     workArrangement: opts.workArrangement,
+    hoursPerWeekBucket: opts.hoursPerWeekBucket,
+    minHoursPerWeek: opts.minHoursPerWeek,
+    maxHoursPerWeek: opts.maxHoursPerWeek,
+    radiusKm: opts.radiusKm,
     postedAfter: opts.postedAfter,
     deadlineBefore: opts.deadlineBefore,
     startDateAfter: opts.startDateAfter,

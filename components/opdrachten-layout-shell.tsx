@@ -11,16 +11,26 @@ export function OpdrachtenLayoutShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isDetailPage = pathname !== "/opdrachten";
+  const isDetailPage = pathname.startsWith("/opdrachten/");
 
   return (
     <div className="flex h-full min-h-0">
       <div
-        className={cn("border-border bg-sidebar flex flex-col", isDetailPage ? "hidden" : "w-full")}
+        className={cn(
+          "border-border bg-sidebar flex min-h-0 flex-col",
+          isDetailPage ? "w-full md:w-[380px] md:shrink-0 md:border-r" : "w-full",
+        )}
       >
         {sidebar}
       </div>
-      <div className={cn("flex-1 flex-col overflow-hidden", isDetailPage ? "flex" : "hidden")}>
+      <div
+        className={cn(
+          "min-w-0",
+          isDetailPage
+            ? "contents md:flex md:min-w-0 md:flex-1 md:flex-col md:overflow-hidden"
+            : "hidden",
+        )}
+      >
         {children}
       </div>
     </div>

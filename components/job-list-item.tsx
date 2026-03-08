@@ -1,8 +1,10 @@
-import { ArrowRight, BriefcaseBusiness, Building2, MapPin, Users } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Building2, Clock, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 interface JobListItemProps {
   job: {
@@ -13,11 +15,13 @@ interface JobListItemProps {
     platform: string;
     workArrangement: string | null;
     contractType: string | null;
+    applicationDeadline?: Date | string | null;
   };
   isActive: boolean;
   variant?: "compact" | "card";
   /** Number of candidates in pipeline for this job */
   pipelineCount?: number;
+  href?: string;
 }
 
 const arrangementLabels: Record<string, string> = {
@@ -33,16 +37,73 @@ const contractLabels: Record<string, string> = {
   opdracht: "Opdracht",
 };
 
+function getDeadlineMeta(deadline?: Date | string | null) {
+  if (!deadline) return null;
+
+  const parsedDeadline = new Date(deadline);
+  if (Number.isNaN(parsedDeadline.getTime())) return null;
+
+  const remainingDays = Math.ceil((parsedDeadline.getTime() - Date.now()) / DAY_IN_MS);
+  const formattedDate = parsedDeadline.toLocaleDateString("nl-NL", {
+    day: "numeric",
+    month: "short",
+  });
+
+  if (remainingDays < 0) {
+    return {
+      label: "Deadline verlopen",
+      compactLabel: "Verlopen",
+      className: "border-destructive/20 bg-destructive/10 text-destructive",
+    };
+  }
+
+  if (remainingDays === 0) {
+    return {
+      label: "Sluit vandaag",
+      compactLabel: "Vandaag",
+      className: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    };
+  }
+
+  if (remainingDays === 1) {
+    return {
+      label: "Sluit morgen",
+      compactLabel: "Morgen",
+      className: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    };
+  }
+
+  if (remainingDays <= 3) {
+    return {
+      label: `Nog ${remainingDays} dagen`,
+      compactLabel: `${remainingDays} d`,
+      className: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    };
+  }
+
+  return {
+    label: `Deadline ${formattedDate}`,
+    compactLabel: formattedDate,
+    className: "border-border bg-background text-muted-foreground",
+  };
+}
+
 export function JobListItem({
   job,
   isActive,
   variant = "compact",
   pipelineCount,
+  href,
 }: JobListItemProps) {
+  const detailHref = href ?? `/opdrachten/${job.id}`;
+  const deadlineMeta = getDeadlineMeta(job.applicationDeadline);
+  const hasPipeline = (pipelineCount ?? 0) > 0;
+  const actionLabel = hasPipeline ? "Open shortlist" : "Bekijk en koppel";
+
   if (variant === "card") {
     return (
       <DroppableVacancy jobId={job.id} jobTitle={job.title}>
-        <Link href={`/opdrachten/${job.id}`}>
+        <Link href={detailHref}>
           <article
             className={cn(
               "rounded-2xl border border-border/80 bg-card px-5 py-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md",
@@ -59,9 +120,20 @@ export function JobListItem({
                   <span className="truncate">{job.company || "Onbekend"}</span>
                 </p>
               </div>
-              <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium capitalize text-primary shrink-0">
-                {job.platform}
-              </span>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium capitalize text-primary">
+                  {job.platform}
+                </span>
+                {deadlineMeta ? (
+                  <Badge
+                    variant="outline"
+                    className={cn("gap-1 px-2 py-1 text-[10px]", deadlineMeta.className)}
+                  >
+                    <Clock className="h-3 w-3" />
+                    {deadlineMeta.label}
+                  </Badge>
+                ) : null}
+              </div>
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -89,7 +161,7 @@ export function JobListItem({
                     {contractLabels[job.contractType] ?? job.contractType}
                   </Badge>
                 )}
-                {pipelineCount != null && pipelineCount > 0 && (
+                {hasPipeline ? (
                   <Badge
                     variant="outline"
                     className="h-5 rounded-md bg-primary/10 text-primary border-primary/20 px-2 text-[10px] font-medium flex items-center gap-0.5"
@@ -97,10 +169,17 @@ export function JobListItem({
                     <Users className="h-2.5 w-2.5" />
                     {pipelineCount} in de pipeline
                   </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="h-5 rounded-md border-dashed border-border bg-background px-2 text-[10px] font-medium text-muted-foreground"
+                  >
+                    Nog te koppelen
+                  </Badge>
                 )}
               </div>
               <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                Bekijken
+                {actionLabel}
                 <ArrowRight className="h-4 w-4" />
               </span>
             </div>
@@ -112,7 +191,7 @@ export function JobListItem({
 
   return (
     <DroppableVacancy jobId={job.id} jobTitle={job.title}>
-      <Link href={`/opdrachten/${job.id}`}>
+      <Link href={detailHref}>
         <div
           className={cn(
             "px-4 py-3 border-b border-border hover:bg-card transition-colors cursor-pointer",
@@ -136,6 +215,15 @@ export function JobListItem({
             >
               {job.platform}
             </Badge>
+            {deadlineMeta && (
+              <Badge
+                variant="outline"
+                className={cn("text-[9px] px-1.5 py-0 h-4 gap-0.5", deadlineMeta.className)}
+              >
+                <Clock className="h-2.5 w-2.5" />
+                {deadlineMeta.compactLabel}
+              </Badge>
+            )}
             {job.workArrangement && (
               <Badge
                 variant="outline"
@@ -149,13 +237,20 @@ export function JobListItem({
                 {arrangementLabels[job.workArrangement] ?? job.workArrangement}
               </Badge>
             )}
-            {pipelineCount != null && pipelineCount > 0 && (
+            {hasPipeline ? (
               <Badge
                 variant="outline"
                 className="text-[9px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20 flex items-center gap-0.5"
               >
                 <Users className="h-2.5 w-2.5" />
                 {pipelineCount}
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="text-[9px] px-1.5 py-0 h-4 border-dashed border-border text-muted-foreground bg-transparent"
+              >
+                Nog te koppelen
               </Badge>
             )}
           </div>

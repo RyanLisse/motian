@@ -191,7 +191,8 @@ export default async function OverzichtPage() {
             >
               {pipelineTotal === 0 ? (
                 <p className="py-4 text-sm text-muted-foreground">
-                  Nog geen kandidaten in de pipeline. Start vanuit vacatures of gebruik aanbevelingen.
+                  Nog geen kandidaten in de pipeline. Start vanuit vacatures of gebruik
+                  aanbevelingen.
                 </p>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -257,7 +258,9 @@ export default async function OverzichtPage() {
               }
             >
               {recentJobs.length === 0 ? (
-                <p className="py-4 text-sm text-muted-foreground">Nog geen vacatures beschikbaar.</p>
+                <p className="py-4 text-sm text-muted-foreground">
+                  Nog geen vacatures beschikbaar.
+                </p>
               ) : (
                 <div className="divide-y divide-border">
                   {recentJobs.map((job) => (
@@ -401,7 +404,9 @@ export default async function OverzichtPage() {
             </div>
             <div className="mt-4 space-y-1">
               {recentScrapes.length === 0 ? (
-                <p className="py-2 text-sm text-muted-foreground">Nog geen bronactiviteit beschikbaar.</p>
+                <p className="py-2 text-sm text-muted-foreground">
+                  Nog geen bronactiviteit beschikbaar.
+                </p>
               ) : (
                 recentScrapes.map((scrape) => {
                   const skipped =

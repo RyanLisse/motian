@@ -14,9 +14,29 @@ describe("Detail surfaces recruiter workflow context", () => {
 
     expect(source).toContain("Recruiter cockpit");
     expect(source).toContain("Volgende actie");
+    expect(source).toContain("Nog geen shortlist");
+    expect(source).toContain("Koppel topmatches");
     expect(source).toContain("Gekoppelde kandidaten");
+    expect(source).toContain("Volgende stap");
     expect(source).toContain("source: applications.source");
-    expect(source).toContain("/professionals/${row.candidateId}");
+    expect(source).toContain(`/professionals/\${row.candidateId}`);
+  });
+
+  it("job detail page uses the side panel shell and inline linking workspace", () => {
+    const page = readFile("app/opdrachten/[id]/page.tsx");
+    const detailSheet = readFile("components/opdrachten-detail-sheet.tsx");
+    const linker = readFile("components/link-candidates-dialog.tsx");
+
+    expect(page).toContain("OpdrachtenDetailSheet");
+    expect(page).toContain("Vacaturedetails");
+    expect(page).toContain("Nog te koppelen kandidaten");
+    expect(page).toContain('id="koppel-kandidaten"');
+    expect(page).toContain('variant="inline"');
+    expect(detailSheet).toContain("useIsMobile");
+    expect(detailSheet).toContain("router.push(listHref)");
+    expect(linker).toContain('variant?: "dialog" | "inline"');
+    expect(linker).toContain('variant === "inline" || open');
+    expect(linker).toContain("Koppel aan screening");
   });
 
   it("candidate detail page reads applications and surfaces active recruiter context", () => {

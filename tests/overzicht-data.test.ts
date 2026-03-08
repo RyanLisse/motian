@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { getOverviewData } from "../app/overzicht/data";
-import { db } from "../src/db";
+import type { db } from "../src/db";
 
 function createAwaitableQuery<T>(result: T) {
   const promise = Promise.resolve(result);
-  const chain = {
+  const chain = Object.assign(promise, {
     from: vi.fn(() => chain),
     where: vi.fn(() => chain),
     groupBy: vi.fn(() => chain),
@@ -12,10 +12,7 @@ function createAwaitableQuery<T>(result: T) {
     limit: vi.fn(() => chain),
     leftJoin: vi.fn(() => chain),
     innerJoin: vi.fn(() => chain),
-    then: promise.then.bind(promise),
-    catch: promise.catch.bind(promise),
-    finally: promise.finally.bind(promise),
-  };
+  });
 
   return chain;
 }

@@ -1,114 +1,92 @@
-import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
-import { applications, jobs } from "@/src/db/schema";
-import { escapeLike } from "@/src/lib/helpers";
+import { applications } from "@/src/db/schema";
 import {
   DEFAULT_OPDRACHTEN_LIMIT,
+  getOpdrachtenServiceSort,
   MAX_OPDRACHTEN_LIMIT,
-  normalizeOpdrachtenStatus,
+  parseOpdrachtenFilters,
 } from "@/src/lib/opdrachten-filters";
 import { parsePagination } from "@/src/lib/pagination";
+import { searchJobsUnified } from "@/src/services/jobs";
 
 export const dynamic = "force-dynamic";
 
+type PipelineCountRow = {
+  jobId: string;
+  pipelineCount: number;
+};
+
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
-  const q = params.get("q")?.trim() ?? "";
-  const platform = params.get("platform") ?? "";
-  const endClient = params.get("endClient") ?? "";
-  const status = normalizeOpdrachtenStatus(params.get("status"));
-  const provincie = params.get("provincie") ?? "";
-  const contractType = params.get("contractType") ?? "";
-  const tariefMinParam = params.get("tariefMin");
-  const tariefMaxParam = params.get("tariefMax");
-  const tariefMin = tariefMinParam ? Number.parseInt(tariefMinParam, 10) : undefined;
-  const tariefMax = tariefMaxParam ? Number.parseInt(tariefMaxParam, 10) : undefined;
+  const filters = parseOpdrachtenFilters(params);
   const { page, limit, offset } = parsePagination(params, {
     limit: DEFAULT_OPDRACHTEN_LIMIT,
     maxLimit: MAX_OPDRACHTEN_LIMIT,
   });
-  const visibleCondition = isNull(jobs.deletedAt);
-  const openCondition = and(visibleCondition, eq(jobs.status, "open"));
-  const closedCondition = and(visibleCondition, eq(jobs.status, "closed"));
+  const sortBy = getOpdrachtenServiceSort(filters.sort, Boolean(filters.q?.trim()));
+  const result = await searchJobsUnified({
+    q: filters.q,
+    platform: filters.platform,
+    endClient: filters.endClient,
+    categories: filters.categories,
+    status: filters.status,
+    province: filters.province,
+    regions: filters.regions,
+    rateMin: filters.rateMin,
+    rateMax: filters.rateMax,
+    contractType: filters.contractType,
+    hoursPerWeekBucket: filters.hoursPerWeek,
+    minHoursPerWeek: filters.hoursPerWeekMin,
+    maxHoursPerWeek: filters.hoursPerWeekMax,
+    radiusKm: filters.radiusKm,
+    sortBy,
+    limit,
+    offset,
+  });
 
-  const conditions = [
-    status === "closed" ? closedCondition : status === "all" ? visibleCondition : openCondition,
-  ];
+  const jobIds = result.data.map((job) => job.id);
+  const pipelineRows: PipelineCountRow[] =
+    jobIds.length === 0
+      ? []
+      : await db
+          .select({
+            jobId: sql<string>`${applications.jobId}`,
+            pipelineCount: sql<number>`count(*)::int`,
+          })
+          .from(applications)
+          .where(
+            and(
+              inArray(applications.jobId, jobIds),
+              isNotNull(applications.jobId),
+              isNull(applications.deletedAt),
+              ne(applications.stage, "rejected"),
+            ),
+          )
+          .groupBy(applications.jobId);
 
-  if (q.length >= 2) {
-    const pattern = `%${escapeLike(q)}%`;
-    const searchCondition = or(
-      ilike(jobs.title, pattern),
-      ilike(jobs.company, pattern),
-      ilike(jobs.description, pattern),
-      ilike(jobs.location, pattern),
-      ilike(jobs.platform, pattern),
-    );
-    if (searchCondition) conditions.push(searchCondition);
-  }
+  const pipelineCountByJobId = new Map(
+    pipelineRows.map((row: PipelineCountRow) => [row.jobId, row.pipelineCount]),
+  );
 
-  if (platform) {
-    conditions.push(eq(jobs.platform, platform));
-  }
-
-  if (endClient) {
-    conditions.push(
-      or(eq(jobs.endClient, endClient), and(isNull(jobs.endClient), eq(jobs.company, endClient))),
-    );
-  }
-
-  if (provincie) {
-    conditions.push(ilike(jobs.location, `%${escapeLike(provincie)}%`));
-  }
-
-  if (contractType) {
-    conditions.push(eq(jobs.contractType, contractType));
-  }
-
-  if (tariefMin != null && Number.isFinite(tariefMin)) {
-    conditions.push(sql`${jobs.rateMax} is not null and ${jobs.rateMax} >= ${tariefMin}`);
-  }
-
-  if (tariefMax != null && Number.isFinite(tariefMax)) {
-    conditions.push(sql`${jobs.rateMin} is not null and ${jobs.rateMin} <= ${tariefMax}`);
-  }
-
-  const whereClause = and(...conditions);
-  const pipelineCountSq = sql<number>`(
-    select count(*)::int from ${applications}
-    where ${applications.jobId} = ${jobs.id}
-      and ${applications.deletedAt} is null
-      and ${applications.stage} != 'rejected'
-  )`;
-
-  const [rows, countResult] = await Promise.all([
-    db
-      .select({
-        id: jobs.id,
-        title: jobs.title,
-        company: jobs.company,
-        location: jobs.location,
-        platform: jobs.platform,
-        workArrangement: jobs.workArrangement,
-        contractType: jobs.contractType,
-        pipelineCount: pipelineCountSq,
-      })
-      .from(jobs)
-      .where(whereClause)
-      .orderBy(desc(jobs.scrapedAt))
-      .limit(limit)
-      .offset(offset),
-    db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(whereClause),
-  ]);
-
-  const total = countResult[0]?.count ?? 0;
+  const jobs = result.data.map((job) => ({
+    id: job.id,
+    title: job.title,
+    company: job.endClient ?? job.company,
+    location: job.location,
+    platform: job.platform,
+    workArrangement: job.workArrangement,
+    contractType: job.contractType,
+    applicationDeadline: job.applicationDeadline,
+    pipelineCount: pipelineCountByJobId.get(job.id) ?? 0,
+  }));
 
   return NextResponse.json({
-    jobs: rows,
-    total,
+    jobs,
+    total: result.total,
     page,
     perPage: limit,
-    totalPages: Math.ceil(total / limit),
+    totalPages: Math.ceil(result.total / limit),
   });
 }

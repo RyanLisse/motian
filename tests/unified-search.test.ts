@@ -50,10 +50,13 @@ describe("searchJobsUnified", () => {
       category: undefined,
       status: undefined,
       province: undefined,
+      region: undefined,
       rateMin: undefined,
       rateMax: undefined,
       contractType: undefined,
       workArrangement: undefined,
+      hoursPerWeekBucket: undefined,
+      radiusKm: undefined,
       postedAfter: undefined,
       deadlineBefore: undefined,
       startDateAfter: undefined,
@@ -82,11 +85,17 @@ describe("searchJobsUnified", () => {
     expect(mockHybridSearch).toHaveBeenCalledWith("test", {
       limit: 2,
       platform: undefined,
+      endClient: undefined,
+      category: undefined,
+      status: undefined,
       province: undefined,
+      region: undefined,
       rateMin: undefined,
       rateMax: undefined,
       contractType: undefined,
       workArrangement: undefined,
+      hoursPerWeekBucket: undefined,
+      radiusKm: undefined,
       postedAfter: undefined,
       deadlineBefore: undefined,
       startDateAfter: undefined,
@@ -123,5 +132,61 @@ describe("searchJobsUnified", () => {
     for (const job of result.data) {
       expect((job as { platform?: string }).platform).toBe("opdrachtoverheid");
     }
+  });
+
+  it("forwards enhanced recruiter filters on both list and hybrid paths", async () => {
+    await searchJobsUnified({
+      endClient: "Gemeente Utrecht",
+      category: "ICT",
+      status: "closed",
+      province: "Utrecht",
+      region: "randstad",
+      hoursPerWeekBucket: "24_32",
+      radiusKm: 25,
+      sortBy: "deadline",
+      limit: 5,
+    });
+
+    expect(mockListJobs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endClient: "Gemeente Utrecht",
+        category: "ICT",
+        status: "closed",
+        province: "Utrecht",
+        region: "randstad",
+        hoursPerWeekBucket: "24_32",
+        radiusKm: 25,
+        sortBy: "deadline",
+        limit: 5,
+      }),
+    );
+
+    await searchJobsUnified({
+      q: "manager",
+      endClient: "Gemeente Utrecht",
+      category: "ICT",
+      status: "closed",
+      province: "Utrecht",
+      region: "randstad",
+      hoursPerWeekBucket: "24_32",
+      radiusKm: 25,
+      sortBy: "deadline",
+      limit: 5,
+    });
+
+    expect(mockHybridSearch).toHaveBeenCalledWith(
+      "manager",
+      expect.objectContaining({
+        endClient: "Gemeente Utrecht",
+        category: "ICT",
+        status: "closed",
+        province: "Utrecht",
+        region: "randstad",
+        hoursPerWeekBucket: "24_32",
+        radiusKm: 25,
+        sortBy: "deadline",
+        limit: 5,
+      }),
+    );
   });
 });

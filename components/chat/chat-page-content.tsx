@@ -1,10 +1,8 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import type { UIMessage } from "ai";
-import { DefaultChatTransport } from "ai";
 import {
   ArrowUp,
+  ArrowUpRight,
   Check,
   Gauge,
   Loader2,
@@ -16,8 +14,9 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { nanoid } from "nanoid";
-import { useCallback, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useCallback, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   PromptInput,
   PromptInputActionAddAttachments,
@@ -37,66 +36,32 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from "@/src/components/ai-elements/prompt-input";
-import { useChatContext } from "./chat-context-provider";
+import {
+  CHAT_MODELS,
+  type ChatSpeedMode,
+  MODE_OPTIONS,
+  useChatContext,
+} from "./chat-context-provider";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { ChatMessages } from "./chat-messages";
 import { VoiceSession } from "./voice-session";
 
-const CHAT_MODELS = [
-  { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", provider: "Google" },
-  { id: "gemini-3-flash", label: "Gemini 3 Flash", provider: "Google" },
-  { id: "gpt-5-nano", label: "GPT-5 Nano", provider: "OpenAI" },
-  { id: "grok-4", label: "Grok 4", provider: "xAI" },
-] as const;
-
-const MODE_OPTIONS = [
-  { id: "snel", label: "Snel", icon: Zap },
-  { id: "gemiddeld", label: "Gemiddeld", icon: Gauge },
-  { id: "grondig", label: "Grondig", icon: Gauge },
-] as const;
-
-type SpeedMode = (typeof MODE_OPTIONS)[number]["id"];
 type UploadState = "idle" | "uploading" | "success" | "error";
 
-function ChatSession({
-  sessionId,
-  initialMessages,
-  ctx,
-  modelId,
-  setModelId,
-  onToggleVoice,
-}: {
-  sessionId: string;
-  initialMessages?: UIMessage[];
-  ctx: { route: string; entityId: string | null; entityType: string | null };
-  modelId: string;
-  setModelId: (id: string) => void;
-  onToggleVoice: () => void;
+function getContextLabel(ctx: {
+  route: string;
+  entityId: string | null;
+  entityType: string | null;
 }) {
-  const [speedMode, setSpeedMode] = useState<SpeedMode>("gemiddeld");
+  if (ctx.entityType === "opdracht") return "Verder vanuit opdracht";
+  if (ctx.entityType === "kandidaat") return "Verder vanuit kandidaat";
+  if (ctx.route !== "/chat") return `Verder vanuit ${ctx.route}`;
+  return "Algemene chat";
+}
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        body: {
-          model: modelId,
-          speedMode,
-          context: {
-            route: ctx.route,
-            entityId: ctx.entityId,
-            entityType: ctx.entityType,
-            sessionId,
-          },
-        },
-      }),
-    [modelId, speedMode, ctx.route, ctx.entityId, ctx.entityType, sessionId],
-  );
-
-  const { messages, sendMessage, status, stop } = useChat({
-    messages: initialMessages,
-    transport,
-  });
+function ChatSession({ onToggleVoice }: { onToggleVoice: () => void }) {
+  const { messages, modelId, sendMessage, setModelId, setSpeedMode, speedMode, status, stop } =
+    useChatContext();
 
   // File upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,6 +168,7 @@ function ChatSession({
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <ChatMessages
+        layout="page"
         messages={messages}
         status={status}
         onSuggestion={(text) => sendMessage({ text })}
@@ -299,7 +265,7 @@ function ChatSession({
 
                 <PromptInputSelect
                   value={speedMode}
-                  onValueChange={(v) => setSpeedMode(v as SpeedMode)}
+                  onValueChange={(value) => setSpeedMode(value as ChatSpeedMode)}
                 >
                   <PromptInputSelectTrigger className="h-8 w-auto gap-1 px-2 text-xs">
                     <Gauge className="h-3.5 w-3.5" />
@@ -345,33 +311,23 @@ function ChatSession({
 }
 
 export function ChatPageContent() {
-  const ctx = useChatContext();
-  const [sessionId, setSessionId] = useState(() => nanoid());
-  const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>();
+  const { activeContext, loadSession, mode, sessionId, setMode, startNewSession } =
+    useChatContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [modelId, setModelId] = useState<string>(CHAT_MODELS[0].id);
-  const [mode, setMode] = useState<"text" | "voice">("text");
+  const hasSourceContext = activeContext.route !== "/chat";
 
-  const handleSelectSession = useCallback(async (id: string) => {
-    try {
-      const res = await fetch(`/api/chat-sessies/${id}`);
-      if (res.ok) {
-        const session = await res.json();
-        setInitialMessages(session.messages ?? []);
-        setSessionId(id);
-      }
-    } catch {
-      setInitialMessages(undefined);
-      setSessionId(id);
-    }
-    setSidebarOpen(false);
-  }, []);
+  const handleSelectSession = useCallback(
+    async (id: string) => {
+      await loadSession(id);
+      setSidebarOpen(false);
+    },
+    [loadSession],
+  );
 
   const handleNewSession = useCallback(() => {
-    setInitialMessages(undefined);
-    setSessionId(nanoid());
+    startNewSession();
     setSidebarOpen(false);
-  }, []);
+  }, [startNewSession]);
 
   return (
     <div className="relative flex h-[calc(100vh-var(--sidebar-height,0px))]">
@@ -401,16 +357,38 @@ export function ChatPageContent() {
 
       {/* Main chat area */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Simplified header — sidebar toggle + new chat only */}
-        <header className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 sm:px-4">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((prev) => !prev)}
-            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title="Gesprekken"
-          >
-            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
+        <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border px-3 sm:px-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="Gesprekken"
+            >
+              {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className={cn(
+                  "hidden max-w-[260px] truncate rounded-full border px-2.5 py-1 text-[11px] text-muted-foreground md:inline-flex",
+                  hasSourceContext && "border-primary/20 bg-primary/5 text-foreground",
+                )}
+              >
+                {getContextLabel(activeContext)}
+              </span>
+
+              {hasSourceContext ? (
+                <Link
+                  href={activeContext.route}
+                  className="hidden items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:inline-flex"
+                >
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                  Bronpagina
+                </Link>
+              ) : null}
+            </div>
+          </div>
 
           <button
             type="button"
@@ -423,17 +401,11 @@ export function ChatPageContent() {
           </button>
         </header>
 
-        {/* Voice or text mode */}
         {mode === "voice" ? (
           <VoiceSession onClose={() => setMode("text")} />
         ) : (
           <ChatSession
-            key={`${sessionId}-${modelId}`}
-            sessionId={sessionId}
-            initialMessages={initialMessages}
-            ctx={ctx}
-            modelId={modelId}
-            setModelId={setModelId}
+            key={sessionId || "chat-page-session"}
             onToggleVoice={() => setMode("voice")}
           />
         )}

@@ -3,6 +3,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 // ── Schema imports ───────────────────────────────────────────────
 import { jobMatches } from "../src/db/schema.js";
+import {
+  createOrReuseApplicationForMatch,
+  getApplicationByJobAndCandidate,
+} from "../src/services/applications.js";
 // ── Service imports (no Next.js dependency) ─────────────────────
 import {
   createMatch,
@@ -11,10 +15,6 @@ import {
   listMatches,
   updateMatchStatus,
 } from "../src/services/matches.js";
-import {
-  createOrReuseApplicationForMatch,
-  getApplicationByJobAndCandidate,
-} from "../src/services/applications.js";
 
 // ── Helpers ──────────────────────────────────────────────────────
 const ROOT = path.resolve(__dirname, "..");

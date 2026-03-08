@@ -11,7 +11,7 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
   const activeJobsCondition = and(isNull(jobs.deletedAt), eq(jobs.status, "open"));
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
-  const [sidebarJobs, countResult, metaResult] = await Promise.all([
+  const [sidebarJobs, countResult, metaResult, categoryRows] = await Promise.all([
     db
       .select({
         id: jobs.id,
@@ -21,6 +21,7 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
         platform: jobs.platform,
         workArrangement: jobs.workArrangement,
         contractType: jobs.contractType,
+        applicationDeadline: jobs.applicationDeadline,
         pipelineCount: sql<number>`(
           select count(*)::int from ${applications}
           where ${applications.jobId} = ${jobs.id}
@@ -40,11 +41,20 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
       })
       .from(jobs)
       .where(isNull(jobs.deletedAt)),
+    db.execute(sql`
+      select distinct jsonb_array_elements_text(coalesce(${jobs.categories}, '[]'::jsonb)) as category
+      from ${jobs}
+      where ${jobs.deletedAt} is null
+      order by category asc
+    `),
   ]);
 
   const totalCount = countResult[0]?.count ?? 0;
   const platforms = (metaResult[0]?.platforms ?? []).filter(Boolean).sort();
   const endClients = (metaResult[0]?.endClients ?? []).filter(Boolean).sort();
+  const categories = (categoryRows.rows as Array<{ category: string | null }>)
+    .map((row) => row.category)
+    .filter((value): value is string => Boolean(value));
 
   return (
     <OpdrachtenLayoutShell
@@ -54,6 +64,7 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
           totalCount={totalCount}
           platforms={platforms}
           endClients={endClients}
+          categories={categories}
         />
       }
     >
