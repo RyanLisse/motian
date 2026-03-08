@@ -23,6 +23,11 @@ import {
   ConversationScrollButton,
 } from "@/src/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/src/components/ai-elements/message";
+import {
+  CHAT_MESSAGE_ALLOWED_TAGS,
+  CHAT_MESSAGE_COMPONENTS,
+  rewriteChatJobLinks,
+} from "./chat-message-links";
 import { ChatToolCall } from "./chat-tool-call";
 import { KandidaatGenUICard, MatchGenUICard, OpdrachtGenUICard, ToolErrorBlock } from "./genui";
 
@@ -153,6 +158,7 @@ export function ChatMessages({
   onLoadOlder,
 }: Props) {
   const hasUserMessage = messages.some((m) => m.role === "user");
+  const currentOrigin = typeof window === "undefined" ? null : window.location.origin;
 
   return (
     <Conversation className="flex-1">
@@ -195,7 +201,15 @@ export function ChatMessages({
                       </p>
                     );
                   }
-                  return <MessageResponse key={partKey}>{part.text}</MessageResponse>;
+                  return (
+                    <MessageResponse
+                      key={partKey}
+                      allowedTags={CHAT_MESSAGE_ALLOWED_TAGS}
+                      components={CHAT_MESSAGE_COMPONENTS}
+                    >
+                      {rewriteChatJobLinks(part.text, currentOrigin)}
+                    </MessageResponse>
+                  );
                 }
 
                 if (part.type === "reasoning") {
