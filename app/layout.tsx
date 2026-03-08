@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { ChatContextProvider } from "@/components/chat/chat-context-provider";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { SidebarLayout } from "@/components/sidebar-layout";
-import { getStableChatOrigin } from "@/src/lib/chat-origin";
+import { getRequestOrigin, getStableChatOrigin } from "@/src/lib/chat-origin";
 import { Providers } from "./providers";
 
 const inter = Inter({
@@ -30,8 +31,8 @@ export const metadata: Metadata = {
   description: "AI-Assisted Recruitment Operations Platform",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const currentOrigin = getStableChatOrigin();
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const currentOrigin = getStableChatOrigin(getRequestOrigin(await headers()));
 
   return (
     <html lang="nl" suppressHydrationWarning>
