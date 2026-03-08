@@ -196,8 +196,11 @@ function ChatWidgetInner({
               className="hidden"
               onChange={handleFileChange}
             />
-            <PromptInput onSubmit={handleSubmit}>
-              <PromptInputTextarea placeholder="Stel een vraag of upload een CV..." />
+            <PromptInput allowAttachments={false} onSubmit={handleSubmit}>
+              <PromptInputTextarea
+                allowAttachments={false}
+                placeholder="Stel een vraag of upload een CV..."
+              />
               <PromptInputFooter>
                 <button
                   type="button"
