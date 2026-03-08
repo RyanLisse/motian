@@ -187,8 +187,12 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   const resolvedSearchParams = await searchParams;
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
-  // Fetch current job
-  const rows = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
+  // Fetch current job (respecting visibility rules)
+  const rows = await db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.id, id), getVisibleVacancyCondition()))
+    .limit(1);
 
   const job = rows[0] as typeof jobs.$inferSelect | undefined;
 
