@@ -54,6 +54,17 @@ type PersistMessagesInput = {
   messages: UIMessage[];
 };
 
+type ChatSessionRecord = {
+  id: string;
+  sessionId: string;
+  title: string | null;
+  lastMessagePreview: string | null;
+  messageCount: number | null;
+  context: unknown;
+  updatedAt: Date | null;
+  createdAt: Date | null;
+};
+
 function getSafeMetadata(metadata: unknown): Record<string, unknown> {
   if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
     return metadata as Record<string, unknown>;
@@ -66,6 +77,45 @@ function normalizeMessage(message: UIMessage, fallbackId: string): UIMessage {
     ...message,
     id: typeof message.id === "string" && message.id.length > 0 ? message.id : fallbackId,
   };
+}
+
+export function isChatSessionMessagesTableMissing(err: unknown): boolean {
+  if (!err || typeof err !== "object") {
+    return false;
+  }
+
+  const maybeError = err as {
+    cause?: unknown;
+    code?: unknown;
+    message?: unknown;
+  };
+
+  if (
+    typeof maybeError.message === "string" &&
+    /relation "chat_session_messages" does not exist/i.test(maybeError.message)
+  ) {
+    return true;
+  }
+
+  if (maybeError.cause) {
+    return isChatSessionMessagesTableMissing(maybeError.cause);
+  }
+
+  return maybeError.code === "42P01";
+}
+
+async function withChatSessionMessagesFallback<T>(
+  primary: () => Promise<T>,
+  fallback: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await primary();
+  } catch (err) {
+    if (isChatSessionMessagesTableMissing(err)) {
+      return fallback();
+    }
+    throw err;
+  }
 }
 
 function getMessageText(message: UIMessage): string {
@@ -84,6 +134,140 @@ function getMessageText(message: UIMessage): string {
 
   const legacyContent = (message as UIMessage & { content?: unknown }).content;
   return typeof legacyContent === "string" ? legacyContent.trim() : "";
+}
+
+function getLegacyMessages(messages: unknown, sessionId: string): UIMessage[] {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return [];
+  }
+
+  return messages
+    .map((message, index) =>
+      normalizeMessage(message as UIMessage, `legacy-${sessionId}-${index + 1}`),
+    )
+    .filter((message) => message.role === "user" || message.role === "assistant");
+}
+
+function getLegacyMessagesPage(
+  messages: UIMessage[],
+  options?: { limit?: number; cursor?: string | null },
+): Pick<ChatSessionPage, "messages" | "nextCursor" | "hasMore"> {
+  const limit = options?.limit ?? CHAT_HISTORY_PAGE_SIZE;
+  const cursor = decodeMessageCursor(options?.cursor);
+  const eligibleMessages = cursor ? messages.slice(0, Math.max(cursor - 1, 0)) : messages;
+  const pageMessages = eligibleMessages.slice(Math.max(eligibleMessages.length - limit, 0));
+  const firstOrderIndex = eligibleMessages.length - pageMessages.length + 1;
+  const hasMore = eligibleMessages.length > limit;
+
+  return {
+    messages: pageMessages.map((message, index) =>
+      toPersistedMessage(message, firstOrderIndex + index),
+    ),
+    nextCursor: hasMore ? encodeMessageCursor(firstOrderIndex) : null,
+    hasMore,
+  };
+}
+
+async function getLegacySessionRecord(
+  sessionId: string,
+): Promise<(ChatSessionRecord & { messages: unknown }) | null> {
+  const [session] = await db
+    .select({
+      id: chatSessions.id,
+      sessionId: chatSessions.sessionId,
+      title: chatSessions.title,
+      lastMessagePreview: chatSessions.lastMessagePreview,
+      messageCount: chatSessions.messageCount,
+      context: chatSessions.context,
+      updatedAt: chatSessions.updatedAt,
+      createdAt: chatSessions.createdAt,
+      messages: chatSessions.messages,
+    })
+    .from(chatSessions)
+    .where(eq(chatSessions.sessionId, sessionId))
+    .limit(1);
+
+  return session ?? null;
+}
+
+async function getLegacyRecentMessagesForContext(
+  sessionId: string,
+  limit = CHAT_CONTEXT_WINDOW_SIZE,
+): Promise<UIMessage[]> {
+  const session = await getLegacySessionRecord(sessionId);
+  const legacyMessages = getLegacyMessages(session?.messages, sessionId);
+  const recentMessages = legacyMessages.slice(-limit);
+  const firstOrderIndex = legacyMessages.length - recentMessages.length + 1;
+
+  return recentMessages.map((message, index) =>
+    toPersistedMessage(message, firstOrderIndex + index),
+  );
+}
+
+async function persistLegacyMessages({
+  sessionId,
+  context,
+  messages,
+}: PersistMessagesInput): Promise<void> {
+  await db
+    .insert(chatSessions)
+    .values({
+      sessionId,
+      messages: [],
+      context: context ?? {},
+      messageCount: 0,
+      lastMessagePreview: null,
+    })
+    .onConflictDoUpdate({
+      target: chatSessions.sessionId,
+      set: {
+        context: context ?? {},
+        updatedAt: new Date(),
+      },
+    });
+
+  const session = await getLegacySessionRecord(sessionId);
+  const mergedMessages = mergeChatMessages(
+    getLegacyMessages(session?.messages, sessionId),
+    messages,
+  );
+
+  await db
+    .update(chatSessions)
+    .set({
+      context: context ?? {},
+      messages: mergedMessages,
+      messageCount: mergedMessages.length,
+      lastMessagePreview: getLastUserPreview(mergedMessages),
+      updatedAt: new Date(),
+    })
+    .where(eq(chatSessions.sessionId, sessionId));
+}
+
+async function getLegacySession(
+  sessionId: string,
+  options?: { limit?: number; cursor?: string | null },
+): Promise<ChatSessionPage | null> {
+  const session = await getLegacySessionRecord(sessionId);
+
+  if (!session) {
+    return null;
+  }
+
+  const legacyMessages = getLegacyMessages(session.messages, sessionId);
+  const { messages, nextCursor, hasMore } = getLegacyMessagesPage(legacyMessages, options);
+  const { messages: _legacyMessages, ...sessionWithoutMessages } = session;
+
+  return {
+    session: {
+      ...sessionWithoutMessages,
+      messageCount: legacyMessages.length,
+      lastMessagePreview: getLastUserPreview(legacyMessages) ?? session.lastMessagePreview,
+    },
+    messages,
+    nextCursor,
+    hasMore,
+  };
 }
 
 export function getLastUserPreview(messages: UIMessage[]): string | null {
@@ -272,16 +456,24 @@ export async function getRecentMessagesForContext(
   sessionId: string,
   limit = CHAT_CONTEXT_WINDOW_SIZE,
 ): Promise<UIMessage[]> {
-  await migrateLegacySessionMessagesIfNeeded(sessionId);
+  return withChatSessionMessagesFallback(
+    async () => {
+      await migrateLegacySessionMessagesIfNeeded(sessionId);
 
-  const rows = await db
-    .select({ message: chatSessionMessages.message, orderIndex: chatSessionMessages.orderIndex })
-    .from(chatSessionMessages)
-    .where(eq(chatSessionMessages.sessionId, sessionId))
-    .orderBy(desc(chatSessionMessages.orderIndex))
-    .limit(limit);
+      const rows = await db
+        .select({
+          message: chatSessionMessages.message,
+          orderIndex: chatSessionMessages.orderIndex,
+        })
+        .from(chatSessionMessages)
+        .where(eq(chatSessionMessages.sessionId, sessionId))
+        .orderBy(desc(chatSessionMessages.orderIndex))
+        .limit(limit);
 
-  return [...rows].reverse().map((row) => toPersistedMessage(row.message, row.orderIndex));
+      return [...rows].reverse().map((row) => toPersistedMessage(row.message, row.orderIndex));
+    },
+    () => getLegacyRecentMessagesForContext(sessionId, limit),
+  );
 }
 
 export async function persistMessages({ sessionId, context, messages }: PersistMessagesInput) {
@@ -293,112 +485,110 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
     return;
   }
 
-  await db.transaction(async (tx) => {
-    await tx
-      .insert(chatSessions)
-      .values({
-        sessionId,
-        messages: [],
-        context: context ?? {},
-        messageCount: 0,
-        lastMessagePreview: null,
-      })
-      .onConflictDoUpdate({
-        target: chatSessions.sessionId,
-        set: {
-          context: context ?? {},
-          updatedAt: new Date(),
-        },
-      });
+  await withChatSessionMessagesFallback(
+    () =>
+      db.transaction(async (tx) => {
+        await tx
+          .insert(chatSessions)
+          .values({
+            sessionId,
+            messages: [],
+            context: context ?? {},
+            messageCount: 0,
+            lastMessagePreview: null,
+          })
+          .onConflictDoUpdate({
+            target: chatSessions.sessionId,
+            set: {
+              context: context ?? {},
+              updatedAt: new Date(),
+            },
+          });
 
-    const [{ existingCount }] = await tx
-      .select({ existingCount: sql<number>`count(*)::int` })
-      .from(chatSessionMessages)
-      .where(eq(chatSessionMessages.sessionId, sessionId));
+        const [{ existingCount }] = await tx
+          .select({ existingCount: sql<number>`count(*)::int` })
+          .from(chatSessionMessages)
+          .where(eq(chatSessionMessages.sessionId, sessionId));
 
-    if ((existingCount ?? 0) === 0) {
-      const [legacySession] = await tx
-        .select({ messages: chatSessions.messages })
-        .from(chatSessions)
-        .where(eq(chatSessions.sessionId, sessionId))
-        .limit(1);
+        if ((existingCount ?? 0) === 0) {
+          const [legacySession] = await tx
+            .select({ messages: chatSessions.messages })
+            .from(chatSessions)
+            .where(eq(chatSessions.sessionId, sessionId))
+            .limit(1);
 
-      if (
-        legacySession &&
-        Array.isArray(legacySession.messages) &&
-        legacySession.messages.length > 0
-      ) {
-        const legacyMessages = legacySession.messages
-          .map((message, index) =>
-            normalizeMessage(message as UIMessage, `legacy-${sessionId}-${index + 1}`),
-          )
-          .filter((message) => message.role === "user" || message.role === "assistant");
+          const legacyMessages = getLegacyMessages(legacySession?.messages, sessionId);
 
-        if (legacyMessages.length > 0) {
+          if (legacyMessages.length > 0) {
+            await tx.insert(chatSessionMessages).values(
+              legacyMessages.map((message, index) => ({
+                sessionId,
+                messageId: message.id,
+                role: message.role,
+                message,
+                orderIndex: index + 1,
+              })),
+            );
+          }
+        }
+
+        const existingRows = await tx
+          .select({ messageId: chatSessionMessages.messageId })
+          .from(chatSessionMessages)
+          .where(
+            and(
+              eq(chatSessionMessages.sessionId, sessionId),
+              inArray(
+                chatSessionMessages.messageId,
+                normalizedMessages.map((message) => message.id),
+              ),
+            ),
+          );
+
+        const existingIds = new Set(existingRows.map((row) => row.messageId));
+        const pendingMessages = normalizedMessages.filter(
+          (message) => !existingIds.has(message.id),
+        );
+
+        if (pendingMessages.length > 0) {
+          const [{ maxOrderIndex }] = await tx
+            .select({
+              maxOrderIndex: sql<number>`coalesce(max(${chatSessionMessages.orderIndex}), 0)`,
+            })
+            .from(chatSessionMessages)
+            .where(eq(chatSessionMessages.sessionId, sessionId));
+
           await tx.insert(chatSessionMessages).values(
-            legacyMessages.map((message, index) => ({
+            pendingMessages.map((message, index) => ({
               sessionId,
               messageId: message.id,
               role: message.role,
               message,
-              orderIndex: index + 1,
+              orderIndex: (maxOrderIndex ?? 0) + index + 1,
             })),
           );
         }
-      }
-    }
 
-    const existingRows = await tx
-      .select({ messageId: chatSessionMessages.messageId })
-      .from(chatSessionMessages)
-      .where(
-        and(
-          eq(chatSessionMessages.sessionId, sessionId),
-          inArray(
-            chatSessionMessages.messageId,
-            normalizedMessages.map((message) => message.id),
-          ),
-        ),
-      );
+        const [{ messageCount }] = await tx
+          .select({ messageCount: sql<number>`count(*)::int` })
+          .from(chatSessionMessages)
+          .where(eq(chatSessionMessages.sessionId, sessionId));
 
-    const existingIds = new Set(existingRows.map((row) => row.messageId));
-    const pendingMessages = normalizedMessages.filter((message) => !existingIds.has(message.id));
+        const preview = getLastUserPreview(normalizedMessages);
 
-    if (pendingMessages.length > 0) {
-      const [{ maxOrderIndex }] = await tx
-        .select({ maxOrderIndex: sql<number>`coalesce(max(${chatSessionMessages.orderIndex}), 0)` })
-        .from(chatSessionMessages)
-        .where(eq(chatSessionMessages.sessionId, sessionId));
-
-      await tx.insert(chatSessionMessages).values(
-        pendingMessages.map((message, index) => ({
-          sessionId,
-          messageId: message.id,
-          role: message.role,
-          message,
-          orderIndex: (maxOrderIndex ?? 0) + index + 1,
-        })),
-      );
-    }
-
-    const [{ messageCount }] = await tx
-      .select({ messageCount: sql<number>`count(*)::int` })
-      .from(chatSessionMessages)
-      .where(eq(chatSessionMessages.sessionId, sessionId));
-
-    const preview = getLastUserPreview(normalizedMessages);
-
-    await tx
-      .update(chatSessions)
-      .set({
-        context: context ?? {},
-        messages: [],
-        messageCount: messageCount ?? 0,
-        updatedAt: new Date(),
-        ...(preview ? { lastMessagePreview: preview } : {}),
-      })
-      .where(eq(chatSessions.sessionId, sessionId));
-  });
+        await tx
+          .update(chatSessions)
+          .set({
+            context: context ?? {},
+            messages: [],
+            messageCount: messageCount ?? 0,
+            updatedAt: new Date(),
+            ...(preview ? { lastMessagePreview: preview } : {}),
+          })
+          .where(eq(chatSessions.sessionId, sessionId));
+      }),
+    () => persistLegacyMessages({ sessionId, context, messages: normalizedMessages }),
+  );
 }
 
 export async function incrementSessionTokens(sessionId: string, delta: number) {
@@ -418,62 +608,81 @@ export async function getSession(
   sessionId: string,
   options?: { limit?: number; cursor?: string | null },
 ): Promise<ChatSessionPage | null> {
-  await migrateLegacySessionMessagesIfNeeded(sessionId);
+  return withChatSessionMessagesFallback(
+    async () => {
+      await migrateLegacySessionMessagesIfNeeded(sessionId);
 
-  const [session] = await db
-    .select({
-      id: chatSessions.id,
-      sessionId: chatSessions.sessionId,
-      title: chatSessions.title,
-      lastMessagePreview: chatSessions.lastMessagePreview,
-      messageCount: chatSessions.messageCount,
-      context: chatSessions.context,
-      updatedAt: chatSessions.updatedAt,
-      createdAt: chatSessions.createdAt,
-    })
-    .from(chatSessions)
-    .where(eq(chatSessions.sessionId, sessionId))
-    .limit(1);
+      const [session] = await db
+        .select({
+          id: chatSessions.id,
+          sessionId: chatSessions.sessionId,
+          title: chatSessions.title,
+          lastMessagePreview: chatSessions.lastMessagePreview,
+          messageCount: chatSessions.messageCount,
+          context: chatSessions.context,
+          updatedAt: chatSessions.updatedAt,
+          createdAt: chatSessions.createdAt,
+        })
+        .from(chatSessions)
+        .where(eq(chatSessions.sessionId, sessionId))
+        .limit(1);
 
-  if (!session) return null;
+      if (!session) return null;
 
-  const limit = options?.limit ?? CHAT_HISTORY_PAGE_SIZE;
-  const cursor = decodeMessageCursor(options?.cursor);
+      const limit = options?.limit ?? CHAT_HISTORY_PAGE_SIZE;
+      const cursor = decodeMessageCursor(options?.cursor);
 
-  const rows = await db
-    .select({ message: chatSessionMessages.message, orderIndex: chatSessionMessages.orderIndex })
-    .from(chatSessionMessages)
-    .where(
-      and(
-        eq(chatSessionMessages.sessionId, sessionId),
-        cursor ? lt(chatSessionMessages.orderIndex, cursor) : undefined,
-      ),
-    )
-    .orderBy(desc(chatSessionMessages.orderIndex))
-    .limit(limit + 1);
+      const rows = await db
+        .select({
+          message: chatSessionMessages.message,
+          orderIndex: chatSessionMessages.orderIndex,
+        })
+        .from(chatSessionMessages)
+        .where(
+          and(
+            eq(chatSessionMessages.sessionId, sessionId),
+            cursor ? lt(chatSessionMessages.orderIndex, cursor) : undefined,
+          ),
+        )
+        .orderBy(desc(chatSessionMessages.orderIndex))
+        .limit(limit + 1);
 
-  const hasMore = rows.length > limit;
-  const pageRows = hasMore ? rows.slice(0, limit) : rows;
-  const lastPageRow = pageRows.at(-1);
-  const nextCursor = hasMore && lastPageRow ? encodeMessageCursor(lastPageRow.orderIndex) : null;
+      const hasMore = rows.length > limit;
+      const pageRows = hasMore ? rows.slice(0, limit) : rows;
+      const lastPageRow = pageRows.at(-1);
+      const nextCursor =
+        hasMore && lastPageRow ? encodeMessageCursor(lastPageRow.orderIndex) : null;
 
-  return {
-    session,
-    messages: [...pageRows].reverse().map((row) => toPersistedMessage(row.message, row.orderIndex)),
-    nextCursor,
-    hasMore,
-  };
+      return {
+        session,
+        messages: [...pageRows]
+          .reverse()
+          .map((row) => toPersistedMessage(row.message, row.orderIndex)),
+        nextCursor,
+        hasMore,
+      };
+    },
+    () => getLegacySession(sessionId, options),
+  );
 }
 
 /** Chat sessie verwijderen op sessionId. Geeft true als verwijderd. */
 export async function deleteSession(sessionId: string): Promise<boolean> {
-  const result = await db.transaction(async (tx) => {
-    await tx.delete(chatSessionMessages).where(eq(chatSessionMessages.sessionId, sessionId));
-    return tx
-      .delete(chatSessions)
-      .where(eq(chatSessions.sessionId, sessionId))
-      .returning({ id: chatSessions.id });
-  });
+  const result = await withChatSessionMessagesFallback(
+    () =>
+      db.transaction(async (tx) => {
+        await tx.delete(chatSessionMessages).where(eq(chatSessionMessages.sessionId, sessionId));
+        return tx
+          .delete(chatSessions)
+          .where(eq(chatSessions.sessionId, sessionId))
+          .returning({ id: chatSessions.id });
+      }),
+    () =>
+      db
+        .delete(chatSessions)
+        .where(eq(chatSessions.sessionId, sessionId))
+        .returning({ id: chatSessions.id }),
+  );
 
   return result.length > 0;
 }

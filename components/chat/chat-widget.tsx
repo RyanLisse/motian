@@ -16,6 +16,7 @@ import { ChatMessages } from "./chat-messages";
 import { useChatThread } from "./use-chat-thread";
 
 const SESSION_KEY = "motian-fab-session";
+const CHAT_WIDGET_OPEN_EVENT = "motian-chat-open";
 
 function isStorageAvailable(): boolean {
   try {
@@ -262,6 +263,13 @@ export function ChatWidget() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  useEffect(() => {
+    const handleOpen = () => setOpen(true);
+
+    window.addEventListener(CHAT_WIDGET_OPEN_EVENT, handleOpen);
+    return () => window.removeEventListener(CHAT_WIDGET_OPEN_EVENT, handleOpen);
+  }, []);
 
   if (pathname === "/chat" || pathname === "/opdrachten") return null;
 
