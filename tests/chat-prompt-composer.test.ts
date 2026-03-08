@@ -44,11 +44,12 @@ describe("chat prompt composer preset", () => {
     const source = readFile("src", "components", "ai-elements", "chat-prompt-composer.tsx");
 
     expect(source).toContain("export function ChatPromptComposer");
-    expect(source).toContain("PromptInputActionAddAttachments");
     expect(source).toContain("PromptInputSubmit");
-    expect(source).toContain("usePromptInputAttachments");
-    expect(source).toContain("CV uploaden (PDF, Word)");
-    expect(source).toContain("multiple onSubmit={handleSubmit}");
+    expect(source).toContain("allowAttachments={false}");
+    expect(source).toContain("CV uploaden");
+    expect(source).not.toContain("PromptInputActionAddAttachments");
+    expect(source).not.toContain("usePromptInputAttachments");
+    expect(source).not.toContain("ChatPromptAttachmentList");
   });
 
   it("lets the full-page chat swap to the wrapper without changing submit flow", () => {

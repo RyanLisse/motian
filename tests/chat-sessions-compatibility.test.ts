@@ -94,6 +94,7 @@ function createFailingNormalizedSelectTx() {
 
   return {
     delete: vi.fn(),
+    execute: vi.fn().mockResolvedValue(undefined),
     insert: vi.fn((table: { __table: string }) => ({
       values: vi.fn(() =>
         table.__table === "chatSessions"
@@ -125,6 +126,51 @@ function createMissingMessagesDeleteTx() {
           : { returning: vi.fn().mockResolvedValue([{ id: "row-1" }]) },
       ),
     })),
+  };
+}
+
+function createNormalizedPersistTx() {
+  const sessionOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+  const sessionValues = vi.fn(() => ({ onConflictDoUpdate: sessionOnConflictDoUpdate }));
+  const messageOnConflictDoNothing = vi.fn().mockResolvedValue(undefined);
+  const messageValues = vi.fn(() => ({ onConflictDoNothing: messageOnConflictDoNothing }));
+  const updateSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+  const selectResults = [[{ existingCount: 1 }], [], [{ maxOrderIndex: 1 }], [{ messageCount: 2 }]];
+
+  return {
+    tx: {
+      execute: vi.fn().mockResolvedValue(undefined),
+      insert: vi.fn((table: { __table: string }) => ({
+        values: table.__table === "chatSessions" ? sessionValues : messageValues,
+      })),
+      select: vi.fn(() => ({
+        from: vi.fn(() => createResolvedChain(selectResults.shift() ?? [])),
+      })),
+      update: vi.fn(() => ({ set: updateSet })),
+    },
+    messageOnConflictDoNothing,
+    sessionOnConflictDoUpdate,
+    sessionValues,
+    updateSet,
+  };
+}
+
+function createLegacyPersistTx(existingMessages: UIMessage[]) {
+  const sessionOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+  const sessionValues = vi.fn(() => ({ onConflictDoUpdate: sessionOnConflictDoUpdate }));
+  const updateSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+
+  return {
+    tx: {
+      insert: vi.fn(() => ({ values: sessionValues })),
+      select: vi.fn(() => ({
+        from: vi.fn(() => createResolvedChain([{ messages: existingMessages }])),
+      })),
+      update: vi.fn(() => ({ set: updateSet })),
+    },
+    sessionOnConflictDoUpdate,
+    sessionValues,
+    updateSet,
   };
 }
 
@@ -237,6 +283,76 @@ describe("chat session compatibility fallback", () => {
     expect(updatedRow.lastMessagePreview).toBe("Nieuwe vraag");
     expect(updatedRow.context).toEqual({ route: "/chat" });
     expect(updatedRow.messages.map((message: UIMessage) => message.id)).toEqual(["m1", "m2"]);
+  });
+
+  it("preserves normalized session context when context is omitted", async () => {
+    const { tx, sessionValues, sessionOnConflictDoUpdate, updateSet } = createNormalizedPersistTx();
+
+    mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
+      callback(tx),
+    );
+
+    const { persistMessages } = await import("../src/services/chat-sessions");
+    await persistMessages({
+      sessionId: "session-1",
+      messages: [createMessage("m2", "user", "Nieuwe vraag")],
+    });
+
+    expect(sessionValues.mock.calls[0]?.[0]).not.toHaveProperty("context");
+    expect(sessionOnConflictDoUpdate.mock.calls[0]?.[0].set).not.toHaveProperty("context");
+    expect(updateSet.mock.calls[0]?.[0]).not.toHaveProperty("context");
+  });
+
+  it("preserves legacy session context when context is omitted after fallback", async () => {
+    const existingMessages = [createMessage("m1", "assistant", "Bestaand antwoord")];
+    const { tx, sessionValues, sessionOnConflictDoUpdate, updateSet } =
+      createLegacyPersistTx(existingMessages);
+
+    mockDb.transaction
+      .mockImplementationOnce(async (callback: TransactionCallback) =>
+        callback(createFailingNormalizedSelectTx()),
+      )
+      .mockImplementationOnce(async (callback: TransactionCallback) => callback(tx));
+
+    const { persistMessages } = await import("../src/services/chat-sessions");
+    await persistMessages({
+      sessionId: "session-1",
+      messages: [...existingMessages, createMessage("m2", "user", "Nieuwe vraag")],
+    });
+
+    const updatedRow = updateSet.mock.calls[0]?.[0];
+    expect(sessionValues.mock.calls[0]?.[0]).not.toHaveProperty("context");
+    expect(sessionOnConflictDoUpdate.mock.calls[0]?.[0].set).not.toHaveProperty("context");
+    expect(updatedRow).not.toHaveProperty("context");
+    expect(updatedRow.messageCount).toBe(2);
+    expect(updatedRow.messages.map((message: UIMessage) => message.id)).toEqual(["m1", "m2"]);
+  });
+
+  it("acquires a per-session lock and ignores duplicate normalized inserts", async () => {
+    const { tx, messageOnConflictDoNothing } = createNormalizedPersistTx();
+
+    mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
+      callback(tx),
+    );
+
+    const { persistMessages } = await import("../src/services/chat-sessions");
+    await persistMessages({
+      sessionId: "session-1",
+      context: { route: "/chat" },
+      messages: [createMessage("m2", "assistant", "Antwoord")],
+    });
+
+    const lockQuery = tx.execute.mock.calls[0]?.[0] as {
+      strings?: TemplateStringsArray;
+      values?: unknown[];
+    };
+
+    expect(tx.execute).toHaveBeenCalledTimes(1);
+    expect(lockQuery.strings?.join("")).toContain("pg_advisory_xact_lock");
+    expect(lockQuery.values).toEqual(["chat-session-persist:session-1"]);
+    expect(messageOnConflictDoNothing).toHaveBeenCalledWith({
+      target: [chatSessionMessages.sessionId, chatSessionMessages.messageId],
+    });
   });
 
   it("deletes the legacy session row when the normalized message table is unavailable", async () => {

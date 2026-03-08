@@ -8,6 +8,7 @@ export const CHAT_CONTEXT_WINDOW_SIZE = 24;
 
 const CHAT_SESSION_MESSAGES_TABLE = "chat_session_messages";
 const POSTGRES_MISSING_RELATION_ERROR_CODE = "42P01";
+const CHAT_SESSION_PERSIST_LOCK_NAMESPACE = "chat-session-persist";
 
 type PersistedChatMetadata = Record<string, unknown> & {
   persistedOrderIndex?: number;
@@ -84,6 +85,10 @@ function normalizeMessage(message: UIMessage, fallbackId: string): UIMessage {
     ...message,
     id: typeof message.id === "string" && message.id.length > 0 ? message.id : fallbackId,
   };
+}
+
+function getContextWriteValues(context: ChatSessionContext | null | undefined) {
+  return context === undefined ? {} : { context: context ?? {} };
 }
 
 function getMessageText(message: UIMessage): string {
@@ -389,6 +394,7 @@ export async function getRecentMessagesForContext(
 
 export async function persistMessages({ sessionId, context, messages }: PersistMessagesInput) {
   const normalizedMessages = getPersistableMessages(messages, sessionId);
+  const contextWriteValues = getContextWriteValues(context);
 
   if (normalizedMessages.length === 0) {
     return;
@@ -397,20 +403,24 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
   await withChatSessionMessageCompatibility(
     async () => {
       await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${`${CHAT_SESSION_PERSIST_LOCK_NAMESPACE}:${sessionId}`}))`,
+        );
+
         await tx
           .insert(chatSessions)
           .values({
             sessionId,
             messages: [],
-            context: context ?? {},
             messageCount: 0,
             lastMessagePreview: null,
+            ...contextWriteValues,
           })
           .onConflictDoUpdate({
             target: chatSessions.sessionId,
             set: {
-              context: context ?? {},
               updatedAt: new Date(),
+              ...contextWriteValues,
             },
           });
 
@@ -467,15 +477,20 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
             .from(chatSessionMessages)
             .where(eq(chatSessionMessages.sessionId, sessionId));
 
-          await tx.insert(chatSessionMessages).values(
-            pendingMessages.map((message, index) => ({
-              sessionId,
-              messageId: message.id,
-              role: message.role,
-              message,
-              orderIndex: (maxOrderIndex ?? 0) + index + 1,
-            })),
-          );
+          await tx
+            .insert(chatSessionMessages)
+            .values(
+              pendingMessages.map((message, index) => ({
+                sessionId,
+                messageId: message.id,
+                role: message.role,
+                message,
+                orderIndex: (maxOrderIndex ?? 0) + index + 1,
+              })),
+            )
+            .onConflictDoNothing({
+              target: [chatSessionMessages.sessionId, chatSessionMessages.messageId],
+            });
         }
 
         const [{ messageCount }] = await tx
@@ -488,10 +503,10 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
         await tx
           .update(chatSessions)
           .set({
-            context: context ?? {},
             messages: [],
             messageCount: messageCount ?? 0,
             updatedAt: new Date(),
+            ...contextWriteValues,
             ...(preview ? { lastMessagePreview: preview } : {}),
           })
           .where(eq(chatSessions.sessionId, sessionId));
@@ -504,15 +519,15 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
           .values({
             sessionId,
             messages: [],
-            context: context ?? {},
             messageCount: 0,
             lastMessagePreview: null,
+            ...contextWriteValues,
           })
           .onConflictDoUpdate({
             target: chatSessions.sessionId,
             set: {
-              context: context ?? {},
               updatedAt: new Date(),
+              ...contextWriteValues,
             },
           });
 
@@ -533,10 +548,10 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
         await tx
           .update(chatSessions)
           .set({
-            context: context ?? {},
             messages: nextMessages,
             messageCount: nextMessages.length,
             updatedAt: new Date(),
+            ...contextWriteValues,
             ...(preview ? { lastMessagePreview: preview } : {}),
           })
           .where(eq(chatSessions.sessionId, sessionId));

@@ -1,15 +1,10 @@
 "use client";
 
 import type { ChatStatus } from "ai";
-import { ArrowUp, Check, Gauge, Loader2, Mic, Paperclip, Square, X, Zap } from "lucide-react";
+import { ArrowUp, Check, Gauge, Loader2, Mic, Square, Upload, X, Zap } from "lucide-react";
 import { type ChangeEvent, useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuItem,
-  PromptInputActionMenuTrigger,
   PromptInputButton,
   PromptInputFooter,
   type PromptInputMessage,
@@ -21,7 +16,6 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
-  usePromptInputAttachments,
 } from "@/src/components/ai-elements/prompt-input";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
@@ -57,36 +51,6 @@ export type ChatPromptComposerProps = {
 const CV_UPLOAD_ACCEPT =
   ".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const CV_UPLOAD_MAX_SIZE = 20 * 1024 * 1024;
-
-function ChatPromptAttachmentList() {
-  const attachments = usePromptInputAttachments();
-
-  if (attachments.files.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2 px-2 pt-2">
-      {attachments.files.map((file) => (
-        <div
-          className="inline-flex max-w-full items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs text-muted-foreground"
-          key={file.id}
-        >
-          <Paperclip className="h-3 w-3 shrink-0" />
-          <span className="truncate">{file.filename}</span>
-          <button
-            aria-label={`Verwijder bijlage ${file.filename}`}
-            className="rounded-full p-0.5 transition-colors hover:bg-accent hover:text-foreground"
-            onClick={() => attachments.remove(file.id)}
-            type="button"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function normalizeChatPromptMessage(message: PromptInputMessage) {
   const text = message.text.trim();
@@ -326,32 +290,27 @@ export function ChatPromptComposer({
         />
 
         <div className="rounded-[28px] border border-border/70 bg-background shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-ring/20">
-          <PromptInput multiple onSubmit={handleSubmit}>
+          <PromptInput allowAttachments={false} onSubmit={handleSubmit}>
             <PromptInputTextarea
+              allowAttachments={false}
               aria-describedby={describedBy}
               aria-label={inputAriaLabel}
               autoFocus
               className="min-h-[88px] text-sm sm:min-h-[96px]"
               placeholder={placeholder}
             />
-            <ChatPromptAttachmentList />
             <PromptInputFooter className="flex-wrap gap-2 px-2 pb-2 pt-0 sm:flex-nowrap">
               <PromptInputTools className="flex-1 flex-wrap">
-                <PromptInputActionMenu>
-                  <PromptInputActionMenuTrigger tooltip="Bijlage toevoegen" />
-                  <PromptInputActionMenuContent>
-                    <PromptInputActionAddAttachments label="Foto's of bestanden" />
-                    <PromptInputActionMenuItem
-                      disabled={uploadState === "uploading"}
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        fileInputRef.current?.click();
-                      }}
-                    >
-                      CV uploaden (PDF, Word)
-                    </PromptInputActionMenuItem>
-                  </PromptInputActionMenuContent>
-                </PromptInputActionMenu>
+                <PromptInputButton
+                  aria-label="CV uploaden (PDF of Word)"
+                  className="gap-1.5 rounded-full px-3 text-xs"
+                  disabled={uploadState === "uploading"}
+                  onClick={() => fileInputRef.current?.click()}
+                  tooltip="CV uploaden (PDF of Word)"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>CV uploaden</span>
+                </PromptInputButton>
 
                 <PromptInputSelect onValueChange={onModelIdChange} value={modelId}>
                   <PromptInputSelectTrigger className="h-8 w-auto gap-1 px-2 text-xs">

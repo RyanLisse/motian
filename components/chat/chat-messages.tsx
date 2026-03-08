@@ -167,6 +167,10 @@ function SourceDocumentBlock({ title, mediaType }: { title: string; mediaType: s
   );
 }
 
+function hasSuggestionHandler(onSelect?: (prompt: string) => void) {
+  return typeof onSelect === "function";
+}
+
 function SuggestedPromptCard({
   suggestion,
   onSelect,
@@ -175,12 +179,20 @@ function SuggestedPromptCard({
   onSelect?: (prompt: string) => void;
 }) {
   const Icon = suggestion.icon;
+  const isInteractive = hasSuggestionHandler(onSelect);
 
   return (
     <button
       type="button"
-      onClick={() => onSelect?.(suggestion.prompt)}
-      className="group flex h-full flex-col items-start gap-3 rounded-2xl border border-border/70 bg-background/80 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      onClick={isInteractive ? () => onSelect(suggestion.prompt) : undefined}
+      disabled={!isInteractive}
+      aria-disabled={!isInteractive}
+      className={cn(
+        "group flex h-full flex-col items-start gap-3 rounded-2xl border border-border/70 bg-background/80 p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        isInteractive
+          ? "hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent/60 hover:shadow-sm"
+          : "cursor-not-allowed opacity-60",
+      )}
       aria-label={`${suggestion.label}. ${suggestion.description}`}
     >
       <div
@@ -207,12 +219,18 @@ function FollowUpPromptButton({
   onSelect?: (prompt: string) => void;
 }) {
   const Icon = suggestion.icon;
+  const isInteractive = hasSuggestionHandler(onSelect);
 
   return (
     <button
       type="button"
-      onClick={() => onSelect?.(suggestion.prompt)}
-      className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      onClick={isInteractive ? () => onSelect(suggestion.prompt) : undefined}
+      disabled={!isInteractive}
+      aria-disabled={!isInteractive}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        isInteractive ? "hover:border-primary/40 hover:bg-accent" : "cursor-not-allowed opacity-60",
+      )}
     >
       <span
         className={cn(
