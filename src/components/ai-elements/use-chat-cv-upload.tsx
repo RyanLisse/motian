@@ -266,6 +266,9 @@ export function useChatCvUpload({
         return;
       }
 
+      // Cancel any pending reset timer before starting new upload
+      clearResetTimer();
+
       activeUploadControllerRef.current?.abort();
       const controller = new AbortController();
       const uploadId = activeUploadIdRef.current + 1;
@@ -389,6 +392,9 @@ export function useChatCvUpload({
       scheduleReset();
       return;
     }
+
+    // Clear any pending reset timer before starting new upload
+    clearResetTimer();
 
     attachments.clear();
 

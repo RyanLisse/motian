@@ -14,9 +14,12 @@ describe("CV upload API route", () => {
   });
 
   it("validates file type (PDF and Word only)", () => {
-    const source = readFile("app/api/cv-upload/route.ts");
-    expect(source).toContain("application/pdf");
-    expect(source).toContain("wordprocessingml.document");
+    const routeSource = readFile("app/api/cv-upload/route.ts");
+    const libSource = readFile("src/lib/cv-upload.ts");
+    expect(routeSource).toContain("validateCvUploadFile");
+    expect(routeSource).toContain("validation.mimeType");
+    expect(libSource).toContain("application/pdf");
+    expect(libSource).toContain("wordprocessingml.document");
   });
 
   it("validates file size", () => {

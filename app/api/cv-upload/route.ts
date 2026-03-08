@@ -44,19 +44,16 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: validation.message }, { status: 400 });
     }
 
-    const mimeType = validation.mimeType;
-
     // Upload to blob storage
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { url: fileUrl } = await uploadFile(buffer, `cv/${Date.now()}-${file.name}`, mimeType);
+    const { url: fileUrl } = await uploadFile(
+      buffer,
+      `cv/${Date.now()}-${file.name}`,
+      validation.mimeType,
+    );
 
     // Parse CV with Gemini
-    const parsed = await parseCV(
-      buffer,
-      mimeType as
-        | "application/pdf"
-        | "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    );
+    const parsed = await parseCV(buffer, validation.mimeType);
 
     // Check for duplicates
     const duplicates = await findDuplicateCandidate(parsed);

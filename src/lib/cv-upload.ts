@@ -66,7 +66,11 @@ export function validateCvUploadFile(file: CvUploadFileLike): CvUploadValidation
     return { ok: true, mimeType: "application/pdf" };
   }
 
-  if (extension === ".docx") {
+  // Check for .docx BEFORE rejecting legacy formats
+  if (
+    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    extension === ".docx"
+  ) {
     return {
       ok: true,
       mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -79,13 +83,6 @@ export function validateCvUploadFile(file: CvUploadFileLike): CvUploadValidation
       code: "unsupported_doc",
       message:
         "Oudere Word-bestanden (.doc) worden nog niet ondersteund. Gebruik een PDF of .docx-bestand.",
-    };
-  }
-
-  if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-    return {
-      ok: true,
-      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     };
   }
 
