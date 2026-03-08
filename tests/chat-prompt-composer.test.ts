@@ -96,8 +96,8 @@ describe("chat prompt composer preset", () => {
   it("wires the widget to the shared CV upload flow", () => {
     const source = readFile("components", "chat", "chat-widget.tsx");
 
-    expect(source).toContain("type=\"file\"");
-    expect(source).toContain("accept=\".pdf,.docx");
+    expect(source).toContain('type="file"');
+    expect(source).toContain('accept=".pdf,.docx');
     expect(source).toContain("handleFileChange");
     expect(source).toContain("uploadState");
     expect(source).toContain("uploadResult");

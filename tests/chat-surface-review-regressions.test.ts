@@ -41,8 +41,8 @@ describe("chat surface review regressions", () => {
   it("disables generic attachment intake in the chat widget while keeping the explicit CV upload control", () => {
     const source = readFile("components", "chat", "chat-widget.tsx");
 
-    expect(source).toContain("type=\"file\"");
-    expect(source).toContain("accept=\".pdf,.docx");
+    expect(source).toContain('type="file"');
+    expect(source).toContain('accept=".pdf,.docx');
     expect(source).toContain("handleFileChange");
     expect(source).toContain("{open && (");
     expect(source).toContain('title="CV/document uploaden"');
