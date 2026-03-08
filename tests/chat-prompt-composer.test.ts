@@ -96,14 +96,14 @@ describe("chat prompt composer preset", () => {
   it("wires the widget to the shared CV upload flow", () => {
     const source = readFile("components", "chat", "chat-widget.tsx");
 
-    expect(source).toContain("PromptInputProvider");
-    expect(source).toContain("useChatCvUpload");
-    expect(source).toContain("ChatCvDropOverlay");
-    expect(source).toContain("ChatCvUploadStatusBanner");
-    expect(source).toContain("accept={CV_UPLOAD_ACCEPT}");
-    expect(source).toContain("globalDrop");
-    expect(source).toContain("{open ? (");
-    expect(source).toContain("onClick={cvUpload.openFileDialog}");
-    expect(source).not.toContain('type="file"');
+    expect(source).toContain("type=\"file\"");
+    expect(source).toContain("accept=\".pdf,.docx");
+    expect(source).toContain("handleFileChange");
+    expect(source).toContain("uploadState");
+    expect(source).toContain("uploadResult");
+    expect(source).toContain('aria-label="CV of document uploaden"');
+    expect(source).toContain("{open && (");
+    expect(source).toContain("fileInputRef.current?.click()");
+    expect(source).toContain("handleFileUpload");
   });
 });

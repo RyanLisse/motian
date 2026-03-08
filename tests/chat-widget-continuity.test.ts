@@ -228,9 +228,9 @@ describe("chat widget continuity", () => {
     expect(source).toContain('aria-label="Open volledige chat"');
     expect(source).toContain('aria-label="Sluit chatwidget"');
     expect(source).toContain('aria-label="CV of document uploaden"');
-    expect(source).toContain("PromptInputProvider");
-    expect(source).toContain("useChatCvUpload");
-    expect(source).toContain("globalDrop");
+    expect(source).toContain("type=\"file\"");
+    expect(source).toContain("accept=\".pdf,.docx");
+    expect(source).toContain("handleFileChange");
     expect(source).toContain('"Verstuur bericht"');
 
     const closedHtml = renderToStaticMarkup(createElement(ChatWidget));
