@@ -2,7 +2,6 @@ import { AlertCircle, ArrowRight, Clock4 } from "lucide-react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ScraperActivityItem } from "@/src/services/scraper-dashboard";
 import { PlatformBadge } from "./platform-badge";
 
@@ -19,7 +18,7 @@ function formatActivityDate(value: Date | null) {
 
 export function RecentActivityFeed({ activities }: { activities: ScraperActivityItem[] }) {
   return (
-    <Card className="bg-card border-border">
+    <Card className="bg-card border-border min-w-0">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Clock4 className="h-4 w-4 text-muted-foreground" />
@@ -29,17 +28,20 @@ export function RecentActivityFeed({ activities }: { activities: ScraperActivity
           De nieuwste runs met status, aantallen en de laatste fout- of waarschuwingsmelding.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-w-0">
         {activities.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-8 text-sm text-muted-foreground">
             Nog geen activiteit zichtbaar.
           </div>
         ) : (
-          <ScrollArea className="max-h-[420px] pr-4">
-            <div className="space-y-3">
+          <div className="max-h-[420px] min-w-0 overflow-y-auto pr-4">
+            <div className="min-w-0 space-y-3">
               {activities.map((activity) => (
-                <div key={activity.id} className="rounded-xl border border-border bg-muted/20 p-4">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div
+                  key={activity.id}
+                  className="min-w-0 rounded-xl border border-border bg-muted/20 p-4"
+                >
+                  <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <PlatformBadge platform={activity.platform} className="text-[10px]" />
@@ -87,7 +89,7 @@ export function RecentActivityFeed({ activities }: { activities: ScraperActivity
                 </div>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         )}
       </CardContent>
     </Card>
