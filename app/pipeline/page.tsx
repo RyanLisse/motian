@@ -187,7 +187,7 @@ export default async function PipelinePage({ searchParams }: Props) {
       ? db
           .select({ id: jobs.id, title: jobs.title, company: jobs.company })
           .from(jobs)
-          .where(and(eq(jobs.id, vacatureId), isNull(jobs.deletedAt)))
+          .where(eq(jobs.id, vacatureId))
           .limit(1)
       : Promise.resolve([]),
   ]);

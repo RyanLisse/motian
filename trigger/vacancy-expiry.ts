@@ -1,5 +1,5 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { and, isNull, lt } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 
@@ -14,8 +14,8 @@ export const vacancyExpiryTask = schedules.task({
 
     const expired = await db
       .update(jobs)
-      .set({ deletedAt: now })
-      .where(and(lt(jobs.applicationDeadline, now), isNull(jobs.deletedAt)))
+      .set({ status: "closed" })
+      .where(and(eq(jobs.status, "open"), lt(jobs.applicationDeadline, now)))
       .returning({ id: jobs.id });
 
     logger.info("Vacature verloop check voltooid", {

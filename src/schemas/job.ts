@@ -29,7 +29,7 @@ export const unifiedJobSchema = z.object({
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.string().min(10, "Beschrijving moet minimaal 10 tekens bevatten").optional(),
   ),
-  status: z.enum(["open", "closed"]).default("open"),
+  status: z.enum(["open", "closed", "archived"]).default("open"),
 
   // === Tarieven & Posities ===
   rateMin: z.preprocess(

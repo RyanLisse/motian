@@ -79,6 +79,8 @@ describe("normalizeAndSaveJobs status/endClient storage", () => {
     const conflictConfig = mockOnConflictDoUpdate.mock.calls[0]?.[0];
     expect(conflictConfig.set).toHaveProperty("endClient");
     expect(conflictConfig.set).toHaveProperty("status");
+    expect(conflictConfig.set).toHaveProperty("archivedAt");
+    expect(conflictConfig.set).toHaveProperty("deletedAt");
     expect(mockSyncJobEscoSkills).toHaveBeenCalledWith(
       expect.objectContaining({
         jobId: "job-1",

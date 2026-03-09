@@ -51,11 +51,11 @@ export const PATCH = withApiHandler(
 export const DELETE = withApiHandler(
   async (_request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
-    const deleted = await deleteJob(id);
-    if (!deleted) {
+    const archived = await deleteJob(id);
+    if (!archived) {
       return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: { id, deleted: true } });
+    return Response.json({ data: { id, archived: true } });
   },
   { logPrefix: "DELETE /api/opdrachten/[id] error" },
 );

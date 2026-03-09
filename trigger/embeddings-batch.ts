@@ -3,6 +3,7 @@ import { and, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 import { embedCandidatesBatch, embedJob } from "@/src/services/embedding";
+import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 
 /**
  * Hourly task to backfill missing embeddings for jobs and candidates.
@@ -23,8 +24,8 @@ export const embeddingsBatchTask = schedules.task({
       .from(jobs)
       .where(
         and(
+          getVisibleVacancyCondition(),
           isNull(jobs.embedding),
-          isNull(jobs.deletedAt),
           or(
             isNotNull(jobs.descriptionSummary),
             sql`nullif(trim(${jobs.description}), '') is not null`,

@@ -18,6 +18,7 @@ import { notFound } from "next/navigation";
 import { AIGrading } from "@/components/ai-grading";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { LinkCandidatesDialog } from "@/components/link-candidates-dialog";
+import { OpdrachtDetailEndClientFilter } from "@/components/opdracht-detail-end-client-filter";
 import { OpdrachtenDetailSheet } from "@/components/opdrachten-detail-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { db } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
 import { getGradedCandidates } from "@/src/services/grading";
+import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -183,12 +185,13 @@ function SectionBlock({ title, items }: { title: string; items: string[] }) {
 export default async function OpdrachtDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
+  const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
-  // Fetch current job
+  // Fetch current job (respecting visibility rules)
   const rows = await db
     .select()
     .from(jobs)
-    .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
+    .where(and(eq(jobs.id, id), getVisibleVacancyCondition()))
     .limit(1);
 
   const job = rows[0] as typeof jobs.$inferSelect | undefined;
@@ -198,53 +201,72 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   }
 
   // Fetch company-related jobs, generic related jobs, and pipeline data in parallel
-  const [companyRelated, genericRelated, pipelineCounts, recentPipelineRows, gradedCandidates] =
-    await Promise.all([
-      job.company
-        ? db
-            .select()
-            .from(jobs)
-            .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
-            .orderBy(desc(jobs.scrapedAt))
-            .limit(4)
-        : Promise.resolve([]),
-      db
-        .select()
-        .from(jobs)
-        .where(and(isNull(jobs.deletedAt), ne(jobs.id, id)))
-        .orderBy(desc(jobs.scrapedAt))
-        .limit(4),
-      // Pipeline counts per stage for this job
-      db
-        .select({
-          stage: applications.stage,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(applications)
-        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-        .groupBy(applications.stage),
-      // Recent linked candidates for this job
-      db
-        .select({
-          id: applications.id,
-          stage: applications.stage,
-          source: applications.source,
-          candidateId: candidates.id,
-          candidateName: candidates.name,
-          candidateRole: candidates.role,
-          candidateLocation: candidates.location,
-          matchScore: jobMatches.matchScore,
-          matchStatus: jobMatches.status,
-          createdAt: applications.createdAt,
-        })
-        .from(applications)
-        .leftJoin(candidates, eq(applications.candidateId, candidates.id))
-        .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
-        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-        .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
-        .limit(4),
-      getGradedCandidates({ jobId: job.id, limit: 12 }),
-    ]);
+  const [
+    companyRelated,
+    genericRelated,
+    pipelineCounts,
+    recentPipelineRows,
+    gradedCandidates,
+    endClientRows,
+  ] = await Promise.all([
+    job.company
+      ? db
+          .select()
+          .from(jobs)
+          .where(
+            and(
+              getVisibleVacancyCondition(),
+              eq(jobs.status, "open"),
+              ne(jobs.id, id),
+              eq(jobs.company, job.company),
+            ),
+          )
+          .orderBy(desc(jobs.scrapedAt))
+          .limit(4)
+      : Promise.resolve([]),
+    db
+      .select()
+      .from(jobs)
+      .where(and(getVisibleVacancyCondition(), eq(jobs.status, "open"), ne(jobs.id, id)))
+      .orderBy(desc(jobs.scrapedAt))
+      .limit(4),
+    // Pipeline counts per stage for this job
+    db
+      .select({
+        stage: applications.stage,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(applications)
+      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+      .groupBy(applications.stage),
+    // Recent linked candidates for this job
+    db
+      .select({
+        id: applications.id,
+        stage: applications.stage,
+        source: applications.source,
+        candidateId: candidates.id,
+        candidateName: candidates.name,
+        candidateRole: candidates.role,
+        candidateLocation: candidates.location,
+        matchScore: jobMatches.matchScore,
+        matchStatus: jobMatches.status,
+        createdAt: applications.createdAt,
+      })
+      .from(applications)
+      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
+      .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
+      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+      .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
+      .limit(4),
+    getGradedCandidates({ jobId: job.id, limit: 12 }),
+    db
+      .select({ endClient: persistedEndClient })
+      .from(jobs)
+      .where(getVisibleVacancyCondition())
+      .groupBy(persistedEndClient)
+      .orderBy(persistedEndClient),
+  ]);
 
   // Build pipeline summary
   // Pipeline stages: only active stages count toward totalPipeline.
@@ -290,6 +312,14 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   const deadlineState = getDeadlineState(job.applicationDeadline);
 
   const related = companyRelated.length > 0 ? companyRelated : genericRelated;
+  const currentEndClient = job.endClient?.trim() || job.company?.trim() || null;
+  const endClientOptions = [
+    ...new Set(
+      endClientRows
+        .map((row) => row.endClient?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
   const currentListParams = new URLSearchParams();
 
   for (const [key, value] of Object.entries(resolvedSearchParams)) {
@@ -672,6 +702,11 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-5">
+              <OpdrachtDetailEndClientFilter
+                endClients={endClientOptions}
+                currentEndClient={currentEndClient}
+              />
+
               <section
                 id="recruiter-cockpit"
                 className="scroll-mt-24 rounded-lg border border-border bg-card p-4"

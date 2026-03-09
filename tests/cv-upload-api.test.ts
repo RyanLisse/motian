@@ -14,14 +14,25 @@ describe("CV upload API route", () => {
   });
 
   it("validates file type (PDF and Word only)", () => {
-    const source = readFile("app/api/cv-upload/route.ts");
-    expect(source).toContain("application/pdf");
-    expect(source).toContain("wordprocessingml.document");
+    const routeSource = readFile("app/api/cv-upload/route.ts");
+    const libSource = readFile("src/lib/cv-upload.ts");
+    expect(routeSource).toContain("validateCvUploadFile");
+    expect(routeSource).toContain("validation.mimeType");
+    expect(libSource).toContain("application/pdf");
+    expect(libSource).toContain("wordprocessingml.document");
   });
 
   it("validates file size", () => {
     const source = readFile("app/api/cv-upload/route.ts");
-    expect(source).toContain("MAX_SIZE_MB");
+    expect(source).toContain("validateCvUploadFile");
+    expect(source).toContain("validation.message");
+  });
+
+  it("keeps legacy .doc uploads on an explicit unsupported path", () => {
+    const source = readFile("src/lib/cv-upload.ts");
+    expect(source).toContain("unsupported_doc");
+    expect(source).toContain(".doc");
+    expect(source).toContain("worden nog niet ondersteund");
   });
 
   it("uploads to blob storage", () => {

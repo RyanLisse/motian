@@ -161,10 +161,7 @@ export async function getAnalytics(database: ScrapeResultsReader = db): Promise<
       })
       .from(scrapeResults)
       .groupBy(scrapeResults.platform),
-    database
-      .select({ count: sql<number>`count(*)::int` })
-      .from(jobs)
-      .where(sql`${jobs.deletedAt} is null`),
+    database.select({ count: sql<number>`count(*)::int` }).from(jobs),
     database
       .select({
         avgMs: sql<number>`(coalesce(round(avg(${scrapeResults.durationMs})), 0))::int`,

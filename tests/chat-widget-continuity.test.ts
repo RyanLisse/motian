@@ -44,6 +44,8 @@ vi.mock("../src/components/ai-elements/prompt-input", () => ({
   PromptInputSelectTrigger: ({ children, className }: { children: unknown; className?: string }) =>
     createElement("button", { className, type: "button" }, children),
   PromptInputSelectValue: () => createElement("span", null, "select"),
+  PromptInputProvider: ({ children }: { children: unknown }) =>
+    createElement("div", null, children),
   PromptInputSubmit: ({ children, ...props }: Record<string, unknown>) =>
     createElement("button", { type: "button", ...props }, children ?? "submit"),
   PromptInputTextarea: ({ placeholder }: { placeholder?: string }) =>
@@ -226,6 +228,9 @@ describe("chat widget continuity", () => {
     expect(source).toContain('aria-label="Open volledige chat"');
     expect(source).toContain('aria-label="Sluit chatwidget"');
     expect(source).toContain('aria-label="CV of document uploaden"');
+    expect(source).toContain('type="file"');
+    expect(source).toContain('accept=".pdf,.docx');
+    expect(source).toContain("handleFileChange");
     expect(source).toContain('"Verstuur bericht"');
 
     const closedHtml = renderToStaticMarkup(createElement(ChatWidget));

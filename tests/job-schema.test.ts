@@ -107,6 +107,19 @@ describe("Unified Job Schema", () => {
     expect(result.status).toBe("open");
   });
 
+  it("should accept archived as an explicit vacature retention status", () => {
+    const result = unifiedJobSchema.parse({
+      title: "Data Engineer",
+      externalId: "status-archived-1",
+      externalUrl: "https://example.com/job/status-archived-1",
+      description: "Een eerder gesloten opdracht die bewaard blijft voor analytics.",
+      company: "Between",
+      status: "archived",
+    });
+
+    expect(result.status).toBe("archived");
+  });
+
   it("should coerce date strings to Date objects", () => {
     const job = {
       title: "PM",

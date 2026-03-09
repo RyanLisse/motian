@@ -35,15 +35,15 @@ export const updateOpdracht = tool({
 });
 
 export const verwijderOpdracht = tool({
-  description: "Verwijder een vacature (opdracht) uit het systeem (soft-delete).",
+  description: "Archiveer een vacature (opdracht) zonder deze uit de database te verwijderen.",
   inputSchema: z.object({
-    id: z.string().uuid().describe("UUID van de opdracht die verwijderd moet worden"),
+    id: z.string().uuid().describe("UUID van de opdracht die gearchiveerd moet worden"),
   }),
   execute: async ({ id }) => {
     const success = await deleteJob(id);
-    if (!success) return { error: "Opdracht niet gevonden of kon niet verwijderd worden" };
+    if (!success) return { error: "Opdracht niet gevonden of kon niet worden gearchiveerd" };
     revalidatePath("/opdrachten");
     publish("job:deleted", { id });
-    return { success: true, message: "Opdracht succesvol verwijderd" };
+    return { success: true, message: "Opdracht succesvol gearchiveerd" };
   },
 });

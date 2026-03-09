@@ -162,7 +162,6 @@ export async function getOverviewData(database: typeof db = db) {
         weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
       })
       .from(jobs)
-      .where(isNull(jobs.deletedAt))
       .groupBy(jobs.platform)
       .orderBy(sql`count(*) desc`);
 
@@ -181,7 +180,7 @@ export async function getOverviewData(database: typeof db = db) {
         count: sql<number>`count(*)::int`,
       })
       .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.company} is not null`))
+      .where(sql`${jobs.company} is not null`)
       .groupBy(jobs.company)
       .orderBy(sql`count(*) desc`)
       .limit(5);
@@ -192,7 +191,7 @@ export async function getOverviewData(database: typeof db = db) {
         count: sql<number>`count(*)::int`,
       })
       .from(jobs)
-      .where(and(isNull(jobs.deletedAt), sql`${jobs.province} is not null`))
+      .where(sql`${jobs.province} is not null`)
       .groupBy(jobs.province)
       .orderBy(sql`count(*) desc`)
       .limit(5);
