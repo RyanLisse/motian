@@ -141,7 +141,7 @@ export function ChatHistorySidebar({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-7 w-7 lg:hidden"
               onClick={onClose}
               title="Sluiten"
             >

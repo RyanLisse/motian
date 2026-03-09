@@ -14,6 +14,7 @@ import {
 } from "@/src/components/ai-elements/prompt-input";
 import { useChatContext } from "./chat-context-provider";
 import { ChatMessages } from "./chat-messages";
+import { readSessionStorage, writeSessionStorage } from "./chat-session-storage";
 import { useChatThread } from "./use-chat-thread";
 
 const SESSION_KEY = "motian-fab-session";
@@ -22,40 +23,17 @@ const CHAT_WIDGET_OPEN_EVENT = "motian-chat-open";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 
-function isStorageAvailable(): boolean {
-  try {
-    if (typeof window === "undefined" || window.sessionStorage == null) return false;
-    const key = "__motian_storage_test__";
-    window.sessionStorage.setItem(key, "1");
-    window.sessionStorage.removeItem(key);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function persistSessionId(key: string, value: string) {
-  if (!isStorageAvailable()) return;
-
-  try {
-    window.sessionStorage.setItem(key, value);
-  } catch {
-    // Ignore storage failures in private / embedded contexts.
-  }
+  writeSessionStorage(key, value);
 }
 
 function getOrCreateSessionId(): string {
-  try {
-    if (!isStorageAvailable()) return nanoid();
-    const existing = window.sessionStorage.getItem(SESSION_KEY);
-    if (existing) return existing;
+  const existing = readSessionStorage(SESSION_KEY);
+  if (existing) return existing;
 
-    const id = nanoid();
-    window.sessionStorage.setItem(SESSION_KEY, id);
-    return id;
-  } catch {
-    return nanoid();
-  }
+  const id = nanoid();
+  writeSessionStorage(SESSION_KEY, id);
+  return id;
 }
 
 function ChatWidgetInner({

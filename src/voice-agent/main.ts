@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { fileURLToPath } from "node:url";
 import {
   cli,
@@ -10,7 +9,11 @@ import {
 } from "@livekit/agents";
 import * as google from "@livekit/agents-plugin-google";
 import * as silero from "@livekit/agents-plugin-silero";
-import { MotianAgent } from "./agent.js";
+import { loadVoiceAgentEnv } from "./env.js";
+
+loadVoiceAgentEnv();
+
+const { MotianAgent } = await import("./agent.js");
 
 export default defineAgent({
   prewarm: async (proc: JobProcess) => {
@@ -19,6 +22,7 @@ export default defineAgent({
   entry: async (ctx: JobContext) => {
     const session = new voice.AgentSession({
       llm: new google.beta.realtime.RealtimeModel({
+        apiKey: process.env.GOOGLE_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
         model: "gemini-2.5-flash-native-audio-preview-12-2025",
         voice: "Puck",
         temperature: 0.7,

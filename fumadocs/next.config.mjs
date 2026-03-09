@@ -1,6 +1,6 @@
 import { createMDX } from "fumadocs-mdx/next";
 import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -10,7 +10,7 @@ const withMDX = createMDX();
 const config = {
   reactStrictMode: true,
   turbopack: {
-    root: __dirname,
+    root: join(__dirname, ".."),
   },
   async rewrites() {
     return [

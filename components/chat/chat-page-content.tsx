@@ -9,7 +9,6 @@ import {
   Gauge,
   Loader2,
   Menu,
-  PanelLeftClose,
   Plus,
   Search,
   Sparkles,
@@ -31,6 +30,7 @@ import {
 import { useChatContext } from "./chat-context-provider";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { ChatMessages, type ChatSuggestion } from "./chat-messages";
+import { readSessionStorage, writeSessionStorage } from "./chat-session-storage";
 import { useChatThread } from "./use-chat-thread";
 import { VoiceSession } from "./voice-session";
 
@@ -49,40 +49,17 @@ const MODE_OPTIONS = [
 
 const SESSION_KEY = "motian-chat-session";
 
-function isStorageAvailable(): boolean {
-  try {
-    if (typeof window === "undefined" || window.sessionStorage == null) return false;
-    const key = "__motian_chat_page_storage_test__";
-    window.sessionStorage.setItem(key, "1");
-    window.sessionStorage.removeItem(key);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function persistSessionId(sessionId: string) {
-  if (!isStorageAvailable()) return;
-
-  try {
-    window.sessionStorage.setItem(SESSION_KEY, sessionId);
-  } catch {
-    // Storage not available (e.g. private mode)
-  }
+  writeSessionStorage(SESSION_KEY, sessionId);
 }
 
 function getOrCreateSessionId(): string {
-  try {
-    if (!isStorageAvailable()) return nanoid();
-    const existing = window.sessionStorage.getItem(SESSION_KEY);
-    if (existing) return existing;
+  const existing = readSessionStorage(SESSION_KEY);
+  if (existing) return existing;
 
-    const sessionId = nanoid();
-    window.sessionStorage.setItem(SESSION_KEY, sessionId);
-    return sessionId;
-  } catch {
-    return nanoid();
-  }
+  const sessionId = nanoid();
+  writeSessionStorage(SESSION_KEY, sessionId);
+  return sessionId;
 }
 
 type SpeedMode = (typeof MODE_OPTIONS)[number]["id"];
@@ -338,15 +315,13 @@ function ChatPageHeader({
   title,
   subtitle,
   contextBadge,
-  sidebarOpen,
-  onToggleSidebar,
+  onOpenSidebar,
   onNewSession,
 }: {
   title: string;
   subtitle: string;
   contextBadge?: string;
-  sidebarOpen: boolean;
-  onToggleSidebar: () => void;
+  onOpenSidebar: () => void;
   onNewSession: () => void;
 }) {
   return (
@@ -355,13 +330,12 @@ function ChatPageHeader({
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
-            onClick={onToggleSidebar}
+            onClick={onOpenSidebar}
             aria-controls="chat-history-sidebar"
-            aria-expanded={sidebarOpen}
-            aria-label={sidebarOpen ? "Sluit gesprekken" : "Open gesprekken"}
-            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Open gesprekken"
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:hidden"
           >
-            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            <Menu className="h-4 w-4" />
           </button>
 
           <div className="min-w-0">
@@ -645,8 +619,8 @@ export function ChatPageContent({ currentOrigin = null }: { currentOrigin?: stri
       <aside
         id="chat-history-sidebar"
         aria-label="Chat geschiedenis"
-        className={`fixed inset-y-0 left-0 z-40 w-[280px] transform transition-transform duration-200 ease-in-out lg:relative lg:z-auto ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:-translate-x-full"
+        className={`fixed inset-y-0 left-0 z-40 w-[280px] transform transition-transform duration-200 ease-in-out lg:relative lg:z-auto lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <ChatHistorySidebar
@@ -663,8 +637,7 @@ export function ChatPageContent({ currentOrigin = null }: { currentOrigin?: stri
           title={surfaceConfig.title}
           subtitle={surfaceConfig.subtitle}
           contextBadge={surfaceConfig.contextBadge}
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={() => setSidebarOpen((previous) => !previous)}
+          onOpenSidebar={() => setSidebarOpen(true)}
           onNewSession={handleNewSession}
         />
 

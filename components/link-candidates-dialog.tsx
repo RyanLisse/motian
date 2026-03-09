@@ -1,27 +1,16 @@
 "use client";
 
-import { Award, Loader2, Sparkles, UserPlus } from "lucide-react";
-import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type ReactElement, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { CandidateMatchItem } from "@/components/candidate-wizard/candidate-match-card";
 import { CandidateMatchCard } from "@/components/candidate-wizard/candidate-match-card";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LinkCandidatesDialogProps {
   jobId: string;
   jobTitle: string;
-  trigger?: ReactElement;
-  variant?: "dialog" | "inline";
 }
 
 function getInitialSelection(items: CandidateMatchItem[]) {
@@ -30,39 +19,28 @@ function getInitialSelection(items: CandidateMatchItem[]) {
 }
 
 function LinkCandidatesContent({
-  variant,
   jobTitle,
-  recruiterCockpitHref,
-  gradingHref,
   loading,
   error,
   matches,
   selected,
   submitting,
   onToggle,
-  onClose,
   onConfirm,
 }: {
-  variant: "dialog" | "inline";
   jobTitle: string;
-  recruiterCockpitHref: string;
-  gradingHref: string;
   loading: boolean;
   error: string;
   matches: CandidateMatchItem[];
   selected: Set<string>;
   submitting: boolean;
   onToggle: (matchId: string, checked: boolean) => void;
-  onClose?: () => void;
   onConfirm: () => Promise<void>;
 }) {
   const selectedCount = matches.filter(
     (match) => selected.has(match.matchId) && !match.isLinked,
   ).length;
   const hasAvailableMatches = matches.some((match) => !match.isLinked);
-  const handleContextNavigation = () => {
-    onClose?.();
-  };
 
   if (loading) {
     return (
@@ -87,29 +65,11 @@ function LinkCandidatesContent({
 
   return (
     <div className="space-y-4">
-      {variant === "inline" ? (
-        <p className="text-sm text-muted-foreground">
-          Top-3 passende kandidaten voor &quot;{jobTitle}&quot;. Selecteer direct wie je aan
-          screening wilt toevoegen.
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline" size="sm">
-          <Link href={recruiterCockpitHref} onClick={handleContextNavigation}>
-            <Sparkles className="h-4 w-4" />
-            Recruiter cockpit
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href={gradingHref} onClick={handleContextNavigation}>
-            <Award className="h-4 w-4" />
-            AI Grading
-          </Link>
-        </Button>
-      </div>
-      <div
-        className={variant === "inline" ? "space-y-3" : "max-h-[50vh] space-y-3 overflow-y-auto"}
-      >
+      <p className="text-sm text-muted-foreground">
+        Top-3 passende kandidaten voor &quot;{jobTitle}&quot;. Selecteer direct wie je aan screening
+        wilt toevoegen.
+      </p>
+      <div className="space-y-3">
         {matches.map((match) => (
           <CandidateMatchCard
             key={match.matchId}
@@ -122,20 +82,12 @@ function LinkCandidatesContent({
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {variant === "inline" && hasAvailableMatches ? (
+          {hasAvailableMatches ? (
             <span>Geselecteerde kandidaten gaan direct naar screening.</span>
-          ) : null}
-          {variant === "dialog" ? (
-            <span>Open recruiter cockpit of grading voor extra vacaturecontext.</span>
           ) : null}
           {!hasAvailableMatches ? <span>Alle suggesties zijn al gekoppeld.</span> : null}
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {variant === "dialog" && onClose ? (
-            <Button variant="outline" onClick={onClose} disabled={submitting}>
-              Annuleren
-            </Button>
-          ) : null}
           <Button onClick={() => void onConfirm()} disabled={submitting || selectedCount === 0}>
             {submitting ? (
               <>
@@ -154,16 +106,8 @@ function LinkCandidatesContent({
   );
 }
 
-export function LinkCandidatesDialog({
-  jobId,
-  jobTitle,
-  trigger,
-  variant = "dialog",
-}: LinkCandidatesDialogProps) {
+export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogProps) {
   const router = useRouter();
-  const recruiterCockpitHref = `/opdrachten/${jobId}#recruiter-cockpit`;
-  const gradingHref = `/opdrachten/${jobId}#ai-grading`;
-  const [open, setOpen] = useState(false);
   const [matches, setMatches] = useState<CandidateMatchItem[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -198,10 +142,8 @@ export function LinkCandidatesDialog({
   }, [jobId]);
 
   useEffect(() => {
-    if (variant === "inline" || open) {
-      void fetchMatches();
-    }
-  }, [fetchMatches, open, variant]);
+    void fetchMatches();
+  }, [fetchMatches]);
 
   const toggle = useCallback((matchId: string, checked: boolean) => {
     setSelected((prev) => {
@@ -218,9 +160,6 @@ export function LinkCandidatesDialog({
       .map((match) => match.matchId);
 
     if (matchIds.length === 0) {
-      if (variant === "dialog") {
-        setOpen(false);
-      }
       router.refresh();
       return;
     }
@@ -245,10 +184,6 @@ export function LinkCandidatesDialog({
         ),
       );
       setSelected(new Set());
-
-      if (variant === "dialog") {
-        setOpen(false);
-      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Koppelen mislukt");
@@ -257,47 +192,16 @@ export function LinkCandidatesDialog({
     }
   };
 
-  const content = (
+  return (
     <LinkCandidatesContent
-      variant={variant}
       jobTitle={jobTitle}
-      recruiterCockpitHref={recruiterCockpitHref}
-      gradingHref={gradingHref}
       loading={loading}
       error={error}
       matches={matches}
       selected={selected}
       submitting={submitting}
       onToggle={toggle}
-      onClose={variant === "dialog" ? () => setOpen(false) : undefined}
       onConfirm={handleConfirm}
     />
-  );
-
-  if (variant === "inline") {
-    return content;
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="outline" size="sm">
-            <UserPlus className="h-4 w-4" />
-            Koppel kandidaten
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Kandidaten koppelen aan vacature</DialogTitle>
-          <DialogDescription>
-            Top-3 passende kandidaten voor &quot;{jobTitle}&quot;. Selecteer wie je wilt koppelen of
-            open eerst de recruiter cockpit of AI grading op de vacaturepagina voor extra context.
-          </DialogDescription>
-        </DialogHeader>
-        {content}
-      </DialogContent>
-    </Dialog>
   );
 }

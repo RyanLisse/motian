@@ -4,6 +4,43 @@ import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { useEffect } from "react";
 
+type WindowStorageLike = {
+  localStorage?: Pick<Storage, "setItem" | "removeItem"> | null;
+  sessionStorage?: Pick<Storage, "setItem" | "removeItem"> | null;
+};
+
+function canUseStorage(storage?: Pick<Storage, "setItem" | "removeItem"> | null): boolean {
+  if (!storage) return false;
+
+  try {
+    storage.setItem("__motian_posthog_storage__", "1");
+    storage.removeItem("__motian_posthog_storage__");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function getPostHogPersistence(
+  windowLike?: WindowStorageLike | null,
+): "localStorage+cookie" | "memory" {
+  return canUseStorage(windowLike?.localStorage) && canUseStorage(windowLike?.sessionStorage)
+    ? "localStorage+cookie"
+    : "memory";
+}
+
+export function getPostHogInitOptions(windowLike?: WindowStorageLike | null) {
+  return {
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
+    person_profiles: "identified_only" as const,
+    capture_pageview: true,
+    capture_pageleave: true,
+    autocapture: true,
+    capture_exceptions: true,
+    persistence: getPostHogPersistence(windowLike),
+  };
+}
+
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -12,14 +49,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      posthog.init(key, {
-        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
-        person_profiles: "identified_only",
-        capture_pageview: true,
-        capture_pageleave: true,
-        autocapture: true,
-        capture_exceptions: true,
-      });
+      posthog.init(key, getPostHogInitOptions(window));
     } catch {
       // Storage may be disabled (private mode, iframe, strict partitioning)
     }
