@@ -132,6 +132,17 @@ describe("jobs service status and endClient filters", () => {
           typeof value === "object" &&
           value !== null &&
           "type" in value &&
+          (value as { type: string }).type === "isNull" &&
+          (value as { column: string }).column === "jobs.deletedAt",
+      ),
+    ).toBe(false);
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
           (value as { type: string }).type === "eq" &&
           (value as { column: string }).column === "jobs.endClient" &&
           (value as { value: string }).value === "Gemeente Utrecht",
@@ -157,7 +168,37 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(true);
   });
 
-  it("treats status=all as visible non-deleted jobs without a status equality filter", async () => {
+  it("supports explicitly querying archived jobs", async () => {
+    await listJobs({ status: "archived" });
+
+    const whereClause = mockCountWhere.mock.calls[0]?.[0];
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
+          (value as { type: string }).type === "eq" &&
+          (value as { column: string }).column === "jobs.status" &&
+          (value as { value: string }).value === "archived",
+      ),
+    ).toBe(true);
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
+          ((value as { type: string }).type === "isNull" ||
+            (value as { type: string }).type === "isNotNull") &&
+          (value as { column: string }).column === "jobs.deletedAt",
+      ),
+    ).toBe(false);
+  });
+
+  it("treats status=all as an unrestricted retention view without visibility filters", async () => {
     await listJobs({ status: "all" });
 
     const whereClause = mockCountWhere.mock.calls[0]?.[0];
@@ -171,7 +212,7 @@ describe("jobs service status and endClient filters", () => {
           (value as { type: string }).type === "isNull" &&
           (value as { column: string }).column === "jobs.deletedAt",
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       containsNode(
         whereClause,
@@ -183,6 +224,16 @@ describe("jobs service status and endClient filters", () => {
           (value as { column: string }).column === "jobs.status",
       ),
     ).toBe(false);
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
+          (value as { type: string }).type === "sql",
+      ),
+    ).toBe(true);
   });
 
   it("keeps listActiveJobs aligned with persisted open status", async () => {
@@ -201,6 +252,17 @@ describe("jobs service status and endClient filters", () => {
           (value as { value: string }).value === "open",
       ),
     ).toBe(true);
+    expect(
+      containsNode(
+        whereClause,
+        (value) =>
+          typeof value === "object" &&
+          value !== null &&
+          "type" in value &&
+          (value as { type: string }).type === "isNull" &&
+          (value as { column: string }).column === "jobs.deletedAt",
+      ),
+    ).toBe(false);
   });
 
   it("derives region filters from province-backed values", async () => {

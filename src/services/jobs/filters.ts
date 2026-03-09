@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { jobs } from "../../db/schema";
 import type { Job } from "./repository";
 
@@ -11,7 +11,7 @@ export type ListJobsSortBy =
   | "geplaatst"
   | "startdatum";
 
-export type JobStatus = "open" | "closed" | "all";
+export type JobStatus = "open" | "closed" | "archived" | "all";
 
 const LIST_JOBS_SORT_VALUES: ListJobsSortBy[] = [
   "nieuwste",
@@ -38,6 +38,9 @@ export function normalizeJobStatusFilter(value?: string | null): JobStatus | und
 
   const normalized = value.trim().toLowerCase();
   if (normalized === "all" || normalized === "alles") return "all";
+  if (normalized === "archived" || normalized === "gearchiveerd" || normalized === "archief") {
+    return "archived";
+  }
   if (normalized === "closed" || normalized === "gesloten") return "closed";
   if (normalized === "open") return "open";
   return undefined;
@@ -61,7 +64,7 @@ export function deriveJobStatus({
   endDate?: Date | null;
   now?: Date;
 }): JobStatus {
-  if (status === "open" || status === "closed") {
+  if (status === "open" || status === "closed" || status === "archived") {
     return status;
   }
 
@@ -76,14 +79,20 @@ export function deriveJobStatus({
   return "open";
 }
 
-export function getJobStatusCondition(status: JobStatus) {
-  const visibleCondition = isNull(jobs.deletedAt);
+export function getVisibleVacancyCondition() {
+  return ne(jobs.status, "archived");
+}
 
+export function getJobStatusCondition(status: JobStatus) {
   if (status === "all") {
-    return visibleCondition;
+    return sql`true`;
   }
 
-  return and(visibleCondition, eq(jobs.status, status));
+  if (status === "archived") {
+    return eq(jobs.status, "archived");
+  }
+
+  return and(getVisibleVacancyCondition(), eq(jobs.status, status));
 }
 
 function getTimestamp(d: Date | string | null | undefined, fallback: number): number {

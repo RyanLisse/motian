@@ -1,16 +1,22 @@
-import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { jobs } from "../../db/schema";
 import { escapeLike, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
 import { logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
-import { getSortComparator, type ListJobsSortBy } from "./filters";
+import {
+  getJobStatusCondition,
+  getSortComparator,
+  type JobStatus,
+  type ListJobsSortBy,
+} from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
 import type { Job } from "./repository";
 
 export type SearchJobsOptions = {
   platform?: string;
   limit?: number;
+  status?: JobStatus;
 };
 
 export type HybridSearchOptions = {
@@ -21,7 +27,7 @@ export type HybridSearchOptions = {
   endClient?: string;
   category?: string;
   categories?: string[];
-  status?: "open" | "closed" | "all";
+  status?: JobStatus;
   province?: string;
   region?: OpdrachtenRegion;
   regions?: OpdrachtenRegion[];
@@ -77,9 +83,14 @@ function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
 
 /** Opdrachten zoeken op titel/omschrijving met full-text search (tsvector/GIN).
  * Falls back to ILIKE if the FTS query produces no results. */
-export async function searchJobsByTitle(query: string, limit?: number): Promise<Job[]> {
+export async function searchJobsByTitle(
+  query: string,
+  limit?: number,
+  status: JobStatus = "open",
+): Promise<Job[]> {
   const safeLimit = Math.min(limit ?? 50, 100);
   const tsInput = toTsQueryInput(query);
+  const statusCondition = getJobStatusCondition(status);
 
   if (tsInput) {
     const ftsResults = await db
@@ -87,7 +98,7 @@ export async function searchJobsByTitle(query: string, limit?: number): Promise<
       .from(jobs)
       .where(
         and(
-          isNull(jobs.deletedAt),
+          statusCondition,
           sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, '')) @@ to_tsquery('dutch', ${tsInput})`,
         ),
       )
@@ -108,7 +119,7 @@ export async function searchJobsByTitle(query: string, limit?: number): Promise<
   return db
     .select()
     .from(jobs)
-    .where(and(isNull(jobs.deletedAt), titleConditions))
+    .where(and(statusCondition, titleConditions))
     .orderBy(desc(jobs.scrapedAt))
     .limit(safeLimit);
 }
@@ -116,9 +127,10 @@ export async function searchJobsByTitle(query: string, limit?: number): Promise<
 /** Opdrachten zoeken, optioneel gefilterd op platform. Soft-deleted rijen worden uitgesloten. */
 export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
-  const conditions = [isNull(jobs.deletedAt)];
-
-  if (opts.platform) conditions.push(eq(jobs.platform, opts.platform));
+  const conditions = buildJobFilterConditions({
+    platform: opts.platform,
+    status: opts.status ?? "open",
+  });
 
   return db
     .select()
@@ -138,9 +150,10 @@ export async function hybridSearchWithTotal(
   const offset = Math.max(opts.offset ?? 0, 0);
   const k = 60;
   const fetchSize = Math.min(Math.max((offset + limit) * 3, limit * 3), 100);
+  const requestedStatus = opts.status ?? "open";
 
   const [textResults, vectorResults] = await Promise.all([
-    searchJobsByTitle(query, fetchSize),
+    searchJobsByTitle(query, fetchSize, requestedStatus),
     (async () => {
       try {
         const { findSimilarJobs } = await import("../embedding");
@@ -179,9 +192,8 @@ export async function hybridSearchWithTotal(
     .from(jobs)
     .where(
       and(
-        isNull(jobs.deletedAt),
         inArray(jobs.id, candidateIds),
-        ...buildHybridSearchFilterConditions(opts),
+        ...buildHybridSearchFilterConditions({ ...opts, status: requestedStatus }),
       ),
     );
 

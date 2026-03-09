@@ -1,4 +1,4 @@
-import { isNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { db } from "../../db/index.js";
@@ -48,7 +48,6 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
             count: sql<number>`count(*)::int`,
           })
           .from(jobs)
-          .where(isNull(jobs.deletedAt))
           .groupBy(jobs.platform);
         return { analysis: "Opdrachten per platform", data: rows };
       }
@@ -65,7 +64,6 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
             zonderTarief: sql<number>`count(*) FILTER (WHERE rate_min IS NULL AND rate_max IS NULL)::int`,
           })
           .from(jobs)
-          .where(isNull(jobs.deletedAt))
           .groupBy(jobs.platform);
 
         const [overall] = await db
@@ -74,8 +72,7 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
             metTarief: sql<number>`count(*) FILTER (WHERE rate_min IS NOT NULL OR rate_max IS NOT NULL)::int`,
             total: sql<number>`count(*)::int`,
           })
-          .from(jobs)
-          .where(isNull(jobs.deletedAt));
+          .from(jobs);
 
         return {
           analysis: "Gemiddelde tarieven per platform",
@@ -90,8 +87,7 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
             withDescription: sql<number>`count(description)::int`,
             withEmbedding: sql<number>`count(embedding)::int`,
           })
-          .from(jobs)
-          .where(isNull(jobs.deletedAt));
+          .from(jobs);
         return { analysis: "Totaal overzicht", data: result };
       }
 
@@ -118,7 +114,6 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
             count: sql<number>`count(*)::int`,
           })
           .from(jobs)
-          .where(isNull(jobs.deletedAt))
           .groupBy(jobs.province)
           .orderBy(sql`count(*) DESC`);
         return { analysis: "Opdrachten per provincie", data: rows };
@@ -132,8 +127,7 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
             expired: sql<number>`count(*) FILTER (WHERE application_deadline < now())::int`,
             noDeadline: sql<number>`count(*) FILTER (WHERE application_deadline IS NULL)::int`,
           })
-          .from(jobs)
-          .where(isNull(jobs.deletedAt));
+          .from(jobs);
         return { analysis: "Deadline overzicht", data: rows[0] };
       }
 

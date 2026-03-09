@@ -1,7 +1,11 @@
 import { and, desc, eq, gte, isNull } from "drizzle-orm";
 import { db } from "@/src/db";
 import { applications, candidates, jobs } from "@/src/db/schema";
-import { normalizeJobStatusFilter } from "@/src/services/jobs/filters";
+import {
+  getJobStatusCondition,
+  getVisibleVacancyCondition,
+  normalizeJobStatusFilter,
+} from "@/src/services/jobs/filters";
 
 export const SALESFORCE_FEED_ENTITIES = ["jobs", "candidates", "applications"] as const;
 
@@ -210,17 +214,29 @@ function getJobStatusFilter(status?: string) {
   if (!status) return undefined;
 
   const normalized = normalizeJobStatusFilter(status);
-  if (normalized === "all") return undefined;
-  return normalized ?? status.trim();
+  if (normalized) return normalized;
+
+  const trimmed = status.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 async function getJobsFeed(query: SalesforceFeedQuery): Promise<SalesforceFeedRecord[]> {
-  const conditions = [isNull(jobs.deletedAt)];
   const status = getJobStatusFilter(query.status);
-
-  if (query.id) conditions.push(eq(jobs.id, query.id));
-  if (status) conditions.push(eq(jobs.status, status));
-  if (query.updatedSince) conditions.push(gte(jobs.scrapedAt, query.updatedSince));
+  const hasExplicitStatus = status !== undefined;
+  const statusCondition =
+    status === undefined
+      ? undefined
+      : status === "all"
+        ? undefined
+        : status === "open" || status === "closed" || status === "archived"
+          ? getJobStatusCondition(status)
+          : eq(jobs.status, status);
+  const conditions = [
+    query.id || hasExplicitStatus ? undefined : getVisibleVacancyCondition(),
+    query.id ? eq(jobs.id, query.id) : undefined,
+    statusCondition,
+    query.updatedSince ? gte(jobs.scrapedAt, query.updatedSince) : undefined,
+  ].filter((condition): condition is NonNullable<typeof condition> => Boolean(condition));
 
   const rows = await db
     .select({

@@ -61,8 +61,9 @@ describe("Opdrachten status normalization", () => {
     expect(normalizeOpdrachtenStatus("anything-else")).toBe("open");
   });
 
-  it("preserves closed and all status values", () => {
+  it("preserves closed, archived, and all status values", () => {
     expect(normalizeOpdrachtenStatus("closed")).toBe("closed");
+    expect(normalizeOpdrachtenStatus("archived")).toBe("archived");
     expect(normalizeOpdrachtenStatus("all")).toBe("all");
   });
 });
@@ -191,6 +192,7 @@ describe("Opdrachten UI/API contracts", () => {
     const filtersSource = readFile("src", "lib", "opdrachten-filters.ts");
     const filterUrlSource = readFile("src", "lib", "opdrachten-filter-url.ts");
     const comboboxSource = readFile("components", "ui", "searchable-combobox.tsx");
+    const toolbarFiltersSource = readFile("app", "opdrachten", "filters.tsx");
 
     expect(source).toContain('placeholder="Platform"');
     expect(source).toContain("SearchableCombobox");
@@ -204,6 +206,8 @@ describe("Opdrachten UI/API contracts", () => {
     expect(source).toContain("<Slider");
     expect(source).toContain("<Checkbox");
     expect(source).toContain('handleFilterChange("status"');
+    expect(source).toContain('value="archived"');
+    expect(source).toContain("Gearchiveerd");
     expect(source).toContain("handleToggleRegio");
     expect(source).toContain("handleToggleVakgebied");
     expect(source).toContain("handleHoursRangeChange");
@@ -233,6 +237,8 @@ describe("Opdrachten UI/API contracts", () => {
     expect(source).toContain("DEFAULT_OPDRACHTEN_LIMIT");
     expect(comboboxSource).toContain("id={triggerId}");
     expect(comboboxSource).toContain('aria-haspopup="listbox"');
+    expect(toolbarFiltersSource).toContain('value="archived"');
+    expect(toolbarFiltersSource).toContain("Gearchiveerd");
   });
 
   it("detail page wires a shared end-client combobox into the existing context-aware navigation", () => {
@@ -281,11 +287,11 @@ describe("Opdrachten UI/API contracts", () => {
   it("layout seed includes persisted end-client, deadline context, and category metadata", () => {
     const layout = readFile("app", "opdrachten", "layout.tsx");
 
-    expect(layout).toContain('eq(jobs.status, "open")');
+    expect(layout).toContain('getJobStatusCondition("open")');
     expect(layout).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
     expect(layout).toContain("jsonb_array_elements_text");
     expect(layout).toContain("categories={categories}");
-    expect(layout).toContain(".where(isNull(jobs.deletedAt))");
+    expect(layout).toContain(".where(activeJobsCondition)");
     expect(layout).toContain("applicationDeadline: jobs.applicationDeadline");
   });
 

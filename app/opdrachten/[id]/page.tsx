@@ -27,6 +27,7 @@ import { db } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
 import { getGradedCandidates } from "@/src/services/grading";
+import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -186,11 +187,11 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   const resolvedSearchParams = await searchParams;
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
-  // Fetch current job
+  // Fetch current job (respecting visibility rules)
   const rows = await db
     .select()
     .from(jobs)
-    .where(and(eq(jobs.id, id), isNull(jobs.deletedAt)))
+    .where(and(eq(jobs.id, id), getVisibleVacancyCondition()))
     .limit(1);
 
   const job = rows[0] as typeof jobs.$inferSelect | undefined;
@@ -212,14 +213,21 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
       ? db
           .select()
           .from(jobs)
-          .where(and(isNull(jobs.deletedAt), ne(jobs.id, id), eq(jobs.company, job.company)))
+          .where(
+            and(
+              getVisibleVacancyCondition(),
+              eq(jobs.status, "open"),
+              ne(jobs.id, id),
+              eq(jobs.company, job.company),
+            ),
+          )
           .orderBy(desc(jobs.scrapedAt))
           .limit(4)
       : Promise.resolve([]),
     db
       .select()
       .from(jobs)
-      .where(and(isNull(jobs.deletedAt), ne(jobs.id, id)))
+      .where(and(getVisibleVacancyCondition(), eq(jobs.status, "open"), ne(jobs.id, id)))
       .orderBy(desc(jobs.scrapedAt))
       .limit(4),
     // Pipeline counts per stage for this job
@@ -255,7 +263,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
     db
       .select({ endClient: persistedEndClient })
       .from(jobs)
-      .where(isNull(jobs.deletedAt))
+      .where(getVisibleVacancyCondition())
       .groupBy(persistedEndClient)
       .orderBy(persistedEndClient),
   ]);

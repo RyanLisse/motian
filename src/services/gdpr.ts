@@ -293,7 +293,6 @@ export async function exportContactData(
     .from(jobs)
     .where(
       and(
-        isNull(jobs.deletedAt),
         or(
           sql`${jobs.agentContact}->>'email' ILIKE ${pattern}`,
           sql`${jobs.agentContact}->>'name' ILIKE ${pattern}`,

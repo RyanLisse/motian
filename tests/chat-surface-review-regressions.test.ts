@@ -41,13 +41,13 @@ describe("chat surface review regressions", () => {
   it("disables generic attachment intake in the chat widget while keeping the explicit CV upload control", () => {
     const source = readFile("components", "chat", "chat-widget.tsx");
 
-    expect(source).toContain("PromptInputProvider");
-    expect(source).toContain("useChatCvUpload");
-    expect(source).toContain("ChatCvDropOverlay");
-    expect(source).toContain("globalDrop");
-    expect(source).toContain("{open ? (");
+    expect(source).toContain('type="file"');
+    expect(source).toContain('accept=".pdf,.docx');
+    expect(source).toContain("handleFileChange");
+    expect(source).toContain("{open && (");
     expect(source).toContain('title="CV/document uploaden"');
-    expect(source).toContain("cvUpload.openFileDialog");
+    expect(source).toContain("allowAttachments={false}");
+    expect(source).toContain("fileInputRef.current?.click()");
   });
 
   it("guards the shared CV upload flow against stale timers and unmounted uploads", () => {

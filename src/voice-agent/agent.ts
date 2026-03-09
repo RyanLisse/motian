@@ -186,14 +186,14 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
         }),
 
         verwijderOpdracht: llm.tool({
-          description: "Verwijder een opdracht. Vraag altijd om bevestiging!",
+          description: "Archiveer een opdracht. Vraag altijd om bevestiging!",
           parameters: z.object({
             id: z.string().describe("UUID van de opdracht"),
           }),
           execute: async ({ id }) => {
             const deleted = await deleteJob(id);
             if (!deleted) return { error: "Opdracht niet gevonden" };
-            return { success: true, message: "Opdracht verwijderd" };
+            return { success: true, message: "Opdracht gearchiveerd" };
           },
         }),
 
