@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { AnalyticsCharts } from "@/components/scraper/analytics-charts";
 import { CrossPlatformListings } from "@/components/scraper/cross-platform-listings";
 import { formatPlatformLabel, PlatformBadge } from "@/components/scraper/platform-badge";
 import { RecentActivityFeed } from "@/components/scraper/recent-activity-feed";
@@ -325,8 +324,6 @@ export default async function ScraperPage() {
             title="Platformen met waarschuwingen of kritieke health-signalen"
           />
         </div>
-
-        <AnalyticsCharts />
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <ScrapeMetricsExplainer />
