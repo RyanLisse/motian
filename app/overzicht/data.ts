@@ -85,6 +85,7 @@ async function getRecentJobs(database: Pick<typeof db, "execute">): Promise<Rece
         coalesce(${jobs.location}, ${jobs.province}) as location,
         ${jobs.scrapedAt} as scraped_at
       from ${jobs}
+      where ${jobs.deletedAt} is null
       order by
         trim(regexp_replace(lower(coalesce(${jobs.title}, '')), '[^[:alnum:]]+', ' ', 'g')) asc,
         trim(regexp_replace(lower(coalesce(${jobs.endClient}, ${jobs.company}, '')), '[^[:alnum:]]+', ' ', 'g')) asc,

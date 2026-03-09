@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { AnalyticsCharts } from "@/components/scraper/analytics-charts";
 import { CrossPlatformListings } from "@/components/scraper/cross-platform-listings";
 import { formatPlatformLabel, PlatformBadge } from "@/components/scraper/platform-badge";
 import { RecentActivityFeed } from "@/components/scraper/recent-activity-feed";
@@ -260,8 +259,8 @@ export default async function ScraperPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+      <div className="mx-auto min-w-0 max-w-[1400px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
         <PageHeader
           title="Scraper-dashboard"
           description="Volg databronnen, overlap tussen platforms en operationele gezondheid vanuit één overzicht"
@@ -326,9 +325,7 @@ export default async function ScraperPage() {
           />
         </div>
 
-        <AnalyticsCharts />
-
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <ScrapeMetricsExplainer />
           <RecentActivityFeed activities={activity} />
         </div>
@@ -469,7 +466,7 @@ export default async function ScraperPage() {
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {platforms.map((platform) => (
                 <PlatformHealthCard
                   key={platform.platform}
@@ -484,7 +481,7 @@ export default async function ScraperPage() {
         <CrossPlatformListings groups={overlap.groups} />
 
         {/* Overzicht van alle scrape-runs */}
-        <Card className="bg-card border-border">
+        <Card className="bg-card border-border min-w-0">
           <CardHeader>
             <CardTitle className="text-base">Overzicht scrape-runs</CardTitle>
             <p className="text-sm text-muted-foreground">

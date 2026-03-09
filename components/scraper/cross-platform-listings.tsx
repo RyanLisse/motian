@@ -2,7 +2,6 @@ import { ArrowUpRight, ExternalLink, Layers3 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ListingOverlapGroup } from "@/src/services/scraper-dashboard";
 import { PlatformBadge } from "./platform-badge";
 
@@ -30,7 +29,7 @@ function sharedValueSummary(group: ListingOverlapGroup) {
 
 export function CrossPlatformListings({ groups }: { groups: ListingOverlapGroup[] }) {
   return (
-    <Card className="bg-card border-border">
+    <Card className="bg-card border-border min-w-0">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Layers3 className="h-4 w-4 text-muted-foreground" />
@@ -42,22 +41,24 @@ export function CrossPlatformListings({ groups }: { groups: ListingOverlapGroup[
           externe bron.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-w-0">
         {groups.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-8 text-sm text-muted-foreground">
             Nog geen cross-platform overlap gevonden.
           </div>
         ) : (
-          <ScrollArea className="max-h-[640px] pr-4">
-            <div className="space-y-4">
+          <div className="max-h-[640px] min-w-0 overflow-y-auto pr-4">
+            <div className="min-w-0 space-y-4">
               {groups.map((group) => (
                 <div
                   key={group.groupId}
-                  className="rounded-xl border border-border bg-muted/20 p-4"
+                  className="min-w-0 rounded-xl border border-border bg-muted/20 p-4"
                 >
-                  <div className="space-y-2">
+                  <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
+                      <h3 className="min-w-0 break-words text-sm font-semibold text-foreground">
+                        {group.title}
+                      </h3>
                       <Badge variant="outline" className="text-[10px] text-muted-foreground">
                         {strategyLabel(group.strategy)}
                       </Badge>
@@ -79,7 +80,7 @@ export function CrossPlatformListings({ groups }: { groups: ListingOverlapGroup[
                     {group.listings.map((listing) => (
                       <div
                         key={listing.id}
-                        className="flex flex-col gap-2 rounded-lg border border-border/70 bg-background/80 px-3 py-3 md:flex-row md:items-center md:justify-between"
+                        className="flex min-w-0 flex-col gap-2 rounded-lg border border-border/70 bg-background/80 px-3 py-3 md:flex-row md:items-center md:justify-between"
                       >
                         <div className="min-w-0 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -98,7 +99,7 @@ export function CrossPlatformListings({ groups }: { groups: ListingOverlapGroup[
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs">
+                        <div className="flex shrink-0 flex-wrap items-center gap-3 text-xs">
                           <Link
                             href={`/opdrachten/${listing.id}`}
                             className="inline-flex items-center gap-1 text-primary hover:underline"
@@ -124,7 +125,7 @@ export function CrossPlatformListings({ groups }: { groups: ListingOverlapGroup[
                 </div>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         )}
       </CardContent>
     </Card>
