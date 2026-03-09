@@ -19,6 +19,7 @@ function getInitialSelection(items: CandidateMatchItem[]) {
 }
 
 function LinkCandidatesContent({
+  jobId,
   jobTitle,
   loading,
   error,
@@ -28,6 +29,7 @@ function LinkCandidatesContent({
   onToggle,
   onConfirm,
 }: {
+  jobId: string;
   jobTitle: string;
   loading: boolean;
   error: string;
@@ -41,6 +43,8 @@ function LinkCandidatesContent({
     (match) => selected.has(match.matchId) && !match.isLinked,
   ).length;
   const hasAvailableMatches = matches.some((match) => !match.isLinked);
+  const recruiterCockpitHref = `/opdrachten/${jobId}#recruiter-cockpit`;
+  const gradingHref = `/opdrachten/${jobId}#ai-grading`;
 
   if (loading) {
     return (
@@ -60,7 +64,19 @@ function LinkCandidatesContent({
   }
 
   if (matches.length === 0) {
-    return <p className="text-sm text-muted-foreground">Geen passende kandidaten gevonden.</p>;
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">Geen passende kandidaten gevonden.</p>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <a href={recruiterCockpitHref} className="text-primary hover:underline">
+            Recruiter cockpit
+          </a>
+          <a href={gradingHref} className="text-primary hover:underline">
+            AI Grading
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -194,6 +210,7 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
 
   return (
     <LinkCandidatesContent
+      jobId={jobId}
       jobTitle={jobTitle}
       loading={loading}
       error={error}
