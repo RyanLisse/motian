@@ -30,7 +30,7 @@ export function isSessionStorageAvailable(storage?: StorageLike | null): boolean
 
 export function readSessionStorage(key: string, storage?: StorageLike | null): string | null {
   const target = resolveStorage(storage);
-  if (!target || !isSessionStorageAvailable(target)) return null;
+  if (!target) return null;
 
   try {
     return target.getItem(key);

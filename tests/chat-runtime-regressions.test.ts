@@ -63,10 +63,19 @@ describe("chat runtime regressions", () => {
       }),
     ).toBe("localStorage+cookie");
 
+    // Only localStorage is required for localStorage+cookie mode
     expect(
       getPostHogPersistence({
         localStorage: workingStorage,
         sessionStorage: throwingStorage,
+      }),
+    ).toBe("localStorage+cookie");
+
+    // Falls back to memory only when localStorage is unavailable
+    expect(
+      getPostHogPersistence({
+        localStorage: throwingStorage,
+        sessionStorage: workingStorage,
       }),
     ).toBe("memory");
   });

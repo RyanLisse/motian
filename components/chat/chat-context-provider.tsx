@@ -204,6 +204,11 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
     try {
       const loadedSession = await fetchChatSession(nextSessionId);
 
+      // Guard against stale async responses: only apply if this is still the requested session
+      if (loadedSession.sessionId !== nextSessionId) {
+        return;
+      }
+
       setSessionId(loadedSession.sessionId);
       setMode(loadedSession.mode);
       setPinnedContext(loadedSession.pinnedContext);

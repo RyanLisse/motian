@@ -25,7 +25,7 @@ export function loadVoiceAgentEnv(env: NodeJS.ProcessEnv = process.env) {
   for (const fileName of [".env.local", ".env"]) {
     const path = join(projectRoot, fileName);
     if (existsSync(path)) {
-      dotenvConfig({ path, override: false });
+      dotenvConfig({ path, override: false, processEnv: env });
     }
   }
 

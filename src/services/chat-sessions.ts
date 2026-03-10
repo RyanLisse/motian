@@ -240,9 +240,7 @@ async function withChatSessionMessageCompatibility<T>(
 
 function getPersistableMessages(messages: UIMessage[], sessionId: string): UIMessage[] {
   return messages
-    .map((message, index) =>
-      normalizeChatMessage(message, `${sessionId}-${Date.now()}-${index + 1}`),
-    )
+    .map((message, index) => normalizeChatMessage(message, `${sessionId}-msg-${index + 1}`))
     .filter((message) => message.role === "user" || message.role === "assistant");
 }
 

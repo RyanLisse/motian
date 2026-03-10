@@ -24,9 +24,7 @@ function canUseStorage(storage?: Pick<Storage, "setItem" | "removeItem"> | null)
 export function getPostHogPersistence(
   windowLike?: WindowStorageLike | null,
 ): "localStorage+cookie" | "memory" {
-  return canUseStorage(windowLike?.localStorage) && canUseStorage(windowLike?.sessionStorage)
-    ? "localStorage+cookie"
-    : "memory";
+  return canUseStorage(windowLike?.localStorage) ? "localStorage+cookie" : "memory";
 }
 
 export function getPostHogInitOptions(windowLike?: WindowStorageLike | null) {
@@ -50,8 +48,18 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 
     try {
       posthog.init(key, getPostHogInitOptions(window));
-    } catch {
-      // Storage may be disabled (private mode, iframe, strict partitioning)
+    } catch (error) {
+      // Only silently ignore storage-related failures (private mode, iframe, strict partitioning)
+      // Surface other errors for debugging
+      const isStorageError =
+        error instanceof Error &&
+        (error.message.includes("storage") ||
+          error.message.includes("localStorage") ||
+          error.message.includes("sessionStorage"));
+
+      if (!isStorageError) {
+        console.error("PostHog initialization failed:", error);
+      }
     }
   }, []);
 
