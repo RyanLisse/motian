@@ -162,6 +162,7 @@ function createLegacyPersistTx(existingMessages: UIMessage[]) {
 
   return {
     tx: {
+      execute: vi.fn().mockResolvedValue(undefined),
       insert: vi.fn(() => ({ values: sessionValues })),
       select: vi.fn(() => ({
         from: vi.fn(() => createResolvedChain([{ messages: existingMessages }])),
@@ -255,6 +256,7 @@ describe("chat session compatibility fallback", () => {
     const existingMessages = [createMessage("m1", "user", "Bestaande vraag")];
     const updateSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
     const fallbackTx = {
+      execute: vi.fn().mockResolvedValue(undefined),
       insert: vi.fn(() => ({
         values: vi.fn(() => ({ onConflictDoUpdate: vi.fn().mockResolvedValue(undefined) })),
       })),
@@ -353,6 +355,34 @@ describe("chat session compatibility fallback", () => {
     expect(messageOnConflictDoNothing).toHaveBeenCalledWith({
       target: [chatSessionMessages.sessionId, chatSessionMessages.messageId],
     });
+  });
+
+  it("acquires a per-session lock in the legacy fallback transaction", async () => {
+    const existingMessages = [createMessage("m1", "user", "Bestaande vraag")];
+    const { tx, updateSet } = createLegacyPersistTx(existingMessages);
+
+    mockDb.transaction
+      .mockImplementationOnce(async (callback: TransactionCallback) =>
+        callback(createFailingNormalizedSelectTx()),
+      )
+      .mockImplementationOnce(async (callback: TransactionCallback) => callback(tx));
+
+    const { persistMessages } = await import("../src/services/chat-sessions");
+    await persistMessages({
+      sessionId: "session-1",
+      context: { route: "/chat" },
+      messages: [existingMessages[0], createMessage("m2", "user", "Nieuwe vraag")],
+    });
+
+    const lockQuery = tx.execute.mock.calls[0]?.[0] as {
+      strings?: TemplateStringsArray;
+      values?: unknown[];
+    };
+
+    expect(tx.execute).toHaveBeenCalledTimes(1);
+    expect(lockQuery.strings?.join("")).toContain("pg_advisory_xact_lock");
+    expect(lockQuery.values).toEqual(["chat-session-persist:session-1"]);
+    expect(updateSet.mock.calls[0]?.[0].messageCount).toBe(2);
   });
 
   it("deletes the legacy session row when the normalized message table is unavailable", async () => {

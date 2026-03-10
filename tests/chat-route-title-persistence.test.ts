@@ -32,9 +32,25 @@ describe("chat route title persistence", () => {
     expect(source).toContain(
       "const sessionSnapshot = sessionId ? await loadSessionSnapshotOrFallback(sessionId) : null;",
     );
-    expect(source).toContain("const used = sessionSnapshot?.tokensUsed ?? 0;");
+    expect(source).toContain("sessionSnapshot?.tokensUsed");
     expect(source).toContain("(sessionSnapshot?.messageCount ?? 0) === 0");
     expect(source).not.toContain("getSessionTokenUsage(sessionId)");
     expect(source).not.toContain("getRecentMessagesForContext(sessionId, 1)");
+  });
+
+  it("fails closed when snapshot load fails, blocking budget bypass and title generation", () => {
+    const source = readFile("app/api/chat/route.ts");
+
+    expect(source).toContain("loadFailed");
+    expect(source).toContain("sessionSnapshot?.loadFailed");
+    expect(source).toContain("!sessionSnapshot?.loadFailed");
+  });
+
+  it("skips reloading and assistant persistence when user message write failed", () => {
+    const source = readFile("app/api/chat/route.ts");
+
+    expect(source).toContain("userMessagesPersisted");
+    expect(source).toContain("sessionId && userMessagesPersisted");
+    expect(source).toContain("!userMessagesPersisted");
   });
 });
