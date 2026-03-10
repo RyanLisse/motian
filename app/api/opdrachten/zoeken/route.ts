@@ -1,4 +1,4 @@
-import { and, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { applications } from "@/src/db/schema";
@@ -18,10 +18,6 @@ export const dynamic = "force-dynamic";
 type PipelineCountRow = {
   jobId: string;
   pipelineCount: number;
-};
-
-type LinkedJobRow = {
-  jobId: string;
 };
 
 export async function GET(req: NextRequest) {
@@ -66,42 +62,28 @@ export async function GET(req: NextRequest) {
   });
 
   const jobIds = result.data.map((job) => job.id);
-  const [pipelineRows, linkedJobRows]: [PipelineCountRow[], LinkedJobRow[]] =
+  const pipelineRows: PipelineCountRow[] =
     jobIds.length === 0
-      ? [[], []]
-      : await Promise.all([
-          db
-            .select({
-              jobId: sql<string>`${applications.jobId}`,
-              pipelineCount: sql<number>`count(*)::int`,
-            })
-            .from(applications)
-            .where(
-              and(
-                inArray(applications.jobId, jobIds),
-                isNotNull(applications.jobId),
-                isNull(applications.deletedAt),
-                ne(applications.stage, "rejected"),
-              ),
-            )
-            .groupBy(applications.jobId),
-          db
-            .select({ jobId: sql<string>`${applications.jobId}` })
-            .from(applications)
-            .where(
-              and(
-                inArray(applications.jobId, jobIds),
-                isNotNull(applications.jobId),
-                isNull(applications.deletedAt),
-              ),
-            )
-            .groupBy(applications.jobId),
-        ]);
+      ? []
+      : await db
+          .select({
+            jobId: sql<string>`${applications.jobId}`,
+            pipelineCount: sql<number>`sum(case when ${applications.stage} != 'rejected' then 1 else 0 end)::int`,
+          })
+          .from(applications)
+          .where(
+            and(
+              inArray(applications.jobId, jobIds),
+              isNotNull(applications.jobId),
+              isNull(applications.deletedAt),
+            ),
+          )
+          .groupBy(applications.jobId);
 
   const pipelineCountByJobId = new Map(
     pipelineRows.map((row: PipelineCountRow) => [row.jobId, row.pipelineCount]),
   );
-  const hasPipelineByJobId = new Set(linkedJobRows.map((row: LinkedJobRow) => row.jobId));
+  const hasPipelineByJobId = new Set(pipelineRows.map((row: PipelineCountRow) => row.jobId));
 
   const jobs = result.data.map((job) => ({
     id: job.id,

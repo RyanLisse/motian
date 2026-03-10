@@ -60,9 +60,7 @@ describe("GET /api/opdrachten/zoeken", () => {
       ],
       total: 1,
     });
-    mockGroupBy
-      .mockResolvedValueOnce([{ jobId: "job-1", pipelineCount: 3 }])
-      .mockResolvedValueOnce([{ jobId: "job-1" }]);
+    mockGroupBy.mockResolvedValue([{ jobId: "job-1", pipelineCount: 3 }]);
   });
 
   it("forwards the shared recruiter filter contract and returns compact recruiter jobs", async () => {
@@ -114,6 +112,8 @@ describe("GET /api/opdrachten/zoeken", () => {
       perPage: 25,
       totalPages: 1,
     });
+    expect(mockSelect).toHaveBeenCalledTimes(1);
+    expect(mockGroupBy).toHaveBeenCalledTimes(1);
   });
 
   it("preserves hybrid-search relevance when relevantie is selected", async () => {
@@ -151,5 +151,20 @@ describe("GET /api/opdrachten/zoeken", () => {
     expect(response.status).toBe(400);
     expect(body.error).toBe("Ongeldige parameters");
     expect(mockSearchJobsUnified).not.toHaveBeenCalled();
+  });
+
+  it("skips the applications aggregation when no jobs are returned", async () => {
+    mockSearchJobsUnified.mockResolvedValueOnce({ data: [], total: 0 });
+
+    const request = {
+      nextUrl: new URL("http://localhost/api/opdrachten/zoeken"),
+    } as Parameters<typeof GET>[0];
+
+    const response = await GET(request);
+    const body = await response.json();
+
+    expect(body.jobs).toEqual([]);
+    expect(mockSelect).not.toHaveBeenCalled();
+    expect(mockGroupBy).not.toHaveBeenCalled();
   });
 });

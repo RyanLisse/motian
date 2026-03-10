@@ -6,7 +6,6 @@ import {
   Brain,
   Briefcase,
   FileText,
-  Gauge,
   Loader2,
   Menu,
   PanelLeftClose,
@@ -16,7 +15,6 @@ import {
   TrendingUp,
   Upload,
   Users,
-  Zap,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import Link from "next/link";
@@ -42,9 +40,9 @@ const CHAT_MODELS = [
 ] as const;
 
 const MODE_OPTIONS = [
-  { id: "snel", label: "Snel", icon: Zap },
-  { id: "gemiddeld", label: "Gemiddeld", icon: Gauge },
-  { id: "grondig", label: "Grondig", icon: Gauge },
+  { id: "snel", label: "Snel" },
+  { id: "gemiddeld", label: "Gemiddeld" },
+  { id: "grondig", label: "Grondig" },
 ] as const;
 
 const SESSION_KEY = "motian-chat-session";

@@ -50,6 +50,14 @@ describe("Recruiter-first overview", () => {
     expect(source).not.toContain("Dashboard — realtime inzicht in vacatures en scrapers");
   });
 
+  it("keeps the overzicht page free of merge conflict markers", () => {
+    const source = readFile("app", "overzicht", "page.tsx");
+
+    expect(source).not.toContain("<<<<<<<");
+    expect(source).not.toContain("=======");
+    expect(source).not.toContain(">>>>>>>");
+  });
+
   it("keeps empty-state navigation inside candidate and vacancy flows", () => {
     const pipelineSource = readFile("app", "pipeline", "page.tsx");
     const candidateSource = readFile("app", "professionals", "[id]", "page.tsx");

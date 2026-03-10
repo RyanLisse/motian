@@ -93,6 +93,16 @@ describe("chat prompt composer preset", () => {
     expect(source).not.toContain("motian-chat-prompt-input");
   });
 
+  it("keeps the page-level speed options data-only so the chat chunk has no stray Zap reference", () => {
+    const pageSource = readFile("components", "chat", "chat-page-content.tsx");
+    const composerSource = readFile("src", "components", "ai-elements", "chat-prompt-composer.tsx");
+
+    expect(pageSource).toContain("const MODE_OPTIONS = [");
+    expect(pageSource).not.toContain("icon: Zap");
+    expect(pageSource).not.toContain("  Zap,");
+    expect(composerSource).toContain("<Zap className=");
+  });
+
   it("wires the widget to the shared CV upload flow", () => {
     const source = readFile("components", "chat", "chat-widget.tsx");
 

@@ -290,6 +290,8 @@ describe("Opdrachten UI/API contracts", () => {
     expect(layout).toContain('getJobStatusCondition("open")');
     expect(layout).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
     expect(layout).toContain("jsonb_array_elements_text");
+    expect(layout).toContain("inArray(applications.jobId, jobIds)");
+    expect(layout).toContain("groupBy(applications.jobId)");
     expect(layout).toContain("categories={categories}");
     expect(layout).toContain(".where(activeJobsCondition)");
     expect(layout).toContain("applicationDeadline: jobs.applicationDeadline");

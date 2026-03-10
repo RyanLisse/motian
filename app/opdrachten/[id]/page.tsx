@@ -28,6 +28,7 @@ import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
 import { getGradedCandidates } from "@/src/services/grading";
 import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
+import { jobReadSelection } from "@/src/services/jobs/repository";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -189,84 +190,77 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
 
   // Fetch current job (respecting visibility rules)
   const rows = await db
-    .select()
+    .select(jobReadSelection)
     .from(jobs)
     .where(and(eq(jobs.id, id), getVisibleVacancyCondition()))
     .limit(1);
 
-  const job = rows[0] as typeof jobs.$inferSelect | undefined;
+  const job = rows[0];
 
   if (!job) {
     notFound();
   }
 
-  // Fetch company-related jobs, generic related jobs, and pipeline data in parallel
-  const [
-    companyRelated,
-    genericRelated,
-    pipelineCounts,
-    recentPipelineRows,
-    gradedCandidates,
-    endClientRows,
-  ] = await Promise.all([
-    job.company
-      ? db
-          .select()
-          .from(jobs)
-          .where(
-            and(
-              getVisibleVacancyCondition(),
-              eq(jobs.status, "open"),
-              ne(jobs.id, id),
-              eq(jobs.company, job.company),
-            ),
-          )
-          .orderBy(desc(jobs.scrapedAt))
-          .limit(4)
-      : Promise.resolve([]),
-    db
-      .select()
-      .from(jobs)
-      .where(and(getVisibleVacancyCondition(), eq(jobs.status, "open"), ne(jobs.id, id)))
-      .orderBy(desc(jobs.scrapedAt))
-      .limit(4),
-    // Pipeline counts per stage for this job
-    db
-      .select({
-        stage: applications.stage,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(applications)
-      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-      .groupBy(applications.stage),
-    // Recent linked candidates for this job
-    db
-      .select({
-        id: applications.id,
-        stage: applications.stage,
-        source: applications.source,
-        candidateId: candidates.id,
-        candidateName: candidates.name,
-        candidateRole: candidates.role,
-        candidateLocation: candidates.location,
-        matchScore: jobMatches.matchScore,
-        matchStatus: jobMatches.status,
-        createdAt: applications.createdAt,
-      })
-      .from(applications)
-      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
-      .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
-      .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-      .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
-      .limit(4),
-    getGradedCandidates({ jobId: job.id, limit: 12 }),
-    db
-      .select({ endClient: persistedEndClient })
-      .from(jobs)
-      .where(getVisibleVacancyCondition())
-      .groupBy(persistedEndClient)
-      .orderBy(persistedEndClient),
-  ]);
+  const companyMatchRank = job.company
+    ? sql<number>`case when ${jobs.company} = ${job.company} then 0 else 1 end`
+    : sql<number>`1`;
+
+  // Fetch related jobs, pipeline data, grading, and sidebar filter metadata in parallel.
+  const [relatedJobRows, pipelineCounts, recentPipelineRows, gradedCandidates, endClientRows] =
+    await Promise.all([
+      db
+        .select({
+          ...jobReadSelection,
+          companyMatchRank,
+        })
+        .from(jobs)
+        .where(and(getVisibleVacancyCondition(), eq(jobs.status, "open"), ne(jobs.id, id)))
+        .orderBy(companyMatchRank, desc(jobs.scrapedAt))
+        .limit(4),
+      // Pipeline counts per stage for this job
+      db
+        .select({
+          stage: applications.stage,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(applications)
+        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+        .groupBy(applications.stage),
+      // Recent linked candidates for this job
+      db
+        .select({
+          id: applications.id,
+          stage: applications.stage,
+          source: applications.source,
+          candidateId: candidates.id,
+          candidateName: candidates.name,
+          candidateRole: candidates.role,
+          candidateLocation: candidates.location,
+          matchScore: jobMatches.matchScore,
+          matchStatus: jobMatches.status,
+          createdAt: applications.createdAt,
+        })
+        .from(applications)
+        .leftJoin(candidates, eq(applications.candidateId, candidates.id))
+        .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
+        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
+        .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
+        .limit(4),
+      getGradedCandidates({ jobId: job.id, limit: 12 }),
+      db
+        .select({ endClient: persistedEndClient })
+        .from(jobs)
+        .where(getVisibleVacancyCondition())
+        .groupBy(persistedEndClient)
+        .orderBy(persistedEndClient),
+    ]);
+
+  const companyRelated = relatedJobRows
+    .filter((row) => row.companyMatchRank === 0)
+    .map(({ companyMatchRank: _companyMatchRank, ...relatedJob }) => relatedJob);
+  const genericRelated = relatedJobRows
+    .filter((row) => row.companyMatchRank !== 0)
+    .map(({ companyMatchRank: _companyMatchRank, ...relatedJob }) => relatedJob);
 
   // Build pipeline summary
   // Pipeline stages: only active stages count toward totalPipeline.

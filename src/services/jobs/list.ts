@@ -11,7 +11,7 @@ import {
   type ListJobsSortBy,
 } from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
-import type { Job } from "./repository";
+import { type Job, jobReadSelection } from "./repository";
 
 export type ListJobsOptions = {
   limit?: number;
@@ -97,7 +97,7 @@ export async function listJobs(
     .where(whereClause);
 
   const data = await db
-    .select()
+    .select(jobReadSelection)
     .from(jobs)
     .where(whereClause)
     .orderBy(getListJobsOrderBy(opts.sortBy ?? "nieuwste"))
@@ -117,7 +117,7 @@ export async function listActiveJobs(limit?: number): Promise<Job[]> {
   const safeLimit = Math.min(limit ?? 200, 500);
 
   return db
-    .select()
+    .select(jobReadSelection)
     .from(jobs)
     .where(getJobStatusCondition("open"))
     .orderBy(desc(jobs.scrapedAt))

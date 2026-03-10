@@ -11,7 +11,7 @@ import { rateLimit } from "@/src/lib/rate-limit";
 import {
   type ChatSessionContext,
   getRecentMessagesForContext,
-  getSessionTokenUsage,
+  getSessionRequestSnapshot,
   incrementSessionTokens,
   persistMessages,
 } from "@/src/services/chat-sessions";
@@ -88,11 +88,11 @@ export async function POST(req: Request) {
     .reverse()
     .find((message) => message.role === "user");
   const latestUserText = latestUserMessage ? getMessageText(latestUserMessage) : "";
-  const existingSessionMessages = sessionId ? await getRecentMessagesForContext(sessionId, 1) : [];
+  const sessionSnapshot = sessionId ? await getSessionRequestSnapshot(sessionId) : null;
 
   // AI-budget (Fase 4): als er een sessielimiet is en we hebben een sessionId, check tokensUsed
   if (sessionId && CHAT_MAX_TOKENS_PER_SESSION != null) {
-    const used = await getSessionTokenUsage(sessionId);
+    const used = sessionSnapshot?.tokensUsed ?? 0;
     if (used >= CHAT_MAX_TOKENS_PER_SESSION) {
       return Response.json(
         {
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
     });
 
     const shouldGenerateTitle =
-      existingSessionMessages.length === 0 &&
+      (sessionSnapshot?.messageCount ?? 0) === 0 &&
       latestUserText.length > 0 &&
       requestMessages.filter((message) => message.role === "user").length === 1;
 

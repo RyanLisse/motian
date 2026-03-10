@@ -1,12 +1,26 @@
-import { and, eq, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
+import { and, eq, getTableColumns, isNotNull, ne, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { jobs } from "../../db/schema";
 
 export type Job = typeof jobs.$inferSelect;
 
+/**
+ * Backward-compatible read projection.
+ *
+ * Some environments still run a pre-0014 schema where `jobs.archived_at`
+ * has not been added yet. Bare `select()` / `returning()` calls would expand
+ * to that missing column and fail the whole page render. We keep the returned
+ * shape stable while projecting `archivedAt` as `null` until every database has
+ * applied the migration.
+ */
+export const jobReadSelection = {
+  ...getTableColumns(jobs),
+  archivedAt: sql<Date | null>`null`,
+};
+
 /** Enkele opdracht ophalen op ID, inclusief gesloten/gearchiveerde retained vacatures. */
 export async function getJobById(id: string): Promise<Job | null> {
-  const rows = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
+  const rows = await db.select(jobReadSelection).from(jobs).where(eq(jobs.id, id)).limit(1);
   return rows[0] ?? null;
 }
 
@@ -26,7 +40,7 @@ export async function updateJob(
     >
   >,
 ): Promise<Job | null> {
-  const rows = await db.update(jobs).set(data).where(eq(jobs.id, id)).returning();
+  const rows = await db.update(jobs).set(data).where(eq(jobs.id, id)).returning(jobReadSelection);
 
   return rows[0] ?? null;
 }
@@ -48,7 +62,7 @@ export async function updateJobEnrichment(
     >
   >,
 ): Promise<Job | null> {
-  const rows = await db.update(jobs).set(data).where(eq(jobs.id, id)).returning();
+  const rows = await db.update(jobs).set(data).where(eq(jobs.id, id)).returning(jobReadSelection);
 
   return rows[0] ?? null;
 }
@@ -59,16 +73,10 @@ export async function deleteJob(id: string): Promise<boolean> {
     .update(jobs)
     .set({
       status: "archived",
-      archivedAt: sql`coalesce(${jobs.archivedAt}, ${jobs.deletedAt}, now())`,
       deletedAt: null,
     })
-    .where(
-      and(
-        eq(jobs.id, id),
-        or(ne(jobs.status, "archived"), isNull(jobs.archivedAt), isNotNull(jobs.deletedAt)),
-      ),
-    )
-    .returning();
+    .where(and(eq(jobs.id, id), or(ne(jobs.status, "archived"), isNotNull(jobs.deletedAt))))
+    .returning({ id: jobs.id });
 
   return rows.length > 0;
 }

@@ -11,7 +11,7 @@ import {
 } from "@livekit/components-react";
 import { TokenSource } from "livekit-client";
 import { Mic } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AgentAudioVisualizerAura } from "@/components/agents-ui/agent-audio-visualizer-aura";
 import { AgentChatTranscript } from "@/components/agents-ui/agent-chat-transcript";
 import { AgentControlBar } from "@/components/agents-ui/agent-control-bar";
@@ -30,6 +30,22 @@ const STATE_LABELS: Record<AgentState, string> = {
   speaking: "Spreekt...",
   failed: "Verbinding mislukt",
 };
+
+const DEFAULT_VOICE_UNAVAILABLE_MESSAGE =
+  "Spraakassistent is momenteel niet beschikbaar. Je kunt verdergaan in de tekstchat.";
+
+type VoiceAvailabilityState =
+  | { status: "checking" }
+  | { status: "available" }
+  | { status: "unavailable"; message: string };
+
+function getVoiceUnavailableMessage(error?: string) {
+  if (!error || error === "LiveKit niet geconfigureerd") {
+    return DEFAULT_VOICE_UNAVAILABLE_MESSAGE;
+  }
+
+  return error;
+}
 
 // ---------- Connected voice UI ----------
 
@@ -103,10 +119,85 @@ function ConnectedVoiceUI({ onEnd }: { onEnd: () => void }) {
 
 function VoiceViewController({ onClose }: { onClose: () => void }) {
   const { isConnected, start } = useSessionContext();
+  const [availability, setAvailability] = useState<VoiceAvailabilityState>({ status: "checking" });
+  const [startError, setStartError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const checkVoiceAvailability = async () => {
+      try {
+        const response = await fetch("/api/livekit-token", {
+          method: "GET",
+          cache: "no-store",
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          enabled?: boolean;
+          error?: string;
+        } | null;
+
+        if (!isActive) {
+          return;
+        }
+
+        if (response.ok && payload?.enabled) {
+          setAvailability({ status: "available" });
+          return;
+        }
+
+        setAvailability({
+          status: "unavailable",
+          message: getVoiceUnavailableMessage(payload?.error),
+        });
+      } catch {
+        if (!isActive) {
+          return;
+        }
+
+        setAvailability({
+          status: "unavailable",
+          message: DEFAULT_VOICE_UNAVAILABLE_MESSAGE,
+        });
+      }
+    };
+
+    void checkVoiceAvailability();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const handleEnd = async () => {
     onClose();
   };
+
+  const handleStart = async () => {
+    if (availability.status === "checking" || isStarting) {
+      return;
+    }
+
+    if (availability.status === "unavailable") {
+      setStartError(availability.message);
+      return;
+    }
+
+    setStartError(null);
+    setIsStarting(true);
+
+    try {
+      await start();
+    } catch {
+      setStartError(DEFAULT_VOICE_UNAVAILABLE_MESSAGE);
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const voiceUnavailableMessage =
+    startError ?? (availability.status === "unavailable" ? availability.message : null);
+  const isStartDisabled = availability.status !== "available" || isStarting;
 
   // Pre-connect: show start button
   if (!isConnected) {
@@ -124,14 +215,43 @@ function VoiceViewController({ onClose }: { onClose: () => void }) {
             Praat met je AI-recruiter over vacatures, kandidaten en matches
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => start()}
-          className="flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <Mic className="h-4 w-4" />
-          Start gesprek
-        </button>
+        {availability.status === "checking" ? (
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            Spraakverbinding controleren...
+          </p>
+        ) : null}
+        {voiceUnavailableMessage ? (
+          <div
+            role="alert"
+            className="max-w-md rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
+          >
+            {voiceUnavailableMessage}
+          </div>
+        ) : null}
+        <div className="flex flex-col items-center gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleStart}
+            disabled={isStartDisabled}
+            className="flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Mic className="h-4 w-4" />
+            {availability.status === "checking"
+              ? "Spraak controleren..."
+              : isStarting
+                ? "Verbinden..."
+                : "Start gesprek"}
+          </button>
+          {voiceUnavailableMessage ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              Verder met tekstchat
+            </button>
+          ) : null}
+        </div>
       </div>
     );
   }

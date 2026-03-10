@@ -81,4 +81,11 @@ describe("Legacy matching route redirect", () => {
     expect(source).toContain("#recruiter-cockpit");
     expect(source).toContain('redirect("/professionals")');
   });
+
+  it("stays a server redirect route without client-side rendering hooks", () => {
+    const source = readFile("app/matching/page.tsx");
+    expect(source).not.toContain('"use client"');
+    expect(source).not.toContain("useState(");
+    expect(source).not.toContain("useEffect(");
+  });
 });

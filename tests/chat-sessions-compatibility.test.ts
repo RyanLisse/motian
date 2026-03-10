@@ -29,6 +29,7 @@ const { chatSessionMessages, chatSessions, mockDb } = vi.hoisted(() => {
     chatSessions,
     chatSessionMessages,
     mockDb: {
+      execute: vi.fn(),
       delete: vi.fn(),
       insert: vi.fn(),
       select: vi.fn(),
@@ -89,6 +90,12 @@ function createMissingRelationError() {
   });
 }
 
+function mockChatSessionMessagesAvailability(exists: boolean) {
+  mockDb.execute.mockResolvedValue({
+    rows: [{ relation_name: exists ? "public.chat_session_messages" : null }],
+  });
+}
+
 function createFailingNormalizedSelectTx() {
   const error = createMissingRelationError();
 
@@ -112,20 +119,6 @@ function createFailingNormalizedSelectTx() {
       }),
     })),
     update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })) })),
-  };
-}
-
-function createMissingMessagesDeleteTx() {
-  const error = createMissingRelationError();
-
-  return {
-    delete: vi.fn((table: { __table: string }) => ({
-      where: vi.fn(() =>
-        table.__table === "chatSessionMessages"
-          ? Promise.reject(error)
-          : { returning: vi.fn().mockResolvedValue([{ id: "row-1" }]) },
-      ),
-    })),
   };
 }
 
@@ -179,6 +172,7 @@ type TransactionCallback = (tx: unknown) => Promise<unknown>;
 describe("chat session compatibility fallback", () => {
   beforeEach(() => {
     vi.resetModules();
+    mockDb.execute.mockReset();
     mockDb.delete.mockReset();
     mockDb.insert.mockReset();
     mockDb.select.mockReset();
@@ -186,16 +180,14 @@ describe("chat session compatibility fallback", () => {
     mockDb.update.mockReset();
   });
 
-  it("returns paginated legacy messages when chat_session_messages is unavailable", async () => {
+  it("returns paginated legacy messages without probing the missing table directly", async () => {
     const legacyMessages = [
       createMessage("m1", "user", "Hallo"),
       createMessage("m2", "assistant", "Hoi"),
       createMessage("m3", "user", "Kun je helpen?"),
     ];
 
-    mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
-      callback(createFailingNormalizedSelectTx()),
-    );
+    mockChatSessionMessagesAvailability(false);
     mockDb.select.mockImplementation(() => ({
       from: vi.fn((table: { __table: string }) => {
         expect(table).toBe(chatSessions);
@@ -219,6 +211,8 @@ describe("chat session compatibility fallback", () => {
     const session = await getSession("session-1", { limit: 2 });
 
     expect(session).not.toBeNull();
+    expect(mockDb.execute).toHaveBeenCalledTimes(1);
+    expect(mockDb.transaction).not.toHaveBeenCalled();
     expect(session?.session.messageCount).toBe(3);
     expect(session?.messages.map((message) => message.id)).toEqual(["m2", "m3"]);
     expect(session?.messages.map((message) => message.metadata?.persistedOrderIndex)).toEqual([
@@ -235,6 +229,7 @@ describe("chat session compatibility fallback", () => {
       createMessage("m3", "assistant", "Waarmee kan ik helpen?"),
     ];
 
+    mockChatSessionMessagesAvailability(true);
     mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
       callback(createFailingNormalizedSelectTx()),
     );
@@ -246,6 +241,7 @@ describe("chat session compatibility fallback", () => {
     const first = await getRecentMessagesForContext("session-1", 2);
     const second = await getRecentMessagesForContext("session-1", 2);
 
+    expect(mockDb.execute).toHaveBeenCalledTimes(1);
     expect(mockDb.transaction).toHaveBeenCalledTimes(1);
     expect(first.map((message) => message.id)).toEqual(["m2", "m3"]);
     expect(second.map((message) => message.id)).toEqual(["m2", "m3"]);
@@ -264,11 +260,10 @@ describe("chat session compatibility fallback", () => {
       update: vi.fn(() => ({ set: updateSet })),
     };
 
-    mockDb.transaction
-      .mockImplementationOnce(async (callback: TransactionCallback) =>
-        callback(createFailingNormalizedSelectTx()),
-      )
-      .mockImplementationOnce(async (callback: TransactionCallback) => callback(fallbackTx));
+    mockChatSessionMessagesAvailability(false);
+    mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
+      callback(fallbackTx),
+    );
 
     const { persistMessages } = await import("../src/services/chat-sessions");
     await persistMessages({
@@ -278,7 +273,8 @@ describe("chat session compatibility fallback", () => {
     });
 
     const updatedRow = updateSet.mock.calls[0]?.[0];
-    expect(mockDb.transaction).toHaveBeenCalledTimes(2);
+    expect(mockDb.execute).toHaveBeenCalledTimes(1);
+    expect(mockDb.transaction).toHaveBeenCalledTimes(1);
     expect(updatedRow.messageCount).toBe(2);
     expect(updatedRow.lastMessagePreview).toBe("Nieuwe vraag");
     expect(updatedRow.context).toEqual({ route: "/chat" });
@@ -288,6 +284,7 @@ describe("chat session compatibility fallback", () => {
   it("preserves normalized session context when context is omitted", async () => {
     const { tx, sessionValues, sessionOnConflictDoUpdate, updateSet } = createNormalizedPersistTx();
 
+    mockChatSessionMessagesAvailability(true);
     mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
       callback(tx),
     );
@@ -308,11 +305,10 @@ describe("chat session compatibility fallback", () => {
     const { tx, sessionValues, sessionOnConflictDoUpdate, updateSet } =
       createLegacyPersistTx(existingMessages);
 
-    mockDb.transaction
-      .mockImplementationOnce(async (callback: TransactionCallback) =>
-        callback(createFailingNormalizedSelectTx()),
-      )
-      .mockImplementationOnce(async (callback: TransactionCallback) => callback(tx));
+    mockChatSessionMessagesAvailability(false);
+    mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
+      callback(tx),
+    );
 
     const { persistMessages } = await import("../src/services/chat-sessions");
     await persistMessages({
@@ -331,6 +327,7 @@ describe("chat session compatibility fallback", () => {
   it("acquires a per-session lock and ignores duplicate normalized inserts", async () => {
     const { tx, messageOnConflictDoNothing } = createNormalizedPersistTx();
 
+    mockChatSessionMessagesAvailability(true);
     mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
       callback(tx),
     );
@@ -356,14 +353,13 @@ describe("chat session compatibility fallback", () => {
   });
 
   it("deletes the legacy session row when the normalized message table is unavailable", async () => {
-    mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
-      callback(createMissingMessagesDeleteTx()),
-    );
+    mockChatSessionMessagesAvailability(false);
     mockDb.delete.mockImplementation(() => ({
       where: vi.fn(() => ({ returning: vi.fn().mockResolvedValue([{ id: "row-1" }]) })),
     }));
 
     const { deleteSession } = await import("../src/services/chat-sessions");
     await expect(deleteSession("session-1")).resolves.toBe(true);
+    expect(mockDb.transaction).not.toHaveBeenCalled();
   });
 });
