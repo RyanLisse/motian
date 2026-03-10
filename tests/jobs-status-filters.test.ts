@@ -1,30 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockDb, mockCountWhere, mockDataWhere } = vi.hoisted(() => {
-  const mockCountWhere = vi.fn().mockResolvedValue([{ count: 0 }]);
-  const mockOffset = vi.fn().mockResolvedValue([]);
-  const mockLimitWithOffset = vi.fn(() => ({ offset: mockOffset }));
-  const mockOrderByWithOffset = vi.fn(() => ({ limit: mockLimitWithOffset }));
+const { mockDb, mockDataWhere, mockExecute } = vi.hoisted(() => {
   const mockLimit = vi.fn().mockResolvedValue([]);
-  const mockOrderBy = vi.fn(() => ({ limit: mockLimit }));
+  const mockExecute = vi.fn().mockResolvedValue({ rows: [] });
 
   const mockDataWhere = vi.fn(() => ({
-    orderBy: mockOrderBy,
+    orderBy: vi.fn(() => ({ limit: mockLimit })),
     limit: mockLimit,
   }));
 
-  const mockSelect = vi.fn((fields?: Record<string, unknown>) => ({
-    from: vi.fn(() =>
-      fields && "count" in fields
-        ? { where: mockCountWhere }
-        : { where: mockDataWhere, orderBy: mockOrderByWithOffset },
-    ),
-  }));
+  const mockSelect = vi.fn(() => ({ from: vi.fn(() => ({ where: mockDataWhere })) }));
 
   return {
-    mockCountWhere,
     mockDataWhere,
-    mockDb: { select: mockSelect },
+    mockExecute,
+    mockDb: { select: mockSelect, execute: mockExecute },
   };
 });
 
@@ -38,6 +28,9 @@ vi.mock("../src/db/schema", () => ({
     description: "jobs.description",
     location: "jobs.location",
     province: "jobs.province",
+    dedupeTitleNormalized: "jobs.dedupeTitleNormalized",
+    dedupeClientNormalized: "jobs.dedupeClientNormalized",
+    dedupeLocationNormalized: "jobs.dedupeLocationNormalized",
     categories: "jobs.categories",
     platform: "jobs.platform",
     status: "jobs.status",
@@ -74,6 +67,7 @@ vi.mock("drizzle-orm", () => {
     eq: (column: unknown, value: unknown) => ({ type: "eq", column, value }),
     gte: (column: unknown, value: unknown) => ({ type: "gte", column, value }),
     ilike: (column: unknown, value: unknown) => ({ type: "ilike", column, value }),
+    inArray: (column: unknown, values: unknown[]) => ({ type: "inArray", column, values }),
     isNotNull: (column: unknown) => ({ type: "isNotNull", column }),
     isNull: (column: unknown) => ({ type: "isNull", column }),
     lte: (column: unknown, value: unknown) => ({ type: "lte", column, value }),
@@ -96,10 +90,14 @@ function containsNode(node: unknown, predicate: (value: unknown) => boolean): bo
   return false;
 }
 
+function getListJobsQuery() {
+  return mockExecute.mock.calls[0]?.[0];
+}
+
 describe("jobs service status and endClient filters", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCountWhere.mockResolvedValue([{ count: 0 }]);
+    mockExecute.mockResolvedValue({ rows: [] });
     mockDataWhere.mockReturnValue({
       orderBy: vi.fn(() => ({
         limit: vi.fn(() => ({
@@ -113,10 +111,10 @@ describe("jobs service status and endClient filters", () => {
   it("defaults listJobs to open status and filters by dedicated endClient column", async () => {
     await listJobs({ endClient: "Gemeente Utrecht" });
 
-    const whereClause = mockCountWhere.mock.calls[0]?.[0];
+    const listJobsQuery = getListJobsQuery();
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -128,7 +126,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(true);
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -139,7 +137,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(false);
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -154,10 +152,10 @@ describe("jobs service status and endClient filters", () => {
   it("supports explicitly querying closed jobs", async () => {
     await listJobs({ status: "closed" });
 
-    const whereClause = mockCountWhere.mock.calls[0]?.[0];
+    const listJobsQuery = getListJobsQuery();
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -172,10 +170,10 @@ describe("jobs service status and endClient filters", () => {
   it("supports explicitly querying archived jobs", async () => {
     await listJobs({ status: "archived" });
 
-    const whereClause = mockCountWhere.mock.calls[0]?.[0];
+    const listJobsQuery = getListJobsQuery();
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -187,7 +185,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(true);
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -202,10 +200,10 @@ describe("jobs service status and endClient filters", () => {
   it("treats status=all as an unrestricted retention view without visibility filters", async () => {
     await listJobs({ status: "all" });
 
-    const whereClause = mockCountWhere.mock.calls[0]?.[0];
+    const listJobsQuery = getListJobsQuery();
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -216,7 +214,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(false);
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -227,7 +225,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(false);
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -267,6 +265,20 @@ describe("jobs service status and endClient filters", () => {
   });
 
   it("uses a backward-compatible job projection that does not read jobs.archivedAt", async () => {
+    mockExecute.mockResolvedValue({ rows: [{ id: "job-1" }] });
+    mockDataWhere.mockReturnValue({
+      limit: vi
+        .fn()
+        .mockResolvedValue([
+          { id: "job-1", title: "Voorbeeld vacature", platform: "opdrachtoverheid" },
+        ]),
+      orderBy: vi.fn(() => ({
+        limit: vi.fn(() => ({
+          offset: vi.fn().mockResolvedValue([]),
+        })),
+      })),
+    });
+
     await listJobs();
 
     const dataSelectFields = mockDb.select.mock.calls.find(
@@ -278,13 +290,130 @@ describe("jobs service status and endClient filters", () => {
     expect(dataSelectFields?.archivedAt).toMatchObject({ type: "sql", values: [] });
   });
 
+  it("builds a deduped vacature-id query and preserves the deduped ordering", async () => {
+    mockExecute.mockResolvedValue({
+      rows: [
+        { id: "job-2", total: 2 },
+        { id: "job-1", total: 2 },
+      ],
+    });
+    mockDataWhere.mockReturnValue({
+      limit: vi.fn().mockResolvedValue([
+        { id: "job-1", title: "Eerste vacature", platform: "opdrachtoverheid" },
+        { id: "job-2", title: "Tweede vacature", platform: "opdrachtoverheid" },
+      ]),
+      orderBy: vi.fn(() => ({
+        limit: vi.fn(() => ({
+          offset: vi.fn().mockResolvedValue([]),
+        })),
+      })),
+    });
+
+    const result = await listJobs({ limit: 2, offset: 0 });
+
+    const dedupeQuery = mockExecute.mock.calls[0]?.[0] as
+      | { strings?: TemplateStringsArray | string[] }
+      | undefined;
+    expect(
+      containsNode(
+        dedupeQuery,
+        (value) => typeof value === "string" && value.includes("row_number() over"),
+      ),
+    ).toBe(true);
+    expect(
+      containsNode(
+        dedupeQuery,
+        (value) => typeof value === "string" && value.includes("dedupe_rank = 1"),
+      ),
+    ).toBe(true);
+    expect(containsNode(dedupeQuery, (value) => value === "jobs.dedupeTitleNormalized")).toBe(true);
+    expect(containsNode(dedupeQuery, (value) => value === "jobs.dedupeClientNormalized")).toBe(
+      true,
+    );
+    expect(containsNode(dedupeQuery, (value) => value === "jobs.dedupeLocationNormalized")).toBe(
+      true,
+    );
+    expect(
+      containsNode(
+        dedupeQuery,
+        (value) => typeof value === "string" && value.includes("regexp_replace"),
+      ),
+    ).toBe(false);
+    expect(result.total).toBe(2);
+    expect(result.data.map((job) => job.id)).toEqual(["job-2", "job-1"]);
+    expect(result).not.toHaveProperty("telemetry");
+  });
+
+  it("keeps the deduped total when the requested page is empty", async () => {
+    mockExecute.mockResolvedValue({ rows: [{ id: null, total: 5 }] });
+
+    const result = await listJobs({ limit: 2, offset: 10 });
+
+    expect(result.total).toBe(5);
+    expect(result.data).toEqual([]);
+    expect(result).not.toHaveProperty("telemetry");
+  });
+
+  it("regression: exact deduped total across all pages (no limitForRanking)", async () => {
+    // This test validates that the deduplication query computes the total
+    // over the FULL deduped set, not a limited ranking window.
+    //
+    // The query structure must be:
+    // 1. Build full deduped_jobs CTE (no limit)
+    // 2. Count ALL rows in deduped_jobs
+    // 3. Apply limit/offset ONLY to page results
+    //
+    // This ensures: total = count of all deduped rows, regardless of pagination
+
+    // Scenario: 5 total deduped jobs, requesting page 1 (limit=2, offset=0)
+    mockExecute.mockResolvedValueOnce({
+      rows: [
+        { id: "job-1", total: 5 },
+        { id: "job-2", total: 5 },
+      ],
+    });
+    mockDataWhere.mockReturnValueOnce({
+      limit: vi.fn().mockResolvedValue([
+        { id: "job-1", title: "Job 1", platform: "test" },
+        { id: "job-2", title: "Job 2", platform: "test" },
+      ]),
+      orderBy: vi.fn(() => ({
+        limit: vi.fn(() => ({
+          offset: vi.fn().mockResolvedValue([]),
+        })),
+      })),
+    });
+
+    const page1 = await listJobs({ limit: 2, offset: 0 });
+    expect(page1.total).toBe(5); // Total is 5, not 2
+    expect(page1.data).toHaveLength(2);
+
+    // Scenario: Same 5 total deduped jobs, requesting page 3 (limit=2, offset=4)
+    // This is the critical test: if limitForRanking was applied, total would be wrong
+    mockExecute.mockResolvedValueOnce({
+      rows: [{ id: "job-5", total: 5 }],
+    });
+    mockDataWhere.mockReturnValueOnce({
+      limit: vi.fn().mockResolvedValue([{ id: "job-5", title: "Job 5", platform: "test" }]),
+      orderBy: vi.fn(() => ({
+        limit: vi.fn(() => ({
+          offset: vi.fn().mockResolvedValue([]),
+        })),
+      })),
+    });
+
+    const page3 = await listJobs({ limit: 2, offset: 4 });
+    expect(page3.total).toBe(5); // Total is still 5, not 1
+    expect(page3.data).toHaveLength(1);
+  });
+
   it("derives region filters from province-backed values", async () => {
     await listJobs({ region: "randstad" });
 
-    const whereClause = mockCountWhere.mock.calls[0]?.[0];
+    const listJobsQuery = getListJobsQuery();
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -296,7 +425,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(true);
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -311,10 +440,10 @@ describe("jobs service status and endClient filters", () => {
   it("applies hours overlap and radius filters from explicit province anchors", async () => {
     await listJobs({ province: "Utrecht", hoursPerWeekBucket: "24_32", radiusKm: 25 });
 
-    const whereClause = mockCountWhere.mock.calls[0]?.[0];
+    const listJobsQuery = getListJobsQuery();
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -326,7 +455,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(true);
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&
@@ -339,7 +468,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(true);
     expect(
       containsNode(
-        whereClause,
+        listJobsQuery,
         (value) =>
           typeof value === "object" &&
           value !== null &&

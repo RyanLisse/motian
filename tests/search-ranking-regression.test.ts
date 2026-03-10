@@ -35,6 +35,7 @@ describe("search/ranking API shape regression", () => {
     const result = await listJobs({ limit: 2, offset: 0 });
     expect(result).toHaveProperty("data");
     expect(result).toHaveProperty("total");
+    expect(result).not.toHaveProperty("telemetry");
     expect(Array.isArray(result.data)).toBe(true);
     expect(typeof result.total).toBe("number");
     expect(result.data[0]).toMatchObject({
@@ -47,10 +48,12 @@ describe("search/ranking API shape regression", () => {
   it("hybridSearch returns array of Job & { score }", async () => {
     const result = await hybridSearch("test", { limit: 2 });
     expect(Array.isArray(result)).toBe(true);
+    expect(result).not.toHaveProperty("total");
     expect(result[0]).toMatchObject({
       id: "job-2",
       title: "Hybrid ranked",
       score: 0.61,
     });
+    expect(result[0]).not.toHaveProperty("telemetry");
   });
 });

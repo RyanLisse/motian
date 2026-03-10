@@ -4,12 +4,8 @@ import { jobs } from "../../db/schema";
 import { escapeLike, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
 import { LIST_SLO_MS, logSlowQuery } from "../../lib/query-observability";
-import {
-  getJobStatusCondition,
-  getListJobsOrderBy,
-  type JobStatus,
-  type ListJobsSortBy,
-} from "./filters";
+import { fetchDedupedJobsPage, loadJobsByIds } from "./deduplication";
+import { getJobStatusCondition, type JobStatus, type ListJobsSortBy } from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
 import { type Job, jobReadSelection } from "./repository";
 
@@ -89,27 +85,29 @@ export async function listJobs(
     }
   }
 
-  const whereClause = and(...conditions);
+  const whereClause = and(...conditions) ?? sql`true`;
 
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(jobs)
-    .where(whereClause);
+  const dedupePageStartedAt = Date.now();
+  const { ids: dedupedIds, total } = await fetchDedupedJobsPage({
+    whereClause,
+    limit,
+    offset,
+    sortBy: opts.sortBy ?? "nieuwste",
+  });
+  const dedupePageMs = Date.now() - dedupePageStartedAt;
 
-  const data = await db
-    .select(jobReadSelection)
-    .from(jobs)
-    .where(whereClause)
-    .orderBy(getListJobsOrderBy(opts.sortBy ?? "nieuwste"))
-    .limit(limit)
-    .offset(offset);
+  const hydrateStartedAt = Date.now();
+  const data = await loadJobsByIds(dedupedIds);
+  const hydrateMs = Date.now() - hydrateStartedAt;
 
   logSlowQuery("listJobs", Date.now() - start, LIST_SLO_MS, {
     limit,
     offset,
-    total: count,
+    total,
+    dedupePageMs,
+    hydrateMs,
   });
-  return { data, total: count };
+  return { data, total };
 }
 
 /** Alle actieve (niet-verwijderde, deadline niet verstreken) jobs ophalen. Hogere limiet voor batch matching. */

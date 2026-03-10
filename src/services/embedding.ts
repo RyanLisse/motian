@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, type SQL, sql } from "drizzle-orm";
 import { db } from "../db";
 import { candidates, jobs } from "../db/schema";
 import {
@@ -17,6 +17,17 @@ const BATCH_SIZE = 100;
 const MAX_JOB_DESCRIPTION_EMBEDDING_CHARS = 4_000;
 const MIN_JOB_EMBEDDING_SOURCE_CHARS = 5;
 const MAX_RESUME_EMBEDDING_CHARS = 2_000;
+const MAX_QUERY_EMBEDDING_CHARS = 512;
+const QUERY_EMBEDDING_CACHE_TTL_MS = 5 * 60 * 1000;
+const QUERY_EMBEDDING_CACHE_MAX_ENTRIES = 256;
+
+type CachedQueryEmbedding = {
+  embedding: number[];
+  expiresAt: number;
+};
+
+const queryEmbeddingCache = new Map<string, CachedQueryEmbedding>();
+const inflightQueryEmbeddings = new Map<string, Promise<number[]>>();
 
 function toBoundedJobDescriptionText(description: string | null | undefined): string | null {
   if (typeof description !== "string") return null;
@@ -34,6 +45,57 @@ function toBoundedResumeText(resumeRaw: string | null | undefined): string | nul
   if (normalized.length === 0) return null;
 
   return normalized.slice(0, MAX_RESUME_EMBEDDING_CHARS);
+}
+
+export function normalizeQueryEmbeddingText(query: string): string {
+  return query
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("nl-NL")
+    .slice(0, MAX_QUERY_EMBEDDING_CHARS);
+}
+
+export type QueryEmbeddingSignal = {
+  normalizedQuery: string;
+  characterCount: number;
+  termCount: number;
+};
+
+export function getQueryEmbeddingSignal(query: string): QueryEmbeddingSignal {
+  const normalizedQuery = normalizeQueryEmbeddingText(query);
+  return {
+    normalizedQuery,
+    characterCount: normalizedQuery.length,
+    termCount: normalizedQuery.length === 0 ? 0 : normalizedQuery.split(" ").length,
+  };
+}
+
+function getCachedQueryEmbedding(key: string): number[] | null {
+  const cached = queryEmbeddingCache.get(key);
+  if (!cached) return null;
+
+  if (cached.expiresAt <= Date.now()) {
+    queryEmbeddingCache.delete(key);
+    return null;
+  }
+
+  queryEmbeddingCache.delete(key);
+  queryEmbeddingCache.set(key, cached);
+  return cached.embedding;
+}
+
+function setCachedQueryEmbedding(key: string, embedding: number[]) {
+  queryEmbeddingCache.delete(key);
+  queryEmbeddingCache.set(key, {
+    embedding,
+    expiresAt: Date.now() + QUERY_EMBEDDING_CACHE_TTL_MS,
+  });
+
+  while (queryEmbeddingCache.size > QUERY_EMBEDDING_CACHE_MAX_ENTRIES) {
+    const oldestKey = queryEmbeddingCache.keys().next().value;
+    if (!oldestKey) break;
+    queryEmbeddingCache.delete(oldestKey);
+  }
 }
 
 // ========== Text Preparation ==========
@@ -103,6 +165,31 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     { label: "Embedding" },
   );
   return embedding;
+}
+
+export async function generateQueryEmbedding(query: string): Promise<number[]> {
+  const { normalizedQuery } = getQueryEmbeddingSignal(query);
+  if (normalizedQuery.length === 0) {
+    return generateEmbedding(query);
+  }
+
+  const cached = getCachedQueryEmbedding(normalizedQuery);
+  if (cached) return cached;
+
+  const inflight = inflightQueryEmbeddings.get(normalizedQuery);
+  if (inflight) return inflight;
+
+  const pending = generateEmbedding(normalizedQuery)
+    .then((embedding) => {
+      setCachedQueryEmbedding(normalizedQuery, embedding);
+      return embedding;
+    })
+    .finally(() => {
+      inflightQueryEmbeddings.delete(normalizedQuery);
+    });
+
+  inflightQueryEmbeddings.set(normalizedQuery, pending);
+  return pending;
 }
 
 // ========== Batch Embeddings ==========
@@ -310,12 +397,19 @@ export async function embedCandidatesBatch(opts: {
 
 export async function findSimilarJobs(
   query: string,
-  opts: { limit?: number; minScore?: number } = {},
+  opts: { limit?: number; minScore?: number; filterCondition?: SQL } = {},
+): Promise<Array<{ id: string; title: string; similarity: number }>> {
+  const queryEmbedding = await generateQueryEmbedding(query);
+  return findSimilarJobsByEmbedding(queryEmbedding, opts);
+}
+
+export async function findSimilarJobsByEmbedding(
+  queryEmbedding: number[],
+  opts: { limit?: number; minScore?: number; filterCondition?: SQL } = {},
 ): Promise<Array<{ id: string; title: string; similarity: number }>> {
   const limit = opts.limit ?? 10;
   const minScore = opts.minScore ?? 0.5;
-
-  const queryEmbedding = await generateEmbedding(query);
+  const filterCondition = opts.filterCondition ?? sql`true`;
   const vectorStr = `[${queryEmbedding.join(",")}]`;
 
   const results = await db.execute(sql`
@@ -326,6 +420,7 @@ export async function findSimilarJobs(
     FROM jobs
     WHERE embedding IS NOT NULL
       AND deleted_at IS NULL
+      AND ${filterCondition}
       AND 1 - (embedding <=> ${vectorStr}::vector) >= ${minScore}
     ORDER BY embedding <=> ${vectorStr}::vector
     LIMIT ${limit}

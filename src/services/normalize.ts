@@ -8,6 +8,35 @@ import { syncJobEscoSkills } from "./esco";
 /** Permissive type for scraped data — Zod validates at runtime via safeParse */
 export type RawScrapedListing = Record<string, unknown>;
 
+type JobDerivedFieldSource = Pick<
+  z.output<typeof unifiedJobSchema>,
+  "title" | "company" | "endClient" | "location" | "province" | "description"
+>;
+
+function normalizeDedupePart(value: string | null | undefined) {
+  return (value ?? "")
+    .toLocaleLowerCase("nl-NL")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function normalizeSearchPart(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ");
+}
+
+export function deriveJobSearchFields(job: JobDerivedFieldSource) {
+  return {
+    dedupeTitleNormalized: normalizeDedupePart(job.title),
+    dedupeClientNormalized: normalizeDedupePart(job.endClient ?? job.company),
+    dedupeLocationNormalized: normalizeDedupePart(job.province ?? job.location),
+    searchText: [job.title, job.company, job.description, job.location, job.province]
+      .map((value) => normalizeSearchPart(value))
+      .filter(Boolean)
+      .join(" "),
+  };
+}
+
 export async function normalizeAndSaveJobs(
   platform: string,
   listings: Record<string, unknown>[],
@@ -46,6 +75,7 @@ export async function normalizeAndSaveJobs(
           .values(
             batch.map((item) => ({
               ...item.parsed,
+              ...deriveJobSearchFields(item.parsed),
               platform,
               rawPayload: item.raw,
             })),
@@ -60,6 +90,10 @@ export async function normalizeAndSaveJobs(
               location: sql`excluded.location`,
               province: sql`excluded.province`,
               description: sql`excluded.description`,
+              dedupeTitleNormalized: sql`excluded.dedupe_title_normalized`,
+              dedupeClientNormalized: sql`excluded.dedupe_client_normalized`,
+              dedupeLocationNormalized: sql`excluded.dedupe_location_normalized`,
+              searchText: sql`excluded.search_text`,
               status: sql`excluded.status`,
               clientReferenceCode: sql`excluded.client_reference_code`,
               rateMin: sql`excluded.rate_min`,

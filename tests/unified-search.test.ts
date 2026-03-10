@@ -40,6 +40,7 @@ describe("searchJobsUnified", () => {
     const result = await searchJobsUnified({ limit: 2, offset: 0 });
     expect(result).toHaveProperty("data");
     expect(result).toHaveProperty("total");
+    expect(result).not.toHaveProperty("telemetry");
     expect(Array.isArray(result.data)).toBe(true);
     expect(typeof result.total).toBe("number");
   });
@@ -73,6 +74,7 @@ describe("searchJobsUnified", () => {
       title: "Test job",
       platform: "opdrachtoverheid",
     });
+    expect(result).not.toHaveProperty("telemetry");
     expect(first).not.toHaveProperty("score");
   });
 
@@ -122,6 +124,7 @@ describe("searchJobsUnified", () => {
       score: 0.88,
     });
     expect(result.total).toBe(7);
+    expect(result).not.toHaveProperty("telemetry");
   });
 
   it("accepts sortBy and returns deterministic ordering", async () => {
@@ -225,5 +228,16 @@ describe("searchJobsUnified", () => {
       }),
     );
     expect(result.total).toBe(7);
+  });
+
+  it("preserves the public total-and-offset contract for short queries", async () => {
+    const result = await searchJobsUnified({ q: "in", limit: 2, offset: 4 });
+
+    expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
+      "in",
+      expect.objectContaining({ limit: 2, offset: 4 }),
+    );
+    expect(result).toMatchObject({ total: 7 });
+    expect(Array.isArray(result.data)).toBe(true);
   });
 });

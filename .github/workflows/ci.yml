@@ -261,6 +261,8 @@ jobs:
         run: pnpm dev &
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          HOSTNAME: "0.0.0.0"
+          PORT: "3001"
 
       - name: Wait for server
         run: npx wait-on http://localhost:3001 --timeout 60000

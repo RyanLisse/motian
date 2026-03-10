@@ -288,6 +288,8 @@ describe("Opdrachten UI/API contracts", () => {
     const layout = readFile("app", "opdrachten", "layout.tsx");
     const pipelineSummary = readFile("src", "services", "jobs", "pipeline-summary.ts");
 
+    expect(layout).toContain('listJobs({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" })');
+    expect(layout).toContain('import { listJobs } from "@/src/services/jobs"');
     expect(layout).toContain('getJobStatusCondition("open")');
     expect(layout).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
     expect(layout).toContain("jsonb_array_elements_text");
@@ -300,8 +302,8 @@ describe("Opdrachten UI/API contracts", () => {
     expect(pipelineSummary).toContain("inArray(applications.jobId, jobIds)");
     expect(pipelineSummary).toContain("groupBy(applications.jobId)");
     expect(layout).toContain("categories={categories}");
-    expect(layout).toContain(".where(activeJobsCondition)");
-    expect(layout).toContain("applicationDeadline: jobs.applicationDeadline");
+    expect(layout).toContain("company: job.endClient ?? job.company");
+    expect(layout).toContain("applicationDeadline: job.applicationDeadline");
   });
 
   it("detail routes preserve sidebar context and query-aware vacature links", () => {
