@@ -214,6 +214,23 @@ describe("chat widget continuity", () => {
     expect(html).toContain('aria-label="Nieuw gesprek"');
   });
 
+  it("keeps chat history directly visible on desktop while leaving drawer controls for mobile", () => {
+    const pageSource = readFileSync(
+      new URL("../components/chat/chat-page-content.tsx", import.meta.url),
+      "utf8",
+    );
+    const historySource = readFileSync(
+      new URL("../components/chat/chat-history-sidebar.tsx", import.meta.url),
+      "utf8",
+    );
+
+    expect(pageSource).toContain('aria-label="Open gesprekken"');
+    expect(pageSource).toContain("lg:hidden");
+    expect(pageSource).toContain("lg:translate-x-0");
+    expect(pageSource).toContain("lg:relative lg:z-auto");
+    expect(historySource).toContain('className="h-7 w-7 lg:hidden"');
+  });
+
   it("renders widget launcher controls with explicit accessible names and hides on /chat", async () => {
     const { ChatWidget } = await import("../components/chat/chat-widget");
 

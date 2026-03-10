@@ -43,13 +43,13 @@ describe("Detail surfaces recruiter workflow context", () => {
 
     expect(source).toContain("currentListParams.append(key, entry)");
     expect(source).toContain('id="koppel-kandidaten"');
-    expect(source).toContain('variant="inline"');
+    expect(source).toContain('href="#koppel-kandidaten"');
     expect(source).toContain('id="recruiter-cockpit"');
     expect(source).toContain('id="ai-grading"');
     expect(source).toContain("Recruiter cockpit");
     expect(source).toContain("Volgende actie");
     expect(source).toContain("Gekoppelde kandidaten");
-    expect(source).toContain("AI aanbevelingen");
+    expect(source).toContain("Bekijk AI aanbevelingen");
     expect(source).toContain("AI Grading");
     expect(source).toContain("source: applications.source");
     // biome-ignore lint/suspicious/noTemplateCurlyInString: asserting source contains a template literal
@@ -132,7 +132,7 @@ describe("Detail surfaces recruiter workflow context", () => {
       },
     ];
 
-    const stateValues = [false, matches, new Set(["match-1"]), false, false, ""];
+    const stateValues = [matches, new Set(["match-1"]), false, false, ""];
     let stateIndex = 0;
 
     vi.doMock("react", async () => {
@@ -211,15 +211,15 @@ describe("Detail surfaces recruiter workflow context", () => {
       createElement(LinkCandidatesDialog, {
         jobId: "job-1",
         jobTitle: "Manager Inhuur",
-        variant: "inline",
       }),
     );
 
     expect(html).toContain("Alice Example");
     expect(html).toContain("Bob Example");
     expect(html).toContain("Koppel aan screening");
-    expect(html).toContain("Recruiter cockpit");
-    expect(html).toContain("AI Grading");
+    expect(html).toContain("Selecteer direct wie je aan screening wilt toevoegen.");
+    expect(html).not.toContain("Recruiter cockpit");
+    expect(html).not.toContain("AI Grading");
     expect(fetchMock).toHaveBeenCalledWith("/api/opdrachten/job-1/match-kandidaten", {
       method: "POST",
     });

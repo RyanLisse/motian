@@ -366,4 +366,50 @@ describe("chat session compatibility fallback", () => {
     const { deleteSession } = await import("../src/services/chat-sessions");
     await expect(deleteSession("session-1")).resolves.toBe(true);
   });
+
+  it("filters out null and primitive entries from malformed legacy message arrays", async () => {
+    const malformedMessages = [
+      createMessage("m1", "user", "Valid message"),
+      null,
+      "invalid string",
+      42,
+      undefined,
+      createMessage("m2", "assistant", "Another valid message"),
+      { role: "user" }, // Missing required fields
+      [],
+    ];
+
+    mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
+      callback(createFailingNormalizedSelectTx()),
+    );
+    mockDb.select.mockImplementation(() => ({
+      from: vi.fn((table: { __table: string }) => {
+        expect(table).toBe(chatSessions);
+        return createResolvedChain([
+          {
+            id: "row-1",
+            sessionId: "session-1",
+            title: null,
+            lastMessagePreview: "Another valid message",
+            messageCount: 0,
+            context: null,
+            updatedAt: new Date("2024-01-02T00:00:00.000Z"),
+            createdAt: new Date("2024-01-01T00:00:00.000Z"),
+            messages: malformedMessages,
+          },
+        ]);
+      }),
+    }));
+
+    const { getRecentMessagesForContext } = await import("../src/services/chat-sessions");
+    const result = await getRecentMessagesForContext("session-1", 10);
+
+    // Should only include the two valid user/assistant messages, filtering out nulls/primitives
+    // The function should not throw when encountering null or primitive entries
+    expect(result.length).toBeGreaterThan(0);
+    const validIds = result.map((m) => m.id).filter((id) => id === "m1" || id === "m2");
+    expect(validIds).toEqual(["m1", "m2"]);
+    expect(result.some((m) => m.role === "user")).toBe(true);
+    expect(result.some((m) => m.role === "assistant")).toBe(true);
+  });
 });

@@ -4,6 +4,11 @@ import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  clearPersistedChatSession,
+  hasPersistedChatSession,
+  markPersistedChatSession,
+} from "./chat-session-storage";
 
 const HISTORY_PAGE_SIZE = 20;
 const MAX_ACTIVE_MESSAGES = 40;
@@ -83,6 +88,7 @@ export function useChatThread({
 
       const res = await fetch(`/api/chat-sessies/${sessionId}?${params.toString()}`);
       if (res.status === 404) {
+        clearPersistedChatSession(sessionId);
         setHistoryCursor(null);
         setHasMoreHistory(false);
         if (mode === "replace") {
@@ -97,6 +103,7 @@ export function useChatThread({
 
       const page = (await res.json()) as ThreadPageResponse;
       const nextMessages = page.messages ?? [];
+      markPersistedChatSession(sessionId);
       setHistoryCursor(page.nextCursor ?? null);
       setHasMoreHistory(Boolean(page.hasMore));
       setMessages((currentMessages) =>
@@ -135,6 +142,11 @@ export function useChatThread({
     setHasMoreHistory(false);
     setMessages([]);
 
+    if (!hasPersistedChatSession(sessionId)) {
+      setLoadingThread(false);
+      return;
+    }
+
     void loadPage(null, "replace")
       .catch((err) => {
         if (!cancelled) {
@@ -150,7 +162,7 @@ export function useChatThread({
     return () => {
       cancelled = true;
     };
-  }, [loadPage, setMessages]);
+  }, [loadPage, sessionId, setMessages]);
 
   const previousStatusRef = useRef(status);
 
@@ -159,6 +171,7 @@ export function useChatThread({
     previousStatusRef.current = status;
 
     if ((previousStatus === "submitted" || previousStatus === "streaming") && status === "ready") {
+      markPersistedChatSession(sessionId);
       onSessionActivity?.();
       if (messages.length > MAX_ACTIVE_MESSAGES) {
         void refreshLatestPage().catch((err) => {
@@ -166,7 +179,7 @@ export function useChatThread({
         });
       }
     }
-  }, [messages.length, onSessionActivity, refreshLatestPage, status]);
+  }, [messages.length, onSessionActivity, refreshLatestPage, sessionId, status]);
 
   return {
     messages,

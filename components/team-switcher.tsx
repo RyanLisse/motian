@@ -10,7 +10,7 @@ export function TeamSwitcher({
   teams: {
     name: string;
     logo: LucideIcon;
-    plan: string;
+    plan?: string | null;
   }[];
 }) {
   const activeTeam = teams[0];
@@ -29,7 +29,9 @@ export function TeamSwitcher({
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold">{activeTeam.name}</span>
-            <span className="truncate text-xs text-muted-foreground">{activeTeam.plan}</span>
+            {activeTeam.plan ? (
+              <span className="truncate text-xs text-muted-foreground">{activeTeam.plan}</span>
+            ) : null}
           </div>
         </SidebarMenuButton>
       </SidebarMenuItem>

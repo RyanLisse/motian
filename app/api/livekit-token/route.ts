@@ -4,7 +4,8 @@ import { nanoid } from "nanoid";
 
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
-const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+const LIVEKIT_URL = process.env.LIVEKIT_URL;
+const LIVEKIT_PUBLIC_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL;
 
 /**
  * Token endpoint compatible with LiveKit's TokenSourceEndpoint format.
@@ -14,7 +15,7 @@ const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL;
  * { server_url, participant_token } (TokenSourceResponse format).
  */
 export async function POST(req: Request) {
-  if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+  if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL || !LIVEKIT_PUBLIC_URL) {
     return Response.json({ error: "LiveKit niet geconfigureerd" }, { status: 500 });
   }
 
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
 
   // Return in TokenSourceResponse wire format (snake_case)
   return Response.json({
-    server_url: LIVEKIT_URL,
+    server_url: LIVEKIT_PUBLIC_URL,
     participant_token: participantToken,
   });
 }
