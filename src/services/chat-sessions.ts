@@ -251,8 +251,11 @@ function getLegacySessionMessages(messages: unknown, sessionId: string): UIMessa
 
   return messages
     .filter((message): message is UIMessage => {
-      const msg = message as UIMessage;
-      return msg.role === "user" || msg.role === "assistant";
+      if (typeof message !== "object" || message === null) {
+        return false;
+      }
+      const role = (message as { role?: unknown }).role;
+      return role === "user" || role === "assistant";
     })
     .map((message, index) => normalizeChatMessage(message, `legacy-${sessionId}-${index + 1}`));
 }
