@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { buildCorsHeaders, shouldRejectCorsPreflight } from "@/src/lib/api-cors";
+import { shouldAllowMissingApiSecret } from "@/src/lib/runtime-config";
 
 /** Routes that bypass bearer token authentication */
 const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi"];
@@ -10,6 +11,14 @@ function isPublicRoute(pathname: string): boolean {
 
 function corsHeaders(request: NextRequest): HeadersInit {
   return buildCorsHeaders(request.headers.get("origin"));
+}
+
+function withCorsHeaders(response: NextResponse, request: NextRequest): NextResponse {
+  for (const [key, value] of Object.entries(corsHeaders(request))) {
+    response.headers.set(key, value);
+  }
+
+  return response;
 }
 
 export function proxy(request: NextRequest) {
@@ -30,21 +39,20 @@ export function proxy(request: NextRequest) {
 
   // Skip auth for public routes
   if (isPublicRoute(pathname)) {
-    const response = NextResponse.next();
-    for (const [key, value] of Object.entries(corsHeaders(request))) {
-      response.headers.set(key, value);
-    }
-    return response;
+    return withCorsHeaders(NextResponse.next(), request);
   }
 
-  // Development mode: no API_SECRET means allow everything
+  // Local/test mode may omit API_SECRET, but deployed production must fail closed.
   const apiSecret = process.env.API_SECRET;
   if (!apiSecret) {
-    const response = NextResponse.next();
-    for (const [key, value] of Object.entries(corsHeaders(request))) {
-      response.headers.set(key, value);
+    if (!shouldAllowMissingApiSecret()) {
+      return NextResponse.json(
+        { error: "API authenticatie niet geconfigureerd" },
+        { status: 503, headers: corsHeaders(request) },
+      );
     }
-    return response;
+
+    return withCorsHeaders(NextResponse.next(), request);
   }
 
   // Validate bearer token
@@ -58,11 +66,7 @@ export function proxy(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.next();
-  for (const [key, value] of Object.entries(corsHeaders(request))) {
-    response.headers.set(key, value);
-  }
-  return response;
+  return withCorsHeaders(NextResponse.next(), request);
 }
 
 export const config = {

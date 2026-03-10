@@ -84,10 +84,41 @@ function getSafeMetadata(metadata: unknown): Record<string, unknown> {
   return {};
 }
 
-function normalizeMessage(message: UIMessage, fallbackId: string): UIMessage {
+function getToolPartFallbackState(part: Record<string, unknown>): string | undefined {
+  if (typeof part.state === "string" && part.state.length > 0) return part.state;
+  if (typeof part.errorText === "string" && part.errorText.length > 0) return "output-error";
+  if (part.output !== undefined) return "output-available";
+  if (part.approval && typeof part.approval === "object") return "approval-requested";
+  if (part.input !== undefined || part.rawInput !== undefined) return "input-available";
+  return undefined;
+}
+
+function normalizeMessagePart(part: UIMessage["parts"][number]): UIMessage["parts"][number] {
+  if (
+    typeof part !== "object" ||
+    part == null ||
+    !(
+      part.type === "dynamic-tool" ||
+      (typeof part.type === "string" && part.type.startsWith("tool-"))
+    )
+  ) {
+    return part;
+  }
+
+  const normalizedState = getToolPartFallbackState(part as Record<string, unknown>);
+  if (!normalizedState) return part;
+
+  return {
+    ...part,
+    state: normalizedState,
+  } as UIMessage["parts"][number];
+}
+
+export function normalizeChatMessage(message: UIMessage, fallbackId: string): UIMessage {
   return {
     ...message,
     id: typeof message.id === "string" && message.id.length > 0 ? message.id : fallbackId,
+    parts: Array.isArray(message.parts) ? message.parts.map(normalizeMessagePart) : message.parts,
   };
 }
 
@@ -247,8 +278,8 @@ async function withChatSessionMessageCompatibility<T>(
 
 function getPersistableMessages(messages: UIMessage[], sessionId: string): UIMessage[] {
   return messages
-    .map((message, index) => normalizeMessage(message, `${sessionId}-${Date.now()}-${index + 1}`))
-    .filter((message) => message.role === "user" || message.role === "assistant");
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .map((message, index) => normalizeChatMessage(message, `${sessionId}-msg-${index + 1}`));
 }
 
 function getLegacySessionMessages(messages: unknown, sessionId: string): UIMessage[] {
@@ -257,10 +288,14 @@ function getLegacySessionMessages(messages: unknown, sessionId: string): UIMessa
   }
 
   return messages
-    .map((message, index) =>
-      normalizeMessage(message as UIMessage, `legacy-${sessionId}-${index + 1}`),
-    )
-    .filter((message) => message.role === "user" || message.role === "assistant");
+    .filter((message): message is UIMessage => {
+      if (typeof message !== "object" || message === null) {
+        return false;
+      }
+      const role = (message as { role?: unknown }).role;
+      return role === "user" || role === "assistant";
+    })
+    .map((message, index) => normalizeChatMessage(message, `legacy-${sessionId}-${index + 1}`));
 }
 
 function paginateLegacyMessages(
@@ -339,7 +374,10 @@ async function migrateLegacySessionMessagesToNormalizedStore(sessionId: string) 
 }
 
 function toPersistedMessage(message: unknown, orderIndex: number): UIMessage {
-  const normalized = message as UIMessage & { metadata?: unknown };
+  const normalized = normalizeChatMessage(
+    message as UIMessage & { metadata?: unknown },
+    `persisted-${orderIndex}`,
+  ) as UIMessage & { metadata?: unknown };
 
   return {
     ...normalized,

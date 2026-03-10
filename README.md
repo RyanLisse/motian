@@ -506,6 +506,7 @@ gantt
 
 ```
 motian/
+├── agent/                        # Standalone LiveKit voice agent package
 ├── app/                          # Next.js App Router
 │   ├── api/                      # 22 API route groepen (Nederlandse paden)
 │   │   ├── chat/                 # AI chat streaming endpoint
@@ -578,6 +579,8 @@ motian/
 ├── scripts/                      # CLI hulpmiddelen & backfill scripts
 ├── docs/                         # Architectuur documentatie
 ├── drizzle/                      # Database migraties
+├── extension/                    # Standalone WXT browser extension
+├── fumadocs/                     # Standalone Fumadocs/Next.js docs site
 ├── Justfile                      # Taak runner commando's
 └── vercel.json                   # Cron configuratie
 ```
@@ -775,6 +778,13 @@ pnpm install
 cp .env.example .env.local
 ```
 
+### Standalone subprojecten
+
+- `pnpm install` vanaf de repo-root bootstrap nu ook `agent/`, `fumadocs/` en `extension/` via `pnpm-workspace.yaml`.
+- `agent/` en `fumadocs/` behouden hun eigen `pnpm-lock.yaml` voor volledig standalone installs.
+- `extension/` gebruikt bewust de root `pnpm-lock.yaml` als gepinde dependency-bron.
+- Zie de README in elke submap voor build/typecheck commando's en install-afhankelijke gegenereerde artifacts zoals `extension/.wxt/tsconfig.json`.
+
 ### Omgevingsvariabelen
 
 ```bash
@@ -803,6 +813,12 @@ X_AI_API_KEY=xai-...
 # Sentry (foutopsporing)
 SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
 
+# LangSmith (AI observability — optioneel)
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=ls_...
+LANGSMITH_PROJECT=motian-local
+OTEL_ENABLED=true
+
 # PostHog (product analytics)
 NEXT_PUBLIC_POSTHOG_KEY=phc_...
 
@@ -822,6 +838,15 @@ PUBLIC_API_BASE_URL=http://localhost:3002
 HOSTNAME=0.0.0.0
 PORT=3002
 ```
+
+#### LangSmith observability
+
+- Motian ondersteunt **officiële** `LANGSMITH_*` variabelen voor AI tracing.
+- **Legacy compatibiliteit blijft behouden**: `LANGCHAIN_TRACING_V2`, `LANGCHAIN_API_KEY` en `LANGCHAIN_PROJECT` worden nog geaccepteerd als `LANGSMITH_*` niet gezet is.
+- Zet `LANGSMITH_TRACING=false` om tracing expliciet uit te schakelen, ook als er wel een API key aanwezig is.
+- Zet `OTEL_ENABLED=true` wanneer je Vercel AI SDK traces naar LangSmith wilt doorzetten op Vercel/server runtimes.
+- Belangrijkste AI-oppervlakken die nu tracebaar zijn: chat streaming, automatische chat-titelgeneratie, AI enrichment, CV parsing, requirement extraction, structured matching, judge verdicts en embeddings.
+- Vermijd onnodig gevoelige persoonsgegevens of secrets in prompts: LangSmith traces kunnen prompt/response metadata bevatten.
 
 ### Database Opzet
 

@@ -723,16 +723,14 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <LinkCandidatesDialog
-                      jobId={job.id}
-                      jobTitle={job.title}
-                      trigger={
-                        <Button variant="outline" size="sm" className="border-border">
+                    {totalPipeline > 0 ? (
+                      <Button asChild variant="outline" size="sm" className="border-border">
+                        <a href="#koppel-kandidaten">
                           <Sparkles className="mr-2 h-4 w-4" />
-                          AI aanbevelingen
-                        </Button>
-                      }
-                    />
+                          Bekijk AI aanbevelingen
+                        </a>
+                      </Button>
+                    ) : null}
                     <Button asChild variant="outline" size="sm" className="border-border">
                       <Link href={gradingHref}>
                         <Award className="mr-2 h-4 w-4" />
@@ -1020,20 +1018,14 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                       </h2>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Selecties uit de top-3 gaan direct naar screening. Open recruiter context of
-                      grading voor extra onderbouwing.
+                      Bekijk de beste matches voor deze vacature en zet kandidaten met één actie
+                      door naar screening.
                     </p>
                   </div>
-                  <Button asChild variant="outline" size="sm" className="border-border">
-                    <Link href={gradingHref}>
-                      <Award className="mr-2 h-4 w-4" />
-                      Open AI Grading
-                    </Link>
-                  </Button>
                 </div>
 
                 <div className="mt-4">
-                  <LinkCandidatesDialog jobId={job.id} jobTitle={job.title} variant="inline" />
+                  <LinkCandidatesDialog jobId={job.id} jobTitle={job.title} />
                 </div>
               </section>
 

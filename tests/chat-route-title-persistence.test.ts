@@ -19,6 +19,7 @@ describe("chat route title persistence", () => {
     expect(generateIndex).toBeGreaterThan(-1);
     expect(persistIndex).toBeLessThan(generateIndex);
 
+    expect(source).toContain("tracedGenerateObject as generateObject");
     expect(source).toContain("after(async () => {");
     expect(source).toContain(".update(chatSessions)");
     expect(source).toContain("isNull(chatSessions.title)");

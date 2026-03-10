@@ -1,7 +1,63 @@
+import { createRequire } from "node:module";
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { xai } from "@ai-sdk/xai";
 import * as ai from "ai";
+
+type EnvMap = Record<string, string | undefined>;
+
+function hasNonEmptyValue(value: string | undefined): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function pickFirstNonEmpty(...values: Array<string | undefined>): string | undefined {
+  return values.find(hasNonEmptyValue);
+}
+
+function parseBooleanEnv(value: string | undefined): boolean | undefined {
+  if (!hasNonEmptyValue(value)) return undefined;
+
+  switch (value.trim().toLowerCase()) {
+    case "1":
+    case "true":
+    case "yes":
+    case "on":
+      return true;
+    case "0":
+    case "false":
+    case "no":
+    case "off":
+      return false;
+    default:
+      return undefined;
+  }
+}
+
+export function applyLangSmithEnvFallbacks(env: EnvMap = process.env): EnvMap {
+  env.LANGSMITH_TRACING ??= env.LANGCHAIN_TRACING_V2;
+  env.LANGSMITH_API_KEY ??= env.LANGCHAIN_API_KEY;
+  env.LANGSMITH_PROJECT ??= env.LANGCHAIN_PROJECT;
+  return env;
+}
+
+export function getLangSmithApiKey(env: EnvMap = process.env): string | undefined {
+  return pickFirstNonEmpty(env.LANGSMITH_API_KEY, env.LANGCHAIN_API_KEY);
+}
+
+export function getLangSmithProject(env: EnvMap = process.env): string | undefined {
+  return pickFirstNonEmpty(env.LANGSMITH_PROJECT, env.LANGCHAIN_PROJECT);
+}
+
+export function isLangSmithTracingEnabled(env: EnvMap = process.env): boolean {
+  const tracingPreference =
+    parseBooleanEnv(env.LANGSMITH_TRACING) ?? parseBooleanEnv(env.LANGCHAIN_TRACING_V2);
+
+  if (!getLangSmithApiKey(env)) {
+    return false;
+  }
+
+  return tracingPreference ?? true;
+}
 
 // ── Centralized model instances ─────────────────────────────────────
 export const gemini31FlashLite = google("gemini-3.1-flash-lite-preview");
@@ -38,51 +94,55 @@ export function resolveChatModel(id?: string) {
 
 // ── LangSmith-traced AI SDK functions ───────────────────────────────
 // Uses `wrapAISDK` from `langsmith/experimental/vercel` to instrument
-// generateText, streamText, embed, embedMany with OpenTelemetry traces.
-// Gracefully falls back to raw `ai` functions when LANGCHAIN_API_KEY is absent.
+// generateText, generateObject, streamText, embed, embedMany with OpenTelemetry traces.
+// Prefers official LANGSMITH_* env vars while preserving legacy LANGCHAIN_* compatibility.
+// Gracefully falls back to raw `ai` functions when tracing is disabled or unavailable.
 
 type WrappedAI = {
   generateText: typeof ai.generateText;
+  generateObject: typeof ai.generateObject;
   streamText: typeof ai.streamText;
   embed: typeof ai.embed;
   embedMany: typeof ai.embedMany;
 };
 
 let _traced: WrappedAI | undefined;
+const langsmithRequire = createRequire(import.meta.url);
+
+function getRawAI(): WrappedAI {
+  return {
+    generateText: ai.generateText,
+    generateObject: ai.generateObject,
+    streamText: ai.streamText,
+    embed: ai.embed,
+    embedMany: ai.embedMany,
+  };
+}
 
 function getTraced(): WrappedAI {
   if (_traced) return _traced;
 
-  if (!process.env.LANGCHAIN_API_KEY) {
-    _traced = {
-      generateText: ai.generateText,
-      streamText: ai.streamText,
-      embed: ai.embed,
-      embedMany: ai.embedMany,
-    };
+  applyLangSmithEnvFallbacks();
+
+  if (!isLangSmithTracingEnabled()) {
+    _traced = getRawAI();
     return _traced;
   }
 
   try {
-    // Dynamic require to avoid build-time resolution of optional subpath.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { wrapAISDK } = require("langsmith/experimental/vercel") as {
+    const { wrapAISDK } = langsmithRequire("langsmith/experimental/vercel") as {
       wrapAISDK: (mod: typeof ai) => typeof ai;
     };
     const wrapped = wrapAISDK(ai);
     _traced = {
       generateText: wrapped.generateText,
+      generateObject: wrapped.generateObject,
       streamText: wrapped.streamText,
       embed: wrapped.embed,
       embedMany: wrapped.embedMany,
     };
   } catch {
-    _traced = {
-      generateText: ai.generateText,
-      streamText: ai.streamText,
-      embed: ai.embed,
-      embedMany: ai.embedMany,
-    };
+    _traced = getRawAI();
   }
 
   return _traced;
@@ -94,6 +154,11 @@ export function tracedGenerateText(
 ): ReturnType<typeof ai.generateText> {
   return getTraced().generateText(...args);
 }
+
+/** LangSmith-traced `generateObject` — falls back to raw `ai.generateObject` */
+export const tracedGenerateObject: typeof ai.generateObject = (...args) => {
+  return getTraced().generateObject(...args);
+};
 
 /** LangSmith-traced `streamText` — falls back to raw `ai.streamText` */
 export function tracedStreamText(

@@ -1,8 +1,6 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
-import { DefaultChatTransport } from "ai";
 import { nanoid } from "nanoid";
 import { useParams, usePathname } from "next/navigation";
 import {
@@ -12,8 +10,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import {
+  markPersistedChatSession,
+  readSessionStorage,
+  writeSessionStorage,
+} from "./chat-session-storage";
 
 export const CHAT_MODELS = [
   { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", provider: "Google" },
@@ -43,40 +47,6 @@ const SPEED_KEY = "motian-chat-speed";
 const PINNED_CONTEXT_KEY = "motian-chat-context";
 const DEFAULT_MODEL_ID = CHAT_MODELS[0].id;
 const DEFAULT_SPEED_MODE: ChatSpeedMode = "gemiddeld";
-
-function isStorageAvailable(): boolean {
-  try {
-    if (typeof window === "undefined" || window.sessionStorage == null) return false;
-    const key = "__motian_chat_storage__";
-    window.sessionStorage.setItem(key, "1");
-    window.sessionStorage.removeItem(key);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function readSessionStorage(key: string): string | null {
-  if (!isStorageAvailable()) return null;
-  try {
-    return window.sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeSessionStorage(key: string, value: string | null) {
-  if (!isStorageAvailable()) return;
-  try {
-    if (value == null) {
-      window.sessionStorage.removeItem(key);
-      return;
-    }
-    window.sessionStorage.setItem(key, value);
-  } catch {
-    // Ignore storage failures in private / embedded contexts.
-  }
-}
 
 export function resolveRouteContext(pathname: string, id: string | null): ChatRouteContext {
   if (pathname.startsWith("/opdrachten/") && id) {
@@ -165,6 +135,7 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
   const [mode, setMode] = useState<ChatSurfaceMode>("text");
   const [pinnedContext, setPinnedContext] = useState<ChatRouteContext | null>(null);
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
+  const latestLoadRequestRef = useRef<string | null>(null);
 
   useEffect(() => {
     const storedSessionId = readSessionStorage(SESSION_KEY);
@@ -218,41 +189,8 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
     [pathname, pinnedContext, routeContext],
   );
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        body: {
-          model: modelId,
-          speedMode,
-          context: {
-            route: activeContext.route,
-            entityId: activeContext.entityId,
-            entityType: activeContext.entityType,
-            sessionId: sessionId || undefined,
-          },
-        },
-      }),
-    [
-      activeContext.entityId,
-      activeContext.entityType,
-      activeContext.route,
-      modelId,
-      sessionId,
-      speedMode,
-    ],
-  );
-
-  const chat = useChat({
-    id: sessionId || "motian-chat-pending",
-    transport,
-  });
-
-  const { setMessages } = chat;
-
   const startNewSession = useCallback(
     ({ preservePinnedContext = pathname === "/chat" } = {}) => {
-      setMessages([]);
       setSessionId(nanoid());
       setMode("text");
       setSessionLoadError(null);
@@ -261,26 +199,35 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
         setPinnedContext(null);
       }
     },
-    [pathname, setMessages],
+    [pathname],
   );
 
-  const loadSession = useCallback(
-    async (nextSessionId: string) => {
-      try {
-        const loadedSession = await fetchChatSession(nextSessionId);
+  const loadSession = useCallback(async (nextSessionId: string) => {
+    // Track the latest request to guard against stale async responses
+    const requestId = nanoid();
+    latestLoadRequestRef.current = requestId;
 
-        setMessages(loadedSession.messages);
-        setSessionId(loadedSession.sessionId);
-        setMode(loadedSession.mode);
-        setPinnedContext(loadedSession.pinnedContext);
-        setSessionLoadError(null);
-      } catch (error) {
-        setSessionLoadError(error instanceof Error ? error.message : "Sessie laden mislukt");
-        throw error;
+    try {
+      const loadedSession = await fetchChatSession(nextSessionId);
+
+      // Guard against stale async responses: only apply if this is still the latest request
+      if (latestLoadRequestRef.current !== requestId) {
+        return;
       }
-    },
-    [setMessages],
-  );
+
+      setSessionId(loadedSession.sessionId);
+      setMode(loadedSession.mode);
+      setPinnedContext(loadedSession.pinnedContext);
+      setSessionLoadError(null);
+      markPersistedChatSession(loadedSession.sessionId);
+    } catch (error) {
+      // Only set error if this is still the latest request
+      if (latestLoadRequestRef.current === requestId) {
+        setSessionLoadError(error instanceof Error ? error.message : "Sessie laden mislukt");
+      }
+      throw error;
+    }
+  }, []);
 
   const prepareFullPageHandoff = useCallback(() => {
     setPinnedContext(routeContext);
@@ -290,7 +237,6 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
   }, [routeContext]);
 
   return {
-    ...chat,
     activeContext,
     mode,
     modelId,

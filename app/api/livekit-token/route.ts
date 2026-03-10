@@ -20,6 +20,10 @@ export async function GET() {
   return json({ enabled: true });
 }
 
+function getLiveKitClientUrl(fallbackUrl: string) {
+  return process.env.NEXT_PUBLIC_LIVEKIT_URL?.trim() || fallbackUrl;
+}
+
 /**
  * Token endpoint compatible with LiveKit's TokenSourceEndpoint format.
  *
@@ -73,7 +77,7 @@ export async function POST(req: Request) {
 
   // Return in TokenSourceResponse wire format (snake_case)
   return json({
-    server_url: url,
+    server_url: getLiveKitClientUrl(url),
     participant_token: participantToken,
   });
 }

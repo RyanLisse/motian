@@ -5,29 +5,7 @@ import {
   LIVEKIT_UNCONFIGURED_ERROR,
 } from "../src/lib/livekit";
 
-const ORIGINAL_ENV = {
-  LIVEKIT_API_KEY: process.env.LIVEKIT_API_KEY,
-  LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET,
-  LIVEKIT_URL: process.env.LIVEKIT_URL,
-  NEXT_PUBLIC_LIVEKIT_URL: process.env.NEXT_PUBLIC_LIVEKIT_URL,
-};
-
-function restoreEnv() {
-  for (const [key, value] of Object.entries(ORIGINAL_ENV)) {
-    if (value === undefined) {
-      delete process.env[key];
-      continue;
-    }
-
-    process.env[key] = value;
-  }
-}
-
 describe("LiveKit config helpers", () => {
-  afterEach(() => {
-    restoreEnv();
-  });
-
   it("prefers LIVEKIT_URL when both url env vars are present", () => {
     const config = getLiveKitServerConfig({
       LIVEKIT_API_KEY: "key",
@@ -72,48 +50,74 @@ describe("/api/livekit-token route", () => {
 
   afterEach(() => {
     vi.resetModules();
-    restoreEnv();
+    vi.unstubAllEnvs();
+    delete process.env.NEXT_PUBLIC_LIVEKIT_URL;
+    delete process.env.LIVEKIT_URL;
   });
 
   it("returns voice availability for configured environments", async () => {
-    process.env.LIVEKIT_API_KEY = "key";
-    process.env.LIVEKIT_API_SECRET = "secret";
-    process.env.LIVEKIT_URL = "wss://voice.livekit.cloud";
-    delete process.env.NEXT_PUBLIC_LIVEKIT_URL;
+    vi.stubEnv("LIVEKIT_API_KEY", "test-livekit-key");
+    vi.stubEnv("LIVEKIT_API_SECRET", "test-livekit-secret");
+    vi.stubEnv("LIVEKIT_URL", "wss://motian.livekit.cloud");
 
     const { GET } = await import("../app/api/livekit-token/route");
     const response = await GET();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({ enabled: true });
   });
 
-  it("uses LIVEKIT_URL when generating tokens", async () => {
-    process.env.LIVEKIT_API_KEY = "key";
-    process.env.LIVEKIT_API_SECRET = "secret";
-    process.env.LIVEKIT_URL = "wss://voice.livekit.cloud";
-    delete process.env.NEXT_PUBLIC_LIVEKIT_URL;
+  it("returns a token payload and prefers NEXT_PUBLIC_LIVEKIT_URL for the client", async () => {
+    vi.stubEnv("LIVEKIT_API_KEY", "test-livekit-key");
+    vi.stubEnv("LIVEKIT_API_SECRET", "test-livekit-secret");
+    vi.stubEnv("LIVEKIT_URL", "wss://motian.livekit.cloud");
+    vi.stubEnv("NEXT_PUBLIC_LIVEKIT_URL", "wss://public.livekit.cloud");
 
     const { POST } = await import("../app/api/livekit-token/route");
     const response = await POST(
       new Request("http://localhost/api/livekit-token", {
         method: "POST",
-        body: JSON.stringify({ room_name: "motian-test-room" }),
+        body: JSON.stringify({
+          room_name: "motian-audio-room",
+          participant_name: "Recruiter",
+          participant_identity: "recruiter-123",
+        }),
       }),
     );
-    const body = await response.json();
+
+    const body = (await response.json()) as {
+      participant_token?: string;
+      server_url?: string;
+    };
 
     expect(response.status).toBe(200);
-    expect(body.server_url).toBe("wss://voice.livekit.cloud");
+    expect(body.server_url).toBe("wss://public.livekit.cloud");
     expect(body.participant_token).toEqual(expect.any(String));
+    expect(body.participant_token?.split(".")).toHaveLength(3);
+  });
+
+  it("falls back to LIVEKIT_URL when NEXT_PUBLIC_LIVEKIT_URL is missing", async () => {
+    vi.stubEnv("LIVEKIT_API_KEY", "test-livekit-key");
+    vi.stubEnv("LIVEKIT_API_SECRET", "test-livekit-secret");
+    vi.stubEnv("LIVEKIT_URL", "wss://motian.livekit.cloud");
+
+    const { POST } = await import("../app/api/livekit-token/route");
+    const response = await POST(
+      new Request("http://localhost/api/livekit-token", {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      server_url: "wss://motian.livekit.cloud",
+      participant_token: expect.any(String),
+    });
   });
 
   it("returns 503 when LiveKit is unavailable", async () => {
-    delete process.env.LIVEKIT_API_KEY;
-    delete process.env.LIVEKIT_API_SECRET;
-    delete process.env.LIVEKIT_URL;
-    delete process.env.NEXT_PUBLIC_LIVEKIT_URL;
-
     const { GET, POST } = await import("../app/api/livekit-token/route");
 
     const availabilityResponse = await GET();

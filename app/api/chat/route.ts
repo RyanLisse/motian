@@ -1,4 +1,4 @@
-import { convertToModelMessages, generateObject, stepCountIs, type UIMessage } from "ai";
+import { convertToModelMessages, stepCountIs, type UIMessage } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { after } from "next/server";
@@ -6,7 +6,11 @@ import { z } from "zod";
 import { buildSystemPrompt, getRecruitmentTools } from "@/src/ai/agent";
 import { db } from "@/src/db";
 import { chatSessions } from "@/src/db/schema";
-import { resolveChatModel, tracedStreamText as streamText } from "@/src/lib/ai-models";
+import {
+  tracedGenerateObject as generateObject,
+  resolveChatModel,
+  tracedStreamText as streamText,
+} from "@/src/lib/ai-models";
 import { rateLimit } from "@/src/lib/rate-limit";
 import {
   type ChatSessionContext,
@@ -131,7 +135,7 @@ export async function POST(req: Request) {
             }),
             prompt: `Genereer een korte titel (3-6 woorden) voor dit gesprek. Gebruikersvraag: "${latestUserText.slice(0, 200)}"`,
           });
-          title = titleResult.object.title;
+          title = (titleResult.object as { title: string }).title;
         } catch (err) {
           console.error("[chat] Title generation failed:", err);
           return;
