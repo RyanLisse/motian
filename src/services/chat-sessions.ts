@@ -240,8 +240,8 @@ async function withChatSessionMessageCompatibility<T>(
 
 function getPersistableMessages(messages: UIMessage[], sessionId: string): UIMessage[] {
   return messages
-    .map((message, index) => normalizeChatMessage(message, `${sessionId}-msg-${index + 1}`))
-    .filter((message) => message.role === "user" || message.role === "assistant");
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .map((message, index) => normalizeChatMessage(message, `${sessionId}-msg-${index + 1}`));
 }
 
 function getLegacySessionMessages(messages: unknown, sessionId: string): UIMessage[] {
@@ -250,10 +250,11 @@ function getLegacySessionMessages(messages: unknown, sessionId: string): UIMessa
   }
 
   return messages
-    .map((message, index) =>
-      normalizeChatMessage(message as UIMessage, `legacy-${sessionId}-${index + 1}`),
-    )
-    .filter((message) => message.role === "user" || message.role === "assistant");
+    .filter((message): message is UIMessage => {
+      const msg = message as UIMessage;
+      return msg.role === "user" || msg.role === "assistant";
+    })
+    .map((message, index) => normalizeChatMessage(message, `legacy-${sessionId}-${index + 1}`));
 }
 
 function paginateLegacyMessages(

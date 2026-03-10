@@ -1,3 +1,6 @@
+import { existsSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { applyVoiceAgentEnvFallbacks, loadVoiceAgentEnv } from "../src/voice-agent/env";
 
@@ -32,6 +35,9 @@ describe("voice agent env fallbacks", () => {
 
 describe("loadVoiceAgentEnv", () => {
   let originalEnv: NodeJS.ProcessEnv;
+  const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+  const envLocalPath = join(projectRoot, ".env.local");
+  const envPath = join(projectRoot, ".env");
 
   beforeEach(() => {
     // Save original process.env
@@ -46,6 +52,14 @@ describe("loadVoiceAgentEnv", () => {
       }
     });
     Object.assign(process.env, originalEnv);
+
+    // Clean up test env files
+    if (existsSync(envLocalPath)) {
+      unlinkSync(envLocalPath);
+    }
+    if (existsSync(envPath)) {
+      unlinkSync(envPath);
+    }
   });
 
   it("loads dotenv values into the provided env object", () => {
@@ -87,5 +101,20 @@ describe("loadVoiceAgentEnv", () => {
     expect(env.GOOGLE_API_KEY).toBe("explicit-google-key");
     expect(env.LIVEKIT_URL).toBe("wss://explicit.livekit.cloud");
     expect(env.NEXT_PUBLIC_LIVEKIT_URL).toBe("wss://public.livekit.cloud");
+  });
+
+  it("respects .env.local precedence over .env with conflicting values", () => {
+    // Create .env with one value
+    writeFileSync(envPath, "GOOGLE_GENERATIVE_AI_API_KEY=env-google-key\n");
+    // Create .env.local with conflicting value
+    writeFileSync(envLocalPath, "GOOGLE_GENERATIVE_AI_API_KEY=env-local-google-key\n");
+
+    const env = {} as NodeJS.ProcessEnv;
+    loadVoiceAgentEnv(env);
+
+    // .env.local should take precedence
+    expect(env.GOOGLE_GENERATIVE_AI_API_KEY).toBe("env-local-google-key");
+    // Fallbacks should still apply to the provided env object
+    expect(env.GOOGLE_API_KEY).toBe("env-local-google-key");
   });
 });
