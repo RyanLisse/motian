@@ -145,7 +145,15 @@ export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
 
   async linkIssueToProject(input: GitHubProjectIssueLinkInput): Promise<GitHubProjectItemDto> {
     const issue = await this.readRepositoryIssue(input.issueNumber);
-    const existingItem = await this.findProjectItemByIssueId(issue.id ?? "");
+    const issueId = issue.id;
+
+    if (!issueId) {
+      throw new Error(
+        `GitHub issue #${input.issueNumber} in ${this.config.owner}/${this.config.repo} could not be resolved to a node id, so it cannot be linked to project ${this.config.projectId}.`,
+      );
+    }
+
+    const existingItem = await this.findProjectItemByIssueId(issueId);
 
     if (existingItem) {
       return existingItem;
@@ -154,7 +162,7 @@ export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
     const response = await this.client.graphql<AddIssueToProjectResponse>(
       ADD_ISSUE_TO_PROJECT_MUTATION,
       {
-        contentId: issue.id,
+        contentId: issueId,
         projectId: this.config.projectId,
       },
     );
