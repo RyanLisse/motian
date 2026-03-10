@@ -54,6 +54,7 @@ describe("harness workflow validation", () => {
     expect(graph.taskOrder).toEqual(["validate-plan", "run-smoke"]);
     expect(getReadyTaskIds(graph, [])).toEqual(["validate-plan"]);
     expect(getReadyDispatchIds(graph, [], [])).toEqual(["dispatch-validate"]);
+    expect(getReadyDispatchIds(graph, [], ["dispatch-validate"])).toEqual([]);
     expect(getReadyDispatchIds(graph, ["validate-plan"], ["dispatch-validate"])).toEqual([
       "dispatch-smoke",
     ]);
@@ -88,6 +89,24 @@ describe("harness workflow validation", () => {
     expect(result.issues.map((issue) => issue.code)).toEqual(
       expect.arrayContaining(["unknown_dispatch_dependency", "task_cycle"]),
     );
+    expect(result.issues.map((issue) => issue.message)).toEqual(
+      expect.arrayContaining([
+        "Dispatch 'dispatch-beta' hangt af van onbekende dispatch 'dispatch-missing'.",
+      ]),
+    );
+  });
+
+  it("rejects unknown keys through strict plan schemas", () => {
+    const result = validateHarnessPlanDefinition({
+      ...validPlan,
+      onverwachtVeld: true,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.map((issue) => issue.code)).toContain("schema_unrecognized_keys");
+    expect(result.issues.map((issue) => issue.message)).toContain(
+      "Onbekende velden op 'document': onverwachtVeld.",
+    );
   });
 
   it("requires substantive document content beyond section headings", () => {
@@ -112,5 +131,20 @@ describe("harness workflow validation", () => {
     );
 
     expect(substantiveDocument.ok).toBe(true);
+  });
+
+  it("accepts CRLF line endings in plan documents", () => {
+    const crlfDocument = [
+      "# Harness Plan",
+      "",
+      "## Proposed Changes",
+      "- Voeg gedeelde contracten toe",
+      "",
+      "## Verification Plan",
+      "- Voer `pnpm exec vitest run tests/harness/workflow-validation.test.ts` uit",
+    ].join("\r\n");
+
+    const result = validateHarnessPlanDocument(crlfDocument);
+    expect(result.ok).toBe(true);
   });
 });

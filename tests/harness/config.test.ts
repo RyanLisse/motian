@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -33,7 +33,6 @@ describe("harness config loader", () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "motian-harness-config-partial-"));
 
     try {
-      mkdirSync(tempRoot, { recursive: true });
       writeFileSync(
         join(tempRoot, "harness.config.json"),
         JSON.stringify(

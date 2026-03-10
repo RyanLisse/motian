@@ -2,13 +2,14 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 import {
   formatHarnessRunSummary,
   orchestrateHarnessRun,
   readHarnessRunManifest,
-} from "../../src/harness/orchestrator";
-import { executeHarnessCommand } from "../../src/harness/runtime";
-import { prepareHarnessWorkspace } from "../../src/harness/workspace";
+} from "@/src/harness/orchestrator";
+import { executeHarnessCommand } from "@/src/harness/runtime";
+import { prepareHarnessWorkspace, sanitizeHarnessRunIdSegment } from "@/src/harness/workspace";
 
 function createGitRepo(root: string): string {
   mkdirSync(root, { recursive: true });
@@ -28,6 +29,11 @@ function createGitRepo(root: string): string {
 }
 
 describe("harness workspace", () => {
+  it("sanitizes run ids before they are used in filesystem paths", () => {
+    expect(sanitizeHarnessRunIdSegment("../../gevaarlijk run-id!!")).toBe("gevaarlijk-run-id");
+    expect(sanitizeHarnessRunIdSegment("...")).toBe("run");
+  });
+
   it("creates an isolated git worktree and run directories", () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "motian-harness-workspace-"));
 
@@ -92,7 +98,7 @@ describe("harness runtime", () => {
 
       expect(result.outcome).toBe("timed_out");
       expect(result.timedOut).toBe(true);
-      expect(readFileSync(result.stderrPath, "utf8")).toContain("Timed out");
+      expect(readFileSync(result.stderrPath, "utf8")).toContain("time-out bereikt");
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }
@@ -100,6 +106,23 @@ describe("harness runtime", () => {
 });
 
 describe("harness orchestrator", () => {
+  it("rejects invalid manifests with schema validation", () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "motian-harness-invalid-manifest-"));
+
+    try {
+      const repoRoot = createGitRepo(join(tempRoot, "repo"));
+      const manifestDir = join(repoRoot, ".harness", "runs", "ongeldig-manifest");
+      mkdirSync(manifestDir, { recursive: true });
+      writeFileSync(join(manifestDir, "manifest.json"), JSON.stringify({ version: "1" }), "utf8");
+
+      expect(() => readHarnessRunManifest("ongeldig-manifest", repoRoot)).toThrow(
+        "Ongeldig run-manifest",
+      );
+    } finally {
+      rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
+
   it("persists lifecycle, workspace, and process artifacts for a run", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "motian-harness-orchestrator-"));
 
@@ -143,7 +166,8 @@ describe("harness orchestrator", () => {
 
       const summary = formatHarnessRunSummary(manifest);
       expect(summary).toContain("unit-test-dispatch");
-      expect(summary).toContain("succeeded");
+      expect(summary).toContain("werkruimte");
+      expect(summary).toContain("opdracht");
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }

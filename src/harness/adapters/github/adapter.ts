@@ -110,7 +110,7 @@ export function serializeProjectFieldValue(
       return { text: value.text };
     case "clear":
       throw new Error(
-        "Clear updates use clearProjectV2ItemFieldValue and do not serialize a value payload.",
+        "Leegmaken van veldwaarden gebruikt clearProjectV2ItemFieldValue en serialiseert geen value-payload.",
       );
   }
 }
@@ -118,6 +118,7 @@ export function serializeProjectFieldValue(
 export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
   private readonly client: GitHubApiClient;
   private readonly config: GitHubProjectsAdapterConfig;
+  private readonly issueCommentUpsertQueues = new Map<string, Promise<void>>();
 
   constructor(config: GitHubProjectsAdapterConfig) {
     this.config = config;
@@ -149,7 +150,7 @@ export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
 
     if (!issueId) {
       throw new Error(
-        `GitHub issue #${input.issueNumber} in ${this.config.owner}/${this.config.repo} could not be resolved to a node id, so it cannot be linked to project ${this.config.projectId}.`,
+        `GitHub-issue #${input.issueNumber} in ${this.config.owner}/${this.config.repo} kon niet naar een node-id worden vertaald en kan daarom niet aan project ${this.config.projectId} worden gekoppeld.`,
       );
     }
 
@@ -170,7 +171,7 @@ export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
     const itemId = response.addProjectV2ItemById.item?.id;
     if (!itemId) {
       throw new Error(
-        `GitHub did not return a project item id when linking issue #${input.issueNumber}.`,
+        `GitHub gaf geen projectitem-id terug bij het koppelen van issue #${input.issueNumber}.`,
       );
     }
 
@@ -190,7 +191,7 @@ export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
     );
 
     if (!response.node) {
-      throw new Error(`GitHub project ${this.config.projectId} was not found.`);
+      throw new Error(`GitHub-project ${this.config.projectId} is niet gevonden.`);
     }
 
     const project = mapProjectNode(response.node);
@@ -259,18 +260,22 @@ export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
   }
 
   async upsertIssueComment(input: GitHubIssueCommentUpsertInput): Promise<GitHubIssueCommentDto> {
-    const existingComment = await this.findIssueCommentByMarker(input.issueNumber, input.marker);
+    const queueKey = `${input.issueNumber}:${input.marker}`;
 
-    if (existingComment) {
-      return this.updateIssueComment({
+    return this.runSerializedIssueCommentUpsert(queueKey, async () => {
+      const existingComment = await this.findIssueCommentByMarker(input.issueNumber, input.marker);
+
+      if (existingComment) {
+        return this.updateIssueComment({
+          body: input.body,
+          commentId: existingComment.id,
+        });
+      }
+
+      return this.createIssueComment({
         body: input.body,
-        commentId: existingComment.id,
+        issueNumber: input.issueNumber,
       });
-    }
-
-    return this.createIssueComment({
-      body: input.body,
-      issueNumber: input.issueNumber,
     });
   }
 
@@ -349,18 +354,40 @@ export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
 
     if (!issue?.id) {
       throw new Error(
-        `GitHub issue #${issueNumber} was not found in ${this.config.owner}/${this.config.repo}.`,
+        `GitHub-issue #${issueNumber} is niet gevonden in ${this.config.owner}/${this.config.repo}.`,
       );
     }
 
     return issue;
   }
 
+  private async runSerializedIssueCommentUpsert<T>(
+    queueKey: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const previous = this.issueCommentUpsertQueues.get(queueKey) ?? Promise.resolve();
+    const next = previous.catch(() => undefined).then(operation);
+    const queue = next.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    this.issueCommentUpsertQueues.set(queueKey, queue);
+
+    try {
+      return await next;
+    } finally {
+      if (this.issueCommentUpsertQueues.get(queueKey) === queue) {
+        this.issueCommentUpsertQueues.delete(queueKey);
+      }
+    }
+  }
+
   private async readRequiredProjectItem(itemId: string): Promise<GitHubProjectItemDto> {
     const item = await this.getProjectItem(itemId);
 
     if (!item) {
-      throw new Error(`GitHub project item ${itemId} was not found.`);
+      throw new Error(`GitHub-projectitem ${itemId} is niet gevonden.`);
     }
 
     return item;

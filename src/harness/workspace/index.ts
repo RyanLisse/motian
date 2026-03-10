@@ -23,6 +23,8 @@ export interface HarnessWorkspaceLayout {
   created: boolean;
 }
 
+const MAX_RUN_ID_SEGMENT_LENGTH = 64;
+
 function runGit(args: string[], cwd: string): string {
   return execFileSync("git", args, {
     cwd,
@@ -36,19 +38,29 @@ export function resolveGitRepoRoot(startDir: string): string {
     return runGit(["rev-parse", "--show-toplevel"], startDir);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `[Harness Workspace] Unable to resolve git repository root from ${startDir}: ${message}`,
-    );
+    throw new Error(`[Harness Workspace] Kan git-root niet bepalen vanaf ${startDir}: ${message}`);
   }
+}
+
+export function sanitizeHarnessRunIdSegment(runId: string): string {
+  const sanitized = runId
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^[.-]+/, "")
+    .replace(/[.-]+$/, "")
+    .slice(0, MAX_RUN_ID_SEGMENT_LENGTH)
+    .replace(/[.-]+$/, "");
+
+  return sanitized.length > 0 ? sanitized : "run";
 }
 
 export function prepareHarnessWorkspace(
   options: PrepareHarnessWorkspaceOptions,
 ): HarnessWorkspaceLayout {
+  const runPathSegment = sanitizeHarnessRunIdSegment(options.runId);
   const repoRoot = resolve(options.repoRoot);
-  const runRoot = resolve(options.runRoot ?? join(repoRoot, ".harness", "runs", options.runId));
+  const runRoot = resolve(options.runRoot ?? join(repoRoot, ".harness", "runs", runPathSegment));
   const workspaceRoot = resolve(
-    options.workspaceRoot ?? join(tmpdir(), "motian-harness", options.runId, "workspace"),
+    options.workspaceRoot ?? join(tmpdir(), "motian-harness", runPathSegment, "workspace"),
   );
   const baseRef = options.baseRef ?? "HEAD";
   const logsDir = join(runRoot, "logs");
@@ -63,7 +75,7 @@ export function prepareHarnessWorkspace(
   if (existsSync(workspaceRoot)) {
     if (!existsSync(gitPointerPath)) {
       throw new Error(
-        `[Harness Workspace] Workspace root already exists without a git worktree: ${workspaceRoot}`,
+        `[Harness Workspace] Werkruimtemap bestaat al zonder gekoppelde git-worktree: ${workspaceRoot}`,
       );
     }
 

@@ -86,14 +86,14 @@ export async function executeHarnessCommand(
 
   child.on("error", (error) => {
     spawnError = error;
-    const message = `[Harness Runtime] Failed to start process: ${error.message}\n`;
+    const message = `[Harness Runtime] Proces kon niet worden gestart: ${error.message}\n`;
     stderrTail = appendTail(stderrTail, message);
     stderrStream.write(message);
   });
 
   const timeoutHandle = setTimeout(() => {
     timedOut = true;
-    const message = `[Harness Runtime] Timed out after ${timeoutMs}ms\n`;
+    const message = `[Harness Runtime] Proces heeft time-out bereikt na ${timeoutMs}ms\n`;
     stderrTail = appendTail(stderrTail, message);
     stderrStream.write(message);
     child.kill("SIGTERM");

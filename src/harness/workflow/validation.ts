@@ -29,6 +29,33 @@ function pushIssue(
   issues.push(issue);
 }
 
+function formatIssuePath(path: Array<string | number>): string {
+  return path.length > 0 ? path.join(".") : "document";
+}
+
+function translateSchemaIssue(issue: z.ZodIssue): string {
+  const issuePath = formatIssuePath(issue.path);
+
+  switch (issue.code) {
+    case z.ZodIssueCode.unrecognized_keys:
+      return `Onbekende velden op '${issuePath}': ${issue.keys.join(", ")}.`;
+    case z.ZodIssueCode.invalid_type:
+      return `Ongeldig type op '${issuePath}': verwacht ${issue.expected}, ontvangen ${issue.received}.`;
+    case z.ZodIssueCode.invalid_literal:
+      return `Ongeldige letterlijke waarde op '${issuePath}': verwacht '${String(issue.expected)}'.`;
+    case z.ZodIssueCode.invalid_enum_value:
+      return `Ongeldige waarde op '${issuePath}': verwacht één van ${issue.options.join(", ")}.`;
+    case z.ZodIssueCode.too_small:
+      return `Waarde op '${issuePath}' is te klein of te kort.`;
+    case z.ZodIssueCode.too_big:
+      return `Waarde op '${issuePath}' is te groot of te lang.`;
+    case z.ZodIssueCode.custom:
+      return issue.message;
+    default:
+      return `Ongeldige planconfiguratie op '${issuePath}'.`;
+  }
+}
+
 function hasManualOnlyCompletion(planTask: HarnessPlanDefinition["tasks"][number]): boolean {
   return planTask.evaluation.completion.requirements.some(
     (requirement) => requirement.kind === "manual_signal",
@@ -43,8 +70,8 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
     for (const issue of parsed.error.issues) {
       pushIssue(issues, {
         code: `schema_${issue.code}`,
-        message: issue.message,
-        path: issue.path.join("."),
+        message: translateSchemaIssue(issue),
+        path: formatIssuePath(issue.path),
         severity: "error",
       });
     }
@@ -59,7 +86,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
     if (taskIds.has(task.id)) {
       pushIssue(issues, {
         code: "duplicate_task_id",
-        message: `Task id '${task.id}' is duplicated.`,
+        message: `Taak-id '${task.id}' komt meer dan één keer voor.`,
         path: `tasks.${task.id}`,
         severity: "error",
       });
@@ -69,7 +96,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
     if (task.dispatches.length === 0 && !hasManualOnlyCompletion(task)) {
       pushIssue(issues, {
         code: "task_has_no_dispatch_or_signal",
-        message: `Task '${task.id}' must declare a dispatch or an explicit manual completion signal.`,
+        message: `Taak '${task.id}' moet een dispatch of een expliciet handmatig voltooiingssignaal definiëren.`,
         path: `tasks.${task.id}.dispatches`,
         severity: "error",
       });
@@ -78,7 +105,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
     if (new Set(task.dependsOn).size !== task.dependsOn.length) {
       pushIssue(issues, {
         code: "duplicate_task_dependency",
-        message: `Task '${task.id}' declares duplicate task dependencies.`,
+        message: `Taak '${task.id}' bevat dubbele taakafhankelijkheden.`,
         path: `tasks.${task.id}.dependsOn`,
         severity: "error",
       });
@@ -87,7 +114,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
     if (new Set(task.acceptanceCriteria).size !== task.acceptanceCriteria.length) {
       pushIssue(issues, {
         code: "duplicate_acceptance_criteria",
-        message: `Task '${task.id}' declares duplicate acceptance criteria.`,
+        message: `Taak '${task.id}' bevat dubbele acceptatiecriteria.`,
         path: `tasks.${task.id}.acceptanceCriteria`,
         severity: "warning",
       });
@@ -97,7 +124,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
       if (dispatchIds.has(dispatch.id)) {
         pushIssue(issues, {
           code: "duplicate_dispatch_id",
-          message: `Dispatch id '${dispatch.id}' is duplicated across the plan.`,
+          message: `Dispatch-id '${dispatch.id}' komt meer dan één keer voor in het plan.`,
           path: `tasks.${task.id}.dispatches.${dispatch.id}`,
           severity: "error",
         });
@@ -107,7 +134,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
       if (new Set(dispatch.dependsOnDispatches).size !== dispatch.dependsOnDispatches.length) {
         pushIssue(issues, {
           code: "duplicate_dispatch_dependency",
-          message: `Dispatch '${dispatch.id}' declares duplicate dispatch dependencies.`,
+          message: `Dispatch '${dispatch.id}' bevat dubbele dispatch-afhankelijkheden.`,
           path: `tasks.${task.id}.dispatches.${dispatch.id}.dependsOnDispatches`,
           severity: "error",
         });
@@ -119,7 +146,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
     if (task.dependsOn.includes(task.id)) {
       pushIssue(issues, {
         code: "self_task_dependency",
-        message: `Task '${task.id}' cannot depend on itself.`,
+        message: `Taak '${task.id}' mag niet van zichzelf afhangen.`,
         path: `tasks.${task.id}.dependsOn`,
         severity: "error",
       });
@@ -129,7 +156,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
       if (!taskIds.has(dependency)) {
         pushIssue(issues, {
           code: "unknown_task_dependency",
-          message: `Task '${task.id}' depends on unknown task '${dependency}'.`,
+          message: `Taak '${task.id}' hangt af van onbekende taak '${dependency}'.`,
           path: `tasks.${task.id}.dependsOn`,
           severity: "error",
         });
@@ -140,7 +167,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
       if (dispatch.dependsOnDispatches.includes(dispatch.id)) {
         pushIssue(issues, {
           code: "self_dispatch_dependency",
-          message: `Dispatch '${dispatch.id}' cannot depend on itself.`,
+          message: `Dispatch '${dispatch.id}' mag niet van zichzelf afhangen.`,
           path: `tasks.${task.id}.dispatches.${dispatch.id}.dependsOnDispatches`,
           severity: "error",
         });
@@ -150,7 +177,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
         if (!dispatchIds.has(dependency)) {
           pushIssue(issues, {
             code: "unknown_dispatch_dependency",
-            message: `Dispatch '${dispatch.id}' depends on unknown dispatch '${dependency}'.`,
+            message: `Dispatch '${dispatch.id}' hangt af van onbekende dispatch '${dependency}'.`,
             path: `tasks.${task.id}.dispatches.${dispatch.id}.dependsOnDispatches`,
             severity: "error",
           });
@@ -166,7 +193,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
       ) {
         pushIssue(issues, {
           code: "unknown_completion_dispatch_reference",
-          message: `Task '${task.id}' completion requirement references unknown dispatch '${requirement.dispatchId}'.`,
+          message: `Taak '${task.id}' verwijst in een voltooiingsvoorwaarde naar onbekende dispatch '${requirement.dispatchId}'.`,
           path: `tasks.${task.id}.evaluation.completion.requirements`,
           severity: "error",
         });
@@ -177,7 +204,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
   if (plan.tasks.every((task) => task.dependsOn.length > 0)) {
     pushIssue(issues, {
       code: "missing_root_task",
-      message: "A plan must contain at least one root task with no dependencies.",
+      message: "Een plan moet minstens één hoofdtaak zonder afhankelijkheden bevatten.",
       path: "tasks",
       severity: "error",
     });
@@ -187,7 +214,7 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
   for (const cycle of graph.cycles) {
     pushIssue(issues, {
       code: `${cycle.kind}_cycle`,
-      message: `${cycle.kind} dependency cycle detected: ${cycle.nodes.join(" -> ")}`,
+      message: `Cyclische ${cycle.kind === "task" ? "taak" : "dispatch"}-afhankelijkheid gedetecteerd: ${cycle.nodes.join(" -> ")}`,
       path: cycle.kind === "task" ? "tasks" : "tasks.dispatches",
       severity: "error",
     });
@@ -197,8 +224,11 @@ export function validateHarnessPlanDefinition(input: unknown): HarnessWorkflowVa
 }
 
 function readSectionBody(markdown: string, heading: string): string {
+  const normalizedMarkdown = markdown.replace(/\r\n/g, "\n");
   const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = markdown.match(new RegExp(`^## ${escaped}\\n([\\s\\S]*?)(?=^## |$)`, "m"));
+  const match = normalizedMarkdown.match(
+    new RegExp(`^## ${escaped}\\n([\\s\\S]*?)(?=^## |$)`, "m"),
+  );
   return match?.[1]?.trim() ?? "";
 }
 
@@ -208,7 +238,7 @@ export function validateHarnessPlanDocument(markdown: string): HarnessPlanDocume
   if (!/^#\s+\S+/m.test(markdown)) {
     pushIssue(issues, {
       code: "missing_title",
-      message: "Plan document must include a top-level title.",
+      message: "Planningsdocument moet een titel op het hoogste niveau bevatten.",
       path: "document",
       severity: "error",
     });
@@ -219,7 +249,7 @@ export function validateHarnessPlanDocument(markdown: string): HarnessPlanDocume
     if (!body) {
       pushIssue(issues, {
         code: "empty_required_section",
-        message: `Section '${section}' must include substantive content, not only a heading.`,
+        message: `Sectie '${section}' moet inhoud bevatten en niet alleen een kop.`,
         path: section,
         severity: "error",
       });
@@ -229,7 +259,7 @@ export function validateHarnessPlanDocument(markdown: string): HarnessPlanDocume
     if (section === "Proposed Changes" && !/^(-|\*|\d+\.)\s+/m.test(body)) {
       pushIssue(issues, {
         code: "missing_change_items",
-        message: "Proposed Changes must enumerate concrete actions or tasks.",
+        message: "'Proposed Changes' moet concrete acties of taken opsommen.",
         path: section,
         severity: "error",
       });
@@ -242,7 +272,8 @@ export function validateHarnessPlanDocument(markdown: string): HarnessPlanDocume
     ) {
       pushIssue(issues, {
         code: "missing_verification_steps",
-        message: "Verification Plan must include explicit commands, checks, or checklist items.",
+        message:
+          "'Verification Plan' moet expliciete opdrachten, controles of checklist-items bevatten.",
         path: section,
         severity: "error",
       });

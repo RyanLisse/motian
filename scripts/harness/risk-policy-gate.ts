@@ -148,7 +148,9 @@ async function resolveChangedFiles(): Promise<string[]> {
       .map((l) => l.trim())
       .filter(Boolean);
     if (lines.length > 0) {
-      console.error("[risk-policy-gate] Auto-detected changed files from git diff HEAD~1");
+      console.error(
+        "[risk-policy-gate] Gewijzigde bestanden automatisch bepaald via git diff HEAD~1",
+      );
       return lines;
     }
   } catch {
@@ -160,7 +162,9 @@ async function resolveChangedFiles(): Promise<string[]> {
         .map((l) => l.trim())
         .filter(Boolean);
       if (lines.length > 0) {
-        console.error("[risk-policy-gate] Auto-detected changed files from git diff --cached");
+        console.error(
+          "[risk-policy-gate] Gewijzigde bestanden automatisch bepaald via git diff --cached",
+        );
         return lines;
       }
     } catch {
@@ -193,17 +197,17 @@ async function main(): Promise<void> {
   try {
     config = loadHarnessConfig({ cwd: projectRoot });
   } catch (err) {
-    console.error(`[risk-policy-gate] ERROR: Failed to load harness config: ${err}`);
+    console.error(`[risk-policy-gate] FOUT: Harness-config kon niet worden geladen: ${err}`);
     process.exit(1);
   }
 
   const changedFiles = await resolveChangedFiles();
 
   if (changedFiles.length === 0) {
-    console.log("Risk Tier: low");
-    console.log(`Required Checks: ${config.mergePolicy.low.requiredChecks.join(", ")}`);
-    console.log("Docs Drift: PASS");
-    console.log("Changed Files: 0 (0 high, 0 medium, 0 low)");
+    console.log("Risiconiveau: low");
+    console.log(`Verplichte controles: ${config.mergePolicy.low.requiredChecks.join(", ")}`);
+    console.log("Documentatie-afwijking: OK");
+    console.log("Gewijzigde bestanden: 0 (0 high, 0 medium, 0 low)");
     setGitHubOutputs("low", config.mergePolicy.low.requiredChecks);
     return;
   }
@@ -258,27 +262,27 @@ async function main(): Promise<void> {
   // Plain-text output
   // ---------------------------------------------------------------------------
 
-  console.log(`Risk Tier: ${result.overallTier}`);
-  console.log(`Required Checks: ${result.requiredChecks.join(", ")}`);
+  console.log(`Risiconiveau: ${result.overallTier}`);
+  console.log(`Verplichte controles: ${result.requiredChecks.join(", ")}`);
 
   if (result.docsDriftPass) {
-    console.log("Docs Drift: PASS");
+    console.log("Documentatie-afwijking: OK");
   } else {
-    console.log("Docs Drift: FAIL");
+    console.log("Documentatie-afwijking: MISLUKT");
     for (const v of result.docsDriftViolations) {
-      console.log(`  - Trigger: ${v.triggerFile}`);
-      console.log(`    Missing doc updates: ${v.missingDocs.join(", ")}`);
+      console.log(`  - Triggerbestand: ${v.triggerFile}`);
+      console.log(`    Ontbrekende documentatie-updates: ${v.missingDocs.join(", ")}`);
     }
-    console.log(`  Message: ${config.docsDriftRules.message}`);
+    console.log(`  Bericht: ${config.docsDriftRules.message}`);
   }
 
   console.log(
-    `Changed Files: ${changedFiles.length} (${counts.high} high, ${counts.medium} medium, ${counts.low} low)`,
+    `Gewijzigde bestanden: ${changedFiles.length} (${counts.high} high, ${counts.medium} medium, ${counts.low} low)`,
   );
 
   // Optional verbose breakdown
   if (process.argv.includes("--verbose")) {
-    console.log("\nFile Breakdown:");
+    console.log("\nBestandsoverzicht:");
     for (const { file, tier } of result.fileTiers) {
       console.log(`  [${tier.padEnd(6)}] ${file}`);
     }
@@ -294,6 +298,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error(`[risk-policy-gate] Unhandled error: ${err}`);
+  console.error(`[risk-policy-gate] Onverwerkte fout: ${err}`);
   process.exit(1);
 });

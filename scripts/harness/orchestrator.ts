@@ -1,6 +1,6 @@
 import { argv } from "node:process";
 import { parseArgs } from "node:util";
-import { formatHarnessRunSummary, orchestrateHarnessRun } from "../../src/harness/orchestrator";
+import { formatHarnessRunSummary, orchestrateHarnessRun } from "@/src/harness/orchestrator";
 
 const { values } = parseArgs({
   args: argv.slice(2),
@@ -35,7 +35,7 @@ const { values } = parseArgs({
 
 if (!values.dispatch) {
   console.error(
-    "Usage: pnpm tsx scripts/harness/orchestrator.ts --dispatch <taskName> [--command <bin>] [--arg <value>]",
+    "Gebruik: pnpm tsx scripts/harness/orchestrator.ts --dispatch <taaknaam> [--command <bin>] [--arg <waarde>]",
   );
   process.exit(1);
 }
@@ -43,7 +43,7 @@ if (!values.dispatch) {
 const timeoutMs = values["timeout-ms"] ? Number(values["timeout-ms"]) : undefined;
 
 if (values["timeout-ms"] && Number.isNaN(timeoutMs)) {
-  console.error(`[Harness Orchestrator] Invalid --timeout-ms value: ${values["timeout-ms"]}`);
+  console.error(`[Harness Orchestrator] Ongeldige --timeout-ms-waarde: ${values["timeout-ms"]}`);
   process.exit(1);
 }
 

@@ -83,11 +83,11 @@ describe("harness integration", () => {
       expect(GitHubProjectsAdapterImpl).toBeDefined();
     });
 
-    it("orchestrator re-exports contract types", async () => {
+    it("core contract and orchestrator modules blijven importeerbaar", async () => {
       const orchestratorModule = await import("@/src/harness/orchestrator");
       const contractsModule = await import("@/src/harness/contracts/run");
 
-      // Verify types are available from orchestrator (re-exported)
+      // Verifieer dat beide modules nog geladen kunnen worden.
       expect(orchestratorModule).toBeDefined();
       expect(contractsModule).toBeDefined();
     });

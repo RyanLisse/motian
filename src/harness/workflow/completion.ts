@@ -93,7 +93,7 @@ function collectSignalsFromRun(
     observed.push({ kind: "external_context", dispatchId, key, value });
   }
 
-  return observed.filter(Boolean) as HarnessObservedCompletionSignal[];
+  return observed;
 }
 
 function defaultRequirements(task: HarnessTaskDefinition): HarnessCompletionRequirement[] {

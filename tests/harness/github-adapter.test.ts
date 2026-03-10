@@ -1,13 +1,36 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   findProjectField,
   formatGitHubHarnessRunComment,
+  GitHubApiClient,
+  GitHubProjectsAdapterImpl,
   mapIssueComment,
   mapProjectFieldNode,
+  mapProjectFieldValueNode,
   mapProjectItemNode,
   mapProjectItemState,
   serializeProjectFieldValue,
 } from "@/src/harness/adapters/github";
+
+type TestIssueComment = {
+  authorLogin: string | null;
+  body: string;
+  createdAt: string;
+  id: number;
+  nodeId: string;
+  updatedAt: string;
+  url: string;
+};
+
+type TestableGitHubAdapter = {
+  createIssueComment: (input: { body: string; issueNumber: number }) => Promise<TestIssueComment>;
+  findIssueCommentByMarker: (
+    issueNumber: number,
+    marker: string,
+  ) => Promise<TestIssueComment | null>;
+  updateIssueComment: (input: { body: string; commentId: number }) => Promise<TestIssueComment>;
+  upsertIssueComment: GitHubProjectsAdapterImpl["upsertIssueComment"];
+};
 
 describe("GitHub harness adapter mapping", () => {
   it("maps project fields and item state into orchestrator-friendly DTOs", () => {
@@ -129,8 +152,17 @@ describe("GitHub harness adapter serialization", () => {
       },
     );
     expect(() => serializeProjectFieldValue({ kind: "clear" })).toThrow(
-      /clearProjectV2ItemFieldValue/,
+      /Leegmaken van veldwaarden gebruikt clearProjectV2ItemFieldValue/,
     );
+  });
+
+  it("returns null for unknown field value nodes without field metadata", () => {
+    expect(
+      mapProjectFieldValueNode({
+        __typename: "ProjectV2ItemFieldReviewerValue",
+        field: null,
+      }),
+    ).toBeNull();
   });
 
   it("maps issue comments from the REST surface", () => {
@@ -225,5 +257,159 @@ describe("GitHub harness adapter serialization", () => {
     expect(comment).toContain('"summary": "3 tests passed"');
     expect(comment).toContain("- issueNumber: `42`");
     expect(comment).toContain("- projectItemId: `PVTI_123`");
+  });
+});
+
+describe("GitHub harness adapter hardening", () => {
+  it("trimt het token voordat Authorization-headers worden opgebouwd", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.headers).toMatchObject({
+        Authorization: "Bearer github-token",
+      });
+
+      return new Response(JSON.stringify({ data: { viewer: { login: "motian-bot" } } }), {
+        headers: { "content-type": "application/json" },
+        status: 200,
+      });
+    });
+
+    const client = new GitHubApiClient({
+      fetch: fetchMock as typeof fetch,
+      token: "  github-token  ",
+    });
+
+    await expect(client.graphql("query Viewer { viewer { login } }", {})).resolves.toEqual({
+      viewer: { login: "motian-bot" },
+    });
+  });
+
+  it("weigert een lege GitHub-token in het Nederlands", () => {
+    expect(
+      () =>
+        new GitHubApiClient({
+          fetch: vi.fn() as unknown as typeof fetch,
+          token: "   ",
+        }),
+    ).toThrow("GitHub-token ontbreekt of is leeg.");
+  });
+
+  it("vertaalt GraphQL- en REST-fouten naar het Nederlands", async () => {
+    const graphqlClient = new GitHubApiClient({
+      fetch: vi.fn(
+        async () =>
+          new Response(JSON.stringify({ errors: [{ message: "Bad credentials" }] }), {
+            headers: {
+              "content-type": "application/json",
+              "x-github-request-id": "graphql-123",
+            },
+            status: 401,
+            statusText: "Unauthorized",
+          }),
+      ) as typeof fetch,
+      token: "github-token",
+    });
+
+    await expect(
+      graphqlClient.graphql("query Viewer { viewer { login } }", {}),
+    ).rejects.toMatchObject({
+      message: "GitHub GraphQL-aanvraag mislukt: Bad credentials",
+      requestId: "graphql-123",
+      status: 401,
+    });
+
+    const restClient = new GitHubApiClient({
+      fetch: vi.fn(
+        async () =>
+          new Response(JSON.stringify({ message: "Not Found" }), {
+            headers: {
+              "content-type": "application/json",
+              "x-github-request-id": "rest-123",
+            },
+            status: 404,
+            statusText: "Not Found",
+          }),
+      ) as typeof fetch,
+      token: "github-token",
+    });
+
+    await expect(restClient.rest("/repos/example/motian/issues/42/comments")).rejects.toMatchObject(
+      {
+        message: "GitHub REST-aanvraag mislukt: Not Found",
+        requestId: "rest-123",
+        status: 404,
+      },
+    );
+  });
+
+  it("serialiseert gelijktijdige comment-upserts binnen hetzelfde proces", async () => {
+    const adapter = new GitHubProjectsAdapterImpl({
+      fetch: vi.fn() as unknown as typeof fetch,
+      owner: "RyanLisse",
+      projectId: "PVT_example",
+      repo: "motian",
+      token: "github-token",
+    }) as unknown as TestableGitHubAdapter;
+
+    const createdComment = {
+      authorLogin: "motian-bot",
+      body: "eerste versie",
+      createdAt: "2026-03-10T12:00:00Z",
+      id: 101,
+      nodeId: "IC_created",
+      updatedAt: "2026-03-10T12:00:00Z",
+      url: "https://github.com/RyanLisse/motian/issues/42#issuecomment-101",
+    };
+    const updatedComment = {
+      ...createdComment,
+      body: "tweede versie",
+      updatedAt: "2026-03-10T12:01:00Z",
+    };
+
+    let releaseCreate: (() => void) | undefined;
+    let hasExistingComment = false;
+
+    adapter.findIssueCommentByMarker = vi.fn(async () =>
+      hasExistingComment ? createdComment : null,
+    );
+    adapter.createIssueComment = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          releaseCreate = () => {
+            hasExistingComment = true;
+            resolve(createdComment);
+          };
+        }),
+    );
+    adapter.updateIssueComment = vi.fn(async () => updatedComment);
+
+    const firstUpsert = adapter.upsertIssueComment({
+      body: "eerste versie",
+      issueNumber: 42,
+      marker: "<!-- orchestrator:sync -->",
+    });
+
+    await Promise.resolve();
+
+    const secondUpsert = adapter.upsertIssueComment({
+      body: "tweede versie",
+      issueNumber: 42,
+      marker: "<!-- orchestrator:sync -->",
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(adapter.findIssueCommentByMarker).toHaveBeenCalledTimes(1);
+    expect(adapter.createIssueComment).toHaveBeenCalledTimes(1);
+    expect(adapter.updateIssueComment).not.toHaveBeenCalled();
+
+    releaseCreate?.();
+
+    await expect(firstUpsert).resolves.toEqual(createdComment);
+    await expect(secondUpsert).resolves.toEqual(updatedComment);
+
+    expect(adapter.findIssueCommentByMarker).toHaveBeenCalledTimes(2);
+    expect(adapter.createIssueComment).toHaveBeenCalledTimes(1);
+    expect(adapter.updateIssueComment).toHaveBeenCalledTimes(1);
   });
 });

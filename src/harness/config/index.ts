@@ -27,7 +27,8 @@ export const defaultHarnessConfig = {
   },
   docsDriftRules: {
     triggers: {},
-    message: "Schema/service changes detected. Please update the corresponding documentation.",
+    message:
+      "Wijzigingen in schema of services gedetecteerd. Werk de bijbehorende documentatie bij.",
   },
   evidenceRequirements: {},
   harnessGap: {
@@ -95,7 +96,7 @@ export function loadHarnessConfig(options: LoadHarnessConfigOptions = {}): Harne
       return harnessConfigSchema.parse(defaultHarnessConfig);
     }
 
-    throw new Error(`[Harness Config] Config file not found: ${configPath}`);
+    throw new Error(`[Harness Config] Configuratiebestand niet gevonden: ${configPath}`);
   }
 
   return parseHarnessConfig(JSON.parse(readFileSync(configPath, "utf8")));

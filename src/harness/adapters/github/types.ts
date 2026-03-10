@@ -167,6 +167,8 @@ export type GitHubHarnessArtifactReference = Pick<
   url?: string;
 };
 
+// `signal` and `pid` are intentionally omitted because GitHub comments should not expose
+// ephemeral, machine-local process identifiers that are not stable across reruns.
 export type GitHubHarnessProcessReference = Pick<
   HarnessProcessResult,
   | "commandLine"

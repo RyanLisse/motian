@@ -38,9 +38,15 @@ export class GitHubApiClient {
     token: string;
     userAgent?: string;
   }) {
+    const token = options.token.trim();
+
+    if (!token) {
+      throw new Error("GitHub-token ontbreekt of is leeg.");
+    }
+
     this.apiBaseUrl = options.apiBaseUrl ?? "https://api.github.com";
     this.fetchImpl = options.fetch ?? fetch;
-    this.token = options.token;
+    this.token = token;
     this.userAgent = options.userAgent ?? "motian-harness-github-adapter";
   }
 
@@ -55,17 +61,22 @@ export class GitHubApiClient {
     const payload = (await response.json()) as GitHubGraphQLResponse<TData>;
 
     if (!response.ok || payload.errors?.length) {
-      const message =
+      const details =
         payload.errors?.map((error) => error.message).join("; ") ?? response.statusText;
-      throw new GitHubApiError(message || "GitHub GraphQL request failed", {
-        issues: payload.errors,
-        requestId,
-        status: response.status,
-      });
+      throw new GitHubApiError(
+        details
+          ? `GitHub GraphQL-aanvraag mislukt: ${details}`
+          : "GitHub GraphQL-aanvraag mislukt.",
+        {
+          issues: payload.errors,
+          requestId,
+          status: response.status,
+        },
+      );
     }
 
     if (!payload.data) {
-      throw new GitHubApiError("GitHub GraphQL response was missing data", {
+      throw new GitHubApiError("GitHub GraphQL-antwoord bevatte geen data.", {
         requestId,
         status: response.status,
       });
@@ -87,8 +98,9 @@ export class GitHubApiClient {
     const payload = (await response.json()) as TData & { message?: string };
 
     if (!response.ok) {
+      const details = payload.message || response.statusText;
       throw new GitHubApiError(
-        payload.message || response.statusText || "GitHub REST request failed",
+        details ? `GitHub REST-aanvraag mislukt: ${details}` : "GitHub REST-aanvraag mislukt.",
         {
           requestId,
           status: response.status,

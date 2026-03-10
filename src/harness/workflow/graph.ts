@@ -197,6 +197,7 @@ export function getReadyDispatchIds(
     .filter((dispatch) => {
       const task = graph.taskNodes[dispatch.taskId];
       if (!task || completedTasks.has(dispatch.taskId)) return false;
+      if (completedDispatches.has(dispatch.id)) return false;
       if (!task.dependsOn.every((dependency) => completedTasks.has(dependency))) return false;
       return dispatch.dependsOnDispatchIds.every((dependency) =>
         completedDispatches.has(dependency),

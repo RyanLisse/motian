@@ -242,13 +242,15 @@ export function mapProjectFieldValueNode(
         ? { fieldId, fieldName, kind: "text", value: node.text ?? null }
         : null;
     default:
-      return {
-        fieldId,
-        fieldName,
-        kind: "unknown",
-        typename: node.__typename,
-        value: null,
-      };
+      return fieldId && fieldName
+        ? {
+            fieldId,
+            fieldName,
+            kind: "unknown",
+            typename: node.__typename,
+            value: null,
+          }
+        : null;
   }
 }
 

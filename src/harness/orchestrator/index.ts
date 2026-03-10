@@ -9,8 +9,13 @@ import type {
   HarnessRunManifest,
   HarnessRunStatus,
 } from "../contracts/run";
+import { harnessRunManifestSchema } from "../contracts/run";
 import { executeHarnessCommand, type HarnessProcessOutcome } from "../runtime";
-import { prepareHarnessWorkspace, resolveGitRepoRoot } from "../workspace";
+import {
+  prepareHarnessWorkspace,
+  resolveGitRepoRoot,
+  sanitizeHarnessRunIdSegment,
+} from "../workspace";
 
 // Re-export shared run types from contracts
 export type {
@@ -83,7 +88,7 @@ function buildArtifacts(manifest: HarnessRunManifest): HarnessArtifact[] {
       kind: "manifest",
       path: manifestPath,
       relativePath: relative(manifest.repoRoot, manifestPath),
-      description: "Run lifecycle and execution manifest",
+      description: "Manifest met runstatus en uitvoeringsgegevens",
       sizeBytes: artifactSize(manifestPath),
     },
   ];
@@ -94,14 +99,14 @@ function buildArtifacts(manifest: HarnessRunManifest): HarnessArtifact[] {
         kind: "stdout",
         path: manifest.result.stdoutPath,
         relativePath: relative(manifest.repoRoot, manifest.result.stdoutPath),
-        description: "Captured process stdout",
+        description: "Vastgelegde standaarduitvoer van het proces",
         sizeBytes: artifactSize(manifest.result.stdoutPath),
       },
       {
         kind: "stderr",
         path: manifest.result.stderrPath,
         relativePath: relative(manifest.repoRoot, manifest.result.stderrPath),
-        description: "Captured process stderr",
+        description: "Vastgelegde foutuitvoer van het proces",
         sizeBytes: artifactSize(manifest.result.stderrPath),
       },
     );
@@ -112,7 +117,7 @@ function buildArtifacts(manifest: HarnessRunManifest): HarnessArtifact[] {
       kind: "workspace",
       path: manifest.workspace.root,
       relativePath: relative(manifest.repoRoot, manifest.workspace.root),
-      description: "Isolated git worktree for this harness run",
+      description: "Geïsoleerde git-worktree voor deze harness-run",
     });
   }
 
@@ -123,10 +128,12 @@ async function writeManifest(
   manifest: HarnessRunManifest,
   hooks?: HarnessOrchestratorHooks,
 ): Promise<void> {
-  writeFileSync(manifest.integration.manifestPath, JSON.stringify(manifest, null, 2), "utf8");
   manifest.artifacts = buildArtifacts(manifest);
   writeFileSync(manifest.integration.manifestPath, JSON.stringify(manifest, null, 2), "utf8");
-  manifest.artifacts = buildArtifacts(manifest);
+  if (manifest.artifacts[0]?.kind === "manifest") {
+    manifest.artifacts[0].sizeBytes = artifactSize(manifest.integration.manifestPath);
+  }
+  writeFileSync(manifest.integration.manifestPath, JSON.stringify(manifest, null, 2), "utf8");
   await hooks?.onManifestUpdated?.(manifest);
 }
 
@@ -159,7 +166,8 @@ export async function orchestrateHarnessRun(
 ): Promise<HarnessRunManifest> {
   const repoRoot = resolveGitRepoRoot(request.repoRoot ?? process.cwd());
   const runId = request.runId ?? randomUUID();
-  const runRoot = resolve(request.runRoot ?? join(repoRoot, ".harness", "runs", runId));
+  const sanitizedRunId = sanitizeHarnessRunIdSegment(runId);
+  const runRoot = resolve(request.runRoot ?? join(repoRoot, ".harness", "runs", sanitizedRunId));
   const command = resolveCommandDescriptor(request);
   const createdAt = new Date().toISOString();
 
@@ -196,7 +204,7 @@ export async function orchestrateHarnessRun(
   await transitionManifest(
     manifest,
     "queued",
-    `Accepted dispatch "${request.dispatch}" for execution`,
+    `Dispatch "${request.dispatch}" is geaccepteerd voor uitvoering`,
     request.hooks,
   );
 
@@ -204,7 +212,7 @@ export async function orchestrateHarnessRun(
     await transitionManifest(
       manifest,
       "preparing_workspace",
-      `Preparing isolated worktree from ${request.baseRef ?? "HEAD"}`,
+      `Geïsoleerde worktree wordt voorbereid vanaf ${request.baseRef ?? "HEAD"}`,
       request.hooks,
     );
 
@@ -226,14 +234,14 @@ export async function orchestrateHarnessRun(
     await transitionManifest(
       manifest,
       "workspace_ready",
-      `Workspace ready at ${workspace.workspaceRoot}`,
+      `Werkruimte is klaar op ${workspace.workspaceRoot}`,
       request.hooks,
     );
 
     await transitionManifest(
       manifest,
       "running",
-      `Running ${command.executable} ${command.args.join(" ")}`,
+      `Uitvoering gestart: ${command.executable} ${command.args.join(" ")}`,
       request.hooks,
     );
 
@@ -257,7 +265,7 @@ export async function orchestrateHarnessRun(
     await transitionManifest(
       manifest,
       toFinalStatus(result.outcome),
-      `Execution ${result.outcome} after ${result.durationMs}ms`,
+      `Uitvoering ${result.outcome} na ${result.durationMs}ms`,
       request.hooks,
     );
     return manifest;
@@ -272,31 +280,39 @@ export function readHarnessRunManifest(
   pathOrRunId: string,
   repoRoot = process.cwd(),
 ): HarnessRunManifest {
+  const sanitizedRunId = sanitizeHarnessRunIdSegment(pathOrRunId);
   const manifestPath = pathOrRunId.endsWith(".json")
     ? resolve(pathOrRunId)
-    : join(resolveGitRepoRoot(repoRoot), ".harness", "runs", pathOrRunId, "manifest.json");
-  return JSON.parse(readFileSync(manifestPath, "utf8")) as HarnessRunManifest;
+    : join(resolveGitRepoRoot(repoRoot), ".harness", "runs", sanitizedRunId, "manifest.json");
+
+  try {
+    const parsedJson = JSON.parse(readFileSync(manifestPath, "utf8"));
+    return harnessRunManifestSchema.parse(parsedJson);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`[Harness Orchestrator] Ongeldig run-manifest op ${manifestPath}: ${message}`);
+  }
 }
 
 export function formatHarnessRunSummary(manifest: HarnessRunManifest): string {
   const summary = [
-    `[Harness Orchestrator] Run ${manifest.runId}`,
-    `  dispatch : ${manifest.dispatch}`,
-    `  status   : ${manifest.status}`,
-    `  manifest : ${manifest.integration.manifestPath}`,
+    `[Harness Orchestrator] Runoverzicht ${manifest.runId}`,
+    `  dispatch   : ${manifest.dispatch}`,
+    `  status     : ${manifest.status}`,
+    `  manifest   : ${manifest.integration.manifestPath}`,
   ];
 
   if (manifest.workspace) {
-    summary.push(`  workspace: ${manifest.workspace.root}`);
+    summary.push(`  werkruimte: ${manifest.workspace.root}`);
   }
 
   if (manifest.result) {
-    summary.push(`  command  : ${manifest.result.commandLine}`);
-    summary.push(`  duration : ${manifest.result.durationMs}ms`);
+    summary.push(`  opdracht  : ${manifest.result.commandLine}`);
+    summary.push(`  duur      : ${manifest.result.durationMs}ms`);
   }
 
   if (manifest.error) {
-    summary.push(`  error    : ${manifest.error}`);
+    summary.push(`  fout      : ${manifest.error}`);
   }
 
   return summary.join("\n");
