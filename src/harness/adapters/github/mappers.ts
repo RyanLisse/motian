@@ -339,7 +339,7 @@ export function mapProjectItemState(
     const normalizedName = selector.fieldName.trim().toLowerCase();
     return (
       item.fieldValues.find(
-        (fieldValue) => fieldValue.fieldName.trim().toLowerCase() === normalizedName,
+        (fieldValue) => fieldValue.fieldName?.trim().toLowerCase() === normalizedName,
       ) ?? null
     );
   }

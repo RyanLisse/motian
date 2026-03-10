@@ -325,7 +325,9 @@ export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
     }
   }
 
-  private async readRepositoryIssue(issueNumber: number): Promise<RawProjectItemNode["content"]> {
+  private async readRepositoryIssue(
+    issueNumber: number,
+  ): Promise<NonNullable<RawProjectItemNode["content"]>> {
     const response = await this.client.graphql<ReadRepositoryIssueResponse>(
       READ_REPOSITORY_ISSUE_QUERY,
       {
@@ -335,13 +337,15 @@ export class GitHubProjectsAdapterImpl implements GitHubProjectsAdapter {
       },
     );
 
-    if (!response.repository?.issue?.id) {
+    const issue = response.repository?.issue;
+
+    if (!issue?.id) {
       throw new Error(
         `GitHub issue #${issueNumber} was not found in ${this.config.owner}/${this.config.repo}.`,
       );
     }
 
-    return response.repository.issue;
+    return issue;
   }
 
   private async readRequiredProjectItem(itemId: string): Promise<GitHubProjectItemDto> {
