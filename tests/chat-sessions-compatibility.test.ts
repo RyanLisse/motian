@@ -178,6 +178,7 @@ describe("chat session compatibility fallback", () => {
     mockDb.select.mockReset();
     mockDb.transaction.mockReset();
     mockDb.update.mockReset();
+    mockChatSessionMessagesAvailability(true);
   });
 
   it("returns paginated legacy messages without probing the missing table directly", async () => {

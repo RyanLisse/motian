@@ -233,22 +233,22 @@ async function getChatSessionMessagesMode(): Promise<ResolvedChatSessionMessages
   }
 
   if (!chatSessionMessagesModePromise) {
-    chatSessionMessagesModePromise = db
-      .execute(sql<{ relation_name: string | null }>`
-        select to_regclass(${CHAT_SESSION_MESSAGES_REGCLASS})::text as relation_name
-      `)
-      .then((result) => {
+    chatSessionMessagesModePromise = (async () => {
+      try {
+        const result = await db.execute(sql<{ relation_name: string | null }>`
+          select to_regclass(${CHAT_SESSION_MESSAGES_REGCLASS})::text as relation_name
+        `);
         const relationName = result.rows[0]?.relation_name;
         return setChatSessionMessagesMode(relationName ? "normalized" : "legacy");
-      })
-      .catch((error) => {
+      } catch (error) {
         if (isChatSessionMessagesTableMissing(error)) {
           return setChatSessionMessagesMode("legacy");
         }
 
         chatSessionMessagesModePromise = null;
         throw error;
-      });
+      }
+    })();
   }
 
   return chatSessionMessagesModePromise;

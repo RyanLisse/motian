@@ -204,6 +204,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   const companyMatchRank = job.company
     ? sql<number>`case when ${jobs.company} = ${job.company} then 0 else 1 end`
     : sql<number>`1`;
+  const relatedLimit = 4;
 
   // Fetch related jobs, pipeline data, grading, and sidebar filter metadata in parallel.
   const [relatedJobRows, pipelineCounts, recentPipelineRows, gradedCandidates, endClientRows] =
@@ -216,7 +217,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
         .from(jobs)
         .where(and(getVisibleVacancyCondition(), eq(jobs.status, "open"), ne(jobs.id, id)))
         .orderBy(companyMatchRank, desc(jobs.scrapedAt))
-        .limit(4),
+        .limit(relatedLimit),
       // Pipeline counts per stage for this job
       db
         .select({
@@ -305,7 +306,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
             : null;
   const deadlineState = getDeadlineState(job.applicationDeadline);
 
-  const related = companyRelated.length > 0 ? companyRelated : genericRelated;
+  const related = [...companyRelated, ...genericRelated].slice(0, relatedLimit);
   const currentEndClient = job.endClient?.trim() || job.company?.trim() || null;
   const endClientOptions = [
     ...new Set(

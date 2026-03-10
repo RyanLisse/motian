@@ -42,6 +42,13 @@ describe("Detail surfaces recruiter workflow context", () => {
     const source = readFile("app/opdrachten/[id]/page.tsx");
 
     expect(source).toContain("currentListParams.append(key, entry)");
+    expect(source).toContain("const relatedLimit = 4");
+    expect(source).toContain(
+      "const related = [...companyRelated, ...genericRelated].slice(0, relatedLimit)",
+    );
+    expect(source).not.toContain(
+      "const related = companyRelated.length > 0 ? companyRelated : genericRelated;",
+    );
     expect(source).toContain('id="koppel-kandidaten"');
     expect(source).toContain('href="#koppel-kandidaten"');
     expect(source).toContain('id="recruiter-cockpit"');
