@@ -156,11 +156,9 @@ export function tracedGenerateText(
 }
 
 /** LangSmith-traced `generateObject` — falls back to raw `ai.generateObject` */
-export function tracedGenerateObject<T>(
-  ...args: Parameters<typeof ai.generateObject<T>>
-): ReturnType<typeof ai.generateObject<T>> {
-  return getTraced().generateObject<T>(...(args as Parameters<typeof ai.generateObject<T>>));
-}
+export const tracedGenerateObject: typeof ai.generateObject = (...args) => {
+  return getTraced().generateObject(...args);
+};
 
 /** LangSmith-traced `streamText` — falls back to raw `ai.streamText` */
 export function tracedStreamText(
