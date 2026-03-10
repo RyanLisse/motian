@@ -52,10 +52,14 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       // Only silently ignore storage-related failures (private mode, iframe, strict partitioning)
       // Surface other errors for debugging
       const isStorageError =
-        error instanceof Error &&
-        (error.message.includes("storage") ||
-          error.message.includes("localStorage") ||
-          error.message.includes("sessionStorage"));
+        (error instanceof Error &&
+          (error.message.includes("storage") ||
+            error.message.includes("localStorage") ||
+            error.message.includes("sessionStorage"))) ||
+        (error instanceof DOMException &&
+          (error.name === "SecurityError" ||
+            error.name === "QuotaExceededError" ||
+            error.name === "NotAllowedError"));
 
       if (!isStorageError) {
         console.error("PostHog initialization failed:", error);

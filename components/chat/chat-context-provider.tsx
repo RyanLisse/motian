@@ -10,6 +10,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -134,6 +135,7 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
   const [mode, setMode] = useState<ChatSurfaceMode>("text");
   const [pinnedContext, setPinnedContext] = useState<ChatRouteContext | null>(null);
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
+  const latestLoadRequestRef = useRef<string | null>(null);
 
   useEffect(() => {
     const storedSessionId = readSessionStorage(SESSION_KEY);
@@ -201,11 +203,15 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
   );
 
   const loadSession = useCallback(async (nextSessionId: string) => {
+    // Track the latest request to guard against stale async responses
+    const requestId = nanoid();
+    latestLoadRequestRef.current = requestId;
+
     try {
       const loadedSession = await fetchChatSession(nextSessionId);
 
-      // Guard against stale async responses: only apply if this is still the requested session
-      if (loadedSession.sessionId !== nextSessionId) {
+      // Guard against stale async responses: only apply if this is still the latest request
+      if (latestLoadRequestRef.current !== requestId) {
         return;
       }
 
@@ -215,7 +221,10 @@ function useChatRuntimeValue(routeContext: ChatRouteContext, pathname: string) {
       setSessionLoadError(null);
       markPersistedChatSession(loadedSession.sessionId);
     } catch (error) {
-      setSessionLoadError(error instanceof Error ? error.message : "Sessie laden mislukt");
+      // Only set error if this is still the latest request
+      if (latestLoadRequestRef.current === requestId) {
+        setSessionLoadError(error instanceof Error ? error.message : "Sessie laden mislukt");
+      }
       throw error;
     }
   }, []);

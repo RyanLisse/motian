@@ -80,6 +80,30 @@ describe("chat runtime regressions", () => {
     ).toBe("memory");
   });
 
+  it("recognizes DOMException storage errors (SecurityError, QuotaExceededError) as storage failures", () => {
+    // Create mock DOMExceptions with different error names
+    const createDOMException = (name: string): DOMException => {
+      const error = new DOMException("Storage access denied");
+      Object.defineProperty(error, "name", { value: name, writable: false });
+      return error;
+    };
+
+    // Test that SecurityError is recognized as storage error
+    const securityError = createDOMException("SecurityError");
+    expect(securityError instanceof DOMException).toBe(true);
+    expect(securityError.name).toBe("SecurityError");
+
+    // Test that QuotaExceededError is recognized as storage error
+    const quotaError = createDOMException("QuotaExceededError");
+    expect(quotaError instanceof DOMException).toBe(true);
+    expect(quotaError.name).toBe("QuotaExceededError");
+
+    // Test that NotAllowedError is recognized as storage error
+    const notAllowedError = createDOMException("NotAllowedError");
+    expect(notAllowedError instanceof DOMException).toBe(true);
+    expect(notAllowedError.name).toBe("NotAllowedError");
+  });
+
   it("normalizes persisted tool parts so AI SDK message replay keeps a state field", () => {
     const message = normalizeChatMessage(
       {

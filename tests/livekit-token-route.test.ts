@@ -12,10 +12,11 @@ describe("POST /api/livekit-token", () => {
     delete process.env.LIVEKIT_URL;
   });
 
-  it("returns a token payload when only LIVEKIT_URL is configured", async () => {
+  it("returns a token payload when all required env vars are configured", async () => {
     vi.stubEnv("LIVEKIT_API_KEY", "test-livekit-key");
     vi.stubEnv("LIVEKIT_API_SECRET", "test-livekit-secret");
     vi.stubEnv("LIVEKIT_URL", "wss://motian.livekit.cloud");
+    vi.stubEnv("NEXT_PUBLIC_LIVEKIT_URL", "wss://public.livekit.cloud");
 
     const { POST } = await import("../app/api/livekit-token/route");
     const response = await POST(
@@ -35,8 +36,27 @@ describe("POST /api/livekit-token", () => {
     };
 
     expect(response.status).toBe(200);
-    expect(body.server_url).toBe("wss://motian.livekit.cloud");
+    expect(body.server_url).toBe("wss://public.livekit.cloud");
     expect(body.participant_token).toEqual(expect.any(String));
     expect(body.participant_token?.split(".")).toHaveLength(3);
+  });
+
+  it("returns 500 error when NEXT_PUBLIC_LIVEKIT_URL is missing", async () => {
+    vi.stubEnv("LIVEKIT_API_KEY", "test-livekit-key");
+    vi.stubEnv("LIVEKIT_API_SECRET", "test-livekit-secret");
+    vi.stubEnv("LIVEKIT_URL", "wss://motian.livekit.cloud");
+    // NEXT_PUBLIC_LIVEKIT_URL is intentionally not set
+
+    const { POST } = await import("../app/api/livekit-token/route");
+    const response = await POST(
+      new Request("http://localhost/api/livekit-token", {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    const body = (await response.json()) as { error?: string };
+    expect(body.error).toBe("LiveKit niet geconfigureerd");
   });
 });
