@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { proxy } from "../proxy";
 
-describe("Salesforce feed auth via proxy", () => {
+describe("API auth via proxy", () => {
   const originalApiSecret = process.env.API_SECRET;
   const originalNodeEnv = process.env.NODE_ENV;
   const originalVercelEnv = process.env.VERCEL_ENV;
@@ -36,6 +36,26 @@ describe("Salesforce feed auth via proxy", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Niet geautoriseerd",
     });
+  });
+
+  it("allows browser vacatures search without a bearer token when API_SECRET is configured", () => {
+    process.env.API_SECRET = "test-secret";
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+
+    const response = proxy(new NextRequest("http://localhost/api/opdrachten/zoeken?q=manager"));
+
+    expect(response.status).toBe(200);
+  });
+
+  it("allows browser vacatures search when API_SECRET is missing in production", () => {
+    delete process.env.API_SECRET;
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+
+    const response = proxy(new NextRequest("http://localhost/api/opdrachten/zoeken?q=manager"));
+
+    expect(response.status).toBe(200);
   });
 
   it("fails closed in production when API_SECRET is missing", async () => {

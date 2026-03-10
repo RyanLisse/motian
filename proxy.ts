@@ -4,9 +4,23 @@ import { shouldAllowMissingApiSecret } from "@/src/lib/runtime-config";
 
 /** Routes that bypass bearer token authentication */
 const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi"];
+const PUBLIC_GET_PATHS = ["/api/opdrachten/zoeken"];
 
-function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+function matchesPublicPath(pathname: string, publicPath: string): boolean {
+  return pathname === publicPath || pathname.startsWith(`${publicPath}/`);
+}
+
+function isPublicRoute(request: NextRequest): boolean {
+  const { pathname } = request.nextUrl;
+
+  if (PUBLIC_PATHS.some((publicPath) => matchesPublicPath(pathname, publicPath))) {
+    return true;
+  }
+
+  return (
+    request.method === "GET" &&
+    PUBLIC_GET_PATHS.some((publicPath) => matchesPublicPath(pathname, publicPath))
+  );
 }
 
 function corsHeaders(request: NextRequest): HeadersInit {
@@ -35,10 +49,8 @@ export function proxy(request: NextRequest) {
     return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
   }
 
-  const { pathname } = request.nextUrl;
-
   // Skip auth for public routes
-  if (isPublicRoute(pathname)) {
+  if (isPublicRoute(request)) {
     return withCorsHeaders(NextResponse.next(), request);
   }
 
