@@ -15,7 +15,7 @@ import { rateLimit } from "@/src/lib/rate-limit";
 import {
   type ChatSessionContext,
   getRecentMessagesForContext,
-  getSessionTokenUsage,
+  getSessionRequestSnapshot,
   incrementSessionTokens,
   persistMessages,
 } from "@/src/services/chat-sessions";
@@ -57,6 +57,31 @@ function getMessageText(message: UIMessage): string {
   return typeof legacyContent === "string" ? legacyContent.trim() : "";
 }
 
+async function loadSessionMessagesOrFallback(
+  sessionId: string,
+  limit: number | undefined,
+  fallback: UIMessage[],
+): Promise<UIMessage[]> {
+  try {
+    return await getRecentMessagesForContext(sessionId, limit);
+  } catch (error) {
+    console.error("[chat] Session history load failed:", error);
+    return fallback;
+  }
+}
+
+async function loadSessionSnapshotOrFallback(sessionId: string): Promise<{
+  messageCount: number;
+  tokensUsed: number;
+} | null> {
+  try {
+    return await getSessionRequestSnapshot(sessionId);
+  } catch (error) {
+    console.error("[chat] Session snapshot load failed:", error);
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   const ip =
     req.headers.get("x-real-ip") ??
@@ -92,11 +117,11 @@ export async function POST(req: Request) {
     .reverse()
     .find((message) => message.role === "user");
   const latestUserText = latestUserMessage ? getMessageText(latestUserMessage) : "";
-  const existingSessionMessages = sessionId ? await getRecentMessagesForContext(sessionId, 1) : [];
+  const sessionSnapshot = sessionId ? await loadSessionSnapshotOrFallback(sessionId) : null;
 
   // AI-budget (Fase 4): als er een sessielimiet is en we hebben een sessionId, check tokensUsed
   if (sessionId && CHAT_MAX_TOKENS_PER_SESSION != null) {
-    const used = await getSessionTokenUsage(sessionId);
+    const used = sessionSnapshot?.tokensUsed ?? 0;
     if (used >= CHAT_MAX_TOKENS_PER_SESSION) {
       return Response.json(
         {
@@ -109,14 +134,18 @@ export async function POST(req: Request) {
   }
 
   if (sessionId) {
-    await persistMessages({
-      sessionId,
-      context: ctx,
-      messages: requestMessages,
-    });
+    try {
+      await persistMessages({
+        sessionId,
+        context: ctx,
+        messages: requestMessages,
+      });
+    } catch (error) {
+      console.error("[chat] User message persistence failed:", error);
+    }
 
     const shouldGenerateTitle =
-      existingSessionMessages.length === 0 &&
+      (sessionSnapshot?.messageCount ?? 0) === 0 &&
       latestUserText.length > 0 &&
       requestMessages.filter((message) => message.role === "user").length === 1;
 
@@ -156,7 +185,9 @@ export async function POST(req: Request) {
     }
   }
 
-  const modelMessages = sessionId ? await getRecentMessagesForContext(sessionId) : requestMessages;
+  const modelMessages = sessionId
+    ? await loadSessionMessagesOrFallback(sessionId, undefined, requestMessages)
+    : requestMessages;
 
   const system = await buildSystemPrompt(ctx);
   const model = resolveChatModel(body.model);

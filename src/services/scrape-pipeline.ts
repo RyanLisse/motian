@@ -5,6 +5,41 @@ import { recordScrapeResult } from "./record-scrape-result";
 import { scrapeFlextender, scrapeOpdrachtoverheid, scrapeStriive } from "./scrapers/index";
 
 type ScrapeStatus = "success" | "partial" | "failed";
+export type ScrapePipelineBatchConfig = {
+  platform: string;
+  baseUrl: string;
+};
+
+export type ScrapePipelineRunResult = {
+  jobsNew: number;
+  duplicates: number;
+  errors: string[];
+};
+
+const DEFAULT_SCRAPE_PIPELINE_CONCURRENCY = 2;
+
+function parseBoundedIntegerEnv(
+  value: string | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  if (!value) return fallback;
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+
+  return Math.min(Math.max(parsed, min), max);
+}
+
+export function getScrapePipelineConcurrency(env: NodeJS.ProcessEnv = process.env): number {
+  return parseBoundedIntegerEnv(
+    env.SCRAPE_PIPELINE_CONCURRENCY,
+    DEFAULT_SCRAPE_PIPELINE_CONCURRENCY,
+    1,
+    10,
+  );
+}
 
 async function recordFailure(platform: string, errors: string[], startTime: number): Promise<void> {
   try {
@@ -26,7 +61,7 @@ async function recordFailure(platform: string, errors: string[], startTime: numb
 export async function runScrapePipeline(
   platform: string,
   url: string,
-): Promise<{ jobsNew: number; duplicates: number; errors: string[] }> {
+): Promise<ScrapePipelineRunResult> {
   const startTime = Date.now();
 
   publish("scrape:start", { platform });
@@ -100,4 +135,48 @@ export async function runScrapePipeline(
   }
 
   return result;
+}
+
+export async function runScrapePipelinesWithConcurrency<T extends ScrapePipelineBatchConfig>(
+  configs: T[],
+  options?: {
+    concurrency?: number;
+    runner?: (config: T) => Promise<ScrapePipelineRunResult>;
+  },
+): Promise<PromiseSettledResult<ScrapePipelineRunResult>[]> {
+  if (configs.length === 0) {
+    return [];
+  }
+
+  const runner =
+    options?.runner ?? ((config: T) => runScrapePipeline(config.platform, config.baseUrl));
+  const concurrency = Math.max(
+    1,
+    Math.min(options?.concurrency ?? getScrapePipelineConcurrency(), configs.length),
+  );
+  const results: PromiseSettledResult<ScrapePipelineRunResult>[] = new Array(configs.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < configs.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      const config = configs[currentIndex];
+
+      try {
+        results[currentIndex] = {
+          status: "fulfilled",
+          value: await runner(config),
+        };
+      } catch (reason) {
+        results[currentIndex] = {
+          status: "rejected",
+          reason,
+        };
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+  return results;
 }
