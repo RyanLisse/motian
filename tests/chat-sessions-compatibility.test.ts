@@ -409,4 +409,50 @@ describe("chat session compatibility fallback", () => {
     expect(result.some((m) => m.role === "user")).toBe(true);
     expect(result.some((m) => m.role === "assistant")).toBe(true);
   });
+
+  it("detects retryable chat session database errors through nested causes", async () => {
+    const { isRetryableChatSessionDatabaseError } = await import("../src/services/chat-sessions");
+
+    expect(
+      isRetryableChatSessionDatabaseError({
+        cause: Object.assign(new Error("socket closed"), { code: "08006" }),
+      }),
+    ).toBe(true);
+    expect(
+      isRetryableChatSessionDatabaseError(
+        new Error("duplicate key value violates unique constraint"),
+      ),
+    ).toBe(false);
+  });
+
+  it("retries token usage lookups after transient database errors", async () => {
+    vi.useFakeTimers();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    mockDb.select
+      .mockImplementationOnce(() => ({
+        from: vi.fn(() =>
+          createRejectedChain(Object.assign(new Error("timeout expired"), { code: "08006" })),
+        ),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn(() => createResolvedChain([{ tokensUsed: 7 }])),
+      }));
+
+    try {
+      const { getSessionTokenUsage } = await import("../src/services/chat-sessions");
+      const usagePromise = getSessionTokenUsage("session-1");
+
+      await vi.runAllTimersAsync();
+
+      await expect(usagePromise).resolves.toBe(7);
+      expect(mockDb.select).toHaveBeenCalledTimes(2);
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[chat-sessions] getSessionTokenUsage retry 1/2 after transient DB error",
+      );
+    } finally {
+      warnSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
 });

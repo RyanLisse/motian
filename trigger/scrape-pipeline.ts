@@ -6,7 +6,7 @@ import { publish } from "@/src/lib/event-bus";
 import { CIRCUIT_BREAKER_THRESHOLD } from "@/src/lib/helpers";
 import { notifySlack } from "@/src/lib/notify-slack";
 import { trackServerEvent } from "@/src/lib/posthog";
-import { runScrapePipeline } from "@/src/services/scrape-pipeline";
+import { runScrapePipelinesWithConcurrency } from "@/src/services/scrape-pipeline";
 
 // ========== Helpers ==========
 
@@ -97,10 +97,7 @@ export const scrapePipelineTask = schedules.task({
       return true;
     });
 
-    // Run all eligible scrapers in parallel
-    const settled = await Promise.allSettled(
-      eligible.map((cfg) => runScrapePipeline(cfg.platform, cfg.baseUrl)),
-    );
+    const settled = await runScrapePipelinesWithConcurrency(eligible);
 
     for (let i = 0; i < eligible.length; i++) {
       const r = settled[i];

@@ -25,12 +25,12 @@ describe("chat route title persistence", () => {
     expect(source).toContain("isNull(chatSessions.title)");
   });
 
-  it("uses a lightweight session snapshot before persistence instead of reloading context messages", () => {
+  it("uses a lightweight session snapshot before persistence without reloading context messages", () => {
     const source = readFile("app/api/chat/route.ts");
 
     expect(source).toContain("getSessionRequestSnapshot");
     expect(source).toContain(
-      "const sessionSnapshot = sessionId ? await getSessionRequestSnapshot(sessionId) : null;",
+      "const sessionSnapshot = sessionId ? await loadSessionSnapshotOrFallback(sessionId) : null;",
     );
     expect(source).toContain("const used = sessionSnapshot?.tokensUsed ?? 0;");
     expect(source).toContain("(sessionSnapshot?.messageCount ?? 0) === 0");
