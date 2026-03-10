@@ -28,6 +28,8 @@ describe("opdracht detail archivedAt compatibility", () => {
     expect(source).toContain("companyMatchRank");
     expect(source).toContain("...jobReadSelection");
     expect(source).toContain(".orderBy(companyMatchRank, desc(jobs.scrapedAt))");
-    expect(source).toContain("companyRelated.length > 0 ? companyRelated : genericRelated");
+    expect(source).toContain(
+      "const related = [...companyRelated, ...genericRelated].slice(0, relatedLimit);",
+    );
   });
 });

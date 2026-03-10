@@ -15,12 +15,17 @@ describe("voice session graceful fallback", () => {
     expect(source).toContain('fetch("/api/livekit-token", {');
     expect(source).toContain('method: "GET"');
     expect(source).toContain('cache: "no-store"');
+    expect(source).toContain("signal: controller.signal");
+    expect(source).toContain("window.setTimeout(() => controller.abort(), 5000)");
   });
 
-  it("shows a text-chat fallback when voice mode is unavailable", () => {
+  it("shows a text-chat fallback with client-owned Dutch copy when voice mode is unavailable", () => {
     const source = readFile("components", "chat", "voice-session.tsx");
 
-    expect(source).toContain("DEFAULT_VOICE_UNAVAILABLE_MESSAGE");
+    expect(source).toContain("const VOICE_UNAVAILABLE_MESSAGES");
+    expect(source).toContain(
+      "VOICE_UNAVAILABLE_MESSAGES[error] ?? DEFAULT_VOICE_UNAVAILABLE_MESSAGE",
+    );
     expect(source).toContain('role="alert"');
     expect(source).toContain("Verder met tekstchat");
   });

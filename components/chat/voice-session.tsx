@@ -35,17 +35,21 @@ const STATE_LABELS: Record<AgentState, string> = {
 const DEFAULT_VOICE_UNAVAILABLE_MESSAGE =
   "Spraakassistent is momenteel niet beschikbaar. Je kunt verdergaan in de tekstchat.";
 
+const VOICE_UNAVAILABLE_MESSAGES: Record<string, string> = {
+  [LIVEKIT_UNCONFIGURED_ERROR]: DEFAULT_VOICE_UNAVAILABLE_MESSAGE,
+};
+
 type VoiceAvailabilityState =
   | { status: "checking" }
   | { status: "available" }
   | { status: "unavailable"; message: string };
 
 function getVoiceUnavailableMessage(error?: string) {
-  if (!error || error === LIVEKIT_UNCONFIGURED_ERROR) {
+  if (!error) {
     return DEFAULT_VOICE_UNAVAILABLE_MESSAGE;
   }
 
-  return error;
+  return VOICE_UNAVAILABLE_MESSAGES[error] ?? DEFAULT_VOICE_UNAVAILABLE_MESSAGE;
 }
 
 // ---------- Connected voice UI ----------
@@ -126,12 +130,15 @@ function VoiceViewController({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     let isActive = true;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 5000);
 
     const checkVoiceAvailability = async () => {
       try {
         const response = await fetch("/api/livekit-token", {
           method: "GET",
           cache: "no-store",
+          signal: controller.signal,
         });
         const payload = (await response.json().catch(() => null)) as {
           enabled?: boolean;
@@ -160,6 +167,8 @@ function VoiceViewController({ onClose }: { onClose: () => void }) {
           status: "unavailable",
           message: DEFAULT_VOICE_UNAVAILABLE_MESSAGE,
         });
+      } finally {
+        window.clearTimeout(timeoutId);
       }
     };
 
@@ -167,6 +176,8 @@ function VoiceViewController({ onClose }: { onClose: () => void }) {
 
     return () => {
       isActive = false;
+      controller.abort();
+      window.clearTimeout(timeoutId);
     };
   }, []);
 
