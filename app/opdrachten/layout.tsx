@@ -1,17 +1,13 @@
-import { and, desc, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { db } from "@/src/db";
-import { applications, jobs } from "@/src/db/schema";
+import { jobs } from "@/src/db/schema";
 import { DEFAULT_OPDRACHTEN_LIMIT } from "@/src/lib/opdrachten-filters";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
+import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary";
 
 export const dynamic = "force-dynamic";
-
-type PipelineSummaryRow = {
-  jobId: string;
-  pipelineCount: number;
-};
 
 export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
   const activeJobsCondition = getJobStatusCondition("open");
@@ -49,31 +45,12 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
     `),
   ]);
 
-  const jobIds = sidebarJobRows.map((job) => job.id);
-  const pipelineRows: PipelineSummaryRow[] =
-    jobIds.length === 0
-      ? []
-      : await db
-          .select({
-            jobId: sql<string>`${applications.jobId}`,
-            pipelineCount: sql<number>`sum(case when ${applications.stage} != 'rejected' then 1 else 0 end)::int`,
-          })
-          .from(applications)
-          .where(
-            and(
-              inArray(applications.jobId, jobIds),
-              isNotNull(applications.jobId),
-              isNull(applications.deletedAt),
-            ),
-          )
-          .groupBy(applications.jobId);
-
-  const pipelineCountByJobId = new Map(
-    pipelineRows.map((row: PipelineSummaryRow) => [row.jobId, row.pipelineCount]),
+  const { hasPipelineByJobId, pipelineCountByJobId } = await getJobPipelineSummary(
+    sidebarJobRows.map((job) => job.id),
   );
   const sidebarJobs = sidebarJobRows.map((job) => ({
     ...job,
-    hasPipeline: pipelineCountByJobId.has(job.id),
+    hasPipeline: hasPipelineByJobId.has(job.id),
     pipelineCount: pipelineCountByJobId.get(job.id) ?? 0,
   }));
 

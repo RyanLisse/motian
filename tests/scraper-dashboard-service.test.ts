@@ -129,25 +129,39 @@ describe("getScraperDashboardData", () => {
     vi.clearAllMocks();
   });
 
-  it("loads scraper data with a fixed batched query count instead of per-platform selects", async () => {
+  it("loads scraper data with a platform-count-independent batched query pattern", async () => {
     mockRunsList.mockImplementation(() => emptyAsyncIterable());
-    const mockDb = createMockDatabase(
+    const singlePlatformDb = createMockDatabase(buildQueryResults(["flextender"]));
+    const multiPlatformDb = createMockDatabase(
       buildQueryResults(["flextender", "opdrachtoverheid", "striive"]),
     );
 
-    const result = await getScraperDashboardData(
+    const singlePlatformResult = await getScraperDashboardData(
       { includeTrigger: false, activityLimit: 5, overlapLimit: 3 },
-      mockDb.database as never,
+      singlePlatformDb.database as never,
+    );
+    const multiPlatformResult = await getScraperDashboardData(
+      { includeTrigger: false, activityLimit: 5, overlapLimit: 3 },
+      multiPlatformDb.database as never,
     );
 
-    expect(result.platforms.map((platform) => platform.platform)).toEqual([
+    expect(singlePlatformResult.platforms.map((platform) => platform.platform)).toEqual([
+      "flextender",
+    ]);
+    expect(multiPlatformResult.platforms.map((platform) => platform.platform)).toEqual([
       "flextender",
       "opdrachtoverheid",
       "striive",
     ]);
-    expect(mockDb.database.transaction).toHaveBeenCalledTimes(1);
-    expect(mockDb.select).toHaveBeenCalledTimes(7);
-    expect(mockDb.pending).toHaveLength(0);
+    expect(singlePlatformDb.database.transaction).toHaveBeenCalledTimes(1);
+    expect(multiPlatformDb.database.transaction).toHaveBeenCalledTimes(1);
+    expect(singlePlatformDb.select).toHaveBeenCalled();
+    expect(multiPlatformDb.select).toHaveBeenCalled();
+    expect(multiPlatformDb.select.mock.calls.length).toBe(
+      singlePlatformDb.select.mock.calls.length,
+    );
+    expect(singlePlatformDb.pending).toHaveLength(0);
+    expect(multiPlatformDb.pending).toHaveLength(0);
   });
 
   it("degrades gracefully when Trigger.dev visibility times out", async () => {

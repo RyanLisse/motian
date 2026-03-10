@@ -85,7 +85,6 @@ describe("Legacy matching route redirect", () => {
   it("stays a server redirect route without client-side rendering hooks", () => {
     const source = readFile("app/matching/page.tsx");
     expect(source).not.toContain('"use client"');
-    expect(source).not.toContain("useState(");
-    expect(source).not.toContain("useEffect(");
+    expect(source).not.toMatch(/\buse[A-Z][A-Za-z0-9_]*\s*\(/);
   });
 });

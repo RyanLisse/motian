@@ -16,6 +16,7 @@ import { AgentAudioVisualizerAura } from "@/components/agents-ui/agent-audio-vis
 import { AgentChatTranscript } from "@/components/agents-ui/agent-chat-transcript";
 import { AgentControlBar } from "@/components/agents-ui/agent-control-bar";
 import { StartAudioButton } from "@/components/agents-ui/start-audio-button";
+import { LIVEKIT_UNCONFIGURED_ERROR } from "@/src/lib/livekit";
 
 // ---------- State label (Dutch UI) ----------
 
@@ -40,7 +41,7 @@ type VoiceAvailabilityState =
   | { status: "unavailable"; message: string };
 
 function getVoiceUnavailableMessage(error?: string) {
-  if (!error || error === "LiveKit niet geconfigureerd") {
+  if (!error || error === LIVEKIT_UNCONFIGURED_ERROR) {
     return DEFAULT_VOICE_UNAVAILABLE_MESSAGE;
   }
 

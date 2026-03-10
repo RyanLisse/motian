@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+const ROOT = path.resolve(__dirname, "..");
+
 function readFile(...segments: string[]) {
-  return readFileSync(join(process.cwd(), ...segments), "utf8");
+  return readFileSync(path.join(ROOT, ...segments), "utf8");
 }
 
 describe("opdracht detail archivedAt compatibility", () => {
