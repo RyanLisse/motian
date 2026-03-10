@@ -486,17 +486,15 @@ export async function getSessionRequestSnapshot(sessionId: string): Promise<{
     const [row] = await db
       .select({
         messageCount: chatSessions.messageCount,
-        messages: chatSessions.messages,
         tokensUsed: chatSessions.tokensUsed,
+        legacyCount: sql<number>`coalesce(jsonb_array_length(${chatSessions.messages}), 0)`,
       })
       .from(chatSessions)
       .where(eq(chatSessions.sessionId, sessionId))
       .limit(1);
 
-    const legacyMessages = getLegacySessionMessages(row?.messages, sessionId);
-
     return {
-      messageCount: Math.max(row?.messageCount ?? 0, legacyMessages.length),
+      messageCount: Math.max(row?.messageCount ?? 0, row?.legacyCount ?? 0),
       tokensUsed: row?.tokensUsed ?? 0,
     };
   });
@@ -664,6 +662,10 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
       },
       async () => {
         await db.transaction(async (tx) => {
+          await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`${CHAT_SESSION_PERSIST_LOCK_NAMESPACE}:${sessionId}`}))`,
+          );
+
           await tx
             .insert(chatSessions)
             .values({

@@ -45,7 +45,9 @@ export async function POST(request: NextRequest) {
     revalidatePath("/opdrachten");
     revalidatePath("/scraper");
     revalidatePath("/overzicht");
-    publish("scrape:completed", { platforms: summary.platforms.map((s) => s.platform) });
+    for (const p of summary.platforms) {
+      publish("scrape:complete", { platform: p.platform, jobsNew: p.jobsNew, duplicates: p.duplicates });
+    }
 
     return Response.json({
       message: `Scrape gestart voor ${summary.totalPlatforms} platform(en)`,
