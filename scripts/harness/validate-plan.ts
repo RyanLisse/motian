@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { argv } from "node:process";
 import { parseArgs } from "node:util";
+import { validateHarnessPlanDocument } from "@/src/harness/workflow/validation";
 
 const { values } = parseArgs({
   args: argv.slice(2),
@@ -26,29 +27,17 @@ if (!existsSync(targetFile)) {
 
 const planContent = readFileSync(targetFile, "utf-8");
 
-const requiredSections = [
-  "# ", // Main Title
-  "## Proposed Changes",
-  "## Verification Plan",
-];
+const result = validateHarnessPlanDocument(planContent);
 
-let hasErrors = false;
-
-for (const section of requiredSections) {
-  if (!planContent.includes(section)) {
-    console.error(`[FAIL] Plan is missing required section: "${section}"`);
-    hasErrors = true;
-  } else {
-    console.log(`[PASS] Found section: "${section}"`);
+if (!result.ok) {
+  console.error("Plan validation failed:\n");
+  for (const issue of result.issues) {
+    const severity = issue.severity === "error" ? "ERROR" : "WARN";
+    console.error(`[${severity}] ${issue.path}: ${issue.message}`);
   }
-}
-
-if (hasErrors) {
-  console.error(
-    "\nPlan validation failed. Please adhere to the Harness Engineering standards for planning documents.",
-  );
+  console.error("\nPlease adhere to the Harness Engineering standards for planning documents.");
   process.exit(1);
 }
 
-console.log("\n✅ Plan successfully validated. Proceed with execution.");
+console.log("✅ Plan successfully validated. Proceed with execution.");
 process.exit(0);

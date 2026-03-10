@@ -1,32 +1,13 @@
 import { execSync } from "node:child_process";
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { type HarnessConfig, loadHarnessConfig } from "@/src/harness/config";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type RiskTier = "high" | "medium" | "low";
-
-interface MergePolicyEntry {
-  requiredChecks: string[];
-  requireCodeReview: boolean;
-}
-
-interface HarnessConfig {
-  version: string;
-  riskTierRules: Record<RiskTier, string[]>;
-  mergePolicy: Record<RiskTier, MergePolicyEntry>;
-  docsDriftRules: {
-    triggers: Record<string, string[]>;
-    message: string;
-  };
-  evidenceRequirements?: Record<string, string>;
-  harnessGap?: {
-    slaHours: number;
-    labelPrefix: string;
-  };
-}
 
 interface FileTierResult {
   file: string;
@@ -207,18 +188,12 @@ function setGitHubOutputs(tier: RiskTier, requiredChecks: string[]): void {
 
 async function main(): Promise<void> {
   const projectRoot = resolve(process.cwd());
-  const configPath = join(projectRoot, "harness.config.json");
-
-  if (!existsSync(configPath)) {
-    console.error(`[risk-policy-gate] ERROR: harness.config.json not found at ${configPath}`);
-    process.exit(1);
-  }
 
   let config: HarnessConfig;
   try {
-    config = JSON.parse(readFileSync(configPath, "utf8")) as HarnessConfig;
+    config = loadHarnessConfig({ cwd: projectRoot });
   } catch (err) {
-    console.error(`[risk-policy-gate] ERROR: Failed to parse harness.config.json: ${err}`);
+    console.error(`[risk-policy-gate] ERROR: Failed to load harness config: ${err}`);
     process.exit(1);
   }
 
