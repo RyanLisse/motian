@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { decrypt, encrypt } from "../src/lib/crypto";
 
 describe("crypto — encrypt/decrypt", () => {
@@ -87,6 +87,15 @@ describe("crypto — encrypt/decrypt", () => {
 
 describe("encryptAuthConfig / decryptAuthConfig", () => {
   const ORIGINAL_ENV = process.env;
+  let encryptAuthConfig: typeof import("../src/services/scrapers").encryptAuthConfig;
+  let decryptAuthConfig: typeof import("../src/services/scrapers").decryptAuthConfig;
+  let isEncrypted: typeof import("../src/services/scrapers").isEncrypted;
+
+  beforeAll(async () => {
+    ({ encryptAuthConfig, decryptAuthConfig, isEncrypted } = await import(
+      "../src/services/scrapers"
+    ));
+  });
 
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV, ENCRYPTION_SECRET: "test-secret-key-for-vitest-runs-2026" };
@@ -96,9 +105,8 @@ describe("encryptAuthConfig / decryptAuthConfig", () => {
     process.env = ORIGINAL_ENV;
   });
 
-  // Importeer helpers — deze worden getest na implementatie in scrapers.ts
-  it("roundtrip van auth config object", async () => {
-    const { encryptAuthConfig, decryptAuthConfig } = await import("../src/services/scrapers");
+  // Importeer helpers één keer buiten de timed test body zodat coverage runs niet flaken
+  it("roundtrip van auth config object", () => {
     const config = { username: "bot@striive.nl", password: "P@ssw0rd!", sessionToken: "abc123" };
     const encrypted = encryptAuthConfig(config);
     expect(typeof encrypted).toBe("string");
@@ -106,8 +114,7 @@ describe("encryptAuthConfig / decryptAuthConfig", () => {
     expect(decrypted).toEqual(config);
   });
 
-  it("isEncrypted detecteert base64 encrypted waarden", async () => {
-    const { encryptAuthConfig, isEncrypted } = await import("../src/services/scrapers");
+  it("isEncrypted detecteert base64 encrypted waarden", () => {
     const config = { user: "test" };
     const encrypted = encryptAuthConfig(config);
     expect(isEncrypted(encrypted)).toBe(true);

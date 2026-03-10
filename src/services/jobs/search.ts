@@ -11,7 +11,7 @@ import {
   type ListJobsSortBy,
 } from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
-import type { Job } from "./repository";
+import { type Job, jobReadSelection } from "./repository";
 
 export type SearchJobsOptions = {
   platform?: string;
@@ -94,7 +94,7 @@ export async function searchJobsByTitle(
 
   if (tsInput) {
     const ftsResults = await db
-      .select()
+      .select(jobReadSelection)
       .from(jobs)
       .where(
         and(
@@ -117,7 +117,7 @@ export async function searchJobsByTitle(
       : ilike(jobs.title, `%${escapeLike(query)}%`);
 
   return db
-    .select()
+    .select(jobReadSelection)
     .from(jobs)
     .where(and(statusCondition, titleConditions))
     .orderBy(desc(jobs.scrapedAt))
@@ -133,7 +133,7 @@ export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
   });
 
   return db
-    .select()
+    .select(jobReadSelection)
     .from(jobs)
     .where(and(...conditions))
     .orderBy(desc(jobs.scrapedAt))
@@ -188,7 +188,7 @@ export async function hybridSearchWithTotal(
   }
 
   const fetchedJobs = await db
-    .select()
+    .select(jobReadSelection)
     .from(jobs)
     .where(
       and(

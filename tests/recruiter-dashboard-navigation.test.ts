@@ -3,9 +3,44 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(__dirname, "..");
+const EXCLUDED_DIRECTORIES = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
+const EXCLUDED_FILES = new Set(["pnpm-lock.yaml"]);
+const SCANNED_EXTENSIONS = new Set([
+  ".cjs",
+  ".css",
+  ".js",
+  ".json",
+  ".jsx",
+  ".md",
+  ".mjs",
+  ".ts",
+  ".tsx",
+  ".yml",
+  ".yaml",
+]);
+const MERGE_MARKER_PATTERN = /^(<{7}|={7}|>{7})(?: .*)?$/m;
 
 function readFile(...segments: string[]) {
   return fs.readFileSync(path.join(ROOT, ...segments), "utf-8");
+}
+
+function collectRepositoryFiles(directory: string, files: string[] = []) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (!EXCLUDED_DIRECTORIES.has(entry.name)) {
+        collectRepositoryFiles(path.join(directory, entry.name), files);
+      }
+      continue;
+    }
+
+    if (EXCLUDED_FILES.has(entry.name) || !SCANNED_EXTENSIONS.has(path.extname(entry.name))) {
+      continue;
+    }
+
+    files.push(path.join(directory, entry.name));
+  }
+
+  return files;
 }
 
 describe("Recruiter-first navigation", () => {
@@ -48,6 +83,14 @@ describe("Recruiter-first overview", () => {
     expect(source).not.toContain("Recente berichten");
     expect(source).not.toContain('label: "Berichten"');
     expect(source).not.toContain("Dashboard — realtime inzicht in vacatures en scrapers");
+  });
+
+  it("keeps the repository free of line-anchored merge conflict markers", () => {
+    const filesWithConflictMarkers = collectRepositoryFiles(ROOT)
+      .filter((filePath) => MERGE_MARKER_PATTERN.test(fs.readFileSync(filePath, "utf-8")))
+      .map((filePath) => path.relative(ROOT, filePath));
+
+    expect(filesWithConflictMarkers).toEqual([]);
   });
 
   it("keeps empty-state navigation inside candidate and vacancy flows", () => {

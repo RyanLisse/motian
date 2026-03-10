@@ -7,6 +7,7 @@ export const CHAT_HISTORY_PAGE_SIZE = 20;
 export const CHAT_CONTEXT_WINDOW_SIZE = 24;
 
 const CHAT_SESSION_MESSAGES_TABLE = "chat_session_messages";
+const CHAT_SESSION_MESSAGES_REGCLASS = `public.${CHAT_SESSION_MESSAGES_TABLE}`;
 const POSTGRES_MISSING_RELATION_ERROR_CODE = "42P01";
 const CHAT_SESSION_PERSIST_LOCK_NAMESPACE = "chat-session-persist";
 
@@ -27,8 +28,10 @@ type SessionListCursor = {
 };
 
 type ChatSessionMessagesMode = "unknown" | "normalized" | "legacy";
+type ResolvedChatSessionMessagesMode = Exclude<ChatSessionMessagesMode, "unknown">;
 
 let chatSessionMessagesMode: ChatSessionMessagesMode = "unknown";
+let chatSessionMessagesModePromise: Promise<ResolvedChatSessionMessagesMode> | null = null;
 
 const chatSessionSummarySelection = {
   id: chatSessions.id,
@@ -216,24 +219,59 @@ export function isChatSessionMessagesTableMissing(error: unknown): boolean {
   );
 }
 
+function setChatSessionMessagesMode(
+  mode: ResolvedChatSessionMessagesMode,
+): ResolvedChatSessionMessagesMode {
+  chatSessionMessagesMode = mode;
+  chatSessionMessagesModePromise = null;
+  return mode;
+}
+
+async function getChatSessionMessagesMode(): Promise<ResolvedChatSessionMessagesMode> {
+  if (chatSessionMessagesMode !== "unknown") {
+    return chatSessionMessagesMode;
+  }
+
+  if (!chatSessionMessagesModePromise) {
+    chatSessionMessagesModePromise = (async () => {
+      try {
+        const result = await db.execute(sql<{ relation_name: string | null }>`
+          select to_regclass(${CHAT_SESSION_MESSAGES_REGCLASS})::text as relation_name
+        `);
+        const relationName = result.rows[0]?.relation_name;
+        return setChatSessionMessagesMode(relationName ? "normalized" : "legacy");
+      } catch (error) {
+        if (isChatSessionMessagesTableMissing(error)) {
+          return setChatSessionMessagesMode("legacy");
+        }
+
+        chatSessionMessagesModePromise = null;
+        throw error;
+      }
+    })();
+  }
+
+  return chatSessionMessagesModePromise;
+}
+
 async function withChatSessionMessageCompatibility<T>(
   readNormalized: () => Promise<T>,
   readLegacy: () => Promise<T>,
 ): Promise<T> {
-  if (chatSessionMessagesMode === "legacy") {
+  if ((await getChatSessionMessagesMode()) === "legacy") {
     return readLegacy();
   }
 
   try {
     const result = await readNormalized();
-    chatSessionMessagesMode = "normalized";
+    setChatSessionMessagesMode("normalized");
     return result;
   } catch (error) {
     if (!isChatSessionMessagesTableMissing(error)) {
       throw error;
     }
 
-    chatSessionMessagesMode = "legacy";
+    setChatSessionMessagesMode("legacy");
     return readLegacy();
   }
 }
@@ -398,6 +436,28 @@ export async function getSessionTokenUsage(sessionId: string): Promise<number> {
   return row?.tokensUsed ?? 0;
 }
 
+export async function getSessionRequestSnapshot(sessionId: string): Promise<{
+  messageCount: number;
+  tokensUsed: number;
+}> {
+  const [row] = await db
+    .select({
+      messageCount: chatSessions.messageCount,
+      messages: chatSessions.messages,
+      tokensUsed: chatSessions.tokensUsed,
+    })
+    .from(chatSessions)
+    .where(eq(chatSessions.sessionId, sessionId))
+    .limit(1);
+
+  const legacyMessages = getLegacySessionMessages(row?.messages, sessionId);
+
+  return {
+    messageCount: Math.max(row?.messageCount ?? 0, legacyMessages.length),
+    tokensUsed: row?.tokensUsed ?? 0,
+  };
+}
+
 export async function getRecentMessagesForContext(
   sessionId: string,
   limit = CHAT_CONTEXT_WINDOW_SIZE,
@@ -467,12 +527,16 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
             },
           });
 
-        const [{ existingCount }] = await tx
-          .select({ existingCount: sql<number>`count(*)::int` })
+        const [{ maxOrderIndex }] = await tx
+          .select({
+            maxOrderIndex: sql<number>`coalesce(max(${chatSessionMessages.orderIndex}), 0)`,
+          })
           .from(chatSessionMessages)
           .where(eq(chatSessionMessages.sessionId, sessionId));
 
-        if ((existingCount ?? 0) === 0) {
+        let baseOrderIndex = maxOrderIndex ?? 0;
+
+        if (baseOrderIndex === 0) {
           const [legacySession] = await tx
             .select({ messages: chatSessions.messages })
             .from(chatSessions)
@@ -491,6 +555,8 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
                 orderIndex: index + 1,
               })),
             );
+
+            baseOrderIndex = legacyMessages.length;
           }
         }
 
@@ -513,13 +579,6 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
         );
 
         if (pendingMessages.length > 0) {
-          const [{ maxOrderIndex }] = await tx
-            .select({
-              maxOrderIndex: sql<number>`coalesce(max(${chatSessionMessages.orderIndex}), 0)`,
-            })
-            .from(chatSessionMessages)
-            .where(eq(chatSessionMessages.sessionId, sessionId));
-
           await tx
             .insert(chatSessionMessages)
             .values(
@@ -528,7 +587,7 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
                 messageId: message.id,
                 role: message.role,
                 message,
-                orderIndex: (maxOrderIndex ?? 0) + index + 1,
+                orderIndex: baseOrderIndex + index + 1,
               })),
             )
             .onConflictDoNothing({
@@ -536,18 +595,14 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
             });
         }
 
-        const [{ messageCount }] = await tx
-          .select({ messageCount: sql<number>`count(*)::int` })
-          .from(chatSessionMessages)
-          .where(eq(chatSessionMessages.sessionId, sessionId));
-
         const preview = getLastUserPreview(normalizedMessages);
+        const messageCount = baseOrderIndex + pendingMessages.length;
 
         await tx
           .update(chatSessions)
           .set({
             messages: [],
-            messageCount: messageCount ?? 0,
+            messageCount,
             updatedAt: new Date(),
             ...contextWriteValues,
             ...(preview ? { lastMessagePreview: preview } : {}),

@@ -78,6 +78,7 @@ vi.mock("drizzle-orm", () => {
     isNull: (column: unknown) => ({ type: "isNull", column }),
     lte: (column: unknown, value: unknown) => ({ type: "lte", column, value }),
     ne: (column: unknown, value: unknown) => ({ type: "ne", column, value }),
+    getTableColumns: (table: Record<string, unknown>) => table,
     sql: sqlTag,
     desc: (column: unknown) => ({ type: "desc", column }),
     asc: (column: unknown) => ({ type: "asc", column }),
@@ -263,6 +264,18 @@ describe("jobs service status and endClient filters", () => {
           (value as { column: string }).column === "jobs.deletedAt",
       ),
     ).toBe(false);
+  });
+
+  it("uses a backward-compatible job projection that does not read jobs.archivedAt", async () => {
+    await listJobs();
+
+    const dataSelectFields = mockDb.select.mock.calls.find(
+      ([fields]) => fields && typeof fields === "object" && !("count" in fields),
+    )?.[0] as Record<string, unknown> | undefined;
+
+    expect(dataSelectFields).toBeDefined();
+    expect(dataSelectFields?.title).toBe("jobs.title");
+    expect(dataSelectFields?.archivedAt).toMatchObject({ type: "sql", values: [] });
   });
 
   it("derives region filters from province-backed values", async () => {

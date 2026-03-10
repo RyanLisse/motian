@@ -2,9 +2,10 @@ import { desc, sql } from "drizzle-orm";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { db } from "@/src/db";
-import { applications, jobs } from "@/src/db/schema";
+import { jobs } from "@/src/db/schema";
 import { DEFAULT_OPDRACHTEN_LIMIT } from "@/src/lib/opdrachten-filters";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
+import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
   const activeJobsCondition = getJobStatusCondition("open");
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
-  const [sidebarJobs, countResult, metaResult, categoryRows] = await Promise.all([
+  const [sidebarJobRows, countResult, metaResult, categoryRows] = await Promise.all([
     db
       .select({
         id: jobs.id,
@@ -23,17 +24,6 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
         workArrangement: jobs.workArrangement,
         contractType: jobs.contractType,
         applicationDeadline: jobs.applicationDeadline,
-        hasPipeline: sql<boolean>`exists(
-          select 1 from ${applications}
-          where ${applications.jobId} = ${jobs.id}
-            and ${applications.deletedAt} is null
-        )`,
-        pipelineCount: sql<number>`(
-          select count(*)::int from ${applications}
-          where ${applications.jobId} = ${jobs.id}
-            and ${applications.deletedAt} is null
-            and ${applications.stage} != 'rejected'
-        )`,
       })
       .from(jobs)
       .where(activeJobsCondition)
@@ -54,6 +44,15 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
       order by category asc
     `),
   ]);
+
+  const { hasPipelineByJobId, pipelineCountByJobId } = await getJobPipelineSummary(
+    sidebarJobRows.map((job) => job.id),
+  );
+  const sidebarJobs = sidebarJobRows.map((job) => ({
+    ...job,
+    hasPipeline: hasPipelineByJobId.has(job.id),
+    pipelineCount: pipelineCountByJobId.get(job.id) ?? 0,
+  }));
 
   const totalCount = countResult[0]?.count ?? 0;
   const platforms = (metaResult[0]?.platforms ?? []).filter(Boolean).sort();

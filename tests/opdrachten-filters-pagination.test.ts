@@ -284,12 +284,21 @@ describe("Opdrachten UI/API contracts", () => {
     expect(searchRoute).toContain("applicationDeadline: job.applicationDeadline");
   });
 
-  it("layout seed includes persisted end-client, deadline context, and category metadata", () => {
+  it("layout seed includes persisted end-client, deadline context, category metadata, and shared pipeline summary wiring", () => {
     const layout = readFile("app", "opdrachten", "layout.tsx");
+    const pipelineSummary = readFile("src", "services", "jobs", "pipeline-summary.ts");
 
     expect(layout).toContain('getJobStatusCondition("open")');
     expect(layout).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
     expect(layout).toContain("jsonb_array_elements_text");
+    expect(layout).toContain(
+      'import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary"',
+    );
+    expect(layout).toContain("await getJobPipelineSummary(");
+    expect(layout).toContain("hasPipeline: hasPipelineByJobId.has(job.id)");
+    expect(layout).toContain("pipelineCount: pipelineCountByJobId.get(job.id) ?? 0");
+    expect(pipelineSummary).toContain("inArray(applications.jobId, jobIds)");
+    expect(pipelineSummary).toContain("groupBy(applications.jobId)");
     expect(layout).toContain("categories={categories}");
     expect(layout).toContain(".where(activeJobsCondition)");
     expect(layout).toContain("applicationDeadline: jobs.applicationDeadline");

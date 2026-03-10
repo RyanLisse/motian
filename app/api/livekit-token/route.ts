@@ -1,11 +1,28 @@
 import { RoomAgentDispatch, RoomConfiguration } from "@livekit/protocol";
 import { AccessToken } from "livekit-server-sdk";
 import { nanoid } from "nanoid";
+import { getLiveKitConfigStatus } from "@/src/lib/livekit";
 
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
-const LIVEKIT_URL = process.env.LIVEKIT_URL;
-const LIVEKIT_PUBLIC_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+function json(body: unknown, status = 200) {
+  return Response.json(body, {
+    status,
+    headers: { "Cache-Control": "no-store" },
+  });
+}
+
+export async function GET() {
+  const configStatus = getLiveKitConfigStatus();
+
+  if (!configStatus.enabled) {
+    return json({ enabled: false, error: configStatus.error }, 503);
+  }
+
+  return json({ enabled: true });
+}
+
+function getLiveKitClientUrl(fallbackUrl: string) {
+  return process.env.NEXT_PUBLIC_LIVEKIT_URL?.trim() || fallbackUrl;
+}
 
 /**
  * Token endpoint compatible with LiveKit's TokenSourceEndpoint format.
@@ -15,9 +32,13 @@ const LIVEKIT_PUBLIC_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL;
  * { server_url, participant_token } (TokenSourceResponse format).
  */
 export async function POST(req: Request) {
-  if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL || !LIVEKIT_PUBLIC_URL) {
-    return Response.json({ error: "LiveKit niet geconfigureerd" }, { status: 500 });
+  const configStatus = getLiveKitConfigStatus();
+
+  if (!configStatus.enabled) {
+    return json({ error: configStatus.error }, 503);
   }
+
+  const { apiKey, apiSecret, url } = configStatus.config;
 
   // Parse optional request body from TokenSourceEndpoint
   let roomName = `motian-voice-${nanoid(8)}`;
@@ -33,7 +54,7 @@ export async function POST(req: Request) {
     // No body or invalid JSON — use defaults
   }
 
-  const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+  const at = new AccessToken(apiKey, apiSecret, {
     identity: participantIdentity,
     name: participantName,
     ttl: "15m",
@@ -55,8 +76,8 @@ export async function POST(req: Request) {
   const participantToken = await at.toJwt();
 
   // Return in TokenSourceResponse wire format (snake_case)
-  return Response.json({
-    server_url: LIVEKIT_PUBLIC_URL,
+  return json({
+    server_url: getLiveKitClientUrl(url),
     participant_token: participantToken,
   });
 }
