@@ -22,7 +22,7 @@ const JOBS_DEDUPE_COLUMN_NAMES = [
 const JOBS_DEDUPE_BACKFILL_MIGRATION_HASH =
   "de9573fb28a78df406df11f368ea0972f5ad11251dc6864791ba5b354f59768d";
 const POSTGRES_MISSING_COLUMN_ERROR_CODE = "42703";
-const POSTGRES_MISSING_COLUMN_MESSAGE = /(^|\s)column\s+.+\s+does not exist$/i;
+const POSTGRES_MISSING_COLUMN_MESSAGE = /(^|\s)column\s+.+\s+does not exist/i;
 
 let jobsDeduplicationMode: JobsDeduplicationMode = "unknown";
 let jobsDeduplicationModePromise: Promise<ResolvedJobsDeduplicationMode> | null = null;
