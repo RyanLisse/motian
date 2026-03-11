@@ -4,7 +4,7 @@ import { scraperConfigs } from "../db/schema";
 import { findExpiredRetentionCandidates } from "./gdpr";
 import { listActiveJobs } from "./jobs";
 import { generateMatchesForJob } from "./match-generation";
-import { runScrapePipeline } from "./scrape-pipeline";
+import { runScrapePipelinesWithConcurrency } from "./scrape-pipeline";
 
 export type ImportJobsBatchSummary = {
   totalPlatforms: number;
@@ -68,9 +68,7 @@ export async function importJobsFromActiveScrapers(
     };
   }
 
-  const settled = await Promise.allSettled(
-    activeConfigs.map((config) => runScrapePipeline(config.platform, config.baseUrl)),
-  );
+  const settled = await runScrapePipelinesWithConcurrency(activeConfigs);
 
   const platforms = settled.map((result, index) => {
     const config = activeConfigs[index];

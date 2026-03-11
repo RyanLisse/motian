@@ -1,12 +1,9 @@
-import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { db } from "@/src/db";
-import { scraperConfigs } from "@/src/db/schema";
 import { publish } from "@/src/lib/event-bus";
 import { rateLimit } from "@/src/lib/rate-limit";
-import { runScrapePipeline } from "@/src/services/scrape-pipeline";
+import { importJobsFromActiveScrapers } from "@/src/services/operations-console";
 
 const limiter = rateLimit({ interval: 300_000, limit: 5 });
 
@@ -36,49 +33,25 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Ongeldige invoer" }, { status: 400 });
     }
 
-    // Load configs from DB
-    let configs: (typeof scraperConfigs.$inferSelect)[];
-    if (parsed.data.platform) {
-      configs = await db
-        .select()
-        .from(scraperConfigs)
-        .where(
-          and(eq(scraperConfigs.platform, parsed.data.platform), eq(scraperConfigs.isActive, true)),
-        )
-        .limit(1);
-    } else {
-      configs = await db.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true));
-    }
+    const summary = await importJobsFromActiveScrapers(parsed.data.platform);
 
-    if (configs.length === 0) {
+    if (summary.totalPlatforms === 0) {
       return Response.json(
         { error: "Geen actieve scraper configuratie gevonden" },
         { status: 404 },
       );
     }
 
-    // Run pipelines via Promise.allSettled (non-blocking)
-    const results = await Promise.allSettled(
-      configs.map((cfg) => runScrapePipeline(cfg.platform, cfg.baseUrl)),
-    );
-
-    const summary = configs.map((cfg, i) => {
-      const r = results[i];
-      return {
-        platform: cfg.platform,
-        status: r.status === "fulfilled" ? "success" : "failed",
-        ...(r.status === "fulfilled" ? r.value : { error: String(r.reason) }),
-      };
-    });
-
     revalidatePath("/opdrachten");
     revalidatePath("/scraper");
     revalidatePath("/overzicht");
-    publish("scrape:completed", { platforms: summary.map((s) => s.platform) });
+    for (const p of summary.platforms) {
+      publish("scrape:complete", { platform: p.platform, jobsNew: p.jobsNew, duplicates: p.duplicates });
+    }
 
     return Response.json({
-      message: `Scrape gestart voor ${configs.length} platform(en)`,
-      platforms: summary,
+      message: `Scrape gestart voor ${summary.totalPlatforms} platform(en)`,
+      platforms: summary.platforms,
     });
   } catch (_err) {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
