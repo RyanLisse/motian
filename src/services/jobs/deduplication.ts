@@ -9,6 +9,7 @@ type DedupableJob = Pick<Job, "title" | "company" | "endClient" | "province" | "
 
 type DedupedJobIdRow = { id: string };
 type DedupedJobPageRow = { id: string | null; total: number | string | null };
+type DedupePartitionStrategy = "persisted" | "derived";
 
 function normalizeDeduplicationPart(value: string | null | undefined) {
   return (value ?? "")
@@ -16,6 +17,42 @@ function normalizeDeduplicationPart(value: string | null | undefined) {
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
+}
+
+function buildNormalizedDeduplicationPartSql(value: unknown) {
+  return sql`regexp_replace(trim(regexp_replace(lower(coalesce(${value}, '')), '[^[:alnum:]]+', ' ', 'g')), '[[:space:]]+', ' ', 'g')`;
+}
+
+function buildDedupePartitionSql(strategy: DedupePartitionStrategy) {
+  if (strategy === "persisted") {
+    return sql`
+      ${jobs.dedupeTitleNormalized},
+      ${jobs.dedupeClientNormalized},
+      ${jobs.dedupeLocationNormalized}
+    `;
+  }
+
+  return sql`
+    ${buildNormalizedDeduplicationPartSql(jobs.title)},
+    ${buildNormalizedDeduplicationPartSql(sql`coalesce(${jobs.endClient}, ${jobs.company})`)},
+    ${buildNormalizedDeduplicationPartSql(sql`coalesce(${jobs.province}, ${jobs.location})`)}
+  `;
+}
+
+function isMissingDedupeColumnError(error: unknown) {
+  return (
+    error instanceof Error &&
+    /column .*dedupe_(title|client|location)_normalized does not exist/i.test(error.message)
+  );
+}
+
+async function executeDedupedQuery<TRow>(buildQuery: (strategy: DedupePartitionStrategy) => SQL) {
+  try {
+    return await db.execute(buildQuery("persisted"));
+  } catch (error) {
+    if (!isMissingDedupeColumnError(error)) throw error;
+    return db.execute(buildQuery("derived")) as Promise<{ rows: TRow[] }>;
+  }
 }
 
 function getListSortOrderSql(sortBy: ListJobsSortBy = "nieuwste") {
@@ -62,10 +99,12 @@ function buildDedupedJobsCte({
   whereClause,
   partitionOrderBy,
   extraSelections,
+  partitionStrategy = "persisted",
 }: {
   whereClause: SQL;
   partitionOrderBy: SQL;
   extraSelections?: SQL;
+  partitionStrategy?: DedupePartitionStrategy;
 }) {
   return sql`
     with ranked_jobs as (
@@ -79,10 +118,7 @@ function buildDedupedJobsCte({
         ${jobs.startDate} as sort_start_date
         ${extraSelections ? sql`, ${extraSelections}` : sql``},
         row_number() over (
-          partition by
-            ${jobs.dedupeTitleNormalized},
-            ${jobs.dedupeClientNormalized},
-            ${jobs.dedupeLocationNormalized}
+          partition by ${buildDedupePartitionSql(partitionStrategy)}
           order by ${partitionOrderBy}
         ) as dedupe_rank
       from ${jobs}
@@ -158,22 +194,26 @@ export async function fetchDedupedJobIds({
   extraSelections?: SQL;
 }): Promise<string[]> {
   const sortOrder = sortBy ? getListSortOrderSql(sortBy) : undefined;
-  const cte = buildDedupedJobsCte({
-    whereClause,
-    partitionOrderBy:
-      partitionOrderBy ??
-      sortOrder?.partitionOrderBy ??
-      sql`${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
-    extraSelections,
+  const result = await executeDedupedQuery<DedupedJobIdRow>((partitionStrategy) => {
+    const cte = buildDedupedJobsCte({
+      whereClause,
+      partitionOrderBy:
+        partitionOrderBy ??
+        sortOrder?.partitionOrderBy ??
+        sql`${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
+      extraSelections,
+      partitionStrategy,
+    });
+
+    return sql<DedupedJobIdRow>`
+      ${cte}
+      select id
+      from deduped_jobs
+      order by ${resultOrderBy ?? sortOrder?.resultOrderBy ?? sql`scraped_at desc nulls last, id desc`}
+      limit ${limit}
+      offset ${offset}
+    `;
   });
-  const result = await db.execute(sql<DedupedJobIdRow>`
-    ${cte}
-    select id
-    from deduped_jobs
-    order by ${resultOrderBy ?? sortOrder?.resultOrderBy ?? sql`scraped_at desc nulls last, id desc`}
-    limit ${limit}
-    offset ${offset}
-  `);
 
   return (result.rows as DedupedJobIdRow[]).map((row) => row.id);
 }
@@ -190,25 +230,29 @@ export async function fetchDedupedJobsPage({
   sortBy?: ListJobsSortBy;
 }): Promise<{ ids: string[]; total: number }> {
   const sortOrder = getListSortOrderSql(sortBy);
-  const cte = buildDedupedJobsCte({
-    whereClause,
-    partitionOrderBy: sortOrder.partitionOrderBy,
+  const result = await executeDedupedQuery<DedupedJobPageRow>((partitionStrategy) => {
+    const cte = buildDedupedJobsCte({
+      whereClause,
+      partitionOrderBy: sortOrder.partitionOrderBy,
+      partitionStrategy,
+    });
+
+    return sql<DedupedJobPageRow>`
+      ${cte}
+      select page.id, totals.total
+      from (
+        select count(*)::int as total
+        from deduped_jobs
+      ) totals
+      left join lateral (
+        select id
+        from deduped_jobs
+        order by ${sortOrder.resultOrderBy}
+        limit ${limit}
+        offset ${offset}
+      ) page on true
+    `;
   });
-  const result = await db.execute(sql<DedupedJobPageRow>`
-    ${cte}
-    select page.id, totals.total
-    from (
-      select count(*)::int as total
-      from deduped_jobs
-    ) totals
-    left join lateral (
-      select id
-      from deduped_jobs
-      order by ${sortOrder.resultOrderBy}
-      limit ${limit}
-      offset ${offset}
-    ) page on true
-  `);
 
   const rows = result.rows as DedupedJobPageRow[];
   const total = rows[0]?.total == null ? 0 : Number(rows[0].total);

@@ -8,13 +8,18 @@ export type Job = typeof jobs.$inferSelect;
  * Backward-compatible read projection.
  *
  * Some environments still run a pre-0014 schema where `jobs.archived_at`
- * has not been added yet. Bare `select()` / `returning()` calls would expand
- * to that missing column and fail the whole page render. We keep the returned
- * shape stable while projecting `archivedAt` as `null` until every database has
- * applied the migration.
+ * and pre-0015 schemas where the dedupe/search support columns have not been
+ * added yet. Bare `select()` / `returning()` calls would expand to those
+ * missing columns and fail the whole page render. We keep the returned shape
+ * stable while projecting compat literals until every database has applied the
+ * migrations.
  */
 export const jobReadSelection = {
   ...getTableColumns(jobs),
+  dedupeTitleNormalized: sql<string>`''`,
+  dedupeClientNormalized: sql<string>`''`,
+  dedupeLocationNormalized: sql<string>`''`,
+  searchText: sql<string>`''`,
   archivedAt: sql<Date | null>`null`,
 };
 

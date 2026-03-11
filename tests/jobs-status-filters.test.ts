@@ -31,6 +31,7 @@ vi.mock("../src/db/schema", () => ({
     dedupeTitleNormalized: "jobs.dedupeTitleNormalized",
     dedupeClientNormalized: "jobs.dedupeClientNormalized",
     dedupeLocationNormalized: "jobs.dedupeLocationNormalized",
+    searchText: "jobs.searchText",
     categories: "jobs.categories",
     platform: "jobs.platform",
     status: "jobs.status",
@@ -264,7 +265,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(false);
   });
 
-  it("uses a backward-compatible job projection that does not read jobs.archivedAt", async () => {
+  it("uses a backward-compatible job projection that does not read legacy archived/dedupe/search columns", async () => {
     mockExecute.mockResolvedValue({ rows: [{ id: "job-1" }] });
     mockDataWhere.mockReturnValue({
       limit: vi
@@ -287,6 +288,10 @@ describe("jobs service status and endClient filters", () => {
 
     expect(dataSelectFields).toBeDefined();
     expect(dataSelectFields?.title).toBe("jobs.title");
+    expect(dataSelectFields?.dedupeTitleNormalized).toMatchObject({ type: "sql", values: [] });
+    expect(dataSelectFields?.dedupeClientNormalized).toMatchObject({ type: "sql", values: [] });
+    expect(dataSelectFields?.dedupeLocationNormalized).toMatchObject({ type: "sql", values: [] });
+    expect(dataSelectFields?.searchText).toMatchObject({ type: "sql", values: [] });
     expect(dataSelectFields?.archivedAt).toMatchObject({ type: "sql", values: [] });
   });
 

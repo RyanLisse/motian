@@ -206,14 +206,14 @@ function FilterChecklist({
           <label
             key={option.value}
             htmlFor={checkboxId}
-            className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent/50"
+            className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 py-2.5 text-sm hover:bg-accent/50"
           >
             <Checkbox
               id={checkboxId}
               checked={checked}
               onCheckedChange={() => onToggle(option.value)}
             />
-            <span className="text-foreground">{option.label}</span>
+            <span className="min-w-0 break-words text-foreground">{option.label}</span>
           </label>
         );
       })}
@@ -475,6 +475,7 @@ export function OpdrachtenSidebar({
     ) || DEFAULT_OPDRACHTEN_LIMIT;
 
   const [inputValue, setInputValue] = useState(q);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const provinceAnchor = getProvinceAnchor(provincie);
   const regionOptions = useMemo<FilterOption[]>(
@@ -600,6 +601,19 @@ export function OpdrachtenSidebar({
   const urgentDeadlineCount = displayJobs.filter((job) =>
     hasUrgentDeadline(job.applicationDeadline),
   ).length;
+  const activeFilterCount =
+    Number(Boolean(platform)) +
+    Number(Boolean(endClient)) +
+    Number(status !== "open") +
+    Number(Boolean(provincie)) +
+    Number(regios.length > 0) +
+    Number(vakgebieden.length > 0) +
+    Number(Boolean(urenPerWeek)) +
+    Number(Boolean(urenPerWeekMin || urenPerWeekMax)) +
+    Number(Boolean(straalKm)) +
+    Number(Boolean(contractType)) +
+    Number(Boolean(tariefMinParam || tariefMaxParam)) +
+    Number(sort !== "nieuwste");
   const buildDetailHref = (jobId: string) =>
     detailQuery ? `/opdrachten/${jobId}?${detailQuery}` : `/opdrachten/${jobId}`;
 
@@ -924,22 +938,24 @@ export function OpdrachtenSidebar({
   }
 
   return (
-    <aside className="h-full w-full bg-sidebar/25">
-      <div className="grid h-full min-h-0 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <div className="border-b border-border/70 px-4 py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-2xl font-semibold tracking-tight text-foreground">Zoekfilter</h3>
+    <aside className="h-full min-w-0 w-full bg-sidebar/25">
+      <div className="grid h-full min-h-0 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="border-b border-border/70 px-3 py-3 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              Zoekfilter
+            </h3>
             <button
               type="button"
               onClick={resetFilters}
-              className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-primary hover:opacity-80"
+              className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs font-semibold uppercase tracking-wide text-primary hover:bg-primary/5 hover:opacity-80"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Wis filters
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
               <label
                 htmlFor="opdrachten-zoekterm"
@@ -962,314 +978,362 @@ export function OpdrachtenSidebar({
               </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="opdrachten-opdrachtgever"
-                className="mb-2 block text-sm font-medium text-foreground"
-              >
-                Platform
-              </label>
-              <Select
-                value={platform || "__all__"}
-                onValueChange={(v) => handleFilterChange("platform", v === "__all__" ? "" : v)}
-              >
-                <SelectTrigger
-                  id="opdrachten-opdrachtgever"
-                  className="h-11 rounded-lg border-border bg-background text-left text-sm"
+            <button
+              type="button"
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="opdrachten-mobile-filters"
+              className="inline-flex min-h-11 w-full items-center justify-between rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground shadow-sm lg:hidden"
+              onClick={() => setMobileFiltersOpen((open) => !open)}
+            >
+              <span className="min-w-0 truncate">
+                {mobileFiltersOpen ? "Filters sluiten" : "Filters openen"}
+                {activeFilterCount > 0 ? ` (${activeFilterCount} actief)` : ""}
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                  mobileFiltersOpen && "rotate-180",
+                )}
+              />
+            </button>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground lg:hidden">
+              <span>{displayTotal} resultaten</span>
+              {activeFilterCount > 0 ? (
+                <Badge
+                  variant="outline"
+                  className="max-w-full whitespace-normal break-words border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
                 >
-                  <SelectValue placeholder="Alle platforms" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="__all__" className="text-foreground">
-                    Alle platforms
-                  </SelectItem>
-                  {platforms.map((p) => (
-                    <SelectItem key={p} value={p} className="capitalize text-foreground">
-                      {p}
+                  {activeFilterCount} filters actief
+                </Badge>
+              ) : null}
+            </div>
+
+            <div
+              id="opdrachten-mobile-filters"
+              className={cn(
+                "space-y-3 rounded-xl border border-border/70 bg-background/60 p-3 sm:space-y-4 sm:p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0",
+                !mobileFiltersOpen && "hidden lg:block",
+              )}
+            >
+              <div>
+                <label
+                  htmlFor="opdrachten-opdrachtgever"
+                  className="mb-2 block text-sm font-medium text-foreground"
+                >
+                  Platform
+                </label>
+                <Select
+                  value={platform || "__all__"}
+                  onValueChange={(v) => handleFilterChange("platform", v === "__all__" ? "" : v)}
+                >
+                  <SelectTrigger
+                    id="opdrachten-opdrachtgever"
+                    className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-left text-sm"
+                  >
+                    <SelectValue placeholder="Alle platforms" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="__all__" className="text-foreground">
+                      Alle platforms
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                    {platforms.map((p) => (
+                      <SelectItem key={p} value={p} className="capitalize text-foreground">
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <label
-                htmlFor="opdrachten-eindopdrachtgever"
-                className="mb-2 block text-sm font-medium text-foreground"
-              >
-                Eindopdrachtgever
-              </label>
-              <SearchableCombobox
-                value={endClient || undefined}
-                onValueChange={(value) => handleFilterChange("endClient", value)}
-                options={endClients}
-                placeholder="Alle eindopdrachtgevers"
-                searchPlaceholder="Zoek eindopdrachtgever..."
-                emptyText="Geen eindopdrachtgevers gevonden."
-                clearLabel="Alle eindopdrachtgevers"
-                buttonClassName="h-11 rounded-lg border-border bg-background text-left text-sm"
-                triggerId="opdrachten-eindopdrachtgever"
-                ariaLabel="Eindopdrachtgever"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="opdrachten-status"
-                className="mb-2 block text-sm font-medium text-foreground"
-              >
-                Status
-              </label>
-              <Select
-                value={status}
-                onValueChange={(v) => handleFilterChange("status", v === "open" ? "" : v)}
-              >
-                <SelectTrigger
-                  id="opdrachten-status"
-                  className="h-11 rounded-lg border-border bg-background text-left text-sm"
+              <div>
+                <label
+                  htmlFor="opdrachten-eindopdrachtgever"
+                  className="mb-2 block text-sm font-medium text-foreground"
                 >
-                  <SelectValue placeholder="Open" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="open" className="text-foreground">
-                    Open
-                  </SelectItem>
-                  <SelectItem value="closed" className="text-foreground">
-                    Gesloten
-                  </SelectItem>
-                  <SelectItem value="archived" className="text-foreground">
-                    Gearchiveerd
-                  </SelectItem>
-                  <SelectItem value="all" className="text-foreground">
-                    Alles
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <p className="mb-2 block text-sm font-medium text-foreground">Regio</p>
-              <FilterChecklist
-                idPrefix="opdrachten-regio"
-                options={regionOptions}
-                selectedValues={regios}
-                onToggle={handleToggleRegio}
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="opdrachten-locatie"
-                className="mb-2 block text-sm font-medium text-foreground"
-              >
-                Provincie
-              </label>
-              <Select value={provincie || "__all__"} onValueChange={handleProvinceChange}>
-                <SelectTrigger
-                  id="opdrachten-locatie"
-                  className="h-11 rounded-lg border-border bg-background text-left text-sm"
-                >
-                  <SelectValue placeholder="Alle provincies" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="__all__" className="text-foreground">
-                    Alle provincies
-                  </SelectItem>
-                  {OPDRACHTEN_PROVINCES.map((p) => (
-                    <SelectItem key={p} value={p} className="text-foreground">
-                      {p}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <p className="mb-2 block text-sm font-medium text-foreground">Vakgebied</p>
-              <FilterChecklist
-                idPrefix="opdrachten-vakgebied"
-                options={categoryOptions}
-                selectedValues={vakgebieden}
-                onToggle={handleToggleVakgebied}
-                className="max-h-64 overflow-y-auto"
-              />
-            </div>
-
-            <div>
-              <p className="mb-2 block text-sm font-medium text-foreground">Uren per week</p>
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min="1"
-                  placeholder="Min uren"
-                  value={urenPerWeekMin}
-                  onChange={(e) => handleHoursRangeChange("urenPerWeekMin", e.target.value)}
-                  className="h-11 rounded-lg border-border bg-background text-sm"
-                />
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min="1"
-                  placeholder="Max uren"
-                  value={urenPerWeekMax}
-                  onChange={(e) => handleHoursRangeChange("urenPerWeekMax", e.target.value)}
-                  className="h-11 rounded-lg border-border bg-background text-sm"
+                  Eindopdrachtgever
+                </label>
+                <SearchableCombobox
+                  value={endClient || undefined}
+                  onValueChange={(value) => handleFilterChange("endClient", value)}
+                  options={endClients}
+                  placeholder="Alle eindopdrachtgevers"
+                  searchPlaceholder="Zoek eindopdrachtgever..."
+                  emptyText="Geen eindopdrachtgevers gevonden."
+                  clearLabel="Alle eindopdrachtgevers"
+                  buttonClassName="h-11 rounded-lg border-border bg-background text-left text-sm"
+                  triggerId="opdrachten-eindopdrachtgever"
+                  ariaLabel="Eindopdrachtgever"
                 />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {summarizeHoursRange(urenPerWeekMin, urenPerWeekMax)} — opdrachten overlappen met
-                dit bereik.
-              </p>
-            </div>
 
-            <div>
-              <p className="mb-2 block text-sm font-medium text-foreground">Straal (km)</p>
-              <RadiusSliderField
-                provinceAnchor={provinceAnchor}
-                radiusKm={straalKm}
-                onRadiusChange={handleRadiusChange}
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="opdrachten-contracttype"
-                className="mb-2 block text-sm font-medium text-foreground"
-              >
-                Contract type
-              </label>
-              <Select
-                value={contractType || "__all__"}
-                onValueChange={(v) => handleFilterChange("contractType", v === "__all__" ? "" : v)}
-              >
-                <SelectTrigger
-                  id="opdrachten-contracttype"
-                  className="h-11 rounded-lg border-border bg-background text-left text-sm"
+              <div>
+                <label
+                  htmlFor="opdrachten-status"
+                  className="mb-2 block text-sm font-medium text-foreground"
                 >
-                  <SelectValue placeholder="Alle types" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="__all__" className="text-foreground">
-                    Alle types
-                  </SelectItem>
-                  {CONTRACT_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value} className="text-foreground">
-                      {type.label}
+                  Status
+                </label>
+                <Select
+                  value={status}
+                  onValueChange={(v) => handleFilterChange("status", v === "open" ? "" : v)}
+                >
+                  <SelectTrigger
+                    id="opdrachten-status"
+                    className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-left text-sm"
+                  >
+                    <SelectValue placeholder="Open" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="open" className="text-foreground">
+                      Open
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                    <SelectItem value="closed" className="text-foreground">
+                      Gesloten
+                    </SelectItem>
+                    <SelectItem value="archived" className="text-foreground">
+                      Gearchiveerd
+                    </SelectItem>
+                    <SelectItem value="all" className="text-foreground">
+                      Alles
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <p className="mb-2 block text-sm font-medium text-foreground">Tarief per uur</p>
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="Min"
-                  value={tariefMinParam}
-                  onChange={(e) =>
-                    pushOpdrachtenParams(searchParams, router, pathname, {
-                      tariefMin: e.target.value,
-                      pagina: "1",
-                    })
-                  }
-                  className="h-11 rounded-lg border-border bg-background text-sm"
+              <div>
+                <p className="mb-2 block text-sm font-medium text-foreground">Regio</p>
+                <FilterChecklist
+                  idPrefix="opdrachten-regio"
+                  options={regionOptions}
+                  selectedValues={regios}
+                  onToggle={handleToggleRegio}
                 />
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="Max"
-                  value={tariefMaxParam}
-                  onChange={(e) =>
-                    pushOpdrachtenParams(searchParams, router, pathname, {
-                      tariefMax: e.target.value,
-                      pagina: "1",
-                    })
-                  }
-                  className="h-11 rounded-lg border-border bg-background text-sm"
+              </div>
+
+              <div>
+                <label
+                  htmlFor="opdrachten-locatie"
+                  className="mb-2 block text-sm font-medium text-foreground"
+                >
+                  Provincie
+                </label>
+                <Select value={provincie || "__all__"} onValueChange={handleProvinceChange}>
+                  <SelectTrigger
+                    id="opdrachten-locatie"
+                    className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-left text-sm"
+                  >
+                    <SelectValue placeholder="Alle provincies" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="__all__" className="text-foreground">
+                      Alle provincies
+                    </SelectItem>
+                    {OPDRACHTEN_PROVINCES.map((p) => (
+                      <SelectItem key={p} value={p} className="text-foreground">
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <p className="mb-2 block text-sm font-medium text-foreground">Vakgebied</p>
+                <FilterChecklist
+                  idPrefix="opdrachten-vakgebied"
+                  options={categoryOptions}
+                  selectedValues={vakgebieden}
+                  onToggle={handleToggleVakgebied}
+                  className="max-h-64 overflow-y-auto"
                 />
+              </div>
+
+              <div>
+                <p className="mb-2 block text-sm font-medium text-foreground">Uren per week</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    placeholder="Min uren"
+                    value={urenPerWeekMin}
+                    onChange={(e) => handleHoursRangeChange("urenPerWeekMin", e.target.value)}
+                    className="h-11 rounded-lg border-border bg-background text-sm"
+                  />
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    placeholder="Max uren"
+                    value={urenPerWeekMax}
+                    onChange={(e) => handleHoursRangeChange("urenPerWeekMax", e.target.value)}
+                    className="h-11 rounded-lg border-border bg-background text-sm"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {summarizeHoursRange(urenPerWeekMin, urenPerWeekMax)} — opdrachten overlappen met
+                  dit bereik.
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 block text-sm font-medium text-foreground">Straal (km)</p>
+                <RadiusSliderField
+                  provinceAnchor={provinceAnchor}
+                  radiusKm={straalKm}
+                  onRadiusChange={handleRadiusChange}
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="opdrachten-contracttype"
+                  className="mb-2 block text-sm font-medium text-foreground"
+                >
+                  Contract type
+                </label>
+                <Select
+                  value={contractType || "__all__"}
+                  onValueChange={(v) =>
+                    handleFilterChange("contractType", v === "__all__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger
+                    id="opdrachten-contracttype"
+                    className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-left text-sm"
+                  >
+                    <SelectValue placeholder="Alle types" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="__all__" className="text-foreground">
+                      Alle types
+                    </SelectItem>
+                    {CONTRACT_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value} className="text-foreground">
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <p className="mb-2 block text-sm font-medium text-foreground">Tarief per uur</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Min"
+                    value={tariefMinParam}
+                    onChange={(e) =>
+                      pushOpdrachtenParams(searchParams, router, pathname, {
+                        tariefMin: e.target.value,
+                        pagina: "1",
+                      })
+                    }
+                    className="h-11 rounded-lg border-border bg-background text-sm"
+                  />
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Max"
+                    value={tariefMaxParam}
+                    onChange={(e) =>
+                      pushOpdrachtenParams(searchParams, router, pathname, {
+                        tariefMax: e.target.value,
+                        pagina: "1",
+                      })
+                    }
+                    className="h-11 rounded-lg border-border bg-background text-sm"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-col px-4 py-4 sm:px-6 sm:py-5">
-          <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-border/70 pb-4">
-            <div className="space-y-2">
-              <div className="text-lg font-semibold text-foreground">
+        <div className="flex min-h-0 min-w-0 flex-col px-3 py-2.5 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-6">
+          <div className="mb-2.5 flex flex-col gap-2.5 border-b border-border/70 pb-2.5 sm:mb-4 sm:gap-3 sm:pb-4">
+            <div className="min-w-0 space-y-2">
+              <div className="text-base font-semibold text-foreground sm:text-lg">
                 {displayTotal} opdrachten weergegeven
               </div>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="text-xs text-muted-foreground">
+                <Badge
+                  variant="outline"
+                  className="max-w-full whitespace-normal break-words text-[11px] text-muted-foreground sm:text-xs"
+                >
                   {shortlistCount > 0 ? `${shortlistCount} met shortlist` : "Nog geen shortlist"}
                 </Badge>
                 {urgentDeadlineCount > 0 ? (
                   <Badge
                     variant="outline"
-                    className="border-amber-500/20 bg-amber-500/10 text-xs text-amber-700 dark:text-amber-300"
+                    className="max-w-full whitespace-normal break-words border-amber-500/20 bg-amber-500/10 text-[11px] text-amber-700 dark:text-amber-300 sm:text-xs"
                   >
                     {urgentDeadlineCount} deadlines vragen aandacht
                   </Badge>
                 ) : null}
               </div>
             </div>
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Per pagina:</span>
-              <Select
-                value={String(displayPerPage)}
-                onValueChange={(v) =>
-                  pushOpdrachtenParams(searchParams, router, pathname, {
-                    limit: v === String(DEFAULT_OPDRACHTEN_LIMIT) ? "" : v,
-                    pagina: "1",
-                  })
-                }
-              >
-                <SelectTrigger className="h-10 w-[110px] rounded-full border-border bg-background text-sm font-semibold text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  {OPDRACHTEN_PAGE_SIZE_OPTIONS.map((value) => (
-                    <SelectItem key={value} value={String(value)}>
-                      {value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-sm text-muted-foreground">Sorteren:</span>
-              <Select
-                value={sort}
-                onValueChange={(value) =>
-                  handleFilterChange("sort", value === "nieuwste" ? "" : value)
-                }
-              >
-                <SelectTrigger className="h-10 w-[210px] rounded-full border-primary/40 bg-background text-sm font-semibold text-primary">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  {sortOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:w-auto sm:items-center">
+                <span className="text-xs text-muted-foreground sm:text-sm">Per pagina:</span>
+                <Select
+                  value={String(displayPerPage)}
+                  onValueChange={(v) =>
+                    pushOpdrachtenParams(searchParams, router, pathname, {
+                      limit: v === String(DEFAULT_OPDRACHTEN_LIMIT) ? "" : v,
+                      pagina: "1",
+                    })
+                  }
+                >
+                  <SelectTrigger className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-sm font-semibold text-foreground sm:w-[110px] sm:rounded-full sm:data-[size=default]:h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {OPDRACHTEN_PAGE_SIZE_OPTIONS.map((value) => (
+                      <SelectItem key={value} value={String(value)}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:w-auto sm:items-center">
+                <span className="text-xs text-muted-foreground sm:text-sm">Sorteren:</span>
+                <Select
+                  value={sort}
+                  onValueChange={(value) =>
+                    handleFilterChange("sort", value === "nieuwste" ? "" : value)
+                  }
+                >
+                  <SelectTrigger className="data-[size=default]:h-11 w-full rounded-lg border-primary/40 bg-background text-sm font-semibold text-primary sm:w-[210px] sm:rounded-full sm:data-[size=default]:h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {sortOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           {searchErrorMessage ? (
-            <p className="mb-4 text-sm text-destructive">{searchErrorMessage}</p>
+            <p className="mb-3 text-sm text-destructive">{searchErrorMessage}</p>
           ) : null}
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="min-w-0 flex-1">
             {displayJobs.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border bg-background px-5 py-10 text-center text-sm text-muted-foreground">
                 Geen vacatures gevonden voor deze filters.
               </div>
             ) : (
-              <div className="space-y-4 pb-4 pr-1">
+              <div className="space-y-3 pb-4 sm:space-y-4">
                 {displayJobs.map((job) => (
                   <JobListItem
                     key={job.id}
@@ -1286,11 +1350,11 @@ export function OpdrachtenSidebar({
           </ScrollArea>
 
           {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-4">
+            <div className="mt-4 flex flex-col gap-2 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 border-border bg-background text-foreground"
+                className="h-11 w-full border-border bg-background text-foreground sm:h-9 sm:w-auto"
                 disabled={pageParam <= 1 || isFetching}
                 onClick={() =>
                   pushOpdrachtenParams(searchParams, router, pathname, {
@@ -1301,13 +1365,13 @@ export function OpdrachtenSidebar({
                 <ChevronLeft className="mr-1 h-4 w-4" />
                 Vorige
               </Button>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-center text-sm text-muted-foreground">
                 Pagina {pageParam} van {totalPages}
               </p>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 border-border bg-background text-foreground"
+                className="h-11 w-full border-border bg-background text-foreground sm:h-9 sm:w-auto"
                 disabled={pageParam >= totalPages || isFetching}
                 onClick={() =>
                   pushOpdrachtenParams(searchParams, router, pathname, {
