@@ -1,20 +1,37 @@
-import { and, eq, getTableColumns, isNotNull, ne, or, sql } from "drizzle-orm";
+import { and, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { jobs } from "../../db/schema";
 
 export type Job = typeof jobs.$inferSelect;
 
+function getNormalizedCompatibilityExpression(value: SQL) {
+  return sql<string>`trim(regexp_replace(lower(coalesce(${value}, '')), '[^[:alnum:]]+', ' ', 'g'))`;
+}
+
+function getSearchTextCompatibilityExpression() {
+  return sql<string>`trim(regexp_replace(concat_ws(' ', nullif(trim(coalesce(${jobs.title}, '')), ''), nullif(trim(coalesce(${jobs.company}, '')), ''), nullif(trim(coalesce(${jobs.description}, '')), ''), nullif(trim(coalesce(${jobs.location}, '')), ''), nullif(trim(coalesce(${jobs.province}, '')), '')), '[[:space:]]+', ' ', 'g'))`;
+}
+
 /**
  * Backward-compatible read projection.
  *
- * Some environments still run a pre-0014 schema where `jobs.archived_at`
- * has not been added yet. Bare `select()` / `returning()` calls would expand
- * to that missing column and fail the whole page render. We keep the returned
- * shape stable while projecting `archivedAt` as `null` until every database has
- * applied the migration.
+ * Some environments still run a pre-0014/0015 schema where `jobs.archived_at`
+ * and the search/dedupe helper columns have not been added yet. Bare
+ * `select()` / `returning()` calls would expand those missing columns and fail
+ * the whole page render. We keep the returned shape stable with expressions
+ * that work against both schemas until every database has applied the
+ * migrations.
  */
 export const jobReadSelection = {
   ...getTableColumns(jobs),
+  dedupeTitleNormalized: getNormalizedCompatibilityExpression(sql`${jobs.title}`),
+  dedupeClientNormalized: getNormalizedCompatibilityExpression(
+    sql`coalesce(${jobs.endClient}, ${jobs.company}, '')`,
+  ),
+  dedupeLocationNormalized: getNormalizedCompatibilityExpression(
+    sql`coalesce(${jobs.province}, ${jobs.location}, '')`,
+  ),
+  searchText: getSearchTextCompatibilityExpression(),
   archivedAt: sql<Date | null>`null`,
 };
 
