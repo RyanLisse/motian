@@ -83,12 +83,13 @@ function isMissingJobsDeduplicationColumn(error: unknown): boolean {
   const column = "column" in error ? error.column : undefined;
   const message = "message" in error && typeof error.message === "string" ? error.message : "";
   const cause = "cause" in error ? error.cause : undefined;
+  const referencesDeduplicationColumn = JOBS_DEDUPE_COLUMN_NAMES.some(
+    (dedupeColumn) => column === dedupeColumn || message.includes(dedupeColumn),
+  );
 
   return (
-    (code === POSTGRES_MISSING_COLUMN_ERROR_CODE &&
-      JOBS_DEDUPE_COLUMN_NAMES.some(
-        (dedupeColumn) => column === dedupeColumn || message.includes(dedupeColumn),
-      )) ||
+    (referencesDeduplicationColumn &&
+      (code === POSTGRES_MISSING_COLUMN_ERROR_CODE || message.includes(" does not exist"))) ||
     (cause ? isMissingJobsDeduplicationColumn(cause) : false)
   );
 }
@@ -196,6 +197,10 @@ async function getJobsDeduplicationMode(): Promise<ResolvedJobsDeduplicationMode
           throw error;
         }
       } catch (error) {
+        if (isMissingJobsDeduplicationColumn(error)) {
+          return setJobsDeduplicationMode("legacy");
+        }
+
         jobsDeduplicationModePromise = null;
         throw error;
       }
