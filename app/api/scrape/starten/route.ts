@@ -74,7 +74,9 @@ export async function POST(request: NextRequest) {
     revalidatePath("/opdrachten");
     revalidatePath("/scraper");
     revalidatePath("/overzicht");
-    publish("scrape:completed", { platforms: summary.map((s) => s.platform) });
+    publish("scrape:completed", {
+      platforms: summary.map((s) => s.platform),
+    });
 
     return Response.json({
       message: `Scrape gestart voor ${configs.length} platform(en)`,

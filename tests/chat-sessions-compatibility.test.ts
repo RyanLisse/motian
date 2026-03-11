@@ -353,6 +353,41 @@ describe("chat session compatibility fallback", () => {
     });
   });
 
+  it("persists normalized messages when insert builders do not expose onConflictDoNothing chaining", async () => {
+    const updateSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+    const sessionOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+    const selectResults = [[{ maxOrderIndex: 1 }], []];
+    const tx = {
+      execute: vi.fn().mockResolvedValue(undefined),
+      insert: vi.fn((table: { __table: string }) => ({
+        values: vi.fn(() =>
+          table.__table === "chatSessions"
+            ? { onConflictDoUpdate: sessionOnConflictDoUpdate }
+            : createResolvedChain(undefined),
+        ),
+      })),
+      select: vi.fn(() => ({
+        from: vi.fn(() => createResolvedChain(selectResults.shift() ?? [])),
+      })),
+      update: vi.fn(() => ({ set: updateSet })),
+    };
+
+    mockChatSessionMessagesAvailability(true);
+    mockDb.transaction.mockImplementationOnce(async (callback: TransactionCallback) =>
+      callback(tx),
+    );
+
+    const { persistMessages } = await import("../src/services/chat-sessions");
+    await expect(
+      persistMessages({
+        sessionId: "session-1",
+        messages: [createMessage("m2", "assistant", "Antwoord")],
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(updateSet.mock.calls[0]?.[0].messageCount).toBe(2);
+  });
+
   it("deletes the legacy session row when the normalized message table is unavailable", async () => {
     mockChatSessionMessagesAvailability(false);
     mockDb.delete.mockImplementation(() => ({
@@ -361,6 +396,17 @@ describe("chat session compatibility fallback", () => {
 
     const { deleteSession } = await import("../src/services/chat-sessions");
     await expect(deleteSession("session-1")).resolves.toBe(true);
+    expect(mockDb.transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns false when the legacy delete fallback returns no deleted rows", async () => {
+    mockChatSessionMessagesAvailability(false);
+    mockDb.delete.mockImplementation(() => ({
+      where: vi.fn(() => ({ returning: vi.fn().mockResolvedValue(undefined) })),
+    }));
+
+    const { deleteSession } = await import("../src/services/chat-sessions");
+    await expect(deleteSession("session-1")).resolves.toBe(false);
     expect(mockDb.transaction).not.toHaveBeenCalled();
   });
 
