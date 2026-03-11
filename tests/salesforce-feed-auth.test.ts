@@ -6,7 +6,7 @@ describe("API auth via proxy", () => {
   const originalApiSecret = process.env.API_SECRET;
   const originalNodeEnv = process.env.NODE_ENV;
   const originalVercelEnv = process.env.VERCEL_ENV;
-  const chatPublicEndpoints = [
+  const chatFirstPartyEndpoints = [
     {
       description: "the chat stream endpoint",
       method: "POST",
@@ -76,8 +76,8 @@ describe("API auth via proxy", () => {
   });
 
   it.each(
-    chatPublicEndpoints,
-  )("allows $description without a bearer token when API_SECRET is configured in production", ({
+    chatFirstPartyEndpoints,
+  )("allows same-origin $description without a bearer token when API_SECRET is configured", ({
     method,
     url,
   }) => {
@@ -85,20 +85,47 @@ describe("API auth via proxy", () => {
     process.env.NODE_ENV = "production";
     process.env.VERCEL_ENV = "production";
 
+    // Same-origin requests have no Origin header
     const response = proxy(new NextRequest(url, { method }));
 
     expect(response.status).toBe(200);
   });
 
-  it.each(chatPublicEndpoints)("allows $description when API_SECRET is missing in production", ({
+  it.each(chatFirstPartyEndpoints)("blocks cross-origin $description without a bearer token", ({
     method,
     url,
   }) => {
-    delete process.env.API_SECRET;
+    process.env.API_SECRET = "test-secret";
     process.env.NODE_ENV = "production";
     process.env.VERCEL_ENV = "production";
 
-    const response = proxy(new NextRequest(url, { method }));
+    // Cross-origin request from unknown origin should be rejected
+    const response = proxy(
+      new NextRequest(url, {
+        method,
+        headers: { Origin: "https://evil.example.com" },
+      }),
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it.each(
+    chatFirstPartyEndpoints,
+  )("allows $description with valid bearer token regardless of origin", ({ method, url }) => {
+    process.env.API_SECRET = "test-secret";
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+
+    const response = proxy(
+      new NextRequest(url, {
+        method,
+        headers: {
+          Authorization: "Bearer test-secret",
+          Origin: "https://evil.example.com",
+        },
+      }),
+    );
 
     expect(response.status).toBe(200);
   });

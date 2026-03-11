@@ -26,5 +26,5 @@ export const GET = withApiHandler(
     const page = await listSessions({ limit: params.limit, cursor: params.cursor ?? null });
     return Response.json(page);
   },
-  { logPrefix: "chat-sessies" },
+  { logPrefix: "chat-sessies", rateLimit: { interval: 60_000, limit: 30 } },
 );
