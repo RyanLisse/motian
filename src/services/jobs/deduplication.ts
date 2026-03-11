@@ -9,7 +9,8 @@ type DedupableJob = Pick<Job, "title" | "company" | "endClient" | "province" | "
 
 type DedupedJobIdRow = { id: string };
 type DedupedJobPageRow = { id: string | null; total: number | string | null };
-type JobsDeduplicationBackfillRow = { needs_backfill: boolean | number | string | null };
+type JobsDeduplicationMigrationRow = { migration_applied: boolean | number | string | null };
+type JobsDeduplicationTableSchemaRow = { table_schema: string | null };
 type JobsDeduplicationMode = "unknown" | "normalized" | "legacy";
 type ResolvedJobsDeduplicationMode = Exclude<JobsDeduplicationMode, "unknown">;
 
@@ -18,6 +19,8 @@ const JOBS_DEDUPE_COLUMN_NAMES = [
   "dedupe_client_normalized",
   "dedupe_location_normalized",
 ] as const;
+const JOBS_DEDUPE_BACKFILL_MIGRATION_HASH =
+  "de9573fb28a78df406df11f368ea0972f5ad11251dc6864791ba5b354f59768d";
 const POSTGRES_MISSING_COLUMN_ERROR_CODE = "42703";
 
 let jobsDeduplicationMode: JobsDeduplicationMode = "unknown";
@@ -115,32 +118,46 @@ function readBooleanResult(value: boolean | number | string | null | undefined):
   return false;
 }
 
-function hasSourceTextExpression(value: SQL): SQL {
-  return sql`coalesce(${value}, '') ~ '[[:alnum:]]'`;
+function quoteIdentifier(identifier: string): string {
+  return `"${identifier.replaceAll('"', '""')}"`;
 }
 
 async function jobsDeduplicationHelpersNeedBackfill(): Promise<boolean> {
-  const result = await db.execute(sql<JobsDeduplicationBackfillRow>`
-    select exists(
-      select 1
-      from ${jobs}
-      where (
-        (${hasSourceTextExpression(sql`${jobs.title}`)} and ${jobs.dedupeTitleNormalized} = '')
-        or (
-          ${hasSourceTextExpression(sql`coalesce(${jobs.endClient}, ${jobs.company}, '')`)}
-          and ${jobs.dedupeClientNormalized} = ''
-        )
-        or (
-          ${hasSourceTextExpression(sql`coalesce(${jobs.province}, ${jobs.location}, '')`)}
-          and ${jobs.dedupeLocationNormalized} = ''
-        )
-      )
-      limit 1
-    ) as needs_backfill
+  const migrationsTableResult = await db.execute(sql<JobsDeduplicationTableSchemaRow>`
+    select table_schema
+    from information_schema.tables
+    where table_name = '__drizzle_migrations'
+    order by
+      case
+        when table_schema = 'drizzle' then 0
+        when table_schema = current_schema() then 1
+        else 2
+      end,
+      table_schema asc
+    limit 1
   `);
 
-  const readinessRow = result.rows[0] as JobsDeduplicationBackfillRow | undefined;
-  return readBooleanResult(readinessRow?.needs_backfill);
+  const migrationsTableRow = migrationsTableResult.rows[0] as
+    | JobsDeduplicationTableSchemaRow
+    | undefined;
+  const migrationsTableSchema = migrationsTableRow?.table_schema;
+  if (!migrationsTableSchema) {
+    return true;
+  }
+
+  const migrationsTable = sql.raw(
+    `${quoteIdentifier(migrationsTableSchema)}.${quoteIdentifier("__drizzle_migrations")}`,
+  );
+  const result = await db.execute(sql<JobsDeduplicationMigrationRow>`
+    select exists(
+      select 1
+      from ${migrationsTable}
+      where hash = ${JOBS_DEDUPE_BACKFILL_MIGRATION_HASH}
+    ) as migration_applied
+  `);
+
+  const readinessRow = result.rows[0] as JobsDeduplicationMigrationRow | undefined;
+  return !readBooleanResult(readinessRow?.migration_applied);
 }
 
 async function getJobsDeduplicationMode(): Promise<ResolvedJobsDeduplicationMode> {

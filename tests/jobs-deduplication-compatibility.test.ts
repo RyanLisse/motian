@@ -27,10 +27,20 @@ const { jobs, mockDb } = vi.hoisted(() => ({
 vi.mock("../src/db", () => ({ db: mockDb }));
 vi.mock("../src/db/schema", () => ({ jobs }));
 vi.mock("../src/services/jobs/repository", () => ({ jobReadSelection: {} }));
-vi.mock("drizzle-orm", () => ({
-  inArray: (column: unknown, values: unknown[]) => ({ type: "inArray", column, values }),
-  sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ type: "sql", strings, values }),
-}));
+vi.mock("drizzle-orm", () => {
+  const sqlTag = (strings: TemplateStringsArray, ...values: unknown[]) => ({
+    type: "sql",
+    strings,
+    values,
+  });
+
+  sqlTag.raw = (value: string) => value;
+
+  return {
+    inArray: (column: unknown, values: unknown[]) => ({ type: "inArray", column, values }),
+    sql: sqlTag,
+  };
+});
 
 function collectSqlTokens(value: unknown): string[] {
   if (typeof value === "string") return [value];
@@ -89,7 +99,7 @@ describe("job deduplication compatibility fallback", () => {
   it("stays on legacy expressions when dedupe helper columns still need backfill", async () => {
     mockDb.execute
       .mockResolvedValueOnce({ rows: [{ present_count: 3 }] })
-      .mockResolvedValueOnce({ rows: [{ needs_backfill: true }] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: "job-1", total: 1 }] });
 
     const { fetchDedupedJobsPage } = await import("../src/services/jobs/deduplication");
@@ -99,6 +109,11 @@ describe("job deduplication compatibility fallback", () => {
 
     expect(page).toEqual({ ids: ["job-1"], total: 1 });
     expect(mockDb.execute).toHaveBeenCalledTimes(3);
+
+    const readinessQueryText = collectSqlTokens(mockDb.execute.mock.calls[1]?.[0]).join(" ");
+    expect(readinessQueryText).toContain("information_schema.tables");
+    expect(readinessQueryText).toContain("__drizzle_migrations");
+    expect(readinessQueryText).not.toContain("from jobs");
 
     const queryText = collectSqlTokens(mockDb.execute.mock.calls[2]?.[0]).join(" ");
     expect(queryText).toContain("jobs.title");
@@ -112,7 +127,8 @@ describe("job deduplication compatibility fallback", () => {
   it("uses normalized helper columns when dedupe helper columns are backfilled", async () => {
     mockDb.execute
       .mockResolvedValueOnce({ rows: [{ present_count: 3 }] })
-      .mockResolvedValueOnce({ rows: [{ needs_backfill: false }] })
+      .mockResolvedValueOnce({ rows: [{ table_schema: "drizzle" }] })
+      .mockResolvedValueOnce({ rows: [{ migration_applied: true }] })
       .mockResolvedValueOnce({ rows: [{ id: "job-1", total: 1 }] });
 
     const { fetchDedupedJobsPage } = await import("../src/services/jobs/deduplication");
@@ -121,9 +137,17 @@ describe("job deduplication compatibility fallback", () => {
     const page = await fetchDedupedJobsPage({ whereClause: sql`true`, limit: 10, offset: 0 });
 
     expect(page).toEqual({ ids: ["job-1"], total: 1 });
-    expect(mockDb.execute).toHaveBeenCalledTimes(3);
+    expect(mockDb.execute).toHaveBeenCalledTimes(4);
 
-    const queryText = collectSqlTokens(mockDb.execute.mock.calls[2]?.[0]).join(" ");
+    const readinessQueryText = collectSqlTokens(mockDb.execute.mock.calls[2]?.[0]).join(" ");
+    expect(readinessQueryText).toContain("drizzle");
+    expect(readinessQueryText).toContain("__drizzle_migrations");
+    expect(readinessQueryText).toContain("migration_applied");
+    expect(readinessQueryText).toContain(
+      "de9573fb28a78df406df11f368ea0972f5ad11251dc6864791ba5b354f59768d",
+    );
+
+    const queryText = collectSqlTokens(mockDb.execute.mock.calls[3]?.[0]).join(" ");
     expect(queryText).toContain("jobs.dedupeTitleNormalized");
     expect(queryText).toContain("jobs.dedupeClientNormalized");
     expect(queryText).toContain("jobs.dedupeLocationNormalized");
@@ -133,10 +157,34 @@ describe("job deduplication compatibility fallback", () => {
     expect(queryText).not.toContain("jobs.location");
   });
 
+  it("stays on legacy expressions when the backfill migration hash is not recorded", async () => {
+    mockDb.execute
+      .mockResolvedValueOnce({ rows: [{ present_count: 3 }] })
+      .mockResolvedValueOnce({ rows: [{ table_schema: "drizzle" }] })
+      .mockResolvedValueOnce({ rows: [{ migration_applied: false }] })
+      .mockResolvedValueOnce({ rows: [{ id: "job-1", total: 1 }] });
+
+    const { fetchDedupedJobsPage } = await import("../src/services/jobs/deduplication");
+    const { sql } = await import("drizzle-orm");
+
+    const page = await fetchDedupedJobsPage({ whereClause: sql`true`, limit: 10, offset: 0 });
+
+    expect(page).toEqual({ ids: ["job-1"], total: 1 });
+    expect(mockDb.execute).toHaveBeenCalledTimes(4);
+
+    const queryText = collectSqlTokens(mockDb.execute.mock.calls[3]?.[0]).join(" ");
+    expect(queryText).toContain("jobs.title");
+    expect(queryText).toContain("jobs.endClient");
+    expect(queryText).not.toContain("jobs.dedupeTitleNormalized");
+    expect(queryText).not.toContain("jobs.dedupeClientNormalized");
+    expect(queryText).not.toContain("jobs.dedupeLocationNormalized");
+  });
+
   it("caches legacy mode after the first missing-column failure across deduped queries", async () => {
     mockDb.execute
       .mockResolvedValueOnce({ rows: [{ present_count: 3 }] })
-      .mockResolvedValueOnce({ rows: [{ needs_backfill: false }] })
+      .mockResolvedValueOnce({ rows: [{ table_schema: "drizzle" }] })
+      .mockResolvedValueOnce({ rows: [{ migration_applied: true }] })
       .mockRejectedValueOnce(createMissingColumnError())
       .mockResolvedValueOnce({ rows: [{ id: "job-1", total: 1 }] })
       .mockResolvedValueOnce({ rows: [{ id: "job-2" }] });
@@ -151,9 +199,9 @@ describe("job deduplication compatibility fallback", () => {
 
     expect(firstPage).toEqual({ ids: ["job-1"], total: 1 });
     expect(secondIds).toEqual(["job-2"]);
-    expect(mockDb.execute).toHaveBeenCalledTimes(5);
+    expect(mockDb.execute).toHaveBeenCalledTimes(6);
 
-    const queryText = collectSqlTokens(mockDb.execute.mock.calls[4]?.[0]).join(" ");
+    const queryText = collectSqlTokens(mockDb.execute.mock.calls[5]?.[0]).join(" ");
     expect(queryText).toContain("jobs.title");
     expect(queryText).toContain("jobs.endClient");
     expect(queryText).not.toContain("jobs.dedupeTitleNormalized");
