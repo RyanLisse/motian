@@ -77,6 +77,8 @@ else
   echo "Warning: .env.example not found, so .env.local was not created."
 fi
 
+maybe_add_qlty_to_path || true
+
 if command -v qlty >/dev/null 2>&1; then
   echo "Qlty: $(qlty --version)"
 elif [[ "${INSTALL_QLTY:-0}" == "1" ]]; then
