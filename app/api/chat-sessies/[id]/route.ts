@@ -37,7 +37,7 @@ export const GET = withApiHandler(
 
     return Response.json(session);
   },
-  { logPrefix: "chat-sessies/[id] GET" },
+  { logPrefix: "chat-sessies/[id] GET", rateLimit: { interval: 60_000, limit: 30 } },
 );
 
 export const DELETE = withApiHandler(
@@ -49,5 +49,5 @@ export const DELETE = withApiHandler(
     }
     return Response.json({ success: true });
   },
-  { logPrefix: "chat-sessies/[id] DELETE" },
+  { logPrefix: "chat-sessies/[id] DELETE", rateLimit: { interval: 60_000, limit: 10 } },
 );
