@@ -33,7 +33,7 @@
   "packageManager": "pnpm@9.15.0",
   "pnpm": {
     "overrides": {
-      "dompurify": "3.3.2"
+      "dompurify": "3.3.3"
     }
   }
 }

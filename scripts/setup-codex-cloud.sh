@@ -53,7 +53,8 @@ pnpm_cmd=(corepack pnpm)
 
 echo "Using package manager: $pnpm_package_manager"
 
-# Use the repository's pinned package manager version.
+# Ensure corepack shims are available, then cache the pinned version.
+corepack enable
 corepack prepare "pnpm@$pnpm_version"
 
 echo "Node: $node_version"

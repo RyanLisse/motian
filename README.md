@@ -718,7 +718,7 @@ graph LR
 ### Vereisten
 
 - Qlty CLI geïnstalleerd en beschikbaar op `$PATH`, of installeer het via `INSTALL_QLTY=1 bash ./scripts/setup-codex-cloud.sh`
-- Repo-specifieke Qlty configuratie staat in committed `.qlty/qlty.toml`; overige gegenereerde `.qlty/` output wordt uitgesloten
+- Repo‑specifieke Qlty‑configuratie staat in het gecommitteerde `.qlty/qlty.toml`; overige gegenereerde `.qlty/`-output is uitgesloten
 
 ### Integratie met AI Agents
 
