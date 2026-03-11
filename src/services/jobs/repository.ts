@@ -1,20 +1,37 @@
-import { and, eq, getTableColumns, isNotNull, ne, or, sql } from "drizzle-orm";
+import { and, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { jobs } from "../../db/schema";
 
 export type Job = typeof jobs.$inferSelect;
 
+function getNormalizedCompatibilityExpression(value: SQL) {
+  return sql<string>`trim(regexp_replace(lower(coalesce(${value}, '')), '[^[:alnum:]]+', ' ', 'g'))`;
+}
+
+function getSearchTextCompatibilityExpression() {
+  return sql<string>`trim(regexp_replace(concat_ws(' ', nullif(trim(coalesce(${jobs.title}, '')), ''), nullif(trim(coalesce(${jobs.company}, '')), ''), nullif(trim(coalesce(${jobs.description}, '')), ''), nullif(trim(coalesce(${jobs.location}, '')), ''), nullif(trim(coalesce(${jobs.province}, '')), '')), '[[:space:]]+', ' ', 'g'))`;
+}
+
 /**
  * Backward-compatible read projection.
  *
- * Some environments still run a pre-0014 schema where `jobs.archived_at`
- * has not been added yet. Bare `select()` / `returning()` calls would expand
- * to that missing column and fail the whole page render. We keep the returned
- * shape stable while projecting `archivedAt` as `null` until every database has
- * applied the migration.
+ * Some environments still run a pre-0014/0015 schema where `jobs.archived_at`
+ * and the search/dedupe helper columns have not been added yet. Bare
+ * `select()` / `returning()` calls would expand those missing columns and fail
+ * the whole page render. We keep the returned shape stable with expressions
+ * that work against both schemas until every database has applied the
+ * migrations.
  */
 export const jobReadSelection = {
   ...getTableColumns(jobs),
+  dedupeTitleNormalized: getNormalizedCompatibilityExpression(sql`${jobs.title}`),
+  dedupeClientNormalized: getNormalizedCompatibilityExpression(
+    sql`coalesce(${jobs.endClient}, ${jobs.company}, '')`,
+  ),
+  dedupeLocationNormalized: getNormalizedCompatibilityExpression(
+    sql`coalesce(${jobs.province}, ${jobs.location}, '')`,
+  ),
+  searchText: getSearchTextCompatibilityExpression(),
   archivedAt: sql<Date | null>`null`,
 };
 
@@ -40,7 +57,38 @@ export async function updateJob(
     >
   >,
 ): Promise<Job | null> {
-  const rows = await db.update(jobs).set(data).where(eq(jobs.id, id)).returning(jobReadSelection);
+  // Recompute stored helper columns whenever a source field changes.
+  // PostgreSQL evaluates SET-clause expressions against pre-update row values, so we
+  // inject literal values for updated fields and column refs for unchanged ones.
+  const derivedUpdate: Record<string, SQL<string>> = {};
+
+  if ("title" in data) {
+    derivedUpdate.dedupeTitleNormalized = getNormalizedCompatibilityExpression(
+      sql`${data.title ?? ""}`,
+    );
+  }
+
+  if ("location" in data) {
+    // province is not mutated here; coalesce order mirrors jobReadSelection (province before location)
+    derivedUpdate.dedupeLocationNormalized = getNormalizedCompatibilityExpression(
+      sql`coalesce(${jobs.province}, ${data.location}, '')`,
+    );
+  }
+
+  if ("title" in data || "description" in data || "location" in data) {
+    const titleVal = "title" in data ? sql`${data.title ?? ""}` : sql`${jobs.title}`;
+    const descVal =
+      "description" in data ? sql`${data.description ?? ""}` : sql`${jobs.description}`;
+    const locationVal = "location" in data ? sql`${data.location ?? ""}` : sql`${jobs.location}`;
+    derivedUpdate.searchText = sql<string>`trim(regexp_replace(concat_ws(' ', nullif(trim(coalesce(${titleVal}, '')), ''), nullif(trim(coalesce(${jobs.company}, '')), ''), nullif(trim(coalesce(${descVal}, '')), ''), nullif(trim(coalesce(${locationVal}, '')), ''), nullif(trim(coalesce(${jobs.province}, '')), '')), '[[:space:]]+', ' ', 'g'))`;
+  }
+
+  // biome-ignore lint/suspicious/noExplicitAny: Drizzle set() accepts SQL<T> for text columns but $inferInsert types them as string
+  const rows = await db
+    .update(jobs)
+    .set({ ...data, ...derivedUpdate } as any)
+    .where(eq(jobs.id, id))
+    .returning(jobReadSelection);
 
   return rows[0] ?? null;
 }

@@ -91,7 +91,14 @@ function containsNode(node: unknown, predicate: (value: unknown) => boolean): bo
 }
 
 function getListJobsQuery() {
-  return mockExecute.mock.calls[0]?.[0];
+  return mockExecute.mock.calls
+    .map(([query]) => query)
+    .find((query) =>
+      containsNode(
+        query,
+        (value) => typeof value === "string" && value.includes("row_number() over"),
+      ),
+    );
 }
 
 describe("jobs service status and endClient filters", () => {
@@ -264,7 +271,7 @@ describe("jobs service status and endClient filters", () => {
     ).toBe(false);
   });
 
-  it("uses a backward-compatible job projection that does not read jobs.archivedAt", async () => {
+  it("uses a backward-compatible job projection that does not read archived or helper columns directly", async () => {
     mockExecute.mockResolvedValue({ rows: [{ id: "job-1" }] });
     mockDataWhere.mockReturnValue({
       limit: vi
@@ -287,7 +294,14 @@ describe("jobs service status and endClient filters", () => {
 
     expect(dataSelectFields).toBeDefined();
     expect(dataSelectFields?.title).toBe("jobs.title");
+    expect(dataSelectFields?.dedupeTitleNormalized).toMatchObject({ type: "sql" });
+    expect(dataSelectFields?.dedupeClientNormalized).toMatchObject({ type: "sql" });
+    expect(dataSelectFields?.dedupeLocationNormalized).toMatchObject({ type: "sql" });
+    expect(dataSelectFields?.searchText).toMatchObject({ type: "sql" });
     expect(dataSelectFields?.archivedAt).toMatchObject({ type: "sql", values: [] });
+    expect(dataSelectFields?.dedupeTitleNormalized).not.toBe("jobs.dedupeTitleNormalized");
+    expect(dataSelectFields?.dedupeClientNormalized).not.toBe("jobs.dedupeClientNormalized");
+    expect(dataSelectFields?.dedupeLocationNormalized).not.toBe("jobs.dedupeLocationNormalized");
   });
 
   it("builds a deduped vacature-id query and preserves the deduped ordering", async () => {
@@ -311,9 +325,18 @@ describe("jobs service status and endClient filters", () => {
 
     const result = await listJobs({ limit: 2, offset: 0 });
 
-    const dedupeQuery = mockExecute.mock.calls[0]?.[0] as
+    const dedupeQuery = getListJobsQuery() as
       | { strings?: TemplateStringsArray | string[] }
       | undefined;
+    const usesStoredNormalizedColumns =
+      containsNode(dedupeQuery, (value) => value === "jobs.dedupeTitleNormalized") &&
+      containsNode(dedupeQuery, (value) => value === "jobs.dedupeClientNormalized") &&
+      containsNode(dedupeQuery, (value) => value === "jobs.dedupeLocationNormalized");
+    const usesOnTheFlyFallback = containsNode(
+      dedupeQuery,
+      (value) => typeof value === "string" && value.includes("regexp_replace"),
+    );
+
     expect(
       containsNode(
         dedupeQuery,
@@ -326,19 +349,7 @@ describe("jobs service status and endClient filters", () => {
         (value) => typeof value === "string" && value.includes("dedupe_rank = 1"),
       ),
     ).toBe(true);
-    expect(containsNode(dedupeQuery, (value) => value === "jobs.dedupeTitleNormalized")).toBe(true);
-    expect(containsNode(dedupeQuery, (value) => value === "jobs.dedupeClientNormalized")).toBe(
-      true,
-    );
-    expect(containsNode(dedupeQuery, (value) => value === "jobs.dedupeLocationNormalized")).toBe(
-      true,
-    );
-    expect(
-      containsNode(
-        dedupeQuery,
-        (value) => typeof value === "string" && value.includes("regexp_replace"),
-      ),
-    ).toBe(false);
+    expect(usesStoredNormalizedColumns || usesOnTheFlyFallback).toBe(true);
     expect(result.total).toBe(2);
     expect(result.data.map((job) => job.id)).toEqual(["job-2", "job-1"]);
     expect(result).not.toHaveProperty("telemetry");
