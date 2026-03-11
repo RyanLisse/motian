@@ -3,7 +3,13 @@ import { buildCorsHeaders, shouldRejectCorsPreflight } from "@/src/lib/api-cors"
 import { shouldAllowMissingApiSecret } from "@/src/lib/runtime-config";
 
 /** Routes that bypass bearer token authentication */
-const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi"];
+const PUBLIC_PATHS = [
+  "/api/gezondheid",
+  "/api/cron",
+  "/api/openapi",
+  "/api/chat",
+  "/api/chat-sessies",
+];
 const PUBLIC_GET_PATHS = ["/api/opdrachten/zoeken"];
 
 function matchesPublicPath(pathname: string, publicPath: string): boolean {
