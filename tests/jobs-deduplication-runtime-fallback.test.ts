@@ -94,4 +94,19 @@ describe("jobs deduplication runtime fallback", () => {
 
     expect(mockExecute).toHaveBeenCalledTimes(2);
   });
+
+  it("does not fallback for non-column errors that merely mention a dedupe helper", async () => {
+    const error = new Error("relation jobs.dedupe_title_normalized does not exist");
+    const mockExecute = vi.fn().mockRejectedValueOnce(error);
+    const { fetchDedupedJobsPage } = await loadDeduplicationModule(mockExecute);
+
+    await expect(
+      fetchDedupedJobsPage({
+        whereClause: { type: "sql", strings: ["true"], values: [] } as never,
+        limit: 1,
+      }),
+    ).rejects.toThrow(error.message);
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
 });
