@@ -323,4 +323,32 @@ describe("Opdrachten UI/API contracts", () => {
     expect(listItem).toContain("Nog te koppelen");
     expect(listItem).toContain("Sluit vandaag");
   });
+
+  it("overview results controls and cards reflow cleanly on narrow widths", () => {
+    const sidebar = readFile("components", "opdrachten-sidebar.tsx");
+    const listItem = readFile("components", "job-list-item.tsx");
+
+    expect(sidebar).toContain("grid-cols-[auto_minmax(0,1fr)]");
+    expect(sidebar).toContain("const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)");
+    expect(sidebar).toContain('aria-controls="opdrachten-mobile-filters"');
+    expect(sidebar).toContain(
+      "data-[size=default]:h-11 w-full rounded-lg border-border bg-background",
+    );
+    expect(sidebar).toContain("min-h-11 cursor-pointer items-center gap-3");
+    expect(sidebar).toContain('<ScrollArea className="min-w-0 flex-1">');
+    expect(sidebar).toContain("flex flex-col gap-2 border-t border-border/70 pt-4 sm:flex-row");
+    expect(sidebar).toContain("Filters openen");
+    expect(sidebar).toContain("Filters sluiten");
+    expect(sidebar).toContain('id="opdrachten-mobile-filters"');
+    expect(listItem).toContain("flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between");
+    expect(listItem).toContain(
+      "flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:justify-between",
+    );
+    expect(listItem).toContain('<Link href={detailHref} className="block min-w-0">');
+    expect(listItem).toContain(
+      "w-full min-w-0 overflow-hidden rounded-xl border border-border/80 bg-card",
+    );
+    expect(listItem).toContain("line-clamp-2 break-words");
+    expect(listItem).toContain("max-w-full whitespace-normal break-words");
+  });
 });

@@ -31,6 +31,7 @@ vi.mock("../src/db/schema", () => ({
     dedupeTitleNormalized: "jobs.dedupeTitleNormalized",
     dedupeClientNormalized: "jobs.dedupeClientNormalized",
     dedupeLocationNormalized: "jobs.dedupeLocationNormalized",
+    searchText: "jobs.searchText",
     categories: "jobs.categories",
     platform: "jobs.platform",
     status: "jobs.status",

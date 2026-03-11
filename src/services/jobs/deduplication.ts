@@ -364,13 +364,13 @@ export async function fetchDedupedJobIds({
       extraSelections,
     });
     const result = await db.execute(sql<DedupedJobIdRow>`
-	    ${cte}
-	    select id
-	    from deduped_jobs
-	    order by ${resultOrderBy ?? sortOrder?.resultOrderBy ?? sql`scraped_at desc nulls last, id desc`}
-	    limit ${limit}
-	    offset ${offset}
-	  `);
+      ${cte}
+      select id
+      from deduped_jobs
+      order by ${resultOrderBy ?? sortOrder?.resultOrderBy ?? sql`scraped_at desc nulls last, id desc`}
+      limit ${limit}
+      offset ${offset}
+    `);
 
     return (result.rows as DedupedJobIdRow[]).map((row) => row.id);
   });
@@ -396,20 +396,20 @@ export async function fetchDedupedJobsPage({
       deduplicationPartitionExpressions: getDeduplicationPartitionExpressions(mode),
     });
     const result = await db.execute(sql<DedupedJobPageRow>`
-	    ${cte}
-	    select page.id, totals.total
-	    from (
-	      select count(*)::int as total
-	      from deduped_jobs
-	    ) totals
-	    left join lateral (
-	      select id
-	      from deduped_jobs
-	      order by ${sortOrder.resultOrderBy}
-	      limit ${limit}
-	      offset ${offset}
-	    ) page on true
-	  `);
+      ${cte}
+      select page.id, totals.total
+      from (
+        select count(*)::int as total
+        from deduped_jobs
+      ) totals
+      left join lateral (
+        select id
+        from deduped_jobs
+        order by ${sortOrder.resultOrderBy}
+        limit ${limit}
+        offset ${offset}
+      ) page on true
+    `);
 
     const rows = result.rows as DedupedJobPageRow[];
     const total = rows[0]?.total == null ? 0 : Number(rows[0].total);
