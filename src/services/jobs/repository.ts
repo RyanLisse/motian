@@ -57,7 +57,38 @@ export async function updateJob(
     >
   >,
 ): Promise<Job | null> {
-  const rows = await db.update(jobs).set(data).where(eq(jobs.id, id)).returning(jobReadSelection);
+  // Recompute stored helper columns whenever a source field changes.
+  // PostgreSQL evaluates SET-clause expressions against pre-update row values, so we
+  // inject literal values for updated fields and column refs for unchanged ones.
+  const derivedUpdate: Record<string, SQL<string>> = {};
+
+  if ("title" in data) {
+    derivedUpdate.dedupeTitleNormalized = getNormalizedCompatibilityExpression(
+      sql`${data.title ?? ""}`,
+    );
+  }
+
+  if ("location" in data) {
+    // province is not mutated here; coalesce order mirrors jobReadSelection (province before location)
+    derivedUpdate.dedupeLocationNormalized = getNormalizedCompatibilityExpression(
+      sql`coalesce(${jobs.province}, ${data.location}, '')`,
+    );
+  }
+
+  if ("title" in data || "description" in data || "location" in data) {
+    const titleVal = "title" in data ? sql`${data.title ?? ""}` : sql`${jobs.title}`;
+    const descVal =
+      "description" in data ? sql`${data.description ?? ""}` : sql`${jobs.description}`;
+    const locationVal = "location" in data ? sql`${data.location ?? ""}` : sql`${jobs.location}`;
+    derivedUpdate.searchText = sql<string>`trim(regexp_replace(concat_ws(' ', nullif(trim(coalesce(${titleVal}, '')), ''), nullif(trim(coalesce(${jobs.company}, '')), ''), nullif(trim(coalesce(${descVal}, '')), ''), nullif(trim(coalesce(${locationVal}, '')), ''), nullif(trim(coalesce(${jobs.province}, '')), '')), '[[:space:]]+', ' ', 'g'))`;
+  }
+
+  // biome-ignore lint/suspicious/noExplicitAny: Drizzle set() accepts SQL<T> for text columns but $inferInsert types them as string
+  const rows = await db
+    .update(jobs)
+    .set({ ...data, ...derivedUpdate } as any)
+    .where(eq(jobs.id, id))
+    .returning(jobReadSelection);
 
   return rows[0] ?? null;
 }
