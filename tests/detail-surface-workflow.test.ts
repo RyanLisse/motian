@@ -117,6 +117,24 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(mockPush).toHaveBeenCalledWith("/opdrachten?regio=randstad&regio=noord");
   });
 
+  it("desktop OpdrachtenDetailSheet keeps the detail pane in a bounded scroll container", () => {
+    const source = readFile("components/opdrachten-detail-sheet.tsx");
+
+    expect(source).toContain(
+      'className="hidden min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background md:flex"',
+    );
+    expect(source).toContain('<div className="min-h-0 flex-1 overflow-y-auto">{children}</div>');
+  });
+
+  it("desktop vacature detail keeps the droppable wrapper in the flex height chain", () => {
+    const source = readFile("app/opdrachten/[id]/page.tsx");
+
+    expect(source).toContain("<DroppableVacancy");
+    expect(source).toContain("jobId={job.id}");
+    expect(source).toContain("jobTitle={job.title}");
+    expect(source).toContain('className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"');
+  });
+
   it("inline candidate linking renders actionable content and posts selected matches", async () => {
     const mockRefresh = vi.fn();
     const buttonClicks: Array<(() => void) | undefined> = [];

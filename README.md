@@ -27,6 +27,14 @@ Motian is een **Nederlands recruitment operations platform** dat vacatures autom
 
 Gebouwd voor recruiters en detacheringsbureaus die actief zijn in de Nederlandse publieke sector.
 
+## Autopilot
+
+**Status**: Autopilot Phase 4 is afgerond. Nachtelijke audits slaan nu naast screenshots en console logs ook **video**, **Playwright traces** en **HAR netwerklogs** op. In de run-detail pagina op `/autopilot/[runId]` kun je deze bewijslast direct bekijken of downloaden.
+
+- Gebruikshandleiding: [`docs/autopilot-usage.md`](docs/autopilot-usage.md)
+- Configuratie en opslaginstellingen: [`docs/autopilot-configuration.md`](docs/autopilot-configuration.md)
+- Roadmap vanaf Phase 5: [`docs/autopilot-phase4-roadmap.md`](docs/autopilot-phase4-roadmap.md)
+
 ---
 
 ## Architectuur

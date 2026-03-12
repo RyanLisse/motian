@@ -582,7 +582,11 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
       : null);
 
   return (
-    <DroppableVacancy jobId={job.id} jobTitle={job.title}>
+    <DroppableVacancy
+      jobId={job.id}
+      jobTitle={job.title}
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+    >
       <OpdrachtenDetailSheet
         title={job.title}
         description={job.company ?? undefined}

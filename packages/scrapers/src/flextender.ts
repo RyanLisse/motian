@@ -14,6 +14,8 @@ type FlextenderDetail = Partial<RawScrapedListing> & {
   conditions?: string[];
 };
 
+const MAX_HOURS_PER_WEEK = 168;
+
 /** Haal de widget_config token op uit de Flextender pagina HTML */
 async function fetchWidgetConfig(): Promise<string | null> {
   const res = await fetch(PAGE_URL, { signal: AbortSignal.timeout(15_000) });
@@ -615,8 +617,12 @@ function parseDurationMonths(raw: string | undefined): number | undefined {
   return undefined;
 }
 
+function sanitizeHoursPerWeek(hours: number): number | undefined {
+  return hours > 0 && hours <= MAX_HOURS_PER_WEEK ? hours : undefined;
+}
+
 /** Parse "Uren per week" field: "36 uur" → {max:36}, "24 tot 32 uur" → {min:24, max:32} */
-function parseHoursPerWeek(raw: string | undefined): {
+export function parseHoursPerWeek(raw: string | undefined): {
   hoursPerWeek?: number;
   minHoursPerWeek?: number;
 } {
@@ -625,15 +631,21 @@ function parseHoursPerWeek(raw: string | undefined): {
   if (rangeMatch) {
     const min = parseInt(rangeMatch[1], 10);
     const max = parseInt(rangeMatch[2], 10);
+    const sanitizedMin = sanitizeHoursPerWeek(min);
+    const sanitizedMax = sanitizeHoursPerWeek(max);
+    if (!sanitizedMin || !sanitizedMax || sanitizedMin > sanitizedMax) {
+      return {};
+    }
     return {
-      minHoursPerWeek: min > 0 ? min : undefined,
-      hoursPerWeek: max > 0 ? max : undefined,
+      minHoursPerWeek: sanitizedMin,
+      hoursPerWeek: sanitizedMax,
     };
   }
   const singleMatch = raw.match(/(\d+)/);
   if (singleMatch) {
     const hours = parseInt(singleMatch[1], 10);
-    return hours > 0 ? { hoursPerWeek: hours } : {};
+    const sanitizedHours = sanitizeHoursPerWeek(hours);
+    return sanitizedHours ? { hoursPerWeek: sanitizedHours } : {};
   }
   return {};
 }

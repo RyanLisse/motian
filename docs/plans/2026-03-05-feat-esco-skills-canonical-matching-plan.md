@@ -279,19 +279,19 @@ Must update all equivalent interfaces:
 ## Acceptance Criteria
 
 ### Functional Requirements
-- [ ] New canonical ESCO tables exist and are migrated with indexes/constraints.
-- [ ] Candidate/job/chat skill inputs map to ESCO URI with confidence and evidence.
+- [x] New canonical ESCO tables exist and are migrated with indexes/constraints.
+- [x] Candidate/job/chat skill inputs map to ESCO URI with confidence and evidence.
 - [x] ESCO score is primary skill signal in ranking and auto-match.
 - [x] Guardrail fallback activates only for low-confidence critical mappings.
 - [x] Critical low-confidence mappings are persisted to review queue.
-- [ ] Recruiter can filter/search on canonical skills in UI.
+- [x] Recruiter can filter/search on canonical skills in UI.
 - [x] API/tool responses include canonical skill payloads where applicable.
 
 ### Non-Functional Requirements
 - [ ] No >15% regression in query latency on key search endpoints at p95.
 - [x] Mapping pipeline is idempotent on repeated ingestion.
 - [x] Versioned ESCO dataset usage is auditable.
-- [ ] Logs and metrics exist for mapping confidence, fallback rate, and review backlog.
+- [x] Logs and metrics exist for mapping confidence, fallback rate, and review backlog.
 
 ### Quality Gates
 - [x] New unit tests for mapping and scoring guardrails.
@@ -355,7 +355,7 @@ Update after implementation:
 - [x] `src/services/auto-matching.ts` — propagate ESCO reasons/guardrails
 - [x] `app/api/candidates/*.ts` and `app/api/opdrachten/*.ts` — canonical skill payloads
 - [x] `src/ai/tools/*.ts`, `src/mcp/tools/*.ts`, `src/voice-agent/agent.ts` — parity updates
-- [ ] `components/*skills*` and relevant filters — canonical UI integration
+- [x] `components/*skills*` and relevant filters — canonical UI integration
 - [x] `tests/*esco*` — mapping/scoring/parity/integration coverage (esco-scoring.test.ts)
 
 ## Pseudocode Sketches

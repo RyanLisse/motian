@@ -72,7 +72,7 @@ describe("Opdrachten shared filter parsing", () => {
   it("normalizes multi-select recruiter filters and numeric hours ranges from URL params", () => {
     const parsed = parseOpdrachtenFilters(
       new URLSearchParams(
-        "q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad,noord&vakgebied=ICT&vakgebied=Data&urenPerWeek=24_32&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&tariefMin=80&tariefMax=120&contractType=interim&sort=deadline",
+        "q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad,noord&vakgebied=ICT&vakgebied=Data&vaardigheid=skill:java&urenPerWeek=24_32&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&tariefMin=80&tariefMax=120&contractType=interim&sort=deadline",
       ),
     );
 
@@ -80,6 +80,7 @@ describe("Opdrachten shared filter parsing", () => {
       q: "manager",
       platform: "opdrachtoverheid",
       endClient: "Gemeente Utrecht",
+      escoUri: "skill:java",
       status: "closed",
       province: "Utrecht",
       categories: ["ICT", "Data"],
@@ -95,6 +96,20 @@ describe("Opdrachten shared filter parsing", () => {
       contractType: "interim",
       sort: "deadline",
     });
+  });
+
+  it("accepts both recruiter and programmatic ESCO skill query aliases", () => {
+    const recruiter = parseOpdrachtenFilters(new URLSearchParams("vaardigheid=skill:react"));
+    const api = parseOpdrachtenFilters(new URLSearchParams("escoUri=skill:java"));
+
+    expect(recruiter.escoUri).toBe("skill:react");
+    expect(api.escoUri).toBe("skill:java");
+    expect(
+      validateOpdrachtenQueryParams(new URLSearchParams("vaardigheid=skill:react")).success,
+    ).toBe(true);
+    expect(validateOpdrachtenQueryParams(new URLSearchParams("escoUri=skill:java")).success).toBe(
+      true,
+    );
   });
 
   it("falls back safely for invalid province, radius, and sort params", () => {
@@ -199,6 +214,9 @@ describe("Opdrachten UI/API contracts", () => {
     expect(source).toContain('searchPlaceholder="Zoek eindopdrachtgever..."');
     expect(source).toContain('clearLabel="Alle eindopdrachtgevers"');
     expect(source).toContain('triggerId="opdrachten-eindopdrachtgever"');
+    expect(source).toContain('searchPlaceholder="Zoek ESCO vaardigheid..."');
+    expect(source).toContain('clearLabel="Alle vaardigheden"');
+    expect(source).toContain('triggerId="opdrachten-esco-vaardigheid"');
     expect(source).toContain('placeholder="Sortering"');
     expect(source).toContain("CompactMultiSelectFilter");
     expect(source).toContain("FilterChecklist");
@@ -261,6 +279,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(listRoute).toContain("validateOpdrachtenQueryParams(params)");
     expect(listRoute).toContain("parseOpdrachtenFilters(params)");
     expect(listRoute).toContain("categories: filters.categories");
+    expect(listRoute).toContain("escoUri: filters.escoUri");
     expect(listRoute).toContain("regions: filters.regions");
     expect(listRoute).toContain("hoursPerWeekBucket: filters.hoursPerWeek");
     expect(listRoute).toContain("minHoursPerWeek: filters.hoursPerWeekMin");
@@ -271,6 +290,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(searchRoute).toContain("validateOpdrachtenQueryParams(params)");
     expect(searchRoute).toContain("parseOpdrachtenFilters(params)");
     expect(searchRoute).toContain("categories: filters.categories");
+    expect(searchRoute).toContain("escoUri: filters.escoUri");
     expect(searchRoute).toContain("regions: filters.regions");
     expect(searchRoute).toContain("hoursPerWeekBucket: filters.hoursPerWeek");
     expect(searchRoute).toContain("minHoursPerWeek: filters.hoursPerWeekMin");
@@ -296,7 +316,10 @@ describe("Opdrachten UI/API contracts", () => {
     expect(layout).toContain(
       'import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary"',
     );
+    expect(layout).toContain('import { listEscoSkillsForFilter } from "@/src/services/esco"');
+    expect(layout).toContain("await listEscoSkillsForFilter()");
     expect(layout).toContain("await getJobPipelineSummary(");
+    expect(layout).toContain("skillOptions={skillOptions}");
     expect(layout).toContain("hasPipeline: hasPipelineByJobId.has(job.id)");
     expect(layout).toContain("pipelineCount: pipelineCountByJobId.get(job.id) ?? 0");
     expect(pipelineSummary).toContain("inArray(applications.jobId, jobIds)");

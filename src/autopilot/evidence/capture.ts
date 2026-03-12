@@ -1,8 +1,9 @@
 import { execSync } from "node:child_process";
 import crypto from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium } from "playwright";
+import type { EvidenceManifest } from "../types/evidence";
 import type { JourneySpec } from "../types/journey";
 import { type JourneyRunOutput, runJourney } from "./journey-runner";
 
@@ -24,7 +25,7 @@ const DEFAULT_VIEWPORT = { width: 1280, height: 720 };
 
 /**
  * Run all specified journeys, capture evidence, return aggregated results.
- * Launches browser once, runs journeys sequentially, closes browser.
+ * Launches the browser once, then isolates each journey in its own context.
  */
 export async function captureJourneyEvidence(
   journeys: JourneySpec[],
@@ -37,34 +38,42 @@ export async function captureJourneyEvidence(
 
   const runDir = join(config.evidenceDir, runId);
   await mkdir(runDir, { recursive: true });
+  const videoDir = join(runDir, "videos");
+  await mkdir(videoDir, { recursive: true });
 
   const journeyOutputs: JourneyRunOutput[] = [];
 
   const browser = await chromium.launch();
   try {
-    const context = await browser.newContext({
-      viewport,
-      ignoreHTTPSErrors: true,
-    });
-
     for (const spec of journeys) {
+      const harPath = join(runDir, `${spec.id}.har`);
+      const context = await browser.newContext({
+        viewport,
+        ignoreHTTPSErrors: true,
+        recordVideo: {
+          dir: videoDir,
+          size: viewport,
+        },
+        recordHar: {
+          path: harPath,
+          mode: "minimal",
+        },
+      });
+
+      let output: JourneyRunOutput | undefined;
+
       try {
-        const output = await runJourney(
+        output = await runJourney(
           spec,
           { baseUrl: config.baseUrl, evidenceDir: config.evidenceDir, viewport },
           context,
           runId,
           gitSha,
         );
-        journeyOutputs.push(output);
-
-        // Write per-journey manifest
-        const manifestPath = join(runDir, `${spec.id}-manifest.json`);
-        await writeFile(manifestPath, JSON.stringify(output.manifest, null, 2), "utf-8");
       } catch (err) {
         // Graceful failure: one journey failing should not stop others
         const errorMessage = err instanceof Error ? err.message : String(err);
-        const failedOutput: JourneyRunOutput = {
+        output = {
           result: {
             journeyId: spec.id,
             surface: spec.surface,
@@ -83,11 +92,21 @@ export async function captureJourneyEvidence(
             failureReason: errorMessage,
           },
         };
-        journeyOutputs.push(failedOutput);
+      } finally {
+        await context.close();
       }
-    }
 
-    await context.close();
+      if (!output) {
+        throw new Error(`Journey output ontbreekt voor ${spec.id}`);
+      }
+
+      await appendHarArtifact(output.manifest, spec.id, harPath);
+      journeyOutputs.push(output);
+
+      // Write per-journey manifest
+      const manifestPath = join(runDir, `${spec.id}-manifest.json`);
+      await writeFile(manifestPath, JSON.stringify(output.manifest, null, 2), "utf-8");
+    }
   } finally {
     await browser.close();
   }
@@ -106,4 +125,26 @@ export async function captureJourneyEvidence(
   await writeFile(join(runDir, "run-manifest.json"), JSON.stringify(runManifest, null, 2), "utf-8");
 
   return { runId, gitSha, startedAt, completedAt, journeyOutputs };
+}
+
+async function appendHarArtifact(
+  manifest: EvidenceManifest,
+  journeyId: string,
+  harPath: string,
+): Promise<void> {
+  try {
+    const harStat = await stat(harPath);
+    if (harStat.size === 0) {
+      return;
+    }
+
+    manifest.artifacts.push({
+      id: `${journeyId}-har`,
+      kind: "har",
+      path: harPath,
+      capturedAt: new Date().toISOString(),
+    });
+  } catch {
+    // HAR files are best-effort evidence and should not fail the full capture flow.
+  }
 }

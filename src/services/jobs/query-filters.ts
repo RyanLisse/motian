@@ -1,5 +1,5 @@
 import { and, eq, gte, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
-import { jobs } from "../../db/schema";
+import { jobSkills, jobs } from "../../db/schema";
 import {
   getHoursRangeForBucket,
   getProvinceAnchor,
@@ -13,6 +13,7 @@ export type SharedJobFilterOptions = {
   platform?: string;
   company?: string;
   endClient?: string;
+  escoUri?: string;
   category?: string;
   categories?: string[];
   status?: JobStatus;
@@ -54,6 +55,12 @@ export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
         eq(jobs.endClient, opts.endClient),
         and(isNull(jobs.endClient), eq(jobs.company, opts.endClient)),
       ),
+    );
+  }
+
+  if (opts.escoUri) {
+    conditions.push(
+      sql`exists (select 1 from ${jobSkills} where ${jobSkills.jobId} = ${jobs.id} and ${jobSkills.escoUri} = ${opts.escoUri})`,
     );
   }
 

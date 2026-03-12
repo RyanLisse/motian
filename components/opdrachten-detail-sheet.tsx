@@ -44,6 +44,8 @@ export function OpdrachtenDetailSheet({
   }
 
   return (
-    <section className="hidden min-w-0 flex-1 flex-col bg-background md:flex">{children}</section>
+    <section className="hidden min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background md:flex">
+      {children}
+    </section>
   );
 }

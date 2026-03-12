@@ -3,9 +3,11 @@
 import { Check, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type DragEvent, useCallback, useState } from "react";
+import { cn } from "@/lib/utils";
 import { linkCandidateToJob } from "@/src/actions/match-linking";
 
 interface DroppableVacancyProps {
+  className?: string;
   jobId: string;
   /** Unused but kept for context — callers pass title for future toast/log use */
   jobTitle?: string;
@@ -14,7 +16,7 @@ interface DroppableVacancyProps {
 
 type DropStatus = "idle" | "over" | "loading" | "success" | "error";
 
-export function DroppableVacancy({ jobId, children }: DroppableVacancyProps) {
+export function DroppableVacancy({ className, jobId, children }: DroppableVacancyProps) {
   const router = useRouter();
   const [status, setStatus] = useState<DropStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -64,7 +66,7 @@ export function DroppableVacancy({ jobId, children }: DroppableVacancyProps) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative transition-all rounded-lg ${borderClass}`}
+      className={cn("relative rounded-lg transition-all", borderClass, className)}
     >
       {children}
 

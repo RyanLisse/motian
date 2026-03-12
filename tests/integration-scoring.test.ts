@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Candidate } from "../src/services/candidates";
 import {
   buildCandidateEmbeddingText,
@@ -37,6 +37,10 @@ describe("Hybrid scoring — rule + vector blend", () => {
     hourlyRate: 95,
     embedding: null as number[] | null,
   };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it("uses rule-based-v1 model when no embeddings present", () => {
     const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate);
@@ -132,6 +136,39 @@ describe("Hybrid scoring — rule + vector blend", () => {
 
     expect(result.model).toBe("rule-based-v1");
     expect(result.reasoning).toContain("skills match");
+  });
+
+  it("emits a guardrail fallback log for ESCO observability", () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
+      candidateEscoSkills: [
+        {
+          escoUri: "skill:react",
+          label: "React",
+          confidence: 0.95,
+          critical: false,
+        },
+      ],
+      jobEscoSkills: [
+        {
+          escoUri: "skill:react",
+          label: "React",
+          confidence: 0.2,
+          required: true,
+          critical: true,
+          weight: 1,
+        },
+      ],
+    });
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      "[ESCO] guardrail_fallback",
+      expect.objectContaining({
+        candidateId: "cand-1",
+        jobId: "job-1",
+      }),
+    );
   });
 });
 

@@ -29,6 +29,7 @@ export type HybridSearchOptions = {
   platform?: string;
   company?: string;
   endClient?: string;
+  escoUri?: string;
   category?: string;
   categories?: string[];
   status?: JobStatus;
@@ -62,6 +63,7 @@ function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
     platform: opts.platform,
     company: opts.company,
     endClient: opts.endClient,
+    escoUri: opts.escoUri,
     category: opts.category,
     categories: opts.categories,
     status: opts.status,

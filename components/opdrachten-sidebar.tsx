@@ -75,6 +75,7 @@ interface OpdrachtenSidebarProps {
   platforms: string[];
   endClients: string[];
   categories: string[];
+  skillOptions: FilterOption[];
 }
 
 const CONTRACT_TYPES = [
@@ -340,6 +341,7 @@ type SearchJobsParams = {
   q: string;
   platform: string;
   endClient: string;
+  vaardigheid: string;
   status: string;
   provincie: string;
   regios: string[];
@@ -360,6 +362,7 @@ async function searchJobs({
   q,
   platform,
   endClient,
+  vaardigheid,
   status,
   provincie,
   regios,
@@ -379,6 +382,7 @@ async function searchJobs({
   if (q) params.set("q", q);
   if (platform) params.set("platform", platform);
   if (endClient) params.set("endClient", endClient);
+  if (vaardigheid) params.set("vaardigheid", vaardigheid);
   if (status !== "open") params.set("status", status);
   if (provincie) params.set("provincie", provincie);
   regios.forEach((regio) => {
@@ -412,6 +416,7 @@ export function OpdrachtenSidebar({
   platforms,
   endClients,
   categories,
+  skillOptions,
 }: OpdrachtenSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -425,6 +430,7 @@ export function OpdrachtenSidebar({
   const q = parsedFilters.q ?? "";
   const platform = parsedFilters.platform ?? "";
   const endClient = parsedFilters.endClient ?? "";
+  const vaardigheid = parsedFilters.escoUri ?? "";
   const status = parsedFilters.status;
   const provincie = parsedFilters.province ?? "";
   const regios = parsedFilters.regions;
@@ -527,6 +533,7 @@ export function OpdrachtenSidebar({
       q,
       platform,
       endClient,
+      vaardigheid,
       status,
       provincie,
       regios.join("|"),
@@ -547,6 +554,7 @@ export function OpdrachtenSidebar({
         q,
         platform,
         endClient,
+        vaardigheid,
         status,
         provincie,
         regios,
@@ -569,6 +577,7 @@ export function OpdrachtenSidebar({
       !q &&
       !platform &&
       !endClient &&
+      !vaardigheid &&
       status === "open" &&
       !provincie &&
       regios.length === 0 &&
@@ -604,6 +613,7 @@ export function OpdrachtenSidebar({
   const activeFilterCount =
     Number(Boolean(platform)) +
     Number(Boolean(endClient)) +
+    Number(Boolean(vaardigheid)) +
     Number(status !== "open") +
     Number(Boolean(provincie)) +
     Number(regios.length > 0) +
@@ -711,6 +721,22 @@ export function OpdrachtenSidebar({
             clearLabel="Alle eindopdrachtgevers"
             buttonClassName="h-7 flex-1 border-border bg-card px-2 text-[10px] text-foreground"
             itemClassName="text-xs"
+          />
+        </div>
+
+        <div className="px-3 pb-2 shrink-0">
+          <SearchableCombobox
+            value={vaardigheid || undefined}
+            onValueChange={(value) => handleFilterChange("vaardigheid", value)}
+            options={skillOptions}
+            placeholder="Vaardigheid"
+            searchPlaceholder="Zoek ESCO vaardigheid..."
+            emptyText="Geen vaardigheden gevonden."
+            clearLabel="Alle vaardigheden"
+            buttonClassName="h-7 w-full border-border bg-card px-2 text-[10px] text-foreground"
+            itemClassName="text-xs"
+            triggerId="opdrachten-esco-vaardigheid"
+            ariaLabel="ESCO vaardigheid"
           />
         </div>
 
@@ -1064,6 +1090,27 @@ export function OpdrachtenSidebar({
                   buttonClassName="h-11 rounded-lg border-border bg-background text-left text-sm"
                   triggerId="opdrachten-eindopdrachtgever"
                   ariaLabel="Eindopdrachtgever"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="opdrachten-esco-vaardigheid"
+                  className="mb-2 block text-sm font-medium text-foreground"
+                >
+                  Vaardigheid
+                </label>
+                <SearchableCombobox
+                  value={vaardigheid || undefined}
+                  onValueChange={(value) => handleFilterChange("vaardigheid", value)}
+                  options={skillOptions}
+                  placeholder="Alle vaardigheden"
+                  searchPlaceholder="Zoek ESCO vaardigheid..."
+                  emptyText="Geen vaardigheden gevonden."
+                  clearLabel="Alle vaardigheden"
+                  buttonClassName="h-11 rounded-lg border-border bg-background text-left text-sm"
+                  triggerId="opdrachten-esco-vaardigheid"
+                  ariaLabel="ESCO vaardigheid"
                 />
               </div>
 

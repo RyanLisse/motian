@@ -96,6 +96,14 @@ function computeLegacySkillDimension(
   return { score, overlap };
 }
 
+function logEscoGuardrailFallback(job: Job, candidate: Candidate, reasoning: string) {
+  console.info("[ESCO] guardrail_fallback", {
+    jobId: job.id,
+    candidateId: candidate.id,
+    reasoning,
+  });
+}
+
 function computeSkillDimension(
   job: Job,
   candidate: Candidate,
@@ -116,6 +124,7 @@ function computeSkillDimension(
     }
     // Guardrail fallback: use rule-based skill dimension and append ESCO reasoning
     const legacy = computeLegacySkillDimension(job, candidate);
+    logEscoGuardrailFallback(job, candidate, escoResult.reasoning);
     return {
       score: legacy.score,
       reasoning:

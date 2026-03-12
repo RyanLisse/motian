@@ -16,7 +16,10 @@ Runbook voor staging-validatie en rollback van ESCO-first skill scoring.
 |-------|------------------|-------------|
 | Observability endpoint | `GET /api/esco/observability` | 200, body met `mapping` en `reviewQueue`. |
 | Skills voor filter | `GET /api/esco/skills` | 200, array van `{ uri, labelNl, labelEn }`. |
+| Rollout snapshot artefact | `pnpm metrics:esco-rollout` | Schrijft `docs/metrics/esco-rollout-snapshot-latest.json` met modelverdeling, fallback-count, backlog en p50/p95 snapshots. |
+| p95 regressiecheck | `pnpm metrics:esco-rollout:compare docs/metrics/esco-rollout-snapshot-YYYY-MM-DD.json` | Exit code `0` als gedeelde scenario's niet meer dan 15% verslechteren op `p95`. |
 | Kandidaten met ESCO-filter | Open `/professionals?vaardigheid=<uri>` | Pagina laadt, alleen kandidaten met die skill. |
+| Opdrachten met ESCO-filter | Open `/opdrachten?vaardigheid=<uri>` | Lijst laadt, alleen opdrachten met die canonieke skill. |
 | Auto-match met ESCO | Trigger auto-match (job → kandidaten of omgekeerd). | Match-records hebben `model: "esco-hybrid-v1"` en `reasoning` gevuld. |
 | Guardrail zichtbaar | Indien lage confidence: reasoning bevat fallback-tekst. | Geen crash; legacy skill score gebruikt. |
 
@@ -51,6 +54,8 @@ SELECT
 ## 3. Post-release KPI-checks (4–6 weken)
 
 - **Precision@3**: vergelijk top-3 matches vóór en na ESCO-cutover (baseline vs esco-hybrid-v1).
+- **Snapshot artifact**: sla `docs/metrics/esco-rollout-snapshot-latest.json` op als gedateerde baseline/post-cutover artefact (`esco-rollout-snapshot-YYYY-MM-DD.json`) voor vergelijking.
+- **Latency diff**: run `pnpm metrics:esco-rollout:compare <baseline>` tegen het laatste artefact en bewaar de output bij de release-notes.
 - **Guardrail-fallback rate**: log/metric `esco.guardrail_fallback` of reasoning met fallback-tekst; streef naar dalend percentage in de eerste weken.
 - **Review queue**: mediane doorlooptijd van `skill_mappings` met `sent_to_review = true` tot afhandeling.
 - **Observability**: `GET /api/esco/observability` gebruiken voor mapping-stats en review-backlog in dashboards.

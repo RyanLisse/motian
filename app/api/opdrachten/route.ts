@@ -42,6 +42,7 @@ export const GET = withApiHandler(async (request: Request) => {
     platform: filters.platform,
     endClient: filters.endClient,
     categories: filters.categories,
+    escoUri: filters.escoUri,
     status: filters.status,
     province: filters.province,
     regions: filters.regions,

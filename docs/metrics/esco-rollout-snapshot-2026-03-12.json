@@ -1,0 +1,97 @@
+{
+  "generatedAt": "2026-03-12T16:41:24.543Z",
+  "totalMatches": 15,
+  "byModel": {
+    "esco-hybrid-v1": 8,
+    "manual": 2,
+    "auto-match-v1": 5
+  },
+  "guardrailFallbackCount": 0,
+  "guardrailFallbackRate": 0,
+  "mappingConfidenceDistribution": {
+    "unknown": 88,
+    "low": 0,
+    "medium": 0,
+    "high": 0
+  },
+  "top3ByJob": [
+    {
+      "jobId": "1cecf99f-4375-42a1-a8f1-0ed5c96d0dbb",
+      "candidateIds": [
+        "946c9b8d-e953-4f3c-99fa-7fc750380aa3"
+      ]
+    },
+    {
+      "jobId": "353e71e7-f1f5-4590-a0aa-c5e15c769f92",
+      "candidateIds": [
+        "190b63dc-d02b-470e-a741-a628ba787de0"
+      ]
+    },
+    {
+      "jobId": "35498f61-c8b0-4657-b7ad-ec0f9a7694c4",
+      "candidateIds": [
+        "190b63dc-d02b-470e-a741-a628ba787de0"
+      ]
+    },
+    {
+      "jobId": "409c8158-59d7-4916-9061-6a9a7dfff596",
+      "candidateIds": [
+        "946c9b8d-e953-4f3c-99fa-7fc750380aa3"
+      ]
+    },
+    {
+      "jobId": "52fa402d-5843-46a5-8aa2-c5cec9c51ca3",
+      "candidateIds": [
+        "190b63dc-d02b-470e-a741-a628ba787de0",
+        "473d838d-fb90-441e-8cb1-b10e195e37dd"
+      ]
+    },
+    {
+      "jobId": "b812a64c-128b-4388-ac6b-bee2449edf94",
+      "candidateIds": [
+        "473d838d-fb90-441e-8cb1-b10e195e37dd",
+        "190b63dc-d02b-470e-a741-a628ba787de0",
+        "b41d14d2-6e51-4eb1-bef9-a007c37f1c88"
+      ]
+    },
+    {
+      "jobId": "d04f985f-af59-4a8c-8bde-0529a2190aa4",
+      "candidateIds": [
+        "190b63dc-d02b-470e-a741-a628ba787de0"
+      ]
+    },
+    {
+      "jobId": "e905e39e-c7bf-437b-8df6-cf4ec541aa32",
+      "candidateIds": [
+        "e61d806a-82d2-4033-aa96-28a98440aaa5",
+        "ebc1408d-79f7-4417-8eb4-b2e22b5f3065",
+        "839beef9-09b8-44cb-ba25-f7bda815dd12"
+      ]
+    }
+  ],
+  "searchLatency": [
+    {
+      "name": "jobs-query-baseline",
+      "runs": 5,
+      "p50Ms": 2414,
+      "p95Ms": 3987
+    }
+  ],
+  "representativeSkill": null,
+  "representativeSkillSource": null,
+  "availableSkillOptionCount": 0,
+  "mapping": {
+    "totalMappings": 88,
+    "byStrategy": {
+      "none": 88
+    },
+    "avgConfidence": null,
+    "sentToReviewCount": 0,
+    "last24hCount": 0
+  },
+  "reviewQueue": {
+    "pendingCount": 0,
+    "byContextType": {},
+    "oldestCreatedAt": null
+  }
+}
