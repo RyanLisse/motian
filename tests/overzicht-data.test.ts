@@ -4,15 +4,14 @@ import type { db } from "../src/db";
 
 function createAwaitableQuery<T>(result: T) {
   const promise = Promise.resolve(result);
-  const chain = Object.assign(promise, {
-    from: vi.fn(() => chain),
-    where: vi.fn(() => chain),
-    groupBy: vi.fn(() => chain),
-    orderBy: vi.fn(() => chain),
-    limit: vi.fn(() => chain),
-    leftJoin: vi.fn(() => chain),
-    innerJoin: vi.fn(() => chain),
-  });
+  const chain = promise as any;
+  chain.from = vi.fn(() => chain);
+  chain.where = vi.fn(() => chain);
+  chain.groupBy = vi.fn(() => chain);
+  chain.orderBy = vi.fn(() => chain);
+  chain.limit = vi.fn(() => chain);
+  chain.leftJoin = vi.fn(() => chain);
+  chain.innerJoin = vi.fn(() => chain);
 
   return chain;
 }
@@ -52,14 +51,8 @@ describe("getOverviewData", () => {
         ]),
       );
 
-    const transaction = vi.fn(
-      async (callback: (tx: { execute: typeof execute; select: typeof select }) => unknown) =>
-        callback({ execute, select }),
-    );
+    const result = await getOverviewData({ execute, select } as unknown as typeof db);
 
-    const result = await getOverviewData({ transaction } as unknown as typeof db);
-
-    expect(transaction).toHaveBeenCalledTimes(1);
     expect(select).toHaveBeenCalledTimes(7);
     expect(execute).toHaveBeenCalledTimes(2);
     expect(result.platformCounts).toEqual([{ platform: "linkedin", count: 3, weeklyNew: 1 }]);
@@ -144,12 +137,7 @@ describe("getOverviewData", () => {
         ]),
       );
 
-    const transaction = vi.fn(
-      async (callback: (tx: { execute: typeof execute; select: typeof select }) => unknown) =>
-        callback({ execute, select }),
-    );
-
-    const result = await getOverviewData({ transaction } as unknown as typeof db);
+    const result = await getOverviewData({ execute, select } as unknown as typeof db);
 
     expect(result.recentJobs).toEqual([
       {
@@ -254,12 +242,7 @@ describe("getOverviewData", () => {
         ]),
       );
 
-    const transaction = vi.fn(
-      async (callback: (tx: { execute: typeof execute; select: typeof select }) => unknown) =>
-        callback({ execute, select }),
-    );
-
-    const result = await getOverviewData({ transaction } as unknown as typeof db);
+    const result = await getOverviewData({ execute, select } as unknown as typeof db);
 
     expect(result.recentScrapes).toEqual([
       {
