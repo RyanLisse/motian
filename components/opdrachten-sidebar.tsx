@@ -940,7 +940,7 @@ export function OpdrachtenSidebar({
   return (
     <aside className="h-full min-w-0 w-full bg-sidebar/25">
       <div className="grid h-full min-h-0 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)]">
-        <div className="border-b border-border/70 px-3 py-3 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+        <div className="flex min-h-0 flex-col border-b border-border/70 px-3 py-3 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               Zoekfilter
@@ -955,7 +955,7 @@ export function OpdrachtenSidebar({
             </button>
           </div>
 
-          <div className="space-y-3 sm:space-y-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
             <div>
               <label
                 htmlFor="opdrachten-zoekterm"
@@ -1012,7 +1012,7 @@ export function OpdrachtenSidebar({
             <div
               id="opdrachten-mobile-filters"
               className={cn(
-                "space-y-3 rounded-xl border border-border/70 bg-background/60 p-3 sm:space-y-4 sm:p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0",
+                "min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-3 sm:space-y-4 sm:p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0",
                 !mobileFiltersOpen && "hidden lg:block",
               )}
             >
