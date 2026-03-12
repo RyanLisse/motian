@@ -1,4 +1,5 @@
 import { scrapeFlextender } from "./flextender";
+import { monsterboardAdapter } from "./monsterboard";
 import { scrapeOpdrachtoverheid } from "./opdrachtoverheid";
 import { platformDefinitions } from "./platform-definitions";
 import { nationaleVacaturebankAdapter } from "./nationalevacaturebank";
@@ -93,6 +94,11 @@ const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefiniti
       return {
         ...definition,
         adapter: nationaleVacaturebankAdapter,
+      };
+    case "monsterboard":
+      return {
+        ...definition,
+        adapter: monsterboardAdapter,
       };
     case "werkzoeken":
       return {

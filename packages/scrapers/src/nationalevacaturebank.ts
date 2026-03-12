@@ -36,6 +36,23 @@ const NVB_ORIGIN = "https://www.nationalevacaturebank.nl";
 const NVB_FETCH_TIMEOUT_MS = 20_000;
 const NVB_DEFAULT_USER_AGENT = "Mozilla/5.0 (compatible; MotianBot/1.0)";
 
+function isNationaleVacaturebankHost(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return (
+    normalized === "nationalevacaturebank.nl" ||
+    normalized === "www.nationalevacaturebank.nl" ||
+    normalized.endsWith(".nationalevacaturebank.nl")
+  );
+}
+
+function assertNationaleVacaturebankHost(url: URL): void {
+  if (!isNationaleVacaturebankHost(url.hostname)) {
+    throw new Error(
+      `Nationale Vacaturebank bron-URL moet naar nationalevacaturebank.nl verwijzen, niet naar "${url.hostname}".`,
+    );
+  }
+}
+
 function decodeText(value: string | undefined): string {
   return stripHtml(
     value
@@ -154,6 +171,7 @@ export function buildNationaleVacaturebankPageUrl(
   page: number,
 ): string {
   const url = new URL(sourcePath, baseUrl);
+  assertNationaleVacaturebankHost(url);
   if (page > 1) {
     url.searchParams.set("page", String(page));
   }
@@ -375,10 +393,9 @@ async function bootstrapConsentSession(
       await saveButton.click();
       actions.push("voorkeuren_opslaan");
 
-      await page.waitForURL(
-        (url) => url.hostname.includes("nationalevacaturebank.nl"),
-        { timeout: 30_000 },
-      );
+      await page.waitForURL((url) => isNationaleVacaturebankHost(url.hostname), {
+        timeout: 30_000,
+      });
       await page.waitForLoadState("domcontentloaded");
     }
 

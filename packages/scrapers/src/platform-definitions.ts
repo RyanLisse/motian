@@ -94,6 +94,21 @@ export const platformDefinitions: PlatformDefinition[] = [
     authSchema: striiveAuthSchema,
   },
   {
+    slug: "monsterboard",
+    displayName: "Monsterboard",
+    adapterKind: "http_html_list_detail",
+    authMode: "none",
+    attributionLabel: "Monsterboard",
+    badgeClassName: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
+    capabilities: ["detail_enrichment", "smoke_import", "validation"],
+    description:
+      "Publiek job board met JSON-LD detailpagina's en expliciete anti-bot blokkadeherkenning.",
+    defaultBaseUrl: "https://www.monsterboard.nl/vacatures/",
+    docsUrl: "https://www.monsterboard.nl/vacatures/",
+    configSchema: basicPlatformConfigSchema,
+    authSchema: emptyAuthSchema,
+  },
+  {
     slug: "nationalevacaturebank",
     displayName: "Nationale Vacaturebank",
     adapterKind: "browser_bootstrap_http_harvest",

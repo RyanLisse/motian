@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { detectNationaleVacaturebankBlocker } from "../packages/scrapers/src/nationalevacaturebank";
+import {
+  buildNationaleVacaturebankPageUrl,
+  detectNationaleVacaturebankBlocker,
+} from "../packages/scrapers/src/nationalevacaturebank";
 
 describe("Nationale Vacaturebank blocker detection", () => {
   it("detects the DPG consent gate when HTTP access is redirected", () => {
@@ -34,5 +37,15 @@ describe("Nationale Vacaturebank blocker detection", () => {
 
     expect(result.blockerKind).toBeNull();
     expect(result.matchedSignals).not.toContain("marker:url_consent");
+  });
+
+  it("rejects hostile full URLs when building NVB source page URLs", () => {
+    expect(() =>
+      buildNationaleVacaturebankPageUrl(
+        "https://www.nationalevacaturebank.nl",
+        "https://www.nationalevacaturebank.nl.evil.test/steal-cookies",
+        1,
+      ),
+    ).toThrow(/nationalevacaturebank\.nl/i);
   });
 });

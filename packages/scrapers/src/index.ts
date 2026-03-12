@@ -1,4 +1,5 @@
 export { scrapeFlextender } from "./flextender";
+export { monsterboardAdapter } from "./monsterboard";
 export {
   mapOpdrachtoverheidTenderToListing,
   mapTenderActiveToStatus,
