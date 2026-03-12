@@ -2,7 +2,8 @@ import { publish } from "../lib/event-bus";
 import { enrichJobsBatch } from "./ai-enrichment";
 import { normalizeAndSaveJobs } from "./normalize";
 import { recordScrapeResult } from "./record-scrape-result";
-import { scrapeFlextender, scrapeOpdrachtoverheid, scrapeStriive } from "./scrapers/index";
+import { getConfigByPlatform, toRuntimeConfig } from "./scrapers";
+import { getPlatformAdapter } from "./scrapers/index";
 
 type ScrapeStatus = "success" | "partial" | "failed";
 export type ScrapePipelineBatchConfig = {
@@ -67,19 +68,36 @@ export async function runScrapePipeline(
   publish("scrape:start", { platform });
 
   let listings: Record<string, unknown>[];
+  let scrapeErrors: string[] = [];
   try {
-    switch (platform) {
-      case "opdrachtoverheid":
-        listings = await scrapeOpdrachtoverheid();
-        break;
-      case "flextender":
-        listings = await scrapeFlextender();
-        break;
-      case "striive":
-        listings = await scrapeStriive(url);
-        break;
-      default:
-        return { jobsNew: 0, duplicates: 0, errors: [`Unknown platform: ${platform}`] };
+    const adapter = getPlatformAdapter(platform);
+    if (!adapter) {
+      const errors = [`Onbekend platform: ${platform}`];
+      await recordFailure(platform, errors, startTime);
+      return { jobsNew: 0, duplicates: 0, errors };
+    }
+
+    const config = await getConfigByPlatform(platform);
+    const runtimeConfig = config
+      ? toRuntimeConfig(platform, config)
+      : {
+          slug: platform,
+          baseUrl: url,
+          parameters: {},
+          auth: {},
+        };
+    const result = await adapter.scrape(runtimeConfig);
+    listings = result.listings;
+    scrapeErrors = result.errors ?? [];
+
+    if (result.blockerKind && listings.length === 0) {
+      const errors = [
+        ...scrapeErrors,
+        `${platform}: blocker ${result.blockerKind}`,
+        ...(result.evidence ? [JSON.stringify(result.evidence)] : []),
+      ];
+      await recordFailure(platform, errors, startTime);
+      return { jobsNew: 0, duplicates: 0, errors };
     }
   } catch (err) {
     const errors = [err instanceof Error ? err.message : String(err)];
@@ -89,15 +107,19 @@ export async function runScrapePipeline(
 
   // Safety net: scraper returned data but nothing parsed — treat as suspicious
   if (listings.length === 0) {
-    const errors = [`${platform}: scraper retourneerde 0 listings (mogelijk stille fout)`];
+    const errors = [
+      ...scrapeErrors,
+      `${platform}: scraper retourneerde 0 listings (mogelijk stille fout)`,
+    ];
     await recordFailure(platform, errors, startTime);
     return { jobsNew: 0, duplicates: 0, errors };
   }
 
   const result = await normalizeAndSaveJobs(platform, listings);
+  const allErrors = [...scrapeErrors, ...result.errors];
   const durationMs = Date.now() - startTime;
   const status: ScrapeStatus =
-    result.errors.length === 0
+    allErrors.length === 0
       ? "success"
       : result.jobsNew > 0 || result.duplicates > 0
         ? "partial"
@@ -111,7 +133,7 @@ export async function runScrapePipeline(
       duplicates: result.duplicates,
       durationMs,
       status,
-      errors: result.errors,
+      errors: allErrors,
       jobIds: result.jobIds,
     });
   } catch (recordErr) {
@@ -134,7 +156,12 @@ export async function runScrapePipeline(
     );
   }
 
-  return result;
+  // Return merged scrape + normalization errors so callers see the full picture.
+  return {
+    jobsNew: result.jobsNew,
+    duplicates: result.duplicates,
+    errors: allErrors,
+  };
 }
 
 export async function runScrapePipelinesWithConcurrency<T extends ScrapePipelineBatchConfig>(

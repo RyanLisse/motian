@@ -4,15 +4,26 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
-import { PLATFORMS } from "@/src/lib/helpers";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
+import { listPlatformCatalog } from "@/src/services/scrapers";
 
 export const triggerScraper = tool({
-  description: `Start een scraper voor een specifiek platform. Beschikbare platforms: ${PLATFORMS.join(", ")}. Dit kan even duren (30s-2min).`,
+  description:
+    "Start een scraper voor een specifiek platform uit de dynamische platformcatalogus. Gebruik platformsList om de actuele platformslugs op te halen. Dit kan even duren (30s-2min).",
   inputSchema: z.object({
-    platform: z.enum(PLATFORMS).describe("Het platform om te scrapen"),
+    platform: z.string().describe("Het platform om te scrapen"),
   }),
   execute: async ({ platform }) => {
+    const catalog = await listPlatformCatalog();
+    const availablePlatforms = catalog.map((entry) => entry.slug);
+
+    if (!availablePlatforms.includes(platform)) {
+      return {
+        error: `Onbekend platform: ${platform}`,
+        availablePlatforms,
+      };
+    }
+
     // Look up the config to get the base URL
     const [config] = await db
       .select()

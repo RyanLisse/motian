@@ -6,9 +6,13 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./platform-definitions": "./src/platform-definitions.ts",
+    "./platform-registry": "./src/platform-registry.ts"
   },
   "dependencies": {
-    "modal": "^0.6.3"
+    "modal": "^0.6.3",
+    "playwright": "^1.58.2",
+    "zod": "^3.25.76"
   }
 }

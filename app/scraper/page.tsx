@@ -14,6 +14,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { CrossPlatformListings } from "@/components/scraper/cross-platform-listings";
 import { formatPlatformLabel, PlatformBadge } from "@/components/scraper/platform-badge";
+import { PlatformCatalogList } from "@/components/scraper/platform-catalog-list";
 import { RecentActivityFeed } from "@/components/scraper/recent-activity-feed";
 import { ScrapeMetricsExplainer } from "@/components/scraper/scrape-metrics-explainer";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -34,6 +35,7 @@ import {
   getScraperDashboardData,
   type PlatformOperationalMetrics,
 } from "@/src/services/scraper-dashboard";
+import { listPlatformCatalog } from "@/src/services/scrapers";
 import { ScraperActions } from "./actions";
 
 function formatDateTime(value: Date | string | null | undefined) {
@@ -65,21 +67,21 @@ function triggerStatusConfig(status: string | null) {
 
   if (["completed", "success", "succeeded"].includes(normalized)) {
     return {
-      label: status ?? "completed",
+      label: "Voltooid",
       className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     };
   }
 
   if (["failed", "errored", "canceled", "cancelled"].includes(normalized)) {
     return {
-      label: status ?? "failed",
+      label: "Mislukt",
       className: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
     };
   }
 
   if (["executing", "pending", "queued", "running"].includes(normalized)) {
     return {
-      label: status ?? "queued",
+      label: normalized === "running" || normalized === "executing" ? "Bezig" : "In wachtrij",
       className: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
     };
   }
@@ -113,7 +115,7 @@ function PlatformHealthCard({
                   className="border-red-500/20 bg-red-500/10 text-[10px] text-red-500"
                 >
                   <AlertTriangle className="mr-1 h-3 w-3" />
-                  Circuit open
+                  Circuit geopend
                 </Badge>
               )}
             </div>
@@ -234,18 +236,17 @@ function PlatformHealthCard({
 export const dynamic = "force-dynamic";
 
 export default async function ScraperPage() {
-  const {
-    analytics,
-    recentRuns: results,
-    platforms,
-    activity,
-    overlap,
-    trigger,
-  } = await getScraperDashboardData({
-    activityLimit: 20,
-    overlapLimit: 8,
-    includeTrigger: true,
-  });
+  const [
+    platformCatalog,
+    { analytics, recentRuns: results, platforms, activity, overlap, trigger },
+  ] = await Promise.all([
+    listPlatformCatalog(),
+    getScraperDashboardData({
+      activityLimit: 20,
+      overlapLimit: 8,
+      includeTrigger: true,
+    }),
+  ]);
 
   const attentionPlatforms = platforms.filter(
     (platform) => platform.status === "waarschuwing" || platform.status === "kritiek",
@@ -330,6 +331,22 @@ export default async function ScraperPage() {
           <RecentActivityFeed activities={activity} />
         </div>
 
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Layers3 className="h-4 w-4" />
+              Platformcatalogus en inrichting
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Recruiters en agenten gebruiken hier dezelfde bouwstenen: kies een platform, sla de
+              configuratie op, valideer de toegang en voer een proefimport uit.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <PlatformCatalogList entries={platformCatalog} />
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
           <Card className="min-w-0 overflow-hidden bg-card border-border">
             <CardHeader className="min-w-0 pb-3">
@@ -373,7 +390,7 @@ export default async function ScraperPage() {
                             className="border-red-500/20 bg-red-500/10 text-[10px] text-red-500"
                           >
                             <AlertTriangle className="mr-1 h-3 w-3" />
-                            Circuit open
+                            Circuit geopend
                           </Badge>
                         ) : platform.isOverdue ? (
                           <Badge
@@ -462,7 +479,7 @@ export default async function ScraperPage() {
             <div>
               <h2 className="text-lg font-semibold text-foreground">Per-platform gezondheid</h2>
               <p className="text-sm text-muted-foreground">
-                Lifetime analytics, recente failures en schedule-signalen per bron in één kaart.
+                Historische statistieken, recente fouten en planningssignalen per bron in één kaart.
               </p>
             </div>
 

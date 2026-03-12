@@ -39,3 +39,11 @@ tmp/
 .entire/
 .opencode/
 GEMINI.md
+
+# Shared repo-local Codex skills that are part of the product workflow
+!.codex/
+!.codex/skills/
+!.codex/skills/platform-onboarding/
+!.codex/skills/platform-onboarding/SKILL.md
+!.codex/skills/public-board-triage/
+!.codex/skills/public-board-triage/SKILL.md

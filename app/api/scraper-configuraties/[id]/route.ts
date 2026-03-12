@@ -1,15 +1,19 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
+import { jsonObjectSchema } from "@/src/lib/json-value-schema";
 import { updateConfig } from "@/src/services/scrapers";
 
 export const dynamic = "force-dynamic";
 
 const patchSchema = z
   .object({
+    authConfig: jsonObjectSchema.optional(),
+    baseUrl: z.string().url().optional(),
     isActive: z.boolean().optional(),
     cronExpression: z.string().max(100).optional(),
-    parameters: z.record(z.unknown()).optional(),
+    credentialsRef: z.string().optional(),
+    parameters: jsonObjectSchema.optional(),
   })
   .refine((data) => Object.values(data).some((v) => v !== undefined), {
     message: "Minimaal één veld vereist",

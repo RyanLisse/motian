@@ -34,6 +34,24 @@ const vector = customType<{
 });
 
 // ========== Scraper Configuratie ==========
+export const platformCatalog = pgTable("platform_catalog", {
+  slug: text("slug").primaryKey(),
+  displayName: text("display_name").notNull(),
+  adapterKind: text("adapter_kind").notNull(),
+  authMode: text("auth_mode").notNull(),
+  attributionLabel: text("attribution_label").notNull(),
+  description: text("description").default(""),
+  capabilities: jsonb("capabilities").default([]),
+  docsUrl: text("docs_url"),
+  defaultBaseUrl: text("default_base_url"),
+  configSchema: jsonb("config_schema").default({}),
+  authSchema: jsonb("auth_schema").default({}),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  isSelfServe: boolean("is_self_serve").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const scraperConfigs = pgTable(
   "scraper_configs",
   {
@@ -43,7 +61,13 @@ export const scraperConfigs = pgTable(
     isActive: boolean("is_active").notNull().default(true),
     parameters: jsonb("parameters").default({}),
     authConfigEncrypted: text("auth_config_encrypted"),
+    credentialsRef: text("credentials_ref"),
     cronExpression: text("cron_expression").default("0 0 */4 * * *"),
+    validationStatus: text("validation_status").default("unknown"),
+    lastValidatedAt: timestamp("last_validated_at"),
+    lastValidationError: text("last_validation_error"),
+    lastTestImportAt: timestamp("last_test_import_at"),
+    lastTestImportStatus: text("last_test_import_status"),
     lastRunAt: timestamp("last_run_at"),
     lastRunStatus: text("last_run_status"),
     consecutiveFailures: integer("consecutive_failures").default(0),
@@ -77,6 +101,40 @@ export const scrapeResults = pgTable(
     configIdIdx: index("idx_scrape_results_config_id").on(table.configId),
     runAtIdx: index("idx_scrape_results_run_at").on(table.runAt),
     platformIdx: index("idx_scrape_results_platform").on(table.platform),
+  }),
+);
+
+// ========== Platform Onboarding Runs ==========
+export const platformOnboardingRuns = pgTable(
+  "platform_onboarding_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    platformSlug: text("platform_slug")
+      .notNull()
+      .references(() => platformCatalog.slug, { onDelete: "cascade" }),
+    configId: uuid("config_id").references(() => scraperConfigs.id, {
+      onDelete: "set null",
+    }),
+    source: text("source").notNull().default("ui"),
+    status: text("status").notNull().default("draft"),
+    currentStep: text("current_step").notNull().default("create_draft"),
+    blockerKind: text("blocker_kind"),
+    nextActions: jsonb("next_actions").default([]),
+    evidence: jsonb("evidence").default({}),
+    result: jsonb("result").default({}),
+    startedAt: timestamp("started_at").defaultNow(),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    platformSlugIdx: index("idx_platform_onboarding_runs_platform_slug").on(table.platformSlug),
+    configIdIdx: index("idx_platform_onboarding_runs_config_id").on(table.configId),
+    updatedAtIdx: index("idx_platform_onboarding_runs_updated_at").on(table.updatedAt),
+    latestPerPlatformIdx: index("idx_platform_onboarding_runs_platform_slug_updated_at").on(
+      table.platformSlug,
+      table.updatedAt,
+    ),
   }),
 );
 
