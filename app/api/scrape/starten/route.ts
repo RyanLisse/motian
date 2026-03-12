@@ -1,7 +1,6 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { publish } from "@/src/lib/event-bus";
 import { rateLimit } from "@/src/lib/rate-limit";
 import { importJobsFromActiveScrapers } from "@/src/services/operations-console";
 
@@ -45,9 +44,6 @@ export async function POST(request: NextRequest) {
     revalidatePath("/opdrachten");
     revalidatePath("/scraper");
     revalidatePath("/overzicht");
-    for (const p of summary.platforms) {
-      publish("scrape:complete", { platform: p.platform, jobsNew: p.jobsNew, duplicates: p.duplicates });
-    }
 
     return Response.json({
       message: `Scrape gestart voor ${summary.totalPlatforms} platform(en)`,

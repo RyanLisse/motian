@@ -57,10 +57,16 @@ export async function updateJob(
     >
   >,
 ): Promise<Job | null> {
+  type JobSearchHelperUpdate = {
+    dedupeLocationNormalized?: SQL<string>;
+    dedupeTitleNormalized?: SQL<string>;
+    searchText?: SQL<string>;
+  };
+
   // Recompute stored helper columns whenever a source field changes.
   // PostgreSQL evaluates SET-clause expressions against pre-update row values, so we
   // inject literal values for updated fields and column refs for unchanged ones.
-  const derivedUpdate: Record<string, SQL<string>> = {};
+  const derivedUpdate: JobSearchHelperUpdate = {};
 
   if ("title" in data) {
     derivedUpdate.dedupeTitleNormalized = getNormalizedCompatibilityExpression(
@@ -83,10 +89,14 @@ export async function updateJob(
     derivedUpdate.searchText = sql<string>`trim(regexp_replace(concat_ws(' ', nullif(trim(coalesce(${titleVal}, '')), ''), nullif(trim(coalesce(${jobs.company}, '')), ''), nullif(trim(coalesce(${descVal}, '')), ''), nullif(trim(coalesce(${locationVal}, '')), ''), nullif(trim(coalesce(${jobs.province}, '')), '')), '[[:space:]]+', ' ', 'g'))`;
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle set() accepts SQL<T> for text columns but $inferInsert types them as string
+  const updateValues: typeof data & JobSearchHelperUpdate = {
+    ...data,
+    ...derivedUpdate,
+  };
+
   const rows = await db
     .update(jobs)
-    .set({ ...data, ...derivedUpdate } as any)
+    .set(updateValues)
     .where(eq(jobs.id, id))
     .returning(jobReadSelection);
 

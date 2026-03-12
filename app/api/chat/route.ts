@@ -199,9 +199,10 @@ export async function POST(req: Request) {
     }
   }
 
-  const modelMessages = sessionId && userMessagesPersisted
-    ? await loadSessionMessagesOrFallback(sessionId, undefined, requestMessages)
-    : requestMessages;
+  const modelMessages =
+    sessionId && userMessagesPersisted
+      ? await loadSessionMessagesOrFallback(sessionId, undefined, requestMessages)
+      : requestMessages;
 
   const system = await buildSystemPrompt(ctx);
   const model = resolveChatModel(body.model);

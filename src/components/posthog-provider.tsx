@@ -9,6 +9,25 @@ type WindowStorageLike = {
   sessionStorage?: Pick<Storage, "setItem" | "removeItem"> | null;
 };
 
+type StorageName = keyof WindowStorageLike;
+
+function getStorageSafely(
+  windowLike: WindowStorageLike | null | undefined,
+  storageName: StorageName,
+): { storage: Pick<Storage, "setItem" | "removeItem"> | null; threw: boolean } {
+  try {
+    return {
+      storage: windowLike?.[storageName] ?? null,
+      threw: false,
+    };
+  } catch {
+    return {
+      storage: null,
+      threw: true,
+    };
+  }
+}
+
 function canUseStorage(storage?: Pick<Storage, "setItem" | "removeItem"> | null): boolean {
   if (!storage) return false;
 
@@ -24,7 +43,14 @@ function canUseStorage(storage?: Pick<Storage, "setItem" | "removeItem"> | null)
 export function getPostHogPersistence(
   windowLike?: WindowStorageLike | null,
 ): "localStorage+cookie" | "memory" {
-  return canUseStorage(windowLike?.localStorage) ? "localStorage+cookie" : "memory";
+  const localStorageResult = getStorageSafely(windowLike, "localStorage");
+  const sessionStorageResult = getStorageSafely(windowLike, "sessionStorage");
+
+  if (localStorageResult.threw || sessionStorageResult.threw) {
+    return "memory";
+  }
+
+  return canUseStorage(localStorageResult.storage) ? "localStorage+cookie" : "memory";
 }
 
 export function getPostHogInitOptions(windowLike?: WindowStorageLike | null) {

@@ -360,6 +360,22 @@ function paginateLegacyMessages(
   };
 }
 
+async function insertChatSessionMessagesIgnoringDuplicates(query: unknown) {
+  if (
+    typeof query === "object" &&
+    query !== null &&
+    "onConflictDoNothing" in query &&
+    typeof query.onConflictDoNothing === "function"
+  ) {
+    await query.onConflictDoNothing({
+      target: [chatSessionMessages.sessionId, chatSessionMessages.messageId],
+    });
+    return;
+  }
+
+  await query;
+}
+
 async function migrateLegacySessionMessagesToNormalizedStore(sessionId: string) {
   await db.transaction(async (tx) => {
     const [{ existingCount }] = await tx
@@ -625,9 +641,8 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
               .from(chatSessionMessages)
               .where(eq(chatSessionMessages.sessionId, sessionId));
 
-            await tx
-              .insert(chatSessionMessages)
-              .values(
+            await insertChatSessionMessagesIgnoringDuplicates(
+              tx.insert(chatSessionMessages).values(
                 pendingMessages.map((message, index) => ({
                   sessionId,
                   messageId: message.id,
@@ -635,10 +650,8 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
                   message,
                   orderIndex: (maxOrderIndex ?? 0) + index + 1,
                 })),
-              )
-              .onConflictDoNothing({
-                target: [chatSessionMessages.sessionId, chatSessionMessages.messageId],
-              });
+              ),
+            );
           }
 
           const [{ messageCount }] = await tx
@@ -825,5 +838,5 @@ export async function deleteSession(sessionId: string): Promise<boolean> {
     );
   });
 
-  return result.length > 0;
+  return Array.isArray(result) && result.length > 0;
 }
