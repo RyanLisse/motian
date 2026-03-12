@@ -8,6 +8,11 @@
  */
 
 import type { RawScrapedListing } from "./types";
+import {
+  toAbsoluteUrl,
+  decodeText,
+  sanitizeHours,
+} from "./lib/utils";
 
 const MAPPING_FUNCTIONS_AS_STRING = `
 function mapBoolean(val) {
@@ -118,8 +123,8 @@ function mapDetailListing(job, detail) {
     conditions,
     positionsAvailable: detail.positionsCount ?? base.positionsAvailable,
 
-    hoursPerWeek: detail.hoursPerWeek ?? undefined,
-    minHoursPerWeek: detail.minHoursPerWeek ?? undefined,
+    hoursPerWeek: sanitizeHours(detail.hoursPerWeek),
+    minHoursPerWeek: sanitizeHours(detail.minHoursPerWeek),
     extensionPossible: detail.extensionPossible ?? undefined,
     countryCode: detail.countryCode ?? undefined,
     remunerationType: detail.remunerationType ?? undefined,

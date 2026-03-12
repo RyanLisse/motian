@@ -68,6 +68,18 @@ export function ensureMinLength(text: string, fallback: string, minLength = 10):
   return plainText.length >= minLength ? plainText : `${fallback} - vacature via platform`;
 }
 
+/**
+ * Sanitizes hours per week to be within realistic bounds [1, 168].
+ * Values > 168 (e.g. project totals) are treated as invalid (undefined).
+ * Values are rounded to the nearest integer.
+ */
+export function sanitizeHours(hours: number | undefined): number | undefined {
+  if (hours === undefined || !Number.isFinite(hours)) return undefined;
+  const rounded = Math.round(hours);
+  if (rounded <= 0 || rounded > 168) return undefined;
+  return rounded;
+}
+
 /** Reads a number from unknown value */
 export function readNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);

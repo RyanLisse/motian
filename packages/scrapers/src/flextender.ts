@@ -1,5 +1,6 @@
 import type { RawScrapedListing } from "./types";
 import { stripHtml } from "./strip-html";
+import { toAbsoluteUrl, ensureMinLength, sanitizeHours } from "./lib/utils";
 
 const PAGE_URL = "https://www.flextender.nl/opdrachten/";
 const AJAX_URL = "https://www.flextender.nl/wp-admin/admin-ajax.php";
@@ -617,10 +618,6 @@ function parseDurationMonths(raw: string | undefined): number | undefined {
   return undefined;
 }
 
-function sanitizeHoursPerWeek(hours: number): number | undefined {
-  return hours > 0 && hours <= MAX_HOURS_PER_WEEK ? hours : undefined;
-}
-
 /** Parse "Uren per week" field: "36 uur" → {max:36}, "24 tot 32 uur" → {min:24, max:32} */
 export function parseHoursPerWeek(raw: string | undefined): {
   hoursPerWeek?: number;
@@ -631,8 +628,8 @@ export function parseHoursPerWeek(raw: string | undefined): {
   if (rangeMatch) {
     const min = parseInt(rangeMatch[1], 10);
     const max = parseInt(rangeMatch[2], 10);
-    const sanitizedMin = sanitizeHoursPerWeek(min);
-    const sanitizedMax = sanitizeHoursPerWeek(max);
+    const sanitizedMin = sanitizeHours(min);
+    const sanitizedMax = sanitizeHours(max);
     if (!sanitizedMin || !sanitizedMax || sanitizedMin > sanitizedMax) {
       return {};
     }
@@ -644,7 +641,7 @@ export function parseHoursPerWeek(raw: string | undefined): {
   const singleMatch = raw.match(/(\d+)/);
   if (singleMatch) {
     const hours = parseInt(singleMatch[1], 10);
-    const sanitizedHours = sanitizeHoursPerWeek(hours);
+    const sanitizedHours = sanitizeHours(hours);
     return sanitizedHours ? { hoursPerWeek: sanitizedHours } : {};
   }
   return {};

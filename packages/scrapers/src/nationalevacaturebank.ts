@@ -10,8 +10,9 @@ import type {
 import {
   decodeText,
   firstMatch,
-  parsePositiveInteger,
   toAbsoluteUrl,
+  sanitizeHours,
+  parsePositiveInteger,
   readString,
 } from "./lib/utils";
 

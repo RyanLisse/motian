@@ -1,5 +1,12 @@
 import type { RawScrapedListing } from "./types";
-import { stripHtml, ensureMinLength, validDate } from "./lib/utils";
+import {
+  stripHtml,
+  toAbsoluteUrl,
+  decodeText,
+  sanitizeHours,
+  ensureMinLength,
+  validDate,
+} from "./lib/utils";
 
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
 const MAX_RESULTS = 1000;
@@ -240,8 +247,8 @@ export function mapOpdrachtoverheidTenderToListing(t: OpdrachtoverheidTender): R
         ? requirements.map((r) => ({ description: r, isKnockout: true }))
         : [],
     competences: competences.length > 0 ? competences : [],
-    hoursPerWeek,
-    minHoursPerWeek,
+    hoursPerWeek: sanitizeHours(hoursPerWeek),
+    minHoursPerWeek: sanitizeHours(minHoursPerWeek),
     extensionPossible,
     countryCode: "NL",
     attachments,

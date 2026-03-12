@@ -12,6 +12,8 @@ import {
   parsePositiveInteger,
   toAbsoluteUrl,
   ensureMinLength,
+  stripHtml,
+  sanitizeHours,
 } from "./lib/utils";
 
 const WERKZOEKEN_FETCH_TIMEOUT_MS = 20_000;
@@ -86,7 +88,7 @@ export function parseWerkzoekenListingCards(
   while (match !== null) {
     const rawAttributes = match[1];
     const externalUrl = toAbsoluteUrl(match[2], baseUrl);
-    const title = decodeText(match[3]);
+    const title = stripHtml(decodeText(match[3]));
     const externalId = firstMatch(/data-vacancyid="([^"]+)"/, rawAttributes);
     const company = decodeText(firstMatch(/data-business="([^"]+)"/, rawAttributes));
     const location = decodeText(firstMatch(/data-location-label="([^"]+)"/, rawAttributes));
@@ -107,8 +109,8 @@ export function parseWerkzoekenListingCards(
         educationLevel,
         rateMin: parseSalaryValue(firstMatch(/data-salary-minimal="([^"]+)"/, rawAttributes)),
         rateMax: parseSalaryValue(firstMatch(/data-salary-maximum="([^"]+)"/, rawAttributes)),
-        minHoursPerWeek: min,
-        hoursPerWeek: max,
+        minHoursPerWeek: sanitizeHours(min),
+        hoursPerWeek: sanitizeHours(max),
         description: `${title} bij ${company}`.trim(),
         sourceUrl: externalUrl,
         sourcePlatform: "Werkzoeken.nl",
@@ -126,9 +128,10 @@ export function parseWerkzoekenDetailPage(
   html: string,
   externalUrl: string,
 ): Partial<RawScrapedListing> {
-  const title =
+  const title = stripHtml(
     decodeText(firstMatch(/<h1[^>]*>([\s\S]*?)<\/h1>/, html)) ||
-    decodeText(firstMatch(/<meta property="og:title" content="([^"]+)"/, html));
+      decodeText(firstMatch(/<meta property="og:title" content="([^"]+)"/, html)),
+  );
   const company = decodeText(
     firstMatch(/<div class="company-name">([\s\S]*?)<\/div>/, html) ??
       firstMatch(/\|\s*([^|]+)\s*op Werkzoeken\.nl/, html),
