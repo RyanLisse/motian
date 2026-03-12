@@ -152,10 +152,24 @@ export async function getOverviewData(database: typeof db = db) {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const now = new Date();
 
-  return database.transaction(async (tx) => {
-    // Reuse one pooled client for all dashboard reads to avoid repeated
-    // pg-pool.connect spans on a single /overzicht render.
-    const platformCounts = await tx
+  // Note: We use Promise.all directly on the database object instead of
+  // wrapping these in database.transaction(). The Next.js 15+ App Router
+  // uses AsyncLocalStorage for Request/Response context (like cookies and headers),
+  // and the pg driver's internal connection queueing mechanism used by transactions
+  // loses this context during concurrent async operations in force-dynamic routes,
+  // throwing "Access to storage is not allowed from this context".
+  const [
+    platformCounts,
+    recentJobs,
+    activeScrapers,
+    recentScrapes,
+    topCompanies,
+    locationCounts,
+    pipelineStageCounts,
+    upcomingInterviewCountResult,
+    upcomingInterviews,
+  ] = await Promise.all([
+    database
       .select({
         platform: jobs.platform,
         count: sql<number>`count(*)::int`,
@@ -163,18 +177,15 @@ export async function getOverviewData(database: typeof db = db) {
       })
       .from(jobs)
       .groupBy(jobs.platform)
-      .orderBy(sql`count(*) desc`);
+      .orderBy(sql`count(*) desc`),
 
-    const recentJobs = await getRecentJobs(tx);
+    getRecentJobs(database),
 
-    const activeScrapers = await tx
-      .select()
-      .from(scraperConfigs)
-      .where(eq(scraperConfigs.isActive, true));
+    database.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
 
-    const recentScrapes = await getRecentScrapes(tx);
+    getRecentScrapes(database),
 
-    const topCompanies = await tx
+    database
       .select({
         company: jobs.company,
         count: sql<number>`count(*)::int`,
@@ -183,9 +194,9 @@ export async function getOverviewData(database: typeof db = db) {
       .where(sql`${jobs.company} is not null`)
       .groupBy(jobs.company)
       .orderBy(sql`count(*) desc`)
-      .limit(5);
+      .limit(5),
 
-    const locationCounts = await tx
+    database
       .select({
         province: jobs.province,
         count: sql<number>`count(*)::int`,
@@ -194,18 +205,18 @@ export async function getOverviewData(database: typeof db = db) {
       .where(sql`${jobs.province} is not null`)
       .groupBy(jobs.province)
       .orderBy(sql`count(*) desc`)
-      .limit(5);
+      .limit(5),
 
-    const pipelineStageCounts = await tx
+    database
       .select({
         stage: applications.stage,
         count: sql<number>`count(*)::int`,
       })
       .from(applications)
       .where(isNull(applications.deletedAt))
-      .groupBy(applications.stage);
+      .groupBy(applications.stage),
 
-    const upcomingInterviewCountResult = await tx
+    database
       .select({ count: sql<number>`count(*)::int` })
       .from(interviews)
       .where(
@@ -214,9 +225,9 @@ export async function getOverviewData(database: typeof db = db) {
           eq(interviews.status, "scheduled"),
           gte(interviews.scheduledAt, now),
         ),
-      );
+      ),
 
-    const upcomingInterviews = await tx
+    database
       .select({
         id: interviews.id,
         scheduledAt: interviews.scheduledAt,
@@ -237,18 +248,18 @@ export async function getOverviewData(database: typeof db = db) {
         ),
       )
       .orderBy(asc(interviews.scheduledAt))
-      .limit(4);
+      .limit(4),
+  ]);
 
-    return {
-      activeScrapers,
-      locationCounts,
-      pipelineStageCounts,
-      platformCounts,
-      recentJobs,
-      recentScrapes,
-      topCompanies,
-      upcomingInterviewCountResult,
-      upcomingInterviews,
-    };
-  });
+  return {
+    activeScrapers,
+    locationCounts,
+    pipelineStageCounts,
+    platformCounts,
+    recentJobs,
+    recentScrapes,
+    topCompanies,
+    upcomingInterviewCountResult,
+    upcomingInterviews,
+  };
 }
