@@ -1,7 +1,6 @@
 import { tool } from "ai";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
-import { PLATFORMS } from "@/src/lib/helpers";
 import {
   importJobsFromActiveScrapers,
   reviewGdprRetention,
@@ -12,7 +11,7 @@ export const importeerOpdrachtenBatch = tool({
   description:
     "Importeer opdrachten door actieve scrapers uit te voeren. Zonder platform draait dit op alle actieve platforms.",
   inputSchema: z.object({
-    platform: z.enum(PLATFORMS).optional().describe("Optioneel: run alleen voor één platform"),
+    platform: z.string().optional().describe("Optioneel: run alleen voor één platform"),
   }),
   execute: async ({ platform }) => {
     const summary = await importJobsFromActiveScrapers(platform);

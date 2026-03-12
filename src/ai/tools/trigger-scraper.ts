@@ -10,7 +10,7 @@ import { runScrapePipeline } from "@/src/services/scrape-pipeline";
 export const triggerScraper = tool({
   description: `Start een scraper voor een specifiek platform. Beschikbare platforms: ${PLATFORMS.join(", ")}. Dit kan even duren (30s-2min).`,
   inputSchema: z.object({
-    platform: z.enum(PLATFORMS).describe("Het platform om te scrapen"),
+    platform: z.string().describe("Het platform om te scrapen"),
   }),
   execute: async ({ platform }) => {
     // Look up the config to get the base URL

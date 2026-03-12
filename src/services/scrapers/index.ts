@@ -1,6 +1,15 @@
 export {
+  detectNationaleVacaturebankBlocker,
+  getImplementedPlatformDefinition,
+  getImplementedPlatformSlugs,
+  getPlatformAdapter,
+  getPlatformDefinition,
+  listPlatformCatalogEntries,
+  listPlatformDefinitions,
+  nationaleVacaturebankAdapter,
   type RawScrapedListing,
   scrapeFlextender,
   scrapeOpdrachtoverheid,
   scrapeStriive,
+  werkzoekenAdapter,
 } from "@motian/scrapers";

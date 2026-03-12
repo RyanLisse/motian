@@ -3,6 +3,7 @@ import { z } from "zod";
 
 // ========== Direct service imports (no HTTP overhead) ==========
 
+import { jsonObjectSchema } from "../lib/json-value-schema.js";
 import {
   createApplication,
   deleteApplication,
@@ -51,7 +52,16 @@ import {
 import { extractRequirements } from "../services/requirement-extraction.js";
 import { runScrapePipeline } from "../services/scrape-pipeline.js";
 import { getTimeSeriesAnalytics } from "../services/scrape-results.js";
-import { getAllConfigs } from "../services/scrapers.js";
+import {
+  activatePlatform,
+  createConfig,
+  createPlatformCatalogEntry,
+  getAllConfigs,
+  getPlatformOnboardingStatus,
+  listPlatformCatalog,
+  triggerTestRun,
+  validateConfig,
+} from "../services/scrapers.js";
 import { runStructuredMatch } from "../services/structured-matching.js";
 
 /**
@@ -649,6 +659,70 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
         }),
 
         // ========== Scraper / Operations ==========
+
+        platformsLijst: llm.tool({
+          description: "Lijst alle platform catalogus entries en onboarding status.",
+          parameters: z.object({}),
+          execute: async () => listPlatformCatalog(),
+        }),
+
+        platformCatalogMaakAan: llm.tool({
+          description: "Maak of seed een platform catalogus entry.",
+          parameters: z.object({
+            slug: z.string().describe("Platform slug"),
+            displayName: z.string().optional().describe("Leesbare naam"),
+            adapterKind: z.string().optional().describe("Adapter kind"),
+            authMode: z.string().optional().describe("Authenticatie modus"),
+            defaultBaseUrl: z.string().optional().describe("Default base URL"),
+          }),
+          execute: async (input) => createPlatformCatalogEntry({ ...input, source: "voice" }),
+        }),
+
+        platformConfigAanmaken: llm.tool({
+          description: "Maak of overschrijf een platform runtime config.",
+          parameters: z.object({
+            platform: z.string().describe("Platform slug"),
+            baseUrl: z.string().optional().describe("Base URL"),
+            cronExpression: z.string().optional().describe("Cron expressie"),
+            isActive: z.boolean().optional().describe("Activeer direct"),
+            parameters: jsonObjectSchema.optional(),
+            authConfig: jsonObjectSchema.optional(),
+          }),
+          execute: async (input) => createConfig({ ...input, source: "voice" }),
+        }),
+
+        platformConfigValideren: llm.tool({
+          description: "Valideer de opgeslagen platform configuratie.",
+          parameters: z.object({
+            platform: z.string().describe("Platform slug"),
+          }),
+          execute: async ({ platform }) => validateConfig(platform, "voice"),
+        }),
+
+        platformTestImport: llm.tool({
+          description: "Draai een smoke import voor een platform.",
+          parameters: z.object({
+            platform: z.string().describe("Platform slug"),
+            limit: z.number().int().min(1).max(10).optional().describe("Max listings"),
+          }),
+          execute: async ({ platform, limit }) => triggerTestRun(platform, "voice", limit ?? 3),
+        }),
+
+        platformActiveren: llm.tool({
+          description: "Activeer een platform na succesvolle onboarding.",
+          parameters: z.object({
+            platform: z.string().describe("Platform slug"),
+          }),
+          execute: async ({ platform }) => activatePlatform(platform, "voice"),
+        }),
+
+        platformOnboardingStatus: llm.tool({
+          description: "Toon de huidige config en onboarding status voor een platform.",
+          parameters: z.object({
+            platform: z.string().describe("Platform slug"),
+          }),
+          execute: async ({ platform }) => getPlatformOnboardingStatus(platform),
+        }),
 
         startScraper: llm.tool({
           description:

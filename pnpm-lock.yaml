@@ -390,6 +390,12 @@ importers:
       modal:
         specifier: ^0.6.3
         version: 0.6.3
+      playwright:
+        specifier: ^1.58.2
+        version: 1.58.2
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
 packages:
 

@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs } from "../db/schema";
-import { getHealth } from "./scrapers";
+import { getHealth, listPlatformCatalog } from "./scrapers";
 
 export type WorkspaceSummary = {
   jobs: { total: number; withEmbedding: number };
@@ -9,6 +9,10 @@ export type WorkspaceSummary = {
   matches: { total: number; pending: number };
   scraperHealth: {
     overall: string;
+    configuredPlatforms: number;
+    pendingOnboarding: number;
+    supportedPlatforms: number;
+    blockers: Array<{ platform: string; blockerKind: string | null }>;
     platforms: Array<{ platform: string; status: string; lastRunAt: Date | null }>;
   };
 };
@@ -16,7 +20,7 @@ export type WorkspaceSummary = {
 /** Lightweight workspace overview for system prompt injection. */
 export async function getWorkspaceSummary(): Promise<WorkspaceSummary> {
   // Single query with scalar subqueries replaces 3 separate count queries (fixes N+1)
-  const [allCounts, health] = await Promise.all([
+  const [allCounts, health, catalog] = await Promise.all([
     db
       .select({
         jobsTotal: sql<number>`(select count(*)::int from jobs)`,
@@ -28,15 +32,31 @@ export async function getWorkspaceSummary(): Promise<WorkspaceSummary> {
       .from(jobs)
       .limit(1),
     getHealth(),
+    listPlatformCatalog(),
   ]);
 
   const c = allCounts[0];
+  const pendingOnboarding = catalog.filter(
+    (entry) =>
+      entry.latestRun?.status &&
+      ["draft", "config_saved", "validated", "tested", "failed"].includes(entry.latestRun.status),
+  ).length;
+
   return {
     jobs: { total: c?.jobsTotal ?? 0, withEmbedding: c?.jobsWithEmbedding ?? 0 },
     candidates: { total: c?.candidatesTotal ?? 0 },
     matches: { total: c?.matchesTotal ?? 0, pending: c?.matchesPending ?? 0 },
     scraperHealth: {
       overall: health.overall,
+      supportedPlatforms: catalog.length,
+      configuredPlatforms: catalog.filter((entry) => entry.config).length,
+      pendingOnboarding,
+      blockers: catalog
+        .filter((entry) => entry.latestRun?.blockerKind)
+        .map((entry) => ({
+          platform: entry.slug,
+          blockerKind: entry.latestRun?.blockerKind ?? null,
+        })),
       platforms: health.data.map((h) => ({
         platform: h.platform,
         status: h.status,

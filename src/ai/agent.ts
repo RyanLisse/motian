@@ -1,5 +1,6 @@
 import { PLATFORMS } from "@/src/lib/helpers";
 import { HYBRID_BLEND, SCORING_WEIGHTS } from "@/src/services/scoring";
+import { listPlatformCatalog } from "@/src/services/scrapers";
 import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
 
@@ -20,6 +21,18 @@ const opdrachtTools = {
   importeerOpdrachtenBatch: tools.importeerOpdrachtenBatch,
   runKandidaatScoringBatch: tools.runKandidaatScoringBatch,
   reviewGdprRetentie: tools.reviewGdprRetentie,
+};
+
+const platformTools = {
+  platformsList: tools.platformsList,
+  platformCatalogCreate: tools.platformCatalogCreate,
+  platformCatalogUpdate: tools.platformCatalogUpdate,
+  platformConfigCreate: tools.platformConfigCreate,
+  platformConfigUpdate: tools.platformConfigUpdate,
+  platformConfigValidate: tools.platformConfigValidate,
+  platformTestImport: tools.platformTestImport,
+  platformActivate: tools.platformActivate,
+  platformOnboardingStatus: tools.platformOnboardingStatus,
 };
 
 const kandidaatTools = {
@@ -75,6 +88,7 @@ const gdprTools = {
 
 export const recruitmentTools = {
   ...opdrachtTools,
+  ...platformTools,
   ...kandidaatTools,
   ...matchTools,
   ...sollicitatieTools,
@@ -107,6 +121,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
       "Sollicitaties bekijken en pipeline-fases bijwerken",
       "Data analyseren (tarieven, platforms, deadlines)",
       "Scrapers en scoring-batches starten voor opdrachten",
+      "Platform onboarding beheren: catalogus, config, validatie en smoke imports",
     ];
   }
 
@@ -135,6 +150,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
     "Data analyseren (tarieven, platforms, deadlines)",
     "Scrapers starten voor nieuwe opdrachten",
     "Batch import draaien over actieve scrapers (importeerOpdrachtenBatch)",
+    "Platform onboarding beheren: catalogus, config, validatie, test-import en activatie",
     "Batch scoring draaien over actieve opdrachten (runKandidaatScoringBatch)",
     "GDPR retentie review uitvoeren (reviewGdprRetentie)",
     "GDPR: kandidaatdata exporteren, permanent verwijderen, contactgegevens scrubben",
@@ -145,6 +161,7 @@ export function getRecruitmentTools(context?: AgentContext) {
   if (isOpdrachtContext(context)) {
     return {
       ...opdrachtTools,
+      ...platformTools,
       ...matchTools,
       ...sollicitatieTools,
     };
@@ -167,13 +184,22 @@ export function getRecruitmentTools(context?: AgentContext) {
 /** Build workspace context string for prompt injection. */
 async function getWorkspaceContext(): Promise<string> {
   try {
-    const summary = await getWorkspaceSummary();
+    const [summary, catalog] = await Promise.all([getWorkspaceSummary(), listPlatformCatalog()]);
 
     const scraperLines = summary.scraperHealth.platforms
       .map(
         (h) =>
           `  ${h.platform}: ${h.status}${h.lastRunAt ? ` (laatste run: ${new Date(h.lastRunAt).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" })})` : ""}`,
       )
+      .join("\n");
+    const catalogLines = catalog
+      .map((entry) => {
+        const configState = entry.config ? "geconfigureerd" : "nog niet geconfigureerd";
+        const blocker = entry.latestRun?.blockerKind
+          ? ` · blocker: ${entry.latestRun.blockerKind}`
+          : "";
+        return `  ${entry.slug}: ${entry.displayName} (${entry.adapterKind}, ${configState})${blocker}`;
+      })
       .join("\n");
 
     return `
@@ -182,7 +208,11 @@ Werkruimte overzicht:
 - Kandidaten: ${summary.candidates.total} actief
 - Matches: ${summary.matches.total} totaal (${summary.matches.pending} pending review)
 - Scraper gezondheid: ${summary.scraperHealth.overall}
-${scraperLines}`;
+- Platformen: ${summary.scraperHealth.configuredPlatforms}/${summary.scraperHealth.supportedPlatforms} geconfigureerd, ${summary.scraperHealth.pendingOnboarding} onboarding flows open
+${scraperLines}
+
+Platform catalogus:
+${catalogLines}`;
   } catch {
     return "";
   }
@@ -209,7 +239,7 @@ Geef beknopte maar informatieve antwoorden. Gebruik nummers en tabellen waar nut
 
 Vandaag is ${now}.
 
-Beschikbare platforms: ${PLATFORMS.join(", ")}.
+Beschikbare platform-slugs: ${PLATFORMS.join(", ")}.
 
 Je kunt helpen met:
 ${capabilityLines}

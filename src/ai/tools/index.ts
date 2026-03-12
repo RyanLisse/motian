@@ -45,6 +45,17 @@ export {
   reviewGdprRetentie,
   runKandidaatScoringBatch,
 } from "./operations-console";
+export {
+  platformActivate,
+  platformCatalogCreate,
+  platformCatalogUpdate,
+  platformConfigCreate,
+  platformConfigUpdate,
+  platformConfigValidate,
+  platformOnboardingStatus,
+  platformsList,
+  platformTestImport,
+} from "./platforms";
 export { queryOpdrachten } from "./query-opdrachten";
 // Sollicitatie tools
 export {

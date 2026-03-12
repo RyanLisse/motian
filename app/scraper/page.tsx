@@ -14,6 +14,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { CrossPlatformListings } from "@/components/scraper/cross-platform-listings";
 import { formatPlatformLabel, PlatformBadge } from "@/components/scraper/platform-badge";
+import { PlatformCatalogList } from "@/components/scraper/platform-catalog-list";
 import { RecentActivityFeed } from "@/components/scraper/recent-activity-feed";
 import { ScrapeMetricsExplainer } from "@/components/scraper/scrape-metrics-explainer";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -34,6 +35,7 @@ import {
   getScraperDashboardData,
   type PlatformOperationalMetrics,
 } from "@/src/services/scraper-dashboard";
+import { listPlatformCatalog } from "@/src/services/scrapers";
 import { ScraperActions } from "./actions";
 
 function formatDateTime(value: Date | string | null | undefined) {
@@ -234,6 +236,7 @@ function PlatformHealthCard({
 export const dynamic = "force-dynamic";
 
 export default async function ScraperPage() {
+  const platformCatalog = await listPlatformCatalog();
   const {
     analytics,
     recentRuns: results,
@@ -329,6 +332,22 @@ export default async function ScraperPage() {
           <ScrapeMetricsExplainer />
           <RecentActivityFeed activities={activity} />
         </div>
+
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Layers3 className="h-4 w-4" />
+              Platform Catalogus & Onboarding
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Recruiters en agents gebruiken hier dezelfde primitives: kies een platform, sla de
+              config op, valideer de toegang en draai een smoke import.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <PlatformCatalogList entries={platformCatalog} />
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
           <Card className="min-w-0 overflow-hidden bg-card border-border">

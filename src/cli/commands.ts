@@ -57,7 +57,18 @@ import {
   runCandidateScoringBatch,
 } from "../services/operations-console";
 import { getHistory } from "../services/scrape-results";
-import { getAllConfigs, getHealth, updateConfig } from "../services/scrapers";
+import {
+  activatePlatform,
+  createConfig,
+  createPlatformCatalogEntry,
+  getAllConfigs,
+  getHealth,
+  getPlatformOnboardingStatus,
+  listPlatformCatalog,
+  triggerTestRun,
+  updateConfig,
+  validateConfig,
+} from "../services/scrapers";
 
 // ========== Helpers ==========
 
@@ -593,6 +604,76 @@ export const commands: Record<string, Command> = {
     description: "Toon alle scraperconfiguraties met status",
     usage: "",
     handler: async () => getAllConfigs(),
+  },
+
+  "platforms:list": {
+    description: "Toon de platform catalogus inclusief onboarding status",
+    usage: "",
+    handler: async () => listPlatformCatalog(),
+  },
+
+  "platforms:add": {
+    description: "Maak of seed een platform catalogus entry",
+    usage: "--slug <slug> [--display-name <naam>] [--adapter-kind <kind>] [--auth-mode <mode>]",
+    handler: async (args) => {
+      return createPlatformCatalogEntry({
+        slug: requireArg(args, "slug"),
+        displayName: optionalString(args, "display-name"),
+        adapterKind: optionalString(args, "adapter-kind"),
+        authMode: optionalString(args, "auth-mode"),
+        defaultBaseUrl: optionalString(args, "base-url"),
+        docsUrl: optionalString(args, "docs-url"),
+        description: optionalString(args, "description"),
+        source: "cli",
+      });
+    },
+  },
+
+  "platforms:configure": {
+    description: "Maak of overschrijf een platform runtime config",
+    usage:
+      "--platform <slug> [--base-url <url>] [--cron <expr>] [--active <true|false>] [--params-json <json>] [--auth-json <json>]",
+    handler: async (args) => {
+      const paramsJson = optionalString(args, "params-json");
+      const authJson = optionalString(args, "auth-json");
+      return createConfig({
+        platform: requireArg(args, "platform"),
+        baseUrl: optionalString(args, "base-url"),
+        cronExpression: optionalString(args, "cron"),
+        isActive: optionalString(args, "active")
+          ? optionalString(args, "active") === "true"
+          : undefined,
+        parameters: paramsJson ? JSON.parse(paramsJson) : undefined,
+        authConfig: authJson ? JSON.parse(authJson) : undefined,
+        credentialsRef: optionalString(args, "credentials-ref"),
+        source: "cli",
+      });
+    },
+  },
+
+  "platforms:validate": {
+    description: "Valideer de opgeslagen configuratie voor een platform",
+    usage: "--platform <slug>",
+    handler: async (args) => validateConfig(requireArg(args, "platform"), "cli"),
+  },
+
+  "platforms:test-import": {
+    description: "Draai een smoke import voor een platform",
+    usage: "--platform <slug> [--limit <n>]",
+    handler: async (args) =>
+      triggerTestRun(requireArg(args, "platform"), "cli", optionalNumber(args, "limit") ?? 3),
+  },
+
+  "platforms:activate": {
+    description: "Activeer een gevalideerd platform",
+    usage: "--platform <slug>",
+    handler: async (args) => activatePlatform(requireArg(args, "platform"), "cli"),
+  },
+
+  "platforms:status": {
+    description: "Toon config + onboarding status voor een platform",
+    usage: "--platform <slug>",
+    handler: async (args) => getPlatformOnboardingStatus(requireArg(args, "platform")),
   },
 
   "scraper:toggle": {

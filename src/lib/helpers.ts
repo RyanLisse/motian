@@ -1,7 +1,9 @@
 // Gedeelde utilities voor het recruitment platform
 
-/** Canonical list of supported scraper platforms. Single source of truth. */
-export const PLATFORMS = ["flextender", "striive", "opdrachtoverheid"] as const;
+import { PLATFORM_SLUGS } from "./platform-catalog";
+
+/** Canonical list of supported scraper platforms. Backed by the platform registry metadata. */
+export const PLATFORMS = PLATFORM_SLUGS;
 export type Platform = (typeof PLATFORMS)[number];
 
 /** Number of consecutive failures before a scraper's circuit breaker opens. */

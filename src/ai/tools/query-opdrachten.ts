@@ -80,7 +80,7 @@ export const queryOpdrachten = tool({
     platform: z
       .string()
       .optional()
-      .describe(`Platform filter: ${PLATFORMS.join(", ")}. Laat leeg voor alle platforms.`),
+      .describe(`Platform filter: ${PLATFORMS.join(", ")}.`),
     province: z
       .string()
       .optional()
