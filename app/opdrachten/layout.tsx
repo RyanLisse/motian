@@ -4,6 +4,7 @@ import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { db } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 import { DEFAULT_OPDRACHTEN_LIMIT } from "@/src/lib/opdrachten-filters";
+import { listEscoSkillsForFilter } from "@/src/services/esco";
 import { listJobs } from "@/src/services/jobs";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
 import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary";
@@ -13,9 +14,17 @@ export const dynamic = "force-dynamic";
 export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
   const activeJobsCondition = getJobStatusCondition("open");
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
+  const escoSkillRowsPromise = (async () => {
+    try {
+      return await listEscoSkillsForFilter();
+    } catch (error) {
+      console.error("[OpdrachtenLayout] listEscoSkillsForFilter failed:", error);
+      return [];
+    }
+  })();
 
-  const [{ data: sidebarJobRows, total: totalCount }, metaResult, categoryRows] = await Promise.all(
-    [
+  const [{ data: sidebarJobRows, total: totalCount }, metaResult, categoryRows, escoSkillRows] =
+    await Promise.all([
       listJobs({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" }),
       db
         .select({
@@ -30,8 +39,8 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
       where ${activeJobsCondition}
       order by category asc
     `),
-    ],
-  );
+      escoSkillRowsPromise,
+    ]);
 
   const { hasPipelineByJobId, pipelineCountByJobId } = await getJobPipelineSummary(
     sidebarJobRows.map((job) => job.id),
@@ -54,6 +63,10 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
   const categories = (categoryRows.rows as Array<{ category: string | null }>)
     .map((row) => row.category)
     .filter((value): value is string => Boolean(value));
+  const skillOptions = escoSkillRows.map((skill) => ({
+    value: skill.uri,
+    label: skill.labelNl ?? skill.labelEn,
+  }));
 
   return (
     <OpdrachtenLayoutShell
@@ -64,6 +77,7 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
           platforms={platforms}
           endClients={endClients}
           categories={categories}
+          skillOptions={skillOptions}
         />
       }
     >

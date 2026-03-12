@@ -66,7 +66,7 @@ describe("GET /api/opdrachten/zoeken", () => {
   it("forwards the shared recruiter filter contract and returns compact recruiter jobs", async () => {
     const request = {
       nextUrl: new URL(
-        "http://localhost/api/opdrachten/zoeken?q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad&regio=noord&vakgebied=ICT&vakgebied=Data&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&contractType=interim&tariefMin=80&tariefMax=120&sort=deadline_desc&pagina=2&perPage=25",
+        "http://localhost/api/opdrachten/zoeken?q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad&regio=noord&vakgebied=ICT&vakgebied=Data&vaardigheid=skill:java&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&contractType=interim&tariefMin=80&tariefMax=120&sort=deadline_desc&pagina=2&perPage=25",
       ),
     } as Parameters<typeof GET>[0];
 
@@ -78,6 +78,7 @@ describe("GET /api/opdrachten/zoeken", () => {
       platform: "opdrachtoverheid",
       endClient: "Gemeente Utrecht",
       categories: ["ICT", "Data"],
+      escoUri: "skill:java",
       status: "closed",
       province: "Utrecht",
       regions: ["randstad", "noord"],

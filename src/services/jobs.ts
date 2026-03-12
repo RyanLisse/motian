@@ -29,6 +29,7 @@ export type UnifiedJobSearchOptions = {
   platform?: string;
   company?: string;
   endClient?: string;
+  escoUri?: string;
   category?: string;
   categories?: string[];
   status?: JobStatus;
@@ -90,6 +91,7 @@ export async function searchJobsUnified(
       platform: opts.platform,
       company: opts.company,
       endClient: opts.endClient,
+      escoUri: opts.escoUri,
       category: opts.category,
       categories: opts.categories,
       status: opts.status,
@@ -119,6 +121,7 @@ export async function searchJobsUnified(
     platform: opts.platform,
     company: opts.company,
     endClient: opts.endClient,
+    escoUri: opts.escoUri,
     category: opts.category,
     categories: opts.categories,
     status: opts.status,

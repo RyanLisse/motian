@@ -76,11 +76,7 @@ export async function saveAutopilotFindings(
 }
 
 export async function getRecentRuns(limit = 20) {
-  return db
-    .select()
-    .from(autopilotRuns)
-    .orderBy(desc(autopilotRuns.startedAt))
-    .limit(limit);
+  return db.select().from(autopilotRuns).orderBy(desc(autopilotRuns.startedAt)).limit(limit);
 }
 
 export async function getRunFindings(runId: string) {
@@ -105,4 +101,3 @@ export async function getOpenFindings() {
     .where(eq(autopilotFindings.status, "detected"))
     .orderBy(desc(autopilotFindings.createdAt));
 }
-

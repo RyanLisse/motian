@@ -560,3 +560,63 @@ export const platformSettings = pgTable(
     categoryIdx: index("idx_platform_settings_category").on(table.category),
   }),
 );
+
+
+// ========== Autopilot Runs ==========
+export const autopilotRuns = pgTable(
+  "autopilot_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: text("run_id").notNull(),
+    status: text("status").notNull(), // running | completed | failed | timed_out
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    commitSha: text("commit_sha").notNull(),
+    totalJourneys: integer("total_journeys").notNull().default(0),
+    passedJourneys: integer("passed_journeys").notNull().default(0),
+    failedJourneys: integer("failed_journeys").notNull().default(0),
+    totalFindings: integer("total_findings").notNull().default(0),
+    findingsBySeverity: jsonb("findings_by_severity").default({}),
+    findingsByCategory: jsonb("findings_by_category").default({}),
+    reportUrl: text("report_url"),
+    triggerRunId: text("trigger_run_id"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    runIdUniqueIdx: uniqueIndex("uq_autopilot_runs_run_id").on(table.runId),
+    statusIdx: index("idx_autopilot_runs_status").on(table.status),
+    startedAtIdx: index("idx_autopilot_runs_started_at").on(table.startedAt),
+  }),
+);
+
+// ========== Autopilot Findings ==========
+export const autopilotFindings = pgTable(
+  "autopilot_findings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    findingId: text("finding_id").notNull(),
+    runId: text("run_id").notNull().references(() => autopilotRuns.runId, { onDelete: "cascade" }),
+    category: text("category").notNull(), // bug | ux | perf | ai-quality
+    surface: text("surface").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    severity: text("severity").notNull(), // critical | high | medium | low
+    confidence: real("confidence").notNull(),
+    autoFixable: boolean("auto_fixable").notNull().default(false),
+    status: text("status").notNull().default("detected"), // detected | validated | reported | dismissed
+    fingerprint: text("fingerprint").notNull(),
+    suspectedRootCause: text("suspected_root_cause"),
+    recommendedAction: text("recommended_action"),
+    githubIssueNumber: integer("github_issue_number"),
+    metadata: jsonb("metadata").default({}),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    findingIdUniqueIdx: uniqueIndex("uq_autopilot_findings_finding_id").on(table.findingId),
+    runIdIdx: index("idx_autopilot_findings_run_id").on(table.runId),
+    fingerprintIdx: index("idx_autopilot_findings_fingerprint").on(table.fingerprint),
+    severityIdx: index("idx_autopilot_findings_severity").on(table.severity),
+    statusIdx: index("idx_autopilot_findings_status").on(table.status),
+  }),
+);

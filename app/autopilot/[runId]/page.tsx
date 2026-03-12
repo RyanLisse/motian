@@ -1,6 +1,8 @@
 import { Activity, AlertCircle, CheckCircle2, ExternalLink, XCircle } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EvidenceViewer } from "@/components/autopilot/evidence-viewer";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -9,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { getRunDetail } from "../data";
 
 function getStatusBadge(status: string) {
@@ -89,7 +90,7 @@ export default async function AutopilotRunDetailPage({
     notFound();
   }
 
-  const { run, findings } = data;
+  const { run, findings, evidence } = data;
   const duration = run.completedAt
     ? Math.round((run.completedAt.getTime() - run.startedAt.getTime()) / 1000)
     : null;
@@ -222,9 +223,7 @@ export default async function AutopilotRunDetailPage({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={finding.status === "dismissed" ? "outline" : "secondary"}
-                        >
+                        <Badge variant={finding.status === "dismissed" ? "outline" : "secondary"}>
                           {finding.status === "detected" && "Gedetecteerd"}
                           {finding.status === "validated" && "Gevalideerd"}
                           {finding.status === "reported" && "Gerapporteerd"}
@@ -252,6 +251,11 @@ export default async function AutopilotRunDetailPage({
               </Table>
             </div>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold text-foreground">Bewijs</h2>
+          <EvidenceViewer evidence={evidence} />
         </div>
       </div>
     </div>

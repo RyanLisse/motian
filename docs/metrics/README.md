@@ -14,6 +14,32 @@ just benchmark-hybrid-search
 
 The script writes a summary to `docs/metrics/hybrid-search-benchmark-latest.json`. Use this as a reference for regression after search changes. Optionally copy or rename to `hybrid-search-benchmark-YYYY-MM-DD.json` when recording a baseline. If the benchmark has not been run yet, this file will be created on first successful run.
 
+## ESCO rollout snapshot
+
+Reproduceerbare run (with `DATABASE_URL` set, e.g. from `.env.local`):
+
+```bash
+pnpm metrics:esco-rollout
+```
+
+The script writes a summary to `docs/metrics/esco-rollout-snapshot-latest.json`. It captures:
+
+- recent `job_matches` model distribution
+- guardrail fallback count from ESCO reasoning
+- guardrail fallback rate across recent matches
+- mapping confidence distribution, summary stats, and review backlog
+- representative search latency snapshots (`p50` / `p95`)
+- top-3 candidate snapshots per job for rollout comparison
+
+Copy or rename this artifact to `esco-rollout-snapshot-YYYY-MM-DD.json` when recording a baseline or post-cutover checkpoint.
+
+To compare a stored baseline against the latest snapshot and fail when any shared
+scenario regresses more than 15% at `p95`:
+
+```bash
+pnpm metrics:esco-rollout:compare docs/metrics/esco-rollout-snapshot-YYYY-MM-DD.json
+```
+
 ## Wat vastleggen
 
 | Metric | Hoe |

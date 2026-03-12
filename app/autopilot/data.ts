@@ -1,4 +1,6 @@
 import { desc, eq } from "drizzle-orm";
+import type { RunEvidenceJourney } from "@/src/autopilot/run-detail";
+import { loadRunEvidenceFromReportUrl } from "@/src/autopilot/run-detail";
 import { db } from "@/src/db";
 import { autopilotFindings, autopilotRuns } from "@/src/db/schema";
 
@@ -38,6 +40,21 @@ export async function getRunDetail(runId: string) {
     .where(eq(autopilotFindings.runId, runId))
     .orderBy(desc(autopilotFindings.severity));
 
-  return { run, findings };
-}
+  let summaryUrl: string | null = null;
+  let evidence: RunEvidenceJourney[] = [];
 
+  if (run.reportUrl) {
+    try {
+      const loaded = await loadRunEvidenceFromReportUrl(run.reportUrl, run.runId);
+      summaryUrl = loaded.summaryUrl;
+      evidence = loaded.evidence;
+    } catch (error) {
+      console.error(
+        `[autopilot] Failed to load summary artifact for run ${run.runId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
+  return { run, findings, summaryUrl, evidence };
+}

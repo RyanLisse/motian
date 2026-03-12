@@ -157,6 +157,7 @@ describe("searchJobsUnified", () => {
     await searchJobsUnified({
       endClient: "Gemeente Utrecht",
       category: "ICT",
+      escoUri: "skill:java",
       status: "closed",
       province: "Utrecht",
       region: "randstad",
@@ -170,6 +171,7 @@ describe("searchJobsUnified", () => {
       expect.objectContaining({
         endClient: "Gemeente Utrecht",
         category: "ICT",
+        escoUri: "skill:java",
         status: "closed",
         province: "Utrecht",
         region: "randstad",
@@ -184,6 +186,7 @@ describe("searchJobsUnified", () => {
       q: "manager",
       endClient: "Gemeente Utrecht",
       category: "ICT",
+      escoUri: "skill:java",
       status: "closed",
       province: "Utrecht",
       region: "randstad",
@@ -198,6 +201,7 @@ describe("searchJobsUnified", () => {
       expect.objectContaining({
         endClient: "Gemeente Utrecht",
         category: "ICT",
+        escoUri: "skill:java",
         status: "closed",
         province: "Utrecht",
         region: "randstad",

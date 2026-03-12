@@ -1,5 +1,9 @@
 import { del, put } from "@vercel/blob";
 
+export interface UploadFileOptions {
+  cacheControlMaxAge?: number;
+}
+
 function isVercelBlobUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -20,12 +24,14 @@ export async function uploadFile(
   buffer: Buffer,
   filename: string,
   contentType: string,
-): Promise<{ url: string; pathname: string }> {
+  options?: UploadFileOptions,
+): Promise<{ url: string; pathname: string; downloadUrl: string }> {
   const blob = await put(filename, buffer, {
     access: "private",
+    cacheControlMaxAge: options?.cacheControlMaxAge,
     contentType,
   });
-  return { url: blob.url, pathname: blob.pathname };
+  return { downloadUrl: blob.downloadUrl, pathname: blob.pathname, url: blob.url };
 }
 
 /**

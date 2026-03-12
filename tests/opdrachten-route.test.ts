@@ -24,7 +24,7 @@ describe("GET /api/opdrachten", () => {
 
   it("parses recruiter filters and pagination through the shared opdrachten contract", async () => {
     const request = new Request(
-      "http://localhost/api/opdrachten?q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad&regio=noord&vakgebied=ICT&vakgebied=Data&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&contractType=interim&tariefMin=80&tariefMax=120&sort=deadline_desc&pagina=2&perPage=25",
+      "http://localhost/api/opdrachten?q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad&regio=noord&vakgebied=ICT&vakgebied=Data&vaardigheid=skill:java&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&contractType=interim&tariefMin=80&tariefMax=120&sort=deadline_desc&pagina=2&perPage=25",
     );
 
     const response = await GET(request);
@@ -35,6 +35,7 @@ describe("GET /api/opdrachten", () => {
       platform: "opdrachtoverheid",
       endClient: "Gemeente Utrecht",
       categories: ["ICT", "Data"],
+      escoUri: "skill:java",
       status: "closed",
       province: "Utrecht",
       regions: ["randstad", "noord"],

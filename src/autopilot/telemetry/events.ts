@@ -48,3 +48,23 @@ export function trackAutopilotIssuePublished(
     action: created ? "created" : "updated",
   });
 }
+
+export interface AutopilotStorageUsageStats {
+  originalBytes: number;
+  uploadedBytes: number;
+  compressedBytes: number;
+  traceBytes: number;
+  harBytes: number;
+  uploadedArtifacts: number;
+  skippedRichArtifacts: number;
+}
+
+export function trackAutopilotStorageUsage(runId: string, stats: AutopilotStorageUsageStats): void {
+  trackServerEvent(DISTINCT_ID, "autopilot_storage_usage", {
+    runId,
+    ...stats,
+    compressionRatio:
+      stats.originalBytes > 0 ? Number((stats.uploadedBytes / stats.originalBytes).toFixed(4)) : 1,
+    timestamp: new Date().toISOString(),
+  });
+}

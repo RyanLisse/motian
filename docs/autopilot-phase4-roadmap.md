@@ -1,28 +1,30 @@
 # Motian Autopilot Phase 4+ Roadmap
 
-**Status**: Phase 0-3 Complete ✅ | Phase 4-6 Planned 📋
+**Status**: Phase 0-4 Complete ✅ | Phase 5-6 Planned 📋
 
 ## Overview
 
-Motian Autopilot MVP (Phase 0-3) delivers nightly browser audits with AI analysis, GitHub issue creation, database persistence, and a review UI at `/autopilot`. Phase 4-6 extends this foundation with:
+Motian Autopilot MVP (Phase 0-4) delivers nightly browser audits with AI analysis, GitHub issue creation, database persistence, and a review UI at `/autopilot`. Phase 5-6 extends this foundation with:
 
 - **Phase 4**: Rich evidence (video, trace, HAR)
 - **Phase 5**: Autofix PR generation
 - **Phase 6**: Learning loop & continuous improvement
 
-## Phase 4: Rich Evidence Capture (12-16 hours)
+## Phase 4: Rich Evidence Capture (12-16 hours) ✅
 
 **Goal**: Extend evidence capture to include video recordings, Playwright traces, and HAR network logs.
+
+**Status**: Shipped on 2026-03-12.
 
 ### Beads
 
 | Bead | Title | Priority | Effort | Status |
 |------|-------|----------|--------|--------|
-| motian-ic0 | Video recording for all journeys | P2 | 2-3h | Open |
-| motian-8w1 | Playwright trace capture | P2 | 2-3h | Open |
-| motian-ucb | HAR network logs | P2 | 2h | Open |
-| motian-9xn | Evidence viewer UI components | P1 | 4-6h | Open |
-| motian-os7 | Storage optimization | P3 | 2h | Open |
+| motian-ic0 | Video recording for all journeys | P2 | 2-3h | Closed |
+| motian-8w1 | Playwright trace capture | P2 | 2-3h | Closed |
+| motian-ucb | HAR network logs | P2 | 2h | Closed |
+| motian-9xn | Evidence viewer UI components | P1 | 4-6h | Closed |
+| motian-os7 | Storage optimization | P3 | 2h | Closed |
 
 ### Dependencies
 
@@ -190,10 +192,10 @@ New Finding → Semantic Search → Find Similar Pattern → Apply & Adapt
 
 ## Next Steps
 
-1. **Start Phase 4**: Implement video recording (bead motian-ic0)
-2. **Parallel work**: Set up storage optimization (bead motian-os7)
-3. **Design Phase 5**: Create autofix system architecture
-4. **Monitor Phase 3**: Review /autopilot UI feedback, iterate as needed
+1. **Start Phase 5**: Design and implement autofix PR generation
+2. **Monitor Phase 4 usage**: Review `/autopilot` evidence viewer feedback and storage telemetry
+3. **Validate nightly stability**: Watch upload sizes, failed journeys and issue quality for one week
+4. **Prepare Phase 6**: Define the learning-loop data model after Phase 5 guardrails land
 
 ## References
 

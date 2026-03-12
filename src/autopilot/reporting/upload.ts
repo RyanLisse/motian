@@ -1,5 +1,8 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, isAbsolute, join } from "node:path";
+import { gzipSync } from "node:zlib";
+import { inferEvidenceContentType } from "@/src/autopilot/evidence/content-type";
+import { trackAutopilotStorageUsage } from "@/src/autopilot/telemetry";
 import type { AutopilotRunSummary } from "@/src/autopilot/types/run";
 import { uploadFile } from "@/src/lib/file-storage";
 
@@ -8,6 +11,11 @@ export interface UploadResult {
   summaryUrl: string;
   artifactUrls: Array<{ journeyId: string; kind: string; url: string }>;
 }
+
+const THIRTY_DAY_CACHE_SECONDS = 2_592_000;
+const COMPRESSIBLE_ARTIFACT_KINDS = new Set(["har", "trace"]);
+const FAILURES_ONLY_RICH_ARTIFACT_KINDS = new Set(["har", "trace", "video"]);
+const COMPRESSION_THRESHOLD_BYTES = 1_000_000;
 
 /**
  * Upload the markdown report, JSON summary, and evidence artifacts to Vercel Blob.
@@ -22,31 +30,71 @@ export async function uploadReportArtifacts(
 ): Promise<UploadResult> {
   const { runId } = summary;
   const prefix = `autopilot/${runId}`;
+  const uploadedSummary = cloneSummary(summary);
+  const storageStats = {
+    originalBytes: 0,
+    uploadedBytes: 0,
+    compressedBytes: 0,
+    traceBytes: 0,
+    harBytes: 0,
+    uploadedArtifacts: 0,
+    skippedRichArtifacts: 0,
+  };
 
-  // Upload markdown report
   const reportBuffer = Buffer.from(markdownReport, "utf-8");
-  const { url: reportUrl } = await uploadFile(reportBuffer, `${prefix}/report.md`, "text/markdown");
-
-  // Upload JSON summary
-  const summaryJson = JSON.stringify(summary, null, 2);
-  const summaryBuffer = Buffer.from(summaryJson, "utf-8");
-  const { url: summaryUrl } = await uploadFile(
-    summaryBuffer,
-    `${prefix}/summary.json`,
-    "application/json",
+  const { url: reportUrl } = await uploadFile(
+    reportBuffer,
+    `${prefix}/report.md`,
+    "text/markdown",
+    {
+      cacheControlMaxAge: THIRTY_DAY_CACHE_SECONDS,
+    },
   );
 
-  // Upload evidence artifacts from each manifest
   const artifactUrls: UploadResult["artifactUrls"] = [];
 
-  for (const manifest of summary.evidenceManifests) {
+  for (const manifest of uploadedSummary.evidenceManifests) {
     for (const artifact of manifest.artifacts) {
       try {
-        const filePath = join(evidenceDir, artifact.path);
+        if (shouldSkipArtifactUpload(manifest.success, artifact.kind)) {
+          storageStats.skippedRichArtifacts += 1;
+          continue;
+        }
+
+        const filePath = resolveArtifactPath(evidenceDir, artifact.path);
         const fileBuffer = await readFile(filePath);
-        const contentType = inferContentType(artifact.kind);
-        const blobPath = `${prefix}/${manifest.journeyId}/${artifact.path.split("/").pop() ?? artifact.id}`;
-        const { url } = await uploadFile(fileBuffer, blobPath, contentType);
+        const originalByteLength = fileBuffer.byteLength;
+        storageStats.originalBytes += originalByteLength;
+
+        if (artifact.kind === "trace") {
+          storageStats.traceBytes += originalByteLength;
+        }
+
+        if (artifact.kind === "har") {
+          storageStats.harBytes += originalByteLength;
+        }
+
+        let uploadBuffer = fileBuffer;
+        let uploadFilename = basename(artifact.path);
+        let metadata = artifact.metadata ? { ...artifact.metadata } : undefined;
+
+        if (shouldCompressArtifact(artifact.kind, originalByteLength)) {
+          uploadBuffer = gzipSync(fileBuffer);
+          uploadFilename = `${uploadFilename}.gz`;
+          metadata = { ...metadata, contentEncoding: "gzip" };
+          storageStats.compressedBytes += originalByteLength - uploadBuffer.byteLength;
+        }
+
+        const contentType = inferEvidenceContentType(artifact.kind);
+        const blobPath = `${prefix}/${manifest.journeyId}/${uploadFilename}`;
+        const { pathname, url } = await uploadFile(uploadBuffer, blobPath, contentType, {
+          cacheControlMaxAge: THIRTY_DAY_CACHE_SECONDS,
+        });
+
+        storageStats.uploadedBytes += uploadBuffer.byteLength;
+        storageStats.uploadedArtifacts += 1;
+        artifact.metadata = pathname ? { ...metadata, storagePath: pathname } : metadata;
+        artifact.url = url;
         artifactUrls.push({
           journeyId: manifest.journeyId,
           kind: artifact.kind,
@@ -61,26 +109,36 @@ export async function uploadReportArtifacts(
     }
   }
 
+  const summaryJson = JSON.stringify(uploadedSummary, null, 2);
+  const summaryBuffer = Buffer.from(summaryJson, "utf-8");
+  const { url: summaryUrl } = await uploadFile(
+    summaryBuffer,
+    `${prefix}/summary.json`,
+    "application/json",
+    { cacheControlMaxAge: THIRTY_DAY_CACHE_SECONDS },
+  );
+
+  trackAutopilotStorageUsage(runId, storageStats);
+
   return { reportUrl, summaryUrl, artifactUrls };
 }
 
-/**
- * Map evidence kind to a MIME content type.
- */
-function inferContentType(kind: string): string {
-  switch (kind) {
-    case "screenshot":
-      return "image/png";
-    case "video":
-      return "video/webm";
-    case "har":
-      return "application/json";
-    case "trace":
-      return "application/json";
-    case "console-log":
-    case "network-log":
-      return "text/plain";
-    default:
-      return "application/octet-stream";
-  }
+function cloneSummary(summary: AutopilotRunSummary): AutopilotRunSummary {
+  return JSON.parse(JSON.stringify(summary)) as AutopilotRunSummary;
+}
+
+function resolveArtifactPath(evidenceDir: string, artifactPath: string): string {
+  return isAbsolute(artifactPath) ? artifactPath : join(evidenceDir, artifactPath);
+}
+
+function shouldCompressArtifact(kind: string, byteLength: number): boolean {
+  return COMPRESSIBLE_ARTIFACT_KINDS.has(kind) && byteLength > COMPRESSION_THRESHOLD_BYTES;
+}
+
+function shouldSkipArtifactUpload(success: boolean, kind: string): boolean {
+  return (
+    process.env.AUTOPILOT_RICH_EVIDENCE === "failures" &&
+    success &&
+    FAILURES_ONLY_RICH_ARTIFACT_KINDS.has(kind)
+  );
 }

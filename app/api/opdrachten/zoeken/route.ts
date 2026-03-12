@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
     platform: filters.platform,
     endClient: filters.endClient,
     categories: filters.categories,
+    escoUri: filters.escoUri,
     status: filters.status,
     province: filters.province,
     regions: filters.regions,

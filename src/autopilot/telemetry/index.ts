@@ -3,4 +3,5 @@ export {
   trackAutopilotRunCompleted,
   trackAutopilotRunFailed,
   trackAutopilotRunStarted,
+  trackAutopilotStorageUsage,
 } from "./events";

@@ -16,6 +16,7 @@ export {
   type PublishedIssue,
   publishFindings,
 } from "./github";
+export * from "./persistence";
 export {
   generateMarkdownReport,
   type UploadResult,
@@ -26,5 +27,6 @@ export {
   trackAutopilotRunCompleted,
   trackAutopilotRunFailed,
   trackAutopilotRunStarted,
+  trackAutopilotStorageUsage,
 } from "./telemetry";
 export * from "./types";

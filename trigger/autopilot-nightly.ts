@@ -3,6 +3,7 @@ import { analyzeAllEvidence } from "@/src/autopilot/analysis";
 import { ALL_JOURNEYS } from "@/src/autopilot/config";
 import { captureJourneyEvidence } from "@/src/autopilot/evidence";
 import { publishFindings } from "@/src/autopilot/github";
+import { saveAutopilotFindings, saveAutopilotRun } from "@/src/autopilot/persistence";
 import { generateMarkdownReport, uploadReportArtifacts } from "@/src/autopilot/reporting";
 import {
   trackAutopilotIssuePublished,
@@ -108,6 +109,18 @@ export const autopilotNightlyTask = schedules.task({
         stats,
       };
 
+      // === Step 3.5: Persist to database ===
+      logger.info("Step 3.5: Persisting run to database...");
+      try {
+        await saveAutopilotRun(summary, undefined, undefined);
+        await saveAutopilotFindings(findings);
+        logger.info("Run persisted to database");
+      } catch (dbErr) {
+        logger.warn("DB persistence failed (non-fatal)", {
+          error: dbErr instanceof Error ? dbErr.message : String(dbErr),
+        });
+      }
+
       // === Step 4: Generate report ===
       logger.info("Step 4: Generating markdown report...");
       const markdownReport = generateMarkdownReport(summary);
@@ -126,6 +139,13 @@ export const autopilotNightlyTask = schedules.task({
         logger.warn("Artifact upload failed (non-fatal)", {
           error: uploadErr instanceof Error ? uploadErr.message : String(uploadErr),
         });
+      }
+
+      // Update DB with report URL
+      try {
+        await saveAutopilotRun({ ...summary }, reportUrl, undefined);
+      } catch (_) {
+        /* non-fatal */
       }
 
       // === Step 6: Publish GitHub issues ===
@@ -152,6 +172,17 @@ export const autopilotNightlyTask = schedules.task({
               issue.issueNumber,
               issue.created,
             );
+          }
+
+          // Update DB with GitHub issue numbers
+          try {
+            const issueMap = new Map<string, number>();
+            for (const p of published) {
+              issueMap.set(p.findingId, p.issueNumber);
+            }
+            await saveAutopilotFindings(findings, issueMap);
+          } catch (_) {
+            /* non-fatal */
           }
 
           logger.info("GitHub issues published", {

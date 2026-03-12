@@ -33,13 +33,16 @@ export async function runJourney(
   const tsFile = ts.replace(/[:.]/g, "-");
   const journeyDir = join(config.evidenceDir, runId);
   await mkdir(journeyDir, { recursive: true });
+  const tracePath = join(journeyDir, `${spec.id}-${tsFile}.trace.zip`);
 
   const consoleLogs: string[] = [];
   const artifacts: AutopilotEvidence[] = [];
   let success = true;
   let errorMessage: string | undefined;
+  let traceStarted = false;
 
   const page = await context.newPage();
+  const video = page.video();
   page.setDefaultTimeout(spec.timeoutMs);
 
   const onConsole = (msg: ConsoleMessage) => {
@@ -50,6 +53,13 @@ export async function runJourney(
   const start = Date.now();
 
   try {
+    await context.tracing.start({
+      screenshots: true,
+      snapshots: true,
+      sources: true,
+    });
+    traceStarted = true;
+
     const url = `${config.baseUrl}${spec.surface}`;
 
     switch (spec.kind) {
@@ -133,6 +143,27 @@ export async function runJourney(
   } finally {
     page.off("console", onConsole);
     await page.close();
+
+    if (traceStarted) {
+      await context.tracing.stop({ path: tracePath });
+      artifacts.push({
+        id: `${spec.id}-trace`,
+        kind: "trace",
+        path: tracePath,
+        capturedAt: new Date().toISOString(),
+        metadata: success ? undefined : { capturedOnError: true },
+      });
+    }
+
+    const videoPath = await video?.path();
+    if (videoPath) {
+      artifacts.push({
+        id: `${spec.id}-video`,
+        kind: "video",
+        path: videoPath,
+        capturedAt: new Date().toISOString(),
+      });
+    }
   }
 
   const durationMs = Date.now() - start;

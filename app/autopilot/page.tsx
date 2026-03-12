@@ -1,5 +1,6 @@
 import { Activity, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -8,7 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { getAutopilotDashboardData } from "./data";
 
 function getStatusBadge(status: string) {
