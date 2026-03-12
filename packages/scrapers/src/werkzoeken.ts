@@ -6,23 +6,16 @@ import type {
   PlatformValidationResult,
   RawScrapedListing,
 } from "./types";
-import { stripHtml } from "./strip-html";
+import {
+  decodeText,
+  firstMatch,
+  parsePositiveInteger,
+  toAbsoluteUrl,
+  ensureMinLength,
+} from "./lib/utils";
 
 const WERKZOEKEN_FETCH_TIMEOUT_MS = 20_000;
 const DEFAULT_WERKZOEKEN_ORIGIN = "https://www.werkzoeken.nl";
-
-function decodeText(value: string | undefined): string {
-  return stripHtml(
-    value
-      ?.replace(/&euro;/gi, "EUR")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/&amp;/g, "&"),
-  ).replace(/\s+/g, " ");
-}
-
-function firstMatch(html: string, pattern: RegExp): string | undefined {
-  return pattern.exec(html)?.[1];
-}
 
 function parseSalaryValue(value: string | undefined): number | undefined {
   if (!value) return undefined;
@@ -57,21 +50,6 @@ function normalizeHours(value: string | undefined): { min?: number; max?: number
     return { max: hours };
   }
   return {};
-}
-
-function parsePositiveInteger(value: unknown, fallback: number): number {
-  const parsed =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number.parseInt(value, 10)
-        : Number.NaN;
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function toAbsoluteUrl(url: string, baseUrl: string): string {
-  return new URL(url, baseUrl).toString();
 }
 
 function resolveWerkzoekenSourceUrl(baseUrl: string, sourcePath: string): URL {
@@ -109,13 +87,13 @@ export function parseWerkzoekenListingCards(
     const rawAttributes = match[1];
     const externalUrl = toAbsoluteUrl(match[2], baseUrl);
     const title = decodeText(match[3]);
-    const externalId = firstMatch(rawAttributes, /data-vacancyid="([^"]+)"/);
-    const company = decodeText(firstMatch(rawAttributes, /data-business="([^"]+)"/));
-    const location = decodeText(firstMatch(rawAttributes, /data-location-label="([^"]+)"/));
-    const contractLabel = decodeText(firstMatch(rawAttributes, /data-contract-type="([^"]+)"/));
-    const educationLevel = decodeText(firstMatch(rawAttributes, /data-education="([^"]+)"/));
-    const hoursLabel = decodeText(firstMatch(rawAttributes, /data-hours="([^"]+)"/));
-    const ageLabel = decodeText(firstMatch(rawAttributes, /data-age="([^"]+)"/));
+    const externalId = firstMatch(/data-vacancyid="([^"]+)"/, rawAttributes);
+    const company = decodeText(firstMatch(/data-business="([^"]+)"/, rawAttributes));
+    const location = decodeText(firstMatch(/data-location-label="([^"]+)"/, rawAttributes));
+    const contractLabel = decodeText(firstMatch(/data-contract-type="([^"]+)"/, rawAttributes));
+    const educationLevel = decodeText(firstMatch(/data-education="([^"]+)"/, rawAttributes));
+    const hoursLabel = decodeText(firstMatch(/data-hours="([^"]+)"/, rawAttributes));
+    const ageLabel = decodeText(firstMatch(/data-age="([^"]+)"/, rawAttributes));
     const { min, max } = normalizeHours(hoursLabel);
 
     if (externalId) {
@@ -127,8 +105,8 @@ export function parseWerkzoekenListingCards(
         location,
         contractLabel,
         educationLevel,
-        rateMin: parseSalaryValue(firstMatch(rawAttributes, /data-salary-minimal="([^"]+)"/)),
-        rateMax: parseSalaryValue(firstMatch(rawAttributes, /data-salary-maximum="([^"]+)"/)),
+        rateMin: parseSalaryValue(firstMatch(/data-salary-minimal="([^"]+)"/, rawAttributes)),
+        rateMax: parseSalaryValue(firstMatch(/data-salary-maximum="([^"]+)"/, rawAttributes)),
         minHoursPerWeek: min,
         hoursPerWeek: max,
         description: `${title} bij ${company}`.trim(),
@@ -149,22 +127,22 @@ export function parseWerkzoekenDetailPage(
   externalUrl: string,
 ): Partial<RawScrapedListing> {
   const title =
-    decodeText(firstMatch(html, /<h1[^>]*>([\s\S]*?)<\/h1>/)) ||
-    decodeText(firstMatch(html, /<meta property="og:title" content="([^"]+)"/));
+    decodeText(firstMatch(/<h1[^>]*>([\s\S]*?)<\/h1>/, html)) ||
+    decodeText(firstMatch(/<meta property="og:title" content="([^"]+)"/, html));
   const company = decodeText(
-    firstMatch(html, /<div class="company-name">([\s\S]*?)<\/div>/) ??
-      firstMatch(html, /\|\s*([^|]+)\s*op Werkzoeken\.nl/),
+    firstMatch(/<div class="company-name">([\s\S]*?)<\/div>/, html) ??
+      firstMatch(/\|\s*([^|]+)\s*op Werkzoeken\.nl/, html),
   );
   const location = decodeText(
     firstMatch(
-      html,
       /<div class="job-overview">[\s\S]*?<div>([\s\S]*?)<\/div>/,
+      html,
     ),
   );
   const description = decodeText(
     firstMatch(
-      html,
       /<section class="job-description">([\s\S]*?)<\/section>/,
+      html,
     ),
   );
 
@@ -173,8 +151,7 @@ export function parseWerkzoekenDetailPage(
     title,
     company,
     location,
-    description:
-      description.length >= 10 ? description : `${title || "Werkzoeken vacature"} via Werkzoeken.nl`,
+    description: ensureMinLength(description, title || "Werkzoeken vacature"),
   };
 }
 

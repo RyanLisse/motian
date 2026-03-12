@@ -1,5 +1,5 @@
 import type { RawScrapedListing } from "./types";
-import { stripHtml } from "./strip-html";
+import { stripHtml, ensureMinLength, validDate } from "./lib/utils";
 
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
 const MAX_RESULTS = 1000;
@@ -220,6 +220,7 @@ export function mapOpdrachtoverheidTenderToListing(t: OpdrachtoverheidTender): R
           .join("\n\n") ||
         t.tender_name ||
         "Geen beschrijving beschikbaar voor deze opdracht",
+      "opdracht via Opdrachtoverheid",
     ),
     externalId: t.web_key || t.tender_id?.toString() || "",
     externalUrl: t.opdracht_overheid_url || "https://www.opdrachtoverheid.nl/",
@@ -272,20 +273,6 @@ function computeDurationMonths(
   if (s.getFullYear() < 2020 || e.getFullYear() < 2020) return undefined;
   const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
   return months > 0 ? months : undefined;
-}
-
-/** Filter out API sentinel dates (pre-2020) that mean "unknown/TBD" */
-function validDate(raw: string | null | undefined): string | undefined {
-  if (!raw) return undefined;
-  const year = parseInt(raw.slice(0, 4), 10);
-  if (Number.isNaN(year) || year < 2020) return undefined;
-  return raw;
-}
-
-/** Zorg dat beschrijving minimaal 10 tekens is (schema eis) */
-function ensureMinLength(text: string): string {
-  if (text.length >= 10) return text;
-  return `${text} — opdracht via Opdrachtoverheid`;
 }
 
 /** Parse HTML <li> items naar string array */

@@ -1,4 +1,4 @@
-import { stripHtml } from "./strip-html";
+import { stripHtml, ensureMinLength, readString, readNumber } from "./lib/utils";
 import type { PlatformBlockerKind, RawScrapedListing } from "./types";
 
 const DEFAULT_HEADERS = {
@@ -367,7 +367,7 @@ function mapJobPosting(
     province: address.region,
     postcode: address.postalCode,
     countryCode: normalizeCountryCode(address.country),
-    description: ensureDescription(readString(jobPosting.description) ?? title, title),
+    description: ensureMinLength(readString(jobPosting.description) ?? title, title),
     externalId: readIdentifier(jobPosting.identifier) ?? slugifyIdentifier(externalUrl),
     externalUrl,
     postedAt: readString(jobPosting.datePosted) ?? undefined,
@@ -452,11 +452,6 @@ function dedupeListings(listings: RawScrapedListing[]): RawScrapedListing[] {
   return [...new Map(listings.map((listing) => [String(listing.externalId), listing])).values()];
 }
 
-function ensureDescription(description: string, title: string): string {
-  const plainText = stripHtml(description).trim();
-  return plainText.length >= 10 ? plainText : `${title} - vacature via job board`;
-}
-
 function mapEmploymentType(employmentType: unknown): string | undefined {
   const normalized = [employmentType]
     .flat()
@@ -480,7 +475,7 @@ function readIdentifier(identifier: unknown): string | null {
   if (typeof identifier === "number") return String(identifier);
 
   const record = toRecord(identifier);
-  return readString(record?.value ?? record?.name);
+  return readString(record?.value ?? record?.name) ?? null;
 }
 
 function normalizeCountryCode(country: string | undefined): string | undefined {
@@ -490,25 +485,7 @@ function normalizeCountryCode(country: string | undefined): string | undefined {
   return country.toUpperCase();
 }
 
-function readNumber(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
-  if (typeof value === "string") {
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? Math.round(parsed) : undefined;
-  }
-
-  return undefined;
-}
-
-function readString(value: unknown): string | null {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-
-  return null;
-}
-
+/** Converts unknown value to record or null */
 function toRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)

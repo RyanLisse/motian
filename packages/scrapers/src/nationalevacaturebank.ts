@@ -1,4 +1,3 @@
-import type { Browser } from "playwright";
 import type {
   PlatformAdapter,
   PlatformBlockerKind,
@@ -8,7 +7,13 @@ import type {
   PlatformValidationResult,
   RawScrapedListing,
 } from "./types";
-import { stripHtml } from "./strip-html";
+import {
+  decodeText,
+  firstMatch,
+  parsePositiveInteger,
+  toAbsoluteUrl,
+  readString,
+} from "./lib/utils";
 
 export type NationaleVacaturebankBlockerDetection = {
   blockerKind: PlatformBlockerKind | null;
@@ -51,35 +56,6 @@ function assertNationaleVacaturebankHost(url: URL): void {
       `Nationale Vacaturebank bron-URL moet naar nationalevacaturebank.nl verwijzen, niet naar "${url.hostname}".`,
     );
   }
-}
-
-function decodeText(value: string | undefined): string {
-  return stripHtml(
-    value
-      ?.replace(/&euro;/gi, "EUR")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/&#39;/g, "'")
-      .replace(/&amp;/g, "&"),
-  ).replace(/\s+/g, " ");
-}
-
-function firstMatch(html: string, pattern: RegExp): string | undefined {
-  return pattern.exec(html)?.[1];
-}
-
-function toAbsoluteUrl(pathOrUrl: string): string {
-  return new URL(pathOrUrl, NVB_ORIGIN).toString();
-}
-
-function parsePositiveInteger(value: unknown, fallback: number): number {
-  const parsed =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number.parseInt(value, 10)
-        : Number.NaN;
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function parseNumberRange(value: string): { rateMin?: number; rateMax?: number } {
@@ -192,19 +168,19 @@ export function parseNationaleVacaturebankListings(html: string): RawScrapedList
       continue;
     }
 
-    const href = firstMatch(attributes, /href="([^"]+)"/);
-    const externalId = firstMatch(attributes, /data-analytics-label="([^"]+)"/);
+    const href = firstMatch(/href="([^"]+)"/, attributes);
+    const externalId = firstMatch(/data-analytics-label="([^"]+)"/, attributes);
 
     if (!href || !externalId) {
       match = cardRegex.exec(html);
       continue;
     }
 
-    const rawTitle = firstMatch(body, /<h2>([\s\S]*?)<\/h2>/);
-    const rawCompany = firstMatch(body, /<strong class="nvb_companyName__[^"]*">([\s\S]*?)<\/strong>/);
-    const rawLocation = firstMatch(body, /<strong class="nvb_companyName__[^"]*">[\s\S]*?<\/strong>\s*<span>([\s\S]*?)<\/span>/);
+    const rawTitle = firstMatch(/<h2>([\s\S]*?)<\/h2>/, body);
+    const rawCompany = firstMatch(/<strong class="nvb_companyName__[^"]*">([\s\S]*?)<\/strong>/, body);
+    const rawLocation = firstMatch(/<strong class="nvb_companyName__[^"]*">[\s\S]*?<\/strong>\s*<span>([\s\S]*?)<\/span>/, body);
     const rawAttributes =
-      firstMatch(body, /<div class="nvb_attributes__IP60d">([\s\S]*?)<\/div>/) ?? "";
+      firstMatch(/<div class="nvb_attributes__IP60d">([\s\S]*?)<\/div>/, body) ?? "";
     const attributeMatches = [
       ...rawAttributes.matchAll(/<div class="nvb_attribute__[^"]*">([\s\S]*?)<\/div>/g),
     ].map((attribute) => decodeText(attribute[1]));
@@ -215,7 +191,7 @@ export function parseNationaleVacaturebankListings(html: string): RawScrapedList
 
     listings.push({
       externalId,
-      externalUrl: toAbsoluteUrl(href),
+      externalUrl: toAbsoluteUrl(href, NVB_ORIGIN),
       title: decodeText(rawTitle),
       company: decodeText(rawCompany),
       location: decodeText(rawLocation),
@@ -227,10 +203,10 @@ export function parseNationaleVacaturebankListings(html: string): RawScrapedList
         ["MBO", "HBO", "WO", "VMBO", "HAVO"].some((level) => attribute.includes(level)),
       ),
       companyLogoUrl: firstMatch(
-        match[0],
         /<img class="" src="([^"]+)" alt="[^"]*">/,
-      ),
-      sourceUrl: toAbsoluteUrl(href),
+        match[0],
+      ) ?? "",
+      sourceUrl: toAbsoluteUrl(href, NVB_ORIGIN),
       categories: extractCategoriesFromPage(html),
     });
     match = cardRegex.exec(html);
@@ -266,20 +242,20 @@ function extractCategoriesFromPage(html: string): string[] {
 
 export function parseNationaleVacaturebankDetailPage(html: string): Partial<RawScrapedListing> {
   const title = decodeText(
-    firstMatch(html, /<div class="nvb_info__0vhLJ">\s*<h2>([\s\S]*?)<\/h2>/),
+    firstMatch(/<div class="nvb_info__0vhLJ">\s*<h2>([\s\S]*?)<\/h2>/, html),
   );
   const company = decodeText(
-    firstMatch(html, /<div class="nvb_company__[^"]*">\s*<a [^>]*>([\s\S]*?)<\/a>/),
+    firstMatch(/<div class="nvb_company__[^"]*">\s*<a [^>]*>([\s\S]*?)<\/a>/, html),
   );
   const location = decodeText(
     firstMatch(
-      html,
       /<div class="nvb_company__[^"]*">\s*<a [^>]*>[\s\S]*?<\/a>\s*<a [^>]*>([\s\S]*?)<\/a>/,
+      html,
     ),
   );
   const descriptionHtml = firstMatch(
-    html,
     /<h3 class="nvb_subHeading__[^"]*">Functieomschrijving<\/h3>[\s\S]*?<div class="nvb_text__[^"]*">([\s\S]*?)<\/div>/,
+    html,
   );
 
   return {
@@ -290,15 +266,15 @@ export function parseNationaleVacaturebankDetailPage(html: string): Partial<RawS
     contractType: mapContractType(
       decodeText(
         firstMatch(
-          html,
           /<span>dienstverband<\/span><strong>([\s\S]*?)<\/strong>/,
+          html,
         ),
       ),
     ),
     educationLevel: decodeText(
       firstMatch(
-        html,
         /<span>opleidingsniveau<\/span><strong>([\s\S]*?)<\/strong>/,
+        html,
       ),
     ),
   };
@@ -357,7 +333,7 @@ async function bootstrapConsentSession(
     };
   }
 
-  let browser: Browser | undefined;
+  let browser: any;
 
   try {
     const { chromium } = await import("playwright");
@@ -393,7 +369,7 @@ async function bootstrapConsentSession(
       await saveButton.click();
       actions.push("voorkeuren_opslaan");
 
-      await page.waitForURL((url) => isNationaleVacaturebankHost(url.hostname), {
+      await page.waitForURL((url: URL) => isNationaleVacaturebankHost(url.hostname), {
         timeout: 30_000,
       });
       await page.waitForLoadState("domcontentloaded");
