@@ -8,11 +8,11 @@ default:
 
 # Clean up ports
 cleanup-ports:
-	-npx -y kill-port ${PORT:-3001}
+	-npx -y kill-port ${PORT:-3002}
 
 # Start the Next.js development server
 dev: cleanup-ports
-	pnpm next dev --hostname ${HOSTNAME:-0.0.0.0} --port ${PORT:-3001}
+	pnpm next dev --hostname ${HOSTNAME:-0.0.0.0} --port ${PORT:-3002}
 
 # ── Testing ──────────────────────────────────────
 
@@ -36,53 +36,101 @@ lint:
 lint-fix:
 	pnpm lint:fix
 
+# Run high-impact quality checks before PR
+pre-pr:
+	pnpm run harness:pre-pr
+
 # ── Database ─────────────────────────────────────
 
 # Generate Drizzle database migrations
 db-generate:
-	pnpm drizzle-kit generate
+	pnpm db:generate
 
 # Push database schema changes to the database
 db-push:
-	pnpm drizzle-kit push
+	pnpm db:push
+
+# ── Beads (Issue Tracking) ──────────────────────
+
+# Find available work (no blockers)
+bd-ready:
+	bd ready
+
+# List all open issues
+bd-list:
+	bd list --status=open
+
+# Show full issue details
+bd-show id:
+	bd show {{id}}
+
+# Claim work on an issue
+bd-claim id:
+	bd update {{id}} --status in_progress
+
+# Mark issue as complete
+bd-close id:
+	bd close {{id}}
+
+# Sync with git remote
+bd-sync:
+	bd sync
+
+# ── BV (Bead Viewer — Prioritization) ──────────
+
+# Full triage with scores
+bv-triage:
+	bv --robot-triage
+
+# Single top pick for you
+bv-next:
+	bv --robot-next
+
+# Parallel execution tracks
+bv-plan:
+	bv --robot-plan
 
 # ── Scraping ─────────────────────────────────────
 
 # Trigger a manual scrape for all platforms
 scrape:
-	curl -s -X POST http://localhost:3001/api/scrape/starten | jq .
+	curl -s -X POST http://localhost:3002/api/scrape/starten | jq .
 
 # Trigger a manual scrape for a specific platform
 scrape-platform platform:
-	curl -s -X POST http://localhost:3001/api/scrape/starten -H "Content-Type: application/json" -d '{"platform":"{{platform}}"}' | jq .
+	curl -s -X POST http://localhost:3002/api/scrape/starten -H "Content-Type: application/json" -d '{"platform":"{{platform}}"}' | jq .
 
 # Check platform health
 health:
-	curl -s http://localhost:3001/api/gezondheid | jq .
+	curl -s http://localhost:3002/api/gezondheid | jq .
 
 # ── Pages ────────────────────────────────────────
 
 # Open dashboard in browser
 dashboard:
-	open http://localhost:3001/overzicht
+	open http://localhost:3002/overzicht
 
 # Open opdrachten in browser
 opdrachten:
-	open http://localhost:3001/opdrachten
+	open http://localhost:3002/opdrachten
 
 # Open chat in browser
 chat:
-	open http://localhost:3001/chat
+	open http://localhost:3002/chat
 
 # ── Metrics & benchmarks ──────────────────────────
 
-# Capture baseline metrics (build time, env); writes docs/metrics/baseline-YYYY-MM-DD.md
+# Capture baseline metrics (build time, env)
 baseline-metrics:
 	pnpm baseline:metrics
 
-# Benchmark hybrid search (requires DATABASE_URL); writes docs/metrics/hybrid-search-benchmark-latest.json
+# Benchmark hybrid search
 benchmark-hybrid-search:
 	pnpm benchmark:hybrid-search
+
+# ESCO rollout snapshot
+metrics-esco:
+	pnpm metrics:esco-rollout
 
 # ── CLI & MCP & TUI ───────────────────────────────
 
@@ -90,7 +138,7 @@ benchmark-hybrid-search:
 cli *args:
 	pnpm cli {{args}}
 
-# Start the MCP server (for Claude Desktop, Cursor, etc.)
+# Start the MCP server
 mcp:
 	pnpm mcp
 
@@ -128,35 +176,27 @@ install:
 
 # Classify risk tier of current changes
 harness-risk:
-	pnpm tsx scripts/harness/risk-policy-gate.ts
-
-# Run all pre-PR checks
-harness-pre-pr:
-	pnpm run harness:pre-pr
+	pnpm harness:risk-tier
 
 # Run structural tests
 harness-smoke:
-	pnpm vitest run tests/harness/
+	pnpm harness:smoke
 
 # Capture browser evidence
 harness-evidence:
-	pnpm tsx scripts/harness/capture-browser-evidence.ts
+	pnpm harness:browser-evidence
 
 # Verify browser evidence
 harness-verify:
-	pnpm tsx scripts/harness/verify-browser-evidence.ts
+	pnpm harness:verify-evidence
 
 # Run entropy check
 harness-entropy:
-	pnpm tsx scripts/harness/entropy-check.ts
-
-# Create a harness gap issue from a production regression
-harness-gap title:
-	pnpm tsx scripts/harness/create-gap-issue.ts --title "{{title}}"
+	pnpm harness:entropy
 
 # ── Voice Agent (LiveKit) ─────────────────────
 
-# Start the voice agent in development (connects to LiveKit Cloud)
+# Start the voice agent in development
 voice-dev:
 	pnpm voice-agent:dev
 
@@ -166,11 +206,10 @@ voice-start:
 
 # ── Planning & Orchestration ────────────────────
 
-# Harness Plan Validator ("Planning is the New Coding")
-# Run this to validate if a provided plan.md or task.md meets project standards
+# Validate plan.md or task.md
 harness-plan path:
 	pnpm tsx scripts/harness/validate-plan.ts --file "{{path}}"
 
-# Background Worker hook for concurrent multi-agent executions
+# Background Worker hook
 harness-bg-worker taskName:
 	pnpm tsx scripts/harness/orchestrator.ts --dispatch "{{taskName}}"
