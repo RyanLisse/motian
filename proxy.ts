@@ -52,6 +52,10 @@ function isFirstPartyBrowserRoute(request: NextRequest): boolean {
     return true;
   }
 
+  if (origin === request.nextUrl.origin) {
+    return true;
+  }
+
   // If the caller provides an Origin, it must be explicitly on the CORS allowlist.
   // getAllowedCorsOrigin returns the origin only when it appears in the allowlist,
   // so unknown origins (including when no allowlist is configured) are rejected.

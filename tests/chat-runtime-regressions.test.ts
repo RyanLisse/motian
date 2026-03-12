@@ -38,6 +38,25 @@ function createThrowingStorage() {
   };
 }
 
+function createWindowLikeWithThrowingGetter(
+  storageName: "localStorage" | "sessionStorage",
+  fallbackStorage = createStorage(),
+) {
+  const windowLike = {
+    localStorage: fallbackStorage,
+    sessionStorage: fallbackStorage,
+  };
+
+  Object.defineProperty(windowLike, storageName, {
+    configurable: true,
+    get() {
+      throw new DOMException(`${storageName} denied`, "SecurityError");
+    },
+  });
+
+  return windowLike;
+}
+
 describe("chat runtime regressions", () => {
   it("tracks persisted sessions separately from freshly generated session ids", () => {
     const storage = createStorage();
@@ -78,6 +97,18 @@ describe("chat runtime regressions", () => {
         sessionStorage: workingStorage,
       }),
     ).toBe("memory");
+  });
+
+  it("falls back to memory persistence when storage getters throw during detection", () => {
+    expect(() =>
+      getPostHogPersistence(createWindowLikeWithThrowingGetter("localStorage")),
+    ).not.toThrow();
+    expect(getPostHogPersistence(createWindowLikeWithThrowingGetter("localStorage"))).toBe(
+      "memory",
+    );
+    expect(getPostHogPersistence(createWindowLikeWithThrowingGetter("sessionStorage"))).toBe(
+      "memory",
+    );
   });
 
   it("recognizes DOMException storage errors (SecurityError, QuotaExceededError) as storage failures", () => {

@@ -91,6 +91,26 @@ describe("API auth via proxy", () => {
     expect(response.status).toBe(200);
   });
 
+  it.each(
+    chatFirstPartyEndpoints,
+  )("allows same-origin $description when the browser sends its own Origin header", ({
+    method,
+    url,
+  }) => {
+    process.env.API_SECRET = "test-secret";
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+
+    const response = proxy(
+      new NextRequest(url, {
+        method,
+        headers: { Origin: new URL(url).origin },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
   it.each(chatFirstPartyEndpoints)("blocks cross-origin $description without a bearer token", ({
     method,
     url,
