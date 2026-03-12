@@ -91,6 +91,26 @@ export function createPlatformOnboardingRunDraft(input: {
   };
 }
 
+export function canActivatePlatformOnboarding(input: {
+  isActive?: boolean;
+  latestRunStatus?: PlatformOnboardingStatus | null;
+  validationStatus?: string | null;
+  lastTestImportStatus?: string | null;
+}): boolean {
+  if (input.isActive) {
+    return true;
+  }
+
+  if (input.latestRunStatus) {
+    return input.latestRunStatus === "tested" || input.latestRunStatus === "active";
+  }
+
+  return (
+    input.validationStatus === "validated" &&
+    (input.lastTestImportStatus === "success" || input.lastTestImportStatus === "partial")
+  );
+}
+
 export function reducePlatformOnboardingRun(
   current: PlatformOnboardingRunState,
   event: PlatformOnboardingEvent,
@@ -161,7 +181,7 @@ export function reducePlatformOnboardingRun(
         ...current,
         supported: false,
         status: "needs_implementation",
-        currentStep: "monitor_first_runs",
+        currentStep: "create_draft",
         nextActions: nextActionsFor("needs_implementation"),
         blockerKind: event.blockerKind,
         evidence: mergedEvidence,

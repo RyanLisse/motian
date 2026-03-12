@@ -131,6 +131,10 @@ export const platformOnboardingRuns = pgTable(
     platformSlugIdx: index("idx_platform_onboarding_runs_platform_slug").on(table.platformSlug),
     configIdIdx: index("idx_platform_onboarding_runs_config_id").on(table.configId),
     updatedAtIdx: index("idx_platform_onboarding_runs_updated_at").on(table.updatedAt),
+    latestPerPlatformIdx: index("idx_platform_onboarding_runs_platform_slug_updated_at").on(
+      table.platformSlug,
+      table.updatedAt,
+    ),
   }),
 );
 

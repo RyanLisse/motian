@@ -38,6 +38,26 @@ function readSchemaKeys(schema: Record<string, unknown> | undefined): string[] {
   return properties ? Object.keys(properties) : [];
 }
 
+function parseJsonObject(value: string, fieldName: string): Record<string, unknown> {
+  if (!value.trim()) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`${fieldName} moet een JSON-object zijn.`);
+    }
+    return parsed as Record<string, unknown>;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("moet een JSON-object")) {
+      throw error;
+    }
+
+    throw new Error(`${fieldName} bevat ongeldige JSON. Controleer de opmaak en probeer opnieuw.`);
+  }
+}
+
 export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
   const router = useRouter();
   const [baseUrl, setBaseUrl] = useState(entry.config?.baseUrl ?? entry.defaultBaseUrl ?? "");
@@ -68,8 +88,8 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
             baseUrl,
             cronExpression,
             isActive,
-            parameters: JSON.parse(parameters || "{}"),
-            authConfig: JSON.parse(authConfig || "{}"),
+            parameters: parseJsonObject(parameters, "Parameters JSON"),
+            authConfig: parseJsonObject(authConfig, "Auth JSON"),
           }),
         });
         const payload = await response.json();

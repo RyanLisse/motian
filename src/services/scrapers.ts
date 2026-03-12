@@ -19,6 +19,7 @@ import {
 } from "../db/schema";
 import { decrypt, encrypt } from "../lib/crypto";
 import {
+  canActivatePlatformOnboarding,
   createPlatformOnboardingRunDraft,
   type PlatformOnboardingRunState,
   type PlatformOnboardingSource,
@@ -30,6 +31,7 @@ import {
 export type ScraperConfig = typeof scraperConfigs.$inferSelect;
 export type PlatformCatalogRow = typeof platformCatalog.$inferSelect;
 export type PlatformOnboardingRunRecord = typeof platformOnboardingRuns.$inferSelect;
+type LatestPlatformOnboardingRunRow = PlatformOnboardingRunRecord;
 
 export type PlatformHealth = {
   platform: string;
@@ -227,6 +229,33 @@ async function ensureOnboardingDraft(
   });
 }
 
+async function listLatestOnboardingRuns(): Promise<PlatformOnboardingRunRecord[]> {
+  const result = await db.execute(sql<LatestPlatformOnboardingRunRow>`
+    select distinct on (${platformOnboardingRuns.platformSlug})
+      ${platformOnboardingRuns.id} as "id",
+      ${platformOnboardingRuns.platformSlug} as "platformSlug",
+      ${platformOnboardingRuns.configId} as "configId",
+      ${platformOnboardingRuns.source} as "source",
+      ${platformOnboardingRuns.status} as "status",
+      ${platformOnboardingRuns.currentStep} as "currentStep",
+      ${platformOnboardingRuns.blockerKind} as "blockerKind",
+      ${platformOnboardingRuns.nextActions} as "nextActions",
+      ${platformOnboardingRuns.evidence} as "evidence",
+      ${platformOnboardingRuns.result} as "result",
+      ${platformOnboardingRuns.startedAt} as "startedAt",
+      ${platformOnboardingRuns.completedAt} as "completedAt",
+      ${platformOnboardingRuns.createdAt} as "createdAt",
+      ${platformOnboardingRuns.updatedAt} as "updatedAt"
+    from ${platformOnboardingRuns}
+    order by
+      ${platformOnboardingRuns.platformSlug} asc,
+      ${platformOnboardingRuns.updatedAt} desc nulls last,
+      ${platformOnboardingRuns.id} desc
+  `);
+
+  return result.rows as PlatformOnboardingRunRecord[];
+}
+
 export function toRuntimeConfig(platform: string, config: ScraperConfig): PlatformRuntimeConfig {
   return {
     slug: platform,
@@ -249,7 +278,7 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
   const [catalogRows, configs, runs] = await Promise.all([
     db.select().from(platformCatalog).orderBy(asc(platformCatalog.slug)),
     db.select().from(scraperConfigs).orderBy(asc(scraperConfigs.platform)),
-    db.select().from(platformOnboardingRuns).orderBy(desc(platformOnboardingRuns.updatedAt)),
+    listLatestOnboardingRuns(),
   ]);
 
   const definitions = listPlatformDefinitions();
@@ -646,6 +675,25 @@ export async function activatePlatform(
   const config = await getConfigByPlatform(platform);
   if (!config) {
     throw new Error(`Geen scraper configuratie gevonden voor ${platform}`);
+  }
+
+  const latestRun = await getLatestOnboardingRun(platform);
+  const latestRunStatus = latestRun?.status as PlatformOnboardingRunState["status"] | null;
+
+  if (
+    !canActivatePlatformOnboarding({
+      isActive: config.isActive,
+      latestRunStatus,
+      validationStatus: config.validationStatus,
+      lastTestImportStatus: config.lastTestImportStatus,
+    })
+  ) {
+    const stateDescription = latestRunStatus
+      ? `status "${latestRunStatus}"`
+      : "een onvolledige onboarding zonder succesvolle validatie en smoke import";
+    throw new Error(
+      `Platform ${platform} kan niet worden geactiveerd vanuit ${stateDescription}. Rond eerst validatie en smoke import af.`,
+    );
   }
 
   const [updated] = await db

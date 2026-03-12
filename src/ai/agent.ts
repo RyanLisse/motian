@@ -1,6 +1,5 @@
 import { PLATFORMS } from "@/src/lib/helpers";
 import { HYBRID_BLEND, SCORING_WEIGHTS } from "@/src/services/scoring";
-import { listPlatformCatalog } from "@/src/services/scrapers";
 import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
 
@@ -184,7 +183,7 @@ export function getRecruitmentTools(context?: AgentContext) {
 /** Build workspace context string for prompt injection. */
 async function getWorkspaceContext(): Promise<string> {
   try {
-    const [summary, catalog] = await Promise.all([getWorkspaceSummary(), listPlatformCatalog()]);
+    const summary = await getWorkspaceSummary();
 
     const scraperLines = summary.scraperHealth.platforms
       .map(
@@ -192,12 +191,10 @@ async function getWorkspaceContext(): Promise<string> {
           `  ${h.platform}: ${h.status}${h.lastRunAt ? ` (laatste run: ${new Date(h.lastRunAt).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" })})` : ""}`,
       )
       .join("\n");
-    const catalogLines = catalog
+    const catalogLines = summary.scraperHealth.catalog
       .map((entry) => {
-        const configState = entry.config ? "geconfigureerd" : "nog niet geconfigureerd";
-        const blocker = entry.latestRun?.blockerKind
-          ? ` · blocker: ${entry.latestRun.blockerKind}`
-          : "";
+        const configState = entry.configured ? "geconfigureerd" : "nog niet geconfigureerd";
+        const blocker = entry.blockerKind ? ` · blocker: ${entry.blockerKind}` : "";
         return `  ${entry.slug}: ${entry.displayName} (${entry.adapterKind}, ${configState})${blocker}`;
       })
       .join("\n");

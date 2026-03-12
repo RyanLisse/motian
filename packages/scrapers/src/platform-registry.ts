@@ -15,10 +15,16 @@ import { werkzoekenAdapter } from "./werkzoeken";
 
 function createDirectScrapeAdapter(
   scrape: (baseUrl?: string) => Promise<Record<string, unknown>[]>,
+  options: {
+    requiresRuntimeBaseUrl?: boolean;
+    validationMessage?: string;
+  } = {},
 ): PlatformAdapter {
+  const requiresRuntimeBaseUrl = options.requiresRuntimeBaseUrl ?? true;
+
   return {
     async validate(config: PlatformRuntimeConfig): Promise<PlatformValidationResult> {
-      if (!config.baseUrl) {
+      if (requiresRuntimeBaseUrl && !config.baseUrl) {
         return {
           ok: false,
           status: "failed",
@@ -29,13 +35,13 @@ function createDirectScrapeAdapter(
       return {
         ok: true,
         status: "validated",
-        message: "Configuratie is geldig en klaar voor import.",
+        message: options.validationMessage ?? "Configuratie is geldig en klaar voor import.",
       };
     },
 
     async scrape(config: PlatformRuntimeConfig): Promise<PlatformScrapeResult> {
       return {
-        listings: await scrape(config.baseUrl),
+        listings: await scrape(requiresRuntimeBaseUrl ? config.baseUrl : undefined),
       };
     },
 
@@ -43,7 +49,7 @@ function createDirectScrapeAdapter(
       config: PlatformRuntimeConfig,
       options?: { limit?: number },
     ): Promise<PlatformTestImportResult> {
-      const listings = await scrape(config.baseUrl);
+      const listings = await scrape(requiresRuntimeBaseUrl ? config.baseUrl : undefined);
       return {
         status: listings.length > 0 ? "success" : "failed",
         jobsFound: Math.min(listings.length, options?.limit ?? listings.length),
@@ -58,17 +64,30 @@ const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefiniti
     case "flextender":
       return {
         ...definition,
-        adapter: createDirectScrapeAdapter(() => scrapeFlextender()),
+        adapter: createDirectScrapeAdapter(() => scrapeFlextender(), {
+          requiresRuntimeBaseUrl: false,
+          validationMessage:
+            "Configuratie is geldig. Flextender gebruikt een vaste bron-URL tijdens runtime.",
+        }),
       };
     case "opdrachtoverheid":
       return {
         ...definition,
-        adapter: createDirectScrapeAdapter(() => scrapeOpdrachtoverheid()),
+        adapter: createDirectScrapeAdapter(() => scrapeOpdrachtoverheid(), {
+          requiresRuntimeBaseUrl: false,
+          validationMessage:
+            "Configuratie is geldig. Opdrachtoverheid gebruikt een vaste API-bron tijdens runtime.",
+        }),
       };
     case "striive":
       return {
         ...definition,
-        adapter: createDirectScrapeAdapter((baseUrl) => scrapeStriive(baseUrl ?? definition.defaultBaseUrl)),
+        adapter: createDirectScrapeAdapter(
+          (baseUrl) => scrapeStriive(baseUrl ?? definition.defaultBaseUrl),
+          {
+            requiresRuntimeBaseUrl: true,
+          },
+        ),
       };
     case "nationalevacaturebank":
       return {

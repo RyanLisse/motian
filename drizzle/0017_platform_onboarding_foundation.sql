@@ -73,3 +73,4 @@ CREATE TABLE IF NOT EXISTS "platform_onboarding_runs" (
 CREATE INDEX IF NOT EXISTS "idx_platform_onboarding_runs_platform_slug" ON "platform_onboarding_runs" USING btree ("platform_slug");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_platform_onboarding_runs_config_id" ON "platform_onboarding_runs" USING btree ("config_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_platform_onboarding_runs_updated_at" ON "platform_onboarding_runs" USING btree ("updated_at");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_platform_onboarding_runs_platform_slug_updated_at" ON "platform_onboarding_runs" USING btree ("platform_slug","updated_at");--> statement-breakpoint

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canActivatePlatformOnboarding,
   createPlatformOnboardingRunDraft,
   reducePlatformOnboardingRun,
 } from "../src/services/platform-onboarding";
@@ -53,8 +54,38 @@ describe("platform onboarding workflow", () => {
     });
 
     expect(blocked.status).toBe("needs_implementation");
-    expect(blocked.currentStep).toBe("monitor_first_runs");
+    expect(blocked.currentStep).toBe("create_draft");
     expect(blocked.blockerKind).toBe("needs_implementation");
     expect(blocked.nextActions).toContain("capture_follow_up_bead");
+  });
+
+  it("only allows activation after a tested run or legacy validated test-import state", () => {
+    expect(
+      canActivatePlatformOnboarding({
+        latestRunStatus: "tested",
+      }),
+    ).toBe(true);
+
+    expect(
+      canActivatePlatformOnboarding({
+        latestRunStatus: "failed",
+        validationStatus: "validated",
+        lastTestImportStatus: "success",
+      }),
+    ).toBe(false);
+
+    expect(
+      canActivatePlatformOnboarding({
+        validationStatus: "validated",
+        lastTestImportStatus: "partial",
+      }),
+    ).toBe(true);
+
+    expect(
+      canActivatePlatformOnboarding({
+        validationStatus: "validated",
+        lastTestImportStatus: "failed",
+      }),
+    ).toBe(false);
   });
 });

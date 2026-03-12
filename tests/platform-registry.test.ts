@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getImplementedPlatformSlugs,
+  getPlatformAdapter,
   getPlatformDefinition,
   listPlatformDefinitions,
 } from "../packages/scrapers/src/platform-registry";
@@ -33,5 +34,30 @@ describe("platform registry", () => {
   it("drives the shared platform helper list instead of a hardcoded array", () => {
     expect(PLATFORMS).toEqual(getImplementedPlatformSlugs());
     expect(listPlatformDefinitions().length).toBeGreaterThanOrEqual(PLATFORMS.length);
+  });
+
+  it("documents fixed-source adapters instead of pretending runtime baseUrl is used", async () => {
+    const flextender = getPlatformAdapter("flextender");
+    const opdrachtoverheid = getPlatformAdapter("opdrachtoverheid");
+
+    const [flextenderValidation, opdrachtoverheidValidation] = await Promise.all([
+      flextender?.validate({
+        slug: "flextender",
+        baseUrl: "",
+        parameters: {},
+        auth: {},
+      }),
+      opdrachtoverheid?.validate({
+        slug: "opdrachtoverheid",
+        baseUrl: "",
+        parameters: {},
+        auth: {},
+      }),
+    ]);
+
+    expect(flextenderValidation?.ok).toBe(true);
+    expect(flextenderValidation?.message).toContain("vaste bron-URL");
+    expect(opdrachtoverheidValidation?.ok).toBe(true);
+    expect(opdrachtoverheidValidation?.message).toContain("vaste API-bron");
   });
 });

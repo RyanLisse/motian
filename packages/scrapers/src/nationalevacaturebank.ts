@@ -369,6 +369,7 @@ async function bootstrapConsentSession(
       html: finalHtml,
       status: 200,
     });
+    const finalUrl = page.url();
 
     await browser.close();
 
@@ -377,7 +378,7 @@ async function bootstrapConsentSession(
       evidence: {
         mode: "playwright_local",
         pageUrl,
-        finalUrl: page.url(),
+        finalUrl,
         actions,
         cookieCount: cookies.length,
         blockerKind: blocker.blockerKind,

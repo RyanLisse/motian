@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs } from "../db/schema";
+import type { PlatformCatalogEntryView } from "./scrapers";
 import { getHealth, listPlatformCatalog } from "./scrapers";
 
 export type WorkspaceSummary = {
@@ -14,6 +15,13 @@ export type WorkspaceSummary = {
     supportedPlatforms: number;
     blockers: Array<{ platform: string; blockerKind: string | null }>;
     platforms: Array<{ platform: string; status: string; lastRunAt: Date | null }>;
+    catalog: Array<{
+      slug: string;
+      displayName: string;
+      adapterKind: string;
+      configured: boolean;
+      blockerKind: string | null;
+    }>;
   };
 };
 
@@ -61,6 +69,13 @@ export async function getWorkspaceSummary(): Promise<WorkspaceSummary> {
         platform: h.platform,
         status: h.status,
         lastRunAt: h.lastRunAt,
+      })),
+      catalog: catalog.map((entry: PlatformCatalogEntryView) => ({
+        slug: entry.slug,
+        displayName: entry.displayName,
+        adapterKind: entry.adapterKind,
+        configured: Boolean(entry.config),
+        blockerKind: entry.latestRun?.blockerKind ?? null,
       })),
     },
   };
