@@ -88,3 +88,13 @@ export function readString(value: unknown): string | undefined {
 
   return undefined;
 }
+
+/** Validates and parses a date string, returning undefined if invalid or in the far past */
+export function validDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  // Ignore dates before 2020 as they are likely placeholders or errors in this context
+  if (date.getFullYear() < 2020) return undefined;
+  return date.toISOString();
+}
