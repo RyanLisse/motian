@@ -107,4 +107,49 @@ describe("nationale vacaturebank scraper", () => {
     );
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it("treats an empty second results page as the end of pagination instead of a scraper error", async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("page=2")) {
+        return new Response("<html><body>Geen extra resultaten</body></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (url.includes("/vacatures/branche/ict")) {
+        return new Response(listingHtml, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (url.includes("/vacature/123/senior-engineer")) {
+        return new Response(detailHtml, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+
+    const result = await nationaleVacaturebankAdapter.scrape({
+      slug: "nationalevacaturebank",
+      baseUrl: "https://www.nationalevacaturebank.nl",
+      parameters: {
+        sourcePath: "/vacatures/branche/ict",
+        maxPages: 2,
+        detailLimit: 2,
+        detailConcurrency: 1,
+      },
+      auth: {},
+    });
+
+    expect(result.blockerKind).toBeUndefined();
+    expect(result.errors).toEqual([]);
+    expect(result.listings).toHaveLength(1);
+  });
 });

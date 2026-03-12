@@ -38,6 +38,42 @@ function readSchemaKeys(schema: Record<string, unknown> | undefined): string[] {
   return properties ? Object.keys(properties) : [];
 }
 
+function readSchemaDefaultObject(
+  schema: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  if (!schema || typeof schema !== "object") {
+    return {};
+  }
+
+  if (schema.default && typeof schema.default === "object" && !Array.isArray(schema.default)) {
+    return schema.default as Record<string, unknown>;
+  }
+
+  const properties =
+    schema.properties && typeof schema.properties === "object"
+      ? (schema.properties as Record<string, unknown>)
+      : null;
+
+  if (!properties) {
+    return {};
+  }
+
+  const defaults: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(properties)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      continue;
+    }
+
+    const propertyDefault = (value as Record<string, unknown>).default;
+    if (propertyDefault !== undefined) {
+      defaults[key] = propertyDefault;
+    }
+  }
+
+  return defaults;
+}
+
 function parseJsonObject(value: string, fieldName: string): Record<string, unknown> {
   if (!value.trim()) {
     return {};
@@ -68,10 +104,10 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
   const [parameters, setParameters] = useState(
     JSON.stringify(entry.config?.parameters ?? {}, null, 2),
   );
-  // Auth config is intentionally NOT pre-populated from the server entry:
-  // authConfigEncrypted is stored server-side only and is never returned to the client.
-  // Users must re-enter auth credentials when they want to update them.
-  const [authConfig, setAuthConfig] = useState("{}");
+  // Pre-populate from schema defaults only. Persisted secrets stay server-side.
+  const [authConfig, setAuthConfig] = useState(
+    JSON.stringify(readSchemaDefaultObject(entry.authSchema), null, 2),
+  );
   const [result, setResult] = useState<string>("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
@@ -92,7 +128,7 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
             cronExpression,
             isActive,
             parameters: parseJsonObject(parameters, "Parameters JSON"),
-            authConfig: parseJsonObject(authConfig, "Auth JSON"),
+            authConfig: parseJsonObject(authConfig, "Authenticatie-JSON"),
           }),
         });
         const payload = await response.json();
@@ -192,7 +228,7 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
       </div>
 
       <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">Auth JSON</p>
+        <p className="text-sm font-medium text-foreground">Authenticatie-JSON</p>
         {authKeys.length > 0 && (
           <p className="text-xs text-muted-foreground">Verwachte sleutels: {authKeys.join(", ")}</p>
         )}

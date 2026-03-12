@@ -72,7 +72,7 @@ export async function runScrapePipeline(
   try {
     const adapter = getPlatformAdapter(platform);
     if (!adapter) {
-      const errors = [`Onbekend platform: ${platform}`];
+      const errors = [`Unknown platform: ${platform}`];
       await recordFailure(platform, errors, startTime);
       return { jobsNew: 0, duplicates: 0, errors };
     }
@@ -157,7 +157,11 @@ export async function runScrapePipeline(
   }
 
   // Return merged scrape + normalization errors so callers see the full picture.
-  return { ...result, errors: allErrors };
+  return {
+    jobsNew: result.jobsNew,
+    duplicates: result.duplicates,
+    errors: allErrors,
+  };
 }
 
 export async function runScrapePipelinesWithConcurrency<T extends ScrapePipelineBatchConfig>(

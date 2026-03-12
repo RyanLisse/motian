@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildWerkzoekenListPageUrl,
   parseWerkzoekenDetailPage,
   parseWerkzoekenListingCards,
+  werkzoekenAdapter,
 } from "../packages/scrapers/src/werkzoeken";
 
 const LISTING_HTML = `
@@ -68,7 +69,13 @@ const DETAIL_HTML = `
   </html>
 `;
 
+const originalFetch = globalThis.fetch;
+
 describe("Werkzoeken scraper", () => {
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
   it("builds repeatable pagination URLs from the seeded techniek path", () => {
     expect(
       buildWerkzoekenListPageUrl("https://www.werkzoeken.nl", "/vacatures-voor/techniek/", 1),
@@ -94,6 +101,14 @@ describe("Werkzoeken scraper", () => {
     });
   });
 
+  it("parses Dutch salary thousands separators as whole euros", () => {
+    const listings = parseWerkzoekenListingCards(
+      LISTING_HTML.replace('data-salary-minimal="3000.00"', 'data-salary-minimal="3.500"'),
+    );
+
+    expect(listings[0]?.rateMin).toBe(3500);
+  });
+
   it("merges detail-page content into the normalized listing shape", () => {
     const detail = parseWerkzoekenDetailPage(
       DETAIL_HTML,
@@ -104,5 +119,48 @@ describe("Werkzoeken scraper", () => {
     expect(detail.company).toBe("AXS Techniek");
     expect(detail.location).toBe("Zwijndrecht");
     expect(detail.description).toContain("innovatieve organisatie");
+  });
+
+  it("treats an empty second page as the end of pagination instead of a scraper error", async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("?pagina=2")) {
+        return new Response("<html><body>Geen extra resultaten</body></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (url.includes("/vacature/15167751-werkvoorbereider-engineer-hvac")) {
+        return new Response(DETAIL_HTML, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      return new Response(LISTING_HTML, {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    }) as typeof fetch;
+
+    const result = await werkzoekenAdapter.scrape(
+      {
+        slug: "werkzoeken",
+        baseUrl: "https://www.werkzoeken.nl",
+        parameters: {
+          sourcePath: "/vacatures-voor/techniek/",
+          maxPages: 2,
+          detailConcurrency: 1,
+        },
+        auth: {},
+      },
+      { limit: 5 },
+    );
+
+    expect(result.blockerKind).toBeUndefined();
+    expect(result.errors).toBeUndefined();
+    expect(result.listings).toHaveLength(1);
   });
 });

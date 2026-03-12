@@ -74,6 +74,28 @@ function nextActionsFor(status: PlatformOnboardingStatus): string[] {
   }
 }
 
+function canApplyEvent(
+  current: PlatformOnboardingRunState,
+  event: PlatformOnboardingEvent,
+): boolean {
+  switch (event.type) {
+    case "config_saved":
+      return current.supported && ["draft", "config_saved", "failed"].includes(current.status);
+    case "validated":
+    case "validation_failed":
+      return current.supported && ["config_saved", "validated", "failed"].includes(current.status);
+    case "smoke_import_succeeded":
+    case "smoke_import_failed":
+      return current.supported && ["validated", "tested", "failed"].includes(current.status);
+    case "activated":
+      return current.supported && ["tested", "active"].includes(current.status);
+    case "unsupported_source_detected":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function createPlatformOnboardingRunDraft(input: {
   platform: string;
   source: PlatformOnboardingSource;
@@ -85,8 +107,8 @@ export function createPlatformOnboardingRunDraft(input: {
     supported: input.supported,
     status: "draft",
     currentStep: input.supported ? "choose_adapter" : "create_draft",
-    nextActions: nextActionsFor("draft"),
-    blockerKind: null,
+    nextActions: input.supported ? nextActionsFor("draft") : nextActionsFor("needs_implementation"),
+    blockerKind: input.supported ? null : "needs_implementation",
     evidence: {},
   };
 }
@@ -115,6 +137,10 @@ export function reducePlatformOnboardingRun(
   current: PlatformOnboardingRunState,
   event: PlatformOnboardingEvent,
 ): PlatformOnboardingRunState {
+  if (!canApplyEvent(current, event)) {
+    return current;
+  }
+
   const mergedEvidence = {
     ...current.evidence,
     ...(event.evidence ?? {}),

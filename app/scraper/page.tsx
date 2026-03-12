@@ -67,21 +67,21 @@ function triggerStatusConfig(status: string | null) {
 
   if (["completed", "success", "succeeded"].includes(normalized)) {
     return {
-      label: status ?? "completed",
+      label: "Voltooid",
       className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     };
   }
 
   if (["failed", "errored", "canceled", "cancelled"].includes(normalized)) {
     return {
-      label: status ?? "failed",
+      label: "Mislukt",
       className: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
     };
   }
 
   if (["executing", "pending", "queued", "running"].includes(normalized)) {
     return {
-      label: status ?? "queued",
+      label: normalized === "running" || normalized === "executing" ? "Bezig" : "In wachtrij",
       className: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
     };
   }
@@ -115,7 +115,7 @@ function PlatformHealthCard({
                   className="border-red-500/20 bg-red-500/10 text-[10px] text-red-500"
                 >
                   <AlertTriangle className="mr-1 h-3 w-3" />
-                  Circuit open
+                  Circuit geopend
                 </Badge>
               )}
             </div>
@@ -238,14 +238,7 @@ export const dynamic = "force-dynamic";
 export default async function ScraperPage() {
   const [
     platformCatalog,
-    {
-      analytics,
-      recentRuns: results,
-      platforms,
-      activity,
-      overlap,
-      trigger,
-    },
+    { analytics, recentRuns: results, platforms, activity, overlap, trigger },
   ] = await Promise.all([
     listPlatformCatalog(),
     getScraperDashboardData({
@@ -397,7 +390,7 @@ export default async function ScraperPage() {
                             className="border-red-500/20 bg-red-500/10 text-[10px] text-red-500"
                           >
                             <AlertTriangle className="mr-1 h-3 w-3" />
-                            Circuit open
+                            Circuit geopend
                           </Badge>
                         ) : platform.isOverdue ? (
                           <Badge
@@ -486,7 +479,7 @@ export default async function ScraperPage() {
             <div>
               <h2 className="text-lg font-semibold text-foreground">Per-platform gezondheid</h2>
               <p className="text-sm text-muted-foreground">
-                Lifetime analytics, recente failures en schedule-signalen per bron in één kaart.
+                Historische statistieken, recente fouten en planningssignalen per bron in één kaart.
               </p>
             </div>
 

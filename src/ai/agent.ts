@@ -180,7 +180,10 @@ export function getRecruitmentTools(context?: AgentContext) {
 }
 
 /** Build workspace context string for prompt injection. */
-async function getWorkspaceContext(): Promise<string> {
+async function getWorkspaceContext(): Promise<{
+  platformSlugs: string[];
+  text: string;
+}> {
   try {
     const summary = await getWorkspaceSummary();
 
@@ -198,7 +201,9 @@ async function getWorkspaceContext(): Promise<string> {
       })
       .join("\n");
 
-    return `
+    return {
+      platformSlugs: summary.scraperHealth.catalog.map((entry) => entry.slug),
+      text: `
 Werkruimte overzicht:
 - Opdrachten: ${summary.jobs.total} actief (${summary.jobs.withEmbedding} met embeddings)
 - Kandidaten: ${summary.candidates.total} actief
@@ -208,9 +213,10 @@ Werkruimte overzicht:
 ${scraperLines}
 
 Platform catalogus:
-${catalogLines}`;
+${catalogLines}`,
+    };
   } catch {
-    return "";
+    return { platformSlugs: [], text: "" };
   }
 }
 
@@ -224,6 +230,8 @@ export async function buildSystemPrompt(context?: AgentContext) {
   });
 
   const workspace = await getWorkspaceContext();
+  const platformSlugs =
+    workspace.platformSlugs.length > 0 ? workspace.platformSlugs.join(", ") : "-";
   const capabilityLines = getCapabilityLines(context)
     .map((line) => `- ${line}`)
     .join("\n");
@@ -234,6 +242,8 @@ Gebruik tools om data op te halen — gok nooit over opdrachten of data.
 Geef beknopte maar informatieve antwoorden. Gebruik nummers en tabellen waar nuttig.
 
 Vandaag is ${now}.
+
+Beschikbare platform-slugs (dynamische catalogus): ${platformSlugs}.
 
 Je kunt helpen met:
 ${capabilityLines}
@@ -246,7 +256,7 @@ Hybride scoring: ${Math.round(HYBRID_BLEND.ruleWeight * 100)}% regelgebaseerd + 
 Zoektips: queryOpdrachten zoekt op losse woorden in de titel. Gebruik korte termen (bijv. "jurist" i.p.v. "juridische functies"). Voor semantisch zoeken gebruik matchKandidaten met een beschrijving.
 
 Tarief-vragen: Voor "hoogste tarief" of "duurste vacature" gebruik queryOpdrachten met sortBy="tarief_hoog" en limit=5 (ZONDER q). Voor tarief-statistieken gebruik analyseData met analysis="top_tarieven" of "avg_rates". Gebruik NOOIT rateMin/rateMax filters als de gebruiker alleen wil weten wat het hoogste/laagste tarief is.
-${workspace}`;
+${workspace.text}`;
 
   if (context?.route) {
     prompt += `\n\nHuidige pagina: ${context.route}`;

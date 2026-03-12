@@ -55,8 +55,24 @@ describe("platform onboarding workflow", () => {
 
     expect(blocked.status).toBe("needs_implementation");
     expect(blocked.currentStep).toBe("create_draft");
+    expect(draft.nextActions).toContain("capture_follow_up_bead");
     expect(blocked.blockerKind).toBe("needs_implementation");
     expect(blocked.nextActions).toContain("capture_follow_up_bead");
+  });
+
+  it("ignores invalid rollout transitions for unsupported drafts", () => {
+    const draft = createPlatformOnboardingRunDraft({
+      platform: "unsupportedboard",
+      source: "ui",
+      supported: false,
+    });
+
+    const invalidTransition = reducePlatformOnboardingRun(draft, {
+      type: "config_saved",
+      configId: "cfg-unsupported",
+    });
+
+    expect(invalidTransition).toEqual(draft);
   });
 
   it("only allows activation after a tested run or legacy validated test-import state", () => {

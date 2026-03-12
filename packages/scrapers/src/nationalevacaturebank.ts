@@ -1,3 +1,4 @@
+import type { Browser } from "playwright";
 import type {
   PlatformAdapter,
   PlatformBlockerKind,
@@ -32,6 +33,7 @@ type SessionBootstrapResult = {
 };
 
 const NVB_ORIGIN = "https://www.nationalevacaturebank.nl";
+const NVB_FETCH_TIMEOUT_MS = 20_000;
 
 function decodeText(value: string | undefined): string {
   return stripHtml(
@@ -288,6 +290,7 @@ async function fetchHtml(url: string, init?: RequestInit): Promise<UrlFetchResul
       ...(init?.headers ?? {}),
     },
     redirect: "follow",
+    signal: init?.signal ?? AbortSignal.timeout(NVB_FETCH_TIMEOUT_MS),
     ...init,
   });
 
@@ -321,9 +324,11 @@ async function bootstrapConsentSession(
     };
   }
 
+  let browser: Browser | undefined;
+
   try {
     const { chromium } = await import("playwright");
-    const browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
       userAgent: "Mozilla/5.0 (compatible; MotianBot/1.0)",
     });
@@ -369,16 +374,13 @@ async function bootstrapConsentSession(
       html: finalHtml,
       status: 200,
     });
-    const finalUrl = page.url();
-
-    await browser.close();
 
     return {
       cookieHeader: buildCookieHeader(cookies),
       evidence: {
         mode: "playwright_local",
         pageUrl,
-        finalUrl,
+        finalUrl: page.url(),
         actions,
         cookieCount: cookies.length,
         blockerKind: blocker.blockerKind,
@@ -392,6 +394,8 @@ async function bootstrapConsentSession(
         error: error instanceof Error ? error.message : String(error),
       },
     };
+  } finally {
+    await browser?.close().catch(() => undefined);
   }
 }
 
@@ -539,6 +543,10 @@ async function scrapeNationaleVacaturebankInternal(
 
     const parsed = parseNationaleVacaturebankListings(response.html);
     if (parsed.length === 0) {
+      if (page > 1) {
+        break;
+      }
+
       return {
         listings: [],
         errors: ["NVB listing markup veranderde of leverde geen resultaten op"],

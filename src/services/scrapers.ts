@@ -33,6 +33,10 @@ export type SanitizedScraperConfig = Omit<ScraperConfig, "authConfigEncrypted" |
 export type PlatformCatalogRow = typeof platformCatalog.$inferSelect;
 export type PlatformOnboardingRunRecord = typeof platformOnboardingRuns.$inferSelect;
 type LatestPlatformOnboardingRunRow = PlatformOnboardingRunRecord;
+export type PublicScraperConfig = Omit<ScraperConfig, "authConfigEncrypted" | "credentialsRef"> & {
+  hasAuthConfig: boolean;
+  hasCredentialsRef: boolean;
+};
 
 export type PlatformHealth = {
   platform: string;
@@ -104,7 +108,7 @@ export type PlatformCatalogEntryView = {
   isEnabled: boolean;
   isSelfServe: boolean;
   implemented: boolean;
-  config: SanitizedScraperConfig | null;
+  config: PublicScraperConfig | null;
   latestRun: PlatformOnboardingRunRecord | null;
 };
 
@@ -120,7 +124,7 @@ export type PlatformTestImportResponse = PlatformTestImportResult & {
 
 export type PlatformOnboardingStatusResponse = {
   catalog: PlatformCatalogEntryView | null;
-  config: SanitizedScraperConfig | null;
+  config: PublicScraperConfig | null;
   latestRun: PlatformOnboardingRunRecord | null;
 };
 
@@ -143,6 +147,108 @@ function fallbackDisplayName(slug: string) {
     .filter(Boolean)
     .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
     .join(" ");
+}
+
+function normalizeJsonRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function jsonValueEquals(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left ?? {}) === JSON.stringify(right ?? {});
+}
+
+function toPublicScraperConfig(config: ScraperConfig | null): PublicScraperConfig | null {
+  if (!config) {
+    return null;
+  }
+
+  const { authConfigEncrypted, credentialsRef, ...rest } = config;
+  return {
+    ...rest,
+    hasAuthConfig: Boolean(authConfigEncrypted),
+    hasCredentialsRef: Boolean(credentialsRef),
+  };
+}
+
+function buildCatalogRowValues(
+  slug: string,
+  data: Partial<CreatePlatformCatalogData>,
+  existing?: PlatformCatalogRow | null,
+) {
+  const definition = getPlatformDefinition(slug);
+
+  return {
+    slug,
+    displayName:
+      data.displayName ??
+      existing?.displayName ??
+      definition?.displayName ??
+      fallbackDisplayName(slug),
+    adapterKind:
+      data.adapterKind ??
+      existing?.adapterKind ??
+      definition?.adapterKind ??
+      "http_html_list_detail",
+    authMode: data.authMode ?? existing?.authMode ?? definition?.authMode ?? "none",
+    attributionLabel:
+      data.attributionLabel ??
+      existing?.attributionLabel ??
+      definition?.attributionLabel ??
+      fallbackDisplayName(slug),
+    description: data.description ?? existing?.description ?? definition?.description ?? "",
+    capabilities:
+      data.capabilities ??
+      (Array.isArray(existing?.capabilities) ? (existing.capabilities as string[]) : undefined) ??
+      definition?.capabilities ??
+      [],
+    docsUrl: data.docsUrl ?? existing?.docsUrl ?? definition?.docsUrl ?? null,
+    defaultBaseUrl:
+      data.defaultBaseUrl ?? existing?.defaultBaseUrl ?? definition?.defaultBaseUrl ?? null,
+    configSchema:
+      data.configSchema ??
+      (existing?.configSchema as Record<string, unknown> | undefined) ??
+      (definition ? serializeZodSchema(definition.configSchema) : {}),
+    authSchema:
+      data.authSchema ??
+      (existing?.authSchema as Record<string, unknown> | undefined) ??
+      (definition ? serializeZodSchema(definition.authSchema) : {}),
+    isEnabled: data.isEnabled ?? existing?.isEnabled ?? true,
+    isSelfServe: data.isSelfServe ?? existing?.isSelfServe ?? Boolean(definition),
+    updatedAt: new Date(),
+  };
+}
+
+async function ensurePlatformCatalogExists(slug: string): Promise<void> {
+  const values = buildCatalogRowValues(slug, {});
+
+  await db.insert(platformCatalog).values(values).onConflictDoNothing({
+    target: platformCatalog.slug,
+  });
+}
+
+function didConnectionSettingsChange(
+  existing: ScraperConfig | null,
+  next: {
+    authConfigEncrypted: string | null;
+    baseUrl: string;
+    credentialsRef: string | null;
+    parameters: Record<string, unknown>;
+  },
+): boolean {
+  if (!existing) {
+    return true;
+  }
+
+  return (
+    existing.baseUrl !== next.baseUrl ||
+    existing.authConfigEncrypted !== next.authConfigEncrypted ||
+    existing.credentialsRef !== next.credentialsRef ||
+    !jsonValueEquals(existing.parameters, next.parameters)
+  );
 }
 
 function onboardingStateFromRecord(
@@ -177,6 +283,8 @@ async function recordOnboardingSnapshot(input: {
         evidence?: Record<string, unknown>;
       };
 }): Promise<PlatformOnboardingRunRecord> {
+  await ensurePlatformCatalogExists(input.platform);
+
   const supported = Boolean(getPlatformAdapter(input.platform));
   const latest = await getLatestOnboardingRun(input.platform);
   const initial = latest
@@ -213,6 +321,8 @@ async function ensureOnboardingDraft(
   platform: string,
   source: PlatformOnboardingSource,
 ): Promise<void> {
+  await ensurePlatformCatalogExists(platform);
+
   const existing = await getLatestOnboardingRun(platform);
   if (existing) {
     return;
@@ -334,7 +444,7 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
         isEnabled: row?.isEnabled ?? true,
         isSelfServe: row?.isSelfServe ?? Boolean(definition),
         implemented: Boolean(getPlatformAdapter(slug)),
-        config: (() => { const c = configMap.get(slug); return c ? sanitizeConfig(c) : null; })(),
+        config: toPublicScraperConfig(configMap.get(slug) ?? null),
         latestRun: latestRunMap.get(slug) ?? null,
       };
     });
@@ -350,50 +460,30 @@ export async function getPlatformCatalogEntry(
 export async function createPlatformCatalogEntry(
   data: CreatePlatformCatalogData,
 ): Promise<PlatformCatalogRow> {
-  const definition = getPlatformDefinition(data.slug);
+  const [existing] = await db
+    .select()
+    .from(platformCatalog)
+    .where(eq(platformCatalog.slug, data.slug))
+    .limit(1);
+  const values = buildCatalogRowValues(data.slug, data, existing ?? null);
 
-  const [row] = await db
-    .insert(platformCatalog)
-    .values({
-      slug: data.slug,
-      displayName: data.displayName ?? definition?.displayName ?? fallbackDisplayName(data.slug),
-      adapterKind: data.adapterKind ?? definition?.adapterKind ?? "http_html_list_detail",
-      authMode: data.authMode ?? definition?.authMode ?? "none",
-      attributionLabel:
-        data.attributionLabel ?? definition?.attributionLabel ?? fallbackDisplayName(data.slug),
-      description: data.description ?? definition?.description ?? "",
-      capabilities: data.capabilities ?? definition?.capabilities ?? [],
-      docsUrl: data.docsUrl ?? definition?.docsUrl ?? null,
-      defaultBaseUrl: data.defaultBaseUrl ?? definition?.defaultBaseUrl ?? null,
-      configSchema:
-        data.configSchema ?? (definition ? serializeZodSchema(definition.configSchema) : {}),
-      authSchema: data.authSchema ?? (definition ? serializeZodSchema(definition.authSchema) : {}),
-      isEnabled: data.isEnabled ?? true,
-      isSelfServe: data.isSelfServe ?? Boolean(definition),
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: platformCatalog.slug,
-      set: {
-        displayName: data.displayName ?? definition?.displayName ?? fallbackDisplayName(data.slug),
-        adapterKind: data.adapterKind ?? definition?.adapterKind ?? "http_html_list_detail",
-        authMode: data.authMode ?? definition?.authMode ?? "none",
-        attributionLabel:
-          data.attributionLabel ?? definition?.attributionLabel ?? fallbackDisplayName(data.slug),
-        description: data.description ?? definition?.description ?? "",
-        capabilities: data.capabilities ?? definition?.capabilities ?? [],
-        docsUrl: data.docsUrl ?? definition?.docsUrl ?? null,
-        defaultBaseUrl: data.defaultBaseUrl ?? definition?.defaultBaseUrl ?? null,
-        configSchema:
-          data.configSchema ?? (definition ? serializeZodSchema(definition.configSchema) : {}),
-        authSchema:
-          data.authSchema ?? (definition ? serializeZodSchema(definition.authSchema) : {}),
-        isEnabled: data.isEnabled ?? true,
-        isSelfServe: data.isSelfServe ?? Boolean(definition),
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
+  const row = existing
+    ? (
+        await db
+          .update(platformCatalog)
+          .set(values)
+          .where(eq(platformCatalog.slug, data.slug))
+          .returning()
+      )[0]
+    : (
+        await db
+          .insert(platformCatalog)
+          .values({
+            ...values,
+            createdAt: new Date(),
+          })
+          .returning()
+      )[0];
 
   await ensureOnboardingDraft(data.slug, data.source ?? "system");
 
@@ -457,49 +547,103 @@ export async function getConfigByPlatform(platform: string): Promise<ScraperConf
 }
 
 export async function createConfig(data: CreatePlatformConfigData): Promise<ScraperConfig> {
+  await ensurePlatformCatalogExists(data.platform);
+
   const catalog = await getPlatformCatalogEntry(data.platform);
-  const baseUrl = data.baseUrl ?? catalog?.defaultBaseUrl;
+  const existing = await getConfigByPlatform(data.platform);
+  const parameters = data.parameters ?? normalizeJsonRecord(existing?.parameters);
+  const authConfigEncrypted =
+    data.authConfig !== undefined
+      ? encryptAuthConfig(data.authConfig)
+      : (existing?.authConfigEncrypted ?? null);
+  const credentialsRef =
+    data.credentialsRef !== undefined
+      ? (data.credentialsRef ?? null)
+      : (existing?.credentialsRef ?? null);
+  const baseUrl = data.baseUrl ?? existing?.baseUrl ?? catalog?.defaultBaseUrl;
+
   if (!baseUrl) {
     throw new Error(`Geen baseUrl beschikbaar voor platform ${data.platform}`);
   }
 
-  const [config] = await db
-    .insert(scraperConfigs)
-    .values({
-      platform: data.platform,
-      baseUrl,
-      isActive: data.isActive ?? false,
-      parameters: data.parameters ?? {},
-      authConfigEncrypted: data.authConfig ? encryptAuthConfig(data.authConfig) : null,
-      credentialsRef: data.credentialsRef ?? null,
-      cronExpression: data.cronExpression ?? "0 0 */4 * * *",
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: scraperConfigs.platform,
-      set: {
-        baseUrl,
-        isActive: data.isActive ?? false,
-        parameters: data.parameters ?? {},
-        authConfigEncrypted: data.authConfig ? encryptAuthConfig(data.authConfig) : null,
-        credentialsRef: data.credentialsRef ?? null,
-        cronExpression: data.cronExpression ?? "0 0 */4 * * *",
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
+  const connectionChanged = didConnectionSettingsChange(existing, {
+    authConfigEncrypted,
+    baseUrl,
+    credentialsRef,
+    parameters,
+  });
+  const isActive = data.isActive ?? existing?.isActive ?? false;
+  const cronExpression = data.cronExpression ?? existing?.cronExpression ?? "0 0 */4 * * *";
+  const validationStatus = connectionChanged
+    ? "unknown"
+    : (existing?.validationStatus ?? "unknown");
+  const lastValidatedAt = connectionChanged ? null : (existing?.lastValidatedAt ?? null);
+  const lastValidationError = connectionChanged ? null : (existing?.lastValidationError ?? null);
+  const lastTestImportAt = connectionChanged ? null : (existing?.lastTestImportAt ?? null);
+  const lastTestImportStatus = connectionChanged ? null : (existing?.lastTestImportStatus ?? null);
+
+  const config = existing
+    ? (
+        await db
+          .update(scraperConfigs)
+          .set({
+            authConfigEncrypted,
+            baseUrl,
+            cronExpression,
+            credentialsRef,
+            isActive,
+            lastTestImportAt,
+            lastTestImportStatus,
+            lastValidatedAt,
+            lastValidationError,
+            parameters,
+            updatedAt: new Date(),
+            validationStatus,
+          })
+          .where(eq(scraperConfigs.id, existing.id))
+          .returning()
+      )[0]
+    : (
+        await db
+          .insert(scraperConfigs)
+          .values({
+            authConfigEncrypted,
+            baseUrl,
+            cronExpression,
+            credentialsRef,
+            isActive,
+            lastTestImportAt,
+            lastTestImportStatus,
+            lastValidatedAt,
+            lastValidationError,
+            parameters,
+            platform: data.platform,
+            updatedAt: new Date(),
+            validationStatus,
+          })
+          .returning()
+      )[0];
 
   await recordOnboardingSnapshot({
     platform: data.platform,
     source: data.source ?? "ui",
     configId: config.id,
-    event: {
-      type: "config_saved",
-      configId: config.id,
-      evidence: {
-        baseUrl: config.baseUrl,
-      },
-    },
+    event: getPlatformAdapter(data.platform)
+      ? {
+          type: "config_saved",
+          configId: config.id,
+          evidence: {
+            baseUrl: config.baseUrl,
+          },
+        }
+      : {
+          type: "unsupported_source_detected",
+          blockerKind: "needs_implementation",
+          evidence: {
+            baseUrl: config.baseUrl,
+            message: "Platform heeft nog geen runtime adapter implementatie",
+          },
+        },
   });
 
   return config;
@@ -510,49 +654,76 @@ export async function updateConfig(
   id: string,
   data: UpdateConfigData,
 ): Promise<ScraperConfig | null> {
-  // Read current row to detect connection-setting changes.
-  const [current] = await db
+  const [existing] = await db
     .select()
     .from(scraperConfigs)
     .where(eq(scraperConfigs.id, id))
     .limit(1);
+  if (!existing) {
+    return null;
+  }
 
-  // If baseUrl, authConfig, credentialsRef or parameters changed, previous
-  // validation and smoke-import results are no longer valid.
-  const connectionChanged =
-    Boolean(current) &&
-    ((data.baseUrl !== undefined && data.baseUrl !== current.baseUrl) ||
-      data.authConfig !== undefined ||
-      (data.credentialsRef !== undefined && data.credentialsRef !== current.credentialsRef) ||
-      (data.parameters !== undefined &&
-        JSON.stringify(data.parameters) !== JSON.stringify(current.parameters)));
+  const parameters = data.parameters ?? normalizeJsonRecord(existing.parameters);
+  const authConfigEncrypted =
+    data.authConfig !== undefined
+      ? encryptAuthConfig(data.authConfig)
+      : (existing.authConfigEncrypted ?? null);
+  const credentialsRef =
+    data.credentialsRef !== undefined
+      ? (data.credentialsRef ?? null)
+      : (existing.credentialsRef ?? null);
+  const baseUrl = data.baseUrl ?? existing.baseUrl;
+  const connectionChanged = didConnectionSettingsChange(existing, {
+    authConfigEncrypted,
+    baseUrl,
+    credentialsRef,
+    parameters,
+  });
 
-  const resetValidation = connectionChanged
-    ? {
-        validationStatus: "unknown",
-        lastValidatedAt: null,
-        lastValidationError: null,
-        lastTestImportAt: null,
-        lastTestImportStatus: null,
-      }
-    : {};
-
-  const result = await db
+  const [updated] = await db
     .update(scraperConfigs)
     .set({
-      authConfigEncrypted: data.authConfig ? encryptAuthConfig(data.authConfig) : undefined,
-      baseUrl: data.baseUrl,
-      cronExpression: data.cronExpression,
-      credentialsRef: data.credentialsRef,
-      isActive: data.isActive,
-      parameters: data.parameters,
-      ...resetValidation,
+      authConfigEncrypted,
+      baseUrl,
+      cronExpression: data.cronExpression ?? existing.cronExpression,
+      credentialsRef,
+      isActive: data.isActive ?? existing.isActive,
+      lastTestImportAt: connectionChanged ? null : existing.lastTestImportAt,
+      lastTestImportStatus: connectionChanged ? null : existing.lastTestImportStatus,
+      lastValidatedAt: connectionChanged ? null : existing.lastValidatedAt,
+      lastValidationError: connectionChanged ? null : existing.lastValidationError,
+      parameters,
       updatedAt: new Date(),
+      validationStatus: connectionChanged ? "unknown" : existing.validationStatus,
     })
     .where(eq(scraperConfigs.id, id))
     .returning();
 
-  return result[0] ?? null;
+  if (connectionChanged) {
+    await recordOnboardingSnapshot({
+      platform: existing.platform,
+      source: "ui",
+      configId: updated.id,
+      event: getPlatformAdapter(existing.platform)
+        ? {
+            type: "config_saved",
+            configId: updated.id,
+            evidence: {
+              baseUrl: updated.baseUrl,
+            },
+          }
+        : {
+            type: "unsupported_source_detected",
+            blockerKind: "needs_implementation",
+            evidence: {
+              baseUrl: updated.baseUrl,
+              message: "Platform heeft nog geen runtime adapter implementatie",
+            },
+          },
+    });
+  }
+
+  return updated;
 }
 
 export async function getLatestOnboardingRun(
@@ -801,7 +972,7 @@ export async function getPlatformOnboardingStatus(
 
   return {
     catalog,
-    config: config ? sanitizeConfig(config) : null,
+    config: toPublicScraperConfig(config),
     latestRun,
   };
 }

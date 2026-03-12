@@ -8,6 +8,8 @@ import type {
 } from "./types";
 import { stripHtml } from "./strip-html";
 
+const WERKZOEKEN_FETCH_TIMEOUT_MS = 20_000;
+
 function decodeText(value: string | undefined): string {
   return stripHtml(
     value
@@ -23,7 +25,14 @@ function firstMatch(html: string, pattern: RegExp): string | undefined {
 
 function parseSalaryValue(value: string | undefined): number | undefined {
   if (!value) return undefined;
-  const normalized = value.replace(/[^\d.]/g, "");
+  const raw = value.replace(/[^\d.,]/g, "").trim();
+  if (!raw) return undefined;
+
+  const normalized = raw.match(/^\d{1,3}(\.\d{3})+(,\d+)?$/)
+    ? raw.replace(/\./g, "").replace(",", ".")
+    : raw.includes(",")
+      ? raw.replace(/\./g, "").replace(",", ".")
+      : raw;
   const parsed = Number.parseFloat(normalized);
   if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
   return Math.round(parsed);
@@ -148,6 +157,7 @@ async function fetchHtml(url: string): Promise<string> {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; MotianBot/1.0)",
     },
+    signal: AbortSignal.timeout(WERKZOEKEN_FETCH_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -201,6 +211,10 @@ async function scrapeWerkzoekenInternal(
     const html = await fetchHtml(url);
     const parsed = parseWerkzoekenListingCards(html);
     if (parsed.length === 0) {
+      if (page > 1) {
+        break;
+      }
+
       return {
         listings,
         errors: ["Geen Werkzoeken vacaturekaarten gevonden op de resultatenpagina"],

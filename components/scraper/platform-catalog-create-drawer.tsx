@@ -52,7 +52,7 @@ export function PlatformCatalogCreateDrawer() {
         throw new Error(payload.error ?? "Platform toevoegen mislukt");
       }
 
-      setResult("Platform catalogus entry opgeslagen. Configureer daarna de runtime config.");
+      setResult("Platformcatalogus opgeslagen. Configureer daarna de runtimeconfiguratie.");
       startTransition(() => {
         router.refresh();
       });
