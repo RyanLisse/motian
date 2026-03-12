@@ -161,6 +161,22 @@ function jsonValueEquals(left: unknown, right: unknown): boolean {
   return JSON.stringify(left ?? {}) === JSON.stringify(right ?? {});
 }
 
+function comparableAuthConfig(encoded: string | null): unknown {
+  if (!encoded) {
+    return null;
+  }
+
+  if (!isEncrypted(encoded)) {
+    return encoded;
+  }
+
+  try {
+    return normalizeJsonRecord(decryptAuthConfig(encoded));
+  } catch {
+    return encoded;
+  }
+}
+
 function toPublicScraperConfig(config: ScraperConfig | null): PublicScraperConfig | null {
   if (!config) {
     return null;
@@ -230,7 +246,7 @@ async function ensurePlatformCatalogExists(slug: string): Promise<void> {
   });
 }
 
-function didConnectionSettingsChange(
+export function didConnectionSettingsChange(
   existing: ScraperConfig | null,
   next: {
     authConfigEncrypted: string | null;
@@ -245,7 +261,10 @@ function didConnectionSettingsChange(
 
   return (
     existing.baseUrl !== next.baseUrl ||
-    existing.authConfigEncrypted !== next.authConfigEncrypted ||
+    !jsonValueEquals(
+      comparableAuthConfig(existing.authConfigEncrypted),
+      comparableAuthConfig(next.authConfigEncrypted),
+    ) ||
     existing.credentialsRef !== next.credentialsRef ||
     !jsonValueEquals(existing.parameters, next.parameters)
   );
@@ -771,7 +790,7 @@ export async function validateConfig(
       evidence: {
         platform,
       },
-      config,
+      config: sanitizeConfig(config),
       onboardingRun,
     };
   }
@@ -852,7 +871,7 @@ export async function triggerTestRun(
       listings: [],
       blockerKind: "needs_implementation",
       errors: ["Geen runtime adapter beschikbaar voor dit platform."],
-      config,
+      config: sanitizeConfig(config),
       onboardingRun,
     };
   }

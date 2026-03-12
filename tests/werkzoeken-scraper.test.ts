@@ -109,6 +109,30 @@ describe("Werkzoeken scraper", () => {
     expect(listings[0]?.rateMin).toBe(3500);
   });
 
+  it("keeps source paths scoped to the configured host", () => {
+    expect(() =>
+      buildWerkzoekenListPageUrl(
+        "https://staging.werkzoeken.test",
+        "https://evil.example/vacatures",
+        1,
+      ),
+    ).toThrow(/zelfde host/i);
+  });
+
+  it("resolves relative vacancy links against the configured base url", () => {
+    const listings = parseWerkzoekenListingCards(
+      LISTING_HTML.replace(
+        'href="https://www.werkzoeken.nl/vacature/15167751-werkvoorbereider-engineer-hvac-tot-eur4800-bruto-per-maand/"',
+        'href="/vacature/15167751-werkvoorbereider-engineer-hvac-tot-eur4800-bruto-per-maand/"',
+      ),
+      "https://staging.werkzoeken.test",
+    );
+
+    expect(listings[0]?.externalUrl).toBe(
+      "https://staging.werkzoeken.test/vacature/15167751-werkvoorbereider-engineer-hvac-tot-eur4800-bruto-per-maand/",
+    );
+  });
+
   it("merges detail-page content into the normalized listing shape", () => {
     const detail = parseWerkzoekenDetailPage(
       DETAIL_HTML,
@@ -160,6 +184,41 @@ describe("Werkzoeken scraper", () => {
     );
 
     expect(result.blockerKind).toBeUndefined();
+    expect(result.errors).toBeUndefined();
+    expect(result.listings).toHaveLength(1);
+  });
+
+  it("falls back to sane pagination and concurrency defaults when config numbers are invalid", async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("/vacature/15167751-werkvoorbereider-engineer-hvac")) {
+        return new Response(DETAIL_HTML, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      return new Response(LISTING_HTML, {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    }) as typeof fetch;
+
+    const result = await werkzoekenAdapter.scrape(
+      {
+        slug: "werkzoeken",
+        baseUrl: "https://www.werkzoeken.nl",
+        parameters: {
+          sourcePath: "/vacatures-voor/techniek/",
+          maxPages: "geen-getal",
+          detailConcurrency: "ook-geen-getal",
+        },
+        auth: {},
+      },
+      { limit: 2 },
+    );
+
     expect(result.errors).toBeUndefined();
     expect(result.listings).toHaveLength(1);
   });

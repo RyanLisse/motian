@@ -72,7 +72,7 @@ export async function runScrapePipeline(
   try {
     const adapter = getPlatformAdapter(platform);
     if (!adapter) {
-      const errors = [`Unknown platform: ${platform}`];
+      const errors = [`Onbekend platform: ${platform}`];
       await recordFailure(platform, errors, startTime);
       return { jobsNew: 0, duplicates: 0, errors };
     }

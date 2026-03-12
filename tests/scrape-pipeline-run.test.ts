@@ -58,18 +58,18 @@ describe("runScrapePipeline", () => {
     expect(result).toEqual({
       jobsNew: 0,
       duplicates: 0,
-      errors: ["Unknown platform: unsupported-board"],
+      errors: ["Onbekend platform: unsupported-board"],
     });
     expect(recordScrapeResult).toHaveBeenCalledWith(
       expect.objectContaining({
         platform: "unsupported-board",
         status: "failed",
-        errors: ["Unknown platform: unsupported-board"],
+        errors: ["Onbekend platform: unsupported-board"],
       }),
     );
     expect(publish).toHaveBeenCalledWith("scrape:error", {
       platform: "unsupported-board",
-      errors: ["Unknown platform: unsupported-board"],
+      errors: ["Onbekend platform: unsupported-board"],
     });
   });
 

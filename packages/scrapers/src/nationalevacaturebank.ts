@@ -34,6 +34,7 @@ type SessionBootstrapResult = {
 
 const NVB_ORIGIN = "https://www.nationalevacaturebank.nl";
 const NVB_FETCH_TIMEOUT_MS = 20_000;
+const NVB_DEFAULT_USER_AGENT = "Mozilla/5.0 (compatible; MotianBot/1.0)";
 
 function decodeText(value: string | undefined): string {
   return stripHtml(
@@ -51,6 +52,17 @@ function firstMatch(html: string, pattern: RegExp): string | undefined {
 
 function toAbsoluteUrl(pathOrUrl: string): string {
   return new URL(pathOrUrl, NVB_ORIGIN).toString();
+}
+
+function parsePositiveInteger(value: unknown, fallback: number): number {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function parseNumberRange(value: string): { rateMin?: number; rateMax?: number } {
@@ -284,14 +296,17 @@ function mapContractType(value: string): "freelance" | "interim" | "vast" | "opd
 }
 
 async function fetchHtml(url: string, init?: RequestInit): Promise<UrlFetchResult> {
+  const requestHeaders = new Headers(init?.headers);
+
+  if (!requestHeaders.has("User-Agent")) {
+    requestHeaders.set("User-Agent", NVB_DEFAULT_USER_AGENT);
+  }
+
   const response = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; MotianBot/1.0)",
-      ...(init?.headers ?? {}),
-    },
-    redirect: "follow",
-    signal: init?.signal ?? AbortSignal.timeout(NVB_FETCH_TIMEOUT_MS),
     ...init,
+    headers: requestHeaders,
+    redirect: init?.redirect ?? "follow",
+    signal: init?.signal ?? AbortSignal.timeout(NVB_FETCH_TIMEOUT_MS),
   });
 
   return {
@@ -330,7 +345,7 @@ async function bootstrapConsentSession(
     const { chromium } = await import("playwright");
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
-      userAgent: "Mozilla/5.0 (compatible; MotianBot/1.0)",
+      userAgent: NVB_DEFAULT_USER_AGENT,
     });
     const page = await context.newPage();
     const actions: string[] = [];
@@ -456,7 +471,7 @@ async function enrichNationaleVacaturebankListings(
 ): Promise<{ listings: RawScrapedListing[]; errors: string[] }> {
   const errors: string[] = [];
   const results: RawScrapedListing[] = [];
-  const detailConcurrency = Math.max(1, Number(config.parameters.detailConcurrency ?? 3));
+  const detailConcurrency = parsePositiveInteger(config.parameters.detailConcurrency, 3);
 
   for (let index = 0; index < listings.length; index += detailConcurrency) {
     const batch = listings.slice(index, index + detailConcurrency);
@@ -509,8 +524,8 @@ async function scrapeNationaleVacaturebankInternal(
   options?: { limit?: number; smoke?: boolean },
 ): Promise<PlatformScrapeResult> {
   const sourcePath = String(config.parameters.sourcePath ?? "/vacatures/branche/ict");
-  const maxPages = Math.max(1, Number(config.parameters.maxPages ?? 3));
-  const detailLimit = Math.max(1, Number(config.parameters.detailLimit ?? 10));
+  const maxPages = parsePositiveInteger(config.parameters.maxPages, 3);
+  const detailLimit = parsePositiveInteger(config.parameters.detailLimit, 10);
   const limit = options?.limit ? Math.max(1, options.limit) : Number.POSITIVE_INFINITY;
   const listings: RawScrapedListing[] = [];
   const errors: string[] = [];

@@ -9,6 +9,7 @@ import type {
 import { stripHtml } from "./strip-html";
 
 const WERKZOEKEN_FETCH_TIMEOUT_MS = 20_000;
+const DEFAULT_WERKZOEKEN_ORIGIN = "https://www.werkzoeken.nl";
 
 function decodeText(value: string | undefined): string {
   return stripHtml(
@@ -58,8 +59,30 @@ function normalizeHours(value: string | undefined): { min?: number; max?: number
   return {};
 }
 
-function toAbsoluteUrl(url: string): string {
-  return url.startsWith("http") ? url : `https://www.werkzoeken.nl${url}`;
+function parsePositiveInteger(value: unknown, fallback: number): number {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function toAbsoluteUrl(url: string, baseUrl: string): string {
+  return new URL(url, baseUrl).toString();
+}
+
+function resolveWerkzoekenSourceUrl(baseUrl: string, sourcePath: string): URL {
+  const normalizedBaseUrl = new URL(baseUrl);
+  const sourceUrl = new URL(sourcePath, normalizedBaseUrl);
+
+  if (sourceUrl.origin !== normalizedBaseUrl.origin) {
+    throw new Error("Werkzoeken sourcePath moet op dezelfde host blijven als baseUrl");
+  }
+
+  return sourceUrl;
 }
 
 export function buildWerkzoekenListPageUrl(
@@ -67,21 +90,24 @@ export function buildWerkzoekenListPageUrl(
   sourcePath: string,
   page: number,
 ): string {
-  const url = new URL(sourcePath, baseUrl);
+  const url = resolveWerkzoekenSourceUrl(baseUrl, sourcePath);
   if (page > 1) {
     url.searchParams.set("pagina", String(page));
   }
   return url.toString();
 }
 
-export function parseWerkzoekenListingCards(html: string): RawScrapedListing[] {
+export function parseWerkzoekenListingCards(
+  html: string,
+  baseUrl = DEFAULT_WERKZOEKEN_ORIGIN,
+): RawScrapedListing[] {
   const listings: RawScrapedListing[] = [];
   const linkRegex = /<a\b([\s\S]*?)class="vacancy vac[\s\S]*?href="([^"]+)"[\s\S]*?<h3>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/g;
 
   let match = linkRegex.exec(html);
   while (match !== null) {
     const rawAttributes = match[1];
-    const externalUrl = toAbsoluteUrl(match[2]);
+    const externalUrl = toAbsoluteUrl(match[2], baseUrl);
     const title = decodeText(match[3]);
     const externalId = firstMatch(rawAttributes, /data-vacancyid="([^"]+)"/);
     const company = decodeText(firstMatch(rawAttributes, /data-business="([^"]+)"/));
@@ -202,14 +228,14 @@ async function scrapeWerkzoekenInternal(
   options?: { limit?: number; smoke?: boolean },
 ): Promise<PlatformScrapeResult> {
   const sourcePath = String(config.parameters.sourcePath ?? "/vacatures-voor/techniek/");
-  const maxPages = Math.max(1, Number(config.parameters.maxPages ?? 3));
-  const detailConcurrency = Math.max(1, Number(config.parameters.detailConcurrency ?? 4));
+  const maxPages = parsePositiveInteger(config.parameters.maxPages, 3);
+  const detailConcurrency = parsePositiveInteger(config.parameters.detailConcurrency, 4);
   const listings: RawScrapedListing[] = [];
 
   for (let page = 1; page <= maxPages; page += 1) {
     const url = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, page);
     const html = await fetchHtml(url);
-    const parsed = parseWerkzoekenListingCards(html);
+    const parsed = parseWerkzoekenListingCards(html, config.baseUrl);
     if (parsed.length === 0) {
       if (page > 1) {
         break;
@@ -252,7 +278,7 @@ export const werkzoekenAdapter: PlatformAdapter = {
     const sourcePath = String(config.parameters.sourcePath ?? "/vacatures-voor/techniek/");
     const url = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, 1);
     const html = await fetchHtml(url);
-    const listings = parseWerkzoekenListingCards(html);
+    const listings = parseWerkzoekenListingCards(html, config.baseUrl);
 
     if (listings.length === 0) {
       return {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { startTransition, useState } from "react";
+import { type ChangeEvent, startTransition, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,6 +27,13 @@ export function PlatformCatalogCreateDrawer() {
   const [description, setDescription] = useState("");
   const [result, setResult] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  function updateField(setter: (value: string) => void) {
+    return (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setResult("");
+      setter(event.target.value);
+    };
+  }
 
   async function handleCreate() {
     setSubmitting(true);
@@ -79,47 +86,97 @@ export function PlatformCatalogCreateDrawer() {
 
         <div className="space-y-4 overflow-y-auto px-4 pb-6">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Slug</p>
-            <Input value={slug} onChange={(event) => setSlug(event.target.value)} />
+            <label className="text-sm font-medium text-foreground" htmlFor="platform-catalog-slug">
+              Slug
+            </label>
+            <Input id="platform-catalog-slug" value={slug} onChange={updateField(setSlug)} />
           </div>
 
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Weergavenaam</p>
-            <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+            <label
+              className="text-sm font-medium text-foreground"
+              htmlFor="platform-catalog-display-name"
+            >
+              Weergavenaam
+            </label>
+            <Input
+              id="platform-catalog-display-name"
+              value={displayName}
+              onChange={updateField(setDisplayName)}
+            />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">Adaptertype</p>
-              <Input value={adapterKind} onChange={(event) => setAdapterKind(event.target.value)} />
+              <label
+                className="text-sm font-medium text-foreground"
+                htmlFor="platform-catalog-adapter-kind"
+              >
+                Adaptertype
+              </label>
+              <Input
+                id="platform-catalog-adapter-kind"
+                value={adapterKind}
+                onChange={updateField(setAdapterKind)}
+              />
               <p className="text-xs text-muted-foreground">{ADAPTER_HELP}</p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">Authenticatiemodus</p>
-              <Input value={authMode} onChange={(event) => setAuthMode(event.target.value)} />
+              <label
+                className="text-sm font-medium text-foreground"
+                htmlFor="platform-catalog-auth-mode"
+              >
+                Authenticatiemodus
+              </label>
+              <Input
+                id="platform-catalog-auth-mode"
+                value={authMode}
+                onChange={updateField(setAuthMode)}
+              />
             </div>
           </div>
 
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Standaard basis-URL</p>
+            <label
+              className="text-sm font-medium text-foreground"
+              htmlFor="platform-catalog-default-base-url"
+            >
+              Standaard basis-URL
+            </label>
             <Input
+              id="platform-catalog-default-base-url"
               value={defaultBaseUrl}
-              onChange={(event) => setDefaultBaseUrl(event.target.value)}
+              onChange={updateField(setDefaultBaseUrl)}
             />
           </div>
 
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Documentatie / bron URL</p>
-            <Input value={docsUrl} onChange={(event) => setDocsUrl(event.target.value)} />
+            <label
+              className="text-sm font-medium text-foreground"
+              htmlFor="platform-catalog-docs-url"
+            >
+              Documentatie / bron URL
+            </label>
+            <Input
+              id="platform-catalog-docs-url"
+              value={docsUrl}
+              onChange={updateField(setDocsUrl)}
+            />
           </div>
 
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Omschrijving</p>
+            <label
+              className="text-sm font-medium text-foreground"
+              htmlFor="platform-catalog-description"
+            >
+              Omschrijving
+            </label>
             <Textarea
+              id="platform-catalog-description"
               rows={5}
               value={description}
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={updateField(setDescription)}
             />
           </div>
 
