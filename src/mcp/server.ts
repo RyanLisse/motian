@@ -3,11 +3,20 @@ import "dotenv/config";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import * as Sentry from "@sentry/nextjs";
 import { allHandlers, allTools } from "./tools/index.js";
 
-const server = new Server(
-  { name: "motian-recruitment", version: "0.1.0" },
-  { capabilities: { tools: {} } },
+Sentry.init({
+  dsn: "https://f13da1ff32b7d1f499309c7040de8fae@o4507090437668864.ingest.de.sentry.io/4510936878481488",
+  tracesSampleRate: 1.0,
+  sendDefaultPii: true,
+});
+
+const server = Sentry.wrapMcpServerWithSentry(
+  new Server(
+    { name: "motian-recruitment", version: "0.1.0" },
+    { capabilities: { tools: {} } },
+  )
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
