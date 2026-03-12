@@ -158,98 +158,89 @@ export async function getOverviewData(database: typeof db = db) {
   // and the pg driver's internal connection queueing mechanism used by transactions
   // loses this context during concurrent async operations in force-dynamic routes,
   // throwing "Access to storage is not allowed from this context".
-  const [
-    platformCounts,
-    recentJobs,
-    activeScrapers,
-    recentScrapes,
-    topCompanies,
-    locationCounts,
-    pipelineStageCounts,
-    upcomingInterviewCountResult,
-    upcomingInterviews,
-  ] = await Promise.all([
-    database
-      .select({
-        platform: jobs.platform,
-        count: sql<number>`count(*)::int`,
-        weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
-      })
-      .from(jobs)
-      .groupBy(jobs.platform)
-      .orderBy(sql`count(*) desc`),
+  const platformCounts = await database
+    .select({
+      platform: jobs.platform,
+      count: sql<number>`count(*)::int`,
+      weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
+    })
+    .from(jobs)
+    .groupBy(jobs.platform)
+    .orderBy(sql`count(*) desc`);
 
-    getRecentJobs(database),
+  const recentJobs = await getRecentJobs(database);
 
-    database.select().from(scraperConfigs).where(eq(scraperConfigs.isActive, true)),
+  const activeScrapers = await database
+    .select()
+    .from(scraperConfigs)
+    .where(eq(scraperConfigs.isActive, true));
 
-    getRecentScrapes(database),
+  const recentScrapes = await getRecentScrapes(database);
 
-    database
-      .select({
-        company: jobs.company,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(sql`${jobs.company} is not null`)
-      .groupBy(jobs.company)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
+  const topCompanies = await database
+    .select({
+      company: jobs.company,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(jobs)
+    .where(sql`${jobs.company} is not null`)
+    .groupBy(jobs.company)
+    .orderBy(sql`count(*) desc`)
+    .limit(5);
 
-    database
-      .select({
-        province: jobs.province,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobs)
-      .where(sql`${jobs.province} is not null`)
-      .groupBy(jobs.province)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
+  const locationCounts = await database
+    .select({
+      province: jobs.province,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(jobs)
+    .where(sql`${jobs.province} is not null`)
+    .groupBy(jobs.province)
+    .orderBy(sql`count(*) desc`)
+    .limit(5);
 
-    database
-      .select({
-        stage: applications.stage,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(applications)
-      .where(isNull(applications.deletedAt))
-      .groupBy(applications.stage),
+  const pipelineStageCounts = await database
+    .select({
+      stage: applications.stage,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(applications)
+    .where(isNull(applications.deletedAt))
+    .groupBy(applications.stage);
 
-    database
-      .select({ count: sql<number>`count(*)::int` })
-      .from(interviews)
-      .where(
-        and(
-          isNull(interviews.deletedAt),
-          eq(interviews.status, "scheduled"),
-          gte(interviews.scheduledAt, now),
-        ),
+  const upcomingInterviewCountResult = await database
+    .select({ count: sql<number>`count(*)::int` })
+    .from(interviews)
+    .where(
+      and(
+        isNull(interviews.deletedAt),
+        eq(interviews.status, "scheduled"),
+        gte(interviews.scheduledAt, now),
       ),
+    );
 
-    database
-      .select({
-        id: interviews.id,
-        scheduledAt: interviews.scheduledAt,
-        type: interviews.type,
-        candidateName: candidates.name,
-        jobTitle: jobs.title,
-        jobCompany: jobs.company,
-      })
-      .from(interviews)
-      .innerJoin(applications, eq(interviews.applicationId, applications.id))
-      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
-      .leftJoin(jobs, eq(applications.jobId, jobs.id))
-      .where(
-        and(
-          isNull(interviews.deletedAt),
-          eq(interviews.status, "scheduled"),
-          gte(interviews.scheduledAt, now),
-        ),
-      )
-      .orderBy(asc(interviews.scheduledAt))
-      .limit(4),
-  ]);
+  const upcomingInterviews = await database
+    .select({
+      id: interviews.id,
+      scheduledAt: interviews.scheduledAt,
+      type: interviews.type,
+      candidateName: candidates.name,
+      jobTitle: jobs.title,
+      jobCompany: jobs.company,
+    })
+    .from(interviews)
+    .innerJoin(applications, eq(interviews.applicationId, applications.id))
+    .leftJoin(candidates, eq(applications.candidateId, candidates.id))
+    .leftJoin(jobs, eq(applications.jobId, jobs.id))
+    .where(
+      and(
+        isNull(interviews.deletedAt),
+        eq(interviews.status, "scheduled"),
+        gte(interviews.scheduledAt, now),
+      ),
+    )
+    .orderBy(asc(interviews.scheduledAt))
+    .limit(4);
 
   return {
     activeScrapers,

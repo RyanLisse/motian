@@ -625,7 +625,7 @@ export const autopilotRuns = pgTable(
   "autopilot_runs",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    runId: text("run_id").notNull(),
+    runId: text("run_id").notNull().unique(),
     status: text("status").notNull(), // running | completed | failed | timed_out
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true }),

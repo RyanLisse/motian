@@ -12,11 +12,9 @@ Sentry.init({
   sendDefaultPii: true,
 });
 
-const server = Sentry.wrapMcpServerWithSentry(
-  new Server(
-    { name: "motian-recruitment", version: "0.1.0" },
-    { capabilities: { tools: {} } },
-  )
+const server = new Server(
+  { name: "motian-recruitment", version: "0.1.0" },
+  { capabilities: { tools: {} } },
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -38,6 +36,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
   } catch (err) {
+    Sentry.captureException(err);
     const message = err instanceof Error ? err.message : String(err);
     return {
       content: [{ type: "text", text: `Fout: ${message}` }],

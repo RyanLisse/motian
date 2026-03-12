@@ -22,22 +22,24 @@ function getSearchTextCompatibilityExpression() {
  * that work against both schemas until every database has applied the
  * migrations.
  */
-export const jobReadSelection = {
-  ...getTableColumns(jobs),
-  dedupeTitleNormalized: getNormalizedCompatibilityExpression(sql`${jobs.title}`),
-  dedupeClientNormalized: getNormalizedCompatibilityExpression(
-    sql`coalesce(${jobs.endClient}, ${jobs.company}, '')`,
-  ),
-  dedupeLocationNormalized: getNormalizedCompatibilityExpression(
-    sql`coalesce(${jobs.province}, ${jobs.location}, '')`,
-  ),
-  searchText: getSearchTextCompatibilityExpression(),
-  archivedAt: sql<Date | null>`null`,
-};
+export function getJobReadSelection() {
+  return {
+    ...getTableColumns(jobs),
+    dedupeTitleNormalized: getNormalizedCompatibilityExpression(sql`${jobs.title}`),
+    dedupeClientNormalized: getNormalizedCompatibilityExpression(
+      sql`coalesce(${jobs.endClient}, ${jobs.company}, '')`,
+    ),
+    dedupeLocationNormalized: getNormalizedCompatibilityExpression(
+      sql`coalesce(${jobs.province}, ${jobs.location}, '')`,
+    ),
+    searchText: getSearchTextCompatibilityExpression(),
+    archivedAt: sql<Date | null>`null`,
+  };
+}
 
 /** Enkele opdracht ophalen op ID, inclusief gesloten/gearchiveerde retained vacatures. */
 export async function getJobById(id: string): Promise<Job | null> {
-  const rows = await db.select(jobReadSelection).from(jobs).where(eq(jobs.id, id)).limit(1);
+  const rows = await db.select(getJobReadSelection()).from(jobs).where(eq(jobs.id, id)).limit(1);
   return rows[0] ?? null;
 }
 
@@ -98,7 +100,7 @@ export async function updateJob(
     .update(jobs)
     .set(updateValues)
     .where(eq(jobs.id, id))
-    .returning(jobReadSelection);
+    .returning(getJobReadSelection());
 
   return rows[0] ?? null;
 }
@@ -120,7 +122,11 @@ export async function updateJobEnrichment(
     >
   >,
 ): Promise<Job | null> {
-  const rows = await db.update(jobs).set(data).where(eq(jobs.id, id)).returning(jobReadSelection);
+  const rows = await db
+    .update(jobs)
+    .set(data)
+    .where(eq(jobs.id, id))
+    .returning(getJobReadSelection());
 
   return rows[0] ?? null;
 }

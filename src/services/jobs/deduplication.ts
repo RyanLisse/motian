@@ -3,7 +3,7 @@ import { inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { jobs } from "../../db/schema";
 import type { ListJobsSortBy } from "./filters";
-import { type Job, jobReadSelection } from "./repository";
+import { getJobReadSelection, type Job } from "./repository";
 
 type DedupableJob = Pick<Job, "title" | "company" | "endClient" | "province" | "location">;
 
@@ -329,7 +329,7 @@ export async function loadJobsByIds(ids: string[]): Promise<Job[]> {
   if (ids.length === 0) return [];
 
   const rows = await db
-    .select(jobReadSelection)
+    .select(getJobReadSelection())
     .from(jobs)
     .where(inArray(jobs.id, ids))
     .limit(ids.length);

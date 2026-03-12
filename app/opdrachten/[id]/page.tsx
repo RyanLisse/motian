@@ -28,7 +28,7 @@ import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
 import { getGradedCandidates } from "@/src/services/grading";
 import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
-import { jobReadSelection } from "@/src/services/jobs/repository";
+import { getJobReadSelection } from "@/src/services/jobs/repository";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -190,7 +190,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
 
   // Fetch current job (respecting visibility rules)
   const rows = await db
-    .select(jobReadSelection)
+    .select(getJobReadSelection())
     .from(jobs)
     .where(and(eq(jobs.id, id), getVisibleVacancyCondition()))
     .limit(1);
@@ -211,7 +211,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
     await Promise.all([
       db
         .select({
-          ...jobReadSelection,
+          ...getJobReadSelection(),
           companyMatchRank,
         })
         .from(jobs)
