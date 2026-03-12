@@ -29,6 +29,7 @@ import {
 // ========== Types ==========
 
 export type ScraperConfig = typeof scraperConfigs.$inferSelect;
+export type SanitizedScraperConfig = Omit<ScraperConfig, "authConfigEncrypted" | "credentialsRef">;
 export type PlatformCatalogRow = typeof platformCatalog.$inferSelect;
 export type PlatformOnboardingRunRecord = typeof platformOnboardingRuns.$inferSelect;
 type LatestPlatformOnboardingRunRow = PlatformOnboardingRunRecord;
@@ -103,27 +104,34 @@ export type PlatformCatalogEntryView = {
   isEnabled: boolean;
   isSelfServe: boolean;
   implemented: boolean;
-  config: ScraperConfig | null;
+  config: SanitizedScraperConfig | null;
   latestRun: PlatformOnboardingRunRecord | null;
 };
 
 export type PlatformValidationResponse = PlatformValidationResult & {
-  config: ScraperConfig;
+  config: SanitizedScraperConfig;
   onboardingRun: PlatformOnboardingRunRecord;
 };
 
 export type PlatformTestImportResponse = PlatformTestImportResult & {
-  config: ScraperConfig;
+  config: SanitizedScraperConfig;
   onboardingRun: PlatformOnboardingRunRecord;
 };
 
 export type PlatformOnboardingStatusResponse = {
   catalog: PlatformCatalogEntryView | null;
-  config: ScraperConfig | null;
+  config: SanitizedScraperConfig | null;
   latestRun: PlatformOnboardingRunRecord | null;
 };
 
 // ========== Private helpers ==========
+
+function sanitizeConfig(config: ScraperConfig): SanitizedScraperConfig {
+  // Omit server-side secrets — authConfigEncrypted and credentialsRef must not
+  // be returned to API callers, agents, or CLI tooling.
+  const { authConfigEncrypted: _a, credentialsRef: _b, ...rest } = config;
+  return rest;
+}
 
 function serializeZodSchema(schema: z.ZodTypeAny) {
   return zodToJsonSchema(schema, { $refStrategy: "none" }) as Record<string, unknown>;
@@ -326,7 +334,7 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
         isEnabled: row?.isEnabled ?? true,
         isSelfServe: row?.isSelfServe ?? Boolean(definition),
         implemented: Boolean(getPlatformAdapter(slug)),
-        config: configMap.get(slug) ?? null,
+        config: (() => { const c = configMap.get(slug); return c ? sanitizeConfig(c) : null; })(),
         latestRun: latestRunMap.get(slug) ?? null,
       };
     });
@@ -396,7 +404,41 @@ export async function updatePlatformCatalogEntry(
   slug: string,
   data: Omit<CreatePlatformCatalogData, "slug">,
 ): Promise<PlatformCatalogRow> {
-  return createPlatformCatalogEntry({ ...data, slug });
+  const existing = await db
+    .select()
+    .from(platformCatalog)
+    .where(eq(platformCatalog.slug, slug))
+    .limit(1);
+
+  if (!existing[0]) {
+    throw new Error(`Platform catalogus entry voor "${slug}" niet gevonden`);
+  }
+
+  // True PATCH: only update fields that are explicitly provided.
+  const patchSet: Partial<typeof platformCatalog.$inferInsert> & { updatedAt: Date } = {
+    updatedAt: new Date(),
+  };
+
+  if (data.displayName !== undefined) patchSet.displayName = data.displayName;
+  if (data.adapterKind !== undefined) patchSet.adapterKind = data.adapterKind;
+  if (data.authMode !== undefined) patchSet.authMode = data.authMode;
+  if (data.attributionLabel !== undefined) patchSet.attributionLabel = data.attributionLabel;
+  if (data.description !== undefined) patchSet.description = data.description;
+  if (data.capabilities !== undefined) patchSet.capabilities = data.capabilities;
+  if (data.docsUrl !== undefined) patchSet.docsUrl = data.docsUrl;
+  if (data.defaultBaseUrl !== undefined) patchSet.defaultBaseUrl = data.defaultBaseUrl;
+  if (data.configSchema !== undefined) patchSet.configSchema = data.configSchema;
+  if (data.authSchema !== undefined) patchSet.authSchema = data.authSchema;
+  if (data.isEnabled !== undefined) patchSet.isEnabled = data.isEnabled;
+  if (data.isSelfServe !== undefined) patchSet.isSelfServe = data.isSelfServe;
+
+  const [updated] = await db
+    .update(platformCatalog)
+    .set(patchSet)
+    .where(eq(platformCatalog.slug, slug))
+    .returning();
+
+  return updated;
 }
 
 /** Alle scraper configuraties ophalen, gesorteerd op platform */
@@ -468,6 +510,33 @@ export async function updateConfig(
   id: string,
   data: UpdateConfigData,
 ): Promise<ScraperConfig | null> {
+  // Read current row to detect connection-setting changes.
+  const [current] = await db
+    .select()
+    .from(scraperConfigs)
+    .where(eq(scraperConfigs.id, id))
+    .limit(1);
+
+  // If baseUrl, authConfig, credentialsRef or parameters changed, previous
+  // validation and smoke-import results are no longer valid.
+  const connectionChanged =
+    Boolean(current) &&
+    ((data.baseUrl !== undefined && data.baseUrl !== current.baseUrl) ||
+      data.authConfig !== undefined ||
+      (data.credentialsRef !== undefined && data.credentialsRef !== current.credentialsRef) ||
+      (data.parameters !== undefined &&
+        JSON.stringify(data.parameters) !== JSON.stringify(current.parameters)));
+
+  const resetValidation = connectionChanged
+    ? {
+        validationStatus: "unknown",
+        lastValidatedAt: null,
+        lastValidationError: null,
+        lastTestImportAt: null,
+        lastTestImportStatus: null,
+      }
+    : {};
+
   const result = await db
     .update(scraperConfigs)
     .set({
@@ -477,6 +546,7 @@ export async function updateConfig(
       credentialsRef: data.credentialsRef,
       isActive: data.isActive,
       parameters: data.parameters,
+      ...resetValidation,
       updatedAt: new Date(),
     })
     .where(eq(scraperConfigs.id, id))
@@ -570,12 +640,12 @@ export async function validateConfig(
 
   return {
     ...result,
-    config: {
+    config: sanitizeConfig({
       ...config,
       validationStatus: result.status,
       lastValidatedAt: new Date(),
       lastValidationError: result.ok ? null : result.message,
-    },
+    }),
     onboardingRun,
   };
 }
@@ -659,11 +729,11 @@ export async function triggerTestRun(
 
   return {
     ...result,
-    config: {
+    config: sanitizeConfig({
       ...config,
       lastTestImportAt: new Date(),
       lastTestImportStatus: result.status,
-    },
+    }),
     onboardingRun,
   };
 }
@@ -731,7 +801,7 @@ export async function getPlatformOnboardingStatus(
 
   return {
     catalog,
-    config,
+    config: config ? sanitizeConfig(config) : null,
     latestRun,
   };
 }

@@ -68,6 +68,9 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
   const [parameters, setParameters] = useState(
     JSON.stringify(entry.config?.parameters ?? {}, null, 2),
   );
+  // Auth config is intentionally NOT pre-populated from the server entry:
+  // authConfigEncrypted is stored server-side only and is never returned to the client.
+  // Users must re-enter auth credentials when they want to update them.
   const [authConfig, setAuthConfig] = useState("{}");
   const [result, setResult] = useState<string>("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);

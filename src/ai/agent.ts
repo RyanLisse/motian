@@ -1,4 +1,3 @@
-import { PLATFORMS } from "@/src/lib/helpers";
 import { HYBRID_BLEND, SCORING_WEIGHTS } from "@/src/services/scoring";
 import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
@@ -235,8 +234,6 @@ Gebruik tools om data op te halen — gok nooit over opdrachten of data.
 Geef beknopte maar informatieve antwoorden. Gebruik nummers en tabellen waar nuttig.
 
 Vandaag is ${now}.
-
-Beschikbare platform-slugs: ${PLATFORMS.join(", ")}.
 
 Je kunt helpen met:
 ${capabilityLines}

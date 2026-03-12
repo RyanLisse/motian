@@ -4,11 +4,11 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
-import { PLATFORMS } from "@/src/lib/helpers";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
 
 export const triggerScraper = tool({
-  description: `Start een scraper voor een specifiek platform. Beschikbare platforms: ${PLATFORMS.join(", ")}. Dit kan even duren (30s-2min).`,
+  description:
+    "Start een scraper voor een specifiek platform. Gebruik platformsList om de beschikbare platform-slugs op te halen. Dit kan even duren (30s-2min).",
   inputSchema: z.object({
     platform: z.string().describe("Het platform om te scrapen"),
   }),
@@ -31,9 +31,10 @@ export const triggerScraper = tool({
     const result = await runScrapePipeline(platform, config.baseUrl);
 
     // Revalidate cached pages so UI reflects new data
-    revalidateTag("jobs", "default");
-    revalidateTag("scrape-results", "default");
-    revalidateTag("scrapers", "default");
+    revalidateTag("jobs");
+    revalidateTag("default");
+    revalidateTag("scrape-results");
+    revalidateTag("scrapers");
 
     return {
       platform,

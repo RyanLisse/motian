@@ -84,25 +84,25 @@ export function PlatformCatalogCreateDrawer() {
           </div>
 
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Display name</p>
+            <p className="text-sm font-medium text-foreground">Weergavenaam</p>
             <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">Adapter kind</p>
+              <p className="text-sm font-medium text-foreground">Adaptertype</p>
               <Input value={adapterKind} onChange={(event) => setAdapterKind(event.target.value)} />
               <p className="text-xs text-muted-foreground">{ADAPTER_HELP}</p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">Auth mode</p>
+              <p className="text-sm font-medium text-foreground">Authenticatiemodus</p>
               <Input value={authMode} onChange={(event) => setAuthMode(event.target.value)} />
             </div>
           </div>
 
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Default base URL</p>
+            <p className="text-sm font-medium text-foreground">Standaard basis-URL</p>
             <Input
               value={defaultBaseUrl}
               onChange={(event) => setDefaultBaseUrl(event.target.value)}

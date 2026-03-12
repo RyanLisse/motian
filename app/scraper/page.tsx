@@ -236,19 +236,24 @@ function PlatformHealthCard({
 export const dynamic = "force-dynamic";
 
 export default async function ScraperPage() {
-  const platformCatalog = await listPlatformCatalog();
-  const {
-    analytics,
-    recentRuns: results,
-    platforms,
-    activity,
-    overlap,
-    trigger,
-  } = await getScraperDashboardData({
-    activityLimit: 20,
-    overlapLimit: 8,
-    includeTrigger: true,
-  });
+  const [
+    platformCatalog,
+    {
+      analytics,
+      recentRuns: results,
+      platforms,
+      activity,
+      overlap,
+      trigger,
+    },
+  ] = await Promise.all([
+    listPlatformCatalog(),
+    getScraperDashboardData({
+      activityLimit: 20,
+      overlapLimit: 8,
+      includeTrigger: true,
+    }),
+  ]);
 
   const attentionPlatforms = platforms.filter(
     (platform) => platform.status === "waarschuwing" || platform.status === "kritiek",
@@ -337,11 +342,11 @@ export default async function ScraperPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Layers3 className="h-4 w-4" />
-              Platform Catalogus & Onboarding
+              Platformcatalogus en inrichting
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Recruiters en agents gebruiken hier dezelfde primitives: kies een platform, sla de
-              config op, valideer de toegang en draai een smoke import.
+              Recruiters en agenten gebruiken hier dezelfde bouwstenen: kies een platform, sla de
+              configuratie op, valideer de toegang en voer een proefimport uit.
             </p>
           </CardHeader>
           <CardContent>
