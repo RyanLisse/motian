@@ -1,4 +1,9 @@
-export { MVP_JOURNEYS } from "./config";
+export {
+  type AnalysisConfig,
+  analyzeAllEvidence,
+  analyzeManifestEvidence,
+} from "./analysis";
+export { ALL_JOURNEYS, EXTENDED_JOURNEYS, MVP_JOURNEYS } from "./config";
 export {
   type CaptureConfig,
   type CaptureResult,

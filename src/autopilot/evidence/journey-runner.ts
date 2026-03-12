@@ -53,10 +53,41 @@ export async function runJourney(
     const url = `${config.baseUrl}${spec.surface}`;
 
     switch (spec.kind) {
-      case "page-load":
-      case "interactive": {
-        // For MVP, interactive is treated the same as page-load
+      case "page-load": {
         await page.goto(url, { waitUntil: "networkidle" });
+        break;
+      }
+      case "interactive": {
+        await page.goto(url, { waitUntil: "networkidle" });
+
+        // Execute interaction steps if defined
+        if (spec.interactions?.length) {
+          for (const step of spec.interactions) {
+            const stepTimeout = step.timeoutMs ?? spec.timeoutMs;
+            switch (step.action) {
+              case "click":
+                if (step.selector) {
+                  await page.click(step.selector, { timeout: stepTimeout });
+                }
+                break;
+              case "type":
+                if (step.selector && step.text) {
+                  await page.fill(step.selector, step.text, { timeout: stepTimeout });
+                }
+                break;
+              case "wait-for-selector":
+                if (step.selector) {
+                  await page.waitForSelector(step.selector, { timeout: stepTimeout });
+                }
+                break;
+              case "wait-for-text":
+                if (step.waitForText) {
+                  await page.waitForSelector(`text=${step.waitForText}`, { timeout: stepTimeout });
+                }
+                break;
+            }
+          }
+        }
         break;
       }
       case "redirect": {
@@ -71,6 +102,18 @@ export async function runJourney(
         // Allow the destination page to finish loading
         await page.waitForLoadState("networkidle");
         break;
+      }
+    }
+
+    // Validate expected selectors
+    if (spec.expectedSelectors?.length) {
+      for (const selector of spec.expectedSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 5000 });
+        } catch {
+          success = false;
+          errorMessage = `Expected selector not found: ${selector}`;
+        }
       }
     }
 
