@@ -574,7 +574,7 @@ motian/
 │   │   └── ...                   # Overige domein services
 │   ├── lib/                      # Hulpmiddelen (rate-limit, etc.)
 │   └── schemas/                  # Zod validatie schema's
-├── .qlty/qlty.toml               # Qlty CLI configuratie
+├── .qlty/qlty.toml               # Gecommitte Qlty CLI configuratie
 ├── tests/                        # Vitest test suites
 ├── scripts/                      # CLI hulpmiddelen & backfill scripts
 ├── docs/                         # Architectuur documentatie
@@ -717,8 +717,8 @@ graph LR
 
 ### Vereisten
 
-- Qlty CLI geïnstalleerd en beschikbaar op `$PATH`
-- Een Qlty analyse configuratie (`.qlty/qlty.toml`) afgestemd op je project
+- Qlty CLI geïnstalleerd en beschikbaar op `$PATH`, of installeer het via `INSTALL_QLTY=1 bash ./scripts/setup-codex-cloud.sh`
+- Repo‑specifieke Qlty‑configuratie staat in het gecommitteerde `.qlty/qlty.toml`; overige gegenereerde `.qlty/`-output is uitgesloten
 
 ### Integratie met AI Agents
 
@@ -757,8 +757,8 @@ Zie de [Qlty Git Hooks documentatie](https://docs.qlty.sh/cli/git-hooks) voor me
 
 ### Vereisten
 
-- **Node.js** ≥ 18
-- **pnpm** ≥ 9.15
+- **Node.js** beschikbaar op `$PATH` (**22.x aanbevolen / CI-gevalideerd**)
+- **corepack** beschikbaar op `$PATH` (bootstrap activeert de gepinde `pnpm@9.15.0`)
 - **[Just](https://github.com/casey/just)** taak runner (optioneel maar aanbevolen)
 - **[Qlty CLI](https://qlty.sh)** code kwaliteit (optioneel maar aanbevolen)
 - **Neon** PostgreSQL database met `pgvector` extensie
@@ -771,12 +771,13 @@ Zie de [Qlty Git Hooks documentatie](https://docs.qlty.sh/cli/git-hooks) voor me
 git clone https://github.com/RyanLisse/motian.git
 cd motian
 
-# Afhankelijkheden installeren
-pnpm install
-
-# Omgevingsvariabelen kopiëren
-cp .env.example .env.local
+# Installeer dependencies en maak .env.local aan via de repo-gepinde pnpm versie
+bash ./scripts/setup-codex-cloud.sh
 ```
+
+Het script verwacht dat Node en corepack al beschikbaar zijn en bootstrap vervolgens zelf de in `package.json` gepinde pnpm-versie.
+
+Voeg `INSTALL_QLTY=1` toe als je tijdens bootstrap ook de Qlty CLI wilt installeren wanneer die nog ontbreekt. `INSTALL_PLAYWRIGHT=1` installeert daarnaast Chromium voor browsertests.
 
 ### Standalone subprojecten
 

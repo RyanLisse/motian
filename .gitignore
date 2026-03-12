@@ -20,7 +20,9 @@ harness-evidence/
 .bv/
 
 # qlty local tooling cache
-.qlty/
+.qlty/*
+!.qlty/.gitignore
+!.qlty/qlty.toml
 FW_\ Custom\ GPT\ Mariënne/
 .trigger
 

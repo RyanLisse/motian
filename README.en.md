@@ -572,7 +572,7 @@ motian/
 │   │   └── ...                   # Other domain services
 │   ├── lib/                      # Utilities (rate-limit, etc.)
 │   └── schemas/                  # Zod validation schemas
-├── .qlty/qlty.toml               # Qlty CLI configuration
+├── .qlty/qlty.toml               # Committed Qlty CLI configuration
 ├── tests/                        # Vitest test suites
 ├── scripts/                      # CLI utilities & backfill scripts
 ├── docs/                         # Architecture documentation
@@ -715,8 +715,8 @@ graph LR
 
 ### Requirements
 
-- Qlty CLI installed and available on `$PATH`
-- A Qlty analysis config (`.qlty/qlty.toml`) tailored to your project
+- Qlty CLI installed and available on `$PATH`, or install it with `INSTALL_QLTY=1 bash ./scripts/setup-codex-cloud.sh`
+- Repo-specific Qlty configuration lives in committed `.qlty/qlty.toml`; the rest of generated `.qlty/` output is excluded
 
 ### AI Agent Integration
 
@@ -755,8 +755,8 @@ See the [Qlty Git Hooks documentation](https://docs.qlty.sh/cli/git-hooks) for m
 
 ### Prerequisites
 
-- **Node.js** ≥ 18
-- **pnpm** ≥ 9.15
+- **Node.js** available on `$PATH` (**22.x recommended / CI-validated**)
+- **corepack** available on `$PATH` (bootstrap activates the pinned `pnpm@9.15.0`)
 - **[Just](https://github.com/casey/just)** task runner (optional but recommended)
 - **[Qlty CLI](https://qlty.sh)** code quality (optional but recommended)
 - **Neon** PostgreSQL database with `pgvector` extension
@@ -769,12 +769,13 @@ See the [Qlty Git Hooks documentation](https://docs.qlty.sh/cli/git-hooks) for m
 git clone https://github.com/RyanLisse/motian.git
 cd motian
 
-# Install dependencies
-pnpm install
-
-# Copy environment template
-cp .env.example .env.local
+# Install dependencies and create .env.local via the repo-pinned pnpm version
+bash ./scripts/setup-codex-cloud.sh
 ```
+
+The script expects Node and corepack to already be available, then bootstraps the `pnpm` version pinned in `package.json`.
+
+Add `INSTALL_QLTY=1` if you also want bootstrap to install the Qlty CLI when it is missing. `INSTALL_PLAYWRIGHT=1` also installs Chromium for browser tests.
 
 ### Standalone subprojects
 

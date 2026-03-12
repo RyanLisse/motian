@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { getPoolSslConfig } from "./pool-config";
+import { getPoolConfig } from "./pool-config";
 
 const MISSING_DATABASE_URL_ERROR =
   "DATABASE_URL is not set. Add it to .env.local (see .env.example). Without it, database-backed routes will fail when they try to access the database.";
@@ -30,13 +30,7 @@ function getConnectionString(): string {
 
 function createDatabaseClient() {
   const connectionString = getConnectionString();
-  const pool = new Pool({
-    connectionString,
-    max: 20,
-    idleTimeoutMillis: 20_000,
-    connectionTimeoutMillis: 10_000,
-    ssl: getPoolSslConfig(connectionString),
-  });
+  const pool = new Pool(getPoolConfig(connectionString));
 
   // Prevent silent crashes on dropped connections
   pool.on("error", (err) => {
