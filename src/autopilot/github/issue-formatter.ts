@@ -7,11 +7,18 @@ export interface FormattedIssue {
   labels: string[];
 }
 
-const SEVERITY_LABELS: Record<FindingSeverity, string[]> = {
-  critical: ["autopilot", "bug", "priority:critical"],
-  high: ["autopilot", "bug", "priority:high"],
-  medium: ["autopilot", "enhancement"],
-  low: ["autopilot", "enhancement"],
+const CATEGORY_LABELS: Record<AutopilotFinding["category"], string> = {
+  bug: "bug",
+  ux: "ux",
+  perf: "perf",
+  "ai-quality": "ai-quality",
+};
+
+const SEVERITY_LABELS: Record<FindingSeverity, string> = {
+  critical: "priority:critical",
+  high: "priority:high",
+  medium: "priority:medium",
+  low: "priority:low",
 };
 
 function formatEvidenceLink(evidence: AutopilotEvidence): string {
@@ -86,6 +93,6 @@ export function formatFindingAsIssue(
   return {
     title: `[autopilot] ${finding.title}`,
     body: lines.join("\n"),
-    labels: SEVERITY_LABELS[finding.severity],
+    labels: ["autopilot", CATEGORY_LABELS[finding.category], SEVERITY_LABELS[finding.severity]],
   };
 }
