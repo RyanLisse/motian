@@ -27,7 +27,7 @@ export function OpdrachtenLayoutShell({
         className={cn(
           "min-w-0",
           isDetailPage
-            ? "contents md:flex md:min-w-0 md:flex-1 md:flex-col md:overflow-hidden"
+            ? "hidden md:flex md:min-w-0 md:flex-1 md:flex-col md:overflow-hidden"
             : "hidden",
         )}
       >

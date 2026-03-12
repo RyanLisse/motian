@@ -336,7 +336,7 @@ describe("Opdrachten UI/API contracts", () => {
 
     expect(shell).toContain('pathname.startsWith("/opdrachten/")');
     expect(shell).toContain("w-full md:w-[380px]");
-    expect(shell).toContain("contents md:flex");
+    expect(shell).toContain("hidden md:flex");
     expect(sidebar).toContain("const buildDetailHref = (jobId: string)");
     expect(sidebar).toContain("href={buildDetailHref(job.id)}");
     expect(sidebar).toContain("getOpdrachtenBasePath(pathname)");
