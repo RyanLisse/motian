@@ -1,6 +1,11 @@
 import { logger, schedules } from "@trigger.dev/sdk";
 import { MVP_JOURNEYS } from "@/src/autopilot/config";
 import { captureJourneyEvidence } from "@/src/autopilot/evidence";
+import {
+  trackAutopilotRunCompleted,
+  trackAutopilotRunFailed,
+  trackAutopilotRunStarted,
+} from "@/src/autopilot/telemetry";
 import type { AutopilotRunSummary, RunStats } from "@/src/autopilot/types";
 
 function resolveBaseUrl(): string {
@@ -29,6 +34,7 @@ export const autopilotNightlyTask = schedules.task({
     const evidenceDir = process.env.AUTOPILOT_EVIDENCE_DIR ?? "/tmp/autopilot-evidence";
 
     logger.info("Autopilot nightly run gestart", { baseUrl, evidenceDir });
+    trackAutopilotRunStarted("pending", MVP_JOURNEYS.length);
 
     try {
       const result = await captureJourneyEvidence(MVP_JOURNEYS, {
@@ -68,10 +74,13 @@ export const autopilotNightlyTask = schedules.task({
         failedJourneys: stats.failedJourneys,
       });
 
+      trackAutopilotRunCompleted(summary);
+
       return summary;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error("Autopilot nightly run mislukt", { error: errorMessage });
+      trackAutopilotRunFailed("unknown", errorMessage);
 
       const failedSummary: AutopilotRunSummary = {
         runId: "unknown",
