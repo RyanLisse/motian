@@ -351,4 +351,17 @@ describe("Opdrachten UI/API contracts", () => {
     expect(listItem).toContain("line-clamp-2 break-words");
     expect(listItem).toContain("max-w-full whitespace-normal break-words");
   });
+
+  it("keeps mobile filters inside a bounded flex/min-h-0 scroll container", () => {
+    const sidebar = readFile("components", "opdrachten-sidebar.tsx");
+    const normalizedSidebar = sidebar.replace(/\s+/g, " ");
+
+    expect(normalizedSidebar).toContain(
+      'className="flex min-h-0 flex-col border-b border-border/70 px-3 py-3 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6"',
+    );
+    expect(normalizedSidebar).toContain('className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4"');
+    expect(normalizedSidebar).toContain(
+      '"min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-3 sm:space-y-4 sm:p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0"',
+    );
+  });
 });
