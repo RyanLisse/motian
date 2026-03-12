@@ -1300,7 +1300,7 @@ export function OpdrachtenSidebar({
           </div>
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-col px-3 py-2.5 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-6">
+        <div className="flex h-full min-h-0 min-w-0 flex-col px-3 py-2.5 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-6 overflow-hidden">
           <div className="mb-2.5 flex flex-col gap-2.5 border-b border-border/70 pb-2.5 sm:mb-4 sm:gap-3 sm:pb-4">
             <div className="min-w-0 space-y-2">
               <div className="text-base font-semibold text-foreground sm:text-lg">
