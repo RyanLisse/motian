@@ -214,7 +214,7 @@ function FilterChecklist({
               checked={checked}
               onCheckedChange={() => onToggle(option.value)}
             />
-            <span className="min-w-0 break-words text-foreground">{option.label}</span>
+            <span className="min-w-0 wrap-break-word text-foreground">{option.label}</span>
           </label>
         );
       })}
@@ -1028,7 +1028,7 @@ export function OpdrachtenSidebar({
               {activeFilterCount > 0 ? (
                 <Badge
                   variant="outline"
-                  className="max-w-full whitespace-normal break-words border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
+                  className="max-w-full whitespace-normal wrap-break-word border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
                 >
                   {activeFilterCount} filters actief
                 </Badge>
@@ -1309,14 +1309,14 @@ export function OpdrachtenSidebar({
               <div className="flex flex-wrap gap-2">
                 <Badge
                   variant="outline"
-                  className="max-w-full whitespace-normal break-words text-[11px] text-muted-foreground sm:text-xs"
+                  className="max-w-full whitespace-normal wrap-break-word text-[11px] text-muted-foreground sm:text-xs"
                 >
                   {shortlistCount > 0 ? `${shortlistCount} met shortlist` : "Nog geen shortlist"}
                 </Badge>
                 {urgentDeadlineCount > 0 ? (
                   <Badge
                     variant="outline"
-                    className="max-w-full whitespace-normal break-words border-amber-500/20 bg-amber-500/10 text-[11px] text-amber-700 dark:text-amber-300 sm:text-xs"
+                    className="max-w-full whitespace-normal wrap-break-word border-amber-500/20 bg-amber-500/10 text-[11px] text-amber-700 dark:text-amber-300 sm:text-xs"
                   >
                     {urgentDeadlineCount} deadlines vragen aandacht
                   </Badge>
