@@ -51,8 +51,7 @@ export const platformCatalogCreate = tool({
   }),
   execute: async (input) => {
     const result = await createPlatformCatalogEntry({ ...input, source: "agent" });
-    revalidateTag("scrapers");
-    revalidateTag("default");
+    revalidateTag("scrapers", "default");
     return result;
   },
 });
@@ -71,8 +70,7 @@ export const platformCatalogUpdate = tool({
   }),
   execute: async ({ slug, ...input }) => {
     const result = await updatePlatformCatalogEntry(slug, input);
-    revalidateTag("scrapers");
-    revalidateTag("default");
+    revalidateTag("scrapers", "default");
     return result;
   },
 });
@@ -90,8 +88,7 @@ export const platformConfigCreate = tool({
   }),
   execute: async (input) => {
     const result = await createConfig({ ...input, source: "agent" });
-    revalidateTag("scrapers");
-    revalidateTag("default");
+    revalidateTag("scrapers", "default");
     return result;
   },
 });
@@ -109,8 +106,7 @@ export const platformConfigUpdate = tool({
   }),
   execute: async ({ id, ...input }) => {
     const result = await updateConfig(id, input);
-    revalidateTag("scrapers");
-    revalidateTag("default");
+    revalidateTag("scrapers", "default");
     return result;
   },
 });
@@ -122,8 +118,7 @@ export const platformConfigValidate = tool({
   }),
   execute: async ({ platform }) => {
     const result = await validateConfig(platform, "agent");
-    revalidateTag("scrapers");
-    revalidateTag("default");
+    revalidateTag("scrapers", "default");
     return result;
   },
 });
@@ -136,10 +131,9 @@ export const platformTestImport = tool({
   }),
   execute: async ({ platform, limit }) => {
     const result = await triggerTestRun(platform, "agent", limit ?? 3);
-    revalidateTag("jobs");
-    revalidateTag("scrape-results");
-    revalidateTag("scrapers");
-    revalidateTag("default");
+    revalidateTag("jobs", "default");
+    revalidateTag("scrape-results", "default");
+    revalidateTag("scrapers", "default");
     return result;
   },
 });
@@ -151,8 +145,7 @@ export const platformActivate = tool({
   }),
   execute: async ({ platform }) => {
     const result = await activatePlatform(platform, "agent");
-    revalidateTag("scrapers");
-    revalidateTag("default");
+    revalidateTag("scrapers", "default");
     return result;
   },
 });
