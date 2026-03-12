@@ -126,6 +126,15 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(source).toContain('<div className="min-h-0 flex-1 overflow-y-auto">{children}</div>');
   });
 
+  it("desktop vacature detail keeps the droppable wrapper in the flex height chain", () => {
+    const source = readFile("app/opdrachten/[id]/page.tsx");
+
+    expect(source).toContain("<DroppableVacancy");
+    expect(source).toContain("jobId={job.id}");
+    expect(source).toContain("jobTitle={job.title}");
+    expect(source).toContain('className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"');
+  });
+
   it("inline candidate linking renders actionable content and posts selected matches", async () => {
     const mockRefresh = vi.fn();
     const buttonClicks: Array<(() => void) | undefined> = [];
