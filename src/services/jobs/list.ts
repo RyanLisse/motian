@@ -7,7 +7,7 @@ import { LIST_SLO_MS, logSlowQuery } from "../../lib/query-observability";
 import { fetchDedupedJobsPage, loadJobsByIds } from "./deduplication";
 import { getJobStatusCondition, type JobStatus, type ListJobsSortBy } from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
-import { getJobReadSelection, type Job } from "./repository";
+import { jobReadSelection, type Job } from "./repository";
 
 export type ListJobsOptions = {
   limit?: number;
@@ -117,7 +117,7 @@ export async function listActiveJobs(limit?: number): Promise<Job[]> {
   const safeLimit = Math.min(limit ?? 200, 500);
 
   return db
-    .select(getJobReadSelection())
+    .select(jobReadSelection)
     .from(jobs)
     .where(getJobStatusCondition("open"))
     .orderBy(desc(jobs.scrapedAt))

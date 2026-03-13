@@ -18,7 +18,15 @@ function normalizeOverrideEntry(value: string) {
 }
 
 export function getOpdrachtenBasePath(pathname: string) {
-  return pathname.startsWith("/opdrachten/") ? pathname : "/opdrachten";
+  if (pathname === "/vacatures" || pathname === "/vacatures/") return "/vacatures";
+  if (pathname.startsWith("/vacatures/")) return pathname;
+
+  if (pathname === "/opdrachten" || pathname === "/opdrachten/") return "/opdrachten";
+  if (pathname.startsWith("/opdrachten/")) {
+    return pathname;
+  }
+
+  return "/opdrachten";
 }
 
 export function applyOpdrachtenFilterOverrides(

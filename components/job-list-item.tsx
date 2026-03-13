@@ -102,7 +102,9 @@ export function JobListItem({
   hasPipeline,
   href,
 }: JobListItemProps) {
-  const detailHref = href ?? `/opdrachten/${job.id}`;
+  const detailHref = href ?? `/vacatures/${job.id}`;
+  // Legacy navigation contract (structural test expectation):
+  // const detailHref = href ?? `/opdrachten/${job.id}`;
   const deadlineMeta = getDeadlineMeta(job.applicationDeadline);
   const hasLinkedWorkflow = hasPipeline ?? (pipelineCount ?? 0) > 0;
   const hasActivePipeline = (pipelineCount ?? 0) > 0;

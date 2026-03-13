@@ -238,7 +238,7 @@ export const dynamic = "force-dynamic";
 export default async function ScraperPage() {
   const [
     platformCatalog,
-    { analytics, recentRuns: results, platforms, activity, overlap, trigger },
+    { analytics, activeVacancies, recentRuns: results, platforms, activity, overlap, trigger },
   ] = await Promise.all([
     listPlatformCatalog(),
     getScraperDashboardData({
@@ -282,11 +282,11 @@ export default async function ScraperPage() {
           <KPICard
             icon={<Search className="h-4 w-4" />}
             label="Actieve vacatures"
-            value={analytics.totalUniqueJobs}
+            value={activeVacancies}
             iconClassName="text-blue-500/60"
             valueClassName="text-blue-500"
             compact
-            title="Huidig aantal opdrachten in de database (niet verwijderd)"
+            title="Huidig aantal zichtbare vacatures op de Vacatures-pagina (open en gededupliceerd)"
           />
           <KPICard
             icon={<Layers3 className="h-4 w-4" />}

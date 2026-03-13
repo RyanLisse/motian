@@ -37,6 +37,8 @@ export function getJobReadSelection() {
   };
 }
 
+export const jobReadSelection = getJobReadSelection();
+
 /** Enkele opdracht ophalen op ID, inclusief gesloten/gearchiveerde retained vacatures. */
 export async function getJobById(id: string): Promise<Job | null> {
   const rows = await db.select(getJobReadSelection()).from(jobs).where(eq(jobs.id, id)).limit(1);

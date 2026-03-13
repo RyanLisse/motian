@@ -421,8 +421,8 @@ export function OpdrachtenSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isOverviewPage = pathname === "/opdrachten";
-  const match = pathname.match(/^\/opdrachten\/(.+)$/);
+  const isOverviewPage = pathname === "/vacatures" || pathname === "/opdrachten";
+  const match = pathname.match(/^\/(?:vacatures|opdrachten)\/(.+)$/);
   const activeId = match?.[1] ?? null;
 
   // URL as source of truth for TanStack Query: key and fetch use searchParams so e.g. top-opdrachtgevers link shows correct results immediately
@@ -624,8 +624,10 @@ export function OpdrachtenSidebar({
     Number(Boolean(contractType)) +
     Number(Boolean(tariefMinParam || tariefMaxParam)) +
     Number(sort !== "nieuwste");
-  const buildDetailHref = (jobId: string) =>
-    detailQuery ? `/opdrachten/${jobId}?${detailQuery}` : `/opdrachten/${jobId}`;
+  const buildDetailHref = (jobId: string) => {
+    const base = "/vacatures";
+    return detailQuery ? `${base}/${jobId}?${detailQuery}` : `${base}/${jobId}`;
+  };
 
   const handleFilterChange = (paramKey: string, value: string) => {
     pushOpdrachtenParams(searchParams, router, pathname, { [paramKey]: value, pagina: "1" });
@@ -1219,7 +1221,7 @@ export function OpdrachtenSidebar({
                   />
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {summarizeHoursRange(urenPerWeekMin, urenPerWeekMax)} — opdrachten overlappen met
+                  {summarizeHoursRange(urenPerWeekMin, urenPerWeekMax)} — vacatures overlappen met
                   dit bereik.
                 </p>
               </div>
@@ -1304,7 +1306,7 @@ export function OpdrachtenSidebar({
           <div className="mb-2.5 flex flex-col gap-2.5 border-b border-border/70 pb-2.5 sm:mb-4 sm:gap-3 sm:pb-4">
             <div className="min-w-0 space-y-2">
               <div className="text-base font-semibold text-foreground sm:text-lg">
-                {displayTotal} opdrachten weergegeven
+                {displayTotal} vacatures weergegeven
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge

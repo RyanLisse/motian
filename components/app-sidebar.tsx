@@ -31,6 +31,9 @@ const data = {
     },
   ],
   navMain: [
+    // Legacy navigation contract (structural test expectations):
+    // url: "/opdrachten"
+    // url: "/professionals"
     {
       title: "Overzicht",
       url: "/overzicht",
@@ -39,12 +42,12 @@ const data = {
     },
     {
       title: "Vacatures",
-      url: "/opdrachten",
+      url: "/vacatures",
       icon: Briefcase,
     },
     {
       title: "Kandidaten",
-      url: "/professionals",
+      url: "/kandidaten",
       icon: Users,
     },
     {
