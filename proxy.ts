@@ -11,7 +11,7 @@ const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi"];
  * origin.  External / cross-origin callers without a valid bearer token are
  * still rejected.
  */
-const FIRST_PARTY_PATHS = ["/api/chat", "/api/chat-sessies"];
+const FIRST_PARTY_PATHS = ["/api/chat", "/api/chat-sessies", "/api/cv-upload", "/api/cv-analyse"];
 
 const PUBLIC_GET_PATHS = ["/api/opdrachten/zoeken"];
 
