@@ -375,6 +375,22 @@ describe("Opdrachten UI/API contracts", () => {
     expect(listItem).toContain("max-w-full whitespace-normal break-words");
   });
 
+  it("uses the dark card-based filter panel as the primary sidebar UI", () => {
+    const sidebar = readFile("components", "opdrachten-sidebar.tsx");
+    const normalizedSidebar = sidebar.replace(/\s+/g, " ");
+
+    expect(normalizedSidebar).toContain(
+      'className="flex h-full w-full flex-col overflow-hidden bg-[#050506] text-white"',
+    );
+    expect(normalizedSidebar).toContain("rounded-[24px]");
+    expect(normalizedSidebar).toContain("rounded-[20px]");
+    expect(normalizedSidebar).toContain("bg-white/[0.035]");
+    expect(normalizedSidebar).toContain("border-white/10");
+    expect(normalizedSidebar).toContain("tracking-[0.22em]");
+    expect(normalizedSidebar).toContain("text-white/45");
+    expect(normalizedSidebar).toContain("placeholder:text-white/35");
+  });
+
   it("keeps mobile filters inside a bounded flex/min-h-0 scroll container", () => {
     const sidebar = readFile("components", "opdrachten-sidebar.tsx");
     const normalizedSidebar = sidebar.replace(/\s+/g, " ");
