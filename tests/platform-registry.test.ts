@@ -28,6 +28,7 @@ describe("platform registry", () => {
     expect(nvb?.authMode).toBe("session");
     expect(werkzoeken?.adapterKind).toBe("http_html_list_detail");
     expect(werkzoeken?.authMode).toBe("none");
+    expect(werkzoeken?.docsUrl).toBe("https://www.werkzoeken.nl/doc/");
     expect(werkzoeken?.configSchema.shape.parameters).toBeDefined();
   });
 

@@ -9,6 +9,7 @@ type PlatformCatalogEntry = {
   adapterKind: string;
   authMode: string;
   description: string;
+  docsUrl: string | null;
   configSchema: Record<string, unknown>;
   authSchema: Record<string, unknown>;
   defaultBaseUrl: string | null;
@@ -68,6 +69,18 @@ export function PlatformCatalogList({ entries }: { entries: PlatformCatalogEntry
               {entry.latestRun?.blockerKind ? ` · blocker: ${entry.latestRun.blockerKind}` : ""}
             </p>
             <p>Config: {entry.config ? entry.config.baseUrl : "Nog geen runtime configuratie"}</p>
+            {entry.docsUrl ? (
+              <p>
+                <a
+                  href={entry.docsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-foreground underline underline-offset-4"
+                >
+                  Documentatie openen
+                </a>
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       ))}
