@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { z } from "zod";
+import { stripHtml } from "../../packages/scrapers/src/strip-html";
 import { db } from "../db";
 import { jobs } from "../db/schema";
 import { unifiedJobSchema } from "../schemas/job";
@@ -52,7 +53,16 @@ export async function normalizeAndSaveJobs(
     raw: Record<string, unknown>;
   }> = [];
   for (const raw of listings) {
-    const parsed = unifiedJobSchema.safeParse(raw);
+    // Voor-processing voor veiligheid VÓÓR validatie
+    const preProcessed = { ...raw };
+    if (raw.hoursPerWeek != null) {
+      preProcessed.hoursPerWeek = Math.min(168, Math.max(1, Number(raw.hoursPerWeek)));
+    }
+    if (raw.minHoursPerWeek != null) {
+      preProcessed.minHoursPerWeek = Math.min(168, Math.max(1, Number(raw.minHoursPerWeek)));
+    }
+
+    const parsed = unifiedJobSchema.safeParse(preProcessed);
     if (!parsed.success) {
       const externalId = (raw as { externalId?: string }).externalId ?? "?";
       console.warn(
@@ -60,7 +70,15 @@ export async function normalizeAndSaveJobs(
       );
       errors.push(`Validation: ${parsed.error.message}`);
     } else {
-      validItems.push({ parsed: parsed.data, raw });
+      validItems.push({
+        parsed: {
+          ...parsed.data,
+          title: stripHtml(parsed.data.title),
+          company: parsed.data.company ? stripHtml(parsed.data.company) : undefined,
+          endClient: parsed.data.endClient ? stripHtml(parsed.data.endClient) : undefined,
+        },
+        raw,
+      });
     }
   }
 

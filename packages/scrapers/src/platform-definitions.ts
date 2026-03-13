@@ -48,6 +48,7 @@ const werkzoekenConfigSchema = z.object({
     .object({
       sourcePath: z.string().default("/vacatures-voor/techniek/"),
       maxPages: z.number().int().min(1).max(1500).default(1300),
+      pnrStep: z.number().int().min(1).max(10).default(10),
       detailConcurrency: z.number().int().min(1).max(10).default(4),
       skipDetailEnrichment: z.boolean().default(false),
     })
@@ -155,6 +156,7 @@ export const platformDefinitions: PlatformDefinition[] = [
     defaultParameters: {
       sourcePath: "/vacatures-voor/techniek/",
       maxPages: 1300,
+      pnrStep: 10,
       detailConcurrency: 4,
       skipDetailEnrichment: false,
     },

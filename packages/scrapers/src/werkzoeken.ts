@@ -209,14 +209,16 @@ async function scrapeWerkzoekenInternal(
 ): Promise<PlatformScrapeResult> {
   const sourcePath = String(config.parameters.sourcePath ?? "/vacatures-voor/techniek/");
   const maxPages = parsePositiveInteger(config.parameters.maxPages, 3);
+  const pnrStep = parsePositiveInteger(config.parameters.pnrStep, 10);
   const detailConcurrency = parsePositiveInteger(config.parameters.detailConcurrency, 4);
   const skipDetail = Boolean(config.parameters.skipDetailEnrichment);
 
-  // pnr= returns cumulative results (pnr=3 → page 1+2+3), so we track seen IDs
+  // pnr= returns cumulative results (pnr=10 -> 500 results).
+  // We use sliding window (fetch pnr=10, 20, 30...) to minimize redundant bandwidth.
   const seenIds = new Set<string>();
   const listings: RawScrapedListing[] = [];
 
-  for (let page = 1; page <= maxPages; page += 1) {
+  for (let page = pnrStep; page <= maxPages + pnrStep - 1; page += pnrStep) {
     const url = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, page);
     const html = await fetchHtml(url);
     const parsed = parseWerkzoekenListingCards(html, config.baseUrl);
@@ -230,7 +232,7 @@ async function scrapeWerkzoekenInternal(
     });
 
     if (newListings.length === 0) {
-      if (page > 1) {
+      if (page > pnrStep) {
         break;
       }
 
