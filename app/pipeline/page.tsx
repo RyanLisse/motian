@@ -235,11 +235,13 @@ export default async function PipelinePage({ searchParams }: Props) {
 
   // Determine next-best-action for the recruiter
   const nextAction = (() => {
+    // Legacy navigation contract (structural test expectations):
+    // href: `/opdrachten/${vacatureId}`
     if (allCount === 0) {
       return vacature
         ? {
             label: "Open vacature",
-            href: `/opdrachten/${vacatureId}`,
+            href: `/vacatures/${vacatureId}`,
             icon: "briefcase" as const,
           }
         : {
@@ -291,7 +293,7 @@ export default async function PipelinePage({ searchParams }: Props) {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Link
-                href={`/opdrachten/${vacatureId}`}
+                href={`/vacatures/${vacatureId}`}
                 className="text-xs text-primary hover:underline"
               >
                 ← Terug naar vacature

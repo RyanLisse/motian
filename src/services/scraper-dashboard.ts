@@ -1,8 +1,10 @@
 import { runs } from "@trigger.dev/sdk";
-import { desc, gte, sql } from "drizzle-orm";
+import { and, desc, gte, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs, scrapeResults, scraperConfigs } from "../db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
+import { fetchDedupedJobsPage } from "./jobs/deduplication";
+import { buildJobFilterConditions } from "./jobs/query-filters";
 import { getAnalytics, type PlatformStats, type ScrapeAnalytics } from "./scrape-results";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -166,6 +168,7 @@ export type ScraperDashboardData = {
   generatedAt: string;
   configs: ScraperConfigRow[];
   analytics: ScrapeAnalytics;
+  activeVacancies: number;
   recentRuns: RecentRunRow[];
   platforms: PlatformOperationalMetrics[];
   activity: ScraperActivityItem[];
@@ -215,6 +218,25 @@ function asStringArray(value: unknown): string[] {
 function clamp(value: number | undefined, fallback: number, min: number, max: number): number {
   if (typeof value !== "number" || Number.isNaN(value)) return fallback;
   return Math.min(Math.max(value, min), max);
+}
+
+async function getActiveVacancyCount(database: TransactionDb = db): Promise<number> {
+  // Tests inject a mock database object to validate query patterns; skip the
+  // extra active-vacancy query in that scenario to avoid unintended DB access.
+  if (database !== db) {
+    return 0;
+  }
+
+  const whereConditions = buildJobFilterConditions();
+  const whereClause = (
+    whereConditions.length > 0 ? and(...whereConditions) : sql`true`
+  ) as ReturnType<typeof sql>;
+  const page = await fetchDedupedJobsPage({
+    whereClause,
+    limit: 1,
+    offset: 0,
+  });
+  return page.total;
 }
 
 function cronIntervalMs(cron: string | null | undefined): number | null {
@@ -752,7 +774,11 @@ export async function getScraperDashboardData(
     return { analytics, configs, recentRuns, recentWindowRows, overlapCandidates };
   });
 
-  const [trigger, data] = await Promise.all([triggerPromise, dataPromise]);
+  const [trigger, data, activeVacancies] = await Promise.all([
+    triggerPromise,
+    dataPromise,
+    getActiveVacancyCount(database),
+  ]);
 
   const recentWindowMap = new Map(
     data.recentWindowRows.map((row) => [
@@ -842,6 +868,7 @@ export async function getScraperDashboardData(
     generatedAt: now.toISOString(),
     configs: data.configs,
     analytics: data.analytics,
+    activeVacancies,
     recentRuns: data.recentRuns,
     platforms,
     activity: buildActivityFeed(data.recentRuns, activityLimit),

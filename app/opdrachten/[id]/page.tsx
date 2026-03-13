@@ -28,7 +28,7 @@ import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
 import { getGradedCandidates } from "@/src/services/grading";
 import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
-import { getJobReadSelection } from "@/src/services/jobs/repository";
+import { jobReadSelection } from "@/src/services/jobs/repository";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -190,7 +190,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
 
   // Fetch current job (respecting visibility rules)
   const rows = await db
-    .select(getJobReadSelection())
+    .select(jobReadSelection)
     .from(jobs)
     .where(and(eq(jobs.id, id), getVisibleVacancyCondition()))
     .limit(1);
@@ -211,7 +211,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
     await Promise.all([
       db
         .select({
-          ...getJobReadSelection(),
+          ...jobReadSelection,
           companyMatchRank,
         })
         .from(jobs)
@@ -325,9 +325,9 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   }
 
   const listQuery = currentListParams.toString();
-  const listHref = listQuery ? `/opdrachten?${listQuery}` : "/opdrachten";
+  const listHref = listQuery ? `/vacatures?${listQuery}` : "/vacatures";
   const buildDetailHref = (jobId: string) =>
-    listQuery ? `/opdrachten/${jobId}?${listQuery}` : `/opdrachten/${jobId}`;
+    listQuery ? `/vacatures/${jobId}?${listQuery}` : `/vacatures/${jobId}`;
 
   // Extract jsonb fields — items can be strings or {isKnockout, description} objects
   const toStrings = (arr: unknown, clean = false): string[] => {
@@ -923,7 +923,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                           <div className="min-w-0">
                             {row.candidateId ? (
                               <Link
-                                href={`/professionals/${row.candidateId}`}
+                                href={`/kandidaten/${row.candidateId}`}
                                 className="text-sm font-semibold text-foreground transition-colors hover:text-primary"
                               >
                                 {row.candidateName ?? "Onbekende kandidaat"}
@@ -983,7 +983,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                         <div className="mt-3 flex flex-wrap gap-3 text-xs">
                           {row.candidateId ? (
                             <Link
-                              href={`/professionals/${row.candidateId}`}
+                              href={`/kandidaten/${row.candidateId}`}
                               className="text-primary hover:underline"
                             >
                               Open profiel

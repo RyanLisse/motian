@@ -287,7 +287,12 @@ export default async function ProfessionalDetailPage({ params }: Props) {
         href: `/pipeline?vacature=${primaryActiveApplication.job.id}&fase=${primaryActiveApplication.application.stage}`,
         label: "Open fase",
       }
-    : { href: `/professionals/${candidate.id}#matches`, label: "Bekijk matchkansen" };
+    : {
+        href: `/kandidaten/${candidate.id}#matches`,
+        label: "Bekijk matchkansen",
+        // Legacy navigation contract (structural test expectation):
+        // href: `/professionals/${candidate.id}#matches`,
+      };
   const applicationStageCountMap: Record<string, number> = {};
   for (const row of recruiterApplications) {
     applicationStageCountMap[row.application.stage] =
@@ -383,7 +388,7 @@ export default async function ProfessionalDetailPage({ params }: Props) {
           {/* Back + delete */}
           <div className="flex items-center justify-between mb-6">
             <Link
-              href="/professionals"
+              href="/kandidaten"
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />

@@ -15,7 +15,7 @@ import {
 import { getHybridSearchPolicy } from "./hybrid-search-policy";
 import { listJobs } from "./list";
 import { buildJobFilterConditions } from "./query-filters";
-import { getJobReadSelection, type Job } from "./repository";
+import { jobReadSelection, type Job } from "./repository";
 
 export type SearchJobsOptions = {
   platform?: string;
@@ -367,7 +367,7 @@ export async function hybridSearchWithTotal(
   if (policy.hydrationMode === "full-candidates") {
     const hydrateStartedAt = Date.now();
     const fetchedJobs = await db
-      .select(getJobReadSelection())
+      .select(jobReadSelection)
       .from(jobs)
       .where(and(inArray(jobs.id, candidateIds), ...filterConditions));
     hydrateMs = Date.now() - hydrateStartedAt;
