@@ -4,7 +4,15 @@ import type { db } from "../src/db";
 
 function createAwaitableQuery<T>(result: T) {
   const promise = Promise.resolve(result);
-  const chain = promise as any;
+  const chain: Promise<T> & {
+    from?: ReturnType<typeof vi.fn>;
+    where?: ReturnType<typeof vi.fn>;
+    groupBy?: ReturnType<typeof vi.fn>;
+    orderBy?: ReturnType<typeof vi.fn>;
+    limit?: ReturnType<typeof vi.fn>;
+    leftJoin?: ReturnType<typeof vi.fn>;
+    innerJoin?: ReturnType<typeof vi.fn>;
+  } = promise;
   chain.from = vi.fn(() => chain);
   chain.where = vi.fn(() => chain);
   chain.groupBy = vi.fn(() => chain);
