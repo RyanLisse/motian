@@ -47,8 +47,9 @@ const werkzoekenConfigSchema = z.object({
   parameters: z
     .object({
       sourcePath: z.string().default("/vacatures-voor/techniek/"),
-      maxPages: z.number().int().min(1).max(20).default(3),
+      maxPages: z.number().int().min(1).max(1500).default(1300),
       detailConcurrency: z.number().int().min(1).max(10).default(4),
+      skipDetailEnrichment: z.boolean().default(false),
     })
     .default({}),
 });
@@ -153,8 +154,9 @@ export const platformDefinitions: PlatformDefinition[] = [
     defaultBaseUrl: "https://www.werkzoeken.nl",
     defaultParameters: {
       sourcePath: "/vacatures-voor/techniek/",
-      maxPages: 3,
+      maxPages: 1300,
       detailConcurrency: 4,
+      skipDetailEnrichment: false,
     },
     docsUrl: "https://www.werkzoeken.nl/vacatures-voor/techniek/",
     configSchema: werkzoekenConfigSchema,

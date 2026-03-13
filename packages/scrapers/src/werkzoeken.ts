@@ -72,7 +72,7 @@ export function buildWerkzoekenListPageUrl(
 ): string {
   const url = resolveWerkzoekenSourceUrl(baseUrl, sourcePath);
   if (page > 1) {
-    url.searchParams.set("pagina", String(page));
+    url.searchParams.set("pnr", String(page));
   }
   return url.toString();
 }
@@ -88,9 +88,9 @@ export function parseWerkzoekenListingCards(
   while (match !== null) {
     const rawAttributes = match[1];
     const externalUrl = toAbsoluteUrl(match[2], baseUrl);
-    const title = stripHtml(decodeText(match[3]));
+    const title = stripHtml(decodeText(match[3])).replace(/\s+/g, " ").trim();
     const externalId = firstMatch(/data-vacancyid="([^"]+)"/, rawAttributes);
-    const company = decodeText(firstMatch(/data-business="([^"]+)"/, rawAttributes));
+    const company = stripHtml(decodeText(firstMatch(/data-business="([^"]+)"/, rawAttributes)));
     const location = decodeText(firstMatch(/data-location-label="([^"]+)"/, rawAttributes));
     const contractLabel = decodeText(firstMatch(/data-contract-type="([^"]+)"/, rawAttributes));
     const educationLevel = decodeText(firstMatch(/data-education="([^"]+)"/, rawAttributes));
@@ -154,7 +154,7 @@ export function parseWerkzoekenDetailPage(
     title,
     company,
     location,
-    description: ensureMinLength(description, title || "Werkzoeken vacature"),
+    description: ensureMinLength(description, stripHtml(title) || "Werkzoeken vacature"),
   };
 }
 
@@ -210,13 +210,26 @@ async function scrapeWerkzoekenInternal(
   const sourcePath = String(config.parameters.sourcePath ?? "/vacatures-voor/techniek/");
   const maxPages = parsePositiveInteger(config.parameters.maxPages, 3);
   const detailConcurrency = parsePositiveInteger(config.parameters.detailConcurrency, 4);
+  const skipDetail = Boolean(config.parameters.skipDetailEnrichment);
+
+  // pnr= returns cumulative results (pnr=3 → page 1+2+3), so we track seen IDs
+  const seenIds = new Set<string>();
   const listings: RawScrapedListing[] = [];
 
   for (let page = 1; page <= maxPages; page += 1) {
     const url = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, page);
     const html = await fetchHtml(url);
     const parsed = parseWerkzoekenListingCards(html, config.baseUrl);
-    if (parsed.length === 0) {
+
+    // Filter out listings already seen from previous cumulative pages
+    const newListings = parsed.filter((l) => {
+      const id = String(l.externalId ?? "");
+      if (!id || seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+
+    if (newListings.length === 0) {
       if (page > 1) {
         break;
       }
@@ -231,15 +244,26 @@ async function scrapeWerkzoekenInternal(
       };
     }
 
-    listings.push(...parsed);
+    listings.push(...newListings);
     if (options?.smoke || (options?.limit && listings.length >= options.limit)) {
       break;
     }
   }
 
-  const unique = [...new Map(listings.map((listing) => [listing.externalId, listing])).values()];
+  // Skip detail enrichment for bulk scrapes (listing cards already have title, company, salary, etc.)
+  if (skipDetail) {
+    return {
+      listings,
+      evidence: {
+        sourcePath,
+        fetchedListings: listings.length,
+        detailEnrichment: "skipped",
+      },
+    };
+  }
+
   const enriched = await enrichWerkzoekenListings(
-    unique,
+    listings,
     detailConcurrency,
     options?.limit ?? (options?.smoke ? 3 : undefined),
   );

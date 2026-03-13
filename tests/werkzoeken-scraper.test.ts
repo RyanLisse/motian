@@ -82,7 +82,7 @@ describe("Werkzoeken scraper", () => {
     ).toBe("https://www.werkzoeken.nl/vacatures-voor/techniek/");
     expect(
       buildWerkzoekenListPageUrl("https://www.werkzoeken.nl", "/vacatures-voor/techniek/", 3),
-    ).toBe("https://www.werkzoeken.nl/vacatures-voor/techniek/?pagina=3");
+    ).toBe("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=3");
   });
 
   it("parses listing cards from SSR markup", () => {
@@ -93,7 +93,7 @@ describe("Werkzoeken scraper", () => {
       externalId: "15167751",
       externalUrl:
         "https://www.werkzoeken.nl/vacature/15167751-werkvoorbereider-engineer-hvac-tot-eur4800-bruto-per-maand/",
-      title: "Werkvoorbereider/Engineer HVAC tot EUR4.800 bruto per maand",
+      title: "Werkvoorbereider/Engineer HVAC tot €4.800 bruto per maand",
       company: "AXS Techniek",
       location: "Zwijndrecht",
       rateMin: 3000,
@@ -139,7 +139,7 @@ describe("Werkzoeken scraper", () => {
       "https://www.werkzoeken.nl/vacature/15167751-werkvoorbereider-engineer-hvac-tot-eur4800-bruto-per-maand/",
     );
 
-    expect(detail.title).toBe("Werkvoorbereider/Engineer HVAC tot EUR4.800 bruto per maand");
+    expect(detail.title).toBe("Werkvoorbereider/Engineer HVAC tot €4.800 bruto per maand");
     expect(detail.company).toBe("AXS Techniek");
     expect(detail.location).toBe("Zwijndrecht");
     expect(detail.description).toContain("innovatieve organisatie");
@@ -149,7 +149,7 @@ describe("Werkzoeken scraper", () => {
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
 
-      if (url.includes("?pagina=2")) {
+      if (url.includes("?pnr=2")) {
         return new Response("<html><body>Geen extra resultaten</body></html>", {
           status: 200,
           headers: { "Content-Type": "text/html" },
@@ -221,5 +221,59 @@ describe("Werkzoeken scraper", () => {
 
     expect(result.errors).toBeUndefined();
     expect(result.listings).toHaveLength(1);
+  });
+
+  it("deduplicates cumulative pnr responses across pages", async () => {
+    let callCount = 0;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("/vacature/")) {
+        return new Response(DETAIL_HTML, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      callCount++;
+
+      if (callCount === 1) {
+        return new Response(LISTING_HTML, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (callCount === 2) {
+        const listingB = LISTING_HTML.replace(/15167751/g, "99999999").replace(
+          "Werkvoorbereider/Engineer",
+          "Monteur Elektrotechniek",
+        );
+        return new Response(LISTING_HTML + listingB, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      return new Response("<html><body>Geen extra resultaten</body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    }) as typeof fetch;
+
+    const result = await werkzoekenAdapter.scrape({
+      slug: "werkzoeken",
+      baseUrl: "https://www.werkzoeken.nl",
+      parameters: {
+        sourcePath: "/vacatures-voor/techniek/",
+        maxPages: 5,
+        detailConcurrency: 1,
+      },
+      auth: {},
+    });
+
+    expect(result.listings).toHaveLength(2);
+    expect(result.blockerKind).toBeUndefined();
+    expect(result.errors).toBeUndefined();
   });
 });
