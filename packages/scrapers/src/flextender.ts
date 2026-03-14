@@ -125,8 +125,10 @@ function parseFlextenderHtml(html: string): FlextenderListing[] {
     const province = extractProvince(fields.Regio);
     const location = fields.Regio ?? undefined;
 
-    // Parse "Uren per week": "36 uur" → 36, "24 tot 32 uur" → min=24, max=32
-    const { hoursPerWeek, minHoursPerWeek } = parseHoursPerWeek(fields["Uren per week"]);
+    // Parse "Uren per week": "36 uur" → 36, "24 tot 32 uur" → min=24, max=32 (cap op 168)
+    const parsed = parseHoursPerWeek(fields["Uren per week"]);
+    const hoursPerWeek = parsed.hoursPerWeek != null ? Math.min(MAX_HOURS_PER_WEEK, parsed.hoursPerWeek) : undefined;
+    const minHoursPerWeek = parsed.minHoursPerWeek != null ? Math.min(MAX_HOURS_PER_WEEK, parsed.minHoursPerWeek) : undefined;
     // #region agent log
     if (hoursPerWeek === 0 || minHoursPerWeek === 0) {
       fetch("http://127.0.0.1:7696/ingest/807648ac-0e4a-43e7-9281-fc9626035545", {
@@ -437,8 +439,9 @@ function parseDetailHtml(html: string): FlextenderDetail {
   }
   // #endregion
   if (summaryHours.hoursPerWeek) {
-    result.hoursPerWeek = summaryHours.hoursPerWeek;
-    if (summaryHours.minHoursPerWeek) result.minHoursPerWeek = summaryHours.minHoursPerWeek;
+    result.hoursPerWeek = Math.min(MAX_HOURS_PER_WEEK, summaryHours.hoursPerWeek);
+    if (summaryHours.minHoursPerWeek)
+      result.minHoursPerWeek = Math.min(MAX_HOURS_PER_WEEK, summaryHours.minHoursPerWeek);
   }
 
   // educationLevel from summary "Opleidingsniveau"

@@ -126,25 +126,25 @@ export function JobListItem({
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div className="min-w-0">
-                <h3 className="text-base font-semibold leading-tight text-foreground line-clamp-2 break-words sm:text-lg">
+                <h3 className="text-base font-semibold leading-tight text-foreground line-clamp-2 wrap-break-word sm:text-lg">
                   {job.title}
                 </h3>
                 <p className="mt-1 flex min-w-0 items-start gap-1.5 text-sm text-muted-foreground">
                   <Building2 className="h-3.5 w-3.5 shrink-0" />
-                  <span className="max-w-full whitespace-normal break-words">
+                  <span className="max-w-full whitespace-normal wrap-break-word">
                     {job.company || "Onbekend"}
                   </span>
                 </p>
               </div>
               <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:flex-col sm:items-end">
-                <span className="inline-flex max-w-full whitespace-normal break-words items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-left text-xs font-medium capitalize text-primary sm:px-3">
+                <span className="inline-flex max-w-full whitespace-normal wrap-break-word items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-left text-xs font-medium capitalize text-primary sm:px-3">
                   {job.platform}
                 </span>
                 {deadlineMeta ? (
                   <Badge
                     variant="outline"
                     className={cn(
-                      "max-w-full whitespace-normal break-words gap-1 px-2 py-1 text-left text-[10px]",
+                      "max-w-full whitespace-normal wrap-break-word gap-1 px-2 py-1 text-left text-[10px]",
                       deadlineMeta.className,
                     )}
                   >
@@ -159,11 +159,11 @@ export function JobListItem({
               {job.location && (
                 <span className="inline-flex min-w-0 max-w-full items-start gap-1.5">
                   <MapPin className="h-3.5 w-3.5 shrink-0" />
-                  <span className="max-w-full whitespace-normal break-words">{job.location}</span>
+                  <span className="max-w-full whitespace-normal wrap-break-word">{job.location}</span>
                 </span>
               )}
               {job.workArrangement && (
-                <span className="inline-flex max-w-full items-center gap-1.5 whitespace-normal break-words">
+                <span className="inline-flex max-w-full items-center gap-1.5 whitespace-normal wrap-break-word">
                   <BriefcaseBusiness className="h-3.5 w-3.5 shrink-0" />
                   {arrangementLabels[job.workArrangement] ?? job.workArrangement}
                 </span>
@@ -175,7 +175,7 @@ export function JobListItem({
                 {job.contractType && (
                   <Badge
                     variant="outline"
-                    className="min-h-5 h-auto max-w-full whitespace-normal break-words rounded-md border-border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground"
+                    className="min-h-5 h-auto max-w-full whitespace-normal wrap-break-word rounded-md border-border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground"
                   >
                     {contractLabels[job.contractType] ?? job.contractType}
                   </Badge>
@@ -183,7 +183,7 @@ export function JobListItem({
                 {hasLinkedWorkflow ? (
                   <Badge
                     variant="outline"
-                    className="flex min-h-5 h-auto max-w-full items-center gap-0.5 whitespace-normal break-words rounded-md border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary"
+                    className="flex min-h-5 h-auto max-w-full items-center gap-0.5 whitespace-normal wrap-break-word rounded-md border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary"
                   >
                     <Users className="h-2.5 w-2.5" />
                     {hasActivePipeline ? `${pipelineCount} in de pipeline` : "Workflow gekoppeld"}
@@ -191,7 +191,7 @@ export function JobListItem({
                 ) : (
                   <Badge
                     variant="outline"
-                    className="min-h-5 h-auto max-w-full whitespace-normal break-words rounded-md border-dashed border-border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground"
+                    className="min-h-5 h-auto max-w-full whitespace-normal wrap-break-word rounded-md border-dashed border-border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground"
                   >
                     Nog te koppelen
                   </Badge>
@@ -217,16 +217,16 @@ export function JobListItem({
             isActive && "bg-card border-l-[3px] border-l-primary",
           )}
         >
-          <h4 className="mb-1 text-[13px] font-semibold leading-snug text-foreground line-clamp-2 break-words">
+          <h4 className="mb-1 text-[13px] font-semibold leading-snug text-foreground line-clamp-2 wrap-break-word">
             {job.title}
           </h4>
-          <p className="mb-1.5 max-w-full whitespace-normal break-words text-xs text-muted-foreground">
+          <p className="mb-1.5 max-w-full whitespace-normal wrap-break-word text-xs text-muted-foreground">
             {job.company || "Onbekend"}
           </p>
           {job.location && (
             <p className="mb-1.5 flex min-w-0 items-start gap-1 text-xs text-muted-foreground">
               <MapPin className="h-3 w-3 shrink-0" />
-              <span className="max-w-full whitespace-normal break-words">{job.location}</span>
+              <span className="max-w-full whitespace-normal wrap-break-word">{job.location}</span>
             </p>
           )}
           <div className="flex items-center gap-1.5 flex-wrap">

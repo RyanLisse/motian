@@ -52,14 +52,21 @@ export async function normalizeAndSaveJobs(
     parsed: z.output<typeof unifiedJobSchema>;
     raw: Record<string, unknown>;
   }> = [];
+  const HOURS_MAX = 168;
   for (const raw of listings) {
-    // Voor-processing voor veiligheid VÓÓR validatie
+    // Voor-processing voor veiligheid VÓÓR validatie (cap uren/week op 168)
     const preProcessed = { ...raw };
-    if (raw.hoursPerWeek != null) {
-      preProcessed.hoursPerWeek = Math.min(168, Math.max(1, Number(raw.hoursPerWeek)));
+    if (preProcessed.hoursPerWeek != null) {
+      const n = Number(preProcessed.hoursPerWeek);
+      if (Number.isFinite(n)) {
+        preProcessed.hoursPerWeek = Math.min(HOURS_MAX, Math.max(1, Math.round(n)));
+      }
     }
-    if (raw.minHoursPerWeek != null) {
-      preProcessed.minHoursPerWeek = Math.min(168, Math.max(1, Number(raw.minHoursPerWeek)));
+    if (preProcessed.minHoursPerWeek != null) {
+      const n = Number(preProcessed.minHoursPerWeek);
+      if (Number.isFinite(n)) {
+        preProcessed.minHoursPerWeek = Math.min(HOURS_MAX, Math.max(1, Math.round(n)));
+      }
     }
 
     const parsed = unifiedJobSchema.safeParse(preProcessed);

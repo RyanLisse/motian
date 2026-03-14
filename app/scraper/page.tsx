@@ -225,7 +225,7 @@ function PlatformHealthCard({
         {platform.latestError && (
           <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
             <p className="font-medium">Laatste foutmelding</p>
-            <p className="mt-1 break-words">{platform.latestError}</p>
+            <p className="mt-1 wrap-break-word">{platform.latestError}</p>
           </div>
         )}
       </CardContent>
@@ -408,7 +408,7 @@ export default async function ScraperPage() {
                         {formatDateTime(platform.nextRunAt)}
                       </TableCell>
                       <TableCell className="max-w-[320px] whitespace-normal">
-                        <span className="break-words text-xs text-muted-foreground">
+                        <span className="wrap-break-word text-xs text-muted-foreground">
                           {platform.signals[0]?.message ?? "Geen open signaal"}
                         </span>
                       </TableCell>
@@ -428,7 +428,7 @@ export default async function ScraperPage() {
             </CardHeader>
             <CardContent className="min-w-0 space-y-3">
               {!trigger.available && (
-                <div className="break-words rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                <div className="wrap-break-word rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
                   Trigger.dev informatie is nu niet beschikbaar.
                   {trigger.reason ? ` Reden: ${trigger.reason}` : ""}
                 </div>
@@ -445,14 +445,14 @@ export default async function ScraperPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-foreground">{task.label}</p>
-                        <p className="mt-1 break-words text-xs text-muted-foreground">
+                        <p className="mt-1 wrap-break-word text-xs text-muted-foreground">
                           {task.cronExpression} · {task.timezone}
                         </p>
                       </div>
                       <Badge
                         variant="outline"
                         className={cn(
-                          "max-w-full whitespace-normal break-words text-center",
+                          "max-w-full whitespace-normal wrap-break-word text-center",
                           status.className,
                         )}
                       >
@@ -462,7 +462,7 @@ export default async function ScraperPage() {
                     <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                       <p>Laatste run: {formatDateTime(task.latestRun?.createdAt ?? null)}</p>
                       {task.latestRun?.error && (
-                        <p className="break-words text-amber-600 dark:text-amber-400">
+                        <p className="wrap-break-word text-amber-600 dark:text-amber-400">
                           {task.latestRun.error}
                         </p>
                       )}

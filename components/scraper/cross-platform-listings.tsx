@@ -56,7 +56,7 @@ export function CrossPlatformListings({ groups }: { groups: ListingOverlapGroup[
                 >
                   <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="min-w-0 break-words text-sm font-semibold text-foreground">
+                      <h3 className="min-w-0 wrap-break-word text-sm font-semibold text-foreground">
                         {group.title}
                       </h3>
                       <Badge variant="outline" className="text-[10px] text-muted-foreground">
