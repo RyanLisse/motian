@@ -1,5 +1,4 @@
-import { eq } from "drizzle-orm";
-import { db } from "@/src/db";
+import { db, eq } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
 import type { CriterionResult } from "@/src/schemas/matching";
 import { generateReport } from "@/src/services/report-generator";

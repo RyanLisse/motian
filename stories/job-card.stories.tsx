@@ -5,17 +5,6 @@ const meta: Meta<typeof JobCard> = {
   title: "Components/JobCard",
   component: JobCard,
   tags: ["autodocs"],
-  argTypes: {
-    "job.platform": { control: "text" },
-    "job.workArrangement": {
-      control: "select",
-      options: ["on-site", "hybride", "remote", null],
-    },
-    "job.contractType": {
-      control: "select",
-      options: ["freelance", "interim", "vast", null],
-    },
-  },
   parameters: {
     docs: {
       description: {

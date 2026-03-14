@@ -1,5 +1,4 @@
-import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, ilike, isNull, sql } from "../db";
 import { applications, candidates, jobMatches } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { Candidate, CandidateMatchingStatus } from "./candidates";

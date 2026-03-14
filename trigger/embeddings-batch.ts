@@ -1,7 +1,5 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { and, isNotNull, isNull, or, sql } from "drizzle-orm";
-import { db } from "@/src/db";
-import { jobs } from "@/src/db/schema";
+import { and, db, isNotNull, isNull, jobs, or, sql } from "@/src/db";
 import { embedCandidatesBatch, embedJob } from "@/src/services/embedding";
 import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 

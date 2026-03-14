@@ -1,5 +1,4 @@
-import { and, eq, isNull, ne, sql } from "drizzle-orm";
-import { db } from "../../db";
+import { and, db, eq, isNull, ne, sql } from "../../db";
 import { applications, jobs } from "../../db/schema";
 
 /** Aantal actieve (niet-verwijderde, niet-afgewezen) sollicitaties voor een opdracht. */

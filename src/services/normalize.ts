@@ -1,8 +1,6 @@
-import { sql } from "drizzle-orm";
 import type { z } from "zod";
 import { stripHtml } from "../../packages/scrapers/src/strip-html";
-import { db } from "../db";
-import { jobs } from "../db/schema";
+import { db, jobs, sql } from "../db";
 import { unifiedJobSchema } from "../schemas/job";
 import { syncJobEscoSkills } from "./esco";
 

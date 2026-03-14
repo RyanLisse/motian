@@ -1,4 +1,3 @@
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import {
   ArrowRight,
   Award,
@@ -23,7 +22,7 @@ import { OpdrachtenDetailSheet } from "@/components/opdrachten-detail-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { db } from "@/src/db";
+import { and, db, desc, eq, isNull, ne, sql } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
 import { getGradedCandidates } from "@/src/services/grading";

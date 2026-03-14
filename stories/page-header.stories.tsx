@@ -28,7 +28,7 @@ export const TitleOnly: Story = {
 export const WithDescription: Story = {
   args: {
     title: "Opdrachten",
-    description: "Beheer en bekijk alle beschikbare opdrachten",
+    description: "Beheer en bekijk alle beschikbare vacatures",
   },
 };
 

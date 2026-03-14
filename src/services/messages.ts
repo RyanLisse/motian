@@ -1,5 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, isNull, sql } from "../db";
 import { messages } from "../db/schema";
 
 export type Message = typeof messages.$inferSelect;

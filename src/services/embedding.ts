@@ -1,5 +1,4 @@
-import { and, eq, isNull, type SQL, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, eq, isNull, type SQL, sql } from "../db";
 import { candidates, jobs } from "../db/schema";
 import {
   tracedEmbed as embed,

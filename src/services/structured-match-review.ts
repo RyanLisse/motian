@@ -1,6 +1,5 @@
-import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db } from "@/src/db";
+import { db, eq } from "@/src/db";
 import { jobMatches } from "@/src/db/schema";
 import type { StructuredMatchOutput } from "@/src/schemas/matching";
 import { getCandidateById } from "@/src/services/candidates";

@@ -1,5 +1,4 @@
-import { and, inArray, isNotNull, isNull, sql } from "drizzle-orm";
-import { db } from "@/src/db";
+import { and, db, inArray, isNotNull, isNull, sql } from "@/src/db";
 import { applications } from "@/src/db/schema";
 
 type PipelineSummaryRow = {

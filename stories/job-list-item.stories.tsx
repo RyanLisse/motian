@@ -8,15 +8,6 @@ const meta: Meta<typeof JobListItem> = {
   argTypes: {
     isActive: { control: "boolean" },
     variant: { control: "select", options: ["compact", "card"] },
-    "job.platform": { control: "text" },
-    "job.workArrangement": {
-      control: "select",
-      options: ["on-site", "hybride", "remote", null],
-    },
-    "job.contractType": {
-      control: "select",
-      options: ["freelance", "interim", "vast", null],
-    },
   },
   parameters: {
     docs: {

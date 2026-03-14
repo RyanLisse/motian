@@ -1,4 +1,3 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -13,7 +12,7 @@ import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
-import { db } from "@/src/db";
+import { and, db, desc, eq, isNull, sql } from "@/src/db";
 import { applications, candidates, jobs, messages } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 

@@ -1,5 +1,4 @@
-import { and, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "drizzle-orm";
-import { db } from "../../db";
+import { and, db, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 
 export type Job = typeof jobs.$inferSelect;

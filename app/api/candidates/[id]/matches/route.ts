@@ -1,5 +1,4 @@
-import { desc, eq } from "drizzle-orm";
-import { db } from "@/src/db";
+import { db, desc, eq } from "@/src/db";
 import { jobMatches, jobs } from "@/src/db/schema";
 import type { StructuredMatchOutput } from "@/src/schemas/matching";
 import type { AutoMatchResult } from "@/src/services/auto-matching";

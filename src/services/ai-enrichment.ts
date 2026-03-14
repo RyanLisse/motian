@@ -1,7 +1,6 @@
 import { Output } from "ai";
-import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "../db";
+import { and, db, eq, isNull } from "../db";
 import { jobs } from "../db/schema";
 import { geminiFlashLite, tracedGenerateText as generateText } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
