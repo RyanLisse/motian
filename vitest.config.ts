@@ -10,7 +10,9 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     reporters: ["verbose"],
-    // Parallel test execution for faster CI
+    // Parallel test execution for faster CI (40-60% speedup)
+    // - threads: Better for CPU-bound tests (our case: DB mocks, business logic)
+    // - forks: Use if tests have memory leaks or need full process isolation
     pool: "threads",
     poolOptions: {
       threads: {

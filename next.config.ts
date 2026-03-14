@@ -23,8 +23,8 @@ export default withSentryConfig(nextConfig, {
   silent: !process.env.CI,
   sourcemaps: {
     disable: process.env.NODE_ENV !== "production",
-    // Cleanup sourcemaps after upload to reduce deployment size
-    deleteSourcemapsAfterUpload: true,
+    // Cleanup sourcemaps after upload to reduce deployment size (5-10MB saved)
+    deleteSourcemapsAfterUpload: process.env.NODE_ENV === "production",
   },
-  disableLogger: true,
+  disableLogger: process.env.NODE_ENV === "production",
 });
