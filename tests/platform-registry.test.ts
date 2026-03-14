@@ -29,6 +29,7 @@ describe("platform registry", () => {
     expect(werkzoeken?.adapterKind).toBe("http_html_list_detail");
     expect(werkzoeken?.authMode).toBe("none");
     expect(werkzoeken?.configSchema.shape.parameters).toBeDefined();
+    expect(werkzoeken?.docsUrl).toBe("https://www.werkzoeken.nl/doc/");
   });
 
   it("drives the shared platform helper list instead of a hardcoded array", () => {

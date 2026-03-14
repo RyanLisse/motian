@@ -1,33 +1,13 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
-type PlatformCatalogEntry = {
-  slug: string;
-  displayName: string;
-  adapterKind: string;
-  authMode: string;
-  description: string;
-  defaultBaseUrl: string | null;
-  configSchema: Record<string, unknown>;
-  authSchema: Record<string, unknown>;
-  config: {
-    id: string;
-    baseUrl: string;
-    isActive: boolean;
-    cronExpression: string | null;
-    parameters: unknown;
-  } | null;
-  latestRun: {
-    status: string;
-    blockerKind: string | null;
-  } | null;
-};
+import type { PlatformCatalogEntryView } from "@/src/services/scrapers";
 
 function readSchemaKeys(schema: Record<string, unknown> | undefined): string[] {
   if (!schema || typeof schema !== "object") return [];
@@ -94,7 +74,7 @@ function parseJsonObject(value: string, fieldName: string): Record<string, unkno
   }
 }
 
-export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
+export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntryView }) {
   const router = useRouter();
   const [baseUrl, setBaseUrl] = useState(entry.config?.baseUrl ?? entry.defaultBaseUrl ?? "");
   const [cronExpression, setCronExpression] = useState(
@@ -188,6 +168,17 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
 
   return (
     <div className="space-y-4">
+      {entry.docsUrl ? (
+        <a
+          href={entry.docsUrl}
+          rel="noreferrer"
+          target="_blank"
+          className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
+        >
+          Open platformdocumentatie
+          <ExternalLink className="size-3.5" />
+        </a>
+      ) : null}
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">Platform slug</p>
         <p className="text-sm text-muted-foreground">{entry.slug}</p>
