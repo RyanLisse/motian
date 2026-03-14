@@ -4,6 +4,28 @@ import { JobListItem } from "@/components/job-list-item";
 const meta: Meta<typeof JobListItem> = {
   title: "Components/JobListItem",
   component: JobListItem,
+  tags: ["autodocs"],
+  argTypes: {
+    isActive: { control: "boolean" },
+    variant: { control: "select", options: ["compact", "card"] },
+    "job.platform": { control: "text" },
+    "job.workArrangement": {
+      control: "select",
+      options: ["on-site", "hybride", "remote", null],
+    },
+    "job.contractType": {
+      control: "select",
+      options: ["freelance", "interim", "vast", null],
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        component:
+          "Lijstitem voor vacatures in de sidebar en op overzichtspagina’s.",
+      },
+    },
+  },
 };
 
 export default meta;

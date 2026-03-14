@@ -159,7 +159,9 @@ export function JobListItem({
               {job.location && (
                 <span className="inline-flex min-w-0 max-w-full items-start gap-1.5">
                   <MapPin className="h-3.5 w-3.5 shrink-0" />
-                  <span className="max-w-full whitespace-normal wrap-break-word">{job.location}</span>
+                  <span className="max-w-full whitespace-normal wrap-break-word">
+                    {job.location}
+                  </span>
                 </span>
               )}
               {job.workArrangement && (

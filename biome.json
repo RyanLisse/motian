@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.7/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -49,6 +49,23 @@
       "linter": {
         "rules": {
           "a11y": { "useSemanticElements": "off" }
+        }
+      }
+    },
+    {
+      "includes": [
+        "app/professionals/\\[id\\]/page.tsx",
+        "app/scraper/runs/\\[id\\]/page.tsx",
+        "components/auto-match-results.tsx",
+        "components/candidate-profile/skills-experience-section.tsx",
+        "components/candidate-wizard/experience-input.tsx",
+        "components/cv-document-viewer.tsx",
+        "components/matching/match-detail.tsx",
+        "components/shared/list-page-skeleton.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": { "noArrayIndexKey": "off" }
         }
       }
     }

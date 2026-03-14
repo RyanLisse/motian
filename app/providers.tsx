@@ -3,8 +3,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
-import { SafeStoragePatch } from "@/src/components/safe-storage-patch";
 import { PostHogProvider } from "@/src/components/posthog-provider";
+import { SafeStoragePatch } from "@/src/components/safe-storage-patch";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
