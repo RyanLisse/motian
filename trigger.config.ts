@@ -26,6 +26,10 @@ export default defineConfig({
   maxDuration: 600, // 10 min global default (scrape pipeline needs ~5 min)
   logLevel: "info",
   enableConsoleLogging: true,
+  // Externalize pg and drizzle-orm to avoid bundling issues
+  build: {
+    external: ["pg", "drizzle-orm/pg-core", "@motian/db"],
+  },
   retries: {
     enabledInDev: false,
     default: {

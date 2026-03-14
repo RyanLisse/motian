@@ -9,45 +9,40 @@ import {
 } from "@/src/autopilot/persistence";
 import type { AutopilotFinding, AutopilotRunSummary } from "@/src/autopilot/types";
 
-// Mock the database
-vi.mock("@/src/db", () => ({
-  db: {
-    insert: vi.fn(() => ({
-      values: vi.fn(() => ({
-        onConflictDoUpdate: vi.fn(() => Promise.resolve()),
-      })),
-    })),
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        orderBy: vi.fn(() => ({
-          limit: vi.fn(() => Promise.resolve([])),
-        })),
-        where: vi.fn(() => ({
-          orderBy: vi.fn(() => Promise.resolve([])),
+// Mock the database using importOriginal for type-safe helpers
+vi.mock("@/src/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/src/db")>();
+  return {
+    db: {
+      insert: vi.fn(() => ({
+        values: vi.fn(() => ({
+          onConflictDoUpdate: vi.fn(() => Promise.resolve()),
         })),
       })),
-    })),
-    update: vi.fn(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => Promise.resolve([{ findingId: "test-finding" }])),
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          orderBy: vi.fn(() => ({
+            limit: vi.fn(() => Promise.resolve([])),
+          })),
+          where: vi.fn(() => ({
+            orderBy: vi.fn(() => Promise.resolve([])),
+          })),
+        })),
       })),
-    })),
-  },
-}));
-
-vi.mock("@/src/db/schema", () => ({
-  autopilotRuns: {
-    runId: "runId",
-    startedAt: "startedAt",
-  },
-  autopilotFindings: {
-    findingId: "findingId",
-    runId: "runId",
-    severity: "severity",
-    createdAt: "createdAt",
-    status: "status",
-  },
-}));
+      update: vi.fn(() => ({
+        set: vi.fn(() => ({
+          where: vi.fn(() => Promise.resolve([{ findingId: "test-finding" }])),
+        })),
+      })),
+    },
+    // Re-export actual Drizzle helpers for type safety
+    eq: actual.eq,
+    desc: actual.desc,
+    // Re-export schema tables
+    autopilotRuns: actual.autopilotRuns,
+    autopilotFindings: actual.autopilotFindings,
+  };
+});
 
 describe("autopilot persistence", () => {
   beforeEach(() => {

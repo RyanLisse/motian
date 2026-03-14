@@ -10,6 +10,14 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     reporters: ["verbose"],
+    // Parallel test execution for faster CI
+    pool: "threads",
+    poolOptions: {
+      threads: {
+        singleThread: false,
+        isolate: true,
+      },
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "json-summary"],

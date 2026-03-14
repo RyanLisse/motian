@@ -45,7 +45,7 @@ Backlog items derived from `qlty smells --all`, package audit, and simplificatio
 
 ## Lint: noArrayIndexKey (9 remaining)
 
-- **app/professionals/[id]/page.tsx** — experienceEntries map key uses index; use stable id or composite key.
+- **app/kandidaten/[id]/page.tsx** — experienceEntries map key uses index; use stable id or composite key.
 - **app/scraper/runs/[id]/page.tsx** — errors list key; use `err` content hash or index only for display-only list.
 - **components/auto-match-results.tsx** — star icons key; stable (criterion + position) is acceptable or use criterion-star-${i} with biome-ignore.
 - **components/candidate-profile/skills-experience-section.tsx** — experience entry key.

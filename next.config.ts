@@ -8,10 +8,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  // Performance optimizations (swcMinify is default in Next.js 16)
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",
     },
+    optimizeCss: true,
   },
 };
 
@@ -19,5 +21,10 @@ export default withSentryConfig(nextConfig, {
   org: "ryan-lisse-bv",
   project: "motian",
   silent: !process.env.CI,
-  sourcemaps: { disable: process.env.NODE_ENV !== "production" },
+  sourcemaps: {
+    disable: process.env.NODE_ENV !== "production",
+    // Cleanup sourcemaps after upload to reduce deployment size
+    deleteSourcemapsAfterUpload: true,
+  },
+  disableLogger: true,
 });

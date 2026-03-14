@@ -58,7 +58,18 @@ async function importHybridSearchGoldenHarness({
     return ids.map((id) => jobById.get(id)).filter((job): job is GoldenJob => Boolean(job));
   });
 
-  vi.doMock("../src/db", () => ({ db: { select: mockSelect } }));
+  vi.doMock("../src/db", async () => {
+    const actual = await import("../src/db");
+    return {
+      db: { select: mockSelect },
+      // Re-export actual Drizzle helpers
+      sql: actual.sql,
+      and: actual.and,
+      ilike: actual.ilike,
+      inArray: actual.inArray,
+      or: actual.or,
+    };
+  });
   vi.doMock("../src/db/schema", () => ({
     jobs: {
       id: "jobs.id",
