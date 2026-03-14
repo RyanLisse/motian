@@ -13,6 +13,7 @@ type PlatformCatalogEntry = {
   adapterKind: string;
   authMode: string;
   description: string;
+  docsUrl: string | null;
   defaultBaseUrl: string | null;
   configSchema: Record<string, unknown>;
   authSchema: Record<string, unknown>;
@@ -191,6 +192,16 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">Platform slug</p>
         <p className="text-sm text-muted-foreground">{entry.slug}</p>
+        {entry.docsUrl ? (
+          <a
+            href={entry.docsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex text-sm font-medium text-foreground underline underline-offset-4"
+          >
+            Open platformdocumentatie
+          </a>
+        ) : null}
       </div>
 
       <div className="space-y-1">
