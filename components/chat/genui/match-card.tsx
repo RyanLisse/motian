@@ -33,10 +33,10 @@ export function MatchGenUICard({ output }: { output: unknown }) {
   if (!isMatchOutput(output)) return null;
   const statusLabel = statusLabels[output.status] ?? output.status;
   const href = output.candidateId
-    ? `/professionals/${output.candidateId}#matches`
+    ? `/kandidaten/${output.candidateId}#matches`
     : output.jobId
-      ? `/opdrachten/${output.jobId}#recruiter-cockpit`
-      : "/professionals";
+      ? `/vacatures/${output.jobId}#recruiter-cockpit`
+      : "/kandidaten";
   const ctaLabel = output.candidateId
     ? "Open matchkansen →"
     : output.jobId

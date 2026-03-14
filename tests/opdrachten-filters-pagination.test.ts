@@ -158,13 +158,13 @@ describe("Opdrachten shared filter parsing", () => {
 describe("Opdrachten filter URL helpers", () => {
   it("preserves endClient params while clearing pagination aliases on detail routes", () => {
     const href = buildOpdrachtenFilterHref(
-      "/opdrachten/job-123",
+      "/vacatures/job-123",
       new URLSearchParams("q=java&page=2&perPage=25&endClient=Gemeente%20Utrecht"),
       { endClient: "Gemeente Amsterdam", pagina: "1" },
     );
     const url = new URL(href, "http://localhost");
 
-    expect(url.pathname).toBe("/opdrachten/job-123");
+    expect(url.pathname).toBe("/vacatures/job-123");
     expect(url.searchParams.get("q")).toBe("java");
     expect(url.searchParams.get("endClient")).toBe("Gemeente Amsterdam");
     expect(url.searchParams.get("pagina")).toBe("1");
@@ -174,13 +174,13 @@ describe("Opdrachten filter URL helpers", () => {
 
   it("removes the endClient filter cleanly when all clients are selected", () => {
     const href = buildOpdrachtenFilterHref(
-      "/opdrachten",
+      "/vacatures",
       new URLSearchParams("endClient=Gemeente%20Utrecht&sort=deadline_desc"),
       { endClient: "" },
     );
     const url = new URL(href, "http://localhost");
 
-    expect(url.pathname).toBe("/opdrachten");
+    expect(url.pathname).toBe("/vacatures");
     expect(url.searchParams.get("endClient")).toBeNull();
     expect(url.searchParams.get("sort")).toBe("deadline_desc");
   });
@@ -342,7 +342,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(sidebar).toContain("getOpdrachtenBasePath(pathname)");
     expect(sidebar).toContain("deadlines vragen aandacht");
     expect(listItem).toContain("href?: string");
-    expect(listItem).toContain(`const detailHref = href ?? \`/opdrachten/\${job.id}\``);
+    expect(listItem).toContain(`const detailHref = href ?? \`/vacatures/\${job.id}\``);
     expect(listItem).toContain("Nog te koppelen");
     expect(listItem).toContain("Sluit vandaag");
   });

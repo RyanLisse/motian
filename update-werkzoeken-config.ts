@@ -8,10 +8,15 @@ async function run() {
   console.log("Current Config:", JSON.stringify(current, null, 2));
 
   if (current) {
+    const currentParameters =
+      (current.parameters && typeof current.parameters === "object"
+        ? current.parameters
+        : {}) as Record<string, unknown>;
+
     await db.update(scraperConfigs)
       .set({
         parameters: {
-          ...current.parameters,
+          ...currentParameters,
           maxPages: 1300,
           pnrStep: 10,
           skipDetailEnrichment: true,

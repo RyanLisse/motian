@@ -95,7 +95,7 @@ describe("encryptAuthConfig / decryptAuthConfig", () => {
     ({ encryptAuthConfig, decryptAuthConfig, isEncrypted } = await import(
       "../src/services/scrapers"
     ));
-  });
+  }, 20_000);
 
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV, ENCRYPTION_SECRET: "test-secret-key-for-vitest-runs-2026" };

@@ -95,7 +95,7 @@ export function OpdrachtenFilters({
       }
       startTransition(() => {
         const query = params.toString();
-        router.push(query ? `/opdrachten?${query}` : "/opdrachten");
+        router.push(query ? `/vacatures?${query}` : "/vacatures");
       });
     },
     [router, searchParams],

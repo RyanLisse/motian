@@ -25,7 +25,7 @@ export function KandidaatGenUICard({ output }: { output: unknown }) {
   }
   if (!isCandidateOutput(output)) return null;
   return (
-    <Link href={`/professionals/${output.id}`}>
+    <Link href={`/kandidaten/${output.id}`}>
       <div className="my-1.5 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">

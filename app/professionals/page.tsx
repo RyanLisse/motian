@@ -247,7 +247,7 @@ export default async function ProfessionalsPage({ searchParams }: Props) {
                   candidateId={candidate.id}
                   candidateName={candidate.name}
                 >
-                  <Link href={`/professionals/${candidate.id}`}>
+                  <Link href={`/kandidaten/${candidate.id}`}>
                     <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer pl-6">
                       {/* Name + source */}
                       <div className="flex items-start justify-between gap-2 mb-3">

@@ -41,7 +41,7 @@ export const PATCH = withApiHandler(
     }
     const job = await updateJob(id, parsed.data);
     if (!job) {
-      return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
+      return Response.json({ error: "Vacature niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: await withJobCanonicalSkills(job) });
   },
@@ -53,7 +53,7 @@ export const DELETE = withApiHandler(
     const { id } = await params;
     const archived = await deleteJob(id);
     if (!archived) {
-      return Response.json({ error: "Opdracht niet gevonden" }, { status: 404 });
+      return Response.json({ error: "Vacature niet gevonden" }, { status: 404 });
     }
     return Response.json({ data: { id, archived: true } });
   },

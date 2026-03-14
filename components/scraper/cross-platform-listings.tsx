@@ -101,7 +101,7 @@ export function CrossPlatformListings({ groups }: { groups: ListingOverlapGroup[
 
                         <div className="flex shrink-0 flex-wrap items-center gap-3 text-xs">
                           <Link
-                            href={`/opdrachten/${listing.id}`}
+                            href={`/vacatures/${listing.id}`}
                             className="inline-flex items-center gap-1 text-primary hover:underline"
                           >
                             Open opdracht

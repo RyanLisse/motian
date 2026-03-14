@@ -52,7 +52,7 @@ export function resolveRouteContext(pathname: string, id: string | null): ChatRo
   if (pathname.startsWith("/opdrachten/") && id) {
     return { route: pathname, entityType: "opdracht", entityId: id };
   }
-  if (pathname.startsWith("/professionals/") && id) {
+  if ((pathname.startsWith("/professionals/") || pathname.startsWith("/kandidaten/")) && id) {
     return { route: pathname, entityType: "kandidaat", entityId: id };
   }
 

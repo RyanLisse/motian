@@ -10,6 +10,13 @@ vi.mock("@trigger.dev/sdk", () => ({
   },
 }));
 
+vi.mock("../src/services/jobs/deduplication", () => ({
+  fetchDedupedJobsPage: vi.fn().mockResolvedValue({ data: [], total: 0 }),
+  loadJobsByIds: vi.fn(),
+  collapseScoredJobsByVacancy: vi.fn((entries: unknown[]) => entries),
+  fetchDedupedJobIds: vi.fn(),
+}));
+
 import { getScraperDashboardData } from "../src/services/scraper-dashboard";
 
 type QueryChain = Promise<unknown[]> & {

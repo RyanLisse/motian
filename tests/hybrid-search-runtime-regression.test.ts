@@ -75,9 +75,10 @@ vi.mock("../src/services/jobs/hybrid-search-policy", () => ({
   getHybridSearchPolicy: mockGetHybridSearchPolicy,
 }));
 
-vi.mock("../src/services/jobs/repository", () => ({
-  jobReadSelection: { id: "jobs.id" },
-}));
+vi.mock("../src/services/jobs/repository", () => {
+  const sel = { id: "jobs.id" };
+  return { jobReadSelection: sel, getJobReadSelection: () => sel };
+});
 
 vi.mock("../src/services/jobs/deduplication", async () => {
   const actual = await vi.importActual<typeof import("../src/services/jobs/deduplication")>(

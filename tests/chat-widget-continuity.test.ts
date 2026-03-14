@@ -207,7 +207,7 @@ describe("chat widget continuity", () => {
 
     const html = renderToStaticMarkup(createElement(ChatPageContent));
 
-    expect(html).toContain("Verder vanuit opdracht");
+    expect(html).toContain("Verder vanuit vacature");
     expect(html).toContain("Bronpagina");
     expect(html).toContain("Sessie laden mislukt");
     expect(html).toContain('aria-label="Open gesprekken"');

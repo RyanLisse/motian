@@ -237,6 +237,16 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 - `bv` (Bead Viewer) without flags launches an interactive TUI that will block the session. Always use `bv --robot-*` flags.
 - The sidebar nav calls `/kandidaten` but the actual route is `/professionals` (Talent Pool submenu).
 
+## Learned User Preferences
+
+- Use Kandidaten (not Professionals) for candidate UI labels and routes
+- Use Vacatures for job-related UI and canonical routes (not Opdrachten in user-facing copy)
+
+## Learned Workspace Facts
+
+- Canonical frontend routes: `/vacatures` and `/kandidaten`; `/opdrachten` and `/professionals` are implementation paths
+- Structural tests require Dutch API path segments; avoid English segments like `/api/health`—use `/api/gezondheid`
+
 <!-- TRIGGER.DEV basic START -->
 
 # Trigger.dev Basic Tasks (v4)

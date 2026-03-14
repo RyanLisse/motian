@@ -60,7 +60,7 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(source).toContain("AI Grading");
     expect(source).toContain("source: applications.source");
     // biome-ignore lint/suspicious/noTemplateCurlyInString: asserting source contains a template literal
-    expect(source).toContain("/professionals/${row.candidateId}");
+    expect(source).toContain("/kandidaten/${row.candidateId}");
   });
 
   it("OpdrachtenDetailSheet returns to the filtered list when the mobile sheet closes", async () => {

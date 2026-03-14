@@ -15,7 +15,7 @@ import {
 import { getHybridSearchPolicy } from "./hybrid-search-policy";
 import { listJobs } from "./list";
 import { buildJobFilterConditions } from "./query-filters";
-import { jobReadSelection, type Job } from "./repository";
+import { type Job, jobReadSelection } from "./repository";
 
 export type SearchJobsOptions = {
   platform?: string;

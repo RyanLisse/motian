@@ -7,7 +7,7 @@ import { LIST_SLO_MS, logSlowQuery } from "../../lib/query-observability";
 import { fetchDedupedJobsPage, loadJobsByIds } from "./deduplication";
 import { getJobStatusCondition, type JobStatus, type ListJobsSortBy } from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
-import { jobReadSelection, type Job } from "./repository";
+import { type Job, jobReadSelection } from "./repository";
 
 export type ListJobsOptions = {
   limit?: number;

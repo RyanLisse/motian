@@ -15,7 +15,7 @@ import { chromium } from "playwright";
 // Configuration
 // ---------------------------------------------------------------------------
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = `http://localhost:${process.env.PORT ?? 3002}`;
 const EVIDENCE_DIR = resolve(process.cwd(), "harness-evidence");
 const VIEWPORT = { width: 1280, height: 720 };
 const TIMEOUT_MS = 30_000;
@@ -169,7 +169,9 @@ async function captureEvidence(): Promise<void> {
   console.log("");
 
   if (entries.length === 0) {
-    console.error("ERROR: No screenshots were captured. Is the dev server running on port 3001?");
+    console.error(
+      `ERROR: No screenshots were captured. Is the dev server running on port ${process.env.PORT ?? 3002}?`,
+    );
     process.exit(1);
   }
 }

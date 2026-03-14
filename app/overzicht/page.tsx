@@ -265,7 +265,7 @@ export default async function OverzichtPage() {
                   {recentJobs.map((job) => (
                     <Link
                       key={job.id}
-                      href={`/opdrachten/${job.id}`}
+                      href={`/vacatures/${job.id}`}
                       className="flex items-start justify-between gap-3 px-4 py-3 transition-colors first:pt-0 last:pb-0 hover:bg-accent -mx-4"
                     >
                       <div className="min-w-0 flex-1">

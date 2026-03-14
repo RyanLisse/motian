@@ -106,9 +106,10 @@ async function importHybridSearchGoldenHarness({
   vi.doMock("../src/services/jobs/query-filters", () => ({
     buildJobFilterConditions: vi.fn(() => []),
   }));
-  vi.doMock("../src/services/jobs/repository", () => ({
-    jobReadSelection: { id: "jobs.id" },
-  }));
+  vi.doMock("../src/services/jobs/repository", () => {
+    const sel = { id: "jobs.id" };
+    return { jobReadSelection: sel, getJobReadSelection: () => sel };
+  });
   vi.doMock("../src/services/jobs/deduplication", () => ({
     collapseScoredJobsByVacancy: vi.fn((entries: unknown[]) => entries),
     fetchDedupedJobIds: vi.fn().mockResolvedValue(textResultIds),
