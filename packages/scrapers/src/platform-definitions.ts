@@ -151,7 +151,8 @@ export const platformDefinitions: PlatformDefinition[] = [
       "smoke_import",
       "validation",
     ],
-    description: "Publieke SSR vacaturekaartjes met configureerbare categoriepaden.",
+    description:
+      "Publieke SSR vacaturekaartjes met configureerbare categoriepaden. Naast deze import bestaat een aparte Bearer-geauthenticeerde publisher-API voor aanlevering.",
     defaultBaseUrl: "https://www.werkzoeken.nl",
     defaultParameters: {
       sourcePath: "/vacatures-voor/techniek/",
@@ -160,7 +161,7 @@ export const platformDefinitions: PlatformDefinition[] = [
       detailConcurrency: 4,
       skipDetailEnrichment: false,
     },
-    docsUrl: "https://www.werkzoeken.nl/vacatures-voor/techniek/",
+    docsUrl: "https://www.werkzoeken.nl/doc/",
     configSchema: werkzoekenConfigSchema,
     authSchema: emptyAuthSchema,
   },
