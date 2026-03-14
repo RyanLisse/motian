@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Standaard filter-UI voor lijstpagina's.
+ * Dit ontwerp (zoekbalk, dropdowns Platform/Eindopdrachtgever/Vaardigheid/Provincie/Regio/Vakgebied,
+ * uren per week, straal, sortering, resultaat-telling en paginatie) is de referentie voor alle
+ * filterpagina's. Gebruik deze component of hetzelfde visuele patroon op andere lijstpagina's.
+ */
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronLeft, ChevronRight, Loader2, RotateCcw, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";

@@ -209,6 +209,7 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 | Rate Limit      | `src/lib/rate-limit.ts`            | In-memory sliding window                                                |
 | Middleware      | `middleware.ts`                    | Bearer token auth (deprecated in Next.js 16)                            |
 | Sidebar         | `components/app-sidebar.tsx`       | Missing Interviews/Messages nav items                                   |
+| Filter UI       | `components/opdrachten-sidebar.tsx`, `components/shared/standard-filter-sidebar.tsx` | Standaard filter-UI voor alle lijstpagina's (zoek, dropdowns, uren, straal, sort, paginatie) |
 | Vercel Config   | `vercel.json`                      | Cron: scrape 6AM, vacancy-expiry 3AM                                    |
 
 ---
