@@ -371,8 +371,8 @@ describe("Opdrachten UI/API contracts", () => {
     expect(listItem).toContain(
       "w-full min-w-0 overflow-hidden rounded-xl border border-border/80 bg-card",
     );
-    expect(listItem).toContain("line-clamp-2 break-words");
-    expect(listItem).toContain("max-w-full whitespace-normal break-words");
+    expect(listItem).toContain("line-clamp-2");
+    expect(listItem).toContain("max-w-full whitespace-normal wrap-break-word");
   });
 
   it("uses the dark card-based filter panel as the primary sidebar UI", () => {
