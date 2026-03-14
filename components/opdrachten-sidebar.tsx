@@ -85,6 +85,17 @@ const CONTRACT_TYPES = [
   { value: "opdracht", label: "Opdracht" },
 ];
 
+const DARK_FILTER_PANEL_CLASS =
+  "rounded-[24px] border border-white/10 bg-white/[0.035] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur";
+const DARK_FILTER_CONTROL_CLASS =
+  "h-12 rounded-[20px] border-white/10 bg-white/[0.035] px-4 text-[15px] font-normal text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] placeholder:text-white/35 focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:ring-offset-0";
+const DARK_FILTER_TRIGGER_CLASS =
+  "h-12 rounded-[20px] border-white/10 bg-white/[0.035] px-4 text-left text-[15px] font-normal text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] data-[placeholder]:text-white/35";
+const DARK_FILTER_MENU_CLASS = "border-white/10 bg-[#101113] text-white";
+const DARK_FILTER_SECTION_LABEL_CLASS =
+  "text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45";
+const DARK_FILTER_SECTION_VALUE_CLASS = "text-sm text-white/55";
+
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 type FilterOverrideValue = string | string[];
 
@@ -227,11 +238,15 @@ function CompactMultiSelectFilter({
   options,
   selectedValues,
   onToggle,
+  buttonClassName,
+  contentClassName,
 }: {
   label: string;
   options: FilterOption[];
   selectedValues: string[];
   onToggle: (value: string) => void;
+  buttonClassName?: string;
+  contentClassName?: string;
 }) {
   const selectedLabels = options
     .filter((option) => selectedValues.includes(option.value))
@@ -242,13 +257,16 @@ function CompactMultiSelectFilter({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className="h-7 flex-1 justify-between border-border bg-card px-2 text-[10px] text-foreground"
+          className={cn(
+            "h-7 flex-1 justify-between border-border bg-card px-2 text-[10px] text-foreground",
+            buttonClassName,
+          )}
         >
           <span className="truncate">{summarizeSelection(label, selectedLabels)}</span>
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="bg-card border-border">
+      <DropdownMenuContent align="start" className={cn("bg-card border-border", contentClassName)}>
         {options.map((option) => (
           <DropdownMenuCheckboxItem
             key={option.value}
@@ -278,12 +296,12 @@ function RadiusSliderField({
   const sliderIndex = radiusKm ? Math.max(0, sliderOptions.indexOf(Number(radiusKm))) : 0;
 
   return (
-    <div className={compact ? "px-3 pb-2" : undefined}>
-      <div className={cn("mb-2 flex items-center justify-between gap-2", compact && "mb-1")}>
+    <div className={compact ? "px-4 pb-4" : undefined}>
+      <div className={cn("mb-2 flex items-center justify-between gap-2", compact && "mb-2")}>
         <span
           className={cn(
             "font-medium text-foreground",
-            compact ? "text-[10px] uppercase tracking-wide text-muted-foreground" : "text-sm",
+            compact ? DARK_FILTER_SECTION_LABEL_CLASS : "text-sm",
           )}
         >
           Straal
@@ -294,19 +312,25 @@ function RadiusSliderField({
           onClick={() => onRadiusChange("")}
           className={cn(
             "font-medium text-primary disabled:cursor-not-allowed disabled:opacity-50",
-            compact ? "text-[10px]" : "text-xs",
+            compact ? "text-sm text-white/55 hover:text-white" : "text-xs",
           )}
         >
           Reset
         </button>
       </div>
 
-      <div className={cn("rounded-lg border border-border bg-background p-3", compact && "p-2")}>
+      <div
+        className={cn(
+          "rounded-lg border border-border bg-background p-3",
+          compact &&
+            "rounded-[24px] border-white/10 bg-white/[0.035] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        )}
+      >
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className={cn("font-medium text-foreground", compact ? "text-xs" : "text-sm")}>
+          <span className={cn("font-medium", compact ? "text-3xl text-white" : "text-sm")}>
             {radiusKm ? `${radiusKm} km` : "Geen straal"}
           </span>
-          <span className={cn("text-muted-foreground", compact ? "text-[10px]" : "text-xs")}>
+          <span className={cn(compact ? "text-lg text-white/55" : "text-xs text-muted-foreground")}>
             {provinceAnchor ? provinceAnchor.label : "Eerst provincie"}
           </span>
         </div>
@@ -321,14 +345,21 @@ function RadiusSliderField({
             onRadiusChange(nextRadius > 0 ? String(nextRadius) : "");
           }}
         />
-        <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+        <div
+          className={cn(
+            "mt-2 flex items-center justify-between text-[10px] text-muted-foreground",
+            compact && "mt-3 text-sm text-white/55",
+          )}
+        >
           {sliderOptions.map((value) => (
             <span key={value}>{value === 0 ? "0" : value}</span>
           ))}
         </div>
       </div>
 
-      <p className={cn("mt-2 text-muted-foreground", compact ? "text-[10px]" : "text-xs")}>
+      <p
+        className={cn("mt-2 text-muted-foreground", compact ? "text-sm text-white/45" : "text-xs")}
+      >
         {provinceAnchor
           ? `Straal wordt toegepast vanaf ${provinceAnchor.label} (${provinceAnchor.province}).`
           : "Kies eerst een provincie om straalfiltering te activeren."}
@@ -677,56 +708,60 @@ export function OpdrachtenSidebar({
 
   if (!isOverviewPage) {
     return (
-      <aside className="flex h-full w-full flex-col">
-        <div className="px-3 pt-3 pb-2 shrink-0">
+      <aside className="flex h-full w-full flex-col overflow-hidden bg-[#050506] text-white">
+        <div className="shrink-0 px-4 pb-4 pt-5">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/40" />
             <Input
               placeholder="Zoek vacatures..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              className="pl-8 h-8 bg-card border-border text-xs text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+              className={cn(
+                "h-14 rounded-[24px] pl-12 pr-11 text-[17px]",
+                DARK_FILTER_CONTROL_CLASS,
+              )}
             />
             {isFetching && (
-              <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground animate-spin" />
+              <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-white/45" />
             )}
           </div>
         </div>
 
-        <div className="px-3 pb-2 flex items-center gap-1.5 shrink-0">
-          <Select
-            value={platform || undefined}
-            onValueChange={(v) => handleFilterChange("platform", v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
-              <SelectValue placeholder="Platform" />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border">
-              <SelectItem value="__all__" className="text-foreground text-xs">
-                Alle platforms
-              </SelectItem>
-              {platforms.map((p) => (
-                <SelectItem key={p} value={p} className="capitalize text-foreground text-xs">
-                  {p}
+        <div className="grid shrink-0 gap-3 px-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              value={platform || undefined}
+              onValueChange={(v) => handleFilterChange("platform", v === "__all__" ? "" : v)}
+            >
+              <SelectTrigger className={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}>
+                <SelectValue placeholder="Platform" />
+              </SelectTrigger>
+              <SelectContent className={DARK_FILTER_MENU_CLASS}>
+                <SelectItem value="__all__" className="text-white">
+                  Alle platforms
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                {platforms.map((p) => (
+                  <SelectItem key={p} value={p} className="capitalize text-white">
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <SearchableCombobox
-            value={endClient || undefined}
-            onValueChange={(value) => handleFilterChange("endClient", value)}
-            options={endClients}
-            placeholder="Eindopdrachtgever"
-            searchPlaceholder="Zoek eindopdrachtgever..."
-            emptyText="Geen eindopdrachtgevers gevonden."
-            clearLabel="Alle eindopdrachtgevers"
-            buttonClassName="h-7 flex-1 border-border bg-card px-2 text-[10px] text-foreground"
-            itemClassName="text-xs"
-          />
-        </div>
+            <SearchableCombobox
+              value={endClient || undefined}
+              onValueChange={(value) => handleFilterChange("endClient", value)}
+              options={endClients}
+              placeholder="Eindopdrachtgever"
+              searchPlaceholder="Zoek eindopdrachtgever..."
+              emptyText="Geen eindopdrachtgevers gevonden."
+              clearLabel="Alle eindopdrachtgevers"
+              buttonClassName={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}
+              contentClassName={DARK_FILTER_MENU_CLASS}
+              itemClassName="text-sm text-white"
+            />
+          </div>
 
-        <div className="px-3 pb-2 shrink-0">
           <SearchableCombobox
             value={vaardigheid || undefined}
             onValueChange={(value) => handleFilterChange("vaardigheid", value)}
@@ -735,97 +770,106 @@ export function OpdrachtenSidebar({
             searchPlaceholder="Zoek ESCO vaardigheid..."
             emptyText="Geen vaardigheden gevonden."
             clearLabel="Alle vaardigheden"
-            buttonClassName="h-7 w-full border-border bg-card px-2 text-[10px] text-foreground"
-            itemClassName="text-xs"
+            buttonClassName={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}
+            contentClassName={DARK_FILTER_MENU_CLASS}
+            itemClassName="text-sm text-white"
             triggerId="opdrachten-esco-vaardigheid"
             ariaLabel="ESCO vaardigheid"
           />
-        </div>
 
-        <div className="px-3 pb-2 flex items-center gap-1.5 shrink-0">
-          <Select
-            value={status}
-            onValueChange={(v) => handleFilterChange("status", v === "open" ? "" : v)}
-          >
-            <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border">
-              <SelectItem value="open" className="text-foreground text-xs">
-                Open
-              </SelectItem>
-              <SelectItem value="closed" className="text-foreground text-xs">
-                Gesloten
-              </SelectItem>
-              <SelectItem value="archived" className="text-foreground text-xs">
-                Gearchiveerd
-              </SelectItem>
-              <SelectItem value="all" className="text-foreground text-xs">
-                Alles
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={provincie || undefined} onValueChange={handleProvinceChange}>
-            <SelectTrigger className="flex-1 h-7 bg-card border-border text-foreground text-[10px] px-2">
-              <SelectValue placeholder="Provincie" />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border">
-              <SelectItem value="__all__" className="text-foreground text-xs">
-                Alle provincies
-              </SelectItem>
-              {OPDRACHTEN_PROVINCES.map((p) => (
-                <SelectItem key={p} value={p} className="text-foreground text-xs">
-                  {p}
+          <div className="grid grid-cols-2 gap-3">
+            <Select
+              value={status}
+              onValueChange={(v) => handleFilterChange("status", v === "open" ? "" : v)}
+            >
+              <SelectTrigger className={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className={DARK_FILTER_MENU_CLASS}>
+                <SelectItem value="open" className="text-white">
+                  Open
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+                <SelectItem value="closed" className="text-white">
+                  Gesloten
+                </SelectItem>
+                <SelectItem value="archived" className="text-white">
+                  Gearchiveerd
+                </SelectItem>
+                <SelectItem value="all" className="text-white">
+                  Alles
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
-        <div className="px-3 pb-2 flex items-center gap-1.5 shrink-0">
-          <CompactMultiSelectFilter
-            label="Regio"
-            options={regionOptions}
-            selectedValues={regios}
-            onToggle={handleToggleRegio}
-          />
-          <CompactMultiSelectFilter
-            label="Vakgebied"
-            options={categoryOptions}
-            selectedValues={vakgebieden}
-            onToggle={handleToggleVakgebied}
-          />
-        </div>
-
-        <div className="px-3 pb-2 shrink-0">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Uren per week
-            </span>
-            <span className="text-[10px] text-muted-foreground">
-              {summarizeHoursRange(urenPerWeekMin, urenPerWeekMax)}
-            </span>
+            <Select value={provincie || undefined} onValueChange={handleProvinceChange}>
+              <SelectTrigger className={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}>
+                <SelectValue placeholder="Provincie" />
+              </SelectTrigger>
+              <SelectContent className={DARK_FILTER_MENU_CLASS}>
+                <SelectItem value="__all__" className="text-white">
+                  Alle provincies
+                </SelectItem>
+                {OPDRACHTEN_PROVINCES.map((p) => (
+                  <SelectItem key={p} value={p} className="text-white">
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Input
-              type="number"
-              inputMode="numeric"
-              min="1"
-              placeholder="Min"
-              value={urenPerWeekMin}
-              onChange={(e) => handleHoursRangeChange("urenPerWeekMin", e.target.value)}
-              className="h-8 border-border bg-card text-xs"
+
+          <div className="grid grid-cols-2 gap-3">
+            <CompactMultiSelectFilter
+              label="Regio"
+              options={regionOptions}
+              selectedValues={regios}
+              onToggle={handleToggleRegio}
+              buttonClassName={cn(
+                "h-12 rounded-[20px] px-4 text-[15px] text-white",
+                DARK_FILTER_PANEL_CLASS,
+              )}
+              contentClassName={DARK_FILTER_MENU_CLASS}
             />
-            <Input
-              type="number"
-              inputMode="numeric"
-              min="1"
-              placeholder="Max"
-              value={urenPerWeekMax}
-              onChange={(e) => handleHoursRangeChange("urenPerWeekMax", e.target.value)}
-              className="h-8 border-border bg-card text-xs"
+            <CompactMultiSelectFilter
+              label="Vakgebied"
+              options={categoryOptions}
+              selectedValues={vakgebieden}
+              onToggle={handleToggleVakgebied}
+              buttonClassName={cn(
+                "h-12 rounded-[20px] px-4 text-[15px] text-white",
+                DARK_FILTER_PANEL_CLASS,
+              )}
+              contentClassName={DARK_FILTER_MENU_CLASS}
             />
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className={DARK_FILTER_SECTION_LABEL_CLASS}>Uren per week</span>
+              <span className={DARK_FILTER_SECTION_VALUE_CLASS}>
+                {summarizeHoursRange(urenPerWeekMin, urenPerWeekMax)}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                type="number"
+                inputMode="numeric"
+                min="1"
+                placeholder="Min"
+                value={urenPerWeekMin}
+                onChange={(e) => handleHoursRangeChange("urenPerWeekMin", e.target.value)}
+                className={DARK_FILTER_CONTROL_CLASS}
+              />
+              <Input
+                type="number"
+                inputMode="numeric"
+                min="1"
+                placeholder="Max"
+                value={urenPerWeekMax}
+                onChange={(e) => handleHoursRangeChange("urenPerWeekMax", e.target.value)}
+                className={DARK_FILTER_CONTROL_CLASS}
+              />
+            </div>
           </div>
         </div>
 
@@ -836,21 +880,17 @@ export function OpdrachtenSidebar({
           compact
         />
 
-        <div className="px-3 pb-2 flex items-center gap-1.5 shrink-0">
+        <div className="shrink-0 px-4 pb-4">
           <Select
             value={sort}
             onValueChange={(value) => handleFilterChange("sort", value === "nieuwste" ? "" : value)}
           >
-            <SelectTrigger className="h-7 flex-1 bg-card border-border text-foreground text-[10px] px-2">
+            <SelectTrigger className={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}>
               <SelectValue placeholder="Sortering" />
             </SelectTrigger>
-            <SelectContent className="bg-card border-border">
+            <SelectContent className={DARK_FILTER_MENU_CLASS}>
               {sortOptions.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  className="text-foreground text-xs"
-                >
+                <SelectItem key={option.value} value={option.value} className="text-sm text-white">
                   {option.label}
                 </SelectItem>
               ))}
@@ -858,19 +898,22 @@ export function OpdrachtenSidebar({
           </Select>
         </div>
 
-        <div className="px-4 py-2 border-t border-b border-border shrink-0 flex items-center justify-between gap-3">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-y border-white/10 bg-black/30 px-4 py-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
               {displayTotal} vacatures
             </p>
             <div className="mt-1 flex flex-wrap gap-1.5">
-              <Badge variant="outline" className="h-4 px-1.5 text-[9px] text-muted-foreground">
+              <Badge
+                variant="outline"
+                className="h-7 rounded-full border-white/10 bg-white/[0.035] px-3 text-[11px] text-white/65"
+              >
                 {shortlistCount > 0 ? `${shortlistCount} met shortlist` : "Nog geen shortlist"}
               </Badge>
               {urgentDeadlineCount > 0 ? (
                 <Badge
                   variant="outline"
-                  className="h-4 border-amber-500/20 bg-amber-500/10 px-1.5 text-[9px] text-amber-700 dark:text-amber-300"
+                  className="h-7 rounded-full border-amber-500/20 bg-amber-500/12 px-3 text-[11px] text-amber-200"
                 >
                   {urgentDeadlineCount} deadlines vragen aandacht
                 </Badge>
@@ -887,19 +930,19 @@ export function OpdrachtenSidebar({
                 })
               }
             >
-              <SelectTrigger className="h-7 w-[76px] bg-card border-border text-foreground text-[10px] px-2">
+              <SelectTrigger className="h-12 w-[132px] rounded-[18px] border-white/10 bg-white/[0.035] px-4 text-[15px] text-white">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-card border-border">
+              <SelectContent className={DARK_FILTER_MENU_CLASS}>
                 {OPDRACHTEN_PAGE_SIZE_OPTIONS.map((value) => (
-                  <SelectItem key={value} value={String(value)} className="text-foreground text-xs">
+                  <SelectItem key={value} value={String(value)} className="text-sm text-white">
                     {value} / pg
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {totalPages > 1 && (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-base text-white/55">
                 {pageParam}/{totalPages}
               </p>
             )}
@@ -907,12 +950,12 @@ export function OpdrachtenSidebar({
         </div>
 
         {searchErrorMessage ? (
-          <div className="px-4 py-2 text-[11px] text-destructive">{searchErrorMessage}</div>
+          <div className="px-4 py-3 text-sm text-red-300">{searchErrorMessage}</div>
         ) : null}
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 bg-[#050506]">
           {displayJobs.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+            <div className="px-4 py-8 text-center text-sm text-white/45">
               Geen vacatures gevonden
             </div>
           ) : (
@@ -930,11 +973,11 @@ export function OpdrachtenSidebar({
         </ScrollArea>
 
         {totalPages > 1 && (
-          <div className="px-3 py-2 border-t border-border shrink-0 flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between border-t border-white/10 px-4 py-3">
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-accent text-xs"
+              className="h-10 rounded-[16px] px-4 text-sm text-white/55 hover:bg-white/[0.05] hover:text-white"
               disabled={pageParam <= 1 || isFetching}
               onClick={() =>
                 pushOpdrachtenParams(searchParams, router, pathname, {
@@ -948,7 +991,7 @@ export function OpdrachtenSidebar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-accent text-xs"
+              className="h-10 rounded-[16px] px-4 text-sm text-white/55 hover:bg-white/[0.05] hover:text-white"
               disabled={pageParam >= totalPages || isFetching}
               onClick={() =>
                 pushOpdrachtenParams(searchParams, router, pathname, {
