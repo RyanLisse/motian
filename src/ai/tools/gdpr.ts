@@ -34,8 +34,8 @@ export const wisKandidaatData = tool({
       return { error: "Bevestiging is vereist om data permanent te verwijderen" };
     }
     const result = await eraseCandidateData(candidateId, "ai-agent");
-    revalidatePath("/professionals");
-    revalidatePath("/opdrachten");
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
     revalidatePath("/overzicht");
     revalidatePath("/pipeline");
     revalidatePath("/messages");
@@ -53,7 +53,7 @@ export const scrubContactGegevens = tool({
   execute: async ({ identifier }) => {
     const result = await scrubContactData(identifier, "ai-agent");
     if (result.scrubbed > 0) {
-      revalidatePath("/opdrachten");
+      revalidatePath("/vacatures");
       publish("contact:scrubbed", { identifier, scrubbed: result.scrubbed });
     }
     return result;

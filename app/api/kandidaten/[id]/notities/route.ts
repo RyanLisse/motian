@@ -25,7 +25,7 @@ export const POST = withApiHandler(
     if (!candidate) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     return Response.json({ data: { notes: candidate.notes } });
   },
   { logPrefix: "POST /api/kandidaten/[id]/notities error" },

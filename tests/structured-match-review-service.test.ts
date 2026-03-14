@@ -141,11 +141,11 @@ describe("structured-match-review service", () => {
   it("revalidates the shared match surfaces with optional pipeline support", () => {
     revalidateStructuredMatchViews("job-1", "candidate-1", { includePipeline: true });
 
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/professionals");
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/opdrachten");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/kandidaten");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/vacatures");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/overzicht");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/pipeline");
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/professionals/candidate-1");
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/opdrachten/job-1");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/kandidaten/candidate-1");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/vacatures/job-1");
   });
 });

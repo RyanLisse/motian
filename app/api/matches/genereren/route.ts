@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
       throw err;
     }
 
-    revalidatePath("/professionals");
-    revalidatePath("/opdrachten");
-    revalidatePath(`/opdrachten/${jobId}`);
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
+    revalidatePath(`/vacatures/${jobId}`);
     revalidatePath("/overzicht");
     publish("matches:generated", { jobId, matchesCreated: result.matchesCreated });
 

@@ -452,7 +452,7 @@ export function OpdrachtenSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isOverviewPage = pathname === "/vacatures" || pathname === "/opdrachten";
+  const isOverviewPage = pathname === "/vacatures";
   const match = pathname.match(/^\/(?:vacatures|opdrachten)\/(.+)$/);
   const activeId = match?.[1] ?? null;
 

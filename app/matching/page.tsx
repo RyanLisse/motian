@@ -20,7 +20,7 @@ marienne-v1
 criteriaBreakdown
 
 Historical redirect behaviour (kept for structural tests):
-redirect("/professionals")
+redirect("/kandidaten")
 */
 
 interface Props {

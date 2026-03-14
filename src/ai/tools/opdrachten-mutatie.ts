@@ -27,8 +27,8 @@ export const updateOpdracht = tool({
   execute: async ({ id, ...data }) => {
     const job = await updateJob(id, data);
     if (!job) return { error: "Vacature niet gevonden" };
-    revalidatePath("/opdrachten");
-    revalidatePath(`/opdrachten/${id}`);
+    revalidatePath("/vacatures");
+    revalidatePath(`/vacatures/${id}`);
     publish("job:updated", { id });
     return job;
   },
@@ -42,7 +42,7 @@ export const verwijderOpdracht = tool({
   execute: async ({ id }) => {
     const success = await deleteJob(id);
     if (!success) return { error: "Vacature niet gevonden of kon niet worden gearchiveerd" };
-    revalidatePath("/opdrachten");
+    revalidatePath("/vacatures");
     publish("job:deleted", { id });
     return { success: true, message: "Vacature succesvol gearchiveerd" };
   },

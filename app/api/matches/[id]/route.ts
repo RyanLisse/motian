@@ -24,12 +24,12 @@ export const PATCH = withApiHandler(
     if (!match) {
       return Response.json({ error: "Match niet gevonden" }, { status: 404 });
     }
-    revalidatePath("/professionals");
-    revalidatePath("/opdrachten");
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
     revalidatePath("/pipeline");
     revalidatePath("/overzicht");
-    if (match.candidateId) revalidatePath(`/professionals/${match.candidateId}`);
-    if (match.jobId) revalidatePath(`/opdrachten/${match.jobId}`);
+    if (match.candidateId) revalidatePath(`/kandidaten/${match.candidateId}`);
+    if (match.jobId) revalidatePath(`/vacatures/${match.jobId}`);
     publish("match:updated", { matchId: id, status: result.data.status });
     return Response.json({ data: match });
   },

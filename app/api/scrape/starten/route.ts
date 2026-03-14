@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    revalidatePath("/opdrachten");
+    revalidatePath("/vacatures");
     revalidatePath("/scraper");
     revalidatePath("/overzicht");
 

@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { mockPathname, mockPush, mockUseChatContext } = vi.hoisted(() => ({
-  mockPathname: vi.fn(() => "/opdrachten/123"),
+  mockPathname: vi.fn(() => "/vacatures/123"),
   mockPush: vi.fn(),
   mockUseChatContext: vi.fn(),
 }));
@@ -115,7 +115,7 @@ afterEach(() => {
 function createMockChatContext(overrides: Record<string, unknown> = {}) {
   return {
     activeContext: {
-      route: "/opdrachten/123",
+      route: "/vacatures/123",
       entityId: "123",
       entityType: "opdracht",
     },
@@ -123,7 +123,7 @@ function createMockChatContext(overrides: Record<string, unknown> = {}) {
     messages: [],
     mode: "text",
     panelOpen: true,
-    pathname: "/opdrachten/123",
+    pathname: "/vacatures/123",
     prepareFullPageHandoff: vi.fn(),
     ready: true,
     sendMessage: vi.fn(),
@@ -154,12 +154,12 @@ describe("chat widget continuity", () => {
       "../components/chat/chat-context-provider",
     );
 
-    expect(isInternalChatRoute("/opdrachten/123")).toBe(true);
+    expect(isInternalChatRoute("/vacatures/123")).toBe(true);
     expect(isInternalChatRoute("//evil.example/redirect")).toBe(false);
     expect(isInternalChatRoute("https://evil.example/redirect")).toBe(false);
 
-    const widgetContext = resolveRouteContext("/professionals/42", "42");
-    const pinnedContext = resolveRouteContext("/opdrachten/123", "123");
+    const widgetContext = resolveRouteContext("/kandidaten/42", "42");
+    const pinnedContext = resolveRouteContext("/vacatures/123", "123");
 
     expect(resolveActiveContext("/chat", widgetContext, pinnedContext)).toEqual(pinnedContext);
 
@@ -185,16 +185,16 @@ describe("chat widget continuity", () => {
       typeof import("../components/chat/chat-message-links")
     >("../components/chat/chat-message-links");
 
-    expect(normalizeChatJobHref("/opdrachten/12345678-1234-4123-8123-123456789abc")).toBe(
-      "/opdrachten/12345678-1234-4123-8123-123456789abc",
+    expect(normalizeChatJobHref("/vacatures/12345678-1234-4123-8123-123456789abc")).toBe(
+      "/vacatures/12345678-1234-4123-8123-123456789abc",
     );
 
     expect(
       rewriteChatJobLinks(
-        "Bekijk [de opdracht](https://motian.ai/opdrachten/12345678-1234-4123-8123-123456789abc) en laat `[/opdrachten/12345678-1234-4123-8123-123456789abc](https://motian.ai/opdrachten/12345678-1234-4123-8123-123456789abc)` met rust.",
+        "Bekijk [de opdracht](https://motian.ai/vacatures/12345678-1234-4123-8123-123456789abc) en laat `[/vacatures/12345678-1234-4123-8123-123456789abc](https://motian.ai/vacatures/12345678-1234-4123-8123-123456789abc)` met rust.",
       ),
     ).toContain(
-      '<motian-job-link href="/opdrachten/12345678-1234-4123-8123-123456789abc">de opdracht</motian-job-link>',
+      '<motian-job-link href="/vacatures/12345678-1234-4123-8123-123456789abc">de opdracht</motian-job-link>',
     );
   });
 
@@ -235,7 +235,7 @@ describe("chat widget continuity", () => {
     const { ChatWidget } = await import("../components/chat/chat-widget");
 
     mockUseChatContext.mockReturnValue(createMockChatContext());
-    mockPathname.mockReturnValue("/opdrachten/123");
+    mockPathname.mockReturnValue("/vacatures/123");
 
     const source = readFileSync(
       new URL("../components/chat/chat-widget.tsx", import.meta.url),

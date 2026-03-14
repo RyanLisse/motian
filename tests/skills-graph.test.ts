@@ -247,27 +247,27 @@ describe("Skills graph — tag cloud", () => {
 
 describe("Skills graph — profile integration", () => {
   it("candidate profile page imports SkillsRadar", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("SkillsRadar");
   });
 
   it("candidate profile page imports SkillsExperienceSection", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("SkillsExperienceSection");
   });
 
   it("candidate profile reads skillsStructured field", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("skillsStructured");
   });
 
   it("validates skillsStructured defensively with safeParse", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("structuredSkillsSchema.safeParse");
   });
 
   it("checks for valid structured skills before rendering", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("structuredSkills &&");
     expect(source).toContain("structuredSkills.hard.length > 0");
   });
@@ -279,29 +279,29 @@ describe("Skills graph — profile integration", () => {
   });
 
   it("wraps components in card styling", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("bg-card");
     expect(source).toContain("border");
     expect(source).toContain("rounded-xl");
   });
 
   it("has fallback for legacy flat skills array", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("skills.length > 0");
   });
 
   it("shows empty state when no skills", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("Nog geen vaardigheden");
   });
 
   it("suggests CV upload for skill extraction", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("Upload een CV");
   });
 
   it("section header reads 'Vaardigheden'", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("Vaardigheden");
   });
 });
@@ -389,7 +389,7 @@ describe("Skills graph — integration scenarios", () => {
   });
 
   it("profile page dynamically picks component based on data presence", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("structuredSkills &&");
     expect(source).toContain("SkillsExperienceSection");
   });

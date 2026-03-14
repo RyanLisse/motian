@@ -76,7 +76,7 @@ describe("Legacy matching route redirect", () => {
     expect(source).toContain("#ai-grading");
   });
 
-  it("redirects non-job requests to professionals instead of rendering a standalone page", () => {
+  it("redirects non-job requests to kandidaten instead of rendering a standalone page", () => {
     const source = readFile("app/matching/page.tsx");
     expect(source).toContain("#recruiter-cockpit");
     expect(source).toContain('redirect("/kandidaten")');

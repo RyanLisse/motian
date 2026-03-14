@@ -50,13 +50,13 @@ export const POST = withApiHandler(
     for (const app of result.created) {
       publish("application:created", { applicationId: app.id });
     }
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     revalidatePath("/pipeline");
     revalidatePath("/overzicht");
-    revalidatePath("/opdrachten");
-    revalidatePath(`/professionals/${candidateId}`);
+    revalidatePath("/vacatures");
+    revalidatePath(`/kandidaten/${candidateId}`);
     for (const jobId of touchedJobIds) {
-      revalidatePath(`/opdrachten/${jobId}`);
+      revalidatePath(`/vacatures/${jobId}`);
     }
     return Response.json({
       created: result.created.length,

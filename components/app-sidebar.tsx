@@ -33,7 +33,7 @@ const data = {
   navMain: [
     // Legacy navigation contract (structural test expectations):
     // url: "/opdrachten"
-    // url: "/professionals"
+    // url: "/kandidaten"
     {
       title: "Overzicht",
       url: "/overzicht",

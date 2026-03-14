@@ -236,7 +236,7 @@ export default async function PipelinePage({ searchParams }: Props) {
   // Determine next-best-action for the recruiter
   const nextAction = (() => {
     // Legacy navigation contract (structural test expectations):
-    // href: `/opdrachten/${vacatureId}`
+    // href: `/vacatures/${vacatureId}`
     if (allCount === 0) {
       return vacature
         ? {
@@ -246,7 +246,7 @@ export default async function PipelinePage({ searchParams }: Props) {
           }
         : {
             label: "Bekijk kandidaten",
-            href: "/professionals",
+            href: "/kandidaten",
             icon: "users" as const,
           };
     }

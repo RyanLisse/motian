@@ -21,12 +21,12 @@ export function getOpdrachtenBasePath(pathname: string) {
   if (pathname === "/vacatures" || pathname === "/vacatures/") return "/vacatures";
   if (pathname.startsWith("/vacatures/")) return pathname;
 
-  if (pathname === "/opdrachten" || pathname === "/opdrachten/") return "/opdrachten";
+  if (pathname === "/opdrachten" || pathname === "/opdrachten/") return "/vacatures";
   if (pathname.startsWith("/opdrachten/")) {
-    return pathname;
+    return `/vacatures/${pathname.slice("/opdrachten/".length)}`;
   }
 
-  return "/opdrachten";
+  return "/vacatures";
 }
 
 export function applyOpdrachtenFilterOverrides(

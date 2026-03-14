@@ -108,8 +108,8 @@ export function revalidateStructuredMatchViews(
   candidateId?: string | null,
   options: { includePipeline?: boolean } = {},
 ) {
-  revalidatePath("/professionals");
-  revalidatePath("/opdrachten");
+  revalidatePath("/kandidaten");
+  revalidatePath("/vacatures");
   revalidatePath("/overzicht");
 
   if (options.includePipeline) {
@@ -117,10 +117,10 @@ export function revalidateStructuredMatchViews(
   }
 
   if (candidateId) {
-    revalidatePath(`/professionals/${candidateId}`);
+    revalidatePath(`/kandidaten/${candidateId}`);
   }
 
   if (jobId) {
-    revalidatePath(`/opdrachten/${jobId}`);
+    revalidatePath(`/vacatures/${jobId}`);
   }
 }

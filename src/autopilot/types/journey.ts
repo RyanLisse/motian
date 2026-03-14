@@ -2,9 +2,9 @@
 export type AutopilotSurface =
   | "/chat"
   | "/matching"
-  | "/opdrachten"
-  | "/opdrachten/[id]"
-  | "/professionals"
+  | "/vacatures"
+  | "/vacatures/[id]"
+  | "/kandidaten"
   | "/dashboard";
 
 export type JourneyKind = "interactive" | "redirect" | "page-load";

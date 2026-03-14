@@ -48,7 +48,7 @@ describe("Match detail UI component", () => {
 
 describe("Candidate detail integration", () => {
   it("renders the shared match detail and report surfaces inside the matches section", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("MatchDetail");
     expect(source).toContain("ReportButton");
     expect(source).toContain('<section id="matches">');

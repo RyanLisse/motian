@@ -370,7 +370,7 @@ describe("Matching linking flow — structural assertions", () => {
   });
 
   it("candidate detail keeps report and structured detail surfaces inside the matches section", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("ReportButton");
     expect(source).toContain("MatchDetail");
     expect(source).toContain('<section id="matches">');

@@ -33,11 +33,11 @@ export const POST = withApiHandler(
       ? await autoMatchCandidateToJobs(candidateId)
       : await autoMatchJobToCandidates(jobId as string);
 
-    revalidatePath("/professionals");
-    revalidatePath("/opdrachten");
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
     revalidatePath("/overzicht");
-    if (candidateId) revalidatePath(`/professionals/${candidateId}`);
-    if (jobId) revalidatePath(`/opdrachten/${jobId}`);
+    if (candidateId) revalidatePath(`/kandidaten/${candidateId}`);
+    if (jobId) revalidatePath(`/vacatures/${jobId}`);
 
     return Response.json({
       message:

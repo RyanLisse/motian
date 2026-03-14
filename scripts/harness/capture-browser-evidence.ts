@@ -29,8 +29,8 @@ interface PageTarget {
 
 const PAGE_TARGETS: PageTarget[] = [
   { path: "/overzicht", slug: "overzicht" },
-  { path: "/opdrachten", slug: "opdrachten" },
-  { path: "/professionals", slug: "professionals" },
+  { path: "/vacatures", slug: "vacatures" },
+  { path: "/kandidaten", slug: "kandidaten" },
   { path: "/pipeline", slug: "pipeline" },
 ];
 

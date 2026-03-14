@@ -54,7 +54,7 @@
     },
     {
       "includes": [
-        "app/professionals/\\[id\\]/page.tsx",
+        "app/kandidaten/\\[id\\]/page.tsx",
         "app/scraper/runs/\\[id\\]/page.tsx",
         "components/auto-match-results.tsx",
         "components/candidate-profile/skills-experience-section.tsx",

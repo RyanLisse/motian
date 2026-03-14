@@ -10,7 +10,7 @@ const MOTIAN_HOSTS = ["motian.ai", "motian.nl", "motian.vercel.app"];
 const JOB_MARKDOWN_LINK_RE = /\[([^\]\n]+?)\]\(([^)\s]+)\)/g;
 const JOB_HTML_LINK_RE = /<a\b([^>]*?)href=(['"])(.*?)\2([^>]*)>([\s\S]*?)<\/a>/gi;
 const JOB_PATH_RE =
-  /^\/opdracht(?:en)?\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:[?#/].*)?$/i;
+  /^\/(?:vacatures|opdracht(?:en)?)\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:[?#/].*)?$/i;
 
 export const CHAT_MESSAGE_ALLOWED_TAGS = {
   [INTERNAL_JOB_TAG]: ["href"],
@@ -293,7 +293,7 @@ function matchJobPath(pathname: string): string | null {
     return null;
   }
 
-  return `/opdrachten/${match[1]}`;
+  return `/vacatures/${match[1]}`;
 }
 
 function isRecognizedMotianOrigin(parsedUrl: URL, currentOrigin?: string | null): boolean {

@@ -280,7 +280,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
     if (stageDelta !== 0) return stageDelta;
     return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
   });
-  const gradingHref = `/opdrachten/${job.id}#ai-grading`;
+  const gradingHref = `/vacatures/${job.id}#ai-grading`;
   const pipelineHref = `/pipeline?vacature=${job.id}`;
   const nextPipelineAction =
     (stageCountMap.new ?? 0) > 0
