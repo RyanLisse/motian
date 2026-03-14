@@ -1,6 +1,4 @@
-import { desc, eq } from "drizzle-orm";
-import { db } from "@/src/db";
-import { autopilotFindings, autopilotRuns } from "@/src/db/schema";
+import { autopilotFindings, autopilotRuns, db, desc, eq } from "@/src/db";
 import type { AutopilotFinding, AutopilotRunSummary, FindingStatus } from "../types";
 
 export async function saveAutopilotRun(

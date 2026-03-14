@@ -9,10 +9,15 @@ function normalizeConnectionString(url: string): string {
   try {
     const parsed = new URL(url);
     const ssl = parsed.searchParams.get("sslmode")?.toLowerCase();
-    if (ssl === "prefer" || ssl === "require" || ssl === "verify-ca") {
+
+    // Always enforce verify-full for security
+    // Upgrade weak modes (prefer, require, verify-ca) or add if missing
+    if (!ssl || ssl === "prefer" || ssl === "require" || ssl === "verify-ca") {
       parsed.searchParams.set("sslmode", "verify-full");
       return parsed.toString();
     }
+
+    // Already has verify-full or disable (explicit choice)
     return url;
   } catch {
     return url;
@@ -66,4 +71,22 @@ export const db = new Proxy({} as DatabaseClient, {
   },
 }) as DatabaseClient;
 
+export {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 export * from "./schema";

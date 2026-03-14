@@ -1,5 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, eq, inArray, isNotNull, isNull, or, sql } from "../db";
 import {
   applications,
   candidates,

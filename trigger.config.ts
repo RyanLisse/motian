@@ -26,6 +26,17 @@ export default defineConfig({
   maxDuration: 600, // 10 min global default (scrape pipeline needs ~5 min)
   logLevel: "info",
   enableConsoleLogging: true,
+  // Externalize pg and drizzle-orm to avoid bundling native modules
+  build: {
+    external: [
+      "pg",
+      "pg-native", // Optional native bindings
+      "drizzle-orm/pg-core",
+      "drizzle-orm/neon-http",
+      "@motian/db",
+      "@neondatabase/serverless",
+    ],
+  },
   retries: {
     enabledInDev: false,
     default: {

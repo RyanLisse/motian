@@ -1,5 +1,4 @@
-import { eq, sql } from "drizzle-orm";
-import { db } from "../db";
+import { db, eq, sql } from "../db";
 import { scrapeResults, scraperConfigs } from "../db/schema";
 import { publish } from "../lib/event-bus";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";

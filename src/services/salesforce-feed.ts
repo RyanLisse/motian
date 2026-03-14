@@ -1,5 +1,4 @@
-import { and, desc, eq, gte, isNull } from "drizzle-orm";
-import { db } from "@/src/db";
+import { and, db, desc, eq, gte, isNull } from "@/src/db";
 import { applications, candidates, jobs } from "@/src/db/schema";
 import {
   getJobStatusCondition,

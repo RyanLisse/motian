@@ -39,7 +39,20 @@ const { chatSessionMessages, chatSessions, mockDb } = vi.hoisted(() => {
   };
 });
 
-vi.mock("../src/db", () => ({ db: mockDb }));
+vi.mock("../src/db", async () => {
+  const actual = await import("../src/db");
+  return {
+    db: mockDb,
+    // Re-export actual Drizzle helpers
+    and: actual.and,
+    desc: actual.desc,
+    eq: actual.eq,
+    inArray: actual.inArray,
+    lt: actual.lt,
+    or: actual.or,
+    sql: actual.sql,
+  };
+});
 vi.mock("../src/db/schema", () => ({ chatSessionMessages, chatSessions }));
 vi.mock("drizzle-orm", () => {
   const sqlTag = (strings: TemplateStringsArray, ...values: unknown[]) => ({

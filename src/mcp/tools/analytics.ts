@@ -1,8 +1,6 @@
-import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { db } from "../../db/index.js";
-import { jobs, scrapeResults } from "../../db/schema.js";
+import { db, jobs, scrapeResults, sql } from "../../db/index.js";
 
 // ========== Schemas ==========
 

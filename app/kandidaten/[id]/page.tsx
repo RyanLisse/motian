@@ -1,4 +1,3 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,7 +28,7 @@ import { ReportButton } from "@/components/matching/report-button";
 import { SkillsRadar } from "@/components/skills-radar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { db } from "@/src/db";
+import { and, db, desc, eq, isNull } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import {
   type StructuredSkills,

@@ -107,7 +107,7 @@ const GENERAL_STARTER_PROMPTS: ChatSuggestion[] = [
     icon: TrendingUp,
     label: "Analyseer de markt",
     description: "Laat Motian tarieven, volumes of platformverschillen samenvatten.",
-    prompt: "Vat de huidige markttrends samen voor Java opdrachten in de Randstad.",
+    prompt: "Vat de huidige markttrends samen voor Java vacatures in de Randstad.",
     toneClassName: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   {
@@ -160,16 +160,16 @@ const CANDIDATE_STARTER_PROMPTS: ChatSuggestion[] = [
   },
   {
     icon: Briefcase,
-    label: "Zoek passende opdrachten",
+    label: "Zoek passende vacatures",
     description: "Gebruik het profiel als context om kansen of matches sneller te beoordelen.",
-    prompt: "Welke opdrachten passen het best bij deze kandidaat? Geef een top 5 met motivatie.",
+    prompt: "Welke vacatures passen het best bij deze kandidaat? Geef een top 5 met motivatie.",
     toneClassName: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
   },
   {
     icon: Brain,
     label: "Benoem skill gaps",
     description: "Laat Motian risico’s, ontbrekende ervaring of ontwikkelpunten aanwijzen.",
-    prompt: "Welke skill gaps of risico’s zie je in dit profiel voor senior opdrachten?",
+    prompt: "Welke skill gaps of risico’s zie je in dit profiel voor senior vacatures?",
     toneClassName: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   {
@@ -232,9 +232,9 @@ const JOB_FOLLOW_UP_PROMPTS: ChatSuggestion[] = [
 const CANDIDATE_FOLLOW_UP_PROMPTS: ChatSuggestion[] = [
   {
     icon: Briefcase,
-    label: "Zoek de beste opdrachten",
+    label: "Zoek de beste vacatures",
     description: "",
-    prompt: "Zoek de beste opdrachten voor deze kandidaat en motiveer de top 3.",
+    prompt: "Zoek de beste vacatures voor deze kandidaat en motiveer de top 3.",
     toneClassName: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
   },
   {
@@ -282,7 +282,7 @@ function getChatSurfaceConfig(ctx: ChatSurfaceContext): ChatSurfaceConfig {
         conversationLabel: "Chatgesprek in kandidaatcontext",
         emptyStateTitle: "Wat wil je uit dit profiel halen?",
         emptyStateDescription:
-          "De huidige kandidaatcontext wordt automatisch meegenomen. Vraag om een profielsamenvatting, risicocheck of passende opdrachten.",
+          "De huidige kandidaatcontext wordt automatisch meegenomen. Vraag om een profielsamenvatting, risicocheck of passende vacatures.",
         composerPlaceholder:
           "Vraag om een profielsamenvatting, pitch of matchsuggestie voor deze kandidaat",
         composerHint: "Enter om te verzenden · Shift+Enter voor een nieuwe regel",

@@ -89,7 +89,7 @@ const DEFAULT_EMPTY_STATE_PROMPTS: ChatSuggestion[] = [
   {
     icon: Briefcase,
     label: "Matches bekijken",
-    description: "Bekijk snel welke kandidaten en opdrachten aandacht vragen.",
+    description: "Bekijk snel welke kandidaten en vacatures aandacht vragen.",
     prompt: "Hoeveel pending matches zijn er? Toon de top 5.",
     toneClassName: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
   },

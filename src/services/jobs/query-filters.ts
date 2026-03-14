@@ -1,4 +1,4 @@
-import { and, eq, gte, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { and, eq, gte, isNotNull, isNull, lte, or, sql } from "../../db";
 import { jobSkills, jobs } from "../../db/schema";
 import {
   getHoursRangeForBucket,

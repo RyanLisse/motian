@@ -1,7 +1,6 @@
-import { desc, eq } from "drizzle-orm";
 import type { RunEvidenceJourney } from "@/src/autopilot/run-detail";
 import { loadRunEvidenceFromReportUrl } from "@/src/autopilot/run-detail";
-import { db } from "@/src/db";
+import { db, desc, eq } from "@/src/db";
 import { autopilotFindings, autopilotRuns } from "@/src/db/schema";
 
 export async function getAutopilotDashboardData() {

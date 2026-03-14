@@ -1,6 +1,4 @@
-import type { SQL } from "drizzle-orm";
-import { inArray, sql } from "drizzle-orm";
-import { db } from "../../db";
+import { db, inArray, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import type { ListJobsSortBy } from "./filters";
 import { getJobReadSelection, type Job } from "./repository";

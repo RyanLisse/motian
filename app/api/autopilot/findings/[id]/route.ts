@@ -1,6 +1,5 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { db } from "@/src/db";
+import { db, eq } from "@/src/db";
 import { autopilotFindings } from "@/src/db/schema";
 
 const VALID_STATUSES = ["detected", "validated", "reported", "dismissed"] as const;

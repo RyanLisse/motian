@@ -1,6 +1,5 @@
 import type { UIMessage } from "ai";
-import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, inArray, lt, or, sql } from "../db";
 import { chatSessionMessages, chatSessions } from "../db/schema";
 
 export const CHAT_HISTORY_PAGE_SIZE = 20;

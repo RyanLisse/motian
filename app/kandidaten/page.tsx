@@ -1,4 +1,3 @@
-import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { AddCandidateWizard } from "@/components/add-candidate-wizard";
@@ -7,7 +6,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
-import { db } from "@/src/db";
+import { and, db, desc, eq, ilike, isNull, sql } from "@/src/db";
 import { candidateSkills, candidates } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
 import { parsePagination } from "@/src/lib/pagination";

@@ -1,5 +1,4 @@
-import { eq } from "drizzle-orm";
-import { db } from "../db";
+import { db, eq } from "../db";
 import { candidates } from "../db/schema";
 import { uploadFile } from "../lib/file-storage";
 import { computeGradeFromParsed } from "../lib/grading-utils";

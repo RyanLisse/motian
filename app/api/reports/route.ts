@@ -1,7 +1,6 @@
-import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { db } from "@/src/db";
+import { db, eq } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
 import { publishReport } from "@/src/lib/markdown-fast";
 import type { CriterionResult } from "@/src/schemas/matching";

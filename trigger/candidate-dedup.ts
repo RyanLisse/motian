@@ -1,6 +1,5 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { sql } from "drizzle-orm";
-import { db } from "@/src/db";
+import { db, sql } from "@/src/db";
 
 /**
  * Weekly task to detect and flag duplicate candidates.

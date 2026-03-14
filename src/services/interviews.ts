@@ -1,5 +1,4 @@
-import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, gte, isNull, sql } from "../db";
 import { interviews } from "../db/schema";
 
 export type Interview = typeof interviews.$inferSelect;

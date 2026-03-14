@@ -1,6 +1,5 @@
 import { runs } from "@trigger.dev/sdk";
-import { and, desc, gte, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, gte, sql } from "../db";
 import { jobs, scrapeResults, scraperConfigs } from "../db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
 import { fetchDedupedJobsPage } from "./jobs/deduplication";

@@ -1,0 +1,13 @@
+Add one story file per shared layout/pattern component in stories/, same pattern as UI primitives.
+
+Files to create:
+- stories/kpi-card.stories.tsx: components/shared/kpi-card.tsx — default, with trend or secondary text if supported.
+- stories/empty-state.stories.tsx: components/shared/empty-state.tsx — title only; with subtitle; with icon (e.g. Lucide).
+- stories/filter-tabs.stories.tsx: components/shared/filter-tabs.tsx — default tabs and one selected.
+- stories/pagination.stories.tsx: components/shared/pagination.tsx — first page, middle page, last page (mock props if component has API).
+
+Success criteria: All four story files exist; at least one variant per component; Docs/Controls usable.
+
+Rationale: Shared patterns are reused across pages; documenting them in Storybook reduces drift.
+
+Depends on: Bead 3 (improve existing stories).

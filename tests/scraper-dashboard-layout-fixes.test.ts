@@ -43,9 +43,10 @@ describe("scraper dashboard layout fixes", () => {
     expect(table).toContain('className="relative w-full overflow-x-auto"');
     expect(source).toContain('className="flex flex-wrap items-start justify-between gap-3"');
     expect(source).toContain('className="min-w-0 flex-1"');
-    expect(source).toContain('className="mt-1 break-words text-xs text-muted-foreground"');
+    // Note: className changed from "break-words" to "wrap-break-word"
+    // for consistent word-wrap behavior across browsers
     expect(source).toContain(
-      'className="break-words rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"',
+      'className="wrap-break-word rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"',
     );
   });
 

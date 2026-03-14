@@ -35,12 +35,17 @@ const {
 
 vi.mock("drizzle-orm", () => ({ eq: mockEq }));
 vi.mock("next/cache", () => ({ revalidatePath: mockRevalidatePath }));
-vi.mock("@/src/db", () => ({
-  db: {
-    insert: vi.fn(() => ({ values: mockInsertValues })),
-    update: mockUpdate,
-  },
-}));
+vi.mock("@/src/db", async () => {
+  const actual = await import("@/src/db");
+  return {
+    db: {
+      insert: vi.fn(() => ({ values: mockInsertValues })),
+      update: mockUpdate,
+    },
+    // Re-export actual Drizzle helper
+    eq: actual.eq,
+  };
+});
 vi.mock("@/src/db/schema", () => ({ jobMatches: { id: "jobMatches.id" } }));
 vi.mock("@/src/services/candidates", () => ({ getCandidateById: mockGetCandidateById }));
 vi.mock("@/src/services/jobs", () => ({ getJobById: mockGetJobById }));

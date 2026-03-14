@@ -236,7 +236,7 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 - 4 test failures are pre-existing: 3 tests check for literal `"gemini-"` string in source but the code uses a `geminiFlash` alias from `src/lib/ai-models.ts`; 1 structural test flags an English `candidates` API route segment.
 - The Justfile uses `zsh` as its shell — use `pnpm` commands directly instead if `zsh` is not installed.
 - `bv` (Bead Viewer) without flags launches an interactive TUI that will block the session. Always use `bv --robot-*` flags.
-- Sidebar and canonical route for talent pool: `/kandidaten` (implementation re-exports from `app/professionals`).
+- Sidebar and canonical route for talent pool: `/kandidaten`; implementation lives in `app/kandidaten` (app/professionals was removed).
 
 ## Learned User Preferences
 
@@ -245,7 +245,7 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 
 ## Learned Workspace Facts
 
-- Canonical frontend routes: `/vacatures` and `/kandidaten`; `/opdrachten` and `app/professionals` are implementation paths (re-exported by vacatures/kandidaten)
+- Canonical frontend routes: `/vacatures` and `/kandidaten`. Implementation: vacatures in app/opdrachten (re-exported by app/vacatures); kandidaten in app/kandidaten (app/professionals removed).
 - Structural tests require Dutch API path segments; avoid English segments like `/api/health`—use `/api/gezondheid`
 - Beads: mark complete with `bd close <id>`; `bd update --status done` is invalid—use `closed`
 - Do not close PRs as redundant without reviewing their content first

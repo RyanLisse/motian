@@ -1,0 +1,11 @@
+Make Storybook a first-class command so the team and agents can run it without guessing. No behavioral change to Storybook itself—only entrypoints and documentation.
+
+Changes:
+- package.json: Add scripts "storybook": "storybook dev -p 6006" and "build-storybook": "storybook build" in the scripts block (after voice-agent:start).
+- Justfile: Add a "Storybook" section (e.g. after "Docs (Fumadocs)", before "Build & Deploy"). Add recipe storybook: running pnpm storybook. Optionally storybook-build: running pnpm build-storybook.
+- README.md: In "Ontwikkeling" add a bullet to run Storybook with pnpm storybook or just storybook (port 6006). In "Handige Commando's" add just storybook — Component library (Storybook).
+- AGENTS.md: In "Build & Quality" add pnpm storybook (Start Storybook, port 6006) and pnpm build-storybook (Build static Storybook). In Key Files Reference or a short Storybook subsection note: stories in stories/, config in .storybook/, run with pnpm storybook or just storybook.
+
+Success criteria: pnpm storybook and just storybook start Storybook on port 6006; README and AGENTS.md document the commands.
+
+Rationale: Enables all subsequent Storybook work to be discoverable and runnable by humans and agents.

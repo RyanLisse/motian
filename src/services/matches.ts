@@ -1,5 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, sql } from "../db";
 import { jobMatches } from "../db/schema";
 import { createOrReuseApplicationForMatch } from "./applications";
 

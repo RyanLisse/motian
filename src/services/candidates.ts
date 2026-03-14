@@ -1,5 +1,4 @@
-import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, ilike, inArray, isNull, sql } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { ParsedCV } from "../schemas/candidate-intelligence";

@@ -7,10 +7,9 @@ import {
   type PlatformTestImportResult,
   type PlatformValidationResult,
 } from "@motian/scrapers";
-import { asc, desc, eq, gte, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { db } from "../db";
+import { asc, db, desc, eq, gte, sql } from "../db";
 import {
   platformCatalog,
   platformOnboardingRuns,

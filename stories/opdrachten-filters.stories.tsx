@@ -12,7 +12,7 @@ const meta: Meta<typeof OpdrachtenFilters> = {
   parameters: {
     docs: {
       description: {
-        component: "Filterbalk voor vacatures/opdrachten (sidebar of boven de lijst).",
+        component: "Filterbalk voor vacatures (sidebar of boven de lijst).",
       },
     },
   },

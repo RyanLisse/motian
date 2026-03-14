@@ -1,7 +1,6 @@
-import { sql } from "drizzle-orm";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
-import { db } from "@/src/db";
+import { db, sql } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 import { DEFAULT_OPDRACHTEN_LIMIT } from "@/src/lib/opdrachten-filters";
 import { listEscoSkillsForFilter } from "@/src/services/esco";

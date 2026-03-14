@@ -1,0 +1,10 @@
+Add a CI job that runs pnpm build-storybook on every PR so broken imports or invalid story config are caught. No artifact upload or Chromatic in this bead.
+
+Changes:
+- .github/workflows/ci.yml: Add job storybook-build (or similar). Same needs as existing build job (lint, typecheck, test). Steps: checkout, pnpm setup, Node setup, cache, pnpm install --frozen-lockfile, pnpm build-storybook. No artifact upload unless the team wants to deploy the static site later.
+
+Success criteria: On push/PR, storybook-build job runs and succeeds when Storybook builds; fails when build fails.
+
+Rationale: Ensures Storybook stays buildable as new stories and components are added.
+
+Depends on: Bead 1 (scripts and docs) so build-storybook script exists.

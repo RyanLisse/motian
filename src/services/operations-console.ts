@@ -1,5 +1,4 @@
-import { and, eq } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, eq } from "../db";
 import { scraperConfigs } from "../db/schema";
 import { findExpiredRetentionCandidates } from "./gdpr";
 import { listActiveJobs } from "./jobs";

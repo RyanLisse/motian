@@ -1,10 +1,9 @@
 import { convertToModelMessages, stepCountIs, type UIMessage } from "ai";
-import { and, eq, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { after } from "next/server";
 import { z } from "zod";
 import { buildSystemPrompt, getRecruitmentTools } from "@/src/ai/agent";
-import { db } from "@/src/db";
+import { and, db, eq, isNull } from "@/src/db";
 import { chatSessions } from "@/src/db/schema";
 import {
   tracedGenerateObject as generateObject,

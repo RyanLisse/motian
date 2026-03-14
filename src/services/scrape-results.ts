@@ -1,5 +1,4 @@
-import { desc, eq, inArray, sql } from "drizzle-orm";
-import { db } from "../db";
+import { db, desc, eq, inArray, sql } from "../db";
 import { jobs, scrapeResults } from "../db/schema";
 
 type ScrapeResultsReader = Pick<typeof db, "select">;
