@@ -590,8 +590,8 @@
         <span class="stat__label">AI Modellen</span>
       </div>
       <div class="stat">
-        <span class="stat__value">98%</span>
-        <span class="stat__label">Test Coverage</span>
+        <span class="stat__value">7</span>
+        <span class="stat__label">Scraper Platforms</span>
       </div>
       <div class="stat">
         <span class="stat__value">512d</span>
@@ -612,11 +612,15 @@
       <div class="card">
         <div class="card__label">Data Sources</div>
         <h3>Multi-Platform Scraping</h3>
-        <p>Automatische vacature-verzameling van:</p>
+        <p>Automatische vacature-verzameling van 7 platforms:</p>
         <ul>
           <li>Flextender (overheid)</li>
           <li>Striive (detachering)</li>
           <li>Opdrachtoverheid (publiek)</li>
+          <li>Nationalevacaturebank</li>
+          <li>Monsterboard</li>
+          <li>Public Job Board</li>
+          <li>Werkzoeken</li>
         </ul>
       </div>
 
@@ -643,10 +647,14 @@
       </div>
       <pre class="mermaid">
         graph TD
-          subgraph Bronnen["🌐 Externe Bronnen"]
+          subgraph Bronnen["🌐 Externe Bronnen — 7 Platforms"]
             FX[Flextender]
             ST[Striive]
             OO[Opdrachtoverheid]
+            NV[Nationalevacaturebank]
+            MB[Monsterboard]
+            PJ[Public Job Board]
+            WZ[Werkzoeken]
           end
 
           subgraph Pipeline["⚙️ Scrape Pipeline - Trigger.dev"]
@@ -677,6 +685,10 @@
           FX --> SC
           ST --> SC
           OO --> SC
+          NV --> SC
+          MB --> SC
+          PJ --> SC
+          WZ --> SC
           SC --> NR
           NR --> EN
           EN --> EM
@@ -698,7 +710,7 @@
           classDef appClass fill:#ede9fe,stroke:#7c3aed,stroke-width:2px
           classDef aiClass fill:#fce7f3,stroke:#db2777,stroke-width:2px
 
-          class FX,ST,OO sourceClass
+          class FX,ST,OO,NV,MB,PJ,WZ sourceClass
           class SC,NR,EN,EM pipelineClass
           class JOBS,CAND,MATCH dbClass
           class UI,API,SEARCH appClass
