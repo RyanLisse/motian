@@ -5,14 +5,17 @@ const VIEWPORT_PRESETS = {
   mobile: {
     name: "Mobile",
     styles: { width: "375px", height: "667px" },
+    type: "mobile" as const,
   },
   tablet: {
     name: "Tablet",
     styles: { width: "768px", height: "1024px" },
+    type: "tablet" as const,
   },
   desktop: {
     name: "Desktop",
     styles: { width: "1280px", height: "800px" },
+    type: "desktop" as const,
   },
 };
 
@@ -36,7 +39,7 @@ const preview: Preview = {
       appDirectory: true,
     },
     docs: {
-      autodocs: true,
+      autodocs: "tag",
     },
     viewport: {
       viewports: VIEWPORT_PRESETS,
