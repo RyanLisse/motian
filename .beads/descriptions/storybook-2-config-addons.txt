@@ -1,0 +1,11 @@
+Upgrade Storybook config so every story gets a Docs tab and accessibility can be checked in the UI. Optional: theme/viewport in preview.
+
+Changes:
+- .storybook/main.ts: Enable autodocs (e.g. parameters.docs.autodocs: true or Storybook 10 equivalent). Add addon @storybook/addon-a11y to the addons array (install with pnpm add -D @storybook/addon-a11y if not present; match Storybook 10).
+- .storybook/preview.tsx (optional): Add theme toggle (globals.theme light/dark) and/or viewport presets for responsive components. Keep existing dark wrapper and globals.css.
+
+Success criteria: Storybook builds and runs; Docs tab appears for stories; a11y addon is visible and runs; no regression in existing stories.
+
+Rationale: Autodocs and a11y make Storybook useful for design review and accessibility without extra per-story boilerplate.
+
+Depends on: Bead 1 (scripts and docs) so pnpm storybook exists before changing config.

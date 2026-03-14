@@ -1,0 +1,10 @@
+Add a single story file for the score-ring domain component. status-badge and job-card / job-list-item already have stories.
+
+File to create:
+- stories/score-ring.stories.tsx: components/score-ring.tsx — e.g. 0%, 50%, 100% (or whatever props the component accepts).
+
+Success criteria: score-ring.stories.tsx exists with at least one variant; Docs/Controls work.
+
+Rationale: Completes domain building blocks coverage for the plan.
+
+Depends on: Bead 3 (improve existing stories).
