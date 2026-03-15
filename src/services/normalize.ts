@@ -12,8 +12,12 @@ type JobDerivedFieldSource = Pick<
   "title" | "company" | "endClient" | "location" | "province" | "description"
 >;
 
-/** Max length per dedupe column to stay within PostgreSQL B-tree row limit (2704 bytes). */
-const DEDUPE_MAX_CHARS = 500;
+/**
+ * Max length per dedupe column to stay within PostgreSQL B-tree row limit (2704 bytes).
+ * Index has 3 text columns + scraped_at (8B) + id (16B) + ~30B overhead = ~2650B for text.
+ * With UTF-8 multi-byte chars (up to 4 bytes each): 200 × 4 × 3 = 2400B — safely under limit.
+ */
+const DEDUPE_MAX_CHARS = 200;
 
 function normalizeDedupePart(value: string | null | undefined) {
   return (value ?? "")
