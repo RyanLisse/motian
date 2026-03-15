@@ -6,7 +6,8 @@ const mockValues = vi.fn().mockImplementation(() => ({
   returning: vi.fn().mockResolvedValue([{ id: "uuid-1", externalId: "ext-1", isNew: true }]),
 }));
 
-vi.mock("../src/db", () => ({
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
   db: {
     insert: vi.fn().mockImplementation(() => ({
       values: mockValues,

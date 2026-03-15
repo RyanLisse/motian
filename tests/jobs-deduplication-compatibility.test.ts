@@ -24,7 +24,10 @@ const { jobs, mockDb } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("../src/db", () => ({ db: mockDb }));
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
+  db: mockDb,
+}));
 vi.mock("../src/db/schema", () => ({ jobs }));
 vi.mock("../src/services/jobs/repository", () => ({ jobReadSelection: {} }));
 vi.mock("drizzle-orm", () => {

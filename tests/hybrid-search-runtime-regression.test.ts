@@ -26,7 +26,8 @@ const {
   };
 });
 
-vi.mock("../src/db", () => ({
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
   db: {
     select: mockSelect,
   },

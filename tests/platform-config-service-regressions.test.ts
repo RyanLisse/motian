@@ -154,8 +154,14 @@ const { state, db, getPlatformAdapter, getPlatformDefinition, listPlatformDefini
     };
   });
 
-vi.mock("@/src/db", () => ({ db }));
-vi.mock("../src/db", () => ({ db }));
+vi.mock("@/src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
+  db,
+}));
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
+  db,
+}));
 vi.mock("../src/db/schema", () => ({
   platformCatalog: {
     __table: "platformCatalog",

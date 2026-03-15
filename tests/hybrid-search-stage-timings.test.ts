@@ -14,7 +14,10 @@ const {
   mockSelect: vi.fn(),
 }));
 
-vi.mock("../src/db", () => ({ db: { select: mockSelect } }));
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
+  db: { select: mockSelect },
+}));
 
 vi.mock("../src/db/schema", () => ({
   jobs: {

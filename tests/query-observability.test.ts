@@ -23,7 +23,10 @@ async function importListJobsWithTelemetryMocks() {
     { id: "job-1", title: "Eerste vacature", platform: "opdrachtoverheid" },
   ]);
 
-  vi.doMock("../src/db", () => ({ db: {} }));
+  vi.doMock("../src/db", async () => ({
+    ...(await import("../src/db")),
+    db: {},
+  }));
   vi.doMock("../src/db/schema", () => ({
     jobs: {
       title: "jobs.title",
@@ -91,7 +94,8 @@ async function importHybridSearchWithTelemetryMocks() {
   ]);
   const mockSelect = vi.fn(() => ({ from: vi.fn(() => ({ where: mockWhere })) }));
 
-  vi.doMock("../src/db", () => ({
+  vi.doMock("../src/db", async () => ({
+    ...(await import("../src/db")),
     db: {
       execute: mockExecute,
       select: mockSelect,
