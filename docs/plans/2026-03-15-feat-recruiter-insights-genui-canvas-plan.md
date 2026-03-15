@@ -415,24 +415,24 @@ src/ai/agent.ts
 ### Implementation Phases
 
 #### Phase 1: GenUI Search Results + Analytics (MVP)
-- [ ] Create `genui/registry.ts` with lazy import pattern
-- [ ] Create `genui/genui-list.tsx` shared list component
-- [ ] Create `genui/genui-loading-skeleton.tsx` loading state
-- [ ] Create 5 list card components (opdracht, kandidaat, match, sollicitatie, interview)
-- [ ] Create `insight-chart.tsx` with recharts + auto chart type detection
-- [ ] Create `pipeline-funnel.tsx` for sollicitatie stats
+- [x] Create `genui/registry.ts` with lazy import pattern
+- [x] Create `genui/genui-utils.ts` shared utilities (error guards, toDate, labels)
+- [x] Create `genui/genui-loading-skeleton.tsx` loading state
+- [x] Create 5 list card components (opdracht, kandidaat, match, sollicitatie, interview)
+- [x] Create `insight-chart.tsx` with recharts + auto chart type detection
+- [x] Create `pipeline-funnel.tsx` for sollicitatie stats
 - [ ] Create `comparison-table.tsx` for match comparisons
-- [ ] Create `stat-card-row.tsx` for inline KPIs
-- [ ] Refactor `chat-messages.tsx` to use lazy registry + Suspense
-- [ ] Add `React.memo` to message-level rendering to prevent re-render storms
+- [x] Create `stat-card-row.tsx` for inline KPIs
+- [x] Refactor `chat-messages.tsx` to use lazy registry + Suspense
+- [x] Add `React.memo` to analytics components to prevent re-render storms
 - **Success:** All search/analytics tools render rich UI instead of JSON
 
 #### Phase 2: Action Cards
-- [ ] Create `action-card.tsx` with configurable actions + optimistic updates
-- [ ] Wire action buttons to existing API routes via fetch
+- [x] Create `action-card.tsx` with configurable actions + optimistic updates
+- [x] Wire action buttons to existing API routes via fetch
 - [ ] Ensure all API endpoints accept full field set (ref: agent-ui-parity learning)
-- [ ] Handle confirmation dialogs for destructive actions
-- [ ] Add success/error toast notifications
+- [x] Handle confirmation dialogs for destructive actions
+- [x] Add success/error overlay states
 - **Success:** Recruiters can approve matches, schedule interviews, move pipeline stages directly from chat
 
 #### Phase 3: Canvas View
