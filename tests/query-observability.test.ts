@@ -24,7 +24,7 @@ async function importListJobsWithTelemetryMocks() {
   ]);
 
   vi.doMock("../src/db", async () => ({
-    ...(await import("../src/db")),
+    ...(await vi.importActual("../src/db")),
     db: {},
   }));
   vi.doMock("../src/db/schema", () => ({
@@ -95,7 +95,7 @@ async function importHybridSearchWithTelemetryMocks() {
   const mockSelect = vi.fn(() => ({ from: vi.fn(() => ({ where: mockWhere })) }));
 
   vi.doMock("../src/db", async () => ({
-    ...(await import("../src/db")),
+    ...(await vi.importActual("../src/db")),
     db: {
       execute: mockExecute,
       select: mockSelect,

@@ -9,7 +9,7 @@ function collectStringLeaves(value: unknown): string[] {
 
 async function loadDeduplicationModule(mockExecute: ReturnType<typeof vi.fn>) {
   vi.doMock("../src/db", async () => ({
-    ...(await import("../src/db")),
+    ...(await vi.importActual("../src/db")),
     db: { execute: mockExecute },
   }));
   vi.doMock("../src/db/schema", () => ({
