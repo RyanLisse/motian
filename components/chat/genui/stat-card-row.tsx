@@ -1,9 +1,10 @@
 "use client";
 import { TrendingUp } from "lucide-react";
 import { memo } from "react";
+import { getToolErrorMessage, isToolError } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
-type StatItem = { label: string; value: string | number; trend?: "up" | "down" | "neutral" };
+type StatItem = { label: string; value: string | number };
 type StatOutput = { stats: StatItem[]; title?: string };
 
 function isStatOutput(o: unknown): o is StatOutput {
@@ -13,9 +14,10 @@ function isStatOutput(o: unknown): o is StatOutput {
 }
 
 export const StatCardRow = memo(function StatCardRow({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return (
+      <ToolErrorBlock message={getToolErrorMessage(output, "Statistieken niet beschikbaar")} />
+    );
   if (!isStatOutput(output)) return null;
 
   return (

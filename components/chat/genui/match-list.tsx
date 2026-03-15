@@ -2,6 +2,7 @@
 import { GitCompareArrows, Target } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { getToolErrorMessage, isToolError, matchStatusLabels } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type MatchItem = {
@@ -25,13 +26,6 @@ function isMatchList(o: unknown): o is MatchListOutput {
   );
 }
 
-const statusLabels: Record<string, string> = {
-  pending: "In afwachting",
-  approved: "Goedgekeurd",
-  rejected: "Afgewezen",
-  withdrawn: "Ingetrokken",
-};
-
 const statusColors: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
   approved: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
@@ -48,9 +42,8 @@ function scoreColor(score: number): string {
 export function MatchListCard({ output }: { output: unknown }) {
   const [showAll, setShowAll] = useState(false);
 
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Matches niet gevonden")} />;
   if (!isMatchList(output)) return null;
   if (output.matches.length === 0) {
     return (
@@ -97,7 +90,7 @@ export function MatchListCard({ output }: { output: unknown }) {
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColors[item.status] ?? statusColors.pending}`}
                     >
-                      {statusLabels[item.status] ?? item.status}
+                      {matchStatusLabels[item.status] ?? item.status}
                     </span>
                     {item.confidence != null && (
                       <span className="text-[10px] text-muted-foreground">

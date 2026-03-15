@@ -2,6 +2,7 @@
 import { Briefcase } from "lucide-react";
 import { useState } from "react";
 import { JobCard } from "@/components/job-card";
+import { getToolErrorMessage, isToolError, toDate } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type OpdrachtItem = {
@@ -30,19 +31,11 @@ function isOpdrachtList(o: unknown): o is OpdrachtListOutput {
   );
 }
 
-function toDate(v: string | Date | null | undefined): Date | null {
-  if (v == null) return null;
-  if (v instanceof Date) return v;
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
 export function OpdrachtListCard({ output }: { output: unknown }) {
   const [showAll, setShowAll] = useState(false);
 
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Opdrachten niet gevonden")} />;
   if (!isOpdrachtList(output)) return null;
   if (output.opdrachten.length === 0) {
     return (

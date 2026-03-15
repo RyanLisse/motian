@@ -2,6 +2,7 @@
 import { Calendar, Clock, MapPin, Video } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { formatDateTime, getToolErrorMessage, isToolError } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type InterviewItem = {
@@ -50,18 +51,6 @@ const statusColors: Record<string, string> = {
   rescheduled: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
 };
 
-function formatDateTime(v: string | Date | null | undefined): string | null {
-  if (v == null) return null;
-  const d = v instanceof Date ? v : new Date(v);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("nl-NL", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function typeIcon(type: string | null | undefined) {
   if (type === "video") return <Video className="h-3.5 w-3.5 text-muted-foreground" />;
   return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
@@ -70,9 +59,8 @@ function typeIcon(type: string | null | undefined) {
 export function InterviewListCard({ output }: { output: unknown }) {
   const [showAll, setShowAll] = useState(false);
 
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Interviews niet gevonden")} />;
   if (!isInterviewList(output)) return null;
   if (output.interviews.length === 0) {
     return (
@@ -121,11 +109,14 @@ export function InterviewListCard({ output }: { output: unknown }) {
                         </span>
                       )}
                     </div>
-                    {formatDateTime(item.scheduledAt) && (
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                        {formatDateTime(item.scheduledAt)}
-                      </span>
-                    )}
+                    {(() => {
+                      const dt = formatDateTime(item.scheduledAt);
+                      return dt ? (
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          {dt}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
                     {item.interviewer && (

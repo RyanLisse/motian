@@ -15,6 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { getToolErrorMessage, isToolError } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type ChartDataItem = Record<string, unknown>;
@@ -63,10 +64,9 @@ function getKeys(data: AnalyseOutput) {
   return { xKey, yKey };
 }
 
-const InsightChartInner = memo(function InsightChartInner({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+export const InsightChart = memo(function InsightChart({ output }: { output: unknown }) {
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Analyse niet beschikbaar")} />;
   if (!isAnalyseOutput(output)) return null;
   if (output.data.length === 0) {
     return (
@@ -129,7 +129,3 @@ const InsightChartInner = memo(function InsightChartInner({ output }: { output: 
     </div>
   );
 });
-
-export function InsightChart({ output }: { output: unknown }) {
-  return <InsightChartInner output={output} />;
-}

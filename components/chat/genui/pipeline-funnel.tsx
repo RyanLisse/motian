@@ -1,6 +1,7 @@
 "use client";
 import { GitBranch } from "lucide-react";
 import { memo } from "react";
+import { getToolErrorMessage, isToolError } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type StageStats = {
@@ -31,9 +32,8 @@ const STAGE_CONFIG = [
 ];
 
 export const PipelineFunnel = memo(function PipelineFunnel({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Pipeline niet beschikbaar")} />;
   if (!isFunnelOutput(output)) return null;
 
   const maxCount = Math.max(...Object.values(output.stages), 1);

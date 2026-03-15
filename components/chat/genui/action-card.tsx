@@ -1,6 +1,7 @@
 "use client";
 import { ArrowRight, Calendar, Check, CheckCircle2, Loader2, Mail, X, XCircle } from "lucide-react";
 import { memo, useState } from "react";
+import { getToolErrorMessage, isToolError, stageLabels } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 /* ── Shared action handler ── */
@@ -114,9 +115,8 @@ export const MatchCreatedCard = memo(function MatchCreatedCard({ output }: { out
   const approve = useAction();
   const reject = useAction();
 
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Match niet aangemaakt")} />;
   if (!isMatchCreated(output)) return null;
 
   const actionTaken = approve.state !== "idle" || reject.state !== "idle";
@@ -159,9 +159,8 @@ export const MatchCreatedCard = memo(function MatchCreatedCard({ output }: { out
 
 /* ── Match Approved Card ── */
 export const MatchApprovedCard = memo(function MatchApprovedCard({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Match niet goedgekeurd")} />;
   return (
     <div className="my-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
       <div className="flex items-center gap-2">
@@ -174,9 +173,8 @@ export const MatchApprovedCard = memo(function MatchApprovedCard({ output }: { o
 
 /* ── Match Rejected Card ── */
 export const MatchRejectedCard = memo(function MatchRejectedCard({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Match niet afgewezen")} />;
   return (
     <div className="my-1.5 rounded-lg border border-red-500/30 bg-red-500/5 p-4">
       <div className="flex items-center gap-2">
@@ -188,21 +186,20 @@ export const MatchRejectedCard = memo(function MatchRejectedCard({ output }: { o
 });
 
 /* ── Stage Update Card ── */
-const stageLabels: Record<string, string> = {
-  new: "Nieuw",
-  screening: "Screening",
-  interview: "Interview",
-  offer: "Aanbod",
-  hired: "Aangenomen",
-  rejected: "Afgewezen",
-};
+function isStageUpdate(o: unknown): o is { stage: string; previousStage?: string } {
+  return (
+    typeof o === "object" &&
+    o !== null &&
+    "stage" in o &&
+    typeof (o as { stage: unknown }).stage === "string"
+  );
+}
 
 export const StageUpdateCard = memo(function StageUpdateCard({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
-  const o = output as { stage?: string; previousStage?: string } | null;
-  if (!o || !o.stage) return null;
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Fase niet bijgewerkt")} />;
+  if (!isStageUpdate(output)) return null;
+  const o = output;
   return (
     <div className="my-1.5 rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2">
@@ -218,16 +215,19 @@ export const StageUpdateCard = memo(function StageUpdateCard({ output }: { outpu
 });
 
 /* ── Interview Planned Card ── */
+function isInterviewPlanned(o: unknown): o is { id?: string; scheduledAt?: string; type?: string } {
+  return typeof o === "object" && o !== null;
+}
+
 export const InterviewPlannedCard = memo(function InterviewPlannedCard({
   output,
 }: {
   output: unknown;
 }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
-  const o = output as { id?: string; scheduledAt?: string; type?: string } | null;
-  if (!o) return null;
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Interview niet gepland")} />;
+  if (!isInterviewPlanned(output)) return null;
+  const o = output;
   const dateStr = o.scheduledAt
     ? new Date(o.scheduledAt).toLocaleDateString("nl-NL", {
         weekday: "long",
@@ -250,11 +250,14 @@ export const InterviewPlannedCard = memo(function InterviewPlannedCard({
 });
 
 /* ── Message Sent Card ── */
+function isMessageSent(o: unknown): o is { subject?: string; channel?: string } {
+  return typeof o === "object" && o !== null;
+}
+
 export const MessageSentCard = memo(function MessageSentCard({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
-  const o = output as { subject?: string; channel?: string } | null;
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Bericht niet verstuurd")} />;
+  const o = isMessageSent(output) ? output : null;
   return (
     <div className="my-1.5 rounded-lg border border-blue-500/30 bg-blue-500/5 p-4">
       <div className="flex items-center gap-2">

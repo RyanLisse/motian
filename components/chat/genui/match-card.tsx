@@ -2,6 +2,7 @@
 
 import { Link2 } from "lucide-react";
 import Link from "next/link";
+import { getToolErrorMessage, isToolError, matchStatusLabels } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type MatchOutput = {
@@ -16,22 +17,11 @@ function isMatchOutput(o: unknown): o is MatchOutput {
   return typeof o === "object" && o !== null && "id" in o && "matchScore" in o && "status" in o;
 }
 
-const statusLabels: Record<string, string> = {
-  pending: "In afwachting",
-  approved: "Goedgekeurd",
-  rejected: "Afgewezen",
-};
-
 export function MatchGenUICard({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    const msg =
-      typeof (output as { error: unknown }).error === "string"
-        ? (output as { error: string }).error
-        : "Match niet gevonden";
-    return <ToolErrorBlock message={msg} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Match niet gevonden")} />;
   if (!isMatchOutput(output)) return null;
-  const statusLabel = statusLabels[output.status] ?? output.status;
+  const statusLabel = matchStatusLabels[output.status] ?? output.status;
   const href = output.candidateId
     ? `/kandidaten/${output.candidateId}#matches`
     : output.jobId

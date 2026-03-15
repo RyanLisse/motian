@@ -2,6 +2,7 @@
 import { User, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { getToolErrorMessage, isToolError } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type KandidaatItem = {
@@ -27,9 +28,8 @@ function isKandidaatList(o: unknown): o is KandidaatListOutput {
 export function KandidaatListCard({ output }: { output: unknown }) {
   const [showAll, setShowAll] = useState(false);
 
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Kandidaten niet gevonden")} />;
   if (!isKandidaatList(output)) return null;
   if (output.kandidaten.length === 0) {
     return (

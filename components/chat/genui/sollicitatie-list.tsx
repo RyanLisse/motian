@@ -2,6 +2,7 @@
 import { FileText, Send } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { getToolErrorMessage, isToolError, stageLabels } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type SollicitatieItem = {
@@ -24,17 +25,6 @@ function isSollicitatieList(o: unknown): o is SollicitatieListOutput {
   );
 }
 
-const stageLabels: Record<string, string> = {
-  new: "Nieuw",
-  screening: "Screening",
-  interview: "Interview",
-  assessment: "Assessment",
-  offer: "Aanbod",
-  hired: "Aangenomen",
-  rejected: "Afgewezen",
-  withdrawn: "Ingetrokken",
-};
-
 const stageColors: Record<string, string> = {
   new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
   screening: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
@@ -56,9 +46,8 @@ function formatDate(v: string | Date | null | undefined): string | null {
 export function SollicitatieListCard({ output }: { output: unknown }) {
   const [showAll, setShowAll] = useState(false);
 
-  if (typeof output === "object" && output !== null && "error" in output) {
-    return <ToolErrorBlock message={String((output as { error: unknown }).error)} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Sollicitaties niet gevonden")} />;
   if (!isSollicitatieList(output)) return null;
   if (output.sollicitaties.length === 0) {
     return (

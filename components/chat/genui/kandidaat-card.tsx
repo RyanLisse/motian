@@ -2,6 +2,7 @@
 
 import { User } from "lucide-react";
 import Link from "next/link";
+import { getToolErrorMessage, isToolError } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type CandidateOutput = {
@@ -16,13 +17,8 @@ function isCandidateOutput(o: unknown): o is CandidateOutput {
 }
 
 export function KandidaatGenUICard({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    const msg =
-      typeof (output as { error: unknown }).error === "string"
-        ? (output as { error: string }).error
-        : "Kandidaat niet gevonden";
-    return <ToolErrorBlock message={msg} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Kandidaat niet gevonden")} />;
   if (!isCandidateOutput(output)) return null;
   return (
     <Link href={`/kandidaten/${output.id}`}>
