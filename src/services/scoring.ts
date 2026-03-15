@@ -16,17 +16,24 @@ export type EscoMatchOptions = {
   jobEscoSkills: JobCanonicalSkill[];
 };
 
-export const SCORING_WEIGHTS = {
-  skills: 40,
-  location: 20,
-  rate: 20,
-  role: 20,
-} as const;
+function loadScoringWeights() {
+  return {
+    skills: parseInt(process.env.SCORING_WEIGHT_SKILLS ?? "40", 10),
+    location: parseInt(process.env.SCORING_WEIGHT_LOCATION ?? "20", 10),
+    rate: parseInt(process.env.SCORING_WEIGHT_RATE ?? "20", 10),
+    role: parseInt(process.env.SCORING_WEIGHT_ROLE ?? "20", 10),
+  };
+}
 
-export const HYBRID_BLEND = {
-  ruleWeight: 0.6,
-  vectorWeight: 0.4,
-} as const;
+function loadHybridBlend() {
+  return {
+    ruleWeight: parseFloat(process.env.HYBRID_BLEND_RULE ?? "0.6"),
+    vectorWeight: parseFloat(process.env.HYBRID_BLEND_VECTOR ?? "0.4"),
+  };
+}
+
+export const SCORING_WEIGHTS = loadScoringWeights();
+export const HYBRID_BLEND = loadHybridBlend();
 
 function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length || a.length === 0) return 0;
