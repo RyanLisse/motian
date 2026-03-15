@@ -1,6 +1,8 @@
 export { analyseData } from "./analyse-data";
 // Berichten tools
 export { getBerichtDetail, stuurBericht, verwijderBericht, zoekBerichten } from "./berichten";
+// Canvas tool
+export { renderCanvas } from "./canvas";
 // GDPR tools
 export {
   exporteerContactData,

@@ -77,6 +77,10 @@ const berichtTools = {
   verwijderBericht: tools.verwijderBericht,
 };
 
+const canvasTools = {
+  renderCanvas: tools.renderCanvas,
+};
+
 const gdprTools = {
   exporteerKandidaatData: tools.exporteerKandidaatData,
   wisKandidaatData: tools.wisKandidaatData,
@@ -93,6 +97,7 @@ export const recruitmentTools = {
   ...interviewTools,
   ...berichtTools,
   ...gdprTools,
+  ...canvasTools,
 };
 
 function isOpdrachtContext(context?: AgentContext) {

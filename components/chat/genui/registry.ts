@@ -90,4 +90,8 @@ export const GENUI_REGISTRY: Record<string, GenUIEntry> = {
     component: lazy(() => import("./action-card").then((m) => ({ default: m.MessageSentCard }))),
     label: "Bericht verstuurd",
   },
+  renderCanvas: {
+    component: lazy(() => import("./canvas-embed").then((m) => ({ default: m.CanvasEmbed }))),
+    label: "Canvas",
+  },
 };
