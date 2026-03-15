@@ -9,11 +9,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import type { PlatformCatalogEntryView } from "@/src/services/scrapers";
 import { PlatformConfigForm } from "./platform-config-form";
 
-type PlatformCatalogEntry = Parameters<typeof PlatformConfigForm>[0]["entry"];
-
-export function PlatformOnboardingDrawer({ entry }: { entry: PlatformCatalogEntry }) {
+export function PlatformOnboardingDrawer({ entry }: { entry: PlatformCatalogEntryView }) {
   return (
     <Sheet>
       <SheetTrigger asChild>

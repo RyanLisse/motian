@@ -18,7 +18,10 @@ const { mockDb, mockDataWhere, mockExecute } = vi.hoisted(() => {
   };
 });
 
-vi.mock("../src/db", () => ({ db: mockDb }));
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
+  db: mockDb,
+}));
 vi.mock("../src/db/schema", () => ({
   jobs: {
     id: "jobs.id",

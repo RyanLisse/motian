@@ -31,7 +31,10 @@ const {
   };
 });
 
-vi.mock("../src/db", () => ({ db: mockDb }));
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
+  db: mockDb,
+}));
 vi.mock("../src/services/esco", () => ({
   syncJobEscoSkills: mockSyncJobEscoSkills,
 }));

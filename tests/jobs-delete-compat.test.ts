@@ -23,7 +23,8 @@ const { jobs, mockReturning, mockSet, mockUpdate, mockWhere } = vi.hoisted(() =>
   return { jobs, mockReturning, mockSet, mockUpdate, mockWhere };
 });
 
-vi.mock("../src/db", () => ({
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
   db: {
     update: mockUpdate,
   },

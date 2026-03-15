@@ -23,7 +23,8 @@ const { mockLimit, mockDb } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@motian/db", () => ({
+vi.mock("@motian/db", async (importOriginal) => ({
+  ...(await importOriginal()),
   db: mockDb,
   candidateSkills: {},
   escoSkills: {
