@@ -19,23 +19,29 @@ export const aiEnrichmentBatchTask = schedules.task({
     pattern: "30 6,10,14,18 * * *", // 30 min after each scrape run
     timezone: "Europe/Amsterdam",
   },
-  maxDuration: 600, // 10 minutes — enrichment can be slow with many jobs
+  maxDuration: 300, // 5 minutes — platforms run in parallel now
   run: async () => {
     logger.info("AI enrichment batch gestart");
 
     const platforms = ["flextender", "opdrachtoverheid", "striive"];
     const results: Record<string, { enriched: number; skipped: number; errors: string[] }> = {};
 
-    for (const platform of platforms) {
-      try {
+    const settled = await Promise.allSettled(
+      platforms.map(async (platform) => {
         const result = await enrichJobsBatch({ platform, limit: 50 });
         results[platform] = result;
         logger.info(`${platform}: ${result.enriched} verrijkt, ${result.skipped} overgeslagen`, {
           platform,
           ...result,
         });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+      }),
+    );
+
+    for (let i = 0; i < platforms.length; i++) {
+      const s = settled[i];
+      if (s.status === "rejected") {
+        const platform = platforms[i];
+        const msg = s.reason instanceof Error ? s.reason.message : String(s.reason);
         results[platform] = { enriched: 0, skipped: 0, errors: [msg] };
         logger.error(`${platform}: enrichment mislukt`, { platform, error: msg });
       }

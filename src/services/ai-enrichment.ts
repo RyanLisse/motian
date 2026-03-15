@@ -138,6 +138,8 @@ export async function enrichJobsBatch(opts: {
 
   console.log(`[AI Enrichment] Found ${unenriched.length} jobs to enrich`);
 
+  const enrichedJobIds: string[] = [];
+
   for (const job of unenriched) {
     try {
       const result = await enrichJobWithAI({
@@ -189,24 +191,30 @@ export async function enrichJobsBatch(opts: {
       if (Object.keys(updates).length > 0) {
         await db.update(jobs).set(updates).where(eq(jobs.id, job.id));
         enriched++;
-
-        // Generate embedding after enrichment (non-fatal)
-        try {
-          const { embedJob } = await import("./embedding");
-          await withRetry(() => embedJob(job.id), { maxAttempts: 2, label: "AI Enrichment" });
-        } catch (embErr) {
-          console.error(`[AI Enrichment] Embedding error for ${job.id}:`, embErr);
-        }
+        enrichedJobIds.push(job.id);
       } else {
         skipped++;
       }
-
-      // Rate limit: 100ms between calls
-      await new Promise((r) => setTimeout(r, 100));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`Job ${job.id}: ${msg}`);
       console.error(`[AI Enrichment] Error enriching ${job.id}:`, msg);
+    }
+  }
+
+  // Batch embeddings after all AI calls complete (parallel in chunks of 10)
+  if (enrichedJobIds.length > 0) {
+    try {
+      const { embedJob } = await import("./embedding");
+      const EMBED_CHUNK = 10;
+      for (let i = 0; i < enrichedJobIds.length; i += EMBED_CHUNK) {
+        const chunk = enrichedJobIds.slice(i, i + EMBED_CHUNK);
+        await Promise.allSettled(
+          chunk.map((id) => withRetry(() => embedJob(id), { maxAttempts: 2, label: "Embedding" })),
+        );
+      }
+    } catch (embErr) {
+      console.error("[AI Enrichment] Batch embedding error:", embErr);
     }
   }
 

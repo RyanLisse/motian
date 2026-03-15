@@ -185,17 +185,19 @@ export async function normalizeAndSaveJobs(
         jobsNew += inserted;
         duplicates += updated;
 
-        for (const row of result) {
-          const item = batch.find((batchItem) => batchItem.parsed.externalId === row.externalId);
-          if (!item) continue;
+        await Promise.all(
+          result.map(async (row) => {
+            const item = batch.find((batchItem) => batchItem.parsed.externalId === row.externalId);
+            if (!item) return;
 
-          await syncJobEscoSkills({
-            jobId: row.id,
-            requirements: item.parsed.requirements,
-            wishes: item.parsed.wishes,
-            competences: item.parsed.competences,
-          });
-        }
+            await syncJobEscoSkills({
+              jobId: row.id,
+              requirements: item.parsed.requirements,
+              wishes: item.parsed.wishes,
+              competences: item.parsed.competences,
+            });
+          }),
+        );
       } catch (err) {
         errors.push(`DB batch ${i}-${i + batch.length}: ${String(err)}`);
       }
