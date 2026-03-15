@@ -185,19 +185,28 @@ export async function normalizeAndSaveJobs(
         jobsNew += inserted;
         duplicates += updated;
 
-        await Promise.all(
-          result.map(async (row) => {
-            const item = batch.find((batchItem) => batchItem.parsed.externalId === row.externalId);
-            if (!item) return;
+        // Parallel ESCO sync with concurrency cap to avoid exhausting Neon connection pool
+        const ESCO_CONCURRENCY = 5;
+        for (let j = 0; j < result.length; j += ESCO_CONCURRENCY) {
+          const chunk = result.slice(j, j + ESCO_CONCURRENCY);
+          const settled = await Promise.allSettled(
+            chunk.map(async (row) => {
+              const item = batch.find((batchItem) => batchItem.parsed.externalId === row.externalId);
+              if (!item) return;
 
-            await syncJobEscoSkills({
-              jobId: row.id,
-              requirements: item.parsed.requirements,
-              wishes: item.parsed.wishes,
-              competences: item.parsed.competences,
-            });
-          }),
-        );
+              await syncJobEscoSkills({
+                jobId: row.id,
+                requirements: item.parsed.requirements,
+                wishes: item.parsed.wishes,
+                competences: item.parsed.competences,
+              });
+            }),
+          );
+          const failed = settled.filter((s) => s.status === "rejected").length;
+          if (failed > 0) {
+            console.warn(`[normalize] ${failed}/${chunk.length} ESCO syncs failed in chunk`);
+          }
+        }
       } catch (err) {
         errors.push(`DB batch ${i}-${i + batch.length}: ${String(err)}`);
       }
