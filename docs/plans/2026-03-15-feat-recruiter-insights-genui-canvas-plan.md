@@ -436,14 +436,14 @@ src/ai/agent.ts
 - **Success:** Recruiters can approve matches, schedule interviews, move pipeline stages directly from chat
 
 #### Phase 3: Canvas View
-- [ ] Dynamic import `@xyflow/react` (no SSR)
-- [ ] Create custom node types with `React.memo`
-- [ ] Implement `MatchNetworkCanvas` (bipartite graph, max 100 nodes)
+- [x] Dynamic import `@xyflow/react` (no SSR)
+- [x] Create custom node types with `React.memo`
+- [x] Implement `MatchNetworkCanvas` (bipartite graph, max 100 nodes)
 - [ ] Implement `PipelineFlowCanvas` (stage visualization)
-- [ ] Add `renderCanvas` AI tool (write to canvas)
+- [x] Add `renderCanvas` AI tool (write to canvas)
 - [ ] Add `readCanvasState` AI tool (read from canvas — bidirectional)
-- [ ] Create resizable split panel in chat for canvas embed
-- [ ] Add canvas sidebar for node details + actions
+- [x] Create canvas embed in chat via GenUI registry
+- [x] Add canvas sidebar for node details + actions
 - **Success:** Recruiters can visually explore candidate-vacancy relationships
 
 #### Phase 4: A2UI Evaluation (Future)
