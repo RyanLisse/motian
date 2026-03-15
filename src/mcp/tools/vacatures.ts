@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { publish } from "../../lib/event-bus.js";
 import { autoMatchJobToCandidates } from "../../services/auto-matching.js";
 import { withJobCanonicalSkills, withJobsCanonicalSkills } from "../../services/esco.js";
 import type { ListJobsSortBy } from "../../services/jobs.js";
@@ -136,6 +138,9 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { id, ...data } = updateVacatureSchema.parse(raw);
     const result = await updateJob(id, data);
     if (!result) return { error: "Vacature niet gevonden" };
+    revalidatePath("/vacatures");
+    revalidatePath(`/vacatures/${id}`);
+    publish("job:updated", { id });
     return withJobCanonicalSkills(result);
   },
 
@@ -143,6 +148,9 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { id } = verwijderVacatureSchema.parse(raw);
     const deleted = await deleteJob(id);
     if (!deleted) return { error: "Vacature niet gevonden of al gearchiveerd" };
+    revalidatePath("/vacatures");
+    revalidatePath("/overzicht");
+    publish("job:deleted", { id });
     return { success: true, message: "Vacature gearchiveerd" };
   },
 

@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { publish } from "../../lib/event-bus.js";
 import {
   createMatch,
   deleteMatch,
@@ -108,13 +110,24 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   maak_match_aan: async (raw) => {
     const data = maakMatchSchema.parse(raw);
-    return createMatch(data);
+    const match = await createMatch(data);
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
+    revalidatePath("/pipeline");
+    revalidatePath("/overzicht");
+    publish("match:created", { id: (match as { id: string }).id });
+    return match;
   },
 
   keur_match_goed: async (raw) => {
     const { id, reviewedBy } = keurMatchGoedSchema.parse(raw);
     const result = await updateMatchStatus(id, "approved", reviewedBy);
     if (!result) return { error: "Match niet gevonden" };
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
+    revalidatePath("/pipeline");
+    revalidatePath("/overzicht");
+    publish("match:updated", { id, status: "approved" });
     return result;
   },
 
@@ -122,6 +135,11 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { id, reviewedBy } = wijsMatchAfSchema.parse(raw);
     const result = await updateMatchStatus(id, "rejected", reviewedBy);
     if (!result) return { error: "Match niet gevonden" };
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
+    revalidatePath("/pipeline");
+    revalidatePath("/overzicht");
+    publish("match:updated", { id, status: "rejected" });
     return result;
   },
 
@@ -129,6 +147,11 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { id } = verwijderMatchSchema.parse(raw);
     const deleted = await deleteMatch(id);
     if (!deleted) return { error: "Match niet gevonden" };
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
+    revalidatePath("/pipeline");
+    revalidatePath("/overzicht");
+    publish("match:deleted", { id });
     return { success: true, message: "Match verwijderd" };
   },
 };

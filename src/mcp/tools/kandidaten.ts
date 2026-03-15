@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { publish } from "../../lib/event-bus.js";
 import { autoMatchCandidateToJobs } from "../../services/auto-matching.js";
 import {
   addNoteToCandidate,
@@ -149,13 +151,20 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   maak_kandidaat_aan: async (raw) => {
     const data = maakKandidaatSchema.parse(raw);
-    return withCandidateCanonicalSkills(await createCandidate(data));
+    const candidate = await createCandidate(data);
+    revalidatePath("/kandidaten");
+    revalidatePath("/overzicht");
+    publish("candidate:created", { id: candidate.id, name: candidate.name });
+    return withCandidateCanonicalSkills(candidate);
   },
 
   update_kandidaat: async (raw) => {
     const { id, ...data } = updateKandidaatSchema.parse(raw);
     const result = await updateCandidate(id, data);
     if (!result) return { error: "Kandidaat niet gevonden" };
+    revalidatePath("/kandidaten");
+    revalidatePath(`/kandidaten/${id}`);
+    publish("candidate:updated", { id, name: result.name });
     return withCandidateCanonicalSkills(result);
   },
 
@@ -163,6 +172,8 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { id } = verwijderKandidaatSchema.parse(raw);
     const deleted = await deleteCandidate(id);
     if (!deleted) return { error: "Kandidaat niet gevonden of al verwijderd" };
+    revalidatePath("/kandidaten");
+    publish("candidate:deleted", { id });
     return { success: true, message: "Kandidaat verwijderd" };
   },
 
@@ -170,11 +181,19 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { id, note } = voegNotitieToeSchema.parse(raw);
     const result = await addNoteToCandidate(id, note);
     if (!result) return { error: "Kandidaat niet gevonden" };
+    revalidatePath(`/kandidaten/${id}`);
+    publish("candidate:updated", { id, action: "note_added" });
     return result;
   },
 
   auto_match_kandidaat: async (raw) => {
     const { candidateId } = autoMatchKandidaatSchema.parse(raw);
-    return autoMatchCandidateToJobs(candidateId);
+    const results = await autoMatchCandidateToJobs(candidateId);
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
+    revalidatePath("/overzicht");
+    revalidatePath(`/kandidaten/${candidateId}`);
+    publish("match:created", { candidateId, count: Array.isArray(results) ? results.length : 0 });
+    return results;
   },
 };

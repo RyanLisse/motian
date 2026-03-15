@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { publish } from "../../lib/event-bus.js";
 import {
   createApplication,
   deleteApplication,
@@ -211,13 +213,19 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   maak_sollicitatie_aan: async (raw) => {
     const data = maakSollicitatieSchema.parse(raw);
-    return createApplication(data);
+    const application = await createApplication(data);
+    revalidatePath("/pipeline");
+    revalidatePath("/overzicht");
+    publish("application:created", { id: (application as { id: string }).id });
+    return application;
   },
 
   update_sollicitatie_fase: async (raw) => {
     const { id, stage, notes } = updateSollicitatieFaseSchema.parse(raw);
     const result = await updateApplicationStage(id, stage, notes);
     if (!result) return { error: "Sollicitatie niet gevonden of ongeldige fase" };
+    revalidatePath("/pipeline");
+    publish("application:updated", { id, stage });
     return result;
   },
 
@@ -232,10 +240,13 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   plan_interview: async (raw) => {
     const data = planInterviewSchema.parse(raw);
-    return createInterview({
+    const interview = await createInterview({
       ...data,
       scheduledAt: new Date(data.scheduledAt),
     });
+    revalidatePath("/interviews");
+    publish("interview:created", { id: (interview as { id: string }).id });
+    return interview;
   },
 
   update_interview: async (raw) => {
@@ -243,6 +254,8 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { interview, emptyUpdate } = await updateInterview(id, data);
     if (emptyUpdate) return { error: "Geen velden opgegeven om bij te werken" };
     if (!interview) return { error: "Interview niet gevonden of ongeldige waarden" };
+    revalidatePath("/interviews");
+    publish("interview:updated", { id });
     return interview;
   },
 
@@ -255,6 +268,8 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const data = stuurBerichtSchema.parse(raw);
     const result = await createMessage(data);
     if (!result) return { error: "Ongeldig kanaal of richting" };
+    revalidatePath("/berichten");
+    publish("message:created", { id: (result as { id: string }).id });
     return result;
   },
 
@@ -262,6 +277,8 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { id } = verwijderSollicitatieSchema.parse(raw);
     const deleted = await deleteApplication(id);
     if (!deleted) return { error: "Sollicitatie niet gevonden of al verwijderd" };
+    revalidatePath("/pipeline");
+    publish("application:deleted", { id });
     return { success: true, message: "Sollicitatie verwijderd" };
   },
 
@@ -276,6 +293,8 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { id } = verwijderInterviewSchema.parse(raw);
     const deleted = await deleteInterview(id);
     if (!deleted) return { error: "Interview niet gevonden" };
+    revalidatePath("/interviews");
+    publish("interview:deleted", { id });
     return { success: true, message: "Interview verwijderd" };
   },
 
@@ -290,6 +309,8 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { id } = verwijderBerichtSchema.parse(raw);
     const deleted = await deleteMessage(id);
     if (!deleted) return { error: "Bericht niet gevonden" };
+    revalidatePath("/berichten");
+    publish("message:deleted", { id });
     return { success: true, message: "Bericht verwijderd" };
   },
 };
