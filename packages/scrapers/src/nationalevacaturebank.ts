@@ -219,7 +219,7 @@ export function parseNationaleVacaturebankListings(html: string): RawScrapedList
 function extractHourMin(attributes: string[]): number | undefined {
   for (const attribute of attributes) {
     const hours = attribute.match(/(\d+)\s*-\s*(\d+)\s*uur/i);
-    if (hours) return Number.parseInt(hours[1], 10);
+    if (hours) return sanitizeHours(Number.parseInt(hours[1], 10));
   }
   return undefined;
 }
@@ -227,9 +227,9 @@ function extractHourMin(attributes: string[]): number | undefined {
 function extractHourMax(attributes: string[]): number | undefined {
   for (const attribute of attributes) {
     const hours = attribute.match(/(\d+)\s*-\s*(\d+)\s*uur/i);
-    if (hours) return Number.parseInt(hours[2], 10);
+    if (hours) return sanitizeHours(Number.parseInt(hours[2], 10));
     const single = attribute.match(/(\d+)\s*uur/i);
-    if (single) return Number.parseInt(single[1], 10);
+    if (single) return sanitizeHours(Number.parseInt(single[1], 10));
   }
   return undefined;
 }

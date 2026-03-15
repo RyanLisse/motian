@@ -65,19 +65,16 @@ export const unifiedJobSchema = z.object({
 
   // === Verrijkte Data ===
   hoursPerWeek: z.preprocess((v) => {
-    if (v === undefined || v === null) return undefined;
-    const n = Number(v);
+    if (v == null) return undefined;
+    const n = typeof v === "number" ? v : Number(v);
     if (!Number.isFinite(n) || n <= 0) return undefined;
-    const rounded = Math.round(n);
-    // Clamp instead of rejecting — prevents validation errors from scrapers
-    return Math.min(168, rounded);
+    return Math.min(168, Math.max(1, Math.round(n)));
   }, z.number().int().positive().max(168).optional()),
   minHoursPerWeek: z.preprocess((v) => {
-    if (v === undefined || v === null) return undefined;
-    const n = Number(v);
+    if (v == null) return undefined;
+    const n = typeof v === "number" ? v : Number(v);
     if (!Number.isFinite(n) || n <= 0) return undefined;
-    const rounded = Math.round(n);
-    return Math.min(168, rounded);
+    return Math.min(168, Math.max(1, Math.round(n)));
   }, z.number().int().positive().max(168).optional()),
   extensionPossible: z.boolean().optional(),
   countryCode: z.string().optional(),
