@@ -1,7 +1,7 @@
 export { analyseData } from "./analyse-data";
 // Berichten tools
 export { getBerichtDetail, stuurBericht, verwijderBericht, zoekBerichten } from "./berichten";
-// Canvas tool
+// Canvas tools
 export { renderCanvas } from "./canvas";
 // GDPR tools
 export {
@@ -59,6 +59,7 @@ export {
   platformTestImport,
 } from "./platforms";
 export { queryOpdrachten } from "./query-opdrachten";
+export { readCanvasState } from "./read-canvas-state";
 // Sollicitatie tools
 export {
   getSollicitatieDetail,

@@ -79,6 +79,7 @@ const berichtTools = {
 
 const canvasTools = {
   renderCanvas: tools.renderCanvas,
+  readCanvasState: tools.readCanvasState,
 };
 
 const gdprTools = {
