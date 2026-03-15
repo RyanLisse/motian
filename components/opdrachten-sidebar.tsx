@@ -959,7 +959,7 @@ export function OpdrachtenSidebar({
           <div className="px-4 py-3 text-sm text-red-300">{searchErrorMessage}</div>
         ) : null}
 
-        <ScrollArea className="flex-1 bg-[#050506]">
+        <ScrollArea className="min-h-0 flex-1 bg-[#050506]">
           {displayJobs.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-white/45">
               Geen vacatures gevonden
@@ -1425,7 +1425,7 @@ export function OpdrachtenSidebar({
             <p className="mb-3 text-sm text-destructive">{searchErrorMessage}</p>
           ) : null}
 
-          <ScrollArea className="min-w-0 flex-1">
+          <ScrollArea className="min-h-0 min-w-0 flex-1">
             {displayJobs.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border bg-background px-5 py-10 text-center text-sm text-muted-foreground">
                 Geen vacatures gevonden voor deze filters.

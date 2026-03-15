@@ -358,7 +358,7 @@ describe("Opdrachten UI/API contracts", () => {
       "data-[size=default]:h-11 w-full rounded-lg border-border bg-background",
     );
     expect(sidebar).toContain("min-h-11 cursor-pointer items-center gap-3");
-    expect(sidebar).toContain('<ScrollArea className="min-w-0 flex-1">');
+    expect(sidebar).toContain('<ScrollArea className="min-h-0 min-w-0 flex-1">');
     expect(sidebar).toContain("flex flex-col gap-2 border-t border-border/70 pt-4 sm:flex-row");
     expect(sidebar).toContain("Filters openen");
     expect(sidebar).toContain("Filters sluiten");
