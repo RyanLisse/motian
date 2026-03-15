@@ -12,12 +12,16 @@ type JobDerivedFieldSource = Pick<
   "title" | "company" | "endClient" | "location" | "province" | "description"
 >;
 
+/** Max length per dedupe column to stay within PostgreSQL B-tree row limit (2704 bytes). */
+const DEDUPE_MAX_CHARS = 500;
+
 function normalizeDedupePart(value: string | null | undefined) {
   return (value ?? "")
     .toLocaleLowerCase("nl-NL")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ")
+    .slice(0, DEDUPE_MAX_CHARS);
 }
 
 function normalizeSearchPart(value: string | null | undefined) {

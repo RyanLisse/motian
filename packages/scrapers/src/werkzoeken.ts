@@ -132,29 +132,35 @@ export function parseWerkzoekenDetailPage(
     decodeText(firstMatch(/<h1[^>]*>([\s\S]*?)<\/h1>/, html)) ||
       decodeText(firstMatch(/<meta property="og:title" content="([^"]+)"/, html)),
   );
-  const company = decodeText(
-    firstMatch(/<div class="company-name">([\s\S]*?)<\/div>/, html) ??
-      firstMatch(/\|\s*([^|]+)\s*op Werkzoeken\.nl/, html),
-  );
-  const location = decodeText(
-    firstMatch(
-      /<div class="job-overview">[\s\S]*?<div>([\s\S]*?)<\/div>/,
-      html,
+  const company = stripHtml(
+    decodeText(
+      firstMatch(/<div class="company-name">([\s\S]*?)<\/div>/, html) ??
+        firstMatch(/\|\s*([^|]+)\s*op Werkzoeken\.nl/, html),
     ),
   );
-  const description = decodeText(
-    firstMatch(
-      /<section class="job-description">([\s\S]*?)<\/section>/,
-      html,
+  const location = stripHtml(
+    decodeText(
+      firstMatch(
+        /<div class="job-overview">[\s\S]*?<div>([\s\S]*?)<\/div>/,
+        html,
+      ),
+    ),
+  );
+  const rawDescription = stripHtml(
+    decodeText(
+      firstMatch(
+        /<section class="job-description">([\s\S]*?)<\/section>/,
+        html,
+      ),
     ),
   );
 
   return {
     externalUrl,
-    title,
-    company,
+    title: title?.slice(0, 500),
+    company: company?.slice(0, 300),
     location,
-    description: ensureMinLength(description, stripHtml(title) || "Werkzoeken vacature"),
+    description: ensureMinLength(rawDescription?.slice(0, 8000), stripHtml(title) || "Werkzoeken vacature"),
   };
 }
 
