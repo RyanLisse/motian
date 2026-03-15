@@ -1,1 +1,2 @@
-export { default, dynamic } from "@/app/opdrachten/layout";
+export { default } from "@/app/opdrachten/layout";
+export const dynamic = "force-dynamic";
