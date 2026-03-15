@@ -1,6 +1,7 @@
 "use client";
 
 import { JobCard } from "@/components/job-card";
+import { getToolErrorMessage, isToolError, toDate } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type JobOutput = {
@@ -22,21 +23,9 @@ function isJobOutput(o: unknown): o is JobOutput {
   return typeof o === "object" && o !== null && "id" in o && "title" in o && "platform" in o;
 }
 
-function toDate(v: string | Date | null | undefined): Date | null {
-  if (v == null) return null;
-  if (v instanceof Date) return v;
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
 export function OpdrachtGenUICard({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    const msg =
-      typeof (output as { error: unknown }).error === "string"
-        ? (output as { error: string }).error
-        : "Opdracht niet gevonden";
-    return <ToolErrorBlock message={msg} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Opdracht niet gevonden")} />;
   if (!isJobOutput(output)) return null;
   const job = {
     id: output.id,
