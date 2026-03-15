@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@sentry/node";
 import { defineConfig } from "@trigger.dev/sdk";
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
@@ -33,8 +33,10 @@ export default defineConfig({
       "pg-native", // Optional native bindings
       "drizzle-orm/pg-core",
       "drizzle-orm/neon-http",
-      "@motian/db",
       "@neondatabase/serverless",
+      "playwright",
+      "playwright-core",
+      "chromium-bidi",
     ],
   },
   retries: {
