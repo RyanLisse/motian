@@ -14,14 +14,17 @@ describe("runtime config hardening regressions", () => {
     const serverSource = readFile("instrumentation.ts");
     const clientSource = readFile("instrumentation-client.ts");
     const triggerSource = readFile("trigger.config.ts");
+    const mcpSource = readFile("src", "mcp", "server.ts");
 
     expect(serverSource).toContain("process.env.SENTRY_DSN");
     expect(clientSource).toContain("process.env.NEXT_PUBLIC_SENTRY_DSN");
     expect(triggerSource).toContain("process.env.SENTRY_DSN");
+    expect(mcpSource).toContain("process.env.SENTRY_DSN");
 
     expect(serverSource).not.toContain(HARDCODED_SENTRY_DSN_FRAGMENT);
     expect(clientSource).not.toContain(HARDCODED_SENTRY_DSN_FRAGMENT);
     expect(triggerSource).not.toContain(HARDCODED_SENTRY_DSN_FRAGMENT);
+    expect(mcpSource).not.toContain(HARDCODED_SENTRY_DSN_FRAGMENT);
   });
 
   it("documents the voice envs required by the current runtime", () => {
