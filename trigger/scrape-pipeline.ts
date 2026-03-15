@@ -49,7 +49,7 @@ export const scrapePipelineTask = schedules.task({
     pattern: "0 6,10,14,18 * * *", // Alleen tussen 06:00 en 18:00, elke 4 uur
     timezone: "Europe/Amsterdam",
   },
-  maxDuration: 600, // 10 minutes max
+  maxDuration: 900, // 15 minutes max (was 600, increased due to timeouts with 3 concurrent scrapers)
   run: async () => {
     const activeConfigs = await db
       .select()
