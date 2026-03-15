@@ -13,19 +13,37 @@ type JobDerivedFieldSource = Pick<
 >;
 
 /**
- * Max length per dedupe column to stay within PostgreSQL B-tree row limit (2704 bytes).
- * Index has 3 text columns + scraped_at (8B) + id (16B) + ~30B overhead = ~2650B for text.
- * With UTF-8 multi-byte chars (up to 4 bytes each): 200 × 4 × 3 = 2400B — safely under limit.
+ * Max **byte** budget per dedupe column for the B-tree index.
+ * Index row limit = 2704 bytes. Index has 3 text cols + scraped_at (8B) + id (16B) + ~80B tuple overhead.
+ * Text budget = (2704 - 104) / 3 ≈ 866 bytes per column. We cap at 800B for safety.
  */
-const DEDUPE_MAX_CHARS = 200;
+const DEDUPE_MAX_BYTES = 800;
 
 function normalizeDedupePart(value: string | null | undefined) {
-  return (value ?? "")
+  let result = (value ?? "")
     .toLocaleLowerCase("nl-NL")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
-    .replace(/\s+/g, " ")
-    .slice(0, DEDUPE_MAX_CHARS);
+    .replace(/\s+/g, " ");
+
+  // Truncate by byte length (UTF-8) to guarantee B-tree index row fits
+  const encoder = new TextEncoder();
+  if (encoder.encode(result).byteLength > DEDUPE_MAX_BYTES) {
+    // Binary search for max char count that fits in byte budget
+    let lo = 0;
+    let hi = result.length;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (encoder.encode(result.slice(0, mid)).byteLength <= DEDUPE_MAX_BYTES) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    result = result.slice(0, lo);
+  }
+
+  return result;
 }
 
 function normalizeSearchPart(value: string | null | undefined) {
