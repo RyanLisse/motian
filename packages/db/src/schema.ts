@@ -1,78 +1,53 @@
 import { sql } from "drizzle-orm";
 import {
-  boolean,
-  customType,
   index,
   integer,
-  jsonb,
-  pgTable,
   real,
+  sqliteTable,
   text,
-  timestamp,
   uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
-
-// pgvector custom column type for Drizzle
-const vector = customType<{
-  data: number[];
-  driverParam: string;
-  config: { dimensions: number };
-}>({
-  dataType(config) {
-    return `vector(${config?.dimensions ?? 512})`;
-  },
-  fromDriver(value: unknown): number[] {
-    if (typeof value === "string") {
-      return value.replace(/^\[/, "").replace(/\]$/, "").split(",").map(Number);
-    }
-    return value as number[];
-  },
-  toDriver(value: number[]): string {
-    return `[${value.join(",")}]`;
-  },
-});
+} from "drizzle-orm/sqlite-core";
 
 // ========== Scraper Configuratie ==========
-export const platformCatalog = pgTable("platform_catalog", {
+export const platformCatalog = sqliteTable("platform_catalog", {
   slug: text("slug").primaryKey(),
   displayName: text("display_name").notNull(),
   adapterKind: text("adapter_kind").notNull(),
   authMode: text("auth_mode").notNull(),
   attributionLabel: text("attribution_label").notNull(),
   description: text("description").default(""),
-  capabilities: jsonb("capabilities").default([]),
+  capabilities: text("capabilities", { mode: "json" }).default([]),
   docsUrl: text("docs_url"),
   defaultBaseUrl: text("default_base_url"),
-  configSchema: jsonb("config_schema").default({}),
-  authSchema: jsonb("auth_schema").default({}),
-  isEnabled: boolean("is_enabled").notNull().default(true),
-  isSelfServe: boolean("is_self_serve").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  configSchema: text("config_schema", { mode: "json" }).default({}),
+  authSchema: text("auth_schema", { mode: "json" }).default({}),
+  isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
+  isSelfServe: integer("is_self_serve", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
-export const scraperConfigs = pgTable(
+export const scraperConfigs = sqliteTable(
   "scraper_configs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     platform: text("platform").notNull(),
     baseUrl: text("base_url").notNull(),
-    isActive: boolean("is_active").notNull().default(true),
-    parameters: jsonb("parameters").default({}),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    parameters: text("parameters", { mode: "json" }).default({}),
     authConfigEncrypted: text("auth_config_encrypted"),
     credentialsRef: text("credentials_ref"),
     cronExpression: text("cron_expression").default("0 0 */4 * * *"),
     validationStatus: text("validation_status").default("unknown"),
-    lastValidatedAt: timestamp("last_validated_at"),
+    lastValidatedAt: integer("last_validated_at", { mode: "timestamp" }),
     lastValidationError: text("last_validation_error"),
-    lastTestImportAt: timestamp("last_test_import_at"),
+    lastTestImportAt: integer("last_test_import_at", { mode: "timestamp" }),
     lastTestImportStatus: text("last_test_import_status"),
-    lastRunAt: timestamp("last_run_at"),
+    lastRunAt: integer("last_run_at", { mode: "timestamp" }),
     lastRunStatus: text("last_run_status"),
     consecutiveFailures: integer("consecutive_failures").default(0),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     platformUniqueIdx: uniqueIndex("uq_scraper_configs_platform").on(table.platform),
@@ -80,22 +55,22 @@ export const scraperConfigs = pgTable(
 );
 
 // ========== Scrape Resultaten ==========
-export const scrapeResults = pgTable(
+export const scrapeResults = sqliteTable(
   "scrape_results",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    configId: uuid("config_id").references(() => scraperConfigs.id, {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    configId: text("config_id").references(() => scraperConfigs.id, {
       onDelete: "set null",
     }),
     platform: text("platform").notNull(),
-    runAt: timestamp("run_at").defaultNow(),
+    runAt: integer("run_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
     durationMs: integer("duration_ms"),
     jobsFound: integer("jobs_found").default(0),
     jobsNew: integer("jobs_new").default(0),
     duplicates: integer("duplicates").default(0),
     status: text("status").notNull(),
-    errors: jsonb("errors").default([]),
-    jobIds: jsonb("job_ids"),
+    errors: text("errors", { mode: "json" }).default([]),
+    jobIds: text("job_ids", { mode: "json" }),
   },
   (table) => ({
     configIdIdx: index("idx_scrape_results_config_id").on(table.configId),
@@ -105,27 +80,27 @@ export const scrapeResults = pgTable(
 );
 
 // ========== Platform Onboarding Runs ==========
-export const platformOnboardingRuns = pgTable(
+export const platformOnboardingRuns = sqliteTable(
   "platform_onboarding_runs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     platformSlug: text("platform_slug")
       .notNull()
       .references(() => platformCatalog.slug, { onDelete: "cascade" }),
-    configId: uuid("config_id").references(() => scraperConfigs.id, {
+    configId: text("config_id").references(() => scraperConfigs.id, {
       onDelete: "set null",
     }),
     source: text("source").notNull().default("ui"),
     status: text("status").notNull().default("draft"),
     currentStep: text("current_step").notNull().default("create_draft"),
     blockerKind: text("blocker_kind"),
-    nextActions: jsonb("next_actions").default([]),
-    evidence: jsonb("evidence").default({}),
-    result: jsonb("result").default({}),
-    startedAt: timestamp("started_at").defaultNow(),
-    completedAt: timestamp("completed_at"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    nextActions: text("next_actions", { mode: "json" }).default([]),
+    evidence: text("evidence", { mode: "json" }).default({}),
+    result: text("result", { mode: "json" }).default({}),
+    startedAt: integer("started_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    completedAt: integer("completed_at", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     platformSlugIdx: index("idx_platform_onboarding_runs_platform_slug").on(table.platformSlug),
@@ -139,10 +114,10 @@ export const platformOnboardingRuns = pgTable(
 );
 
 // ========== Opdrachten ==========
-export const jobs = pgTable(
+export const jobs = sqliteTable(
   "jobs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     platform: text("platform").notNull(),
     externalId: text("external_id").notNull(),
     externalUrl: text("external_url"),
@@ -159,36 +134,36 @@ export const jobs = pgTable(
     dedupeLocationNormalized: text("dedupe_location_normalized").notNull().default(""),
     searchText: text("search_text").notNull().default(""),
     status: text("status").notNull().default("open"),
-    archivedAt: timestamp("archived_at"),
+    archivedAt: integer("archived_at", { mode: "timestamp" }),
     rateMin: integer("rate_min"),
     rateMax: integer("rate_max"),
     currency: text("currency").default("EUR"),
     positionsAvailable: integer("positions_available").default(1),
-    startDate: timestamp("start_date"),
-    endDate: timestamp("end_date"),
-    applicationDeadline: timestamp("application_deadline"),
-    postedAt: timestamp("posted_at"),
+    startDate: integer("start_date", { mode: "timestamp" }),
+    endDate: integer("end_date", { mode: "timestamp" }),
+    applicationDeadline: integer("application_deadline", { mode: "timestamp" }),
+    postedAt: integer("posted_at", { mode: "timestamp" }),
     contractType: text("contract_type"),
     workArrangement: text("work_arrangement"),
-    allowsSubcontracting: boolean("allows_subcontracting"),
-    requirements: jsonb("requirements").default([]),
-    wishes: jsonb("wishes").default([]),
-    competences: jsonb("competences").default([]),
-    conditions: jsonb("conditions").default([]),
+    allowsSubcontracting: integer("allows_subcontracting", { mode: "boolean" }),
+    requirements: text("requirements", { mode: "json" }).default([]),
+    wishes: text("wishes", { mode: "json" }).default([]),
+    competences: text("competences", { mode: "json" }).default([]),
+    conditions: text("conditions", { mode: "json" }).default([]),
     hoursPerWeek: integer("hours_per_week"),
     minHoursPerWeek: integer("min_hours_per_week"),
-    extensionPossible: boolean("extension_possible"),
+    extensionPossible: integer("extension_possible", { mode: "boolean" }),
     countryCode: text("country_code"),
     remunerationType: text("remuneration_type"),
     workExperienceYears: integer("work_experience_years"),
     numberOfViews: integer("number_of_views"),
-    attachments: jsonb("attachments").default([]),
-    questions: jsonb("questions").default([]),
-    languages: jsonb("languages").default([]),
-    descriptionSummary: jsonb("description_summary"),
-    faqAnswers: jsonb("faq_answers").default([]),
-    agentContact: jsonb("agent_contact"),
-    recruiterContact: jsonb("recruiter_contact"),
+    attachments: text("attachments", { mode: "json" }).default([]),
+    questions: text("questions", { mode: "json" }).default([]),
+    languages: text("languages", { mode: "json" }).default([]),
+    descriptionSummary: text("description_summary", { mode: "json" }),
+    faqAnswers: text("faq_answers", { mode: "json" }).default([]),
+    agentContact: text("agent_contact", { mode: "json" }),
+    recruiterContact: text("recruiter_contact", { mode: "json" }),
     latitude: real("latitude"),
     longitude: real("longitude"),
     postcode: text("postcode"),
@@ -197,12 +172,11 @@ export const jobs = pgTable(
     durationMonths: integer("duration_months"),
     sourceUrl: text("source_url"),
     sourcePlatform: text("source_platform"),
-    categories: jsonb("categories").default([]),
+    categories: text("categories", { mode: "json" }).default([]),
     companyAddress: text("company_address"),
-    scrapedAt: timestamp("scraped_at").defaultNow(),
-    deletedAt: timestamp("deleted_at"),
-    rawPayload: jsonb("raw_payload"),
-    embedding: vector("embedding", { dimensions: 512 }),
+    scrapedAt: integer("scraped_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }),
+    rawPayload: text("raw_payload", { mode: "json" }),
   },
   (table) => ({
     platformExternalIdx: uniqueIndex("uq_platform_external_id").on(
@@ -227,19 +201,19 @@ export const jobs = pgTable(
 );
 
 // ========== Kandidaten ==========
-export const candidates = pgTable(
+export const candidates = sqliteTable(
   "candidates",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
     email: text("email"),
     phone: text("phone"),
     role: text("role"),
     location: text("location"),
     province: text("province"),
-    skills: jsonb("skills").default([]),
-    experience: jsonb("experience").default([]),
-    preferences: jsonb("preferences").default({}),
+    skills: text("skills", { mode: "json" }).default([]),
+    experience: text("experience", { mode: "json" }).default([]),
+    preferences: text("preferences", { mode: "json" }).default({}),
     resumeUrl: text("resume_url"),
     linkedinUrl: text("linkedin_url"),
     headline: text("headline"),
@@ -248,23 +222,22 @@ export const candidates = pgTable(
     notes: text("notes"),
     hourlyRate: integer("hourly_rate"),
     availability: text("availability"),
-    embedding: vector("embedding", { dimensions: 512 }),
     resumeRaw: text("resume_raw"),
-    resumeParsedAt: timestamp("resume_parsed_at", { withTimezone: true }),
+    resumeParsedAt: integer("resume_parsed_at", { mode: "timestamp" }),
     matchingStatus: text("matching_status").notNull().default("open"),
-    lastMatchedAt: timestamp("last_matched_at", { withTimezone: true }),
-    matchingStatusUpdatedAt: timestamp("matching_status_updated_at", { withTimezone: true })
+    lastMatchedAt: integer("last_matched_at", { mode: "timestamp" }),
+    matchingStatusUpdatedAt: integer("matching_status_updated_at", { mode: "timestamp" })
       .notNull()
-      .defaultNow(),
-    skillsStructured: jsonb("skills_structured"),
-    education: jsonb("education"),
-    certifications: jsonb("certifications"),
-    languageSkills: jsonb("language_skills"),
-    consentGranted: boolean("consent_granted").default(false),
-    dataRetentionUntil: timestamp("data_retention_until"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+      .$defaultFn(() => new Date()),
+    skillsStructured: text("skills_structured", { mode: "json" }),
+    education: text("education", { mode: "json" }),
+    certifications: text("certifications", { mode: "json" }),
+    languageSkills: text("language_skills", { mode: "json" }),
+    consentGranted: integer("consent_granted", { mode: "boolean" }).default(false),
+    dataRetentionUntil: integer("data_retention_until", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }),
   },
   (table) => ({
     emailUniqueIdx: uniqueIndex("uq_candidates_email")
@@ -279,7 +252,7 @@ export const candidates = pgTable(
 );
 
 // ========== ESCO Canonical Skills ==========
-export const escoSkills = pgTable(
+export const escoSkills = sqliteTable(
   "esco_skills",
   {
     uri: text("uri").primaryKey(),
@@ -289,9 +262,9 @@ export const escoSkills = pgTable(
     reuseLevel: text("reuse_level"),
     broaderUri: text("broader_uri"),
     escoVersion: text("esco_version").notNull(),
-    rawConcept: jsonb("raw_concept").default({}),
-    importedAt: timestamp("imported_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    rawConcept: text("raw_concept", { mode: "json" }).default({}),
+    importedAt: integer("imported_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     preferredLabelEnIdx: index("idx_esco_skills_preferred_label_en").on(table.preferredLabelEn),
@@ -300,10 +273,10 @@ export const escoSkills = pgTable(
   }),
 );
 
-export const skillAliases = pgTable(
+export const skillAliases = sqliteTable(
   "skill_aliases",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     alias: text("alias").notNull(),
     normalizedAlias: text("normalized_alias").notNull(),
     language: text("language"),
@@ -312,7 +285,7 @@ export const skillAliases = pgTable(
     escoUri: text("esco_uri")
       .notNull()
       .references(() => escoSkills.uri, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     normalizedAliasIdx: index("idx_skill_aliases_normalized_alias").on(table.normalizedAlias),
@@ -325,11 +298,11 @@ export const skillAliases = pgTable(
   }),
 );
 
-export const candidateSkills = pgTable(
+export const candidateSkills = sqliteTable(
   "candidate_skills",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    candidateId: uuid("candidate_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    candidateId: text("candidate_id")
       .notNull()
       .references(() => candidates.id, { onDelete: "cascade" }),
     escoUri: text("esco_uri")
@@ -339,11 +312,11 @@ export const candidateSkills = pgTable(
     confidence: real("confidence"),
     confidenceHint: text("confidence_hint"),
     evidence: text("evidence"),
-    critical: boolean("critical").notNull().default(false),
+    critical: integer("critical", { mode: "boolean" }).notNull().default(false),
     mappingStrategy: text("mapping_strategy"),
     escoVersion: text("esco_version"),
-    mappedAt: timestamp("mapped_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    mappedAt: integer("mapped_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     candidateIdIdx: index("idx_candidate_skills_candidate_id").on(table.candidateId),
@@ -356,11 +329,11 @@ export const candidateSkills = pgTable(
   }),
 );
 
-export const jobSkills = pgTable(
+export const jobSkills = sqliteTable(
   "job_skills",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    jobId: uuid("job_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     escoUri: text("esco_uri")
@@ -370,13 +343,13 @@ export const jobSkills = pgTable(
     confidence: real("confidence"),
     confidenceHint: text("confidence_hint"),
     evidence: text("evidence"),
-    required: boolean("required").notNull().default(false),
-    critical: boolean("critical").notNull().default(false),
+    required: integer("required", { mode: "boolean" }).notNull().default(false),
+    critical: integer("critical", { mode: "boolean" }).notNull().default(false),
     weight: real("weight"),
     mappingStrategy: text("mapping_strategy"),
     escoVersion: text("esco_version"),
-    mappedAt: timestamp("mapped_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    mappedAt: integer("mapped_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     jobIdIdx: index("idx_job_skills_job_id").on(table.jobId),
@@ -390,10 +363,10 @@ export const jobSkills = pgTable(
   }),
 );
 
-export const skillMappings = pgTable(
+export const skillMappings = sqliteTable(
   "skill_mappings",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     rawSkill: text("raw_skill").notNull(),
     normalizedSkill: text("normalized_skill").notNull(),
     escoUri: text("esco_uri").references(() => escoSkills.uri, { onDelete: "set null" }),
@@ -403,11 +376,11 @@ export const skillMappings = pgTable(
     strategy: text("strategy").notNull(),
     confidence: real("confidence"),
     evidence: text("evidence"),
-    critical: boolean("critical").notNull().default(false),
-    sentToReview: boolean("sent_to_review").notNull().default(false),
+    critical: integer("critical", { mode: "boolean" }).notNull().default(false),
+    sentToReview: integer("sent_to_review", { mode: "boolean" }).notNull().default(false),
     reviewStatus: text("review_status"),
     escoVersion: text("esco_version"),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     normalizedSkillIdx: index("idx_skill_mappings_normalized_skill").on(table.normalizedSkill),
@@ -421,12 +394,12 @@ export const skillMappings = pgTable(
 );
 
 // ========== Job Matches ==========
-export const jobMatches = pgTable(
+export const jobMatches = sqliteTable(
   "job_matches",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
-    candidateId: uuid("candidate_id").references(() => candidates.id, {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    candidateId: text("candidate_id").references(() => candidates.id, {
       onDelete: "set null",
     }),
     matchScore: real("match_score").notNull(),
@@ -436,14 +409,14 @@ export const jobMatches = pgTable(
     promptVersion: text("prompt_version"),
     status: text("status").notNull().default("pending"),
     reviewedBy: text("reviewed_by"),
-    reviewedAt: timestamp("reviewed_at"),
-    criteriaBreakdown: jsonb("criteria_breakdown"),
-    riskProfile: jsonb("risk_profile"),
-    enrichmentSuggestions: jsonb("enrichment_suggestions"),
+    reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+    criteriaBreakdown: text("criteria_breakdown", { mode: "json" }),
+    riskProfile: text("risk_profile", { mode: "json" }),
+    enrichmentSuggestions: text("enrichment_suggestions", { mode: "json" }),
     recommendation: text("recommendation"),
     recommendationConfidence: real("recommendation_confidence"),
     assessmentModel: text("assessment_model"),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     jobIdIdx: index("idx_job_matches_job_id").on(table.jobId),
@@ -457,19 +430,19 @@ export const jobMatches = pgTable(
 );
 
 // ========== Sollicitaties ==========
-export const applications = pgTable(
+export const applications = sqliteTable(
   "applications",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
-    candidateId: uuid("candidate_id").references(() => candidates.id, { onDelete: "set null" }),
-    matchId: uuid("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    candidateId: text("candidate_id").references(() => candidates.id, { onDelete: "set null" }),
+    matchId: text("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
     stage: text("stage").notNull().default("new"),
     source: text("source").default("manual"),
     notes: text("notes"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }),
   },
   (table) => ({
     jobIdIdx: index("idx_applications_job_id").on(table.jobId),
@@ -477,19 +450,19 @@ export const applications = pgTable(
     stageIdx: index("idx_applications_stage").on(table.stage),
     jobCandidateUniqueIdx: uniqueIndex("uq_applications_job_candidate_active")
       .on(table.jobId, table.candidateId)
-      .where(sql`${table.deletedAt} IS NULL`),
+      .where(sql`deleted_at IS NULL`),
   }),
 );
 
 // ========== Interviews ==========
-export const interviews = pgTable(
+export const interviews = sqliteTable(
   "interviews",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    applicationId: uuid("application_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    applicationId: text("application_id")
       .references(() => applications.id, { onDelete: "cascade" })
       .notNull(),
-    scheduledAt: timestamp("scheduled_at").notNull(),
+    scheduledAt: integer("scheduled_at", { mode: "timestamp" }).notNull(),
     duration: integer("duration").default(60),
     type: text("type").notNull(),
     interviewer: text("interviewer").notNull(),
@@ -497,9 +470,9 @@ export const interviews = pgTable(
     status: text("status").notNull().default("scheduled"),
     feedback: text("feedback"),
     rating: integer("rating"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }),
   },
   (table) => ({
     applicationIdIdx: index("idx_interviews_application_id").on(table.applicationId),
@@ -510,17 +483,17 @@ export const interviews = pgTable(
 );
 
 // ========== GDPR Audit Log ==========
-export const gdprAuditLog = pgTable(
+export const gdprAuditLog = sqliteTable(
   "gdpr_audit_log",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     action: text("action").notNull(),
     subjectType: text("subject_type").notNull(),
     subjectId: text("subject_id").notNull(),
     requestedBy: text("requested_by").notNull(),
     reason: text("reason"),
-    details: jsonb("details").default({}),
-    createdAt: timestamp("created_at").defaultNow(),
+    details: text("details", { mode: "json" }).default({}),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     subjectIdx: index("idx_gdpr_audit_subject").on(table.subjectType, table.subjectId),
@@ -530,19 +503,19 @@ export const gdprAuditLog = pgTable(
 );
 
 // ========== Chat Sessies ==========
-export const chatSessions = pgTable(
+export const chatSessions = sqliteTable(
   "chat_sessions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     sessionId: text("session_id").notNull(),
-    messages: jsonb("messages").notNull().default([]),
-    context: jsonb("context").default({}),
+    messages: text("messages", { mode: "json" }).notNull().default([]),
+    context: text("context", { mode: "json" }).default({}),
     messageCount: integer("message_count").default(0),
     title: text("title"),
     lastMessagePreview: text("last_message_preview"),
     tokensUsed: integer("tokens_used").default(0),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     sessionIdUniqueIdx: uniqueIndex("uq_chat_sessions_session_id").on(table.sessionId),
@@ -550,16 +523,16 @@ export const chatSessions = pgTable(
   }),
 );
 
-export const chatSessionMessages = pgTable(
+export const chatSessionMessages = sqliteTable(
   "chat_session_messages",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     sessionId: text("session_id").notNull(),
     messageId: text("message_id").notNull(),
     role: text("role").notNull(),
-    message: jsonb("message").notNull(),
+    message: text("message", { mode: "json" }).notNull(),
     orderIndex: integer("order_index").notNull(),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     sessionMessageUniqueIdx: uniqueIndex("uq_chat_session_messages_session_message_id").on(
@@ -578,19 +551,19 @@ export const chatSessionMessages = pgTable(
 );
 
 // ========== Berichten ==========
-export const messages = pgTable(
+export const messages = sqliteTable(
   "messages",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    applicationId: uuid("application_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    applicationId: text("application_id")
       .references(() => applications.id, { onDelete: "cascade" })
       .notNull(),
     direction: text("direction").notNull(),
     channel: text("channel").notNull(),
     subject: text("subject"),
     body: text("body").notNull(),
-    sentAt: timestamp("sent_at").defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    sentAt: integer("sent_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    deletedAt: integer("deleted_at", { mode: "timestamp" }),
   },
   (table) => ({
     applicationIdIdx: index("idx_messages_application_id").on(table.applicationId),
@@ -600,15 +573,15 @@ export const messages = pgTable(
 );
 
 // ========== Platform Instellingen ==========
-export const platformSettings = pgTable(
+export const platformSettings = sqliteTable(
   "platform_settings",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     category: text("category").notNull(),
     key: text("key").notNull(),
-    value: jsonb("value").notNull(),
+    value: text("value", { mode: "json" }).notNull(),
     description: text("description"),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     categoryKeyUniqueIdx: uniqueIndex("uq_platform_settings_category_key").on(
@@ -619,26 +592,25 @@ export const platformSettings = pgTable(
   }),
 );
 
-
 // ========== Autopilot Runs ==========
-export const autopilotRuns = pgTable(
+export const autopilotRuns = sqliteTable(
   "autopilot_runs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     runId: text("run_id").notNull().unique(),
-    status: text("status").notNull(), // running | completed | failed | timed_out
-    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
+    status: text("status").notNull(),
+    startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp" }),
     commitSha: text("commit_sha").notNull(),
     totalJourneys: integer("total_journeys").notNull().default(0),
     passedJourneys: integer("passed_journeys").notNull().default(0),
     failedJourneys: integer("failed_journeys").notNull().default(0),
     totalFindings: integer("total_findings").notNull().default(0),
-    findingsBySeverity: jsonb("findings_by_severity").default({}),
-    findingsByCategory: jsonb("findings_by_category").default({}),
+    findingsBySeverity: text("findings_by_severity", { mode: "json" }).default({}),
+    findingsByCategory: text("findings_by_category", { mode: "json" }).default({}),
     reportUrl: text("report_url"),
     triggerRunId: text("trigger_run_id"),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     runIdUniqueIdx: uniqueIndex("uq_autopilot_runs_run_id").on(table.runId),
@@ -648,27 +620,27 @@ export const autopilotRuns = pgTable(
 );
 
 // ========== Autopilot Findings ==========
-export const autopilotFindings = pgTable(
+export const autopilotFindings = sqliteTable(
   "autopilot_findings",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     findingId: text("finding_id").notNull(),
     runId: text("run_id").notNull().references(() => autopilotRuns.runId, { onDelete: "cascade" }),
-    category: text("category").notNull(), // bug | ux | perf | ai-quality
+    category: text("category").notNull(),
     surface: text("surface").notNull(),
     title: text("title").notNull(),
     description: text("description").notNull(),
-    severity: text("severity").notNull(), // critical | high | medium | low
+    severity: text("severity").notNull(),
     confidence: real("confidence").notNull(),
-    autoFixable: boolean("auto_fixable").notNull().default(false),
-    status: text("status").notNull().default("detected"), // detected | validated | reported | dismissed
+    autoFixable: integer("auto_fixable", { mode: "boolean" }).notNull().default(false),
+    status: text("status").notNull().default("detected"),
     fingerprint: text("fingerprint").notNull(),
     suspectedRootCause: text("suspected_root_cause"),
     recommendedAction: text("recommended_action"),
     githubIssueNumber: integer("github_issue_number"),
-    metadata: jsonb("metadata").default({}),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    metadata: text("metadata", { mode: "json" }).default({}),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
   (table) => ({
     findingIdUniqueIdx: uniqueIndex("uq_autopilot_findings_finding_id").on(table.findingId),

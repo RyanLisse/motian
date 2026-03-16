@@ -1,48 +1,25 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
-import { getPoolConfig } from "./pool-config";
+import { drizzle } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client";
 
 const MISSING_DATABASE_URL_ERROR =
-  "DATABASE_URL is not set. Add it to .env.local (see .env.example). Without it, database-backed routes will fail when they try to access the database.";
+  "TURSO_DATABASE_URL is not set. Add it to .env.local. Without it, database-backed routes will fail when they try to access the database.";
 
-function normalizeConnectionString(url: string): string {
-  try {
-    const parsed = new URL(url);
-    const ssl = parsed.searchParams.get("sslmode")?.toLowerCase();
-
-    // Always enforce verify-full for security
-    // Upgrade weak modes (prefer, require, verify-ca) or add if missing
-    if (!ssl || ssl === "prefer" || ssl === "require" || ssl === "verify-ca") {
-      parsed.searchParams.set("sslmode", "verify-full");
-      return parsed.toString();
-    }
-
-    // Already has verify-full or disable (explicit choice)
-    return url;
-  } catch {
-    return url;
-  }
-}
-
-function getConnectionString(): string {
-  const rawUrl = process.env.DATABASE_URL?.trim() ?? "";
-  if (!rawUrl) {
+function getConnectionConfig() {
+  const url = process.env.TURSO_DATABASE_URL?.trim() ?? "";
+  if (!url) {
     throw new Error(MISSING_DATABASE_URL_ERROR);
   }
 
-  return normalizeConnectionString(rawUrl);
+  return {
+    url,
+    authToken: process.env.TURSO_AUTH_TOKEN?.trim(),
+  };
 }
 
 function createDatabaseClient() {
-  const connectionString = getConnectionString();
-  const pool = new Pool(getPoolConfig(connectionString));
-
-  // Prevent silent crashes on dropped connections
-  pool.on("error", (err) => {
-    console.error("Onverwachte pool fout:", err.message);
-  });
-
-  return drizzle(pool);
+  const config = getConnectionConfig();
+  const client = createClient(config);
+  return drizzle(client);
 }
 
 type DatabaseClient = ReturnType<typeof createDatabaseClient>;
@@ -78,7 +55,7 @@ export {
   eq,
   getTableColumns,
   gte,
-  ilike,
+  like,
   inArray,
   isNotNull,
   isNull,
