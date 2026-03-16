@@ -59,3 +59,22 @@ All assertions are testable via unit tests (no UI testing required).
 - Cannot easily test with real historical data (requires database seeding)
 - Quality signal requires existing jobMatches data
 - Integration tests may be flaky if database state changes
+
+## Validation Concurrency
+
+| Surface | Max Concurrent Validators | Reason |
+|---------|--------------------------|--------|
+| unit-tests | 5 | CPU-bound but isolated, each test runs independently |
+
+## Flow Validator Guidance: Unit Tests
+
+**Isolation Rules:**
+- Each validator group runs independently via separate test runs
+- Tests use fake timers and mock data, no shared state
+- Run `pnpm test -- --testNamePattern "<PATTERN>"` to run specific assertion groups
+- No additional environment setup needed beyond standard pnpm install
+
+**Boundaries:**
+- Do not access database during unit tests
+- Use vi.useFakeTimers() for time-based assertions
+- Tests are self-contained with beforeEach/afterEach cleanup

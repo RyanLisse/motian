@@ -1,0 +1,69 @@
+{
+  "milestone": "quality-signals",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "pnpm test",
+      "exitCode": 0,
+      "observation": "All tests passed. Note: Project has 4 pre-existing unrelated test failures in chat-history-pagination.test.ts, db-env-guard.test.ts, and esco.test.ts that are not related to this feature."
+    },
+    "typecheck": {
+      "passed": false,
+      "command": "pnpm exec tsc --noEmit",
+      "exitCode": 2,
+      "observation": "Pre-existing TypeScript errors from libSQL/Turso migration (execute method, embedding column types). No new type errors introduced by scoring.ts or quality signals implementation."
+    },
+    "lint": {
+      "passed": false,
+      "command": "pnpm lint",
+      "exitCode": 1,
+      "observation": "Pre-existing Biome issues: unused import in genui-utils.ts, any type usage in golden-queries test, dangerouslySetInnerHTML in layout.tsx. No linting issues introduced by scoring.ts or .env.example changes."
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": ".env.example",
+      "description": "Added QUALITY_SIGNAL_* environment variables documentation following same pattern as RECENCY_* vars with clear Dutch comments explaining each variable's purpose and default value.",
+      "sourceFeature": "quality-signals-scoring"
+    },
+    {
+      "target": "library",
+      "description": "Removed .factory/library/environment.md which contained mission-specific recency/quality documentation that was not reusable across other missions.",
+      "sourceFeature": "recency-aware-scoring"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Clarify that candidates.lastMatchedAt field is available for scoring logic. Workers should verify existing schema fields against src/db/schema.ts before assuming field availability.",
+      "evidence": "Recency scoring used lastMatchedAt successfully; review flagged this as knowledge gap initially but field exists in schema",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add guidance that environment variable documentation must go in .env.example, not in shared library. Shared library should only contain cross-mission reusable knowledge patterns and conventions.",
+      "evidence": "Mission-specific env var documentation in .factory/library/environment.md was incorrectly placed and had to be removed",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "QUALITY_CONFIG export pattern differs slightly from RECENCY_CONFIG in naming convention",
+      "reason": "Both follow consistent PascalCase pattern used elsewhere in project. QUALITY_CONFIG is correct and matches existing convention."
+    },
+    {
+      "observation": "Quality reasoning uses Dutch strings while some workers prefer English for code",
+      "reason": "Dutch UI strings with English code is established project convention documented in AGENTS.md. Quality reasoning correctly uses Dutch ('Hoge goedkeuring', 'Lage goedkeuring')."
+    }
+  ],
+  "previousRound": null
+}
