@@ -1,0 +1,21 @@
+{
+  "featureId": "recency-aware-scoring",
+  "reviewedAt": "2026-03-16T20:53:00.000Z",
+  "commitId": "9b2986a42cff21b12883ca97186c401640f9ac85",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Recency-aware scoring implementation is clean, well-documented, and follows project conventions. The computeRecencyScore() function is correctly integrated into computeMatchScore(), with proper Dutch-language reasoning strings and configurable parameters. Code passes Biome linting (pre-existing unrelated errors remain). TypeScript types are properly defined for RecencyResult type.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "library",
+      "observation": "Worker created .factory/library/environment.md documenting new environment variables, but this file appears to be scoped to the recency-scoring mission rather than being a general library document that could benefit future missions.",
+      "evidence": ".factory/library/environment.md only contains recency/quality-specific env var documentation"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature review PASSED. Implementation of recency-aware scoring is complete and correct. All 6 validation contract assertions (VAL-RECENCY-001 through VAL-RECENCY-006) are satisfied with comprehensive test coverage (19 tests in tests/recency-scoring.test.ts). The computeRecencyScore() function correctly handles recent matches (≤30 days → +5 boost), stale matches (>60 days → -5 penalty), and null/undefined timestamps (neutral). Integration with computeMatchScore() preserves backward compatibility while adding recency adjustments before final score capping. Environment configuration (.env.example) includes all 4 new vars (RECENCY_BOOST_DAYS, RECENCY_PENALTY_DAYS, RECENCY_BOOST_AMOUNT, RECENCY_PENALTY_AMOUNT) with Dutch documentation. No code quality issues or bugs identified."
+}
