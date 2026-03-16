@@ -1,4 +1,4 @@
-import { and, db, desc, eq, ilike, inArray, isNull, sql } from "../db";
+import { and, db, desc, eq, inArray, isNull, like, sql } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
@@ -86,7 +86,7 @@ function candidateNameCondition(query: string) {
   if (tsInput) {
     return sql`to_tsvector('dutch', coalesce(${candidates.name}, '') || ' ' || coalesce(${candidates.role}, '') || ' ' || coalesce(${candidates.location}, '')) @@ to_tsquery('dutch', ${tsInput})`;
   }
-  return ilike(candidates.name, `%${escapeLike(query)}%`);
+  return like(candidates.name, `%${escapeLike(query)}%`);
 }
 
 /** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
@@ -101,11 +101,11 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   }
 
   if (opts.location) {
-    conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
+    conditions.push(like(candidates.location, `%${escapeLike(opts.location)}%`));
   }
 
   if (opts.role) {
-    conditions.push(ilike(candidates.role, `%${escapeLike(opts.role)}%`));
+    conditions.push(like(candidates.role, `%${escapeLike(opts.role)}%`));
   }
 
   if (opts.skills) {
@@ -141,11 +141,11 @@ export async function countCandidates(
   }
 
   if (opts.location) {
-    conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
+    conditions.push(like(candidates.location, `%${escapeLike(opts.location)}%`));
   }
 
   if (opts.role) {
-    conditions.push(ilike(candidates.role, `%${escapeLike(opts.role)}%`));
+    conditions.push(like(candidates.role, `%${escapeLike(opts.role)}%`));
   }
 
   if (opts.skills) {
@@ -353,9 +353,7 @@ export async function findDuplicateCandidate(
   const nameRows = await db
     .select()
     .from(candidates)
-    .where(
-      and(ilike(candidates.name, `%${escapeLike(parsed.name)}%`), isNull(candidates.deletedAt)),
-    )
+    .where(and(like(candidates.name, `%${escapeLike(parsed.name)}%`), isNull(candidates.deletedAt)))
     .limit(5);
 
   return { exact: null, similar: nameRows };

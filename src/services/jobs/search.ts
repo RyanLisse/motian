@@ -1,4 +1,4 @@
-import { and, db, ilike, inArray, or, type SQL, sql } from "../../db";
+import { and, db, inArray, like, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { escapeLike, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
@@ -170,8 +170,8 @@ async function searchJobIdsByTitle(
   const words = query.trim().split(/\s+/).filter(Boolean);
   const titleConditions =
     words.length > 1
-      ? or(...words.map((w) => ilike(jobs.title, `%${escapeLike(w)}%`)))
-      : ilike(jobs.title, `%${escapeLike(query)}%`);
+      ? or(...words.map((w) => like(jobs.title, `%${escapeLike(w)}%`)))
+      : like(jobs.title, `%${escapeLike(query)}%`);
 
   return fetchDedupedJobIds({
     whereClause: and(filterCondition, titleConditions) ?? filterCondition,

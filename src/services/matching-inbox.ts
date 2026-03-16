@@ -1,4 +1,4 @@
-import { and, db, desc, eq, ilike, isNull, sql } from "../db";
+import { and, db, desc, eq, isNull, like, sql } from "../db";
 import { applications, candidates, jobMatches } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { Candidate, CandidateMatchingStatus } from "./candidates";
@@ -29,12 +29,12 @@ function buildMatchingInboxConditions(opts: MatchingInboxQuery) {
     conditions.push(
       tsInput
         ? sql`to_tsvector('dutch', coalesce(${candidates.name}, '') || ' ' || coalesce(${candidates.role}, '') || ' ' || coalesce(${candidates.location}, '')) @@ to_tsquery('dutch', ${tsInput})`
-        : ilike(candidates.name, `%${escapeLike(opts.query)}%`),
+        : like(candidates.name, `%${escapeLike(opts.query)}%`),
     );
   }
 
   if (opts.location) {
-    conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
+    conditions.push(like(candidates.location, `%${escapeLike(opts.location)}%`));
   }
 
   return conditions;

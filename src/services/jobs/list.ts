@@ -1,4 +1,4 @@
-import { and, db, desc, ilike, sql } from "../../db";
+import { and, db, desc, like, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { escapeLike, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
@@ -82,7 +82,7 @@ export async function listJobs(
         sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, '')) @@ to_tsquery('dutch', ${tsInput})`,
       );
     } else {
-      conditions.push(ilike(jobs.title, `%${escapeLike(opts.q)}%`));
+      conditions.push(like(jobs.title, `%${escapeLike(opts.q)}%`));
     }
   }
 

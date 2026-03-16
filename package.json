@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "AI-Assisted Recruitment Operations Platform — Next.js + Drizzle + Neon",
+  "description": "AI-Assisted Recruitment Operations Platform — Next.js + Drizzle + Turso",
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.46",
     "@ai-sdk/google": "^3.0.30",

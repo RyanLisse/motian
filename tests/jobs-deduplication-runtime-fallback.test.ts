@@ -31,14 +31,30 @@ async function loadDeduplicationModule(mockExecute: ReturnType<typeof vi.fn>) {
       dedupeLocationNormalized: "jobs.dedupe_location_normalized",
     },
   }));
-  vi.doMock("drizzle-orm", () => ({
-    inArray: (...args: unknown[]) => ({ type: "inArray", args }),
-    sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
-      type: "sql",
-      strings,
-      values,
-    }),
-  }));
+  vi.doMock("drizzle-orm", () => {
+    const stub = (...args: unknown[]) => ({ type: "stub", args });
+    return {
+      inArray: (...args: unknown[]) => ({ type: "inArray", args }),
+      sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
+        type: "sql",
+        strings,
+        values,
+      }),
+      and: stub,
+      asc: stub,
+      desc: stub,
+      eq: stub,
+      getTableColumns: stub,
+      gte: stub,
+      like: stub,
+      isNotNull: stub,
+      isNull: stub,
+      lt: stub,
+      lte: stub,
+      ne: stub,
+      or: stub,
+    };
+  });
   vi.doMock("../src/services/jobs/repository", () => ({ jobReadSelection: {} }));
 
   return import("../src/services/jobs/deduplication");

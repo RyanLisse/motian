@@ -39,9 +39,24 @@ vi.mock("drizzle-orm", () => {
 
   sqlTag.raw = (value: string) => value;
 
+  const stub = (...args: unknown[]) => ({ type: "stub", args });
+
   return {
     inArray: (column: unknown, values: unknown[]) => ({ type: "inArray", column, values }),
     sql: sqlTag,
+    and: stub,
+    asc: stub,
+    desc: stub,
+    eq: stub,
+    getTableColumns: stub,
+    gte: stub,
+    like: stub,
+    isNotNull: stub,
+    isNull: stub,
+    lt: stub,
+    lte: stub,
+    ne: stub,
+    or: stub,
   };
 });
 

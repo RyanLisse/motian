@@ -18,6 +18,8 @@ const FIRST_PARTY_PATHS = [
   "/api/cv-upload",
   "/api/cv-analyse",
   "/api/events",
+  "/api/cv-file",
+  "/api/kandidaten",
 ];
 
 const PUBLIC_GET_PATHS = ["/api/opdrachten/zoeken"];
