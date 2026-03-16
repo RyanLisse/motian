@@ -17,7 +17,11 @@ type JobDerivedFieldSource = Pick<
  * Index row limit = 2704 bytes. Index has 3 text cols + scraped_at (8B) + id (16B) + ~80B tuple overhead.
  * Text budget = (2704 - 104) / 3 ≈ 866 bytes per column. We cap at 800B for safety.
  */
-const DEDUPE_MAX_BYTES = 800;
+/**
+ * 2704 byte B-tree limit - 16 (UUID) - 8 (timestamp) - 80 (tuple header + ItemIds)
+ * = 2600 usable / 3 columns = 866. We use 700 for safety margin.
+ */
+const DEDUPE_MAX_BYTES = 700;
 
 function normalizeDedupePart(value: string | null | undefined) {
   let result = (value ?? "")
