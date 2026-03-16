@@ -10,8 +10,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { PlatformConfigForm } from "./platform-config-form";
-
-type PlatformCatalogEntry = Parameters<typeof PlatformConfigForm>[0]["entry"];
+import type { PlatformCatalogEntry } from "@/src/schemas/platform-catalog";
 
 export function PlatformOnboardingDrawer({ entry }: { entry: PlatformCatalogEntry }) {
   return (

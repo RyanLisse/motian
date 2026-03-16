@@ -6,29 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
-type PlatformCatalogEntry = {
-  slug: string;
-  displayName: string;
-  adapterKind: string;
-  authMode: string;
-  description: string;
-  docsUrl: string | null;
-  defaultBaseUrl: string | null;
-  configSchema: Record<string, unknown>;
-  authSchema: Record<string, unknown>;
-  config: {
-    id: string;
-    baseUrl: string;
-    isActive: boolean;
-    cronExpression: string | null;
-    parameters: unknown;
-  } | null;
-  latestRun: {
-    status: string;
-    blockerKind: string | null;
-  } | null;
-};
+import type { PlatformCatalogEntry } from "@/src/schemas/platform-catalog";
 
 function readSchemaKeys(schema: Record<string, unknown> | undefined): string[] {
   if (!schema || typeof schema !== "object") return [];

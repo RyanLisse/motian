@@ -108,6 +108,7 @@ async function importHybridSearchGoldenHarness({
   }));
   vi.doMock("../src/services/jobs/repository", () => ({
     jobReadSelection: { id: "jobs.id" },
+    getJobReadSelection: vi.fn(() => ({ id: "jobs.id" })),
   }));
   vi.doMock("../src/services/jobs/deduplication", () => ({
     collapseScoredJobsByVacancy: vi.fn((entries: unknown[]) => entries),
