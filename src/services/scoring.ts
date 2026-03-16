@@ -41,13 +41,37 @@ function loadRecencyConfig() {
   };
 }
 
+function loadQualityConfig() {
+  return {
+    decayDays: parseInt(process.env.QUALITY_SIGNAL_DECAY_DAYS ?? "90", 10),
+    highApprovalThreshold: parseInt(process.env.QUALITY_HIGH_APPROVAL_THRESHOLD ?? "70", 10),
+    lowApprovalThreshold: parseInt(process.env.QUALITY_LOW_APPROVAL_THRESHOLD ?? "30", 10),
+    highApprovalBoost: parseInt(process.env.QUALITY_HIGH_APPROVAL_BOOST ?? "5", 10),
+    lowApprovalPenalty: parseInt(process.env.QUALITY_LOW_APPROVAL_PENALTY ?? "5", 10),
+    minDecisions: parseInt(process.env.QUALITY_MIN_DECISIONS ?? "3", 10),
+  };
+}
+
 export const SCORING_WEIGHTS = loadScoringWeights();
 export const HYBRID_BLEND = loadHybridBlend();
 export const RECENCY_CONFIG = loadRecencyConfig();
+export const QUALITY_CONFIG = loadQualityConfig();
 
 export type RecencyResult = {
   adjustment: number;
   reasoning: string | null;
+};
+
+export type QualityResult = {
+  adjustment: number;
+  reasoning: string | null;
+  approvalRate: number | null;
+  totalDecisions: number;
+};
+
+export type MatchDecision = {
+  status: string;
+  reviewedAt: Date | null;
 };
 
 /**
@@ -85,6 +109,86 @@ export function computeRecencyScore(lastMatchedAt: Date | null | undefined): Rec
 
   // Between boost and penalty window → neutral
   return { adjustment: 0, reasoning: null };
+}
+
+/**
+ * Calculate quality-based score adjustment from candidate's match history.
+ * Approval rate = approved / (approved + rejected) from jobMatches.
+ * Boosts candidates with ≥70% approval rate (+5 points).
+ * Penalizes candidates with <30% approval rate (-5 points).
+ * Requires minimum 3 decisions before applying signal.
+ * Only considers matches from last 90 days (configurable via QUALITY_SIGNAL_DECAY_DAYS).
+ * New candidates (no history) receive neutral quality signal.
+ */
+export function computeQualityScore(
+  decisions: MatchDecision[],
+  now: Date = new Date(),
+): QualityResult {
+  const config = QUALITY_CONFIG;
+
+  // No decisions = neutral for new candidates
+  if (!decisions || decisions.length === 0) {
+    return {
+      adjustment: 0,
+      reasoning: null,
+      approvalRate: null,
+      totalDecisions: 0,
+    };
+  }
+
+  // Filter to only approved/rejected decisions within decay window
+  const cutoffDate = new Date(now.getTime() - config.decayDays * 24 * 60 * 60 * 1000);
+  const relevantDecisions = decisions.filter(
+    (d) =>
+      (d.status === "approved" || d.status === "rejected") &&
+      d.reviewedAt &&
+      new Date(d.reviewedAt) >= cutoffDate,
+  );
+
+  const approvedCount = relevantDecisions.filter((d) => d.status === "approved").length;
+  const rejectedCount = relevantDecisions.filter((d) => d.status === "rejected").length;
+  const totalDecisions = approvedCount + rejectedCount;
+
+  // Not enough decisions = neutral
+  if (totalDecisions < config.minDecisions) {
+    return {
+      adjustment: 0,
+      reasoning: null,
+      approvalRate: totalDecisions > 0 ? approvedCount / totalDecisions : null,
+      totalDecisions,
+    };
+  }
+
+  const approvalRate = approvedCount / totalDecisions;
+  const approvalPercent = Math.round(approvalRate * 100);
+
+  // High approval rate → boost
+  if (approvalPercent >= config.highApprovalThreshold) {
+    return {
+      adjustment: config.highApprovalBoost,
+      reasoning: `Hoge goedkeuring (${approvalPercent}% van ${totalDecisions} matches)`,
+      approvalRate,
+      totalDecisions,
+    };
+  }
+
+  // Low approval rate → penalty
+  if (approvalPercent < config.lowApprovalThreshold) {
+    return {
+      adjustment: -config.lowApprovalPenalty,
+      reasoning: `Lage goedkeuring (${approvalPercent}% van ${totalDecisions} matches)`,
+      approvalRate,
+      totalDecisions,
+    };
+  }
+
+  // Medium approval rate → neutral
+  return {
+    adjustment: 0,
+    reasoning: null,
+    approvalRate,
+    totalDecisions,
+  };
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {
@@ -278,16 +382,23 @@ function computeRuleScore(
   };
 }
 
+export type ComputeMatchScoreOptions = EscoMatchOptions & {
+  matchDecisions?: MatchDecision[];
+};
+
 export function computeMatchScore(
   job: Job,
   candidate: Candidate,
-  options?: EscoMatchOptions,
+  options?: ComputeMatchScoreOptions,
 ): MatchResult {
   const skillDimension = computeSkillDimension(job, candidate, options);
   const ruleResult = computeRuleScore(job, candidate, skillDimension);
 
   // Calculate recency adjustment based on candidate's last match
   const recencyResult = computeRecencyScore(candidate.lastMatchedAt);
+
+  // Calculate quality adjustment based on candidate's match history
+  const qualityResult = computeQualityScore(options?.matchDecisions ?? []);
 
   const jobEmbedding = job.embedding as number[] | null;
   const candidateEmbedding = candidate.embedding as number[] | null;
@@ -306,13 +417,18 @@ export function computeMatchScore(
     baseScore = ruleResult.score;
   }
 
-  // Apply recency adjustment and cap to 0-100 range
-  let finalScore = baseScore + recencyResult.adjustment;
+  // Apply recency and quality adjustments, then cap to 0-100 range
+  let finalScore = baseScore + recencyResult.adjustment + qualityResult.adjustment;
   finalScore = Math.max(0, Math.min(100, finalScore));
 
   // Add recency reasoning if applicable
   if (recencyResult.reasoning) {
     reasoningParts.push(recencyResult.reasoning);
+  }
+
+  // Add quality reasoning if applicable
+  if (qualityResult.reasoning) {
+    reasoningParts.push(qualityResult.reasoning);
   }
 
   // Determine model label
