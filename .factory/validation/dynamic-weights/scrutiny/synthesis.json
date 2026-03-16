@@ -1,0 +1,136 @@
+{
+  "milestone": "dynamic-weights",
+  "round": 4,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": false,
+      "command": "pnpm test",
+      "exitCode": 1,
+      "failureCount": 4,
+      "notes": "Pre-existing test failures unrelated to dynamic-weights milestone:\n- tests/chat-history-pagination.test.ts:1 (schema export string mismatch - expects 'chatSessionMessages = pgTable' but finds 'chatSessionMessages = pgTableWithId')\n- tests/db-env-guard.test.ts:1 (expect threw error assertion - db module allows import without DATABASE_URL)\n- tests/esco.test.ts:2 (ilike mock missing in vitest - mock doesn't export ilike function)\n\nAll 31+ dynamic-weights tests passed successfully. No regressions in recency-scoring (25 tests) or quality-signals (18 tests)."
+    },
+    "typecheck": {
+      "passed": false,
+      "command": "pnpm exec tsc --noEmit",
+      "exitCode": 2,
+      "failureCount": 37,
+      "notes": "Pre-existing TypeScript errors unrelated to dynamic-weights milestone:\n- Property 'embedding' does not exist on SQLiteTableWithColumns for candidates/jobs (pgvector extension not declared in Drizzle schema)\n- Property 'execute' does not exist on LibSQLDatabase/SQLiteTransaction (missing method definitions)\n- Property 'rowCount' does not exist on ResultSet\n- Module '@motian/db' has no exported member named 'ilike' (missing export)\n\nThese are architectural issues in the Drizzle ORM setup with SQLite/LibSQL backend. Dynamic-weights implementation types correctly."
+    },
+    "lint": {
+      "passed": false,
+      "command": "pnpm lint",
+      "exitCode": 1,
+      "errors": 1,
+      "warnings": 2,
+      "notes": "Pre-existing lint issues:\n- Error: unused import ReactNode in components/chat/genui/genui-utils.ts (line 1)\n- Warning: any type in tests/hybrid-search-golden-queries.test.ts (line 68)\n- Warning: dangerouslySetInnerHTML in app/layout.tsx (suspicious usage)\n\nDynamic-weights code introduces no new lint issues. Schema version mismatch warning (biome.json): configured for 2.4.7, CLI is 2.4.4."
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": [],
+    "featuresReviewed": [
+      {
+        "featureId": "dynamic-weight-support",
+        "workerSessionId": "4edc0ddd-8f49-40ae-a200-5f4bb46f58d7",
+        "commitId": "0cc43ae7e24a80984fd67e838f5ea8217f42d44a",
+        "status": "pass",
+        "assertionsValidated": ["VAL-WEIGHTS-001", "VAL-WEIGHTS-002", "VAL-WEIGHTS-003", "VAL-WEIGHTS-004", "VAL-WEIGHTS-005"],
+        "summary": "PASS: Implementation complete, well-tested (31 passing tests), follows project conventions. All validation contract assertions covered. No regressions in dependent features."
+      }
+    ]
+  },
+  "blockingIssues": [
+    {
+      "severity": "blocking",
+      "description": "Test suite has 4 pre-existing failures that cause pnpm test to exit with code 1. These failures block CI/CD pipeline regardless of dynamic-weights implementation quality.",
+      "affectedFiles": [
+        "tests/chat-history-pagination.test.ts",
+        "tests/db-env-guard.test.ts",
+        "tests/esco.test.ts"
+      ],
+      "recommendation": "Fix pre-existing test failures before marking milestone complete. Or document these as known acceptable failures if they are out-of-scope."
+    },
+    {
+      "severity": "blocking",
+      "description": "TypeScript compiler returns 37 errors indicating unresolved database schema issues (embedding property, execute method, ilike export). These indicate architectural problems with Drizzle ORM setup.",
+      "affectedFiles": [
+        "src/services/embedding.ts",
+        "src/services/scoring.ts",
+        "packages/esco/src/esco.ts",
+        "app/kandidaten/page.tsx",
+        "app/opdrachten/layout.tsx"
+      ],
+      "recommendation": "Review Drizzle schema definition and ensure pgvector extension is properly declared. Add missing ilike export to @motian/db package."
+    },
+    {
+      "severity": "blocking",
+      "description": "Biome lint check fails due to 1 error and 2 warnings. While minor, this blocks clean lint pass requirement.",
+      "affectedFiles": [
+        "components/chat/genui/genui-utils.ts",
+        "tests/hybrid-search-golden-queries.test.ts",
+        "app/layout.tsx"
+      ],
+      "recommendation": "Remove unused import; replace 'any' with proper type; use alternative to dangerouslySetInnerHTML."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": ".factory/library/architecture.md",
+      "suggestion": "Expand Dynamic Weight System section with complete implementation details:\n\n**DynamicWeights Type:**\n```typescript\nexport type DynamicWeights = {\n  skills?: number;        // 0-1, scaled to 0-100\n  location?: number;      // 0-1, scaled to 0-100\n  rate?: number;          // 0-1, scaled to 0-100\n  role?: number;          // 0-1, scaled to 0-100\n  ruleWeight?: number;    // 0-1, direct hybrid blend\n  vectorWeight?: number;  // 0-1, direct hybrid blend\n}\n```\n\n**Weight Merging Functions:**\n- `validateDynamicWeights(weights)` - Validates all fields are in [0,1], throws Error for invalid values\n- `mergeScoringWeights(weights)` - Converts 0-1 input to 0-100 via Math.round(weight * 100), defaults SCORING_WEIGHTS for unspecified fields\n- `mergeHybridBlend(weights)` - Direct 0-1 blend for rule/vector ratio, preserves HYBRID_BLEND defaults\n\n**Order of Operations:**\n1. validateDynamicWeights() if options.weights provided\n2. mergeScoringWeights() → effectiveScoringWeights\n3. mergeHybridBlend() → effectiveHybridBlend\n4. computeRuleScore() with effectiveScoringWeights\n5. computeRecencyScore() + computeQualityScore()\n6. Apply hybrid blend (ruleWeight * ruleScore + vectorWeight * vectorScore)\n7. Final cap to 0-100",
+      "evidence": "Feature 'dynamic-weight-support' implements complete query-time weight adjustment. scoring.ts contains DynamicWeights type definition, validateDynamicWeights(), mergeScoringWeights(), mergeHybridBlend(). Implementation shows exact scaling math (Math.round(weight * 100)) and factor priority.",
+      "isSystemic": false,
+      "sourceFeature": "dynamic-weight-support"
+    },
+    {
+      "target": ".factory/library/user-testing.md",
+      "suggestion": "Add comprehensive testing pattern for validation-based features:\n\n**Validation Test Structure:**\n```typescript\ndescribe('validate<X>', () => {\n  it('throws for negative value', () => {\n    expect(() => validate({ field: -0.1 })).toThrow('field is negative');\n  });\n  it('throws for value > 1', () => {\n    expect(() => validate({ field: 1.01 })).toThrow('field exceeds 1');\n  });\n  it('throws for NaN', () => {\n    expect(() => validate({ field: NaN })).toThrow('field is NaN');\n  });\n  it('accepts valid boundaries', () => {\n    expect(() => validate({ field: 0 })).not.toThrow();\n    expect(() => validate({ field: 1 })).not.toThrow();\n  });\n});\n\ndescribe('backward compatibility', () => {\n  it('produces same result without parameter', () => {\n    const resultWithout = fn(input);\n    const resultWithEmpty = fn(input, { param: {} });\n    expect(resultWithEmpty).toEqual(resultWithout);\n  });\n});\n\ndescribe('per-component override', () => {\n  it('component A affects only component A score', () => {\n    const high = fn(input, { weights: { a: 0.8 } });\n    const low = fn(input, { weights: { a: 0.1 } });\n    expect(high.score).toBeGreaterThan(low.score);\n  });\n});\n```\n\n**Integration Testing Pattern:**\n```typescript\n// Use fake timers for time-based features\nbeforeEach(() => {\n  vi.useFakeTimers();\n  vi.setSystemTime(new Date('2024-06-15'));\n});\nafterEach(() => vi.useRealTimers());\n\nit('applies weights before recency/quality', () => {\n  const result = fn(input, {\n    weights: { skills: 0.6, location: 0.2, rate: 0.1, role: 0.1 },\n    matchDecisions: [{ status: 'approved', reviewedAt: now }]\n  });\n  expect(result.reasoning).toContain('Recente match');\n  expect(result.reasoning).toContain('Hoge goedkeuring');\n});\n```\n\n**Critical Patterns to Document:**\n- Boundary testing (0, 1, epsilon below/above)\n- Invalid value handling (negative, NaN, undefined)\n- Backward compatibility verification\n- Partial vs full override scenarios\n- Integration with existing factors (recency, quality)",
+      "evidence": "Feature 'dynamic-weight-support' includes 40+ test cases covering all validation patterns. tests/dynamic-weights.test.ts demonstrates complete pattern: describe('validateDynamicWeights') for validation, 'backward compatibility' for defaults, 'per-component override' for individual weights, 'hybrid blend override' for rule/vector, 'query-time weights' for combined usage, 'edge cases' for boundary conditions.",
+      "isSystemic": true,
+      "sourceFeature": "dynamic-weight-support"
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Add separate .env.example entry for RECENCY_BOOST_DAYS, etc.",
+      "reason": "Already documented in mission.md under Environment Setup; no new env vars introduced for dynamic-weights milestone",
+      "rationale": "REDUNDANT - Existing environment configuration already covers all parameters"
+    },
+    {
+      "observation": "Update AGENTS.md with weighting conventions",
+      "reason": "Weighting is an internal implementation detail best captured in architecture docs rather than agent guidance",
+      "rationale": "WRONG_CATEGORY - Architecture documentation is more appropriate than agent guidelines"
+    }
+  ],
+  "crossMilestoneNotes": {
+    "recency-scoring": {
+      "relationship": "Dependency",
+      "notes": "Dynamic weights integrate with recency scoring - weights applied before recency adjustments. Both milestones share scoring.ts modifications."
+    },
+    "quality-signals": {
+      "relationship": "Dependency",
+      "notes": "Dynamic weights integrate with quality signals - weights affect base score before quality adjustments. Integration tests verify correct factor priority."
+    }
+  },
+  "nextSteps": [
+    {
+      "step": 1,
+      "action": "Orchestrator to decide: fix pre-existing test/typecheck/lint failures OR mark as acceptable Known Issues",
+      "priority": "high"
+    },
+    {
+      "step": 2,
+      "action": "Apply suggestedGuidanceUpdates to .factory/library/architecture.md and .factory/library/user-testing.md",
+      "priority": "medium"
+    },
+    {
+      "step": 3,
+      "action": "Proceed to user-testing-validator-dynamic-weights after validators are fixed",
+      "priority": "blocked"
+    }
+  ],
+  "previousRound": "/Users/cortex-air/Developer/motian/.factory/validation/dynamic-weights/scrutiny/synthesis.json"
+}
