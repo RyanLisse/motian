@@ -42,6 +42,106 @@ const NVB_ORIGIN = "https://www.nationalevacaturebank.nl";
 const NVB_FETCH_TIMEOUT_MS = 20_000;
 const NVB_DEFAULT_USER_AGENT = "Mozilla/5.0 (compatible; MotianBot/1.0)";
 
+const NVB_PROVINCES = [
+  "drenthe",
+  "flevoland",
+  "friesland",
+  "gelderland",
+  "groningen",
+  "limburg",
+  "noord-brabant",
+  "noord-holland",
+  "overijssel",
+  "utrecht",
+  "zeeland",
+  "zuid-holland",
+] as const;
+
+type NextDataParseResult = {
+  listings: RawScrapedListing[];
+  totalPages: number;
+};
+
+/**
+ * Extract structured job data from Next.js __NEXT_DATA__ JSON blob.
+ * Returns listings + total page count. Falls back to empty if not found.
+ */
+export function parseNextDataJobs(html: string): NextDataParseResult | null {
+  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!match) return null;
+
+  let data: any;
+  try {
+    data = JSON.parse(match[1]);
+  } catch {
+    return null;
+  }
+
+  const pageProps = data?.props?.pageProps;
+  if (!pageProps) return null;
+
+  const matchedJobs: any[] = pageProps?.jobs?.matchedJobs ?? pageProps?.matchedJobs ?? [];
+  // pages lives at pageProps.pages (top-level, not nested under jobs)
+  const totalPages: number = pageProps?.pages ?? 1;
+
+  if (matchedJobs.length === 0) return null;
+
+  const listings: RawScrapedListing[] = matchedJobs.map((job: any) => {
+    const salary = job.salary ?? {};
+    const company = typeof job.company === "object" ? job.company : { name: job.company };
+    const workLocation = job.workLocation ?? {};
+
+    // workLocation.displayName is the primary city field
+    const locationStr =
+      typeof workLocation === "string"
+        ? workLocation
+        : workLocation.displayName || undefined;
+
+    // workingHours is {min, max} object
+    const hoursRaw = job.workingHours;
+    let hoursPerWeek: number | undefined;
+    let minHoursPerWeek: number | undefined;
+    if (hoursRaw && typeof hoursRaw === "object") {
+      if (typeof hoursRaw.max === "number") hoursPerWeek = sanitizeHours(hoursRaw.max);
+      if (typeof hoursRaw.min === "number") minHoursPerWeek = sanitizeHours(hoursRaw.min);
+    } else if (typeof hoursRaw === "number") {
+      hoursPerWeek = sanitizeHours(hoursRaw);
+    }
+
+    // url is already a path like /vacature/{uuid}/slug
+    const jobUrl = job.url;
+    const externalUrl = jobUrl
+      ? toAbsoluteUrl(jobUrl, NVB_ORIGIN)
+      : undefined;
+
+    return compactListingFields({
+      externalId: String(job.id ?? ""),
+      title: decodeText(job.title),
+      company: decodeText(company?.name),
+      location: decodeText(locationStr),
+      description: ensureDescription(job.fullDescription, job.title ?? ""),
+      rateMin: typeof salary.min === "number" ? salary.min : undefined,
+      rateMax: typeof salary.max === "number" ? salary.max : undefined,
+      hoursPerWeek,
+      minHoursPerWeek,
+      educationLevel: typeof job.educationLevel === "string" ? job.educationLevel : undefined,
+      externalUrl,
+      sourceUrl: externalUrl,
+      requirements: Array.isArray(job.requirements)
+        ? job.requirements
+        : typeof job.requirements === "string" && job.requirements.length > 0
+          ? [job.requirements]
+          : undefined,
+      contractType: mapContractType(String(job.contractType ?? "")),
+      // functionGroups is already string[]
+      categories: Array.isArray(job.functionGroups) ? job.functionGroups : undefined,
+      companyLogoUrl: job.logo ?? company?.logo,
+    });
+  });
+
+  return { listings, totalPages };
+}
+
 function isNationaleVacaturebankHost(hostname: string): boolean {
   const normalized = hostname.toLowerCase();
   return (
@@ -524,6 +624,65 @@ const DEFAULT_SOURCE_PATHS = [
   "/vacatures/vakgebied/management",
 ];
 
+/**
+ * Scrape a single URL path for up to maxPages, using __NEXT_DATA__ extraction
+ * with fallback to HTML parsing. Returns de-duplicated listings.
+ */
+async function scrapePath(
+  basePath: string,
+  config: PlatformRuntimeConfig,
+  maxPages: number,
+  cookieHeader: string | undefined,
+  useNextData: boolean,
+  firstResponse?: UrlFetchResult,
+): Promise<{ listings: RawScrapedListing[]; errors: string[] }> {
+  const listings: RawScrapedListing[] = [];
+  const errors: string[] = [];
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const pageUrl = buildNationaleVacaturebankPageUrl(config.baseUrl, basePath, page);
+    const response =
+      page === 1 && firstResponse
+        ? firstResponse
+        : await fetchPageWithSession(pageUrl, cookieHeader);
+    const blocker = detectNationaleVacaturebankBlocker(response);
+
+    if (blocker.blockerKind) {
+      errors.push(`NVB consent gate blokkeert ${basePath} pagina ${page}`);
+      break;
+    }
+
+    let parsed: RawScrapedListing[] = [];
+    if (useNextData) {
+      const nextData = parseNextDataJobs(response.html);
+      if (nextData) {
+        parsed = nextData.listings;
+        // Use actual page count from __NEXT_DATA__ to cap pagination
+        if (page >= nextData.totalPages) {
+          listings.push(...parsed);
+          break;
+        }
+      }
+    }
+
+    // Fallback to HTML parsing if __NEXT_DATA__ yielded nothing
+    if (parsed.length === 0) {
+      parsed = parseNationaleVacaturebankListings(response.html);
+    }
+
+    if (parsed.length === 0) {
+      if (page === 1) {
+        errors.push(`Geen resultaten voor ${basePath}`);
+      }
+      break;
+    }
+
+    listings.push(...parsed);
+  }
+
+  return { listings, errors };
+}
+
 async function scrapeNationaleVacaturebankInternal(
   config: PlatformRuntimeConfig,
   options?: { limit?: number; smoke?: boolean },
@@ -537,15 +696,18 @@ async function scrapeNationaleVacaturebankInternal(
 
   const maxPages = parsePositiveInteger(config.parameters.maxPages, 10);
   const detailLimit = parsePositiveInteger(config.parameters.detailLimit, 50);
+  const useNextData = config.parameters.useNextData !== false;
+  const useProvinceSharding = config.parameters.useProvinceSharding === true;
+  const provinceConcurrency = parsePositiveInteger(config.parameters.provinceConcurrency, 3);
   const limit = options?.limit ? Math.max(1, options.limit) : Number.POSITIVE_INFINITY;
-  const allListings: RawScrapedListing[] = [];
+  const seenIds = new Map<string, RawScrapedListing>();
   const errors: string[] = [];
   let evidence: Record<string, unknown> | undefined;
   let sessionCookieHeader: string | undefined;
 
   for (const sourcePath of sourcePaths) {
-    if (allListings.length >= limit) break;
-    if (options?.smoke && allListings.length > 0) break;
+    if (seenIds.size >= limit) break;
+    if (options?.smoke && seenIds.size > 0) break;
 
     const initialPageUrl = buildNationaleVacaturebankPageUrl(config.baseUrl, sourcePath, 1);
 
@@ -564,58 +726,96 @@ async function scrapeNationaleVacaturebankInternal(
       }
     }
 
-    for (let page = 1; page <= maxPages; page += 1) {
-      const pageUrl = buildNationaleVacaturebankPageUrl(config.baseUrl, sourcePath, page);
-      const response =
-        page === 1
-          ? session.firstResponse
-          : await fetchPageWithSession(pageUrl, session.cookieHeader);
-      const blocker = detectNationaleVacaturebankBlocker(response);
+    // Scrape the main path
+    const mainResult = await scrapePath(
+      sourcePath,
+      config,
+      maxPages,
+      session.cookieHeader,
+      useNextData,
+      session.firstResponse,
+    );
+    for (const listing of mainResult.listings) {
+      const id = String(listing.externalId ?? "");
+      if (id && !seenIds.has(id)) seenIds.set(id, listing);
+    }
+    errors.push(...mainResult.errors);
 
-      if (blocker.blockerKind) {
-        errors.push(`NVB consent gate blokkeert ${sourcePath} pagina ${page}`);
-        break;
-      }
+    evidence = {
+      ...(evidence ?? {}),
+      lastFetchedPath: sourcePath,
+      uniqueListings: seenIds.size,
+    };
 
-      const parsed = parseNationaleVacaturebankListings(response.html);
-      if (parsed.length === 0) {
-        if (page === 1) {
-          errors.push(`Geen resultaten voor ${sourcePath}`);
+    // Province sharding: scrape each province sub-path concurrently
+    if (useProvinceSharding && !options?.smoke) {
+      const provinceSubPaths = NVB_PROVINCES.map(
+        (province) => `${sourcePath}/in-provincie-${province}`,
+      );
+
+      // Process provinces in batches of provinceConcurrency
+      for (let i = 0; i < provinceSubPaths.length; i += provinceConcurrency) {
+        if (seenIds.size >= limit) break;
+
+        const batch = provinceSubPaths.slice(i, i + provinceConcurrency);
+        const results = await Promise.allSettled(
+          batch.map((subPath) =>
+            scrapePath(subPath, config, maxPages, session.cookieHeader, useNextData),
+          ),
+        );
+
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            for (const listing of result.value.listings) {
+              const id = String(listing.externalId ?? "");
+              if (id && !seenIds.has(id)) seenIds.set(id, listing);
+            }
+            errors.push(...result.value.errors);
+          } else {
+            errors.push(`NVB provincie scrape mislukt: ${result.reason}`);
+          }
         }
-        break;
+
+        evidence = {
+          ...(evidence ?? {}),
+          provinceBatch: `${Math.min(i + provinceConcurrency, provinceSubPaths.length)}/${provinceSubPaths.length}`,
+          uniqueListings: seenIds.size,
+        };
       }
-
-      allListings.push(...parsed);
-      evidence = {
-        ...(evidence ?? {}),
-        lastFetchedPage: pageUrl,
-        parsedListings: allListings.length,
-      };
-
-      if (allListings.length >= limit) break;
     }
   }
 
-  const uniqueListings = [...new Map(allListings.map((listing) => [listing.externalId, listing])).values()].slice(
-    0,
-    limit,
+  const uniqueListings = Array.from(seenIds.values()).slice(0, limit);
+
+  // When __NEXT_DATA__ provides fullDescription, skip detail enrichment
+  const needsEnrichment = uniqueListings.some(
+    (l) => !l.description || String(l.description).length < 20,
   );
-  const enriched = await enrichNationaleVacaturebankListings(
-    uniqueListings,
-    config,
-    sessionCookieHeader,
-    Math.min(detailLimit, uniqueListings.length),
-  );
-  errors.push(...enriched.errors);
+  let finalListings: RawScrapedListing[];
+
+  if (needsEnrichment) {
+    const enriched = await enrichNationaleVacaturebankListings(
+      uniqueListings,
+      config,
+      sessionCookieHeader,
+      Math.min(detailLimit, uniqueListings.length),
+    );
+    errors.push(...enriched.errors);
+    finalListings = enriched.listings;
+  } else {
+    finalListings = uniqueListings;
+  }
 
   return {
-    listings: enriched.listings,
+    listings: finalListings,
     errors,
     evidence: {
       ...(evidence ?? {}),
       sourcePaths,
-      detailHydrated: Math.min(detailLimit, uniqueListings.length),
-      detailErrors: enriched.errors.length,
+      useNextData,
+      useProvinceSharding,
+      totalUnique: finalListings.length,
+      detailEnrichmentSkipped: !needsEnrichment,
     },
   };
 }
