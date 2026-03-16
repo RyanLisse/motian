@@ -233,6 +233,7 @@ type SkillDimensionResult = {
 function computeLegacySkillDimension(
   job: Job,
   candidate: Candidate,
+  skillsWeight: number = SCORING_WEIGHTS.skills,
 ): {
   score: number;
   overlap: string[];
@@ -250,10 +251,7 @@ function computeLegacySkillDimension(
 
   const score =
     jobKeywords.length > 0
-      ? Math.min(
-          SCORING_WEIGHTS.skills,
-          Math.round((overlap.length / jobKeywords.length) * SCORING_WEIGHTS.skills),
-        )
+      ? Math.min(skillsWeight, Math.round((overlap.length / jobKeywords.length) * skillsWeight))
       : 0;
 
   return { score, overlap };
@@ -271,6 +269,7 @@ function computeSkillDimension(
   job: Job,
   candidate: Candidate,
   options?: EscoMatchOptions,
+  skillsWeight?: number,
 ): SkillDimensionResult {
   if (isEscoScoringPathEnabled(options)) {
     const candidateEscoSkills = options?.candidateEscoSkills ?? [];
@@ -286,7 +285,7 @@ function computeSkillDimension(
       };
     }
     // Guardrail fallback: use rule-based skill dimension and append ESCO reasoning
-    const legacy = computeLegacySkillDimension(job, candidate);
+    const legacy = computeLegacySkillDimension(job, candidate, skillsWeight);
     logEscoGuardrailFallback(job, candidate, escoResult.reasoning);
     return {
       score: legacy.score,
@@ -301,7 +300,7 @@ function computeSkillDimension(
     };
   }
 
-  const legacy = computeLegacySkillDimension(job, candidate);
+  const legacy = computeLegacySkillDimension(job, candidate, skillsWeight);
   return {
     score: legacy.score,
     reasoning:
@@ -317,11 +316,12 @@ function computeRuleScore(
   job: Job,
   candidate: Candidate,
   skillDimension: SkillDimensionResult,
+  weights: typeof SCORING_WEIGHTS,
 ): Omit<MatchResult, "model"> {
   let score = 0;
   const reasons: string[] = [];
 
-  score += Math.min(SCORING_WEIGHTS.skills, Math.max(0, Math.round(skillDimension.score)));
+  score += Math.min(weights.skills, Math.max(0, Math.round(skillDimension.score)));
   if (skillDimension.reasoning) {
     reasons.push(skillDimension.reasoning);
   }
@@ -334,23 +334,23 @@ function computeRuleScore(
     job.province &&
     candidate.province.toLowerCase() === job.province.toLowerCase()
   ) {
-    score += SCORING_WEIGHTS.location;
+    score += weights.location;
     reasons.push("Provincie match");
   } else if (candidate.location && job.location) {
     const candidateCity = candidate.location.split(" - ")[0]?.toLowerCase();
     const jobCity = job.location.split(" - ")[0]?.toLowerCase();
     if (candidateCity && jobCity && candidateCity === jobCity) {
-      score += SCORING_WEIGHTS.location * 0.75;
+      score += weights.location * 0.75;
       reasons.push("Stad match");
     }
   }
 
   if (candidate.hourlyRate && job.rateMax) {
     if (candidate.hourlyRate <= job.rateMax) {
-      score += SCORING_WEIGHTS.rate;
+      score += weights.rate;
       reasons.push("Tarief past binnen budget");
     } else if (candidate.hourlyRate <= job.rateMax * 1.1) {
-      score += SCORING_WEIGHTS.rate * 0.5;
+      score += weights.rate * 0.5;
       reasons.push("Tarief iets boven budget");
     }
   }
@@ -370,7 +370,7 @@ function computeRuleScore(
     );
 
     if (roleOverlap.length > 0) {
-      score += Math.min(SCORING_WEIGHTS.role, roleOverlap.length * 10);
+      score += Math.min(weights.role, roleOverlap.length * 10);
       reasons.push("Rol sluit aan bij functietitel");
     }
   }
@@ -382,17 +382,121 @@ function computeRuleScore(
   };
 }
 
+export type DynamicWeights = {
+  /** Weight for skills matching (0-1, will be scaled to scoring weight) */
+  skills?: number;
+  /** Weight for location matching (0-1, will be scaled to scoring weight) */
+  location?: number;
+  /** Weight for rate matching (0-1, will be scaled to scoring weight) */
+  rate?: number;
+  /** Weight for role matching (0-1, will be scaled to scoring weight) */
+  role?: number;
+  /** Rule-based score weight in hybrid blend (0-1) */
+  ruleWeight?: number;
+  /** Vector similarity score weight in hybrid blend (0-1) */
+  vectorWeight?: number;
+};
+
 export type ComputeMatchScoreOptions = EscoMatchOptions & {
   matchDecisions?: MatchDecision[];
+  weights?: DynamicWeights;
 };
+
+/**
+ * Validates dynamic weights are within valid range (0-1).
+ * Throws error for invalid values (negative, >1, NaN).
+ */
+export function validateDynamicWeights(weights: DynamicWeights): void {
+  const fields: (keyof DynamicWeights)[] = [
+    "skills",
+    "location",
+    "rate",
+    "role",
+    "ruleWeight",
+    "vectorWeight",
+  ];
+
+  for (const field of fields) {
+    const value = weights[field];
+    if (value === undefined) continue;
+
+    if (Number.isNaN(value)) {
+      throw new Error(`Invalid weight: ${field} is NaN`);
+    }
+    if (value < 0) {
+      throw new Error(`Invalid weight: ${field} is negative (${value})`);
+    }
+    if (value > 1) {
+      throw new Error(`Invalid weight: ${field} exceeds 1 (${value})`);
+    }
+  }
+}
+
+/**
+ * Merges dynamic weights with default SCORING_WEIGHTS.
+ * Returns effective weights for scoring calculation.
+ */
+function mergeScoringWeights(dynamicWeights?: DynamicWeights): typeof SCORING_WEIGHTS {
+  if (!dynamicWeights) return SCORING_WEIGHTS;
+
+  return {
+    skills:
+      dynamicWeights.skills !== undefined
+        ? Math.round(dynamicWeights.skills * 100)
+        : SCORING_WEIGHTS.skills,
+    location:
+      dynamicWeights.location !== undefined
+        ? Math.round(dynamicWeights.location * 100)
+        : SCORING_WEIGHTS.location,
+    rate:
+      dynamicWeights.rate !== undefined
+        ? Math.round(dynamicWeights.rate * 100)
+        : SCORING_WEIGHTS.rate,
+    role:
+      dynamicWeights.role !== undefined
+        ? Math.round(dynamicWeights.role * 100)
+        : SCORING_WEIGHTS.role,
+  };
+}
+
+/**
+ * Merges dynamic weights with default HYBRID_BLEND.
+ * Returns effective blend weights for hybrid calculation.
+ */
+function mergeHybridBlend(dynamicWeights?: DynamicWeights): typeof HYBRID_BLEND {
+  if (!dynamicWeights) return HYBRID_BLEND;
+
+  const ruleWeight =
+    dynamicWeights.ruleWeight !== undefined ? dynamicWeights.ruleWeight : HYBRID_BLEND.ruleWeight;
+  const vectorWeight =
+    dynamicWeights.vectorWeight !== undefined
+      ? dynamicWeights.vectorWeight
+      : HYBRID_BLEND.vectorWeight;
+
+  return { ruleWeight, vectorWeight };
+}
 
 export function computeMatchScore(
   job: Job,
   candidate: Candidate,
   options?: ComputeMatchScoreOptions,
 ): MatchResult {
-  const skillDimension = computeSkillDimension(job, candidate, options);
-  const ruleResult = computeRuleScore(job, candidate, skillDimension);
+  // Validate dynamic weights if provided
+  if (options?.weights) {
+    validateDynamicWeights(options.weights);
+  }
+
+  // Merge dynamic weights with defaults
+  const effectiveScoringWeights = mergeScoringWeights(options?.weights);
+  const effectiveHybridBlend = mergeHybridBlend(options?.weights);
+
+  const skillDimension = computeSkillDimension(
+    job,
+    candidate,
+    options,
+    effectiveScoringWeights.skills,
+  );
+  const ruleResult = computeRuleScore(job, candidate, skillDimension, effectiveScoringWeights);
 
   // Calculate recency adjustment based on candidate's last match
   const recencyResult = computeRecencyScore(candidate.lastMatchedAt);
@@ -410,7 +514,8 @@ export function computeMatchScore(
     const similarity = cosineSimilarity(jobEmbedding, candidateEmbedding);
     const vectorScore = Math.round(similarity * 100);
     baseScore = Math.round(
-      HYBRID_BLEND.ruleWeight * ruleResult.score + HYBRID_BLEND.vectorWeight * vectorScore,
+      effectiveHybridBlend.ruleWeight * ruleResult.score +
+        effectiveHybridBlend.vectorWeight * vectorScore,
     );
     reasoningParts.push(`Semantische match: ${vectorScore}%`);
   } else {
