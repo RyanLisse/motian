@@ -32,8 +32,60 @@ function loadHybridBlend() {
   };
 }
 
+function loadRecencyConfig() {
+  return {
+    boostDays: parseInt(process.env.RECENCY_BOOST_DAYS ?? "30", 10),
+    penaltyDays: parseInt(process.env.RECENCY_PENALTY_DAYS ?? "60", 10),
+    boostAmount: parseInt(process.env.RECENCY_BOOST_AMOUNT ?? "5", 10),
+    penaltyAmount: parseInt(process.env.RECENCY_PENALTY_AMOUNT ?? "5", 10),
+  };
+}
+
 export const SCORING_WEIGHTS = loadScoringWeights();
 export const HYBRID_BLEND = loadHybridBlend();
+export const RECENCY_CONFIG = loadRecencyConfig();
+
+export type RecencyResult = {
+  adjustment: number;
+  reasoning: string | null;
+};
+
+/**
+ * Calculate recency-based score adjustment based on candidate's lastMatchedAt timestamp.
+ * Boosts recently matched candidates (≤ boostDays) and penalizes stale candidates (> penaltyDays).
+ * Null lastMatchedAt results in neutral scoring (no adjustment).
+ */
+export function computeRecencyScore(lastMatchedAt: Date | null | undefined): RecencyResult {
+  const config = RECENCY_CONFIG;
+
+  // Null or undefined lastMatchedAt = neutral scoring
+  if (!lastMatchedAt) {
+    return { adjustment: 0, reasoning: null };
+  }
+
+  const now = new Date();
+  const lastMatch = new Date(lastMatchedAt);
+  const daysSinceMatch = (now.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24);
+
+  // Recent match within boost window → positive boost
+  if (daysSinceMatch <= config.boostDays) {
+    return {
+      adjustment: config.boostAmount,
+      reasoning: `Recente match (${Math.round(daysSinceMatch)} dagen geleden)`,
+    };
+  }
+
+  // Stale match beyond penalty window → negative penalty
+  if (daysSinceMatch > config.penaltyDays) {
+    return {
+      adjustment: -config.penaltyAmount,
+      reasoning: `Verouderde match (${Math.round(daysSinceMatch)} dagen geleden)`,
+    };
+  }
+
+  // Between boost and penalty window → neutral
+  return { adjustment: 0, reasoning: null };
+}
 
 function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length || a.length === 0) return 0;
@@ -234,27 +286,49 @@ export function computeMatchScore(
   const skillDimension = computeSkillDimension(job, candidate, options);
   const ruleResult = computeRuleScore(job, candidate, skillDimension);
 
+  // Calculate recency adjustment based on candidate's last match
+  const recencyResult = computeRecencyScore(candidate.lastMatchedAt);
+
   const jobEmbedding = job.embedding as number[] | null;
   const candidateEmbedding = candidate.embedding as number[] | null;
+
+  let baseScore: number;
+  const reasoningParts: string[] = [ruleResult.reasoning];
 
   if (jobEmbedding?.length && candidateEmbedding?.length) {
     const similarity = cosineSimilarity(jobEmbedding, candidateEmbedding);
     const vectorScore = Math.round(similarity * 100);
-    const blended = Math.round(
+    baseScore = Math.round(
       HYBRID_BLEND.ruleWeight * ruleResult.score + HYBRID_BLEND.vectorWeight * vectorScore,
     );
+    reasoningParts.push(`Semantische match: ${vectorScore}%`);
+  } else {
+    baseScore = ruleResult.score;
+  }
 
-    return {
-      score: Math.min(100, blended),
-      confidence: Math.round(Math.min(100, blended * 1.1)),
-      reasoning: `${ruleResult.reasoning}; Semantische match: ${vectorScore}%`,
-      model: skillDimension.usedEsco ? "esco-hybrid-v1" : "hybrid-v1",
-    };
+  // Apply recency adjustment and cap to 0-100 range
+  let finalScore = baseScore + recencyResult.adjustment;
+  finalScore = Math.max(0, Math.min(100, finalScore));
+
+  // Add recency reasoning if applicable
+  if (recencyResult.reasoning) {
+    reasoningParts.push(recencyResult.reasoning);
+  }
+
+  // Determine model label
+  let modelLabel: string;
+  if (skillDimension.usedEsco) {
+    modelLabel =
+      jobEmbedding?.length && candidateEmbedding?.length ? "esco-hybrid-v1" : "esco-rule-v1";
+  } else {
+    modelLabel = jobEmbedding?.length && candidateEmbedding?.length ? "hybrid-v1" : "rule-based-v1";
   }
 
   return {
-    ...ruleResult,
-    model: skillDimension.usedEsco ? "esco-rule-v1" : "rule-based-v1",
+    score: Math.round(finalScore),
+    confidence: Math.round(Math.min(100, finalScore * 1.1)),
+    reasoning: reasoningParts.join("; "),
+    model: modelLabel,
   };
 }
 

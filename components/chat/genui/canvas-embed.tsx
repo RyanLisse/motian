@@ -44,13 +44,9 @@ export const CanvasEmbed = memo(function CanvasEmbed({ output }: { output: unkno
     subtitle: string;
   } | null>(null);
 
-  if (isToolError(output)) {
-    return <ToolErrorBlock message={getToolErrorMessage(output, "Canvas niet beschikbaar")} />;
-  }
-  if (!isCanvasOutput(output)) return null;
-
   const handleNodeClick = useCallback(
     (type: "kandidaat" | "vacature", id: string) => {
+      if (!isCanvasOutput(output)) return;
       const item =
         type === "kandidaat"
           ? output.kandidaten.find((k) => k.id === id)
@@ -66,6 +62,11 @@ export const CanvasEmbed = memo(function CanvasEmbed({ output }: { output: unkno
     },
     [output],
   );
+
+  if (isToolError(output)) {
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Canvas niet beschikbaar")} />;
+  }
+  if (!isCanvasOutput(output)) return null;
 
   return (
     <div
