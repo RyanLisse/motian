@@ -513,80 +513,97 @@ async function enrichNationaleVacaturebankListings(
   return { listings: results, errors };
 }
 
+/** Default vakgebied paths to scrape when sourcePaths is not configured */
+const DEFAULT_SOURCE_PATHS = [
+  "/vacatures/vakgebied/automatisering-internet",
+  "/vacatures/vakgebied/techniek",
+  "/vacatures/vakgebied/financieel",
+  "/vacatures/vakgebied/bestuur-beleid",
+  "/vacatures/vakgebied/juridisch",
+  "/vacatures/vakgebied/consultancy",
+  "/vacatures/vakgebied/management",
+];
+
 async function scrapeNationaleVacaturebankInternal(
   config: PlatformRuntimeConfig,
   options?: { limit?: number; smoke?: boolean },
 ): Promise<PlatformScrapeResult> {
-  const sourcePath = String(config.parameters.sourcePath ?? "/vacatures/branche/ict");
-  const maxPages = parsePositiveInteger(config.parameters.maxPages, 3);
-  const detailLimit = parsePositiveInteger(config.parameters.detailLimit, 10);
+  // Support both single sourcePath and multiple sourcePaths
+  const sourcePaths: string[] = Array.isArray(config.parameters.sourcePaths)
+    ? (config.parameters.sourcePaths as string[])
+    : config.parameters.sourcePath
+      ? [String(config.parameters.sourcePath)]
+      : DEFAULT_SOURCE_PATHS;
+
+  const maxPages = parsePositiveInteger(config.parameters.maxPages, 10);
+  const detailLimit = parsePositiveInteger(config.parameters.detailLimit, 50);
   const limit = options?.limit ? Math.max(1, options.limit) : Number.POSITIVE_INFINITY;
-  const listings: RawScrapedListing[] = [];
+  const allListings: RawScrapedListing[] = [];
   const errors: string[] = [];
-  const initialPageUrl = buildNationaleVacaturebankPageUrl(config.baseUrl, sourcePath, 1);
-  const session = await initializeConsentAwareSession(config, initialPageUrl);
-  let evidence: Record<string, unknown> | undefined = session.evidence
-    ? { bootstrap: session.evidence }
-    : undefined;
+  let evidence: Record<string, unknown> | undefined;
+  let sessionCookieHeader: string | undefined;
 
-  for (let page = 1; page <= maxPages; page += 1) {
-    const pageUrl = buildNationaleVacaturebankPageUrl(config.baseUrl, sourcePath, page);
-    const response =
-      page === 1
-        ? session.firstResponse
-        : await fetchPageWithSession(pageUrl, session.cookieHeader);
-    const blocker = detectNationaleVacaturebankBlocker(response);
+  for (const sourcePath of sourcePaths) {
+    if (allListings.length >= limit) break;
+    if (options?.smoke && allListings.length > 0) break;
 
-    if (blocker.blockerKind) {
-      return {
-        listings: [],
-        errors: ["NVB consent gate blokkeert de run"],
-        blockerKind: blocker.blockerKind,
-        evidence: {
-          pageUrl,
-          matchedSignals: blocker.matchedSignals,
-          finalUrl: response.url,
-        },
+    const initialPageUrl = buildNationaleVacaturebankPageUrl(config.baseUrl, sourcePath, 1);
+
+    // Reuse session from first branch, bootstrap only once
+    let session: SessionBootstrapResult;
+    if (sessionCookieHeader) {
+      session = {
+        cookieHeader: sessionCookieHeader,
+        firstResponse: await fetchPageWithSession(initialPageUrl, sessionCookieHeader),
       };
+    } else {
+      session = await initializeConsentAwareSession(config, initialPageUrl);
+      sessionCookieHeader = session.cookieHeader;
+      if (session.evidence) {
+        evidence = { bootstrap: session.evidence };
+      }
     }
 
-    const parsed = parseNationaleVacaturebankListings(response.html);
-    if (parsed.length === 0) {
-      if (page > 1) {
+    for (let page = 1; page <= maxPages; page += 1) {
+      const pageUrl = buildNationaleVacaturebankPageUrl(config.baseUrl, sourcePath, page);
+      const response =
+        page === 1
+          ? session.firstResponse
+          : await fetchPageWithSession(pageUrl, session.cookieHeader);
+      const blocker = detectNationaleVacaturebankBlocker(response);
+
+      if (blocker.blockerKind) {
+        errors.push(`NVB consent gate blokkeert ${sourcePath} pagina ${page}`);
         break;
       }
 
-      return {
-        listings: [],
-        errors: ["NVB listing markup veranderde of leverde geen resultaten op"],
-        blockerKind: "unexpected_markup",
-        evidence: {
-          pageUrl,
-          finalUrl: response.url,
-        },
+      const parsed = parseNationaleVacaturebankListings(response.html);
+      if (parsed.length === 0) {
+        if (page === 1) {
+          errors.push(`Geen resultaten voor ${sourcePath}`);
+        }
+        break;
+      }
+
+      allListings.push(...parsed);
+      evidence = {
+        ...(evidence ?? {}),
+        lastFetchedPage: pageUrl,
+        parsedListings: allListings.length,
       };
-    }
 
-    listings.push(...parsed);
-    evidence = {
-      ...(evidence ?? {}),
-      lastFetchedPage: pageUrl,
-      parsedListings: listings.length,
-    };
-
-    if (listings.length >= limit || options?.smoke) {
-      break;
+      if (allListings.length >= limit) break;
     }
   }
 
-  const uniqueListings = [...new Map(listings.map((listing) => [listing.externalId, listing])).values()].slice(
+  const uniqueListings = [...new Map(allListings.map((listing) => [listing.externalId, listing])).values()].slice(
     0,
     limit,
   );
   const enriched = await enrichNationaleVacaturebankListings(
     uniqueListings,
     config,
-    session.cookieHeader,
+    sessionCookieHeader,
     Math.min(detailLimit, uniqueListings.length),
   );
   errors.push(...enriched.errors);
@@ -596,6 +613,7 @@ async function scrapeNationaleVacaturebankInternal(
     errors,
     evidence: {
       ...(evidence ?? {}),
+      sourcePaths,
       detailHydrated: Math.min(detailLimit, uniqueListings.length),
       detailErrors: enriched.errors.length,
     },
@@ -604,7 +622,12 @@ async function scrapeNationaleVacaturebankInternal(
 
 export const nationaleVacaturebankAdapter: PlatformAdapter = {
   async validate(config: PlatformRuntimeConfig): Promise<PlatformValidationResult> {
-    const sourcePath = String(config.parameters.sourcePath ?? "/vacatures/branche/ict");
+    const sourcePaths: string[] = Array.isArray(config.parameters.sourcePaths)
+      ? (config.parameters.sourcePaths as string[])
+      : config.parameters.sourcePath
+        ? [String(config.parameters.sourcePath)]
+        : DEFAULT_SOURCE_PATHS;
+    const sourcePath = sourcePaths[0];
     const pageUrl = buildNationaleVacaturebankPageUrl(config.baseUrl, sourcePath, 1);
     const session = await initializeConsentAwareSession(config, pageUrl);
     const response = session.firstResponse;
