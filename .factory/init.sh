@@ -1,10 +1,8 @@
 #!/bin/bash
 # Mission initialization script
 
-# Install dependencies if needed
-if [ ! -d "node_modules" ]; then
-  pnpm install --frozen-lockfile
-fi
+# Install dependencies (includes react-force-graph-3d and three)
+pnpm install
 
 # Verify environment setup
 if [ ! -f ".env.local" ]; then

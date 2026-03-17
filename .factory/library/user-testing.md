@@ -1,80 +1,26 @@
 # User Testing
 
-Testing surface and validation approach for candidate matching recency + quality features.
+## Validation Surface
 
-## Testable Surfaces
+- **Primary surface**: Browser (localhost:3002)
+- **Tool**: agent-browser
+- **Setup**: Start dev server with `pnpm dev` (port 3002), navigate to pages
+- **Auth**: No auth required for local development
 
-### 1. Scoring Service (src/services/scoring.ts)
+### Testable Pages
+- `/visualisatie` — Full 3D graph visualization page
+- `/vacatures/[id]` — Vacature detail with graph modal trigger
+- `/kandidaten/[id]` — Kandidaat detail with graph modal trigger
 
-**What can be tested:**
-- computeMatchScore function output with various inputs
-- Recency adjustment based on lastMatchedAt
-- Quality adjustment based on jobMatches history
-- Dynamic weight override behavior
-
-**Resource cost:** Low - Unit tests only, no external services needed
-
-**How to test:**
-- Pass mock Job and Candidate objects with timestamps
-- Verify score adjustments are applied correctly
-- Check reasoning string contains expected explanations
-
-### 2. Integration with Matching Inbox
-
-**What can be tested:**
-- listMatchingInboxCandidates returns candidates in correct order
-- Recency and quality factors affect match rankings
-
-**Resource cost:** Medium - Requires database connection
-
-**How to test:**
-- Create test candidates with different lastMatchedAt values
-- Create test jobMatches with different approval rates
-- Verify ranking reflects the factors
-
-### 3. API Routes
-
-**What can be tested:**
-- /api/kandidaten/* endpoints return scores with new factors
-- Backward compatibility with existing clients
-
-**Resource cost:** Medium - Requires running server
-
-**How to test:**
-- Make API requests and verify response structure
-- Check that optional weights parameter works
-
-## Validation Approach
-
-The validation contract contains 20 assertions across 3 areas:
-- Recency: 6 assertions
-- Quality: 6 assertions
-- Dynamic Weights: 5 assertions
-- Cross-Area: 3 assertions
-
-All assertions are testable via unit tests (no UI testing required).
-
-## Known Limitations
-
-- Cannot easily test with real historical data (requires database seeding)
-- Quality signal requires existing jobMatches data
-- Integration tests may be flaky if database state changes
+### Known Limitations
+- WebGL/3D rendering requires a real browser — cannot test via curl
+- 3D graph interactions (rotate, zoom) require mouse events
+- SSE testing requires keeping a connection open while triggering changes
 
 ## Validation Concurrency
 
-| Surface | Max Concurrent Validators | Reason |
-|---------|--------------------------|--------|
-| unit-tests | 5 | CPU-bound but isolated, each test runs independently |
-
-## Flow Validator Guidance: Unit Tests
-
-**Isolation Rules:**
-- Each validator group runs independently via separate test runs
-- Tests use fake timers and mock data, no shared state
-- Run `pnpm test -- --testNamePattern "<PATTERN>"` to run specific assertion groups
-- No additional environment setup needed beyond standard pnpm install
-
-**Boundaries:**
-- Do not access database during unit tests
-- Use vi.useFakeTimers() for time-based assertions
-- Tests are self-contained with beforeEach/afterEach cleanup
+- **Machine**: 32 GB RAM, 10 CPU cores
+- **Dev server**: ~200 MB RAM
+- **agent-browser**: ~300 MB per instance
+- **Max concurrent validators**: 5
+- **Rationale**: 5 instances = 1.5 GB + 200 MB dev server = 1.7 GB total, well within 70% of ~12 GB available headroom
