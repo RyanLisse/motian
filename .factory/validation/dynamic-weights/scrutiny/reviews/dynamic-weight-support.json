@@ -1,0 +1,22 @@
+{
+  "featureId": "dynamic-weight-support",
+  "reviewedAt": "2026-03-16T23:05:00Z",
+  "commitId": "0cc43ae7e24a80984fd67e838f5ea8217f42d44a",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation is complete and correct. Added DynamicWeights type for query-time weight adjustment to computeMatchScore function. Includes validateDynamicWeights() for 0-1 range validation, mergeScoringWeights() and mergeHybridBlend() for merging with defaults, and updated computeMatchScore(), computeRuleScore(), computeSkillDimension(), and computeLegacySkillDimension() to use effective weights. Backward compatibility maintained when weights not provided.",
+    "issues": []
+  },
+  "assertionsValidated": [
+    "VAL-WEIGHTS-001: Query-time weights parameter accepted in options",
+    "VAL-WEIGHTS-002: Backward compatibility - default behavior unchanged when weights not provided",
+    "VAL-WEIGHTS-003: Individual weight components can be overridden",
+    "VAL-WEIGHTS-004: Invalid weights (negative, >1, NaN) throw validation error",
+    "VAL-WEIGHTS-005: HYBRID_BLEND (rule/vector ratio) can be overridden"
+  ],
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "PASS: Implementation is complete, well-tested (31 passing tests), and follows project conventions. All 5 validation contract assertions are covered. No regressions in recency or quality features. Code quality is high with proper TypeScript typing and validation."
+}

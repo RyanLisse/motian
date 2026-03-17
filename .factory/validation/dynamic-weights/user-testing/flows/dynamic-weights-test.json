@@ -1,0 +1,93 @@
+{
+  "group": "dynamic-weights",
+  "milestone": "dynamic-weights",
+  "timestamp": "2026-03-16T23:32:34Z",
+  "testCommand": "pnpm test tests/dynamic-weights.test.ts",
+  "testFile": "/Users/cortex-air/Developer/motian/tests/dynamic-weights.test.ts",
+  "assertions": [
+    {
+      "id": "VAL-WEIGHTS-001",
+      "name": "Query-Time Weights Parameter",
+      "description": "computeMatchScore accepts optional weights parameter for query-time adjustment.",
+      "status": "passed",
+      "testsRun": [
+        "VAL-WEIGHTS-001: accepts weights parameter in options",
+        "VAL-WEIGHTS-001: accepts hybrid blend in weights parameter",
+        "VAL-WEIGHTS-001: accepts combined scoring and blend weights"
+      ],
+      "details": "All 3 test cases passed. Function correctly accepts weights parameter with skills, location, rate, role, ruleWeight, and vectorWeight components."
+    },
+    {
+      "id": "VAL-WEIGHTS-002",
+      "name": "Default Backward Compatibility",
+      "description": "When no weights provided, function uses existing env var defaults.",
+      "status": "passed",
+      "testsRun": [
+        "VAL-WEIGHTS-002: produces same result without weights parameter",
+        "VAL-WEIGHTS-002: uses default SCORING_WEIGHTS when weights not provided",
+        "VAL-WEIGHTS-002: uses default HYBRID_BLEND when weights not provided",
+        "VAL-WEIGHTS-002: verifies default scoring weights",
+        "VAL-WEIGHTS-002: verifies default hybrid blend"
+      ],
+      "details": "All 5 test cases passed. Default weights (skills=40, location=20, rate=20, role=20) and hybrid blend (ruleWeight=0.6, vectorWeight=0.4) verified correct."
+    },
+    {
+      "id": "VAL-WEIGHTS-003",
+      "name": "Per-Component Weight Override",
+      "description": "Individual weight components (skills, location, rate, role) can be overridden.",
+      "status": "passed",
+      "testsRun": [
+        "VAL-WEIGHTS-003: skills weight override affects score",
+        "VAL-WEIGHTS-003: location weight override affects score",
+        "VAL-WEIGHTS-003: rate weight override affects score",
+        "VAL-WEIGHTS-003: role weight override affects score",
+        "VAL-WEIGHTS-003: partial weight override only affects specified components",
+        "VAL-WEIGHTS-003: multiple component overrides work together"
+      ],
+      "details": "All 6 test cases passed. Individual weight components can be independently overridden while preserving other factors."
+    },
+    {
+      "id": "VAL-WEIGHTS-004",
+      "name": "Invalid Weight Handling",
+      "description": "Invalid weight values (negative, >1, NaN) are rejected with validation error.",
+      "status": "passed",
+      "testsRun": [
+        "VAL-WEIGHTS-004: throws error for negative weight",
+        "VAL-WEIGHTS-004: throws error for weight > 1",
+        "VAL-WEIGHTS-004: throws error for NaN weight"
+      ],
+      "details": "All 3 test cases passed. validateDynamicWeights correctly throws errors for invalid inputs including -0.1, 1.01, and NaN values."
+    },
+    {
+      "id": "VAL-WEIGHTS-005",
+      "name": "Vector/Rule Blend Override",
+      "description": "HYBRID_BLEND can be overridden via weights parameter.",
+      "status": "passed",
+      "testsRun": [
+        "VAL-WEIGHTS-005: ruleWeight override affects hybrid calculation",
+        "VAL-WEIGHTS-005: vectorWeight override affects hybrid calculation",
+        "VAL-WEIGHTS-005: 100% rule-based blend ignores vector",
+        "VAL-WEIGHTS-005: 100% vector blend emphasizes similarity"
+      ],
+      "details": "All 4 test cases passed. Custom ruleWeight/vectorWeight ratios correctly affect the hybrid calculation."
+    }
+  ],
+  "summary": {
+    "totalAssertions": 5,
+    "passed": 5,
+    "failed": 0,
+    "blocked": 0,
+    "totalTests": 31,
+    "testsPassed": 31,
+    "testsFailed": 0
+  },
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": ["vitest"],
+  "evidence": {
+    "testOutputCaptured": true,
+    "outputLines": 31,
+    "exitCode": 0
+  },
+  "appliedUpdates": []
+}

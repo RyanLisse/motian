@@ -109,9 +109,10 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   }
 
   if (opts.skills) {
-    // Search within the JSONB skills array for a case-insensitive match
+    // Search within the JSON skills array for a case-insensitive match
+    // SQLite uses json_each() instead of PostgreSQL's jsonb_array_elements_text()
     conditions.push(
-      sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}) AS s WHERE s ILIKE ${`%${escapeLike(opts.skills)}%`})`,
+      sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE value LIKE ${`%${escapeLike(opts.skills)}%`})`,
     );
   }
 
@@ -149,8 +150,10 @@ export async function countCandidates(
   }
 
   if (opts.skills) {
+    // Search within the JSON skills array for a case-insensitive match
+    // SQLite uses json_each() instead of PostgreSQL's jsonb_array_elements_text()
     conditions.push(
-      sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}) AS s WHERE s ILIKE ${`%${escapeLike(opts.skills)}%`})`,
+      sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE value LIKE ${`%${escapeLike(opts.skills)}%`})`,
     );
   }
 

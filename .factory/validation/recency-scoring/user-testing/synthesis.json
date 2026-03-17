@@ -1,0 +1,30 @@
+{
+  "milestone": "recency-scoring",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-RECENCY-001: Recent Match Boost - Candidates with lastMatchedAt within 30 days receive score boost",
+    "VAL-RECENCY-002: Stale Candidate Penalty - Candidates with no matches in 60+ days receive penalty",
+    "VAL-RECENCY-003: Null LastMatchedAt Handling - Null timestamps result in neutral recency scoring",
+    "VAL-RECENCY-004: Configurable Decay Parameters - Recency decay periods configurable via env vars",
+    "VAL-RECENCY-005: Score Capping - Final score stays within 0-100 range",
+    "VAL-RECENCY-006: Recency in Reasoning - Match reasoning includes recency factor explanation"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "evidenceFiles": ["tests/recency-scoring.test.ts"],
+  "testResults": {
+    "filesRun": 1,
+    "testsPassed": 19,
+    "testsFailed": 0,
+    "durationMs": 24
+  },
+  "notes": "All 6 recency-scoring assertions validated through unit tests. Tests cover computeRecencyScore function (8 tests), computeMatchScore integration (10 tests), and RECENCY_CONFIG environment variables (2 tests). Quality signals and dynamic weight support features are not yet implemented (pending status in features.json)."
+}
