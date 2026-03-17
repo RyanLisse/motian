@@ -242,7 +242,9 @@ export async function fetchDedupedJobIds({
       deduplicationPartitionExpressions: getDeduplicationPartitionExpressions(mode),
       extraSelections,
     });
-    const rows = await db.all<DedupedJobIdRow>(sql`
+    const result = await (
+      db as unknown as { execute(sql: SQL): Promise<{ rows: DedupedJobIdRow[] }> }
+    ).execute(sql`
       ${cte}
       select id
       from deduped_jobs
@@ -250,6 +252,7 @@ export async function fetchDedupedJobIds({
       limit ${limit}
       offset ${offset}
     `);
+    const rows = result.rows;
 
     return rows.map((row) => row.id);
   });
@@ -274,7 +277,9 @@ export async function fetchDedupedJobsPage({
       partitionOrderBy: sortOrder.partitionOrderBy,
       deduplicationPartitionExpressions: getDeduplicationPartitionExpressions(mode),
     });
-    const rows = await db.all<DedupedJobPageRow>(sql`
+    const result = await (
+      db as unknown as { execute(sql: SQL): Promise<{ rows: DedupedJobPageRow[] }> }
+    ).execute(sql`
       ${cte}
       select id, (select cast(count(*) as integer) from deduped_jobs) as total
       from deduped_jobs
@@ -282,6 +287,7 @@ export async function fetchDedupedJobsPage({
       limit ${limit}
       offset ${offset}
     `);
+    const rows = result.rows;
 
     const total = rows[0]?.total == null ? 0 : Number(rows[0].total);
 

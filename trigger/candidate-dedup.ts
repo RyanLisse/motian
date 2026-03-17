@@ -1,5 +1,5 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { db, sql } from "@/src/db";
+import { db, type SQL, sql } from "@/src/db";
 
 /**
  * Weekly task to detect and flag duplicate candidates.
@@ -15,7 +15,11 @@ export const candidateDedupTask = schedules.task({
   },
   run: async () => {
     // Find candidates sharing the same email (most reliable dedup signal)
-    const emailDupRows = await db.all<{ email: string; ids: string; cnt: number }>(sql`
+    const emailDupResult = await (
+      db as unknown as {
+        execute(sql: SQL): Promise<{ rows: Array<{ email: string; ids: string; cnt: number }> }>;
+      }
+    ).execute(sql`
       SELECT email, group_concat(id) AS ids, count(*) AS cnt
       FROM candidates
       WHERE email IS NOT NULL
@@ -25,14 +29,16 @@ export const candidateDedupTask = schedules.task({
       ORDER BY MIN(id) ASC
       LIMIT 50
     `);
+    const emailDupRows = emailDupResult.rows;
 
     // Find candidates with identical name + role (fuzzy dedup) - exclude null roles
-    const nameDupRows = await db.all<{
-      norm_name: string;
-      role: string | null;
-      ids: string;
-      cnt: number;
-    }>(sql`
+    const nameDupResult = await (
+      db as unknown as {
+        execute(sql: SQL): Promise<{
+          rows: Array<{ norm_name: string; role: string | null; ids: string; cnt: number }>;
+        }>;
+      }
+    ).execute(sql`
       SELECT lower(name) AS norm_name, role,
              group_concat(id) AS ids,
              count(*) AS cnt
@@ -45,6 +51,7 @@ export const candidateDedupTask = schedules.task({
       ORDER BY MIN(id) ASC
       LIMIT 50
     `);
+    const nameDupRows = nameDupResult.rows;
 
     const parseIds = (idsStr: string) => idsStr.split(",").filter((id) => id.trim());
 

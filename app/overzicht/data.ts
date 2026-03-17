@@ -1,4 +1,4 @@
-import { and, asc, db, eq, gte, isNull, sql } from "@/src/db";
+import { and, asc, db, eq, gte, isNull, type SQL, sql } from "@/src/db";
 import {
   applications,
   candidates,
@@ -69,7 +69,9 @@ type RecentJob = {
 };
 
 async function getRecentJobs(database: typeof db): Promise<RecentJob[]> {
-  const rows = await database.all<RecentJobRow>(sql`
+  const result = await (
+    database as unknown as { execute(sql: SQL): Promise<{ rows: RecentJobRow[] }> }
+  ).execute(sql`
     select id, title, company, platform, location, scraped_at
     from (
       select
@@ -91,6 +93,7 @@ async function getRecentJobs(database: typeof db): Promise<RecentJob[]> {
     order by scraped_at desc, id desc
     limit 5
   `);
+  const rows = result.rows;
 
   return rows.map((row) => ({
     id: row.id,
@@ -103,7 +106,9 @@ async function getRecentJobs(database: typeof db): Promise<RecentJob[]> {
 }
 
 async function getRecentScrapes(database: typeof db): Promise<RecentScrape[]> {
-  const rows = await database.all<RecentScrapeRow>(sql`
+  const result = await (
+    database as unknown as { execute(sql: SQL): Promise<{ rows: RecentScrapeRow[] }> }
+  ).execute(sql`
     select id, config_id, platform, run_at, duration_ms, jobs_found, jobs_new, duplicates, status, errors
     from (
       select
@@ -126,6 +131,7 @@ async function getRecentScrapes(database: typeof db): Promise<RecentScrape[]> {
     order by run_at desc, platform asc
     limit 5
   `);
+  const rows = result.rows;
 
   return dedupeRecentScrapes(
     rows.map((row) => ({

@@ -411,7 +411,13 @@ export async function findSimilarJobsByEmbedding(
   const filterCondition = opts.filterCondition ?? sql`true`;
   const vectorStr = `[${queryEmbedding.join(",")}]`;
 
-  const rows = await db.all<{ id: string; title: string; similarity: number }>(sql`
+  const result = await (
+    db as unknown as {
+      execute(
+        sql: SQL,
+      ): Promise<{ rows: Array<{ id: string; title: string; similarity: number }> }>;
+    }
+  ).execute(sql`
     SELECT
       id,
       title,
@@ -424,6 +430,7 @@ export async function findSimilarJobsByEmbedding(
     ORDER BY vector_distance_cos(embedding, vector32(${vectorStr}))
     LIMIT ${limit}
   `);
+  const rows = result.rows;
 
   return rows.map((r) => ({
     id: r.id,

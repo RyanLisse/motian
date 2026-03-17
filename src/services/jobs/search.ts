@@ -278,7 +278,13 @@ export async function hybridSearchWithTotal(
 
           const vectorStr = `[${queryEmbedding.join(",")}]`;
           const vectorSearchStartedAt = Date.now();
-          const rows = await db.all<{ id: string; title: string; similarity: number | string }>(sql`
+          const result = await (
+            db as unknown as {
+              execute(sql: SQL): Promise<{
+                rows: Array<{ id: string; title: string; similarity: number | string }>;
+              }>;
+            }
+          ).execute(sql`
             SELECT
               id,
               title,
@@ -291,6 +297,7 @@ export async function hybridSearchWithTotal(
             ORDER BY vector_distance_cos(embedding, vector32(${vectorStr}))
             LIMIT ${policy.fetchSize}
           `);
+          const rows = result.rows;
           vectorSearchMs = Date.now() - vectorSearchStartedAt;
 
           return rows.map((row) => ({

@@ -9,7 +9,7 @@ import {
 } from "@motian/scrapers";
 import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { asc, db, desc, eq, gte, sql } from "../db";
+import { asc, db, desc, eq, gte, type SQL, sql } from "../db";
 import {
   platformCatalog,
   platformOnboardingRuns,
@@ -366,7 +366,9 @@ async function ensureOnboardingDraft(
 }
 
 async function listLatestOnboardingRuns(): Promise<PlatformOnboardingRunRecord[]> {
-  const rows = await db.all<LatestPlatformOnboardingRunRow>(sql`
+  const result = await (
+    db as unknown as { execute(sql: SQL): Promise<{ rows: LatestPlatformOnboardingRunRow[] }> }
+  ).execute(sql`
     select id, platformSlug, configId, source, status, currentStep, blockerKind, nextActions, evidence, result, startedAt, completedAt, createdAt, updatedAt
     from (
       select
@@ -391,6 +393,7 @@ async function listLatestOnboardingRuns(): Promise<PlatformOnboardingRunRecord[]
       from ${platformOnboardingRuns}
     ) where rn = 1
   `);
+  const rows = result.rows;
 
   return rows as PlatformOnboardingRunRecord[];
 }
