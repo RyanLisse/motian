@@ -217,7 +217,9 @@ export async function normalizeAndSaveJobs(
           const chunk = result.slice(j, j + ESCO_CONCURRENCY);
           const settled = await Promise.allSettled(
             chunk.map(async (row) => {
-              const item = batch.find((batchItem) => batchItem.parsed.externalId === row.externalId);
+              const item = batch.find(
+                (batchItem) => batchItem.parsed.externalId === row.externalId,
+              );
               if (!item) return;
 
               await syncJobEscoSkills({

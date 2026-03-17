@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
-import { and, db, desc, eq, ilike, isNull, sql } from "@/src/db";
+import { and, db, desc, eq, isNull, like, sql } from "@/src/db";
 import { candidateSkills, candidates } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
 import { parsePagination } from "@/src/lib/pagination";
@@ -66,7 +66,7 @@ export default async function KandidatenPage({ searchParams }: Props) {
   const conditions = [isNull(candidates.deletedAt)];
 
   if (query) {
-    conditions.push(ilike(candidates.name, `%${escapeLike(query)}%`));
+    conditions.push(like(candidates.name, `%${escapeLike(query)}%`));
   }
   if (availability) {
     conditions.push(eq(candidates.availability, availability));
@@ -131,10 +131,10 @@ export default async function KandidatenPage({ searchParams }: Props) {
     db
       .select({
         totalFiltered: extraFilters
-          ? sql<number>`count(*) filter (where ${extraFilters})::int`
-          : sql<number>`count(*)::int`,
-        directCount: sql<number>`count(*) filter (where ${candidates.availability} = 'direct')::int`,
-        weekCount: sql<number>`count(*) filter (where ${candidates.createdAt} >= ${oneWeekAgo})::int`,
+          ? sql<number>`cast(count(*) filter (where ${extraFilters}) as integer)`
+          : sql<number>`cast(count(*) as integer)`,
+        directCount: sql<number>`cast(count(*) filter (where ${candidates.availability} = 'direct') as integer)`,
+        weekCount: sql<number>`cast(count(*) filter (where ${candidates.createdAt} >= ${oneWeekAgo}) as integer)`,
       })
       .from(candidates)
       .where(isNull(candidates.deletedAt)),

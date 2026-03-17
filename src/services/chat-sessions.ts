@@ -566,10 +566,6 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
     await withChatSessionMessageCompatibility(
       async () => {
         await db.transaction(async (tx) => {
-          await tx.execute(
-            sql`select pg_advisory_xact_lock(hashtext(${`${CHAT_SESSION_PERSIST_LOCK_NAMESPACE}:${sessionId}`}))`,
-          );
-
           await tx
             .insert(chatSessions)
             .values({
@@ -674,10 +670,6 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
       },
       async () => {
         await db.transaction(async (tx) => {
-          await tx.execute(
-            sql`select pg_advisory_xact_lock(hashtext(${`${CHAT_SESSION_PERSIST_LOCK_NAMESPACE}:${sessionId}`}))`,
-          );
-
           await tx
             .insert(chatSessions)
             .values({

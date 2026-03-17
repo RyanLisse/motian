@@ -40,7 +40,7 @@ export async function countMessages(
 ): Promise<number> {
   const where = buildMessageWhere(opts);
   const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(messages)
     .where(where);
   return count ?? 0;
@@ -60,7 +60,7 @@ export async function deleteMessage(id: string): Promise<boolean> {
     .update(messages)
     .set({ deletedAt: new Date() })
     .where(and(eq(messages.id, id), isNull(messages.deletedAt)));
-  return (result.rowCount ?? 0) > 0;
+  return (result.rowsAffected ?? 0) > 0;
 }
 
 export async function createMessage(data: {

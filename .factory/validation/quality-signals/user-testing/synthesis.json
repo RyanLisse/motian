@@ -1,0 +1,36 @@
+{
+  "milestone": "quality-signals",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-QUALITY-001",
+    "VAL-QUALITY-002",
+    "VAL-QUALITY-003",
+    "VAL-QUALITY-004",
+    "VAL-QUALITY-005",
+    "VAL-QUALITY-006"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": ".factory/library/user-testing.md",
+      "description": "Added Flow Validator Guidance: Unit Tests section with isolation rules for quality signal validation",
+      "source": "setup"
+    }
+  ],
+  "previousRound": null,
+  "testExecution": {
+    "command": "pnpm test -- --testNamePattern \"QUALITY\"",
+    "totalTests": 18,
+    "passedTests": 18,
+    "executionTimeMs": 84
+  },
+  "validatedAt": "2026-03-16T22:13:35Z"
+}

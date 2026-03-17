@@ -1,0 +1,220 @@
+{
+  "flowName": "quality-signals-flow",
+  "version": "1.0",
+  "milestone": "quality-signals",
+  "validationRound": 1,
+  "executionTimestamp": "2024-06-15T12:13:35Z",
+  "executionTool": "pnpm test --testNamePattern QUALITY",
+  "overallStatus": "pass",
+  "summary": {
+    "totalTests": 18,
+    "passedTests": 18,
+    "failedTests": 0,
+    "skippedTests": 0,
+    "testDurationMs": 84
+  },
+  "assertions": {
+    "VAL-QUALITY-001": {
+      "description": "Approval rate calculation (approved/(approved+rejected))",
+      "testName": "calculates approval rate as approved/(approved+rejected)",
+      "status": "pass",
+      "details": {
+        "input": "3 decisions: 2 approved, 1 rejected",
+        "expectedResult": "approvalRate = 2/3 ≈ 66.67%",
+        "actualResult": "PASS - approvalRate matches expected value"
+      }
+    },
+    "VAL-QUALITY-002": {
+      "description": "Boost for ≥70% approval rate",
+      "testCount": 2,
+      "status": "pass",
+      "tests": [
+        {
+          "testName": "returns boost for ≥70% approval rate",
+          "input": "4 decisions: 3 approved, 1 rejected (75%)",
+          "expectedAdjustment": "QUALITY_CONFIG.highApprovalBoost (+5)",
+          "actualResult": "PASS - adjustment = +5, reasoning contains 'Hoge goedkeuring'"
+        },
+        {
+          "testName": "returns boost for exactly 70% approval rate",
+          "input": "10 decisions: 7 approved, 3 rejected (exactly 70%)",
+          "expectedAdjustment": "QUALITY_CONFIG.highApprovalBoost (+5)",
+          "actualResult": "PASS - at threshold boundary, boost applied correctly"
+        }
+      ]
+    },
+    "VAL-QUALITY-003": {
+      "description": "Penalty for <30% approval rate",
+      "testCount": 2,
+      "status": "pass",
+      "tests": [
+        {
+          "testName": "returns penalty for <30% approval rate",
+          "input": "4 decisions: 1 approved, 3 rejected (25%)",
+          "expectedAdjustment": "-QUALITY_CONFIG.lowApprovalPenalty (-5)",
+          "actualResult": "PASS - adjustment = -5, reasoning contains 'Lage goedkeuring'"
+        },
+        {
+          "testName": "returns penalty for 0% approval rate",
+          "input": "3 decisions: 0 approved, 3 rejected (0%)",
+          "expectedAdjustment": "-QUALITY_CONFIG.lowApprovalPenalty (-5)",
+          "actualResult": "PASS - edge case handled correctly"
+        }
+      ]
+    },
+    "VAL-QUALITY-004": {
+      "description": "Neutral for new candidate with no history",
+      "testCount": 2,
+      "status": "pass",
+      "tests": [
+        {
+          "testName": "returns neutral for new candidate with no history",
+          "input": "Empty array []",
+          "expectedAdjustment": "0 (no boost or penalty)",
+          "actualResult": "PASS - adjustment = 0, reasoning = null"
+        },
+        {
+          "testName": "returns neutral for null decisions",
+          "input": "null decisions",
+          "expectedAdjustment": "0 (no boost or penalty)",
+          "actualResult": "PASS - null handling works correctly"
+        }
+      ]
+    },
+    "VAL-QUALITY-005": {
+      "description": "Minimum 3 decisions required",
+      "testCount": 3,
+      "status": "pass",
+      "tests": [
+        {
+          "testName": "returns neutral for only 1 decision",
+          "input": "1 approved decision",
+          "expectedAdjustment": "0 (not enough decisions)",
+          "actualResult": "PASS - requires minimum count"
+        },
+        {
+          "testName": "returns neutral for only 2 decisions",
+          "input": "2 decisions: 1 approved, 1 rejected (50%)",
+          "expectedAdjustment": "0 (not enough decisions)",
+          "actualResult": "PASS - 50% rate but insufficient data points"
+        },
+        {
+          "testName": "applies signal for exactly 3 decisions",
+          "input": "3 decisions: 3 approved (100%)",
+          "expectedAdjustment": "QUALITY_CONFIG.highApprovalBoost (+5)",
+          "actualResult": "PASS - threshold met exactly"
+        }
+      ]
+    },
+    "VAL-QUALITY-006": {
+      "description": "90-day decay period for match history",
+      "testCount": 3,
+      "status": "pass",
+      "tests": [
+        {
+          "testName": "excludes decisions older than decay period",
+          "input": "2 recent approved + 2 old rejected (>135 days)",
+          "expectedResult": "Only 2 recent decisions counted, no boost (< 3 minDecisions)",
+          "actualResult": "PASS - cutoff date filtering correct"
+        },
+        {
+          "testName": "includes decisions exactly at decay boundary",
+          "input": "Decision exactly 90 days old",
+          "expectedResult": "Included in calculations (>= cutoff)",
+          "actualResult": "PASS - boundary condition handled correctly"
+        },
+        {
+          "testName": "excludes decisions just beyond decay boundary",
+          "input": "Decision just over 90 days old",
+          "expectedResult": "Excluded from calculations (< cutoff)",
+          "actualResult": "PASS - precise time-based filtering works"
+        }
+      ]
+    }
+  },
+  "additionalTests": {
+    "scoreIntegrationTests": {
+      "description": "computeMatchScore integration with quality signals",
+      "count": 7,
+      "status": "pass",
+      "keyTests": [
+        {
+          "description": "boosts score for high approval rate candidate",
+          "result": "PASS - final score = baseScore + 5"
+        },
+        {
+          "description": "penalizes score for low approval rate candidate",
+          "result": "PASS - final score = baseScore - 5"
+        },
+        {
+          "description": "caps final score at 100 maximum with quality boost",
+          "result": "PASS - Math.min(100, calculatedScore) works"
+        },
+        {
+          "description": "caps final score at 0 minimum with quality penalty",
+          "result": "PASS - Math.max(0, calculatedScore) works"
+        },
+        {
+          "description": "combines recency and quality adjustments correctly",
+          "result": "PASS - both signals apply simultaneously"
+        }
+      ]
+    },
+    "configurationTests": {
+      "description": "Environment variable configuration verification",
+      "count": 1,
+      "status": "pass",
+      "verifiedValues": {
+        "decayDays": 90,
+        "highApprovalThreshold": 70,
+        "lowApprovalThreshold": 30,
+        "highApprovalBoost": 5,
+        "lowApprovalPenalty": 5,
+        "minDecisions": 3
+      }
+    },
+    "edgeCaseTests": {
+      "description": "Edge cases and special scenarios",
+      "count": 2,
+      "status": "pass",
+      "tests": [
+        {
+          "testName": "ignores pending and other non-decision statuses",
+          "input": "Mixed statuses: 3 approved, 1 pending, 1 reviewing",
+          "expectedBehavior": "Only approved/rejected counted"
+        },
+        {
+          "testName": "ignores decisions without reviewedAt timestamp",
+          "input": "3 valid decisions + 1 with null reviewedAt",
+          "expectedBehavior": "Only timestamps present counted"
+        }
+      ]
+    }
+  },
+  "environmentVerification": {
+    "nodeVersion": "22.x",
+    "packageManager": "pnpm 9.15.0",
+    "testRunner": "vitest v3.2.4",
+    "fakeTimersUsed": true,
+    "testFileLocation": "/Users/cortex-air/Developer/motian/tests/quality-signals.test.ts"
+  },
+  "testCoverageByAssertion": {
+    "VAL-QUALITY-001": ["approval rate calculation"],
+    "VAL-QUALITY-002": ["high approval boost threshold", "exact 70% boundary"],
+    "VAL-QUALITY-003": ["low approval penalty", "zero percent edge case"],
+    "VAL-QUALITY-004": ["empty array handling", "null handling"],
+    "VAL-QUALITY-005": ["1 decision neutrality", "2 decision neutrality", "3 decisions threshold"],
+    "VAL-QUALITY-006": ["decays beyond cutoff", "boundary inclusion", "precise time filtering"]
+  },
+  "conclusions": {
+    "allAssertionsValidated": true,
+    "confidenceLevel": "high",
+    "notes": [
+      "All 6 core validation assertions (VAL-QUALITY-001 through VAL-QUALITY-006) pass successfully",
+      "Additional integration tests verify scoring system properly combines quality with recency",
+      "Boundary conditions at exact thresholds (70%, 30%, 3 decisions, 90 days) work correctly",
+      "Edge cases like null values, missing timestamps, and invalid statuses are handled gracefully",
+      "Test execution time was efficient: 84ms for 18 tests"
+    ]
+  }
+}

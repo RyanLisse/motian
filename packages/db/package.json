@@ -11,7 +11,7 @@
     "./pool-config": "./src/pool-config.ts"
   },
   "dependencies": {
-    "drizzle-orm": "^0.38.4",
-    "pg": "^8.18.0"
+    "@libsql/client": "^0.14.0",
+    "drizzle-orm": "^0.38.4"
   }
 }

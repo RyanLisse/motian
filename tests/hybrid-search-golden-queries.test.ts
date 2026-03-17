@@ -65,7 +65,7 @@ async function importHybridSearchGoldenHarness({
       // Re-export actual Drizzle helpers
       sql: actual.sql,
       and: actual.and,
-      ilike: actual.ilike,
+      like: (actual as any).like,
       inArray: actual.inArray,
       or: actual.or,
     };
@@ -89,7 +89,7 @@ async function importHybridSearchGoldenHarness({
   }));
   vi.doMock("drizzle-orm", () => ({
     and: (...args: unknown[]) => ({ type: "and", args }),
-    ilike: (...args: unknown[]) => ({ type: "ilike", args }),
+    like: (...args: unknown[]) => ({ type: "like", args }),
     inArray: (...args: unknown[]) => ({ type: "inArray", args }),
     or: (...args: unknown[]) => ({ type: "or", args }),
     sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({

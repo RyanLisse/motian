@@ -9,7 +9,7 @@ import {
 } from "@motian/scrapers";
 import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { asc, db, desc, eq, gte, sql } from "../db";
+import { asc, db, desc, eq, gte, type SQL, sql } from "../db";
 import {
   platformCatalog,
   platformOnboardingRuns,
@@ -366,30 +366,36 @@ async function ensureOnboardingDraft(
 }
 
 async function listLatestOnboardingRuns(): Promise<PlatformOnboardingRunRecord[]> {
-  const result = await db.execute(sql<LatestPlatformOnboardingRunRow>`
-    select distinct on (${platformOnboardingRuns.platformSlug})
-      ${platformOnboardingRuns.id} as "id",
-      ${platformOnboardingRuns.platformSlug} as "platformSlug",
-      ${platformOnboardingRuns.configId} as "configId",
-      ${platformOnboardingRuns.source} as "source",
-      ${platformOnboardingRuns.status} as "status",
-      ${platformOnboardingRuns.currentStep} as "currentStep",
-      ${platformOnboardingRuns.blockerKind} as "blockerKind",
-      ${platformOnboardingRuns.nextActions} as "nextActions",
-      ${platformOnboardingRuns.evidence} as "evidence",
-      ${platformOnboardingRuns.result} as "result",
-      ${platformOnboardingRuns.startedAt} as "startedAt",
-      ${platformOnboardingRuns.completedAt} as "completedAt",
-      ${platformOnboardingRuns.createdAt} as "createdAt",
-      ${platformOnboardingRuns.updatedAt} as "updatedAt"
-    from ${platformOnboardingRuns}
-    order by
-      ${platformOnboardingRuns.platformSlug} asc,
-      ${platformOnboardingRuns.updatedAt} desc nulls last,
-      ${platformOnboardingRuns.id} desc
+  const result = await (
+    db as unknown as { execute(sql: SQL): Promise<{ rows: LatestPlatformOnboardingRunRow[] }> }
+  ).execute(sql`
+    select id, platformSlug, configId, source, status, currentStep, blockerKind, nextActions, evidence, result, startedAt, completedAt, createdAt, updatedAt
+    from (
+      select
+        ${platformOnboardingRuns.id} as "id",
+        ${platformOnboardingRuns.platformSlug} as "platformSlug",
+        ${platformOnboardingRuns.configId} as "configId",
+        ${platformOnboardingRuns.source} as "source",
+        ${platformOnboardingRuns.status} as "status",
+        ${platformOnboardingRuns.currentStep} as "currentStep",
+        ${platformOnboardingRuns.blockerKind} as "blockerKind",
+        ${platformOnboardingRuns.nextActions} as "nextActions",
+        ${platformOnboardingRuns.evidence} as "evidence",
+        ${platformOnboardingRuns.result} as "result",
+        ${platformOnboardingRuns.startedAt} as "startedAt",
+        ${platformOnboardingRuns.completedAt} as "completedAt",
+        ${platformOnboardingRuns.createdAt} as "createdAt",
+        ${platformOnboardingRuns.updatedAt} as "updatedAt",
+        row_number() over (
+          partition by ${platformOnboardingRuns.platformSlug}
+          order by ${platformOnboardingRuns.updatedAt} desc, ${platformOnboardingRuns.id} desc
+        ) as rn
+      from ${platformOnboardingRuns}
+    ) where rn = 1
   `);
+  const rows = result.rows;
 
-  return result.rows as PlatformOnboardingRunRecord[];
+  return rows as PlatformOnboardingRunRecord[];
 }
 
 export function toRuntimeConfig(platform: string, config: ScraperConfig): PlatformRuntimeConfig {

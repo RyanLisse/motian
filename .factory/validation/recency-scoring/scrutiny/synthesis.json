@@ -1,0 +1,54 @@
+{
+  "milestone": "recency-scoring",
+  "round": 2,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "pnpm test tests/recency-scoring.test.ts",
+      "exitCode": 0,
+      "observation": "All 19 recency-specific tests passed. Note: Project has 4 pre-existing unrelated test failures in chat-history-pagination.test.ts, db-env-guard.test.ts, and esco.test.ts."
+    },
+    "typecheck": {
+      "passed": false,
+      "command": "pnpm exec tsc --noEmit",
+      "exitCode": 2,
+      "observation": "Pre-existing TypeScript errors unrelated to this feature (mostly libSQL execute/existing type issues). No new errors introduced by scoring.ts changes."
+    },
+    "lint": {
+      "passed": false,
+      "command": "pnpm lint",
+      "exitCode": 1,
+      "observation": "Pre-existing Biome error in packages/esco/src/esco.ts (unused import). No linting issues introduced by scoring.ts or related files."
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add clarification about candidates.lastMatchedAt field usage - ensure workers reference existing schema fields correctly and verify against src/db/schema.ts before implementing features that depend on candidate timestamps.",
+      "evidence": "Recency-aware-scoring feature used candidate.lastMatchedAt field which exists in schema but was not previously documented as available for scoring logic. Reviewer flagged this as knowledge gap.",
+      "isSystemic": false
+    },
+    {
+      "target": "library",
+      "suggestion": "When creating library documentation for environment variables, ensure the content is generalizable across missions. Mission-scoped docs should go in mission-specific directories instead.",
+      "evidence": "Feature recency-aware-scoring created .factory/library/environment.md that only contains recency/quality-specific env var documentation, making it not reusable for other missions.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "RECENCY_PENALTY_DAYS variable discrepancy noted in code review",
+      "reason": "Implementation detail - both RECENCY_BOOST_DAYS and RECENCY_PENALTY_DAYS exist in .env.example and are properly used. Original task description mentioned RECENTNESS_DECAY_RATE but implementation achieves same goal more explicitly with separate boost/penalty amounts."
+    }
+  ],
+  "previousRound": ".factory/validation/recency-scoring/scrutiny/synthesis.json"
+}

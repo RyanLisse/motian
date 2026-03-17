@@ -1,5 +1,5 @@
-import { and, db, desc, eq, ilike, isNull, sql } from "../db";
-import { applications, candidates, jobMatches } from "../db/schema";
+import { and, db, desc, eq, gte, inArray, isNull, like, sql } from "../db";
+import { applications, candidates, jobMatches, jobs } from "../db/schema";
 import { escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { Candidate, CandidateMatchingStatus } from "./candidates";
 
@@ -17,6 +17,42 @@ export type MatchingInboxQuery = {
   offset?: number;
 };
 
+export type CanvasMatchQuery = {
+  vacatureIds?: string[];
+  kandidaatIds?: string[];
+  minScore: number;
+  limit: number;
+};
+
+export async function getCanvasMatches(params: CanvasMatchQuery) {
+  const conditions = [gte(jobMatches.matchScore, params.minScore)];
+  if (params.vacatureIds?.length) {
+    conditions.push(inArray(jobMatches.jobId, params.vacatureIds));
+  }
+  if (params.kandidaatIds?.length) {
+    conditions.push(inArray(jobMatches.candidateId, params.kandidaatIds));
+  }
+
+  return db
+    .select({
+      matchScore: jobMatches.matchScore,
+      status: jobMatches.status,
+      jobId: jobMatches.jobId,
+      candidateId: jobMatches.candidateId,
+      jobTitle: jobs.title,
+      jobCompany: jobs.company,
+      jobPlatform: jobs.platform,
+      candidateName: candidates.name,
+      candidateRole: candidates.role,
+    })
+    .from(jobMatches)
+    .innerJoin(jobs, eq(jobMatches.jobId, jobs.id))
+    .innerJoin(candidates, eq(jobMatches.candidateId, candidates.id))
+    .where(and(...conditions))
+    .orderBy(desc(jobMatches.matchScore))
+    .limit(params.limit);
+}
+
 function buildMatchingInboxConditions(opts: MatchingInboxQuery) {
   const conditions = [isNull(candidates.deletedAt)];
 
@@ -29,12 +65,12 @@ function buildMatchingInboxConditions(opts: MatchingInboxQuery) {
     conditions.push(
       tsInput
         ? sql`to_tsvector('dutch', coalesce(${candidates.name}, '') || ' ' || coalesce(${candidates.role}, '') || ' ' || coalesce(${candidates.location}, '')) @@ to_tsquery('dutch', ${tsInput})`
-        : ilike(candidates.name, `%${escapeLike(opts.query)}%`),
+        : like(candidates.name, `%${escapeLike(opts.query)}%`),
     );
   }
 
   if (opts.location) {
-    conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
+    conditions.push(like(candidates.location, `%${escapeLike(opts.location)}%`));
   }
 
   return conditions;

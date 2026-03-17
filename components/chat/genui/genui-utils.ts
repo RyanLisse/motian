@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 /** Check if tool output is an error response. */
 export function isToolError(o: unknown): o is { error: unknown } {
   return typeof o === "object" && o !== null && "error" in o;

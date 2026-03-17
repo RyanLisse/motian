@@ -1,0 +1,62 @@
+{
+  "group": "cross-area-validation",
+  "milestone": "dynamic-weights",
+  "timestamp": "2026-03-17T00:00:00Z",
+  "testCommand": "pnpm test -- --testNamePattern \"cross-area|VAL-CROSS\"",
+  "testFile": "/Users/cortex-air/Developer/motian/tests/dynamic-weights.test.ts",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-001",
+      "name": "Combined Scoring Factors",
+      "description": "When both recency and quality factors apply, they combine additively within score caps.",
+      "status": "passed",
+      "testsRun": [
+        "applies dynamic weights before recency and quality adjustments",
+        "combined recency and quality boosts apply additively within score caps",
+        "combined penalty and boost scenarios work correctly"
+      ],
+      "details": "All 3 test cases passed. Candidates with both recent matches and high approval rates receive additive boosts (+5 +5 = +10), properly capped at 100."
+    },
+    {
+      "id": "VAL-CROSS-002",
+      "name": "Factor Priority",
+      "description": "Recency and quality adjustments apply after base rule/vector calculation but before final cap.",
+      "status": "passed",
+      "testsRun": [
+        "recency and quality adjustments apply after base calculation but before final cap",
+        "dynamic weights affect base score before recency/quality is applied"
+      ],
+      "details": "Both test cases passed. Order verified: base score (rule+vector) → recency/quality additions → final capping to 0-100 range."
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "name": "Edge Case Interaction",
+      "description": "Candidate with no lastMatchedAt AND no match history receives baseline scoring.",
+      "status": "passed",
+      "testsRun": [
+        "entirely new candidate (no lastMatchedAt, no history) gets baseline scoring",
+        "candidate with null lastMatchedAt AND partial history gets baseline + quality",
+        "candidate with old history outside decay window gets neutral quality"
+      ],
+      "details": "All 3 test cases passed. Edge cases handled correctly: null timestamps result in neutral scoring, old decisions fall outside decay window."
+    }
+  ],
+  "summary": {
+    "totalAssertions": 3,
+    "passed": 3,
+    "failed": 0,
+    "blocked": 0,
+    "totalTests": 8,
+    "testsPassed": 8,
+    "testsFailed": 0
+  },
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": ["vitest"],
+  "evidence": {
+    "testOutputCaptured": true,
+    "outputLines": 8,
+    "exitCode": 0
+  },
+  "appliedUpdates": []
+}

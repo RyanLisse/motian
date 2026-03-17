@@ -50,7 +50,7 @@ export async function countApplications(
 ): Promise<number> {
   const conditions = buildListConditions(opts);
   const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(applications)
     .where(and(...conditions));
   return count ?? 0;
@@ -269,7 +269,7 @@ export async function deleteApplication(id: string): Promise<boolean> {
     .update(applications)
     .set({ deletedAt: new Date() })
     .where(and(eq(applications.id, id), isNull(applications.deletedAt)));
-  return (result.rowCount ?? 0) > 0;
+  return (result.rowsAffected ?? 0) > 0;
 }
 
 export async function getApplicationStats(): Promise<{
@@ -279,7 +279,7 @@ export async function getApplicationStats(): Promise<{
   const rows = await db
     .select({
       stage: applications.stage,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`cast(count(*) as integer)`,
     })
     .from(applications)
     .where(isNull(applications.deletedAt))

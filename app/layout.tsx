@@ -17,13 +17,13 @@ const inter = Inter({
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-serif",
-  display: "optional",
+  display: "swap",
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
-  display: "optional",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -36,6 +36,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="nl" suppressHydrationWarning>
+      <head>
+        <script src="/theme-init.js" async />
+      </head>
       <body
         className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable} min-h-screen bg-background antialiased`}
       >

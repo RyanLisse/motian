@@ -85,14 +85,22 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   platform_catalog_create: async (raw) => {
     const data = platformCatalogSchema.parse(raw);
     const result = await createPlatformCatalogEntry({ ...data, source: "mcp" });
-    try { revalidatePath("/databronnen"); } catch { /* MCP runs outside request context */ }
+    try {
+      revalidatePath("/databronnen");
+    } catch {
+      /* MCP runs outside request context */
+    }
     publish("platform:updated", { slug: data.slug });
     return result;
   },
   platform_config_create: async (raw) => {
     const data = platformConfigSchema.parse(raw);
     const result = await createConfig({ ...data, source: "mcp" });
-    try { revalidatePath("/databronnen"); } catch { /* MCP runs outside request context */ }
+    try {
+      revalidatePath("/databronnen");
+    } catch {
+      /* MCP runs outside request context */
+    }
     publish("platform:configured", { platform: data.platform });
     return result;
   },
@@ -111,7 +119,11 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   platform_activate: async (raw) => {
     const { platform } = platformSchema.parse(raw);
     const result = await activatePlatform(platform, "mcp");
-    try { revalidatePath("/databronnen"); } catch { /* MCP runs outside request context */ }
+    try {
+      revalidatePath("/databronnen");
+    } catch {
+      /* MCP runs outside request context */
+    }
     publish("platform:activated", { platform });
     return result;
   },

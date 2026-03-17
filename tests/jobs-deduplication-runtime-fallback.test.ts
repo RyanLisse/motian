@@ -1,12 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-function collectStringLeaves(value: unknown): string[] {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(collectStringLeaves);
-  if (value && typeof value === "object") return Object.values(value).flatMap(collectStringLeaves);
-  return [];
-}
-
 async function loadDeduplicationModule(mockExecute: ReturnType<typeof vi.fn>) {
   vi.doMock("../src/db", async () => ({
     ...(await vi.importActual("../src/db")),
@@ -31,14 +24,30 @@ async function loadDeduplicationModule(mockExecute: ReturnType<typeof vi.fn>) {
       dedupeLocationNormalized: "jobs.dedupe_location_normalized",
     },
   }));
-  vi.doMock("drizzle-orm", () => ({
-    inArray: (...args: unknown[]) => ({ type: "inArray", args }),
-    sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
-      type: "sql",
-      strings,
-      values,
-    }),
-  }));
+  vi.doMock("drizzle-orm", () => {
+    const stub = (...args: unknown[]) => ({ type: "stub", args });
+    return {
+      inArray: (...args: unknown[]) => ({ type: "inArray", args }),
+      sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
+        type: "sql",
+        strings,
+        values,
+      }),
+      and: stub,
+      asc: stub,
+      desc: stub,
+      eq: stub,
+      getTableColumns: stub,
+      gte: stub,
+      like: stub,
+      isNotNull: stub,
+      isNull: stub,
+      lt: stub,
+      lte: stub,
+      ne: stub,
+      or: stub,
+    };
+  });
   vi.doMock("../src/services/jobs/repository", () => ({ jobReadSelection: {} }));
 
   return import("../src/services/jobs/deduplication");
@@ -54,62 +63,31 @@ describe("jobs deduplication runtime fallback", () => {
     vi.unmock("../src/services/jobs/repository");
   });
 
-  it("retries paged dedupe queries with derived normalization when persisted columns are missing", async () => {
-    const mockExecute = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("column jobs.dedupe_title_normalized does not exist"))
-      .mockResolvedValueOnce({ rows: [{ id: "job-1", total: 1 }] });
+  // SQLite/Turso: No runtime fallback - columns always exist in schema
+  it("uses normalized columns directly without fallback", async () => {
+    const mockExecute = vi.fn().mockResolvedValueOnce({ rows: [{ id: "job-1", total: 1 }] });
     const { fetchDedupedJobsPage } = await loadDeduplicationModule(mockExecute);
 
-    await expect(
-      fetchDedupedJobsPage({
-        whereClause: { type: "sql", strings: ["true"], values: [] } as never,
-        limit: 1,
-      }),
-    ).resolves.toEqual({ ids: ["job-1"], total: 1 });
+    const page = await fetchDedupedJobsPage({
+      whereClause: { type: "sql", strings: ["true"], values: [] } as never,
+      limit: 1,
+    });
 
-    const fallbackQuery = mockExecute.mock.calls[1]?.[0];
-    const fallbackStrings = collectStringLeaves(fallbackQuery);
-
-    expect(mockExecute).toHaveBeenCalledTimes(2);
-    expect(fallbackStrings).toContain("jobs.title");
-    expect(fallbackStrings).toContain("jobs.end_client");
-    expect(fallbackStrings).toContain("jobs.company");
-    expect(fallbackStrings).toContain("jobs.province");
-    expect(fallbackStrings).toContain("jobs.location");
-    expect(fallbackStrings.some((value) => value.includes("regexp_replace"))).toBe(true);
-    expect(fallbackStrings.some((value) => value.includes("coalesce("))).toBe(true);
+    expect(page).toEqual({ ids: ["job-1"], total: 1 });
+    // No retry/fallback needed - SQLite always has the columns
+    expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 
-  it("retries id lookups with derived normalization when persisted columns are missing", async () => {
-    const mockExecute = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("column jobs.dedupe_client_normalized does not exist"))
-      .mockResolvedValueOnce({ rows: [{ id: "job-2" }] });
-    const { fetchDedupedJobIds } = await loadDeduplicationModule(mockExecute);
-
-    await expect(
-      fetchDedupedJobIds({
-        whereClause: { type: "sql", strings: ["true"], values: [] } as never,
-        limit: 1,
-      }),
-    ).resolves.toEqual(["job-2"]);
-
-    expect(mockExecute).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not fallback for non-column errors that merely mention a dedupe helper", async () => {
-    const error = new Error("relation jobs.dedupe_title_normalized does not exist");
-    const mockExecute = vi.fn().mockRejectedValueOnce(error);
+  it("returns empty when no jobs found", async () => {
+    const mockExecute = vi.fn().mockResolvedValueOnce({ rows: [] });
     const { fetchDedupedJobsPage } = await loadDeduplicationModule(mockExecute);
 
-    await expect(
-      fetchDedupedJobsPage({
-        whereClause: { type: "sql", strings: ["true"], values: [] } as never,
-        limit: 1,
-      }),
-    ).rejects.toThrow(error.message);
+    const page = await fetchDedupedJobsPage({
+      whereClause: { type: "sql", strings: ["false"], values: [] } as never,
+      limit: 1,
+    });
 
+    expect(page).toEqual({ ids: [], total: 0 });
     expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 });

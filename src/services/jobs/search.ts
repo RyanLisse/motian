@@ -1,4 +1,4 @@
-import { and, db, ilike, inArray, or, type SQL, sql } from "../../db";
+import { and, db, inArray, like, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { escapeLike, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
@@ -170,8 +170,8 @@ async function searchJobIdsByTitle(
   const words = query.trim().split(/\s+/).filter(Boolean);
   const titleConditions =
     words.length > 1
-      ? or(...words.map((w) => ilike(jobs.title, `%${escapeLike(w)}%`)))
-      : ilike(jobs.title, `%${escapeLike(query)}%`);
+      ? or(...words.map((w) => like(jobs.title, `%${escapeLike(w)}%`)))
+      : like(jobs.title, `%${escapeLike(query)}%`);
 
   return fetchDedupedJobIds({
     whereClause: and(filterCondition, titleConditions) ?? filterCondition,
@@ -270,8 +270,7 @@ export async function hybridSearchWithTotal(
 
         if (
           typeof embeddingService.generateQueryEmbedding === "function" &&
-          typeof embeddingService.generateEmbedding === "function" &&
-          typeof db.execute === "function"
+          typeof embeddingService.generateEmbedding === "function"
         ) {
           const embeddingStartedAt = Date.now();
           const queryEmbedding = await embeddingService.generateQueryEmbedding(query);
@@ -279,24 +278,29 @@ export async function hybridSearchWithTotal(
 
           const vectorStr = `[${queryEmbedding.join(",")}]`;
           const vectorSearchStartedAt = Date.now();
-          const results = await db.execute(sql`
+          const result = await (
+            db as unknown as {
+              execute(sql: SQL): Promise<{
+                rows: Array<{ id: string; title: string; similarity: number | string }>;
+              }>;
+            }
+          ).execute(sql`
             SELECT
               id,
               title,
-              1 - (embedding <=> ${vectorStr}::vector) AS similarity
+              1 - vector_distance_cos(embedding, vector32(${vectorStr})) AS similarity
             FROM jobs
             WHERE embedding IS NOT NULL
               AND deleted_at IS NULL
               AND ${retrievalFilterCondition}
-              AND 1 - (embedding <=> ${vectorStr}::vector) >= ${policy.vectorMinScore}
-            ORDER BY embedding <=> ${vectorStr}::vector
+              AND 1 - vector_distance_cos(embedding, vector32(${vectorStr})) >= ${policy.vectorMinScore}
+            ORDER BY vector_distance_cos(embedding, vector32(${vectorStr}))
             LIMIT ${policy.fetchSize}
           `);
+          const rows = result.rows;
           vectorSearchMs = Date.now() - vectorSearchStartedAt;
 
-          return (
-            results.rows as Array<{ id: string; title: string; similarity: number | string }>
-          ).map((row) => ({
+          return rows.map((row) => ({
             id: row.id,
             title: row.title,
             similarity: Number(row.similarity),

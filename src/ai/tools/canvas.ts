@@ -1,7 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { and, db, desc, eq, gte, inArray } from "@/src/db";
-import { candidates, jobMatches, jobs } from "@/src/db/schema";
+import { getCanvasMatches } from "@/src/services/matching-inbox";
 
 export const renderCanvas = tool({
   description:
@@ -24,32 +23,12 @@ export const renderCanvas = tool({
     limit: z.number().max(100).default(50).describe("Maximum aantal matches (standaard: 50)"),
   }),
   execute: async (params) => {
-    const conditions = [gte(jobMatches.matchScore, params.minScore)];
-    if (params.vacatureIds?.length) {
-      conditions.push(inArray(jobMatches.jobId, params.vacatureIds));
-    }
-    if (params.kandidaatIds?.length) {
-      conditions.push(inArray(jobMatches.candidateId, params.kandidaatIds));
-    }
-
-    const matchRows = await db
-      .select({
-        matchScore: jobMatches.matchScore,
-        status: jobMatches.status,
-        jobId: jobMatches.jobId,
-        candidateId: jobMatches.candidateId,
-        jobTitle: jobs.title,
-        jobCompany: jobs.company,
-        jobPlatform: jobs.platform,
-        candidateName: candidates.name,
-        candidateRole: candidates.role,
-      })
-      .from(jobMatches)
-      .innerJoin(jobs, eq(jobMatches.jobId, jobs.id))
-      .innerJoin(candidates, eq(jobMatches.candidateId, candidates.id))
-      .where(and(...conditions))
-      .orderBy(desc(jobMatches.matchScore))
-      .limit(params.limit);
+    const matchRows = await getCanvasMatches({
+      vacatureIds: params.vacatureIds,
+      kandidaatIds: params.kandidaatIds,
+      minScore: params.minScore,
+      limit: params.limit,
+    });
 
     if (matchRows.length === 0) {
       return { error: "Geen matches gevonden met deze criteria" };

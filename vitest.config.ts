@@ -4,6 +4,8 @@ import { defineConfig } from "vitest/config";
 process.env.DATABASE_URL ??=
   "postgresql://postgres:postgres@127.0.0.1:5432/motian_test?sslmode=disable";
 
+process.env.TURSO_DATABASE_URL ??= "file::memory:";
+
 export default defineConfig({
   test: {
     globals: true,
@@ -13,10 +15,9 @@ export default defineConfig({
     // Parallel test execution for faster CI (40-60% speedup)
     // - threads: Better for CPU-bound tests (our case: DB mocks, business logic)
     // - forks: Use if tests have memory leaks or need full process isolation
-    pool: "threads",
+    pool: "forks",
     poolOptions: {
-      threads: {
-        singleThread: false,
+      forks: {
         isolate: true,
       },
     },

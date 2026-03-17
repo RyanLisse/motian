@@ -1,4 +1,4 @@
-import { and, asc, db, eq, gte, isNull, sql } from "@/src/db";
+import { and, asc, db, eq, gte, isNull, type SQL, sql } from "@/src/db";
 import {
   applications,
   candidates,
@@ -68,35 +68,34 @@ type RecentJob = {
   scrapedAt: Date | null;
 };
 
-async function getRecentJobs(database: Pick<typeof db, "execute">): Promise<RecentJob[]> {
-  const result = await database.execute(sql<RecentJobRow>`
-    select *
+async function getRecentJobs(database: typeof db): Promise<RecentJob[]> {
+  const result = await (
+    database as unknown as { execute(sql: SQL): Promise<{ rows: RecentJobRow[] }> }
+  ).execute(sql`
+    select id, title, company, platform, location, scraped_at
     from (
-      select distinct on (
-        trim(regexp_replace(lower(coalesce(${jobs.title}, '')), '[^[:alnum:]]+', ' ', 'g')),
-        trim(regexp_replace(lower(coalesce(${jobs.endClient}, ${jobs.company}, '')), '[^[:alnum:]]+', ' ', 'g')),
-        trim(regexp_replace(lower(coalesce(${jobs.province}, ${jobs.location}, '')), '[^[:alnum:]]+', ' ', 'g'))
-      )
+      select
         ${jobs.id} as id,
         ${jobs.title} as title,
         coalesce(${jobs.endClient}, ${jobs.company}) as company,
         ${jobs.platform} as platform,
         coalesce(${jobs.location}, ${jobs.province}) as location,
-        ${jobs.scrapedAt} as scraped_at
+        ${jobs.scrapedAt}.mapWith(${jobs.scrapedAt}) as scraped_at,
+        row_number() over (
+          partition by lower(coalesce(${jobs.title}, '')),
+                       lower(coalesce(${jobs.endClient}, ${jobs.company}, '')),
+                       lower(coalesce(${jobs.province}, ${jobs.location}, ''))
+          order by ${jobs.scrapedAt} desc, ${jobs.id} desc
+        ) as rn
       from ${jobs}
       where ${jobs.deletedAt} is null
-      order by
-        trim(regexp_replace(lower(coalesce(${jobs.title}, '')), '[^[:alnum:]]+', ' ', 'g')) asc,
-        trim(regexp_replace(lower(coalesce(${jobs.endClient}, ${jobs.company}, '')), '[^[:alnum:]]+', ' ', 'g')) asc,
-        trim(regexp_replace(lower(coalesce(${jobs.province}, ${jobs.location}, '')), '[^[:alnum:]]+', ' ', 'g')) asc,
-        ${jobs.scrapedAt} desc nulls last,
-        ${jobs.id} desc
-    ) latest_job_groups
-    order by scraped_at desc nulls last, id desc
+    ) where rn = 1
+    order by scraped_at desc, id desc
     limit 5
   `);
+  const rows = result.rows;
 
-  return (result.rows as RecentJobRow[]).map((row) => ({
+  return rows.map((row) => ({
     id: row.id,
     title: row.title,
     company: row.company,
@@ -106,30 +105,36 @@ async function getRecentJobs(database: Pick<typeof db, "execute">): Promise<Rece
   }));
 }
 
-async function getRecentScrapes(database: Pick<typeof db, "execute">): Promise<RecentScrape[]> {
-  const result = await database.execute(sql<RecentScrapeRow>`
-    select *
+async function getRecentScrapes(database: typeof db): Promise<RecentScrape[]> {
+  const result = await (
+    database as unknown as { execute(sql: SQL): Promise<{ rows: RecentScrapeRow[] }> }
+  ).execute(sql`
+    select id, config_id, platform, run_at, duration_ms, jobs_found, jobs_new, duplicates, status, errors
     from (
-      select distinct on (${scrapeResults.platform})
+      select
         ${scrapeResults.id} as id,
         ${scrapeResults.configId} as config_id,
         ${scrapeResults.platform} as platform,
-        ${scrapeResults.runAt} as run_at,
+        ${scrapeResults.runAt}.mapWith(${scrapeResults.runAt}) as run_at,
         ${scrapeResults.durationMs} as duration_ms,
         ${scrapeResults.jobsFound} as jobs_found,
         ${scrapeResults.jobsNew} as jobs_new,
         ${scrapeResults.duplicates} as duplicates,
         ${scrapeResults.status} as status,
-        ${scrapeResults.errors} as errors
+        ${scrapeResults.errors}.mapWith(${scrapeResults.errors}) as errors,
+        row_number() over (
+          partition by lower(trim(${scrapeResults.platform}))
+          order by ${scrapeResults.runAt} desc, ${scrapeResults.id} desc
+        ) as rn
       from ${scrapeResults}
-      order by ${scrapeResults.platform} asc, ${scrapeResults.runAt} desc nulls last, ${scrapeResults.id} desc
-    ) latest_platform_runs
-    order by run_at desc nulls last, platform asc
+    ) where rn = 1
+    order by run_at desc, platform asc
     limit 5
   `);
+  const rows = result.rows;
 
   return dedupeRecentScrapes(
-    (result.rows as RecentScrapeRow[]).map((row) => ({
+    rows.map((row) => ({
       id: row.id,
       configId: row.config_id,
       platform: row.platform,
@@ -187,8 +192,8 @@ export async function getOverviewData(database: typeof db = db) {
   const platformCounts = await database
     .select({
       platform: jobs.platform,
-      count: sql<number>`count(*)::int`,
-      weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
+      count: sql<number>`cast(count(*) as integer)`,
+      weeklyNew: sql<number>`cast(count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo}) as integer)`,
     })
     .from(jobs)
     .groupBy(jobs.platform)
@@ -206,7 +211,7 @@ export async function getOverviewData(database: typeof db = db) {
   const topCompanies = await database
     .select({
       company: jobs.company,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`cast(count(*) as integer)`,
     })
     .from(jobs)
     .where(sql`${jobs.company} is not null`)
@@ -217,7 +222,7 @@ export async function getOverviewData(database: typeof db = db) {
   const locationCounts = await database
     .select({
       province: jobs.province,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`cast(count(*) as integer)`,
     })
     .from(jobs)
     .where(sql`${jobs.province} is not null`)
@@ -228,14 +233,14 @@ export async function getOverviewData(database: typeof db = db) {
   const pipelineStageCounts = await database
     .select({
       stage: applications.stage,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`cast(count(*) as integer)`,
     })
     .from(applications)
     .where(isNull(applications.deletedAt))
     .groupBy(applications.stage);
 
   const upcomingInterviewCountResult = await database
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(interviews)
     .where(
       and(

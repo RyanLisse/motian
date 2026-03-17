@@ -1,0 +1,32 @@
+{
+  "featureId": "quality-signals-scoring",
+  "milestone": "quality-signals",
+  "summary": "Quality signals scoring feature successfully implemented. The computeQualityScore function calculates approval rates from jobMatch history (approved/(approved+rejected)), boosts candidates with ≥70% approval by +5 points, penalizes <30% by -5 points, requires minimum 3 decisions before applying signal, and uses 90-day decay for stale match history. Implementation is clean, well-tested, and integrates correctly with existing recency scoring.",
+  "codeQualityIssues": [
+    {
+      "severity": "non_blocking",
+      "description": "Environment variables for quality signals are NOT documented in .env.example. Variables: QUALITY_SIGNAL_DECAY_DAYS, QUALITY_HIGH_APPROVAL_THRESHOLD, QUALITY_LOW_APPROVAL_THRESHOLD, QUALITY_HIGH_APPROVAL_BOOST, QUALITY_LOW_APPROVAL_PENALTY, QUALITY_MIN_DECISIONS"
+    }
+  ],
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Worker added QUALITY_CONFIG to scoring.ts following existing pattern of SCORING_WEIGHTS, HYBRID_BLEND, RECENCY_CONFIG exports. This matches project conventions.",
+      "evidence": "src/services/scoring.ts:1-120 — QualityConfig type and export follow same structure as RecencyResult/RecencyConfig"
+    },
+    {
+      "observation": "Environment variable configuration values documented in comments within code, but not in .env.example. Should add QUALITY_SIGNAL_* env vars to .env.example under 'Recency/configuratie' section alongside RECENCY_* vars.",
+      "evidence": ".env.example missing QUALITY_SIGNAL_DECAY_DAYS, QUALITY_HIGH_APPROVAL_THRESHOLD, etc."
+    },
+    {
+      "observation": "Dutch language reasoning strings used consistently (Hoge goedkeuring, Lage goedkeuring). Follows existing convention from recency scoring (Recente match, Verouderde match).",
+      "evidence": "src/services/scoring.ts:135-145 — quality reasoning contains Dutch labels matching job context"
+    },
+    {
+      "area": "skills",
+      "observation": "Worker skill for backend features follows established procedure: read schema → identify patterns → implement → test → lint → commit.",
+      "evidence": "worker-transcripts.jsonl shows worker followed this exact flow for quality-signals-scoring"
+    }
+  ],
+  "blocking": false
+}
