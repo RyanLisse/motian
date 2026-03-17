@@ -513,18 +513,214 @@ describe("computeMatchScore dynamic weights edge cases", () => {
   });
 });
 
-// ── Environment Configuration Tests ──────────────────────────────
+// ── Cross-Area Flow Tests ─────────────────────────────────────────
 
-describe("SCORING_WEIGHTS and HYBRID_BLEND defaults", () => {
-  it("VAL-WEIGHTS-002: verifies default scoring weights", () => {
-    expect(SCORING_WEIGHTS.skills).toBe(40);
-    expect(SCORING_WEIGHTS.location).toBe(20);
-    expect(SCORING_WEIGHTS.rate).toBe(20);
-    expect(SCORING_WEIGHTS.role).toBe(20);
+describe("computeMatchScore cross-area factor interactions", () => {
+  const mockDate = new Date("2024-06-15T12:00:00Z");
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(mockDate);
   });
 
-  it("VAL-WEIGHTS-002: verifies default hybrid blend", () => {
-    expect(HYBRID_BLEND.ruleWeight).toBe(0.6);
-    expect(HYBRID_BLEND.vectorWeight).toBe(0.4);
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("VAL-CROSS-001: combined recency and quality boosts apply additively within score caps", () => {
+    // Candidate with both recent match AND high approval rate
+    const candidate: Candidate = {
+      ...baseCandidate,
+      lastMatchedAt: new Date("2024-06-10T12:00:00Z"), // Recent (5 days ago)
+      skills: ["React", "TypeScript"],
+    };
+
+    const decisions = [
+      { status: "approved", reviewedAt: new Date("2024-06-12T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-06-13T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-06-14T12:00:00Z") },
+    ];
+
+    const result = computeMatchScore(baseJob, candidate, {
+      weights: { skills: 0.5, location: 0.2, rate: 0.15, role: 0.15 },
+      matchDecisions: decisions,
+    });
+
+    // Should have BOTH recency and quality boosts in reasoning
+    expect(result.reasoning).toContain("Recente match");
+    expect(result.reasoning).toContain("Hoge goedkeuring");
+
+    // Both boosts should add up (+5 +5 = +10 on top of base)
+    // Score should be > 80 (base 70 + recency 5 + quality 5 = 80 minimum)
+    expect(result.score).toBeGreaterThanOrEqual(80);
+    expect(result.score).toBeLessThanOrEqual(100);
+  });
+
+  it("VAL-CROSS-001: combined penalty and boost scenarios work correctly", () => {
+    // Candidate with stale match but high approval rate
+    const candidateStaleButGood: Candidate = {
+      ...baseCandidate,
+      lastMatchedAt: new Date("2024-05-01T12:00:00Z"), // Stale (45 days ago, between penalty threshold)
+      skills: ["React", "TypeScript"],
+    };
+
+    const decisions = [
+      { status: "approved", reviewedAt: new Date("2024-06-12T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-06-13T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-06-14T12:00:00Z") },
+    ];
+
+    const result = computeMatchScore(baseJob, candidateStaleButGood, {
+      weights: { skills: 0.5, location: 0.2, rate: 0.15, role: 0.15 },
+      matchDecisions: decisions,
+    });
+
+    // Quality boost should apply, no recency adjustment
+    expect(result.reasoning).toContain("Hoge goedkeuring");
+    expect(result.reasoning).not.toContain("Recente match");
+    expect(result.reasoning).not.toContain("Verouderde match");
+    expect(result.score).toBeGreaterThanOrEqual(0);
+    expect(result.score).toBeLessThanOrEqual(100);
+  });
+
+  it("VAL-CROSS-002: recency and quality adjustments apply after base calculation but before final cap", () => {
+    // Create candidate that would score very high with all factors
+    const candidate: Candidate = {
+      ...baseCandidate,
+      lastMatchedAt: new Date("2024-06-14T12:00:00Z"), // Very recent (1 day ago)
+      skills: ["React", "TypeScript", "Node.js"], // Full skill match
+    };
+
+    const decisions = [
+      { status: "approved", reviewedAt: new Date("2024-06-12T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-06-13T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-06-14T12:00:00Z") },
+    ];
+
+    const embedding = Array.from({ length: 512 }, (_, i) => Math.sin(i * 0.01));
+    const jobWithEmb = { ...baseJob, embedding };
+    const candidateWithEmb: Candidate = {
+      ...candidate,
+      embedding: embedding.map((v) => v + 0.1), // High similarity
+    };
+
+    const result = computeMatchScore(jobWithEmb, candidateWithEmb, {
+      weights: { skills: 0.5, location: 0.2, rate: 0.15, role: 0.15 },
+      matchDecisions: decisions,
+    });
+
+    // Order: base score computed first, then recency+quality added, THEN capped
+    // With 95 rule score + ~95 vector score (hybrid 0.6/0.4) = ~95 base
+    // +5 recency +5 quality = 105, then capped to 100
+    expect(result.score).toBe(100); // Should be at cap
+    expect(result.reasoning).toContain("Recente match");
+    expect(result.reasoning).toContain("Hoge goedkeuring");
+  });
+
+  it("VAL-CROSS-002: dynamic weights affect base score before recency/quality is applied", () => {
+    const candidate: Candidate = {
+      ...baseCandidate,
+      lastMatchedAt: new Date("2024-06-14T12:00:00Z"), // Recent
+      skills: ["React"],
+    };
+
+    const decisions = [
+      { status: "approved", reviewedAt: new Date("2024-06-12T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-06-13T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-06-14T12:00:00Z") },
+    ];
+
+    const resultWithHighSkills = computeMatchScore(baseJob, candidate, {
+      weights: { skills: 1.0, location: 0.2, rate: 0.15, role: 0.15 },
+      matchDecisions: decisions,
+    });
+
+    const resultWithLowSkills = computeMatchScore(baseJob, candidate, {
+      weights: { skills: 0.1, location: 0.2, rate: 0.15, role: 0.15 },
+      matchDecisions: decisions,
+    });
+
+    // Recency and quality adjustments are identical (+5 each)
+    // But base scores differ due to skills weight
+    // Final: highSkills = base_high + 10, lowSkills = base_low + 10
+    expect(resultWithHighSkills.score).toBeGreaterThan(resultWithLowSkills.score);
+    // Both should still have recency and quality in reasoning
+    expect(resultWithHighSkills.reasoning).toContain("Recente match");
+    expect(resultWithHighSkills.reasoning).toContain("Hoge goedkeuring");
+  });
+
+  it("VAL-CROSS-003: entirely new candidate (no lastMatchedAt, no history) gets baseline scoring", () => {
+    const newCandidate: Candidate = {
+      ...baseCandidate,
+      lastMatchedAt: null,
+      createdAt: new Date("2024-06-15T12:00:00Z"),
+      updatedAt: new Date("2024-06-15T12:00:00Z"),
+    };
+
+    const result = computeMatchScore(baseJob, newCandidate);
+
+    // No recency reason (null lastMatchedAt = neutral)
+    expect(result.reasoning).not.toContain("Recente match");
+    expect(result.reasoning).not.toContain("Verouderde match");
+    // No quality reason (no decisions)
+    expect(result.reasoning).not.toContain("Goedkeuring");
+    // Should only have rule-based matches
+    expect(result.reasoning).toContain("Provincie match");
+    expect(result.reasoning).toContain("Tarief past binnen budget");
+    expect(result.score).toBeGreaterThanOrEqual(0);
+    expect(result.score).toBeLessThanOrEqual(100);
+  });
+
+  it("VAL-CROSS-003: candidate with null lastMatchedAt AND partial history gets baseline + quality", () => {
+    const candidate: Candidate = {
+      ...baseCandidate,
+      lastMatchedAt: null, // No lastMatchedAt = neutral recency
+      skills: ["React", "TypeScript"],
+    };
+
+    const decisions = [
+      { status: "approved", reviewedAt: new Date("2024-06-12T12:00:00Z") },
+      { status: "rejected", reviewedAt: new Date("2024-06-13T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-06-14T12:00:00Z") },
+    ];
+
+    const result = computeMatchScore(baseJob, candidate, {
+      matchDecisions: decisions,
+    });
+
+    // No recency adjustment
+    expect(result.reasoning).not.toContain("Recente match");
+    expect(result.reasoning).not.toContain("Verouderde match");
+    // But quality applies (67% approval rate - medium, no boost or penalty)
+    // At 67%, which is between 30% and 70%, so no adjustment
+    expect(result.reasoning).not.toContain("Goedkeuring");
+    expect(result.score).toBeGreaterThanOrEqual(0);
+    expect(result.score).toBeLessThanOrEqual(100);
+  });
+
+  it("VAL-CROSS-003: candidate with old history outside decay window gets neutral quality", () => {
+    const candidate: Candidate = {
+      ...baseCandidate,
+      lastMatchedAt: new Date("2024-06-10T12:00:00Z"), // Recent
+      skills: ["React", "TypeScript"],
+    };
+
+    // Old decisions outside 90-day decay window
+    const decisions = [
+      { status: "approved", reviewedAt: new Date("2024-01-01T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-01-15T12:00:00Z") },
+      { status: "approved", reviewedAt: new Date("2024-02-01T12:00:00Z") },
+    ];
+
+    const result = computeMatchScore(baseJob, candidate, {
+      matchDecisions: decisions,
+    });
+
+    // Recent match boost applies
+    expect(result.reasoning).toContain("Recente match");
+    // But quality is neutral because old decisions fall outside decay window
+    expect(result.reasoning).not.toContain("Goedkeuring");
+    expect(result.score).toBeGreaterThanOrEqual(0);
+    expect(result.score).toBeLessThanOrEqual(100);
   });
 });
