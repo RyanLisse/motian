@@ -131,10 +131,10 @@ export default async function KandidatenPage({ searchParams }: Props) {
     db
       .select({
         totalFiltered: extraFilters
-          ? sql<number>`count(*) filter (where ${extraFilters})::int`
-          : sql<number>`count(*)::int`,
-        directCount: sql<number>`count(*) filter (where ${candidates.availability} = 'direct')::int`,
-        weekCount: sql<number>`count(*) filter (where ${candidates.createdAt} >= ${oneWeekAgo})::int`,
+          ? sql<number>`cast(count(*) filter (where ${extraFilters}) as integer)`
+          : sql<number>`cast(count(*) as integer)`,
+        directCount: sql<number>`cast(count(*) filter (where ${candidates.availability} = 'direct') as integer)`,
+        weekCount: sql<number>`cast(count(*) filter (where ${candidates.createdAt} >= ${oneWeekAgo}) as integer)`,
       })
       .from(candidates)
       .where(isNull(candidates.deletedAt)),

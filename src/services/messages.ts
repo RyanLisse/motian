@@ -40,7 +40,7 @@ export async function countMessages(
 ): Promise<number> {
   const where = buildMessageWhere(opts);
   const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(messages)
     .where(where);
   return count ?? 0;

@@ -7,23 +7,16 @@ type DedupableJob = Pick<Job, "title" | "company" | "endClient" | "province" | "
 
 type DedupedJobIdRow = { id: string };
 type DedupedJobPageRow = { id: string | null; total: number | string | null };
-type JobsDeduplicationMigrationRow = { migration_applied: boolean | number | string | null };
-type JobsDeduplicationTableSchemaRow = { table_schema: string | null };
-type JobsDeduplicationMode = "unknown" | "normalized" | "legacy";
-type ResolvedJobsDeduplicationMode = Exclude<JobsDeduplicationMode, "unknown">;
+type JobsDeduplicationMode = "normalized";
+type ResolvedJobsDeduplicationMode = JobsDeduplicationMode;
 
 const JOBS_DEDUPE_COLUMN_NAMES = [
   "dedupe_title_normalized",
   "dedupe_client_normalized",
   "dedupe_location_normalized",
 ] as const;
-const JOBS_DEDUPE_BACKFILL_MIGRATION_HASH =
-  "de9573fb28a78df406df11f368ea0972f5ad11251dc6864791ba5b354f59768d";
-const POSTGRES_MISSING_COLUMN_ERROR_CODE = "42703";
-const POSTGRES_MISSING_COLUMN_MESSAGE = /(^|\s)column\s+.+\s+does not exist/i;
 
-let jobsDeduplicationMode: JobsDeduplicationMode = "unknown";
-let jobsDeduplicationModePromise: Promise<ResolvedJobsDeduplicationMode> | null = null;
+let jobsDeduplicationMode: ResolvedJobsDeduplicationMode = "normalized";
 
 function normalizeDeduplicationPart(value: string | null | undefined) {
   return (value ?? "")
@@ -37,68 +30,46 @@ function getListSortOrderSql(sortBy: ListJobsSortBy = "nieuwste") {
   switch (sortBy) {
     case "tarief_hoog":
       return {
-        partitionOrderBy: sql`case when ${jobs.rateMax} > 500 then null else ${jobs.rateMax} end desc nulls last, ${jobs.id} desc`,
-        resultOrderBy: sql`sort_rate_max desc nulls last, id desc`,
+        partitionOrderBy: sql`case when ${jobs.rateMax} > 500 then 1 else 0 end, ${jobs.rateMax} desc nulls last, ${jobs.id} desc`,
+        resultOrderBy: sql`case when sort_rate_max is null then 1 else 0 end, sort_rate_max desc, id desc`,
       };
     case "tarief_laag":
       return {
         partitionOrderBy: sql`${jobs.rateMin} asc nulls last, ${jobs.id} desc`,
-        resultOrderBy: sql`sort_rate_min asc nulls last, id desc`,
+        resultOrderBy: sql`case when sort_rate_min is null then 1 else 0 end, sort_rate_min asc, id desc`,
       };
     case "deadline":
       return {
         partitionOrderBy: sql`${jobs.applicationDeadline} asc nulls last, ${jobs.id} desc`,
-        resultOrderBy: sql`sort_application_deadline asc nulls last, id desc`,
+        resultOrderBy: sql`case when sort_application_deadline is null then 1 else 0 end, sort_application_deadline asc, id desc`,
       };
     case "deadline_desc":
       return {
         partitionOrderBy: sql`${jobs.applicationDeadline} desc nulls last, ${jobs.id} desc`,
-        resultOrderBy: sql`sort_application_deadline desc nulls last, id desc`,
+        resultOrderBy: sql`case when sort_application_deadline is null then 1 else 0 end, sort_application_deadline desc, id desc`,
       };
     case "geplaatst":
       return {
         partitionOrderBy: sql`${jobs.postedAt} desc nulls last, ${jobs.id} desc`,
-        resultOrderBy: sql`sort_posted_at desc nulls last, id desc`,
+        resultOrderBy: sql`case when sort_posted_at is null then 1 else 0 end, sort_posted_at desc, id desc`,
       };
     case "startdatum":
       return {
         partitionOrderBy: sql`${jobs.startDate} asc nulls last, ${jobs.id} desc`,
-        resultOrderBy: sql`sort_start_date asc nulls last, id desc`,
+        resultOrderBy: sql`case when sort_start_date is null then 1 else 0 end, sort_start_date asc, id desc`,
       };
     default:
       return {
         partitionOrderBy: sql`${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
-        resultOrderBy: sql`scraped_at desc nulls last, id desc`,
+        resultOrderBy: sql`case when scraped_at is null then 1 else 0 end, scraped_at desc, id desc`,
       };
   }
-}
-
-function isMissingJobsDeduplicationColumn(error: unknown): boolean {
-  if (!error || typeof error !== "object") {
-    return false;
-  }
-
-  const code = "code" in error ? error.code : undefined;
-  const column = "column" in error ? error.column : undefined;
-  const message = "message" in error && typeof error.message === "string" ? error.message : "";
-  const cause = "cause" in error ? error.cause : undefined;
-  const referencesDeduplicationColumn = JOBS_DEDUPE_COLUMN_NAMES.some(
-    (dedupeColumn) => column === dedupeColumn || message.includes(dedupeColumn),
-  );
-
-  return (
-    (referencesDeduplicationColumn &&
-      (code === POSTGRES_MISSING_COLUMN_ERROR_CODE ||
-        POSTGRES_MISSING_COLUMN_MESSAGE.test(message))) ||
-    (cause ? isMissingJobsDeduplicationColumn(cause) : false)
-  );
 }
 
 function setJobsDeduplicationMode(
   mode: ResolvedJobsDeduplicationMode,
 ): ResolvedJobsDeduplicationMode {
   jobsDeduplicationMode = mode;
-  jobsDeduplicationModePromise = null;
   return mode;
 }
 
@@ -128,14 +99,6 @@ async function jobsDeduplicationHelpersNeedBackfill(): Promise<boolean> {
   return false;
 }
 
-async function getJobsDeduplicationMode(): Promise<ResolvedJobsDeduplicationMode> {
-  // SQLite schema always has dedup columns - always use normalized mode
-  if (jobsDeduplicationMode !== "unknown") {
-    return jobsDeduplicationMode;
-  }
-  return setJobsDeduplicationMode("normalized");
-}
-
 function getDeduplicationFallbackExpression(value: SQL): SQL {
   return sql`lower(coalesce(${value}, ''))`;
 }
@@ -163,22 +126,7 @@ function getDeduplicationPartitionExpressions(mode: ResolvedJobsDeduplicationMod
 async function withJobsDeduplicationCompatibility<T>(
   runForMode: (mode: ResolvedJobsDeduplicationMode) => Promise<T>,
 ): Promise<T> {
-  if ((await getJobsDeduplicationMode()) === "legacy") {
-    return runForMode("legacy");
-  }
-
-  try {
-    const result = await runForMode("normalized");
-    setJobsDeduplicationMode("normalized");
-    return result;
-  } catch (error) {
-    if (!isMissingJobsDeduplicationColumn(error)) {
-      throw error;
-    }
-
-    setJobsDeduplicationMode("legacy");
-    return runForMode("legacy");
-  }
+  return runForMode("normalized");
 }
 
 function buildDedupedJobsCte({

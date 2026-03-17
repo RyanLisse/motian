@@ -38,7 +38,7 @@ export async function countInterviews(
 ): Promise<number> {
   const where = buildInterviewWhere(opts);
   const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(interviews)
     .where(where);
   return count ?? 0;

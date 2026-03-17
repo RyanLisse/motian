@@ -22,13 +22,14 @@ export const candidateDedupTask = schedules.task({
         AND deleted_at IS NULL
       GROUP BY email
       HAVING count(*) > 1
+      ORDER BY MIN(id) ASC
       LIMIT 50
     `);
 
-    // Find candidates with identical name + role (fuzzy dedup)
+    // Find candidates with identical name + role (fuzzy dedup) - exclude null roles
     const nameDupRows = await db.all<{
       norm_name: string;
-      role: string;
+      role: string | null;
       ids: string;
       cnt: number;
     }>(sql`
@@ -38,13 +39,17 @@ export const candidateDedupTask = schedules.task({
       FROM candidates
       WHERE deleted_at IS NULL
         AND name IS NOT NULL
+        AND role IS NOT NULL
       GROUP BY lower(name), role
       HAVING count(*) > 1
+      ORDER BY MIN(id) ASC
       LIMIT 50
     `);
 
-    const emailDups = emailDupRows.map((d) => ({ ...d, ids: d.ids.split(",") }));
-    const nameDups = nameDupRows.map((d) => ({ ...d, ids: d.ids.split(",") }));
+    const parseIds = (idsStr: string) => idsStr.split(",").filter((id) => id.trim());
+
+    const emailDups = emailDupRows.map((d) => ({ ...d, ids: parseIds(d.ids) }));
+    const nameDups = nameDupRows.map((d) => ({ ...d, ids: parseIds(d.ids) }));
 
     logger.info("Kandidaat deduplicatie scan voltooid", {
       emailDuplicateGroups: emailDups.length,
@@ -59,7 +64,7 @@ export const candidateDedupTask = schedules.task({
       })),
       nameRoleDuplicates: nameDups.map((d) => ({
         name: d.norm_name,
-        role: d.role,
+        role: d.role ?? null,
         candidateIds: d.ids,
         count: Number(d.cnt),
       })),

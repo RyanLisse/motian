@@ -27,8 +27,8 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
       listJobs({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" }),
       db
         .select({
-          platforms: sql<string[]>`group_concat(distinct ${jobs.platform})`,
-          endClients: sql<string[]>`group_concat(distinct ${persistedEndClient})`,
+          platforms: sql<string | null>`json_group_array(distinct ${jobs.platform})`,
+          endClients: sql<string | null>`json_group_array(distinct ${persistedEndClient})`,
         })
         .from(jobs)
         .where(activeJobsCondition),
@@ -57,13 +57,13 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
     pipelineCount: pipelineCountByJobId.get(job.id) ?? 0,
   }));
 
-  const platformsRaw = metaResult[0]?.platforms as unknown as string | null;
-  const endClientsRaw = metaResult[0]?.endClients as unknown as string | null;
-  const platforms = (platformsRaw?.split(",") ?? []).filter(Boolean).sort();
-  const endClients = (endClientsRaw?.split(",") ?? []).filter(Boolean).sort();
+  const platformsRaw = metaResult[0]?.platforms as string | null;
+  const endClientsRaw = metaResult[0]?.endClients as string | null;
+  const platforms = (platformsRaw ? JSON.parse(platformsRaw) : []) as string[];
+  const endClients = (endClientsRaw ? JSON.parse(endClientsRaw) : []) as string[];
   const categories = categoryRows
-    .map((row) => row.category)
-    .filter((value): value is string => Boolean(value));
+    .map((row) => row.category?.trim())
+    .filter((value): value is string => Boolean(value && value.length > 0));
   const skillOptions = escoSkillRows.map((skill) => ({
     value: skill.uri,
     label: skill.labelNl ?? skill.labelEn,

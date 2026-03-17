@@ -78,7 +78,7 @@ async function getRecentJobs(database: typeof db): Promise<RecentJob[]> {
         coalesce(${jobs.endClient}, ${jobs.company}) as company,
         ${jobs.platform} as platform,
         coalesce(${jobs.location}, ${jobs.province}) as location,
-        ${jobs.scrapedAt} as scraped_at,
+        ${jobs.scrapedAt}.mapWith(${jobs.scrapedAt}) as scraped_at,
         row_number() over (
           partition by lower(coalesce(${jobs.title}, '')),
                        lower(coalesce(${jobs.endClient}, ${jobs.company}, '')),
@@ -110,15 +110,15 @@ async function getRecentScrapes(database: typeof db): Promise<RecentScrape[]> {
         ${scrapeResults.id} as id,
         ${scrapeResults.configId} as config_id,
         ${scrapeResults.platform} as platform,
-        ${scrapeResults.runAt} as run_at,
+        ${scrapeResults.runAt}.mapWith(${scrapeResults.runAt}) as run_at,
         ${scrapeResults.durationMs} as duration_ms,
         ${scrapeResults.jobsFound} as jobs_found,
         ${scrapeResults.jobsNew} as jobs_new,
         ${scrapeResults.duplicates} as duplicates,
         ${scrapeResults.status} as status,
-        ${scrapeResults.errors} as errors,
+        ${scrapeResults.errors}.mapWith(${scrapeResults.errors}) as errors,
         row_number() over (
-          partition by ${scrapeResults.platform}
+          partition by lower(trim(${scrapeResults.platform}))
           order by ${scrapeResults.runAt} desc, ${scrapeResults.id} desc
         ) as rn
       from ${scrapeResults}
@@ -187,7 +187,7 @@ export async function getOverviewData(database: typeof db = db) {
     .select({
       platform: jobs.platform,
       count: sql<number>`cast(count(*) as integer)`,
-      weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
+      weeklyNew: sql<number>`cast(count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo}) as integer)`,
     })
     .from(jobs)
     .groupBy(jobs.platform)
