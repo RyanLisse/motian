@@ -270,8 +270,7 @@ export async function hybridSearchWithTotal(
 
         if (
           typeof embeddingService.generateQueryEmbedding === "function" &&
-          typeof embeddingService.generateEmbedding === "function" &&
-          typeof db.execute === "function"
+          typeof embeddingService.generateEmbedding === "function"
         ) {
           const embeddingStartedAt = Date.now();
           const queryEmbedding = await embeddingService.generateQueryEmbedding(query);
@@ -279,24 +278,22 @@ export async function hybridSearchWithTotal(
 
           const vectorStr = `[${queryEmbedding.join(",")}]`;
           const vectorSearchStartedAt = Date.now();
-          const results = await db.execute(sql`
+          const rows = await db.all<{ id: string; title: string; similarity: number | string }>(sql`
             SELECT
               id,
               title,
-              1 - (embedding <=> ${vectorStr}::vector) AS similarity
+              1 - vector_distance_cos(embedding, vector32(${vectorStr})) AS similarity
             FROM jobs
             WHERE embedding IS NOT NULL
               AND deleted_at IS NULL
               AND ${retrievalFilterCondition}
-              AND 1 - (embedding <=> ${vectorStr}::vector) >= ${policy.vectorMinScore}
-            ORDER BY embedding <=> ${vectorStr}::vector
+              AND 1 - vector_distance_cos(embedding, vector32(${vectorStr})) >= ${policy.vectorMinScore}
+            ORDER BY vector_distance_cos(embedding, vector32(${vectorStr}))
             LIMIT ${policy.fetchSize}
           `);
           vectorSearchMs = Date.now() - vectorSearchStartedAt;
 
-          return (
-            results.rows as Array<{ id: string; title: string; similarity: number | string }>
-          ).map((row) => ({
+          return rows.map((row) => ({
             id: row.id,
             title: row.title,
             similarity: Number(row.similarity),

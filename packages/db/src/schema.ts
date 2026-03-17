@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  blob,
   index,
   integer,
   real,
@@ -177,6 +178,7 @@ export const jobs = sqliteTable(
     scrapedAt: integer("scraped_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp" }),
     rawPayload: text("raw_payload", { mode: "json" }),
+    embedding: blob("embedding"),
   },
   (table) => ({
     platformExternalIdx: uniqueIndex("uq_platform_external_id").on(
@@ -238,6 +240,7 @@ export const candidates = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp" }),
+    embedding: blob("embedding"),
   },
   (table) => ({
     emailUniqueIdx: uniqueIndex("uq_candidates_email")

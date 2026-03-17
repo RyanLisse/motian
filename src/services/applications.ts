@@ -269,7 +269,7 @@ export async function deleteApplication(id: string): Promise<boolean> {
     .update(applications)
     .set({ deletedAt: new Date() })
     .where(and(eq(applications.id, id), isNull(applications.deletedAt)));
-  return (result.rowCount ?? 0) > 0;
+  return (result.rowsAffected ?? 0) > 0;
 }
 
 export async function getApplicationStats(): Promise<{

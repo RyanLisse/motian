@@ -124,94 +124,20 @@ function quoteIdentifier(identifier: string): string {
 }
 
 async function jobsDeduplicationHelpersNeedBackfill(): Promise<boolean> {
-  const migrationsTableResult = await db.execute(sql<JobsDeduplicationTableSchemaRow>`
-    select table_schema
-    from information_schema.tables
-    where table_name = '__drizzle_migrations'
-    order by
-      case
-        when table_schema = 'drizzle' then 0
-        when table_schema = current_schema() then 1
-        else 2
-      end,
-      table_schema asc
-    limit 1
-  `);
-
-  const migrationsTableRow = migrationsTableResult.rows[0] as
-    | JobsDeduplicationTableSchemaRow
-    | undefined;
-  const migrationsTableSchema = migrationsTableRow?.table_schema;
-  if (!migrationsTableSchema) {
-    return true;
-  }
-
-  const migrationsTable = sql.raw(
-    `${quoteIdentifier(migrationsTableSchema)}.${quoteIdentifier("__drizzle_migrations")}`,
-  );
-  const result = await db.execute(sql<JobsDeduplicationMigrationRow>`
-    select exists(
-      select 1
-      from ${migrationsTable}
-      where hash = ${JOBS_DEDUPE_BACKFILL_MIGRATION_HASH}
-    ) as migration_applied
-  `);
-
-  const readinessRow = result.rows[0] as JobsDeduplicationMigrationRow | undefined;
-  return !readBooleanResult(readinessRow?.migration_applied);
+  // SQLite schema already includes dedup columns - no backfill needed
+  return false;
 }
 
 async function getJobsDeduplicationMode(): Promise<ResolvedJobsDeduplicationMode> {
+  // SQLite schema always has dedup columns - always use normalized mode
   if (jobsDeduplicationMode !== "unknown") {
     return jobsDeduplicationMode;
   }
-
-  if (!jobsDeduplicationModePromise) {
-    jobsDeduplicationModePromise = (async () => {
-      try {
-        const result = await db.execute(sql<{ present_count: number | string | null }>`
-          select count(*)::int as present_count
-          from information_schema.columns
-          where table_schema = current_schema()
-            and table_name = 'jobs'
-            and column_name in (
-              'dedupe_title_normalized',
-              'dedupe_client_normalized',
-              'dedupe_location_normalized'
-            )
-        `);
-        const presentCount = Number(result.rows[0]?.present_count ?? 0);
-        if (presentCount !== JOBS_DEDUPE_COLUMN_NAMES.length) {
-          return setJobsDeduplicationMode("legacy");
-        }
-
-        try {
-          return setJobsDeduplicationMode(
-            (await jobsDeduplicationHelpersNeedBackfill()) ? "legacy" : "normalized",
-          );
-        } catch (error) {
-          if (isMissingJobsDeduplicationColumn(error)) {
-            return setJobsDeduplicationMode("legacy");
-          }
-
-          throw error;
-        }
-      } catch (error) {
-        if (isMissingJobsDeduplicationColumn(error)) {
-          return setJobsDeduplicationMode("legacy");
-        }
-
-        jobsDeduplicationModePromise = null;
-        throw error;
-      }
-    })();
-  }
-
-  return jobsDeduplicationModePromise;
+  return setJobsDeduplicationMode("normalized");
 }
 
 function getDeduplicationFallbackExpression(value: SQL): SQL {
-  return sql`trim(regexp_replace(lower(coalesce(${value}, '')), '[^[:alnum:]]+', ' ', 'g'))`;
+  return sql`lower(coalesce(${value}, ''))`;
 }
 
 function getDeduplicationPartitionExpressions(mode: ResolvedJobsDeduplicationMode) {
@@ -287,7 +213,7 @@ function buildDedupedJobsCte({
       from ${jobs}
       where ${whereClause}
     ),
-    deduped_jobs as materialized (
+    deduped_jobs as (
       select *
       from ranked_jobs
       where dedupe_rank = 1
@@ -364,20 +290,20 @@ export async function fetchDedupedJobIds({
       partitionOrderBy:
         partitionOrderBy ??
         sortOrder?.partitionOrderBy ??
-        sql`${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
+        sql`${jobs.scrapedAt} desc, ${jobs.id} desc`,
       deduplicationPartitionExpressions: getDeduplicationPartitionExpressions(mode),
       extraSelections,
     });
-    const result = await db.execute(sql<DedupedJobIdRow>`
+    const rows = await db.all<DedupedJobIdRow>(sql`
       ${cte}
       select id
       from deduped_jobs
-      order by ${resultOrderBy ?? sortOrder?.resultOrderBy ?? sql`scraped_at desc nulls last, id desc`}
+      order by ${resultOrderBy ?? sortOrder?.resultOrderBy ?? sql`scraped_at desc, id desc`}
       limit ${limit}
       offset ${offset}
     `);
 
-    return (result.rows as DedupedJobIdRow[]).map((row) => row.id);
+    return rows.map((row) => row.id);
   });
 }
 
@@ -400,23 +326,15 @@ export async function fetchDedupedJobsPage({
       partitionOrderBy: sortOrder.partitionOrderBy,
       deduplicationPartitionExpressions: getDeduplicationPartitionExpressions(mode),
     });
-    const result = await db.execute(sql<DedupedJobPageRow>`
+    const rows = await db.all<DedupedJobPageRow>(sql`
       ${cte}
-      select page.id, totals.total
-      from (
-        select count(*)::int as total
-        from deduped_jobs
-      ) totals
-      left join lateral (
-        select id
-        from deduped_jobs
-        order by ${sortOrder.resultOrderBy}
-        limit ${limit}
-        offset ${offset}
-      ) page on true
+      select id, (select cast(count(*) as integer) from deduped_jobs) as total
+      from deduped_jobs
+      order by ${sortOrder.resultOrderBy}
+      limit ${limit}
+      offset ${offset}
     `);
 
-    const rows = result.rows as DedupedJobPageRow[];
     const total = rows[0]?.total == null ? 0 : Number(rows[0].total);
 
     return {

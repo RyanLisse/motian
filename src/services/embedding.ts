@@ -411,21 +411,21 @@ export async function findSimilarJobsByEmbedding(
   const filterCondition = opts.filterCondition ?? sql`true`;
   const vectorStr = `[${queryEmbedding.join(",")}]`;
 
-  const results = await db.execute(sql`
+  const rows = await db.all<{ id: string; title: string; similarity: number }>(sql`
     SELECT
       id,
       title,
-      1 - (embedding <=> ${vectorStr}::vector) AS similarity
+      1 - vector_distance_cos(embedding, vector32(${vectorStr})) AS similarity
     FROM jobs
     WHERE embedding IS NOT NULL
       AND deleted_at IS NULL
       AND ${filterCondition}
-      AND 1 - (embedding <=> ${vectorStr}::vector) >= ${minScore}
-    ORDER BY embedding <=> ${vectorStr}::vector
+      AND 1 - vector_distance_cos(embedding, vector32(${vectorStr})) >= ${minScore}
+    ORDER BY vector_distance_cos(embedding, vector32(${vectorStr}))
     LIMIT ${limit}
   `);
 
-  return (results.rows as Array<{ id: string; title: string; similarity: number }>).map((r) => ({
+  return rows.map((r) => ({
     id: r.id,
     title: r.title,
     similarity: Number(r.similarity),

@@ -4,7 +4,7 @@ import {
   db,
   eq,
   escoSkills,
-  ilike,
+  like,
   inArray,
   jobSkills,
   or,
@@ -117,8 +117,8 @@ export async function mapSkillInput(input: MapSkillInput): Promise<MapSkillResul
       .from(escoSkills)
       .where(
         or(
-          ilike(escoSkills.preferredLabelEn, rawEscaped),
-          ilike(escoSkills.preferredLabelNl, rawEscaped),
+          like(escoSkills.preferredLabelEn, rawEscaped),
+          like(escoSkills.preferredLabelNl, rawEscaped),
         ),
       )
       .limit(1);

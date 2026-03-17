@@ -15,8 +15,8 @@ export const candidateDedupTask = schedules.task({
   },
   run: async () => {
     // Find candidates sharing the same email (most reliable dedup signal)
-    const emailDuplicates = await db.execute(sql`
-      SELECT email, array_agg(id ORDER BY created_at) AS ids, count(*) AS cnt
+    const emailDupRows = await db.all<{ email: string; ids: string; cnt: number }>(sql`
+      SELECT email, group_concat(id) AS ids, count(*) AS cnt
       FROM candidates
       WHERE email IS NOT NULL
         AND deleted_at IS NULL
@@ -26,9 +26,14 @@ export const candidateDedupTask = schedules.task({
     `);
 
     // Find candidates with identical name + role (fuzzy dedup)
-    const nameRoleDuplicates = await db.execute(sql`
+    const nameDupRows = await db.all<{
+      norm_name: string;
+      role: string;
+      ids: string;
+      cnt: number;
+    }>(sql`
       SELECT lower(name) AS norm_name, role,
-             array_agg(id ORDER BY created_at) AS ids,
+             group_concat(id) AS ids,
              count(*) AS cnt
       FROM candidates
       WHERE deleted_at IS NULL
@@ -38,13 +43,8 @@ export const candidateDedupTask = schedules.task({
       LIMIT 50
     `);
 
-    const emailDups = emailDuplicates.rows as Array<{ email: string; ids: string[]; cnt: number }>;
-    const nameDups = nameRoleDuplicates.rows as Array<{
-      norm_name: string;
-      role: string;
-      ids: string[];
-      cnt: number;
-    }>;
+    const emailDups = emailDupRows.map((d) => ({ ...d, ids: d.ids.split(",") }));
+    const nameDups = nameDupRows.map((d) => ({ ...d, ids: d.ids.split(",") }));
 
     logger.info("Kandidaat deduplicatie scan voltooid", {
       emailDuplicateGroups: emailDups.length,
