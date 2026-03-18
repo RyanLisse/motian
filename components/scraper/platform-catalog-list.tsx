@@ -1,8 +1,8 @@
 import { PlatformBadge } from "@/components/scraper/platform-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { PlatformCatalogEntry } from "@/src/schemas/platform-catalog";
 import { PlatformCatalogCreateDrawer } from "./platform-catalog-create-drawer";
 import { PlatformOnboardingDrawer } from "./platform-onboarding-drawer";
-import type { PlatformCatalogEntry } from "@/src/schemas/platform-catalog";
 
 export function PlatformCatalogList({ entries }: { entries: PlatformCatalogEntry[] }) {
   return (

@@ -9,8 +9,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { PlatformConfigForm } from "./platform-config-form";
 import type { PlatformCatalogEntry } from "@/src/schemas/platform-catalog";
+import { PlatformConfigForm } from "./platform-config-form";
 
 export function PlatformOnboardingDrawer({ entry }: { entry: PlatformCatalogEntry }) {
   return (
