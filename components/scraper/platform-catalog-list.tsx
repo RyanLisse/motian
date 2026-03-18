@@ -47,12 +47,12 @@ export function PlatformCatalogList({ entries }: { entries: PlatformCatalogEntry
               {entry.latestRun?.blockerKind ? ` · blocker: ${entry.latestRun.blockerKind}` : ""}
             </p>
             <p>Config: {entry.config ? entry.config.baseUrl : "Nog geen runtime configuratie"}</p>
-            {entry.docsUrl ? (
+            {entry.docsUrl?.startsWith("http") ? (
               <p>
                 <a
                   href={entry.docsUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="font-medium text-foreground underline underline-offset-4"
                 >
                   Documentatie openen
