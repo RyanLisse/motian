@@ -432,3 +432,65 @@ export async function findSimilarJobsByEmbedding(
     similarity: Number(r.similarity),
   }));
 }
+
+// ========== Backfill Job Embeddings ==========
+
+export async function embedJobsBatch(opts: {
+  limit?: number;
+}): Promise<{ embedded: number; skipped: number; errors: string[] }> {
+  const limit = Math.min(opts.limit ?? 100, 500);
+  let embedded = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  const rows = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      descriptionSummary: jobs.descriptionSummary,
+      description: jobs.description,
+      categories: jobs.categories,
+      requirements: jobs.requirements,
+    })
+    .from(jobs)
+    .where(and(isNull(jobs.deletedAt), isNull(jobs.embedding)))
+    .limit(limit);
+
+  if (rows.length === 0) return { embedded, skipped, errors };
+
+  const texts = rows.map((r) => buildJobEmbeddingText(r));
+  const validIndices: number[] = [];
+  const validTexts: string[] = [];
+
+  for (let i = 0; i < texts.length; i++) {
+    const sourceText = getJobEmbeddingSourceText(rows[i]);
+    if (sourceText && sourceText.length >= MIN_JOB_EMBEDDING_SOURCE_CHARS) {
+      validIndices.push(i);
+      validTexts.push(texts[i]);
+    } else {
+      skipped++;
+    }
+  }
+
+  if (validTexts.length === 0) return { embedded, skipped, errors };
+
+  const embeddings = await generateEmbeddings(validTexts);
+
+  const updateResults = await Promise.allSettled(
+    validIndices.map((idx, i) =>
+      db.update(jobs).set({ embedding: embeddings[i] }).where(eq(jobs.id, rows[idx].id)),
+    ),
+  );
+
+  for (let i = 0; i < updateResults.length; i++) {
+    if (updateResults[i].status === "fulfilled") {
+      embedded++;
+    } else {
+      errors.push(
+        `Job ${rows[validIndices[i]].id}: ${String((updateResults[i] as PromiseRejectedResult).reason)}`,
+      );
+    }
+  }
+
+  return { embedded, skipped, errors };
+}

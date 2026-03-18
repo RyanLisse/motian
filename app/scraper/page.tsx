@@ -18,6 +18,7 @@ import { PlatformCatalogList } from "@/components/scraper/platform-catalog-list"
 import { RecentActivityFeed } from "@/components/scraper/recent-activity-feed";
 import { ScrapeMetricsExplainer } from "@/components/scraper/scrape-metrics-explainer";
 import { KPICard } from "@/components/shared/kpi-card";
+import { Pagination } from "@/components/shared/pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -235,18 +236,31 @@ function PlatformHealthCard({
 
 export const dynamic = "force-dynamic";
 
-export default async function ScraperPage() {
+export default async function ScraperPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pagina?: string; limit?: string }>;
+}) {
+  const params = await searchParams;
+  const page = Number(params.pagina) || 1;
+  const limit = Number(params.limit) || 30;
+  const offset = (page - 1) * limit;
+
   const [
     platformCatalog,
-    { analytics, recentRuns: results, platforms, activity, overlap, trigger },
+    { analytics, recentRuns: results, totalRuns, platforms, activity, overlap, trigger },
   ] = await Promise.all([
     listPlatformCatalog(),
     getScraperDashboardData({
       activityLimit: 20,
+      runsLimit: limit,
+      runsOffset: offset,
       overlapLimit: 8,
       includeTrigger: true,
     }),
   ]);
+
+  const totalPages = Math.ceil(totalRuns / limit);
 
   const attentionPlatforms = platforms.filter(
     (platform) => platform.status === "waarschuwing" || platform.status === "kritiek",
@@ -623,6 +637,12 @@ export default async function ScraperPage() {
                 </Table>
               </div>
             )}
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              buildHref={(p) => `/scraper?pagina=${p}`}
+            />
           </CardContent>
         </Card>
       </div>

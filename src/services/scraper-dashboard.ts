@@ -1,5 +1,5 @@
 import { runs } from "@trigger.dev/sdk";
-import { desc, gte, sql } from "drizzle-orm";
+import { and, desc, gte, sql } from "drizzle-orm";
 import { db } from "../db";
 import { jobs, scrapeResults, scraperConfigs } from "../db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
@@ -41,6 +41,8 @@ type RecentRunRow = {
 
 export type ScraperDashboardOptions = {
   activityLimit?: number;
+  runsLimit?: number;
+  runsOffset?: number;
   overlapLimit?: number;
   includeTrigger?: boolean;
 };
@@ -167,6 +169,7 @@ export type ScraperDashboardData = {
   configs: ScraperConfigRow[];
   analytics: ScrapeAnalytics;
   recentRuns: RecentRunRow[];
+  totalRuns: number;
   platforms: PlatformOperationalMetrics[];
   activity: ScraperActivityItem[];
   overlap: {
@@ -678,7 +681,9 @@ export async function getScraperDashboardData(
   const includeTrigger = opts.includeTrigger !== false;
   const now = new Date();
   const last24Hours = new Date(now.getTime() - DAY_MS);
-  const runLimit = Math.max(30, activityLimit);
+  const overlapWindow = new Date(now.getTime() - 14 * DAY_MS);
+  const runsLimit = opts.runsLimit ?? Math.max(30, activityLimit);
+  const runsOffset = opts.runsOffset ?? 0;
   const triggerPromise = includeTrigger
     ? getTriggerVisibility(8)
     : Promise.resolve<TriggerVisibility>({
@@ -695,8 +700,8 @@ export async function getScraperDashboardData(
         })),
       });
   const dataPromise = database.transaction(async (tx) => {
-    const [analytics, configs, recentRuns, recentWindowRows, overlapCandidates] = await Promise.all(
-      [
+    const [analytics, configs, recentRuns, recentWindowRows, overlapCandidates, totalRunsRow] =
+      await Promise.all([
         getAnalytics(tx),
         tx.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
         tx
@@ -714,7 +719,8 @@ export async function getScraperDashboardData(
           })
           .from(scrapeResults)
           .orderBy(desc(scrapeResults.runAt))
-          .limit(runLimit),
+          .limit(runsLimit)
+          .offset(runsOffset),
         tx
           .select({
             platform: scrapeResults.platform,
@@ -745,11 +751,20 @@ export async function getScraperDashboardData(
             scrapedAt: jobs.scrapedAt,
           })
           .from(jobs)
-          .where(sql`${jobs.platform} is not null`),
-      ],
-    );
+          .where(and(sql`${jobs.platform} is not null`, gte(jobs.scrapedAt, overlapWindow))),
+        tx.select({ count: sql<number>`count(*)::int` }).from(scrapeResults),
+      ]);
 
-    return { analytics, configs, recentRuns, recentWindowRows, overlapCandidates };
+    const totalRuns = totalRunsRow?.[0]?.count ?? 0;
+
+    return {
+      analytics,
+      configs,
+      recentRuns,
+      recentWindowRows,
+      overlapCandidates,
+      totalRuns,
+    };
   });
 
   const [trigger, data] = await Promise.all([triggerPromise, dataPromise]);
@@ -843,6 +858,7 @@ export async function getScraperDashboardData(
     configs: data.configs,
     analytics: data.analytics,
     recentRuns: data.recentRuns,
+    totalRuns: data.totalRuns,
     platforms,
     activity: buildActivityFeed(data.recentRuns, activityLimit),
     overlap: {
