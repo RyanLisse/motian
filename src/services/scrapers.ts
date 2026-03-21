@@ -9,7 +9,7 @@ import {
 } from "@motian/scrapers";
 import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { asc, db, desc, eq, gte, type SQL, sql } from "../db";
+import { asc, db, desc, eq, type SQL, sql } from "../db";
 import {
   platformCatalog,
   platformOnboardingRuns,
@@ -1033,22 +1033,43 @@ export async function runPlatformOnboardingWorkflow(input: {
 
 /** Platform gezondheidsrapport: status per scraper + 24-uurs failure rate */
 export async function getHealth(): Promise<HealthReport> {
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
 
-  const [configs, statsRows] = await Promise.all([
-    db.select().from(scraperConfigs),
+  const [configs, recentRuns] = await Promise.all([
+    db
+      .select({
+        platform: scraperConfigs.platform,
+        isActive: scraperConfigs.isActive,
+        lastRunAt: scraperConfigs.lastRunAt,
+        lastRunStatus: scraperConfigs.lastRunStatus,
+        consecutiveFailures: scraperConfigs.consecutiveFailures,
+      })
+      .from(scraperConfigs),
     db
       .select({
         platform: scrapeResults.platform,
-        total: sql<number>`count(*)::int`,
-        failures: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
+        status: scrapeResults.status,
+        runAt: scrapeResults.runAt,
       })
-      .from(scrapeResults)
-      .where(gte(scrapeResults.runAt, twentyFourHoursAgo))
-      .groupBy(scrapeResults.platform),
+      .from(scrapeResults),
   ]);
 
-  const statsMap = new Map(statsRows.map((stats) => [stats.platform, stats]));
+  const statsMap = new Map<string, { total: number; failures: number }>();
+  for (const run of recentRuns) {
+    if (!run.runAt) continue;
+    const runTime =
+      run.runAt instanceof Date
+        ? run.runAt.getTime()
+        : typeof run.runAt === "number"
+          ? run.runAt
+          : new Date(String(run.runAt)).getTime();
+    if (!Number.isFinite(runTime) || runTime < twentyFourHoursAgo) continue;
+
+    const current = statsMap.get(run.platform) ?? { total: 0, failures: 0 };
+    current.total += 1;
+    if (run.status === "failed") current.failures += 1;
+    statsMap.set(run.platform, current);
+  }
 
   const health: PlatformHealth[] = configs.map((cfg) => {
     const failures = cfg.consecutiveFailures ?? 0;

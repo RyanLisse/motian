@@ -1,9 +1,6 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
-process.env.DATABASE_URL ??=
-  "postgresql://postgres:postgres@127.0.0.1:5432/motian_test?sslmode=disable";
-
 process.env.TURSO_DATABASE_URL ??= "file::memory:";
 
 export default defineConfig({

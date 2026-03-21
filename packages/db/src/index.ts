@@ -1,14 +1,27 @@
-import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
+import { drizzle as drizzleLibsql } from "drizzle-orm/libsql";
+import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
-const MISSING_DATABASE_URL_ERROR =
-  "TURSO_DATABASE_URL is not set. Add it to .env.local. Without it, database-backed routes will fail when they try to access the database.";
+const MISSING_DATABASE_ENV_ERROR =
+  "DATABASE_URL is not set and TURSO_DATABASE_URL is not set. Set DATABASE_URL for Neon (primary), or TURSO_DATABASE_URL for Turso fallback.";
 
-function getConnectionConfig() {
-  const url = process.env.TURSO_DATABASE_URL?.trim() ?? "";
-  if (!url) {
-    throw new Error(MISSING_DATABASE_URL_ERROR);
-  }
+const NEON_INIT_FAILED_PREFIX =
+  "Neon initialization failed, falling back to Turso when available.";
+
+function getNeonUrl(): string | undefined {
+  const url = process.env.DATABASE_URL?.trim();
+  return url ? url : undefined;
+}
+
+function getTursoConfig():
+  | {
+      url: string;
+      authToken: string | undefined;
+    }
+  | undefined {
+  const url = process.env.TURSO_DATABASE_URL?.trim();
+  if (!url) return undefined;
 
   return {
     url,
@@ -16,13 +29,52 @@ function getConnectionConfig() {
   };
 }
 
-function createDatabaseClient() {
-  const config = getConnectionConfig();
-  const client = createClient(config);
-  return drizzle(client);
+function createNeonDatabaseClient(url: string) {
+  const pool = new Pool({
+    connectionString: url,
+    max: 5,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+  });
+
+  return drizzlePg(pool);
 }
 
-type DatabaseClient = ReturnType<typeof createDatabaseClient>;
+function createTursoDatabaseClient(config: { url: string; authToken: string | undefined }) {
+  const client = createClient(config);
+  return drizzleLibsql(client);
+}
+
+function createDatabaseClient() {
+  const neonUrl = getNeonUrl();
+  const tursoConfig = getTursoConfig();
+
+  if (!neonUrl && !tursoConfig) {
+    throw new Error(MISSING_DATABASE_ENV_ERROR);
+  }
+
+  if (neonUrl) {
+    try {
+      return createNeonDatabaseClient(neonUrl);
+    } catch (error) {
+      console.warn(
+        `${NEON_INIT_FAILED_PREFIX} ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  if (tursoConfig) {
+    return createTursoDatabaseClient(tursoConfig);
+  }
+
+  throw new Error(
+    "DATABASE_URL is set but Neon failed to initialize, and TURSO_DATABASE_URL is not set for fallback.",
+  );
+}
+
+type DatabaseClient =
+  | ReturnType<typeof createNeonDatabaseClient>
+  | ReturnType<typeof createTursoDatabaseClient>;
 
 let databaseClient: DatabaseClient | undefined;
 

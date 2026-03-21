@@ -7,13 +7,12 @@ import type { Config } from "drizzle-kit";
 export default {
   schema: "./packages/db/src/schema.ts",
   out: "./drizzle",
-  dialect: "turso",
+  dialect: "postgresql",
   dbCredentials: {
     url:
-      process.env.TURSO_DATABASE_URL ??
+      process.env.DATABASE_URL ??
       (() => {
-        throw new Error("TURSO_DATABASE_URL is not set in .env.local");
+        throw new Error("DATABASE_URL is not set in .env.local");
       })(),
-    authToken: process.env.TURSO_AUTH_TOKEN,
   },
 } satisfies Config;
