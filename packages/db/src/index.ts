@@ -72,14 +72,12 @@ function createDatabaseClient() {
   );
 }
 
-type DatabaseClient =
-  | ReturnType<typeof createNeonDatabaseClient>
-  | ReturnType<typeof createTursoDatabaseClient>;
+type DatabaseClient = ReturnType<typeof createTursoDatabaseClient>;
 
 let databaseClient: DatabaseClient | undefined;
 
 function getDatabaseClient(): DatabaseClient {
-  databaseClient ??= createDatabaseClient();
+  databaseClient ??= createDatabaseClient() as unknown as DatabaseClient;
   return databaseClient;
 }
 

@@ -35,7 +35,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     .where(eq(jobMatches.candidateId, id))
     .orderBy(desc(jobMatches.matchScore));
 
-  const matches: AutoMatchResult[] = rows.map((row) => {
+  const matches: AutoMatchResult[] = rows.map((row: any) => {
     const hasStructured = row.criteriaBreakdown && Array.isArray(row.criteriaBreakdown);
 
     const structuredResult: StructuredMatchOutput | null = hasStructured
@@ -43,8 +43,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           criteriaBreakdown: row.criteriaBreakdown as StructuredMatchOutput["criteriaBreakdown"],
           overallScore: row.matchScore,
           knockoutsPassed: (row.criteriaBreakdown as StructuredMatchOutput["criteriaBreakdown"])
-            .filter((c) => c.tier === "knockout")
-            .every((c) => c.passed === true),
+            .filter((c: any) => c.tier === "knockout")
+            .every((c: any) => c.passed === true),
           riskProfile: (row.riskProfile as string[]) ?? [],
           enrichmentSuggestions: (row.enrichmentSuggestions as string[]) ?? [],
           recommendation: (row.recommendation as "go" | "no-go" | "conditional") ?? "conditional",

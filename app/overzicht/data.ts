@@ -194,7 +194,6 @@ export async function getOverviewData(database: typeof db = db) {
     .select({
       id: scraperConfigs.id,
       platform: scraperConfigs.platform,
-      source: scraperConfigs.source,
       isActive: scraperConfigs.isActive,
       cronExpression: scraperConfigs.cronExpression,
       consecutiveFailures: scraperConfigs.consecutiveFailures,

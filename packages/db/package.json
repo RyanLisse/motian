@@ -14,5 +14,8 @@
     "@libsql/client": "^0.14.0",
     "drizzle-orm": "^0.38.4",
     "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0"
   }
 }
