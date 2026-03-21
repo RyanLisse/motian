@@ -1,0 +1,184 @@
+{
+  "scripts": [
+    {
+      "name": "dev",
+      "command": "pnpm dev",
+      "mode": "service",
+      "category": "dev"
+    },
+    {
+      "name": "build",
+      "command": "pnpm build",
+      "mode": "command",
+      "category": "build"
+    },
+    {
+      "name": "start",
+      "command": "pnpm start",
+      "mode": "service",
+      "category": "dev"
+    },
+    {
+      "name": "test",
+      "command": "pnpm test",
+      "mode": "command",
+      "category": "test"
+    },
+    {
+      "name": "test:watch",
+      "command": "pnpm test:watch",
+      "mode": "command",
+      "category": "test"
+    },
+    {
+      "name": "db:generate",
+      "command": "pnpm db:generate",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "db:push",
+      "command": "pnpm db:push",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "lint",
+      "command": "pnpm lint",
+      "mode": "command",
+      "category": "lint"
+    },
+    {
+      "name": "lint:fix",
+      "command": "pnpm lint:fix",
+      "mode": "command",
+      "category": "lint"
+    },
+    {
+      "name": "test:coverage",
+      "command": "pnpm test:coverage",
+      "mode": "command",
+      "category": "test"
+    },
+    {
+      "name": "test:cv",
+      "command": "pnpm test:cv",
+      "mode": "command",
+      "category": "test"
+    },
+    {
+      "name": "test:cv:all",
+      "command": "pnpm test:cv:all",
+      "mode": "command",
+      "category": "test"
+    },
+    {
+      "name": "test:cv:generate",
+      "command": "pnpm test:cv:generate",
+      "mode": "command",
+      "category": "test"
+    },
+    {
+      "name": "track:ai-costs",
+      "command": "pnpm track:ai-costs",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "baseline:metrics",
+      "command": "pnpm baseline:metrics",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "benchmark:hybrid-search",
+      "command": "pnpm benchmark:hybrid-search",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "metrics:esco-rollout",
+      "command": "pnpm metrics:esco-rollout",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "metrics:esco-rollout:compare",
+      "command": "pnpm metrics:esco-rollout:compare",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "harness:risk-tier",
+      "command": "pnpm harness:risk-tier",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "harness:pre-pr",
+      "command": "pnpm harness:pre-pr",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "harness:smoke",
+      "command": "pnpm harness:smoke",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "harness:browser-evidence",
+      "command": "pnpm harness:browser-evidence",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "harness:verify-evidence",
+      "command": "pnpm harness:verify-evidence",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "harness:entropy",
+      "command": "pnpm harness:entropy",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "harness:gap",
+      "command": "pnpm harness:gap",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "harness:weekly-metrics",
+      "command": "pnpm harness:weekly-metrics",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "mcp",
+      "command": "pnpm mcp",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "cli",
+      "command": "pnpm cli",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "voice-agent:dev",
+      "command": "pnpm voice-agent:dev",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "voice-agent:start",
+      "command": "pnpm voice-agent:start",
+      "mode": "command",
+      "category": "other"
+    }
+  ]
+}
