@@ -145,33 +145,6 @@ export async function getOverviewData(database: typeof db = db) {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const now = new Date();
 
-  // #region agent log
-  try {
-    const url = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL) : undefined;
-    fetch("http://127.0.0.1:7696/ingest/807648ac-0e4a-43e7-9281-fc9626035545", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "018989",
-      },
-      body: JSON.stringify({
-        sessionId: "018989",
-        runId: "overview-initial",
-        hypothesisId: "H1-H4",
-        location: "app/overzicht/data.ts:getOverviewData",
-        message: "getOverviewData start",
-        data: {
-          dbHost: url?.host,
-          dbName: url?.pathname.replace(/^\//, "") ?? null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  } catch {
-    // ignore logging errors
-  }
-  // #endregion agent log
-
   // Note: We use Promise.all directly on the database object instead of
   // wrapping these in database.transaction(). The Next.js 15+ App Router
   // uses AsyncLocalStorage for Request/Response context (like cookies and headers),

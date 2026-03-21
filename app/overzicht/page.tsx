@@ -20,7 +20,7 @@ import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { getOverviewData } from "./data";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const PRIORITY_TONE_STYLES = {
   amber: {
