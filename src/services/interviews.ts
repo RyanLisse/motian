@@ -107,7 +107,7 @@ export async function deleteInterview(id: string): Promise<boolean> {
     .update(interviews)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(interviews.id, id), isNull(interviews.deletedAt)));
-  return (result.rowsAffected ?? 0) > 0;
+  return (result.rowCount ?? 0) > 0;
 }
 
 export async function getUpcomingInterviews(): Promise<Interview[]> {

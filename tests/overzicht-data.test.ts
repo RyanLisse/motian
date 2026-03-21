@@ -24,45 +24,34 @@ function createAwaitableQuery<T>(result: T) {
   return chain;
 }
 
-function createExecuteResult<T>(rows: T[]) {
-  return Promise.resolve({ rows });
-}
-
 describe("getOverviewData", () => {
+  // Call order for database.select():
+  // 1. platformCounts
+  // 2. getRecentJobs (internal select)
+  // 3. activeScrapers
+  // 4. getRecentScrapes (internal select)
+  // 5. topCompanies
+  // 6. locationCounts
+  // 7. pipelineStageCounts
+  // 8. upcomingInterviewCountResult
+  // 9. upcomingInterviews
+
   it("executes dashboard reads through one transaction-backed connection", async () => {
     const select = vi
       .fn()
       .mockReturnValueOnce(createAwaitableQuery([{ platform: "linkedin", count: 3, weeklyNew: 1 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ id: "job-1", title: "Engineer", company: "Motian", platform: "linkedin", location: "Utrecht", scrapedAt: new Date("2026-03-08T09:30:00.000Z"), endClient: null, province: null }]))
       .mockReturnValueOnce(createAwaitableQuery([{ id: "cfg-1", platform: "linkedin" }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ id: "run-1", config_id: "cfg-1", platform: "linkedin", status: "success" }]))
       .mockReturnValueOnce(createAwaitableQuery([{ company: "Motian", count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ province: "Utrecht", count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ stage: "new", count: 4 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]));
-    const execute = vi
-      .fn()
-      .mockReturnValueOnce(
-        createExecuteResult([
-          {
-            id: "job-1",
-            title: "Engineer",
-            company: "Motian",
-            platform: "linkedin",
-            location: "Utrecht",
-            scraped_at: new Date("2026-03-08T09:30:00.000Z"),
-          },
-        ]),
-      )
-      .mockReturnValueOnce(
-        createExecuteResult([
-          { id: "run-1", config_id: "cfg-1", platform: "linkedin", status: "success" },
-        ]),
-      );
 
-    const result = await getOverviewData({ execute, select } as unknown as typeof db);
+    const result = await getOverviewData({ select } as unknown as typeof db);
 
-    expect(select).toHaveBeenCalledTimes(7);
-    expect(execute).toHaveBeenCalledTimes(2);
+    expect(select).toHaveBeenCalledTimes(9);
     expect(result.platformCounts).toEqual([{ platform: "linkedin", count: 3, weeklyNew: 1 }]);
     expect(result.recentJobs).toEqual([
       {
@@ -96,56 +85,19 @@ describe("getOverviewData", () => {
     const select = vi
       .fn()
       .mockReturnValueOnce(createAwaitableQuery([{ platform: "linkedin", count: 3, weeklyNew: 1 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ id: "job-latest", title: "Communicatieadviseur", company: "Gemeente Veere", platform: "flextender", location: "Zeeland", scrapedAt: new Date("2026-03-08T09:30:00.000Z"), endClient: null, province: null }]))
       .mockReturnValueOnce(createAwaitableQuery([{ id: "cfg-1", platform: "linkedin" }]))
+      .mockReturnValueOnce(createAwaitableQuery([
+        { id: "run-linkedin", config_id: "cfg-1", platform: "linkedin", run_at: new Date("2026-03-08T09:00:00.000Z"), duration_ms: 1200, jobs_found: 10, jobs_new: 4, duplicates: 6, status: "success", errors: [] },
+        { id: "run-indeed", config_id: "cfg-2", platform: "indeed", run_at: new Date("2026-03-08T08:00:00.000Z"), duration_ms: 1800, jobs_found: 8, jobs_new: 3, duplicates: 5, status: "partial", errors: ["Timeout"] },
+      ]))
       .mockReturnValueOnce(createAwaitableQuery([{ company: "Motian", count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ province: "Utrecht", count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ stage: "new", count: 4 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]));
-    const execute = vi
-      .fn()
-      .mockReturnValueOnce(
-        createExecuteResult([
-          {
-            id: "job-latest",
-            title: "Communicatieadviseur",
-            company: "Gemeente Veere",
-            platform: "flextender",
-            location: "Zeeland",
-            scraped_at: new Date("2026-03-08T09:30:00.000Z"),
-          },
-        ]),
-      )
-      .mockReturnValueOnce(
-        createExecuteResult([
-          {
-            id: "run-linkedin",
-            config_id: "cfg-1",
-            platform: "linkedin",
-            run_at: new Date("2026-03-08T09:00:00.000Z"),
-            duration_ms: 1200,
-            jobs_found: 10,
-            jobs_new: 4,
-            duplicates: 6,
-            status: "success",
-            errors: [],
-          },
-          {
-            id: "run-indeed",
-            config_id: "cfg-2",
-            platform: "indeed",
-            run_at: new Date("2026-03-08T08:00:00.000Z"),
-            duration_ms: 1800,
-            jobs_found: 8,
-            jobs_new: 3,
-            duplicates: 5,
-            status: "partial",
-            errors: ["Timeout"],
-          },
-        ]),
-      );
 
-    const result = await getOverviewData({ execute, select } as unknown as typeof db);
+    const result = await getOverviewData({ select } as unknown as typeof db);
 
     expect(result.recentJobs).toEqual([
       {
@@ -189,68 +141,20 @@ describe("getOverviewData", () => {
     const select = vi
       .fn()
       .mockReturnValueOnce(createAwaitableQuery([{ platform: "linkedin", count: 3, weeklyNew: 1 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ id: "job-latest", title: "Communicatieadviseur", company: "Gemeente Veere", platform: "flextender", location: "Zeeland", scrapedAt: new Date("2026-03-08T09:30:00.000Z"), endClient: null, province: null }]))
       .mockReturnValueOnce(createAwaitableQuery([{ id: "cfg-1", platform: "linkedin" }]))
+      .mockReturnValueOnce(createAwaitableQuery([
+        { id: "run-flextender-latest", config_id: "cfg-1", platform: " Flextender ", run_at: new Date("2026-03-08T09:00:00.000Z"), duration_ms: 1200, jobs_found: 10, jobs_new: 4, duplicates: 6, status: "success", errors: [] },
+        { id: "run-flextender-older", config_id: "cfg-2", platform: "flextender", run_at: new Date("2026-03-08T08:00:00.000Z"), duration_ms: 1800, jobs_found: 8, jobs_new: 3, duplicates: 5, status: "partial", errors: ["Timeout"] },
+        { id: "run-striive", config_id: "cfg-3", platform: "Striive", run_at: new Date("2026-03-08T07:00:00.000Z"), duration_ms: 900, jobs_found: 12, jobs_new: 2, duplicates: 10, status: "success", errors: [] },
+      ]))
       .mockReturnValueOnce(createAwaitableQuery([{ company: "Motian", count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ province: "Utrecht", count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ stage: "new", count: 4 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]));
-    const execute = vi
-      .fn()
-      .mockReturnValueOnce(
-        createExecuteResult([
-          {
-            id: "job-latest",
-            title: "Communicatieadviseur",
-            company: "Gemeente Veere",
-            platform: "flextender",
-            location: "Zeeland",
-            scraped_at: new Date("2026-03-08T09:30:00.000Z"),
-          },
-        ]),
-      )
-      .mockReturnValueOnce(
-        createExecuteResult([
-          {
-            id: "run-flextender-latest",
-            config_id: "cfg-1",
-            platform: " Flextender ",
-            run_at: new Date("2026-03-08T09:00:00.000Z"),
-            duration_ms: 1200,
-            jobs_found: 10,
-            jobs_new: 4,
-            duplicates: 6,
-            status: "success",
-            errors: [],
-          },
-          {
-            id: "run-flextender-older",
-            config_id: "cfg-2",
-            platform: "flextender",
-            run_at: new Date("2026-03-08T08:00:00.000Z"),
-            duration_ms: 1800,
-            jobs_found: 8,
-            jobs_new: 3,
-            duplicates: 5,
-            status: "partial",
-            errors: ["Timeout"],
-          },
-          {
-            id: "run-striive",
-            config_id: "cfg-3",
-            platform: "Striive",
-            run_at: new Date("2026-03-08T07:00:00.000Z"),
-            duration_ms: 900,
-            jobs_found: 12,
-            jobs_new: 2,
-            duplicates: 10,
-            status: "success",
-            errors: [],
-          },
-        ]),
-      );
 
-    const result = await getOverviewData({ execute, select } as unknown as typeof db);
+    const result = await getOverviewData({ select } as unknown as typeof db);
 
     expect(result.recentScrapes).toEqual([
       {

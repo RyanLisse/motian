@@ -241,7 +241,7 @@ export async function embedJob(jobId: string): Promise<boolean> {
   const text = buildJobEmbeddingText(job);
   const embedding = await generateEmbedding(text);
 
-  await db.update(jobs).set({ embedding }).where(eq(jobs.id, jobId));
+  await db.update(jobs).set({ embedding: JSON.stringify(embedding) }).where(eq(jobs.id, jobId));
 
   return true;
 }
@@ -319,7 +319,7 @@ export async function embedCandidate(candidateId: string): Promise<boolean> {
   if (text.length < 5) return false;
 
   const embedding = await generateEmbedding(text);
-  await db.update(candidates).set({ embedding }).where(eq(candidates.id, candidateId));
+  await db.update(candidates).set({ embedding: JSON.stringify(embedding) }).where(eq(candidates.id, candidateId));
 
   return true;
 }
@@ -374,7 +374,7 @@ export async function embedCandidatesBatch(opts: {
     validIndices.map((idx, i) =>
       db
         .update(candidates)
-        .set({ embedding: embeddings[i] })
+        .set({ embedding: JSON.stringify(embeddings[i]) })
         .where(eq(candidates.id, rows[idx].id)),
     ),
   );
