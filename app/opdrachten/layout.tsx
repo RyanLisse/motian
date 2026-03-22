@@ -22,24 +22,26 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
     }
   })();
 
-  const [{ data: sidebarJobRows, total: totalCount }, metaResult, categoryRows, escoSkillRows] =
+  const [{ data: sidebarJobRows, total: totalCount }, metaResult, categoryResult, escoSkillRows] =
     await Promise.all([
       listJobs({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" }),
       db
         .select({
-          platforms: sql<string | null>`json_group_array(distinct ${jobs.platform})`,
-          endClients: sql<string | null>`json_group_array(distinct ${persistedEndClient})`,
+          platforms: sql<string | null>`json_agg(distinct ${jobs.platform})`,
+          endClients: sql<string | null>`json_agg(distinct ${persistedEndClient})`,
         })
         .from(jobs)
         .where(activeJobsCondition),
-      db.all<{ category: string }>(sql`
-      select distinct je.value as category
-      from ${jobs}, json_each(coalesce(${jobs.categories}, '[]')) as je
-      where ${activeJobsCondition} and je.value is not null
-      order by category asc
+      db.execute(sql`
+      SELECT DISTINCT je.value AS category
+      FROM ${jobs}, LATERAL jsonb_array_elements_text(coalesce(${jobs.categories}::jsonb, '[]'::jsonb)) AS je(value)
+      WHERE ${activeJobsCondition} AND je.value IS NOT NULL
+      ORDER BY category ASC
     `),
       escoSkillRowsPromise,
     ]);
+
+  const categoryRows = (categoryResult.rows ?? []) as { category: string }[];
 
   const { hasPipelineByJobId, pipelineCountByJobId } = await getJobPipelineSummary(
     sidebarJobRows.map((job) => job.id),
@@ -57,10 +59,22 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
     pipelineCount: pipelineCountByJobId.get(job.id) ?? 0,
   }));
 
-  const platformsRaw = metaResult[0]?.platforms as string | null;
-  const endClientsRaw = metaResult[0]?.endClients as string | null;
-  const platforms = (platformsRaw ? JSON.parse(platformsRaw) : []) as string[];
-  const endClients = (endClientsRaw ? JSON.parse(endClientsRaw) : []) as string[];
+  const platformsRaw = metaResult[0]?.platforms;
+  const endClientsRaw = metaResult[0]?.endClients;
+  const platforms = (
+    Array.isArray(platformsRaw)
+      ? platformsRaw
+      : platformsRaw
+        ? JSON.parse(platformsRaw as string)
+        : []
+  ).filter(Boolean) as string[];
+  const endClients = (
+    Array.isArray(endClientsRaw)
+      ? endClientsRaw
+      : endClientsRaw
+        ? JSON.parse(endClientsRaw as string)
+        : []
+  ).filter(Boolean) as string[];
   const categories = categoryRows
     .map((row) => row.category?.trim())
     .filter((value): value is string => Boolean(value && value.length > 0));

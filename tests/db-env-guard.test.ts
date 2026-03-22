@@ -1,17 +1,8 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("@motian/db build safety", () => {
   const originalDatabaseUrl = process.env.DATABASE_URL;
-  const originalTursoUrl = process.env.TURSO_DATABASE_URL;
-  const originalTursoToken = process.env.TURSO_AUTH_TOKEN;
-  let dbModule: typeof import("../packages/db/src/index");
-
-  beforeAll(async () => {
-    delete process.env.DATABASE_URL;
-    delete process.env.TURSO_DATABASE_URL;
-    delete process.env.TURSO_AUTH_TOKEN;
-    dbModule = await import("../packages/db/src/index");
-  });
+  const originalTursoDatabaseUrl = process.env.TURSO_DATABASE_URL;
 
   beforeEach(() => {
     vi.resetModules();
@@ -19,6 +10,7 @@ describe("@motian/db build safety", () => {
 
   afterEach(() => {
     vi.resetModules();
+    vi.unstubAllEnvs();
 
     if (originalDatabaseUrl === undefined) {
       delete process.env.DATABASE_URL;
@@ -26,23 +18,30 @@ describe("@motian/db build safety", () => {
       process.env.DATABASE_URL = originalDatabaseUrl;
     }
 
-    if (originalTursoUrl === undefined) {
+    if (originalTursoDatabaseUrl === undefined) {
       delete process.env.TURSO_DATABASE_URL;
     } else {
-      process.env.TURSO_DATABASE_URL = originalTursoUrl;
-    }
-
-    if (originalTursoToken === undefined) {
-      delete process.env.TURSO_AUTH_TOKEN;
-    } else {
-      process.env.TURSO_AUTH_TOKEN = originalTursoToken;
+      process.env.TURSO_DATABASE_URL = originalTursoDatabaseUrl;
     }
   });
 
-  it("allows module import without TURSO_DATABASE_URL until the db client is used", () => {
+  it("allows module import without DATABASE_URL until the db client is used", async () => {
+    delete process.env.DATABASE_URL;
+    delete process.env.TURSO_DATABASE_URL;
+    const dbModule = await import("../packages/db/src/index");
+
     expect(dbModule).toHaveProperty("db");
-    expect(() => dbModule.db.select).toThrowError(
+    expect(() => dbModule.getDatabaseDialect()).toThrowError(
       /DATABASE_URL is not set and TURSO_DATABASE_URL is not set/,
     );
-  });
+  }, 120_000);
+
+  it("reports postgres as the active dialect when DATABASE_URL is configured", async () => {
+    vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/motian");
+
+    const { getDatabaseDialect, isPostgresDatabase } = await import("../packages/db/src/index");
+
+    expect(getDatabaseDialect()).toBe("postgres");
+    expect(isPostgresDatabase()).toBe(true);
+  }, 120_000);
 });

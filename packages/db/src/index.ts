@@ -9,27 +9,27 @@ const MISSING_DATABASE_ENV_ERROR =
 const NEON_INIT_FAILED_PREFIX =
   "Neon initialization failed, falling back to Turso when available.";
 
+export type DatabaseDialect = "postgres" | "sqlite";
+
+let selectedDatabaseDialect: DatabaseDialect | undefined;
+
 function getNeonUrl(): string | undefined {
-  const url = process.env.DATABASE_URL?.trim();
-  return url ? url : undefined;
+  return process.env.DATABASE_URL?.trim();
 }
 
-function getTursoConfig():
-  | {
-      url: string;
-      authToken: string | undefined;
-    }
-  | undefined {
+function getTursoConfig(): { url: string; authToken: string | undefined } | undefined {
   const url = process.env.TURSO_DATABASE_URL?.trim();
-  if (!url) return undefined;
+  if (!url) {
+    return undefined;
+  }
 
   return {
     url,
-    authToken: process.env.TURSO_AUTH_TOKEN?.trim(),
+    authToken: process.env.TURSO_AUTH_TOKEN?.trim() || undefined,
   };
 }
 
-function createNeonDatabaseClient(url: string) {
+function createNeonDatabaseClient(url: string): DatabaseClient {
   const pool = new Pool({
     connectionString: url,
     max: 5,
@@ -40,12 +40,26 @@ function createNeonDatabaseClient(url: string) {
   return drizzlePg(pool);
 }
 
-function createTursoDatabaseClient(config: { url: string; authToken: string | undefined }) {
+function createTursoDatabaseClient(config: {
+  url: string;
+  authToken: string | undefined;
+}): DatabaseClient {
+  const isRemote =
+    config.url.startsWith("libsql://") ||
+    config.url.startsWith("https://") ||
+    config.url.startsWith("wss://");
+
+  if (isRemote && !config.authToken) {
+    throw new Error(
+      "TURSO_AUTH_TOKEN ontbreekt voor een remote TURSO_DATABASE_URL. Stel TURSO_AUTH_TOKEN in.",
+    );
+  }
+
   const client = createClient(config);
-  return drizzleLibsql(client);
+  return drizzleLibsql(client) as unknown as DatabaseClient;
 }
 
-function createDatabaseClient() {
+function createDatabaseClient(): DatabaseClient {
   const neonUrl = getNeonUrl();
   const tursoConfig = getTursoConfig();
 
@@ -55,15 +69,19 @@ function createDatabaseClient() {
 
   if (neonUrl) {
     try {
-      return createNeonDatabaseClient(neonUrl);
+      const client = createNeonDatabaseClient(neonUrl);
+      selectedDatabaseDialect = "postgres";
+      return client;
     } catch (error) {
       console.warn(
         `${NEON_INIT_FAILED_PREFIX} ${error instanceof Error ? error.message : String(error)}`,
       );
+      selectedDatabaseDialect = undefined;
     }
   }
 
   if (tursoConfig) {
+    selectedDatabaseDialect = "sqlite";
     return createTursoDatabaseClient(tursoConfig);
   }
 
@@ -72,13 +90,31 @@ function createDatabaseClient() {
   );
 }
 
-type DatabaseClient = ReturnType<typeof createTursoDatabaseClient>;
+type DatabaseClient = ReturnType<typeof drizzlePg>;
 
 let databaseClient: DatabaseClient | undefined;
 
 function getDatabaseClient(): DatabaseClient {
-  databaseClient ??= createDatabaseClient() as unknown as DatabaseClient;
+  databaseClient ??= createDatabaseClient();
   return databaseClient;
+}
+
+export function getDatabaseDialect(): DatabaseDialect {
+  if (!selectedDatabaseDialect) {
+    getDatabaseClient();
+  }
+
+  if (!selectedDatabaseDialect) {
+    throw new Error(
+      "Database dialect not initialized. Ensure getDatabaseClient() succeeds before calling getDatabaseDialect().",
+    );
+  }
+
+  return selectedDatabaseDialect;
+}
+
+export function isPostgresDatabase(): boolean {
+  return getDatabaseDialect() === "postgres";
 }
 
 export const db = new Proxy({} as DatabaseClient, {
