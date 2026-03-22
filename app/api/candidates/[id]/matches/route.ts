@@ -1,6 +1,6 @@
 import { db, desc, eq } from "@/src/db";
 import { jobMatches, jobs } from "@/src/db/schema";
-import type { StructuredMatchOutput } from "@/src/schemas/matching";
+import type { CriterionResult, StructuredMatchOutput } from "@/src/schemas/matching";
 import type { AutoMatchResult } from "@/src/services/auto-matching";
 
 export const dynamic = "force-dynamic";
@@ -35,16 +35,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     .where(eq(jobMatches.candidateId, id))
     .orderBy(desc(jobMatches.matchScore));
 
-  const matches: AutoMatchResult[] = rows.map((row: any) => {
+  const matches: AutoMatchResult[] = rows.map((row) => {
     const hasStructured = row.criteriaBreakdown && Array.isArray(row.criteriaBreakdown);
 
     const structuredResult: StructuredMatchOutput | null = hasStructured
       ? {
           criteriaBreakdown: row.criteriaBreakdown as StructuredMatchOutput["criteriaBreakdown"],
           overallScore: row.matchScore,
-          knockoutsPassed: (row.criteriaBreakdown as StructuredMatchOutput["criteriaBreakdown"])
-            .filter((c: any) => c.tier === "knockout")
-            .every((c: any) => c.passed === true),
+          knockoutsPassed: (row.criteriaBreakdown as CriterionResult[])
+            .filter((c) => c.tier === "knockout")
+            .every((c) => c.passed === true),
           riskProfile: (row.riskProfile as string[]) ?? [],
           enrichmentSuggestions: (row.enrichmentSuggestions as string[]) ?? [],
           recommendation: (row.recommendation as "go" | "no-go" | "conditional") ?? "conditional",

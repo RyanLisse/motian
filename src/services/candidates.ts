@@ -357,9 +357,7 @@ export async function findDuplicateCandidate(
   const nameRows = await db
     .select()
     .from(candidates)
-    .where(
-      and(caseInsensitiveContains(candidates.name, parsed.name), isNull(candidates.deletedAt)),
-    )
+    .where(and(caseInsensitiveContains(candidates.name, parsed.name), isNull(candidates.deletedAt)))
     .limit(5);
 
   return { exact: null, similar: nameRows };

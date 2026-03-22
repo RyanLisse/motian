@@ -65,9 +65,10 @@ async function importHybridSearchGoldenHarness({
       // Re-export actual Drizzle helpers
       sql: actual.sql,
       and: actual.and,
-      like: (actual as any).like,
+      like: actual.like,
       inArray: actual.inArray,
       or: actual.or,
+      isPostgresDatabase: actual.isPostgresDatabase,
     };
   });
   vi.doMock("../src/db/schema", () => ({

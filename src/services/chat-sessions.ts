@@ -7,7 +7,6 @@ export const CHAT_CONTEXT_WINDOW_SIZE = 24;
 
 const CHAT_SESSION_MESSAGES_TABLE = "chat_session_messages";
 const POSTGRES_MISSING_RELATION_ERROR_CODE = "42P01";
-const CHAT_SESSION_PERSIST_LOCK_NAMESPACE = "chat-session-persist";
 const RETRYABLE_DATABASE_ERROR_CODES = new Set([
   "08000",
   "08001",
