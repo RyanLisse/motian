@@ -1,6 +1,6 @@
-import { and, db, inArray, like, or, type SQL, sql } from "../../db";
+import { and, db, inArray, isPostgresDatabase, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
-import { escapeLike, toTsQueryInput } from "../../lib/helpers";
+import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
 import { logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
@@ -151,7 +151,7 @@ async function searchJobIdsByTitle(
   const filterCondition = opts.filterCondition ?? sql`true`;
   const tsInput = toTsQueryInput(query);
 
-  if (tsInput) {
+  if (tsInput && isPostgresDatabase()) {
     const searchVector = sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, ''))`;
     const searchRank = sql`ts_rank(${searchVector}, to_tsquery('dutch', ${tsInput}))`;
     const ftsIds = await fetchDedupedJobIds({
@@ -170,8 +170,8 @@ async function searchJobIdsByTitle(
   const words = query.trim().split(/\s+/).filter(Boolean);
   const titleConditions =
     words.length > 1
-      ? or(...words.map((w) => like(jobs.title, `%${escapeLike(w)}%`)))
-      : like(jobs.title, `%${escapeLike(query)}%`);
+      ? or(...words.map((w) => caseInsensitiveContains(jobs.title, w)))
+      : caseInsensitiveContains(jobs.title, query);
 
   return fetchDedupedJobIds({
     whereClause: and(filterCondition, titleConditions) ?? filterCondition,
