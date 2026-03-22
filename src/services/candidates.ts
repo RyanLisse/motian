@@ -1,6 +1,6 @@
-import { and, db, desc, eq, inArray, isNull, like, sql } from "../db";
+import { and, db, desc, eq, inArray, isNull, isPostgresDatabase, sql } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
-import { escapeLike, toTsQueryInput } from "../lib/helpers";
+import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
 import { syncCandidateEscoSkills } from "./esco";
 
@@ -83,10 +83,10 @@ export async function getCandidateById(id: string): Promise<Candidate | null> {
 /** Build FTS or ILIKE condition for candidate name search. */
 function candidateNameCondition(query: string) {
   const tsInput = toTsQueryInput(query);
-  if (tsInput) {
+  if (tsInput && isPostgresDatabase()) {
     return sql`to_tsvector('dutch', coalesce(${candidates.name}, '') || ' ' || coalesce(${candidates.role}, '') || ' ' || coalesce(${candidates.location}, '')) @@ to_tsquery('dutch', ${tsInput})`;
   }
-  return like(candidates.name, `%${escapeLike(query)}%`);
+  return caseInsensitiveContains(candidates.name, query);
 }
 
 /** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
@@ -101,18 +101,18 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   }
 
   if (opts.location) {
-    conditions.push(like(candidates.location, `%${escapeLike(opts.location)}%`));
+    conditions.push(caseInsensitiveContains(candidates.location, opts.location));
   }
 
   if (opts.role) {
-    conditions.push(like(candidates.role, `%${escapeLike(opts.role)}%`));
+    conditions.push(caseInsensitiveContains(candidates.role, opts.role));
   }
 
   if (opts.skills) {
     // Search within the JSON skills array for a case-insensitive match
     // SQLite uses json_each() instead of PostgreSQL's jsonb_array_elements_text()
     conditions.push(
-      sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE value LIKE ${`%${escapeLike(opts.skills)}%`})`,
+      sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE lower(value) LIKE ${`%${escapeLike(opts.skills).toLocaleLowerCase("nl-NL")}%`} ESCAPE '\\')`,
     );
   }
 
@@ -142,18 +142,18 @@ export async function countCandidates(
   }
 
   if (opts.location) {
-    conditions.push(like(candidates.location, `%${escapeLike(opts.location)}%`));
+    conditions.push(caseInsensitiveContains(candidates.location, opts.location));
   }
 
   if (opts.role) {
-    conditions.push(like(candidates.role, `%${escapeLike(opts.role)}%`));
+    conditions.push(caseInsensitiveContains(candidates.role, opts.role));
   }
 
   if (opts.skills) {
     // Search within the JSON skills array for a case-insensitive match
     // SQLite uses json_each() instead of PostgreSQL's jsonb_array_elements_text()
     conditions.push(
-      sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE value LIKE ${`%${escapeLike(opts.skills)}%`})`,
+      sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE lower(value) LIKE ${`%${escapeLike(opts.skills).toLocaleLowerCase("nl-NL")}%`} ESCAPE '\\')`,
     );
   }
 
@@ -356,7 +356,9 @@ export async function findDuplicateCandidate(
   const nameRows = await db
     .select()
     .from(candidates)
-    .where(and(like(candidates.name, `%${escapeLike(parsed.name)}%`), isNull(candidates.deletedAt)))
+    .where(
+      and(caseInsensitiveContains(candidates.name, parsed.name), isNull(candidates.deletedAt)),
+    )
     .limit(5);
 
   return { exact: null, similar: nameRows };

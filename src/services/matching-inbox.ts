@@ -1,6 +1,6 @@
-import { and, db, desc, eq, gte, inArray, isNull, like, sql } from "../db";
+import { and, db, desc, eq, gte, inArray, isNull, isPostgresDatabase, sql } from "../db";
 import { applications, candidates, jobMatches, jobs } from "../db/schema";
-import { escapeLike, toTsQueryInput } from "../lib/helpers";
+import { caseInsensitiveContains, toTsQueryInput } from "../lib/helpers";
 import type { Candidate, CandidateMatchingStatus } from "./candidates";
 
 export type MatchingInboxItem = Candidate & {
@@ -63,14 +63,14 @@ function buildMatchingInboxConditions(opts: MatchingInboxQuery) {
   if (opts.query) {
     const tsInput = toTsQueryInput(opts.query);
     conditions.push(
-      tsInput
+      tsInput && isPostgresDatabase()
         ? sql`to_tsvector('dutch', coalesce(${candidates.name}, '') || ' ' || coalesce(${candidates.role}, '') || ' ' || coalesce(${candidates.location}, '')) @@ to_tsquery('dutch', ${tsInput})`
-        : like(candidates.name, `%${escapeLike(opts.query)}%`),
+        : caseInsensitiveContains(candidates.name, opts.query),
     );
   }
 
   if (opts.location) {
-    conditions.push(like(candidates.location, `%${escapeLike(opts.location)}%`));
+    conditions.push(caseInsensitiveContains(candidates.location, opts.location));
   }
 
   return conditions;
