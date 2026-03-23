@@ -354,11 +354,16 @@ export async function findDuplicateCandidate(
     }
   }
 
+  const escapedName = escapeLike(parsed.name);
+  const namePattern = `%${escapedName.toLocaleLowerCase("nl-NL")}%`;
   const nameRows = await db
     .select()
     .from(candidates)
     .where(
-      and(caseInsensitiveContains(candidates.name, parsed.name), isNull(candidates.deletedAt)),
+      and(
+        sql`lower(coalesce(${candidates.name}, '')) like ${namePattern} escape '\\'`,
+        isNull(candidates.deletedAt),
+      ),
     )
     .limit(5);
 

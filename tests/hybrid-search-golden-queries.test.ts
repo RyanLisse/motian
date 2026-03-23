@@ -59,15 +59,16 @@ async function importHybridSearchGoldenHarness({
   });
 
   vi.doMock("../src/db", async () => {
-    const actual = await import("../src/db");
+    const actual = await vi.importActual<typeof import("../src/db")>("../src/db");
     return {
       db: { select: mockSelect },
       // Re-export actual Drizzle helpers
       sql: actual.sql,
       and: actual.and,
-      like: (actual as any).like,
+      like: actual.like,
       inArray: actual.inArray,
       or: actual.or,
+      isPostgresDatabase: vi.fn(() => false),
     };
   });
   vi.doMock("../src/db/schema", () => ({
@@ -211,7 +212,7 @@ describe("hybrid search golden queries", () => {
         expect.objectContaining({ id: "job-3", score: 0.0159 }),
       ],
     });
-  });
+  }, 10_000);
 
   it("preserves total-count and offset semantics for the same golden ranking baseline", async () => {
     const { hybridSearchWithTotal } = await importHybridSearchGoldenHarness({

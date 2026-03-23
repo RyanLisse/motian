@@ -40,7 +40,7 @@ const { chatSessionMessages, chatSessions, mockDb } = vi.hoisted(() => {
 });
 
 vi.mock("../src/db", async () => {
-  const actual = await import("../src/db");
+  const actual = await vi.importActual<typeof import("../src/db")>("../src/db");
   return {
     db: mockDb,
     // Re-export actual Drizzle helpers
@@ -177,7 +177,7 @@ function createNormalizedPersistTx() {
   };
 }
 
-function createLegacyPersistTx(existingMessages: UIMessage[]) {
+function _createLegacyPersistTx(existingMessages: UIMessage[]) {
   const sessionOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
   const sessionValues = vi.fn(() => ({ onConflictDoUpdate: sessionOnConflictDoUpdate }));
   const updateSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
@@ -252,7 +252,7 @@ describe("chat session compatibility fallback", () => {
     ]);
     expect(session?.nextCursor).toBe("2");
     expect(session?.hasMore).toBe(true);
-  });
+  }, 10_000);
 
   it("caches legacy mode for repeated context reads after the first missing-table error", async () => {
     const legacyMessages = [

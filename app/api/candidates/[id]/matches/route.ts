@@ -7,6 +7,26 @@ export const dynamic = "force-dynamic";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+type MatchRow = {
+  matchId: string;
+  jobId: string | null;
+  matchScore: number;
+  reasoning: string | null;
+  criteriaBreakdown: unknown;
+  riskProfile: unknown;
+  enrichmentSuggestions: unknown;
+  recommendation: string | null;
+  recommendationConfidence: number | null;
+  jobTitle: string;
+  company: string | null;
+  location: string | null;
+};
+
+type MatchCriterion = {
+  tier: string;
+  passed: boolean;
+};
+
 /** GET /api/candidates/[id]/matches — fetch persisted match results */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -35,19 +55,32 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     .where(eq(jobMatches.candidateId, id))
     .orderBy(desc(jobMatches.matchScore));
 
-  const matches: AutoMatchResult[] = rows.map((row: any) => {
-    const hasStructured = row.criteriaBreakdown && Array.isArray(row.criteriaBreakdown);
+  const matches: AutoMatchResult[] = rows.map((row: MatchRow) => {
+    const criteriaBreakdown = Array.isArray(row.criteriaBreakdown)
+      ? (row.criteriaBreakdown as StructuredMatchOutput["criteriaBreakdown"])
+      : null;
 
-    const structuredResult: StructuredMatchOutput | null = hasStructured
+    const knockoutsPassed = criteriaBreakdown
+      ? (criteriaBreakdown as MatchCriterion[])
+          .filter((criterion) => criterion.tier === "knockout")
+          .every((criterion) => criterion.passed === true)
+      : false;
+
+    const structuredResult: StructuredMatchOutput | null = criteriaBreakdown
       ? {
-          criteriaBreakdown: row.criteriaBreakdown as StructuredMatchOutput["criteriaBreakdown"],
+          criteriaBreakdown,
           overallScore: row.matchScore,
-          knockoutsPassed: (row.criteriaBreakdown as StructuredMatchOutput["criteriaBreakdown"])
-            .filter((c: any) => c.tier === "knockout")
-            .every((c: any) => c.passed === true),
-          riskProfile: (row.riskProfile as string[]) ?? [],
-          enrichmentSuggestions: (row.enrichmentSuggestions as string[]) ?? [],
-          recommendation: (row.recommendation as "go" | "no-go" | "conditional") ?? "conditional",
+          knockoutsPassed,
+          riskProfile: Array.isArray(row.riskProfile) ? (row.riskProfile as string[]) : [],
+          enrichmentSuggestions: Array.isArray(row.enrichmentSuggestions)
+            ? (row.enrichmentSuggestions as string[])
+            : [],
+          recommendation:
+            row.recommendation === "go" ||
+            row.recommendation === "no-go" ||
+            row.recommendation === "conditional"
+              ? row.recommendation
+              : "conditional",
           recommendationReasoning: row.reasoning ?? "",
           recommendationConfidence: row.recommendationConfidence ?? 0,
         }

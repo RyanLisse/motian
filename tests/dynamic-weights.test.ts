@@ -1,12 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Candidate } from "../src/services/candidates";
 import type { Job } from "../src/services/jobs";
-import {
-  computeMatchScore,
-  HYBRID_BLEND,
-  SCORING_WEIGHTS,
-  validateDynamicWeights,
-} from "../src/services/scoring.js";
+import { computeMatchScore, validateDynamicWeights } from "../src/services/scoring.js";
 
 // ── Test Fixtures ────────────────────────────────────────────────
 
