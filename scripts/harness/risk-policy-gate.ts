@@ -75,6 +75,16 @@ function highestTier(tiers: RiskTier[]): RiskTier {
   return "low";
 }
 
+function readArgValue(flag: string): string | undefined {
+  const index = process.argv.indexOf(flag);
+  if (index === -1) return undefined;
+
+  const value = process.argv[index + 1];
+  if (!value || value.startsWith("--")) return undefined;
+
+  return value;
+}
+
 // ---------------------------------------------------------------------------
 // Docs drift check
 // ---------------------------------------------------------------------------
@@ -118,8 +128,19 @@ function checkDocsDrift(
 // Input: read changed files from args | stdin | git
 // ---------------------------------------------------------------------------
 
-async function resolveChangedFiles(): Promise<string[]> {
-  const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+async function resolveChangedFiles(projectRoot: string): Promise<string[]> {
+  const args: string[] = [];
+  const argv = process.argv.slice(2);
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--json" || arg === "--verbose") continue;
+    if (arg === "--cwd") {
+      i++;
+      continue;
+    }
+    if (arg.startsWith("--")) continue;
+    args.push(arg);
+  }
 
   if (args.length > 0) {
     return args;
@@ -142,7 +163,11 @@ async function resolveChangedFiles(): Promise<string[]> {
 
   // Fall back to git
   try {
-    const output = execSync("git diff --name-only HEAD~1", { encoding: "utf8" });
+    const output = execSync("git diff --name-only HEAD~1", {
+      cwd: projectRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
     const lines = output
       .split("\n")
       .map((l) => l.trim())
@@ -156,7 +181,11 @@ async function resolveChangedFiles(): Promise<string[]> {
   } catch {
     // git might fail in shallow clones or fresh repos
     try {
-      const output = execSync("git diff --name-only --cached", { encoding: "utf8" });
+      const output = execSync("git diff --name-only --cached", {
+        cwd: projectRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      });
       const lines = output
         .split("\n")
         .map((l) => l.trim())
@@ -191,7 +220,7 @@ function setGitHubOutputs(tier: RiskTier, requiredChecks: string[]): void {
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const projectRoot = resolve(process.cwd());
+  const projectRoot = resolve(readArgValue("--cwd") ?? process.cwd());
 
   let config: HarnessConfig;
   try {
@@ -201,16 +230,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const changedFiles = await resolveChangedFiles();
-
-  if (changedFiles.length === 0) {
-    console.log("Risiconiveau: low");
-    console.log(`Verplichte controles: ${config.mergePolicy.low.requiredChecks.join(", ")}`);
-    console.log("Documentatie-afwijking: OK");
-    console.log("Gewijzigde bestanden: 0 (0 high, 0 medium, 0 low)");
-    setGitHubOutputs("low", config.mergePolicy.low.requiredChecks);
-    return;
-  }
+  const changedFiles = await resolveChangedFiles(projectRoot);
 
   // Classify each file
   const fileTiers: FileTierResult[] = changedFiles.map((file) => ({

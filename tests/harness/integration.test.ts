@@ -1,6 +1,32 @@
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadHarnessConfig } from "@/src/harness/config";
 import { validateHarnessPlanDocument } from "@/src/harness/workflow/validation";
+
+function createHarnessRepo(root: string): string {
+  mkdirSync(root, { recursive: true });
+  execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+  execFileSync("git", ["config", "user.email", "harness@example.com"], {
+    cwd: root,
+    stdio: "ignore",
+  });
+  execFileSync("git", ["config", "user.name", "Harness Test"], {
+    cwd: root,
+    stdio: "ignore",
+  });
+
+  writeFileSync(
+    join(root, "harness.config.json"),
+    readFileSync(join(process.cwd(), "harness.config.json"), "utf8"),
+    "utf8",
+  );
+  execFileSync("git", ["add", "harness.config.json"], { cwd: root, stdio: "ignore" });
+  execFileSync("git", ["commit", "-m", "init"], { cwd: root, stdio: "ignore" });
+  return root;
+}
 
 describe("harness integration", () => {
   describe("validate-plan script integration", () => {
@@ -72,6 +98,34 @@ describe("harness integration", () => {
       for (const tier of ["high", "medium", "low"] as const) {
         expect(config.mergePolicy[tier].requiredChecks).toBeInstanceOf(Array);
         expect(typeof config.mergePolicy[tier].requireCodeReview).toBe("boolean");
+      }
+    });
+
+    it("emits JSON when there are no changed files", () => {
+      const tempRoot = mkdtempSync(join(tmpdir(), "motian-risk-policy-gate-empty-"));
+
+      try {
+        const repoRoot = createHarnessRepo(join(tempRoot, "repo"));
+        const scriptPath = join(process.cwd(), "scripts/harness/risk-policy-gate.ts");
+
+        const output = execFileSync("pnpm", ["tsx", scriptPath, "--json", "--cwd", repoRoot], {
+          cwd: process.cwd(),
+          encoding: "utf8",
+        });
+
+        const parsed = JSON.parse(output) as {
+          tier: string;
+          requiredChecks: string[];
+          docsDriftPass: boolean;
+          totalFiles: number;
+        };
+
+        expect(parsed.tier).toBe("low");
+        expect(parsed.requiredChecks).toEqual(["risk-policy-gate", "lint"]);
+        expect(parsed.docsDriftPass).toBe(true);
+        expect(parsed.totalFiles).toBe(0);
+      } finally {
+        rmSync(tempRoot, { recursive: true, force: true });
       }
     });
   });
