@@ -369,7 +369,21 @@ async function listLatestOnboardingRuns(): Promise<PlatformOnboardingRunRecord[]
   const result = await (
     db as unknown as { execute(sql: SQL): Promise<{ rows: LatestPlatformOnboardingRunRow[] }> }
   ).execute(sql`
-    select id, platformSlug, configId, source, status, currentStep, blockerKind, nextActions, evidence, result, startedAt, completedAt, createdAt, updatedAt
+    select
+      "id",
+      "platformSlug",
+      "configId",
+      "source",
+      "status",
+      "currentStep",
+      "blockerKind",
+      "nextActions",
+      "evidence",
+      "result",
+      "startedAt",
+      "completedAt",
+      "createdAt",
+      "updatedAt"
     from (
       select
         ${platformOnboardingRuns.id} as "id",

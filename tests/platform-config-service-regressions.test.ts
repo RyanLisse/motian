@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
@@ -291,6 +292,14 @@ describe("platform config service regressions", () => {
 
     expect(werkzoeken?.description).toBe(werkzoekenDefinition.description);
     expect(werkzoeken?.docsUrl).toBe(werkzoekenDefinition.docsUrl);
+  });
+
+  it("quotes onboarding run aliases in the outer latest-run query for Postgres", () => {
+    const source = readFileSync(new URL("../src/services/scrapers.ts", import.meta.url), "utf8");
+
+    expect(source).toMatch(
+      /select\s+"id",\s+"platformSlug",\s+"configId",\s+"source",\s+"status",\s+"currentStep",\s+"blockerKind",\s+"nextActions",\s+"evidence",\s+"result",\s+"startedAt",\s+"completedAt",\s+"createdAt",\s+"updatedAt"/,
+    );
   });
 
   it("redacts secret config fields when unsupported platforms are validated or test-imported", async () => {
