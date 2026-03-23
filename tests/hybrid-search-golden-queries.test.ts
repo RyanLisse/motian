@@ -68,6 +68,7 @@ async function importHybridSearchGoldenHarness({
       like: (actual as any).like,
       inArray: actual.inArray,
       or: actual.or,
+      isPostgresDatabase: vi.fn(() => false),
     };
   });
   vi.doMock("../src/db/schema", () => ({

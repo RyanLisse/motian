@@ -87,13 +87,13 @@ export async function listMatchingInboxCandidates(
     .select({
       candidate: candidates,
       activeApplicationCount: sql<number>`(
-        SELECT count(*)::int
+        SELECT CAST(count(*) AS INTEGER)
         FROM ${applications}
         WHERE ${applications.candidateId} = ${candidates.id}
           AND ${applications.deletedAt} IS NULL
       )`,
       matchCount: sql<number>`(
-        SELECT count(*)::int
+        SELECT CAST(count(*) AS INTEGER)
         FROM ${jobMatches}
         WHERE ${jobMatches.candidateId} = ${candidates.id}
       )`,
@@ -122,7 +122,7 @@ export async function countMatchingInboxCandidates(
 ): Promise<number> {
   const conditions = buildMatchingInboxConditions(opts);
   const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(candidates)
     .where(and(...conditions));
 
@@ -135,7 +135,7 @@ export async function getMatchingInboxStatusCounts(
   const rows = await db
     .select({
       status: candidates.matchingStatus,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`CAST(count(*) AS INTEGER)`,
     })
     .from(candidates)
     .where(and(...buildMatchingInboxConditions(opts)))

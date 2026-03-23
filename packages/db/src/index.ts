@@ -69,8 +69,9 @@ function createDatabaseClient() {
 
   if (neonUrl) {
     try {
+      const client = createNeonDatabaseClient(neonUrl);
       selectedDatabaseDialect = "postgres";
-      return createNeonDatabaseClient(neonUrl);
+      return client;
     } catch (error) {
       console.warn(
         `${NEON_INIT_FAILED_PREFIX} ${error instanceof Error ? error.message : String(error)}`,
@@ -80,8 +81,9 @@ function createDatabaseClient() {
   }
 
   if (tursoConfig) {
+    const client = createTursoDatabaseClient(tursoConfig);
     selectedDatabaseDialect = "sqlite";
-    return createTursoDatabaseClient(tursoConfig);
+    return client;
   }
 
   throw new Error(
@@ -103,7 +105,11 @@ export function getDatabaseDialect(): DatabaseDialect {
     getDatabaseClient();
   }
 
-  return selectedDatabaseDialect ?? "postgres";
+  if (!selectedDatabaseDialect) {
+    throw new Error("Database dialect not initialized—ensure getDatabaseClient succeeded.");
+  }
+
+  return selectedDatabaseDialect;
 }
 
 export function isPostgresDatabase(): boolean {

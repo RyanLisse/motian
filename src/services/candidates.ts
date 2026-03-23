@@ -89,6 +89,14 @@ function candidateNameCondition(query: string) {
   return caseInsensitiveContains(candidates.name, query);
 }
 
+function candidateSkillsCondition(skillsQuery: string) {
+  const pattern = `%${escapeLike(skillsQuery).toLocaleLowerCase("nl-NL")}%`;
+
+  return isPostgresDatabase()
+    ? sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}::jsonb) AS t(value) WHERE lower(t.value) LIKE ${pattern} ESCAPE '\\')`
+    : sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE lower(value) LIKE ${pattern} ESCAPE '\\')`;
+}
+
 /** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
 export async function searchCandidates(opts: SearchCandidatesOptions = {}): Promise<Candidate[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
@@ -110,10 +118,7 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
 
   if (opts.skills) {
     // Search within the JSON skills array for a case-insensitive match
-    // SQLite uses json_each() instead of PostgreSQL's jsonb_array_elements_text()
-    conditions.push(
-      sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE lower(value) LIKE ${`%${escapeLike(opts.skills).toLocaleLowerCase("nl-NL")}%`} ESCAPE '\\')`,
-    );
+    conditions.push(candidateSkillsCondition(opts.skills));
   }
 
   if (opts.escoUri) {
@@ -151,10 +156,7 @@ export async function countCandidates(
 
   if (opts.skills) {
     // Search within the JSON skills array for a case-insensitive match
-    // SQLite uses json_each() instead of PostgreSQL's jsonb_array_elements_text()
-    conditions.push(
-      sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE lower(value) LIKE ${`%${escapeLike(opts.skills).toLocaleLowerCase("nl-NL")}%`} ESCAPE '\\')`,
-    );
+    conditions.push(candidateSkillsCondition(opts.skills));
   }
 
   if (opts.escoUri) {
@@ -164,7 +166,7 @@ export async function countCandidates(
   }
 
   const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(candidates)
     .where(and(...conditions));
 
@@ -356,9 +358,7 @@ export async function findDuplicateCandidate(
   const nameRows = await db
     .select()
     .from(candidates)
-    .where(
-      and(caseInsensitiveContains(candidates.name, parsed.name), isNull(candidates.deletedAt)),
-    )
+    .where(and(caseInsensitiveContains(candidates.name, parsed.name), isNull(candidates.deletedAt)))
     .limit(5);
 
   return { exact: null, similar: nameRows };

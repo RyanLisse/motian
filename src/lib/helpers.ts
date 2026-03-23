@@ -1,6 +1,6 @@
 // Gedeelde utilities voor het recruitment platform
 
-import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { type SQL, type SQLWrapper, sql } from "drizzle-orm";
 
 import { PLATFORM_SLUGS } from "./platform-catalog";
 
