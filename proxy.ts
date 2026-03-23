@@ -10,8 +10,17 @@ const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi"];
  * same-origin requests (no Origin header) or requests from an allowed CORS
  * origin.  External / cross-origin callers without a valid bearer token are
  * still rejected.
+ * /api/events is SSE; EventSource cannot send Authorization header, so same-origin only.
  */
-const FIRST_PARTY_PATHS = ["/api/chat", "/api/chat-sessies"];
+const FIRST_PARTY_PATHS = [
+  "/api/chat",
+  "/api/chat-sessies",
+  "/api/cv-upload",
+  "/api/cv-analyse",
+  "/api/events",
+  "/api/cv-file",
+  "/api/kandidaten",
+];
 
 const PUBLIC_GET_PATHS = ["/api/opdrachten/zoeken"];
 

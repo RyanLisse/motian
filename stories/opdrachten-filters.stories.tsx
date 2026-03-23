@@ -4,6 +4,18 @@ import { OpdrachtenFilters } from "@/app/opdrachten/filters";
 const meta: Meta<typeof OpdrachtenFilters> = {
   title: "Components/OpdrachtenFilters",
   component: OpdrachtenFilters,
+  tags: ["autodocs"],
+  argTypes: {
+    status: { control: "select", options: ["open", "closed", ""] },
+    platform: { control: "text" },
+  },
+  parameters: {
+    docs: {
+      description: {
+        component: "Filterbalk voor vacatures (sidebar of boven de lijst).",
+      },
+    },
+  },
 };
 
 export default meta;

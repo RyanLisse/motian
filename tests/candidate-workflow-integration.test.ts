@@ -10,7 +10,7 @@ function readFile(...segments: string[]) {
 
 describe("candidate workflow recommendation surfaces", () => {
   it("candidate detail page embeds an in-flow recommendation panel", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
 
     expect(source).toContain("CandidateRecommendationPanel");
     expect(source).toContain("initialMatches={recommendationMatches}");

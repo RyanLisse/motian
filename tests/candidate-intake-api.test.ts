@@ -13,7 +13,7 @@ describe("candidate intake and routing API routes", () => {
     const source = readFile("app/api/kandidaten/intake/route.ts");
     expect(source).toContain("intakeCandidate");
     expect(source).toContain("existingCandidateId");
-    expect(source).toContain('revalidatePath("/opdrachten")');
+    expect(source).toContain('revalidatePath("/vacatures")');
     expect(source).toContain('revalidatePath("/overzicht")');
   });
 

@@ -1,6 +1,5 @@
 import type { UIMessage } from "ai";
-import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, inArray, lt, or, sql } from "../db";
 import { chatSessionMessages, chatSessions } from "../db/schema";
 
 export const CHAT_HISTORY_PAGE_SIZE = 20;
@@ -8,7 +7,6 @@ export const CHAT_CONTEXT_WINDOW_SIZE = 24;
 
 const CHAT_SESSION_MESSAGES_TABLE = "chat_session_messages";
 const POSTGRES_MISSING_RELATION_ERROR_CODE = "42P01";
-const CHAT_SESSION_PERSIST_LOCK_NAMESPACE = "chat-session-persist";
 const RETRYABLE_DATABASE_ERROR_CODES = new Set([
   "08000",
   "08001",
@@ -567,10 +565,6 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
     await withChatSessionMessageCompatibility(
       async () => {
         await db.transaction(async (tx) => {
-          await tx.execute(
-            sql`select pg_advisory_xact_lock(hashtext(${`${CHAT_SESSION_PERSIST_LOCK_NAMESPACE}:${sessionId}`}))`,
-          );
-
           await tx
             .insert(chatSessions)
             .values({
@@ -675,10 +669,6 @@ export async function persistMessages({ sessionId, context, messages }: PersistM
       },
       async () => {
         await db.transaction(async (tx) => {
-          await tx.execute(
-            sql`select pg_advisory_xact_lock(hashtext(${`${CHAT_SESSION_PERSIST_LOCK_NAMESPACE}:${sessionId}`}))`,
-          );
-
           await tx
             .insert(chatSessions)
             .values({

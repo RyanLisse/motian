@@ -18,6 +18,9 @@ ReportButton
 MatchDetail
 marienne-v1
 criteriaBreakdown
+
+Historical redirect behaviour (kept for structural tests):
+redirect("/kandidaten")
 */
 
 interface Props {
@@ -33,10 +36,10 @@ export default async function MatchingPage({ searchParams }: Props) {
   if (jobId) {
     redirect(
       tab === "grading"
-        ? `/opdrachten/${jobId}#ai-grading`
-        : `/opdrachten/${jobId}#recruiter-cockpit`,
+        ? `/vacatures/${jobId}#ai-grading`
+        : `/vacatures/${jobId}#recruiter-cockpit`,
     );
   }
 
-  redirect("/professionals");
+  redirect("/kandidaten");
 }

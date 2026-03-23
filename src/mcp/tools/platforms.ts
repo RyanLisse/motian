@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { publish } from "../../lib/event-bus.js";
 import { jsonObjectSchema } from "../../lib/json-value-schema.js";
 import {
   activatePlatform,
@@ -82,11 +84,25 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   platforms_list: async () => listPlatformCatalog(),
   platform_catalog_create: async (raw) => {
     const data = platformCatalogSchema.parse(raw);
-    return createPlatformCatalogEntry({ ...data, source: "mcp" });
+    const result = await createPlatformCatalogEntry({ ...data, source: "mcp" });
+    try {
+      revalidatePath("/databronnen");
+    } catch {
+      /* MCP runs outside request context */
+    }
+    publish("platform:updated", { slug: data.slug });
+    return result;
   },
   platform_config_create: async (raw) => {
     const data = platformConfigSchema.parse(raw);
-    return createConfig({ ...data, source: "mcp" });
+    const result = await createConfig({ ...data, source: "mcp" });
+    try {
+      revalidatePath("/databronnen");
+    } catch {
+      /* MCP runs outside request context */
+    }
+    publish("platform:configured", { platform: data.platform });
+    return result;
   },
   platform_config_validate: async (raw) => {
     const { platform } = platformSchema.parse(raw);
@@ -102,7 +118,14 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   },
   platform_activate: async (raw) => {
     const { platform } = platformSchema.parse(raw);
-    return activatePlatform(platform, "mcp");
+    const result = await activatePlatform(platform, "mcp");
+    try {
+      revalidatePath("/databronnen");
+    } catch {
+      /* MCP runs outside request context */
+    }
+    publish("platform:activated", { platform });
+    return result;
   },
   platform_onboarding_status: async (raw) => {
     const { platform } = platformSchema.parse(raw);

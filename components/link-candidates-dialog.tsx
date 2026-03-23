@@ -43,8 +43,8 @@ function LinkCandidatesContent({
     (match) => selected.has(match.matchId) && !match.isLinked,
   ).length;
   const hasAvailableMatches = matches.some((match) => !match.isLinked);
-  const recruiterCockpitHref = `/opdrachten/${jobId}#recruiter-cockpit`;
-  const gradingHref = `/opdrachten/${jobId}#ai-grading`;
+  const recruiterCockpitHref = `/vacatures/${jobId}#recruiter-cockpit`;
+  const gradingHref = `/vacatures/${jobId}#ai-grading`;
 
   if (loading) {
     return (

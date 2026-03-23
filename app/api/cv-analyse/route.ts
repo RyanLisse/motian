@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           }),
         );
 
-        revalidatePath("/professionals");
+        revalidatePath("/kandidaten");
       } catch (error) {
         const message = error instanceof Error ? error.message : "Onbekende fout";
         console.error("[CV Analyse] Error:", message, error);

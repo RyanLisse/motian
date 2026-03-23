@@ -24,6 +24,19 @@ describe("API auth via proxy", () => {
     },
   ] as const;
 
+  const cvFirstPartyEndpoints = [
+    {
+      description: "the CV upload endpoint",
+      method: "POST",
+      url: "http://localhost/api/cv-upload",
+    },
+    {
+      description: "the CV analyse endpoint",
+      method: "POST",
+      url: "http://localhost/api/cv-analyse",
+    },
+  ] as const;
+
   afterEach(() => {
     if (originalApiSecret === undefined) {
       delete process.env.API_SECRET;
@@ -132,6 +145,59 @@ describe("API auth via proxy", () => {
 
   it.each(
     chatFirstPartyEndpoints,
+  )("allows $description with valid bearer token regardless of origin", ({ method, url }) => {
+    process.env.API_SECRET = "test-secret";
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+
+    const response = proxy(
+      new NextRequest(url, {
+        method,
+        headers: {
+          Authorization: "Bearer test-secret",
+          Origin: "https://evil.example.com",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it.each(
+    cvFirstPartyEndpoints,
+  )("allows same-origin $description without a bearer token when API_SECRET is configured", ({
+    method,
+    url,
+  }) => {
+    process.env.API_SECRET = "test-secret";
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+
+    const response = proxy(new NextRequest(url, { method }));
+
+    expect(response.status).toBe(200);
+  });
+
+  it.each(cvFirstPartyEndpoints)("blocks cross-origin $description without a bearer token", ({
+    method,
+    url,
+  }) => {
+    process.env.API_SECRET = "test-secret";
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+
+    const response = proxy(
+      new NextRequest(url, {
+        method,
+        headers: { Origin: "https://evil.example.com" },
+      }),
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it.each(
+    cvFirstPartyEndpoints,
   )("allows $description with valid bearer token regardless of origin", ({ method, url }) => {
     process.env.API_SECRET = "test-secret";
     process.env.NODE_ENV = "production";

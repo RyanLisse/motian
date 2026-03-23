@@ -52,7 +52,7 @@ export function OpdrachtDetailEndClientFilter({
 
   const filteredListHref = useMemo(
     () =>
-      buildOpdrachtenFilterHref("/opdrachten", searchParams, {
+      buildOpdrachtenFilterHref("/vacatures", searchParams, {
         endClient: selectedEndClient,
         pagina: "1",
       }),

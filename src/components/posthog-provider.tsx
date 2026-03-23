@@ -43,14 +43,18 @@ function canUseStorage(storage?: Pick<Storage, "setItem" | "removeItem"> | null)
 export function getPostHogPersistence(
   windowLike?: WindowStorageLike | null,
 ): "localStorage+cookie" | "memory" {
-  const localStorageResult = getStorageSafely(windowLike, "localStorage");
-  const sessionStorageResult = getStorageSafely(windowLike, "sessionStorage");
+  try {
+    const localStorageResult = getStorageSafely(windowLike, "localStorage");
+    const sessionStorageResult = getStorageSafely(windowLike, "sessionStorage");
 
-  if (localStorageResult.threw || sessionStorageResult.threw) {
+    if (localStorageResult.threw || sessionStorageResult.threw) {
+      return "memory";
+    }
+
+    return canUseStorage(localStorageResult.storage) ? "localStorage+cookie" : "memory";
+  } catch {
     return "memory";
   }
-
-  return canUseStorage(localStorageResult.storage) ? "localStorage+cookie" : "memory";
 }
 
 export function getPostHogInitOptions(windowLike?: WindowStorageLike | null) {
@@ -81,7 +85,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         (error instanceof Error &&
           (error.message.includes("storage") ||
             error.message.includes("localStorage") ||
-            error.message.includes("sessionStorage"))) ||
+            error.message.includes("sessionStorage") ||
+            error.message.includes("Access to storage is not allowed"))) ||
         (error instanceof DOMException &&
           (error.name === "SecurityError" ||
             error.name === "QuotaExceededError" ||

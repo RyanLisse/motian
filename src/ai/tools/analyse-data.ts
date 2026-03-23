@@ -1,7 +1,6 @@
 import { tool } from "ai";
-import { sql } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/src/db";
+import { db, sql } from "@/src/db";
 import { jobs, scrapeResults } from "@/src/db/schema";
 
 export const analyseData = tool({

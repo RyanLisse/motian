@@ -18,7 +18,6 @@ import { PlatformCatalogList } from "@/components/scraper/platform-catalog-list"
 import { RecentActivityFeed } from "@/components/scraper/recent-activity-feed";
 import { ScrapeMetricsExplainer } from "@/components/scraper/scrape-metrics-explainer";
 import { KPICard } from "@/components/shared/kpi-card";
-import { Pagination } from "@/components/shared/pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -226,7 +225,7 @@ function PlatformHealthCard({
         {platform.latestError && (
           <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
             <p className="font-medium">Laatste foutmelding</p>
-            <p className="mt-1 break-words">{platform.latestError}</p>
+            <p className="mt-1 wrap-break-word">{platform.latestError}</p>
           </div>
         )}
       </CardContent>
@@ -236,31 +235,18 @@ function PlatformHealthCard({
 
 export const dynamic = "force-dynamic";
 
-export default async function ScraperPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ pagina?: string; limit?: string }>;
-}) {
-  const params = await searchParams;
-  const page = Number(params.pagina) || 1;
-  const limit = Number(params.limit) || 30;
-  const offset = (page - 1) * limit;
-
+export default async function ScraperPage() {
   const [
     platformCatalog,
-    { analytics, recentRuns: results, totalRuns, platforms, activity, overlap, trigger },
+    { analytics, activeVacancies, recentRuns: results, platforms, activity, overlap, trigger },
   ] = await Promise.all([
     listPlatformCatalog(),
     getScraperDashboardData({
       activityLimit: 20,
-      runsLimit: limit,
-      runsOffset: offset,
       overlapLimit: 8,
       includeTrigger: true,
     }),
   ]);
-
-  const totalPages = Math.ceil(totalRuns / limit);
 
   const attentionPlatforms = platforms.filter(
     (platform) => platform.status === "waarschuwing" || platform.status === "kritiek",
@@ -296,11 +282,11 @@ export default async function ScraperPage({
           <KPICard
             icon={<Search className="h-4 w-4" />}
             label="Actieve vacatures"
-            value={analytics.totalUniqueJobs}
+            value={activeVacancies}
             iconClassName="text-blue-500/60"
             valueClassName="text-blue-500"
             compact
-            title="Huidig aantal opdrachten in de database (niet verwijderd)"
+            title="Huidig aantal zichtbare vacatures op de Vacatures-pagina (open en gededupliceerd)"
           />
           <KPICard
             icon={<Layers3 className="h-4 w-4" />}
@@ -422,7 +408,7 @@ export default async function ScraperPage({
                         {formatDateTime(platform.nextRunAt)}
                       </TableCell>
                       <TableCell className="max-w-[320px] whitespace-normal">
-                        <span className="break-words text-xs text-muted-foreground">
+                        <span className="wrap-break-word text-xs text-muted-foreground">
                           {platform.signals[0]?.message ?? "Geen open signaal"}
                         </span>
                       </TableCell>
@@ -442,7 +428,7 @@ export default async function ScraperPage({
             </CardHeader>
             <CardContent className="min-w-0 space-y-3">
               {!trigger.available && (
-                <div className="break-words rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                <div className="wrap-break-word rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
                   Trigger.dev informatie is nu niet beschikbaar.
                   {trigger.reason ? ` Reden: ${trigger.reason}` : ""}
                 </div>
@@ -459,14 +445,14 @@ export default async function ScraperPage({
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-foreground">{task.label}</p>
-                        <p className="mt-1 break-words text-xs text-muted-foreground">
+                        <p className="mt-1 wrap-break-word text-xs text-muted-foreground">
                           {task.cronExpression} · {task.timezone}
                         </p>
                       </div>
                       <Badge
                         variant="outline"
                         className={cn(
-                          "max-w-full whitespace-normal break-words text-center",
+                          "max-w-full whitespace-normal wrap-break-word text-center",
                           status.className,
                         )}
                       >
@@ -476,7 +462,7 @@ export default async function ScraperPage({
                     <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                       <p>Laatste run: {formatDateTime(task.latestRun?.createdAt ?? null)}</p>
                       {task.latestRun?.error && (
-                        <p className="break-words text-amber-600 dark:text-amber-400">
+                        <p className="wrap-break-word text-amber-600 dark:text-amber-400">
                           {task.latestRun.error}
                         </p>
                       )}
@@ -637,12 +623,6 @@ export default async function ScraperPage({
                 </Table>
               </div>
             )}
-
-            <Pagination
-              page={page}
-              totalPages={totalPages}
-              buildHref={(p) => `/scraper?pagina=${p}`}
-            />
           </CardContent>
         </Card>
       </div>

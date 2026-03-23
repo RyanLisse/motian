@@ -50,7 +50,7 @@ export function KanbanCard({ card }: KanbanCardProps) {
     .slice(0, 2)
     .toUpperCase();
 
-  const candidateHref = card.candidateId ? `/professionals/${card.candidateId}` : null;
+  const candidateHref = card.candidateId ? `/kandidaten/${card.candidateId}` : null;
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: drag source

@@ -1,1 +1,2 @@
-export { getPoolConfig, getPoolSslConfig } from "@motian/db/pool-config";
+// Pool configuration is not needed for Turso/libSQL.
+// This stub exists to prevent import errors during migration.

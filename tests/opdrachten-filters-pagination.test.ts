@@ -158,13 +158,13 @@ describe("Opdrachten shared filter parsing", () => {
 describe("Opdrachten filter URL helpers", () => {
   it("preserves endClient params while clearing pagination aliases on detail routes", () => {
     const href = buildOpdrachtenFilterHref(
-      "/opdrachten/job-123",
+      "/vacatures/job-123",
       new URLSearchParams("q=java&page=2&perPage=25&endClient=Gemeente%20Utrecht"),
       { endClient: "Gemeente Amsterdam", pagina: "1" },
     );
     const url = new URL(href, "http://localhost");
 
-    expect(url.pathname).toBe("/opdrachten/job-123");
+    expect(url.pathname).toBe("/vacatures/job-123");
     expect(url.searchParams.get("q")).toBe("java");
     expect(url.searchParams.get("endClient")).toBe("Gemeente Amsterdam");
     expect(url.searchParams.get("pagina")).toBe("1");
@@ -174,13 +174,13 @@ describe("Opdrachten filter URL helpers", () => {
 
   it("removes the endClient filter cleanly when all clients are selected", () => {
     const href = buildOpdrachtenFilterHref(
-      "/opdrachten",
+      "/vacatures",
       new URLSearchParams("endClient=Gemeente%20Utrecht&sort=deadline_desc"),
       { endClient: "" },
     );
     const url = new URL(href, "http://localhost");
 
-    expect(url.pathname).toBe("/opdrachten");
+    expect(url.pathname).toBe("/vacatures");
     expect(url.searchParams.get("endClient")).toBeNull();
     expect(url.searchParams.get("sort")).toBe("deadline_desc");
   });
@@ -312,6 +312,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(layout).toContain('import { listJobs } from "@/src/services/jobs"');
     expect(layout).toContain('getJobStatusCondition("open")');
     expect(layout).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
+    // PostgreSQL uses jsonb_array_elements_text() for JSON array iteration
     expect(layout).toContain("jsonb_array_elements_text");
     expect(layout).toContain(
       'import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary"',
@@ -342,7 +343,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(sidebar).toContain("getOpdrachtenBasePath(pathname)");
     expect(sidebar).toContain("deadlines vragen aandacht");
     expect(listItem).toContain("href?: string");
-    expect(listItem).toContain(`const detailHref = href ?? \`/opdrachten/\${job.id}\``);
+    expect(listItem).toContain(`const detailHref = href ?? \`/vacatures/\${job.id}\``);
     expect(listItem).toContain("Nog te koppelen");
     expect(listItem).toContain("Sluit vandaag");
   });
@@ -358,7 +359,7 @@ describe("Opdrachten UI/API contracts", () => {
       "data-[size=default]:h-11 w-full rounded-lg border-border bg-background",
     );
     expect(sidebar).toContain("min-h-11 cursor-pointer items-center gap-3");
-    expect(sidebar).toContain('<ScrollArea className="min-w-0 flex-1">');
+    expect(sidebar).toContain('<ScrollArea className="min-h-0 min-w-0 flex-1">');
     expect(sidebar).toContain("flex flex-col gap-2 border-t border-border/70 pt-4 sm:flex-row");
     expect(sidebar).toContain("Filters openen");
     expect(sidebar).toContain("Filters sluiten");
@@ -371,8 +372,24 @@ describe("Opdrachten UI/API contracts", () => {
     expect(listItem).toContain(
       "w-full min-w-0 overflow-hidden rounded-xl border border-border/80 bg-card",
     );
-    expect(listItem).toContain("line-clamp-2 break-words");
-    expect(listItem).toContain("max-w-full whitespace-normal break-words");
+    expect(listItem).toContain("line-clamp-2");
+    expect(listItem).toContain("max-w-full whitespace-normal wrap-break-word");
+  });
+
+  it("uses the dark card-based filter panel as the primary sidebar UI", () => {
+    const sidebar = readFile("components", "opdrachten-sidebar.tsx");
+    const normalizedSidebar = sidebar.replace(/\s+/g, " ");
+
+    expect(normalizedSidebar).toContain(
+      'className="flex h-full w-full flex-col overflow-hidden bg-[#050506] text-white"',
+    );
+    expect(normalizedSidebar).toContain("rounded-[24px]");
+    expect(normalizedSidebar).toContain("rounded-[20px]");
+    expect(normalizedSidebar).toContain("bg-white/[0.035]");
+    expect(normalizedSidebar).toContain("border-white/10");
+    expect(normalizedSidebar).toContain("tracking-[0.22em]");
+    expect(normalizedSidebar).toContain("text-white/45");
+    expect(normalizedSidebar).toContain("placeholder:text-white/35");
   });
 
   it("keeps mobile filters inside a bounded flex/min-h-0 scroll container", () => {

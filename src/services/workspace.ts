@@ -1,6 +1,4 @@
-import { sql } from "drizzle-orm";
-import { db } from "../db";
-import { jobs } from "../db/schema";
+import { db, jobs, sql } from "../db";
 import type { PlatformCatalogEntryView } from "./scrapers";
 import { getHealth, listPlatformCatalog } from "./scrapers";
 

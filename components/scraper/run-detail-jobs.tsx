@@ -77,7 +77,7 @@ export function RunDetailJobs({
               {jobs.map((job) => (
                 <TableRow key={job.id} className="border-border">
                   <TableCell className="font-medium">
-                    <Link href={`/opdrachten/${job.id}`} className="text-primary hover:underline">
+                    <Link href={`/vacatures/${job.id}`} className="text-primary hover:underline">
                       {job.title}
                     </Link>
                   </TableCell>
@@ -88,7 +88,7 @@ export function RunDetailJobs({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Link
-                        href={`/opdrachten/${job.id}`}
+                        href={`/vacatures/${job.id}`}
                         className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                       >
                         <ExternalLink className="h-3 w-3" />

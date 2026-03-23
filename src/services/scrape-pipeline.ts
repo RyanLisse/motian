@@ -1,5 +1,4 @@
 import { publish } from "../lib/event-bus";
-import { enrichJobsBatch } from "./ai-enrichment";
 import { normalizeAndSaveJobs } from "./normalize";
 import { recordScrapeResult } from "./record-scrape-result";
 import { getConfigByPlatform, toRuntimeConfig } from "./scrapers";
@@ -149,12 +148,9 @@ export async function runScrapePipeline(
     status,
   });
 
-  // Fire-and-forget AI enrichment for new jobs
-  if (result.jobsNew > 0) {
-    enrichJobsBatch({ platform }).catch((err) =>
-      console.error(`[AI Enrichment] Failed for ${platform}:`, err),
-    );
-  }
+  // NOTE: AI enrichment moved to separate Trigger.dev task (embeddings-batch)
+  // to prevent fire-and-forget promises from blocking scrape pipeline duration.
+  // Previously enrichJobsBatch ran here but kept the process alive past maxDuration.
 
   // Return merged scrape + normalization errors so callers see the full picture.
   return {

@@ -1,5 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, isNull, sql } from "../db";
 import { applications } from "../db/schema";
 
 export type Application = typeof applications.$inferSelect;
@@ -51,7 +50,7 @@ export async function countApplications(
 ): Promise<number> {
   const conditions = buildListConditions(opts);
   const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(applications)
     .where(and(...conditions));
   return count ?? 0;
@@ -280,7 +279,7 @@ export async function getApplicationStats(): Promise<{
   const rows = await db
     .select({
       stage: applications.stage,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`cast(count(*) as integer)`,
     })
     .from(applications)
     .where(isNull(applications.deletedAt))

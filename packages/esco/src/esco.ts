@@ -1,11 +1,16 @@
-import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
-import { db } from "@motian/db";
 import {
+  and,
   candidateSkills,
+  db,
+  eq,
   escoSkills,
+  like,
+  inArray,
   jobSkills,
+  or,
   skillAliases,
   skillMappings,
+  sql,
 } from "@motian/db";
 import { escapeLike } from "./escape-like";
 import { extractCandidateSkillSeeds, extractJobSkillSeeds } from "./esco-backfill";
@@ -112,8 +117,8 @@ export async function mapSkillInput(input: MapSkillInput): Promise<MapSkillResul
       .from(escoSkills)
       .where(
         or(
-          ilike(escoSkills.preferredLabelEn, rawEscaped),
-          ilike(escoSkills.preferredLabelNl, rawEscaped),
+          like(escoSkills.preferredLabelEn, rawEscaped),
+          like(escoSkills.preferredLabelNl, rawEscaped),
         ),
       )
       .limit(1);

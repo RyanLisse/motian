@@ -176,6 +176,7 @@ describe("Werkzoeken scraper", () => {
         parameters: {
           sourcePath: "/vacatures-voor/techniek/",
           maxPages: 2,
+          pnrStep: 1,
           detailConcurrency: 1,
         },
         auth: {},
@@ -188,11 +189,68 @@ describe("Werkzoeken scraper", () => {
     expect(result.listings).toHaveLength(1);
   });
 
+  it("jumps pages correctly with variable pnrStep values (e.g., pnrStep: 2)", async () => {
+    const adapter = werkzoekenAdapter;
+    let callCount = 0;
+    const requestedUrls: string[] = [];
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const urlStr = String(input);
+      requestedUrls.push(urlStr);
+      callCount++;
+
+      // Return a unique listing for each call to allow pagination to continue
+      if (callCount <= 2) {
+        const id = callCount === 1 ? "1" : "2";
+        const mockHtml = `
+          <div class="vacancy-list">
+            <a data-vacancyid="${id}" class="vacancy vac" href="/vacature/${id}">
+              <h3>Job ${id}</h3>
+            </a>
+          </div>
+        `;
+        return new Response(`<html><body>${mockHtml}</body></html>`, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+      return new Response(
+        '<html><body><div class="no-results">Geen resultaten</div></body></html>',
+        {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        },
+      );
+    }) as typeof fetch;
+
+    const config = {
+      slug: "werkzoeken",
+      baseUrl: "https://www.werkzoeken.nl",
+      parameters: {
+        sourcePath: "/vacatures-voor/techniek/",
+        maxPages: 10,
+        pnrStep: 2, // Should jump 2, 4, 6...
+      },
+      auth: {},
+    };
+
+    await adapter.scrape(config);
+
+    // Should have requested:
+    // 1. Initial (pnr=2)
+    // 2. pnr=4 (2 + 2)
+    // 3. pnr=6 (4 + 2) - this returns empty
+    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=2");
+    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=4");
+    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=6");
+    expect(callCount).toBe(5); // 3 listing pages + 2 detail pages
+  });
+
   it("falls back to sane pagination and concurrency defaults when config numbers are invalid", async () => {
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
 
-      if (url.includes("/vacature/15167751-werkvoorbereider-engineer-hvac")) {
+      if (url.includes("/vacature/")) {
         return new Response(DETAIL_HTML, {
           status: 200,
           headers: { "Content-Type": "text/html" },
@@ -212,6 +270,7 @@ describe("Werkzoeken scraper", () => {
         parameters: {
           sourcePath: "/vacatures-voor/techniek/",
           maxPages: "geen-getal",
+          pnrStep: 1,
           detailConcurrency: "ook-geen-getal",
         },
         auth: {},
@@ -267,7 +326,9 @@ describe("Werkzoeken scraper", () => {
       parameters: {
         sourcePath: "/vacatures-voor/techniek/",
         maxPages: 5,
+        pnrStep: 1,
         detailConcurrency: 1,
+        skipDetailEnrichment: true,
       },
       auth: {},
     });

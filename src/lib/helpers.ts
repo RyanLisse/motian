@@ -1,5 +1,7 @@
 // Gedeelde utilities voor het recruitment platform
 
+import { type SQL, type SQLWrapper, sql } from "drizzle-orm";
+
 import { PLATFORM_SLUGS } from "./platform-catalog";
 
 /** Canonical list of supported scraper platforms. Backed by the platform registry metadata. */
@@ -15,6 +17,15 @@ export const CIRCUIT_BREAKER_THRESHOLD = 5;
  */
 export function escapeLike(s: string): string {
   return s.replace(/[%_\\]/g, "\\$&");
+}
+
+/**
+ * Cross-database case-insensitive "contains" filter.
+ * Uses LOWER(...) + LIKE ... ESCAPE '\' so wildcard chars in user input are treated literally.
+ */
+export function caseInsensitiveContains(column: SQLWrapper, input: string): SQL {
+  const normalized = `%${escapeLike(input.trim()).toLocaleLowerCase("nl-NL")}%`;
+  return sql`lower(coalesce(${column}, '')) like ${normalized} escape '\\'`;
 }
 
 /**

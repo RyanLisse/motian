@@ -30,7 +30,7 @@ describe("sidebar shell top-bar refactor", () => {
     const sidebarSource = readFile("components", "app-sidebar.tsx");
     const userSource = readFile("components", "nav-user.tsx");
     const widgetSource = readFile("components", "chat", "chat-widget.tsx");
-    const candidateDetailSource = readFile("app", "professionals", "[id]", "page.tsx");
+    const candidateDetailSource = readFile("app", "kandidaten", "[id]", "page.tsx");
 
     expect(sidebarSource).toContain('title: "Interviews"');
     expect(sidebarSource).toContain('badge: { text: "⌘J"');

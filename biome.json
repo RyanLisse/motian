@@ -51,6 +51,23 @@
           "a11y": { "useSemanticElements": "off" }
         }
       }
+    },
+    {
+      "includes": [
+        "app/kandidaten/\\[id\\]/page.tsx",
+        "app/scraper/runs/\\[id\\]/page.tsx",
+        "components/auto-match-results.tsx",
+        "components/candidate-profile/skills-experience-section.tsx",
+        "components/candidate-wizard/experience-input.tsx",
+        "components/cv-document-viewer.tsx",
+        "components/matching/match-detail.tsx",
+        "components/shared/list-page-skeleton.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": { "noArrayIndexKey": "off" }
+        }
+      }
     }
   ]
 }

@@ -4,6 +4,14 @@ import { JobCard } from "@/components/job-card";
 const meta: Meta<typeof JobCard> = {
   title: "Components/JobCard",
   component: JobCard,
+  tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: "Kaart voor een vacature met bedrijf, locatie, tarief en deadline.",
+      },
+    },
+  },
 };
 
 export default meta;

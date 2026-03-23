@@ -62,10 +62,10 @@ export const POST = withApiHandler(async (request: Request) => {
 
   const result = await intakeCandidate(parsed.data);
 
-  revalidatePath("/professionals");
-  revalidatePath("/opdrachten");
+  revalidatePath("/kandidaten");
+  revalidatePath("/vacatures");
   revalidatePath("/overzicht");
-  revalidatePath(`/professionals/${result.candidate.id}`);
+  revalidatePath(`/kandidaten/${result.candidate.id}`);
 
   return Response.json(result, {
     status: parsed.data.existingCandidateId ? 200 : 201,

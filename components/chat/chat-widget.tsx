@@ -277,7 +277,7 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
     return () => window.removeEventListener(CHAT_WIDGET_OPEN_EVENT, handleOpen);
   }, []);
 
-  if (pathname === "/chat" || pathname === "/opdrachten") return null;
+  if (pathname === "/chat" || pathname === "/vacatures") return null;
 
   return (
     <>

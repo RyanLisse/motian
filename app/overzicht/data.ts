@@ -1,5 +1,4 @@
-import { and, asc, eq, gte, isNull, sql } from "drizzle-orm";
-import { db } from "@/src/db";
+import { and, asc, db, desc, eq, gte, isNull, sql } from "@/src/db";
 import {
   applications,
   candidates,
@@ -51,15 +50,6 @@ function dedupeRecentScrapes(rows: RecentScrape[]): RecentScrape[] {
   });
 }
 
-type RecentJobRow = {
-  id: string;
-  title: string;
-  company: string | null;
-  platform: string;
-  location: string | null;
-  scraped_at: Date | null;
-};
-
 type RecentJob = {
   id: string;
   title: string;
@@ -69,68 +59,71 @@ type RecentJob = {
   scrapedAt: Date | null;
 };
 
-async function getRecentJobs(database: Pick<typeof db, "execute">): Promise<RecentJob[]> {
-  const result = await database.execute(sql<RecentJobRow>`
-    select *
-    from (
-      select distinct on (
-        trim(regexp_replace(lower(coalesce(${jobs.title}, '')), '[^[:alnum:]]+', ' ', 'g')),
-        trim(regexp_replace(lower(coalesce(${jobs.endClient}, ${jobs.company}, '')), '[^[:alnum:]]+', ' ', 'g')),
-        trim(regexp_replace(lower(coalesce(${jobs.province}, ${jobs.location}, '')), '[^[:alnum:]]+', ' ', 'g'))
-      )
-        ${jobs.id} as id,
-        ${jobs.title} as title,
-        coalesce(${jobs.endClient}, ${jobs.company}) as company,
-        ${jobs.platform} as platform,
-        coalesce(${jobs.location}, ${jobs.province}) as location,
-        ${jobs.scrapedAt} as scraped_at
-      from ${jobs}
-      where ${jobs.deletedAt} is null
-      order by
-        trim(regexp_replace(lower(coalesce(${jobs.title}, '')), '[^[:alnum:]]+', ' ', 'g')) asc,
-        trim(regexp_replace(lower(coalesce(${jobs.endClient}, ${jobs.company}, '')), '[^[:alnum:]]+', ' ', 'g')) asc,
-        trim(regexp_replace(lower(coalesce(${jobs.province}, ${jobs.location}, '')), '[^[:alnum:]]+', ' ', 'g')) asc,
-        ${jobs.scrapedAt} desc nulls last,
-        ${jobs.id} desc
-    ) latest_job_groups
-    order by scraped_at desc nulls last, id desc
-    limit 5
-  `);
+async function getRecentJobs(database: typeof db): Promise<RecentJob[]> {
+  const rows = await database
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      company: sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`,
+      platform: jobs.platform,
+      location: sql<string | null>`coalesce(${jobs.location}, ${jobs.province})`,
+      scrapedAt: jobs.scrapedAt,
+      endClient: jobs.endClient,
+      province: jobs.province,
+    })
+    .from(jobs)
+    .where(isNull(jobs.deletedAt))
+    .orderBy(desc(jobs.scrapedAt), desc(jobs.id))
+    .limit(200);
 
-  return (result.rows as RecentJobRow[]).map((row) => ({
-    id: row.id,
-    title: row.title,
-    company: row.company,
-    platform: row.platform,
-    location: row.location,
-    scrapedAt: row.scraped_at,
-  }));
+  const seen = new Set<string>();
+  const deduped: RecentJob[] = [];
+
+  for (const row of rows) {
+    const key = [
+      row.title?.trim().toLowerCase() ?? "",
+      (row.endClient ?? row.company ?? "").trim().toLowerCase(),
+      (row.province ?? row.location ?? "").trim().toLowerCase(),
+    ].join("|");
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    deduped.push({
+      id: row.id,
+      title: row.title,
+      company: row.company,
+      platform: row.platform,
+      location: row.location,
+      scrapedAt: row.scrapedAt,
+    });
+
+    if (deduped.length >= 5) break;
+  }
+
+  return deduped;
 }
 
-async function getRecentScrapes(database: Pick<typeof db, "execute">): Promise<RecentScrape[]> {
-  const result = await database.execute(sql<RecentScrapeRow>`
-    select *
-    from (
-      select distinct on (${scrapeResults.platform})
-        ${scrapeResults.id} as id,
-        ${scrapeResults.configId} as config_id,
-        ${scrapeResults.platform} as platform,
-        ${scrapeResults.runAt} as run_at,
-        ${scrapeResults.durationMs} as duration_ms,
-        ${scrapeResults.jobsFound} as jobs_found,
-        ${scrapeResults.jobsNew} as jobs_new,
-        ${scrapeResults.duplicates} as duplicates,
-        ${scrapeResults.status} as status,
-        ${scrapeResults.errors} as errors
-      from ${scrapeResults}
-      order by ${scrapeResults.platform} asc, ${scrapeResults.runAt} desc nulls last, ${scrapeResults.id} desc
-    ) latest_platform_runs
-    order by run_at desc nulls last, platform asc
-    limit 5
-  `);
+async function getRecentScrapes(database: typeof db): Promise<RecentScrape[]> {
+  const rows: RecentScrapeRow[] = await database
+    .select({
+      id: scrapeResults.id,
+      config_id: scrapeResults.configId,
+      platform: scrapeResults.platform,
+      run_at: scrapeResults.runAt,
+      duration_ms: scrapeResults.durationMs,
+      jobs_found: scrapeResults.jobsFound,
+      jobs_new: scrapeResults.jobsNew,
+      duplicates: scrapeResults.duplicates,
+      status: scrapeResults.status,
+      errors: scrapeResults.errors,
+    })
+    .from(scrapeResults)
+    .orderBy(desc(scrapeResults.runAt), desc(scrapeResults.id))
+    .limit(200);
 
   return dedupeRecentScrapes(
-    (result.rows as RecentScrapeRow[]).map((row) => ({
+    rows.map((row) => ({
       id: row.id,
       configId: row.config_id,
       platform: row.platform,
@@ -161,8 +154,8 @@ export async function getOverviewData(database: typeof db = db) {
   const platformCounts = await database
     .select({
       platform: jobs.platform,
-      count: sql<number>`count(*)::int`,
-      weeklyNew: sql<number>`count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo})::int`,
+      count: sql<number>`cast(count(*) as integer)`,
+      weeklyNew: sql<number>`cast(count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo}) as integer)`,
     })
     .from(jobs)
     .groupBy(jobs.platform)
@@ -171,7 +164,16 @@ export async function getOverviewData(database: typeof db = db) {
   const recentJobs = await getRecentJobs(database);
 
   const activeScrapers = await database
-    .select()
+    .select({
+      id: scraperConfigs.id,
+      platform: scraperConfigs.platform,
+      isActive: scraperConfigs.isActive,
+      cronExpression: scraperConfigs.cronExpression,
+      consecutiveFailures: scraperConfigs.consecutiveFailures,
+      lastRunAt: scraperConfigs.lastRunAt,
+      lastRunStatus: scraperConfigs.lastRunStatus,
+      updatedAt: scraperConfigs.updatedAt,
+    })
     .from(scraperConfigs)
     .where(eq(scraperConfigs.isActive, true));
 
@@ -180,7 +182,7 @@ export async function getOverviewData(database: typeof db = db) {
   const topCompanies = await database
     .select({
       company: jobs.company,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`cast(count(*) as integer)`,
     })
     .from(jobs)
     .where(sql`${jobs.company} is not null`)
@@ -191,7 +193,7 @@ export async function getOverviewData(database: typeof db = db) {
   const locationCounts = await database
     .select({
       province: jobs.province,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`cast(count(*) as integer)`,
     })
     .from(jobs)
     .where(sql`${jobs.province} is not null`)
@@ -202,14 +204,14 @@ export async function getOverviewData(database: typeof db = db) {
   const pipelineStageCounts = await database
     .select({
       stage: applications.stage,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`cast(count(*) as integer)`,
     })
     .from(applications)
     .where(isNull(applications.deletedAt))
     .groupBy(applications.stage);
 
   const upcomingInterviewCountResult = await database
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(interviews)
     .where(
       and(

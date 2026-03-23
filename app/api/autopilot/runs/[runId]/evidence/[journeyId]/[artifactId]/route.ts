@@ -1,5 +1,4 @@
 import { gunzipSync } from "node:zlib";
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { inferEvidenceContentType } from "@/src/autopilot/evidence/content-type";
 import {
@@ -7,7 +6,7 @@ import {
   findEvidenceArtifact,
   loadRunSummaryFromReportUrl,
 } from "@/src/autopilot/run-detail";
-import { db } from "@/src/db";
+import { db, eq } from "@/src/db";
 import { autopilotRuns } from "@/src/db/schema";
 import { downloadFile } from "@/src/lib/file-storage";
 

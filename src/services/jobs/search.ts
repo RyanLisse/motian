@@ -1,7 +1,6 @@
-import { and, ilike, inArray, or, type SQL, sql } from "drizzle-orm";
-import { db } from "../../db";
+import { and, db, inArray, isPostgresDatabase, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
-import { escapeLike, toTsQueryInput } from "../../lib/helpers";
+import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
 import { logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
@@ -15,7 +14,7 @@ import {
 import { getHybridSearchPolicy } from "./hybrid-search-policy";
 import { listJobs } from "./list";
 import { buildJobFilterConditions } from "./query-filters";
-import { getJobReadSelection, type Job } from "./repository";
+import { type Job, jobReadSelection } from "./repository";
 
 export type SearchJobsOptions = {
   platform?: string;
@@ -152,7 +151,7 @@ async function searchJobIdsByTitle(
   const filterCondition = opts.filterCondition ?? sql`true`;
   const tsInput = toTsQueryInput(query);
 
-  if (tsInput) {
+  if (tsInput && isPostgresDatabase()) {
     const searchVector = sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, ''))`;
     const searchRank = sql`ts_rank(${searchVector}, to_tsquery('dutch', ${tsInput}))`;
     const ftsIds = await fetchDedupedJobIds({
@@ -171,8 +170,8 @@ async function searchJobIdsByTitle(
   const words = query.trim().split(/\s+/).filter(Boolean);
   const titleConditions =
     words.length > 1
-      ? or(...words.map((w) => ilike(jobs.title, `%${escapeLike(w)}%`)))
-      : ilike(jobs.title, `%${escapeLike(query)}%`);
+      ? or(...words.map((w) => caseInsensitiveContains(jobs.title, w)))
+      : caseInsensitiveContains(jobs.title, query);
 
   return fetchDedupedJobIds({
     whereClause: and(filterCondition, titleConditions) ?? filterCondition,
@@ -271,8 +270,7 @@ export async function hybridSearchWithTotal(
 
         if (
           typeof embeddingService.generateQueryEmbedding === "function" &&
-          typeof embeddingService.generateEmbedding === "function" &&
-          typeof db.execute === "function"
+          typeof embeddingService.generateEmbedding === "function"
         ) {
           const embeddingStartedAt = Date.now();
           const queryEmbedding = await embeddingService.generateQueryEmbedding(query);
@@ -280,24 +278,29 @@ export async function hybridSearchWithTotal(
 
           const vectorStr = `[${queryEmbedding.join(",")}]`;
           const vectorSearchStartedAt = Date.now();
-          const results = await db.execute(sql`
+          const result = await (
+            db as unknown as {
+              execute(sql: SQL): Promise<{
+                rows: Array<{ id: string; title: string; similarity: number | string }>;
+              }>;
+            }
+          ).execute(sql`
             SELECT
               id,
               title,
-              1 - (embedding <=> ${vectorStr}::vector) AS similarity
+              1 - vector_distance_cos(embedding, vector32(${vectorStr})) AS similarity
             FROM jobs
             WHERE embedding IS NOT NULL
               AND deleted_at IS NULL
               AND ${retrievalFilterCondition}
-              AND 1 - (embedding <=> ${vectorStr}::vector) >= ${policy.vectorMinScore}
-            ORDER BY embedding <=> ${vectorStr}::vector
+              AND 1 - vector_distance_cos(embedding, vector32(${vectorStr})) >= ${policy.vectorMinScore}
+            ORDER BY vector_distance_cos(embedding, vector32(${vectorStr}))
             LIMIT ${policy.fetchSize}
           `);
+          const rows = result.rows;
           vectorSearchMs = Date.now() - vectorSearchStartedAt;
 
-          return (
-            results.rows as Array<{ id: string; title: string; similarity: number | string }>
-          ).map((row) => ({
+          return rows.map((row) => ({
             id: row.id,
             title: row.title,
             similarity: Number(row.similarity),
@@ -367,7 +370,7 @@ export async function hybridSearchWithTotal(
   if (policy.hydrationMode === "full-candidates") {
     const hydrateStartedAt = Date.now();
     const fetchedJobs = await db
-      .select(getJobReadSelection())
+      .select(jobReadSelection)
       .from(jobs)
       .where(and(inArray(jobs.id, candidateIds), ...filterConditions));
     hydrateMs = Date.now() - hydrateStartedAt;

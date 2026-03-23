@@ -49,7 +49,7 @@ export const scrapePipelineTask = schedules.task({
     pattern: "0 6,10,14,18 * * *", // Alleen tussen 06:00 en 18:00, elke 4 uur
     timezone: "Europe/Amsterdam",
   },
-  maxDuration: 600, // 10 minutes max
+  maxDuration: 300, // 5 minutes — ESCO sync is now parallel, should complete in 1-2 min
   run: async () => {
     const activeConfigs = await db
       .select()

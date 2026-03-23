@@ -1,0 +1,14 @@
+Enrich the five existing story files so Controls and Docs are useful and each component is documented in place. No new story files—only meta and args updates.
+
+Files to update:
+- stories/status-badge.stories.tsx: Add argTypes.status with control select and options ['success','partial','failed','gezond','waarschuwing','kritiek','inactief']. Add tags: ['autodocs']. Add parameters.docs.description (e.g. used in scraper run list / health indicators).
+- stories/page-header.stories.tsx: Add tags: ['autodocs'], argTypes for title and description (text), and parameters.docs.description.
+- stories/job-list-item.stories.tsx: Add tags: ['autodocs'], argTypes for isActive, variant, and key job fields (platform, workArrangement, contractType as selects where applicable). Add parameters.docs.description (e.g. used in vacatures sidebar/list).
+- stories/job-card.stories.tsx: Add tags: ['autodocs'], argTypes for enum/boolean props, and a one-line parameters.docs.description.
+- stories/opdrachten-filters.stories.tsx: Add tags: ['autodocs'], parameters.docs.description (e.g. filter bar for vacatures/opdrachten). Optionally argTypes for status, platform.
+
+Success criteria: All five files have autodocs and at least one doc description; status-badge and other components with enums have working Controls.
+
+Rationale: Turns existing stories into living component docs and establishes the pattern for new stories.
+
+Depends on: Bead 2 (config and addons) so autodocs and addons are in place.

@@ -49,10 +49,10 @@ const DEFAULT_MODEL_ID = CHAT_MODELS[0].id;
 const DEFAULT_SPEED_MODE: ChatSpeedMode = "gemiddeld";
 
 export function resolveRouteContext(pathname: string, id: string | null): ChatRouteContext {
-  if (pathname.startsWith("/opdrachten/") && id) {
+  if ((pathname.startsWith("/vacatures/") || pathname.startsWith("/opdrachten/")) && id) {
     return { route: pathname, entityType: "opdracht", entityId: id };
   }
-  if (pathname.startsWith("/professionals/") && id) {
+  if (pathname.startsWith("/kandidaten/") && id) {
     return { route: pathname, entityType: "kandidaat", entityId: id };
   }
 

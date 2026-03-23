@@ -39,12 +39,12 @@ export async function linkCandidateToJob(
       });
     }
 
-    revalidatePath("/professionals");
-    revalidatePath("/opdrachten");
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
     revalidatePath("/pipeline");
     revalidatePath("/overzicht");
-    revalidatePath(`/professionals/${candidateId}`);
-    revalidatePath(`/opdrachten/${jobId}`);
+    revalidatePath(`/kandidaten/${candidateId}`);
+    revalidatePath(`/vacatures/${jobId}`);
     return { success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Onbekende fout";
@@ -53,12 +53,12 @@ export async function linkCandidateToJob(
       if (concurrent) {
         await updateMatchStatus(concurrent.id, "approved", "system");
       }
-      revalidatePath("/professionals");
-      revalidatePath("/opdrachten");
+      revalidatePath("/kandidaten");
+      revalidatePath("/vacatures");
       revalidatePath("/pipeline");
       revalidatePath("/overzicht");
-      revalidatePath(`/professionals/${candidateId}`);
-      revalidatePath(`/opdrachten/${jobId}`);
+      revalidatePath(`/kandidaten/${candidateId}`);
+      revalidatePath(`/vacatures/${jobId}`);
       return { success: true };
     }
     return { success: false, error: message };

@@ -1,6 +1,5 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { sql } from "drizzle-orm";
-import { db } from "@/src/db";
+import { db, type SQL, sql } from "@/src/db";
 
 /**
  * Weekly task to detect and flag duplicate candidates.
@@ -16,36 +15,48 @@ export const candidateDedupTask = schedules.task({
   },
   run: async () => {
     // Find candidates sharing the same email (most reliable dedup signal)
-    const emailDuplicates = await db.execute(sql`
-      SELECT email, array_agg(id ORDER BY created_at) AS ids, count(*) AS cnt
+    const emailDupResult = await (
+      db as unknown as {
+        execute(sql: SQL): Promise<{ rows: Array<{ email: string; ids: string; cnt: number }> }>;
+      }
+    ).execute(sql`
+      SELECT email, group_concat(id) AS ids, count(*) AS cnt
       FROM candidates
       WHERE email IS NOT NULL
         AND deleted_at IS NULL
       GROUP BY email
       HAVING count(*) > 1
+      ORDER BY MIN(id) ASC
       LIMIT 50
     `);
+    const emailDupRows = emailDupResult.rows;
 
-    // Find candidates with identical name + role (fuzzy dedup)
-    const nameRoleDuplicates = await db.execute(sql`
+    // Find candidates with identical name + role (fuzzy dedup) - exclude null roles
+    const nameDupResult = await (
+      db as unknown as {
+        execute(sql: SQL): Promise<{
+          rows: Array<{ norm_name: string; role: string | null; ids: string; cnt: number }>;
+        }>;
+      }
+    ).execute(sql`
       SELECT lower(name) AS norm_name, role,
-             array_agg(id ORDER BY created_at) AS ids,
+             group_concat(id) AS ids,
              count(*) AS cnt
       FROM candidates
       WHERE deleted_at IS NULL
         AND name IS NOT NULL
+        AND role IS NOT NULL
       GROUP BY lower(name), role
       HAVING count(*) > 1
+      ORDER BY MIN(id) ASC
       LIMIT 50
     `);
+    const nameDupRows = nameDupResult.rows;
 
-    const emailDups = emailDuplicates.rows as Array<{ email: string; ids: string[]; cnt: number }>;
-    const nameDups = nameRoleDuplicates.rows as Array<{
-      norm_name: string;
-      role: string;
-      ids: string[];
-      cnt: number;
-    }>;
+    const parseIds = (idsStr: string) => idsStr.split(",").filter((id) => id.trim());
+
+    const emailDups = emailDupRows.map((d) => ({ ...d, ids: parseIds(d.ids) }));
+    const nameDups = nameDupRows.map((d) => ({ ...d, ids: parseIds(d.ids) }));
 
     logger.info("Kandidaat deduplicatie scan voltooid", {
       emailDuplicateGroups: emailDups.length,
@@ -60,7 +71,7 @@ export const candidateDedupTask = schedules.task({
       })),
       nameRoleDuplicates: nameDups.map((d) => ({
         name: d.norm_name,
-        role: d.role,
+        role: d.role ?? null,
         candidateIds: d.ids,
         count: Number(d.cnt),
       })),

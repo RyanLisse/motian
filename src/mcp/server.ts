@@ -3,14 +3,16 @@ import "dotenv/config";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@sentry/node";
 import { allHandlers, allTools } from "./tools/index.js";
 
-Sentry.init({
-  dsn: "https://f13da1ff32b7d1f499309c7040de8fae@o4507090437668864.ingest.de.sentry.io/4510936878481488",
-  tracesSampleRate: 1.0,
-  sendDefaultPii: true,
-});
+const SENTRY_DSN = process.env.SENTRY_DSN;
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    tracesSampleRate: 0.2,
+  });
+}
 
 const server = new Server(
   { name: "motian-recruitment", version: "0.1.0" },
@@ -36,7 +38,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
   } catch (err) {
-    Sentry.captureException(err);
+    if (SENTRY_DSN) Sentry.captureException(err);
     const message = err instanceof Error ? err.message : String(err);
     return {
       content: [{ type: "text", text: `Fout: ${message}` }],

@@ -1,7 +1,6 @@
-import { and, gte, sql } from "drizzle-orm";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
-import { db } from "@/src/db";
+import { db, sql } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 import { DEFAULT_OPDRACHTEN_LIMIT } from "@/src/lib/opdrachten-filters";
 import { listEscoSkillsForFilter } from "@/src/services/esco";
@@ -13,7 +12,6 @@ export const dynamic = "force-dynamic";
 
 export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
   const activeJobsCondition = getJobStatusCondition("open");
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
   const escoSkillRowsPromise = (async () => {
     try {
@@ -24,24 +22,26 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
     }
   })();
 
-  const [{ data: sidebarJobRows, total: totalCount }, metaResult, categoryRows, escoSkillRows] =
+  const [{ data: sidebarJobRows, total: totalCount }, metaResult, categoryResult, escoSkillRows] =
     await Promise.all([
       listJobs({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" }),
       db
         .select({
-          platforms: sql<string[]>`array_remove(array_agg(distinct ${jobs.platform}), null)`,
-          endClients: sql<string[]>`array_remove(array_agg(distinct ${persistedEndClient}), null)`,
+          platforms: sql<string | null>`json_agg(distinct ${jobs.platform})`,
+          endClients: sql<string | null>`json_agg(distinct ${persistedEndClient})`,
         })
         .from(jobs)
-        .where(and(activeJobsCondition, gte(jobs.scrapedAt, thirtyDaysAgo))),
+        .where(activeJobsCondition),
       db.execute(sql`
-      select distinct jsonb_array_elements_text(coalesce(${jobs.categories}, '[]'::jsonb)) as category
-      from ${jobs}
-      where ${activeJobsCondition} and ${jobs.scrapedAt} >= ${thirtyDaysAgo}
-      order by category asc
+      SELECT DISTINCT je.value AS category
+      FROM ${jobs}, LATERAL jsonb_array_elements_text(coalesce(${jobs.categories}::jsonb, '[]'::jsonb)) AS je(value)
+      WHERE ${activeJobsCondition} AND je.value IS NOT NULL
+      ORDER BY category ASC
     `),
       escoSkillRowsPromise,
     ]);
+
+  const categoryRows = (categoryResult.rows ?? []) as { category: string }[];
 
   const { hasPipelineByJobId, pipelineCountByJobId } = await getJobPipelineSummary(
     sidebarJobRows.map((job) => job.id),
@@ -59,11 +59,25 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
     pipelineCount: pipelineCountByJobId.get(job.id) ?? 0,
   }));
 
-  const platforms = (metaResult[0]?.platforms ?? []).filter(Boolean).sort();
-  const endClients = (metaResult[0]?.endClients ?? []).filter(Boolean).sort();
-  const categories = (categoryRows.rows as Array<{ category: string | null }>)
-    .map((row) => row.category)
-    .filter((value): value is string => Boolean(value));
+  const platformsRaw = metaResult[0]?.platforms;
+  const endClientsRaw = metaResult[0]?.endClients;
+  const platforms = (
+    Array.isArray(platformsRaw)
+      ? platformsRaw
+      : platformsRaw
+        ? JSON.parse(platformsRaw as string)
+        : []
+  ).filter(Boolean) as string[];
+  const endClients = (
+    Array.isArray(endClientsRaw)
+      ? endClientsRaw
+      : endClientsRaw
+        ? JSON.parse(endClientsRaw as string)
+        : []
+  ).filter(Boolean) as string[];
+  const categories = categoryRows
+    .map((row) => row.category?.trim())
+    .filter((value): value is string => Boolean(value && value.length > 0));
   const skillOptions = escoSkillRows.map((skill) => ({
     value: skill.uri,
     label: skill.labelNl ?? skill.labelEn,

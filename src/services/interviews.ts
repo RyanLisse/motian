@@ -1,5 +1,4 @@
-import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, gte, isNull, sql } from "../db";
 import { interviews } from "../db/schema";
 
 export type Interview = typeof interviews.$inferSelect;
@@ -39,7 +38,7 @@ export async function countInterviews(
 ): Promise<number> {
   const where = buildInterviewWhere(opts);
   const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(interviews)
     .where(where);
   return count ?? 0;

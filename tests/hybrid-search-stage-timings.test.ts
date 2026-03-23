@@ -14,7 +14,10 @@ const {
   mockSelect: vi.fn(),
 }));
 
-vi.mock("../src/db", () => ({ db: { select: mockSelect } }));
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
+  db: { select: mockSelect },
+}));
 
 vi.mock("../src/db/schema", () => ({
   jobs: {
@@ -59,9 +62,10 @@ vi.mock("../src/services/jobs/query-filters", () => ({
   buildJobFilterConditions: vi.fn(() => []),
 }));
 
-vi.mock("../src/services/jobs/repository", () => ({
-  jobReadSelection: { id: "jobs.id" },
-}));
+vi.mock("../src/services/jobs/repository", () => {
+  const sel = { id: "jobs.id" };
+  return { jobReadSelection: sel, getJobReadSelection: () => sel };
+});
 
 vi.mock("../src/services/jobs/deduplication", () => ({
   collapseScoredJobsByVacancy: vi.fn((entries: unknown[]) => entries),

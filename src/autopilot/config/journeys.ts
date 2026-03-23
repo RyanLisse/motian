@@ -15,14 +15,14 @@ export const MVP_JOURNEYS: JourneySpec[] = [
     surface: "/matching",
     kind: "redirect",
     description: "Verify /matching redirects to the correct destination",
-    expectedRedirectTarget: "/professionals",
+    expectedRedirectTarget: "/kandidaten",
     timeoutMs: 10_000,
   },
   {
-    id: "opdrachten-list",
-    surface: "/opdrachten",
+    id: "vacatures-list",
+    surface: "/vacatures",
     kind: "page-load",
-    description: "Load opdrachten list page and verify table/empty-state renders",
+    description: "Load vacatures list page and verify table/empty-state renders",
     timeoutMs: 30_000,
   },
 ];
@@ -64,10 +64,10 @@ export const EXTENDED_JOURNEYS: JourneySpec[] = [
     ],
   },
   {
-    id: "professionals-list",
-    surface: "/professionals",
+    id: "kandidaten-list",
+    surface: "/kandidaten",
     kind: "page-load",
-    description: "Load professionals/talent pool page and verify it renders",
+    description: "Load kandidaten/talent pool page and verify it renders",
     timeoutMs: 30_000,
   },
   {

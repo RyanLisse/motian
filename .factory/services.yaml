@@ -1,0 +1,21 @@
+commands:
+  install: pnpm install
+  typecheck: pnpm exec tsc --noEmit
+  build: pnpm build
+  test: pnpm test
+  lint: pnpm lint
+
+services:
+  api:
+    start: pnpm dev
+    stop: lsof -ti :3002 | xargs kill
+    healthcheck: curl -sf http://localhost:3002/api/gezondheid
+    port: 3002
+    depends_on: []
+
+  turso:
+    start: echo "Turso is managed externally"
+    stop: echo "No stop needed"
+    healthcheck: echo "N/A"
+    port: 0
+    depends_on: []

@@ -1,7 +1,6 @@
-import { sql } from "drizzle-orm";
 import type { z } from "zod";
-import { db } from "../db";
-import { jobs } from "../db/schema";
+import { stripHtml } from "../../packages/scrapers/src/strip-html";
+import { db, jobs, sql } from "../db";
 import { unifiedJobSchema } from "../schemas/job";
 import { syncJobEscoSkills } from "./esco";
 
@@ -13,12 +12,42 @@ type JobDerivedFieldSource = Pick<
   "title" | "company" | "endClient" | "location" | "province" | "description"
 >;
 
+/**
+ * Max **byte** budget per dedupe column for the B-tree index.
+ * Index row limit = 2704 bytes. Index has 3 text cols + scraped_at (8B) + id (16B) + ~80B tuple overhead.
+ * Text budget = (2704 - 104) / 3 ≈ 866 bytes per column. We cap at 800B for safety.
+ */
+/**
+ * 2704 byte B-tree limit - 16 (UUID) - 8 (timestamp) - 80 (tuple header + ItemIds)
+ * = 2600 usable / 3 columns = 866. We use 700 for safety margin.
+ */
+const DEDUPE_MAX_BYTES = 700;
+
 function normalizeDedupePart(value: string | null | undefined) {
-  return (value ?? "")
+  let result = (value ?? "")
     .toLocaleLowerCase("nl-NL")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
+
+  // Truncate by byte length (UTF-8) to guarantee B-tree index row fits
+  const encoder = new TextEncoder();
+  if (encoder.encode(result).byteLength > DEDUPE_MAX_BYTES) {
+    // Binary search for max char count that fits in byte budget
+    let lo = 0;
+    let hi = result.length;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (encoder.encode(result.slice(0, mid)).byteLength <= DEDUPE_MAX_BYTES) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    result = result.slice(0, lo);
+  }
+
+  return result;
 }
 
 function normalizeSearchPart(value: string | null | undefined) {
@@ -51,8 +80,24 @@ export async function normalizeAndSaveJobs(
     parsed: z.output<typeof unifiedJobSchema>;
     raw: Record<string, unknown>;
   }> = [];
+  const HOURS_MAX = 168;
   for (const raw of listings) {
-    const parsed = unifiedJobSchema.safeParse(raw);
+    // Voor-processing voor veiligheid VÓÓR validatie (cap uren/week op 168)
+    const preProcessed = { ...raw };
+    if (preProcessed.hoursPerWeek != null) {
+      const n = Number(preProcessed.hoursPerWeek);
+      if (Number.isFinite(n)) {
+        preProcessed.hoursPerWeek = Math.min(HOURS_MAX, Math.max(1, Math.round(n)));
+      }
+    }
+    if (preProcessed.minHoursPerWeek != null) {
+      const n = Number(preProcessed.minHoursPerWeek);
+      if (Number.isFinite(n)) {
+        preProcessed.minHoursPerWeek = Math.min(HOURS_MAX, Math.max(1, Math.round(n)));
+      }
+    }
+
+    const parsed = unifiedJobSchema.safeParse(preProcessed);
     if (!parsed.success) {
       const externalId = (raw as { externalId?: string }).externalId ?? "?";
       console.warn(
@@ -60,7 +105,15 @@ export async function normalizeAndSaveJobs(
       );
       errors.push(`Validation: ${parsed.error.message}`);
     } else {
-      validItems.push({ parsed: parsed.data, raw });
+      validItems.push({
+        parsed: {
+          ...parsed.data,
+          title: stripHtml(parsed.data.title),
+          company: parsed.data.company ? stripHtml(parsed.data.company) : undefined,
+          endClient: parsed.data.endClient ? stripHtml(parsed.data.endClient) : undefined,
+        },
+        raw,
+      });
     }
   }
 
@@ -158,16 +211,29 @@ export async function normalizeAndSaveJobs(
         jobsNew += inserted;
         duplicates += updated;
 
-        for (const row of result) {
-          const item = batch.find((batchItem) => batchItem.parsed.externalId === row.externalId);
-          if (!item) continue;
+        // Parallel ESCO sync with concurrency cap to avoid exhausting Neon connection pool
+        const ESCO_CONCURRENCY = 5;
+        for (let j = 0; j < result.length; j += ESCO_CONCURRENCY) {
+          const chunk = result.slice(j, j + ESCO_CONCURRENCY);
+          const settled = await Promise.allSettled(
+            chunk.map(async (row) => {
+              const item = batch.find(
+                (batchItem) => batchItem.parsed.externalId === row.externalId,
+              );
+              if (!item) return;
 
-          await syncJobEscoSkills({
-            jobId: row.id,
-            requirements: item.parsed.requirements,
-            wishes: item.parsed.wishes,
-            competences: item.parsed.competences,
-          });
+              await syncJobEscoSkills({
+                jobId: row.id,
+                requirements: item.parsed.requirements,
+                wishes: item.parsed.wishes,
+                competences: item.parsed.competences,
+              });
+            }),
+          );
+          const failed = settled.filter((s) => s.status === "rejected").length;
+          if (failed > 0) {
+            console.warn(`[normalize] ${failed}/${chunk.length} ESCO syncs failed in chunk`);
+          }
         }
       } catch (err) {
         errors.push(`DB batch ${i}-${i + batch.length}: ${String(err)}`);

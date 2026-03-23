@@ -4,6 +4,18 @@ import { PageHeader } from "@/components/page-header";
 const meta: Meta<typeof PageHeader> = {
   title: "Components/PageHeader",
   component: PageHeader,
+  tags: ["autodocs"],
+  argTypes: {
+    title: { control: "text" },
+    description: { control: "text" },
+  },
+  parameters: {
+    docs: {
+      description: {
+        component: "Pagina-header met optionele titel, beschrijving en acties.",
+      },
+    },
+  },
 };
 
 export default meta;
@@ -16,7 +28,7 @@ export const TitleOnly: Story = {
 export const WithDescription: Story = {
   args: {
     title: "Opdrachten",
-    description: "Beheer en bekijk alle beschikbare opdrachten",
+    description: "Beheer en bekijk alle beschikbare vacatures",
   },
 };
 

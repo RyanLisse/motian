@@ -1,5 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, isNull } from "../db";
 import { candidates, jobMatches, jobs } from "../db/schema";
 import type { GradedCandidate } from "../lib/grading-utils";
 import type { CriterionResult } from "../schemas/matching";

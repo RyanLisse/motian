@@ -1,5 +1,4 @@
-import { and, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "drizzle-orm";
-import { db } from "../../db";
+import { and, db, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 
 export type Job = typeof jobs.$inferSelect;
@@ -36,6 +35,8 @@ export function getJobReadSelection() {
     archivedAt: sql<Date | null>`null`,
   };
 }
+
+export const jobReadSelection = getJobReadSelection();
 
 /** Enkele opdracht ophalen op ID, inclusief gesloten/gearchiveerde retained vacatures. */
 export async function getJobById(id: string): Promise<Job | null> {

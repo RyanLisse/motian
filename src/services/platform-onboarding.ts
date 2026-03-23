@@ -123,10 +123,12 @@ export function canActivatePlatformOnboarding(input: {
     return true;
   }
 
-  if (input.latestRunStatus) {
+  if (input.latestRunStatus && input.latestRunStatus !== "draft") {
     return input.latestRunStatus === "tested" || input.latestRunStatus === "active";
   }
 
+  // Fallback: allow activation when validation + smoke import both succeeded,
+  // even if the onboarding run is still in "draft" status.
   return (
     input.validationStatus === "validated" &&
     (input.lastTestImportStatus === "success" || input.lastTestImportStatus === "partial")

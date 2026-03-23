@@ -1,13 +1,12 @@
-import { and, desc, ilike, sql } from "drizzle-orm";
-import { db } from "../../db";
+import { and, db, desc, isPostgresDatabase, sql } from "../../db";
 import { jobs } from "../../db/schema";
-import { escapeLike, toTsQueryInput } from "../../lib/helpers";
+import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
 import { LIST_SLO_MS, logSlowQuery } from "../../lib/query-observability";
 import { fetchDedupedJobsPage, loadJobsByIds } from "./deduplication";
 import { getJobStatusCondition, type JobStatus, type ListJobsSortBy } from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
-import { getJobReadSelection, type Job } from "./repository";
+import { type Job, jobReadSelection } from "./repository";
 
 export type ListJobsOptions = {
   limit?: number;
@@ -78,12 +77,12 @@ export async function listJobs(
 
   if (opts.q) {
     const tsInput = toTsQueryInput(opts.q);
-    if (tsInput) {
+    if (tsInput && isPostgresDatabase()) {
       conditions.push(
         sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, '')) @@ to_tsquery('dutch', ${tsInput})`,
       );
     } else {
-      conditions.push(ilike(jobs.title, `%${escapeLike(opts.q)}%`));
+      conditions.push(caseInsensitiveContains(jobs.title, opts.q));
     }
   }
 
@@ -117,7 +116,7 @@ export async function listActiveJobs(limit?: number): Promise<Job[]> {
   const safeLimit = Math.min(limit ?? 200, 500);
 
   return db
-    .select(getJobReadSelection())
+    .select(jobReadSelection)
     .from(jobs)
     .where(getJobStatusCondition("open"))
     .orderBy(desc(jobs.scrapedAt))

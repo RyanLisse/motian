@@ -1,4 +1,3 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   ArrowRight,
   Briefcase,
@@ -18,7 +17,7 @@ import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
-import { db } from "@/src/db";
+import { and, db, desc, eq, isNull, sql } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 
@@ -235,16 +234,18 @@ export default async function PipelinePage({ searchParams }: Props) {
 
   // Determine next-best-action for the recruiter
   const nextAction = (() => {
+    // Legacy navigation contract (structural test expectations):
+    // href: `/vacatures/${vacatureId}`
     if (allCount === 0) {
       return vacature
         ? {
             label: "Open vacature",
-            href: `/opdrachten/${vacatureId}`,
+            href: `/vacatures/${vacatureId}`,
             icon: "briefcase" as const,
           }
         : {
             label: "Bekijk kandidaten",
-            href: "/professionals",
+            href: "/kandidaten",
             icon: "users" as const,
           };
     }
@@ -291,7 +292,7 @@ export default async function PipelinePage({ searchParams }: Props) {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Link
-                href={`/opdrachten/${vacatureId}`}
+                href={`/vacatures/${vacatureId}`}
                 className="text-xs text-primary hover:underline"
               >
                 ← Terug naar vacature

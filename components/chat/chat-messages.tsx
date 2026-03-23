@@ -15,7 +15,7 @@ import {
   Upload,
   Users,
 } from "lucide-react";
-import { type ComponentType, useId, useState } from "react";
+import { Suspense, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -30,13 +30,9 @@ import {
   rewriteChatJobLinks,
 } from "./chat-message-links";
 import { ChatToolCall } from "./chat-tool-call";
-import { KandidaatGenUICard, MatchGenUICard, OpdrachtGenUICard, ToolErrorBlock } from "./genui";
-
-const GENUI_COMPONENTS: Record<string, ComponentType<{ output: unknown }>> = {
-  getOpdrachtDetail: OpdrachtGenUICard,
-  getKandidaatDetail: KandidaatGenUICard,
-  getMatchDetail: MatchGenUICard,
-};
+import { ToolErrorBlock } from "./genui";
+import { GenUILoadingSkeleton } from "./genui/genui-loading-skeleton";
+import { GENUI_REGISTRY } from "./genui/registry";
 
 export type ChatSuggestion = {
   label: string;
@@ -89,7 +85,7 @@ const DEFAULT_EMPTY_STATE_PROMPTS: ChatSuggestion[] = [
   {
     icon: Briefcase,
     label: "Matches bekijken",
-    description: "Bekijk snel welke kandidaten en opdrachten aandacht vragen.",
+    description: "Bekijk snel welke kandidaten en vacatures aandacht vragen.",
     prompt: "Hoeveel pending matches zijn er? Toon de top 5.",
     toneClassName: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
   },
@@ -387,7 +383,7 @@ export function ChatMessages({
                     output?: unknown;
                   };
                   const name = toolPart.toolName ?? getToolName(part);
-                  const GenUICard = name ? GENUI_COMPONENTS[name] : undefined;
+                  const entry = name ? GENUI_REGISTRY[name] : undefined;
                   const isErrorOutput =
                     toolPart.output &&
                     typeof toolPart.output === "object" &&
@@ -406,7 +402,7 @@ export function ChatMessages({
 
                   if (
                     toolPart.state === "output-available" &&
-                    GenUICard &&
+                    entry &&
                     toolPart.output !== undefined
                   ) {
                     if (isErrorOutput) {
@@ -417,7 +413,15 @@ export function ChatMessages({
                       return <ToolErrorBlock key={partKey} message={messageText} />;
                     }
 
-                    return <GenUICard key={partKey} output={toolPart.output} />;
+                    const GenUICard = entry.component;
+                    return (
+                      <Suspense
+                        key={partKey}
+                        fallback={<GenUILoadingSkeleton label={entry.label} />}
+                      >
+                        <GenUICard output={toolPart.output} />
+                      </Suspense>
+                    );
                   }
 
                   return (

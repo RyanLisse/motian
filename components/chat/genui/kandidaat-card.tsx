@@ -2,6 +2,7 @@
 
 import { User } from "lucide-react";
 import Link from "next/link";
+import { getToolErrorMessage, isToolError } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type CandidateOutput = {
@@ -16,16 +17,11 @@ function isCandidateOutput(o: unknown): o is CandidateOutput {
 }
 
 export function KandidaatGenUICard({ output }: { output: unknown }) {
-  if (typeof output === "object" && output !== null && "error" in output) {
-    const msg =
-      typeof (output as { error: unknown }).error === "string"
-        ? (output as { error: string }).error
-        : "Kandidaat niet gevonden";
-    return <ToolErrorBlock message={msg} />;
-  }
+  if (isToolError(output))
+    return <ToolErrorBlock message={getToolErrorMessage(output, "Kandidaat niet gevonden")} />;
   if (!isCandidateOutput(output)) return null;
   return (
-    <Link href={`/professionals/${output.id}`}>
+    <Link href={`/kandidaten/${output.id}`}>
       <div className="my-1.5 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">

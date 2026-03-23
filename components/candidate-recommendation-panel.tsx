@@ -210,7 +210,7 @@ export function CandidateRecommendationPanel({
                 )}
               </Button>
               <Button asChild variant="outline">
-                <Link href={`/opdrachten/${highlightedMatch.jobId}`}>
+                <Link href={`/vacatures/${highlightedMatch.jobId}`}>
                   Open vacature
                   <ArrowRight className="h-4 w-4" />
                 </Link>

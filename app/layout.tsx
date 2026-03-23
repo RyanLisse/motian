@@ -36,6 +36,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="nl" suppressHydrationWarning>
+      <head>
+        <script src="/theme-init.js" async />
+      </head>
       <body
         className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable} min-h-screen bg-background antialiased`}
       >

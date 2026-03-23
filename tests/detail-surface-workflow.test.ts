@@ -60,7 +60,7 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(source).toContain("AI Grading");
     expect(source).toContain("source: applications.source");
     // biome-ignore lint/suspicious/noTemplateCurlyInString: asserting source contains a template literal
-    expect(source).toContain("/professionals/${row.candidateId}");
+    expect(source).toContain("/kandidaten/${row.candidateId}");
   });
 
   it("OpdrachtenDetailSheet returns to the filtered list when the mobile sheet closes", async () => {
@@ -101,7 +101,7 @@ describe("Detail surfaces recruiter workflow context", () => {
         {
           title: "Manager Inhuur",
           description: "Recruiter cockpit",
-          listHref: "/opdrachten?regio=randstad&regio=noord",
+          listHref: "/vacatures?regio=randstad&regio=noord",
         },
         createElement("div", null, "Paneelinhoud"),
       ),
@@ -114,7 +114,7 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(mockPush).not.toHaveBeenCalled();
 
     capturedOnOpenChange?.(false);
-    expect(mockPush).toHaveBeenCalledWith("/opdrachten?regio=randstad&regio=noord");
+    expect(mockPush).toHaveBeenCalledWith("/vacatures?regio=randstad&regio=noord");
   });
 
   it("desktop OpdrachtenDetailSheet keeps the detail pane in a bounded scroll container", () => {
@@ -286,7 +286,7 @@ describe("Detail surfaces recruiter workflow context", () => {
         variant: "card",
         pipelineCount: 0,
         hasPipeline: true,
-        href: "/opdrachten/job-1",
+        href: "/vacatures/job-1",
       }),
     );
 
@@ -297,7 +297,7 @@ describe("Detail surfaces recruiter workflow context", () => {
   });
 
   it("candidate detail page keeps the recruiter section in Dutch and anchors match detail surfaces", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
 
     expect(source).toContain("Recruiteroverzicht");
     expect(source).not.toContain("Recruiter context</h2>");

@@ -35,10 +35,10 @@ describe("autopilot journey registry", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("matching journey has expectedRedirectTarget set to /professionals", () => {
+  it("matching journey has expectedRedirectTarget set to /kandidaten", () => {
     const matching = MVP_JOURNEYS.find((j) => j.id === "matching-redirect");
     expect(matching).toBeDefined();
-    expect(matching?.expectedRedirectTarget).toBe("/professionals");
+    expect(matching?.expectedRedirectTarget).toBe("/kandidaten");
   });
 
   it("all surfaces start with /", () => {
@@ -144,7 +144,7 @@ describe("autopilot finding fingerprint", () => {
 
   it("different surfaces produce different fingerprints", () => {
     const a = fingerprint("/chat", "bug", "Button broken");
-    const b = fingerprint("/opdrachten", "bug", "Button broken");
+    const b = fingerprint("/vacatures", "bug", "Button broken");
     expect(a).not.toBe(b);
   });
 
@@ -170,8 +170,8 @@ describe("autopilot markdown report", () => {
         { journeyId: "chat-page-load", surface: "/chat", success: true, durationMs: 1500 },
         { journeyId: "matching-redirect", surface: "/matching", success: true, durationMs: 800 },
         {
-          journeyId: "opdrachten-page-load",
-          surface: "/opdrachten",
+          journeyId: "vacatures-page-load",
+          surface: "/vacatures",
           success: false,
           durationMs: 3000,
           errorMessage: "Timeout",
@@ -206,7 +206,7 @@ describe("autopilot markdown report", () => {
     expect(report).toContain("chat-page-load");
     expect(report).toContain("/chat");
     expect(report).toContain("matching-redirect");
-    expect(report).toContain("opdrachten-page-load");
+    expect(report).toContain("vacatures-page-load");
   });
 
   it("contains the commit SHA", () => {

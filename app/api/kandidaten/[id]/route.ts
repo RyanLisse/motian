@@ -49,7 +49,7 @@ export const PATCH = withApiHandler(
     if (!candidate) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     return Response.json({ data: await withCandidateCanonicalSkills(candidate) });
   },
   { logPrefix: "PATCH /api/kandidaten/[id] error" },
@@ -62,7 +62,7 @@ export const DELETE = withApiHandler(
     if (!deleted) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
-    revalidatePath("/professionals");
+    revalidatePath("/kandidaten");
     return Response.json({ data: { id, deleted: true } });
   },
   { logPrefix: "DELETE /api/kandidaten/[id] error" },

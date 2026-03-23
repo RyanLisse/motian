@@ -1,7 +1,6 @@
-import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, eq, inArray, isNull, isPostgresDatabase, sql } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
-import { escapeLike, toTsQueryInput } from "../lib/helpers";
+import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
 import { syncCandidateEscoSkills } from "./esco";
 
@@ -84,10 +83,17 @@ export async function getCandidateById(id: string): Promise<Candidate | null> {
 /** Build FTS or ILIKE condition for candidate name search. */
 function candidateNameCondition(query: string) {
   const tsInput = toTsQueryInput(query);
-  if (tsInput) {
+  if (tsInput && isPostgresDatabase()) {
     return sql`to_tsvector('dutch', coalesce(${candidates.name}, '') || ' ' || coalesce(${candidates.role}, '') || ' ' || coalesce(${candidates.location}, '')) @@ to_tsquery('dutch', ${tsInput})`;
   }
-  return ilike(candidates.name, `%${escapeLike(query)}%`);
+  return caseInsensitiveContains(candidates.name, query);
+}
+
+function candidateSkillsCondition(skillsQuery: string) {
+  const pattern = `%${escapeLike(skillsQuery).toLocaleLowerCase("nl-NL")}%`;
+  return isPostgresDatabase()
+    ? sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}::jsonb) AS t(value) WHERE lower(t.value) LIKE ${pattern} ESCAPE '\\')`
+    : sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE lower(value) LIKE ${pattern} ESCAPE '\\')`;
 }
 
 /** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
@@ -102,18 +108,16 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   }
 
   if (opts.location) {
-    conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
+    conditions.push(caseInsensitiveContains(candidates.location, opts.location));
   }
 
   if (opts.role) {
-    conditions.push(ilike(candidates.role, `%${escapeLike(opts.role)}%`));
+    conditions.push(caseInsensitiveContains(candidates.role, opts.role));
   }
 
   if (opts.skills) {
-    // Search within the JSONB skills array for a case-insensitive match
-    conditions.push(
-      sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}) AS s WHERE s ILIKE ${`%${escapeLike(opts.skills)}%`})`,
-    );
+    // Search within the JSON skills array for a case-insensitive match
+    conditions.push(candidateSkillsCondition(opts.skills));
   }
 
   if (opts.escoUri) {
@@ -142,17 +146,16 @@ export async function countCandidates(
   }
 
   if (opts.location) {
-    conditions.push(ilike(candidates.location, `%${escapeLike(opts.location)}%`));
+    conditions.push(caseInsensitiveContains(candidates.location, opts.location));
   }
 
   if (opts.role) {
-    conditions.push(ilike(candidates.role, `%${escapeLike(opts.role)}%`));
+    conditions.push(caseInsensitiveContains(candidates.role, opts.role));
   }
 
   if (opts.skills) {
-    conditions.push(
-      sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}) AS s WHERE s ILIKE ${`%${escapeLike(opts.skills)}%`})`,
-    );
+    // Search within the JSON skills array for a case-insensitive match
+    conditions.push(candidateSkillsCondition(opts.skills));
   }
 
   if (opts.escoUri) {
@@ -162,7 +165,7 @@ export async function countCandidates(
   }
 
   const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(candidates)
     .where(and(...conditions));
 
@@ -354,9 +357,7 @@ export async function findDuplicateCandidate(
   const nameRows = await db
     .select()
     .from(candidates)
-    .where(
-      and(ilike(candidates.name, `%${escapeLike(parsed.name)}%`), isNull(candidates.deletedAt)),
-    )
+    .where(and(caseInsensitiveContains(candidates.name, parsed.name), isNull(candidates.deletedAt)))
     .limit(5);
 
   return { exact: null, similar: nameRows };

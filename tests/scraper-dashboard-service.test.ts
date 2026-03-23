@@ -10,6 +10,13 @@ vi.mock("@trigger.dev/sdk", () => ({
   },
 }));
 
+vi.mock("../src/services/jobs/deduplication", () => ({
+  fetchDedupedJobsPage: vi.fn().mockResolvedValue({ data: [], total: 0 }),
+  loadJobsByIds: vi.fn(),
+  collapseScoredJobsByVacancy: vi.fn((entries: unknown[]) => entries),
+  fetchDedupedJobIds: vi.fn(),
+}));
+
 import { getScraperDashboardData } from "../src/services/scraper-dashboard";
 
 type QueryChain = Promise<unknown[]> & {
@@ -67,6 +74,7 @@ function createMockDatabase(queryResults: unknown[][]) {
 
   const tx = { select };
   const database = {
+    select,
     transaction: vi.fn(async (callback: (input: typeof tx) => Promise<unknown>) => callback(tx)),
   };
 
@@ -153,8 +161,8 @@ describe("getScraperDashboardData", () => {
       "opdrachtoverheid",
       "striive",
     ]);
-    expect(singlePlatformDb.database.transaction).toHaveBeenCalledTimes(1);
-    expect(multiPlatformDb.database.transaction).toHaveBeenCalledTimes(1);
+    expect(singlePlatformDb.database.transaction).not.toHaveBeenCalled();
+    expect(multiPlatformDb.database.transaction).not.toHaveBeenCalled();
     expect(singlePlatformDb.select).toHaveBeenCalled();
     expect(multiPlatformDb.select).toHaveBeenCalled();
     expect(multiPlatformDb.select.mock.calls.length).toBe(

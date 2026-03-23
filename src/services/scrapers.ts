@@ -7,10 +7,9 @@ import {
   type PlatformTestImportResult,
   type PlatformValidationResult,
 } from "@motian/scrapers";
-import { asc, desc, eq, gte, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { db } from "../db";
+import { asc, db, desc, eq, type SQL, sql } from "../db";
 import {
   platformCatalog,
   platformOnboardingRuns,
@@ -367,30 +366,36 @@ async function ensureOnboardingDraft(
 }
 
 async function listLatestOnboardingRuns(): Promise<PlatformOnboardingRunRecord[]> {
-  const result = await db.execute(sql<LatestPlatformOnboardingRunRow>`
-    select distinct on (${platformOnboardingRuns.platformSlug})
-      ${platformOnboardingRuns.id} as "id",
-      ${platformOnboardingRuns.platformSlug} as "platformSlug",
-      ${platformOnboardingRuns.configId} as "configId",
-      ${platformOnboardingRuns.source} as "source",
-      ${platformOnboardingRuns.status} as "status",
-      ${platformOnboardingRuns.currentStep} as "currentStep",
-      ${platformOnboardingRuns.blockerKind} as "blockerKind",
-      ${platformOnboardingRuns.nextActions} as "nextActions",
-      ${platformOnboardingRuns.evidence} as "evidence",
-      ${platformOnboardingRuns.result} as "result",
-      ${platformOnboardingRuns.startedAt} as "startedAt",
-      ${platformOnboardingRuns.completedAt} as "completedAt",
-      ${platformOnboardingRuns.createdAt} as "createdAt",
-      ${platformOnboardingRuns.updatedAt} as "updatedAt"
-    from ${platformOnboardingRuns}
-    order by
-      ${platformOnboardingRuns.platformSlug} asc,
-      ${platformOnboardingRuns.updatedAt} desc nulls last,
-      ${platformOnboardingRuns.id} desc
+  const result = await (
+    db as unknown as { execute(sql: SQL): Promise<{ rows: LatestPlatformOnboardingRunRow[] }> }
+  ).execute(sql`
+    select id, platformSlug, configId, source, status, currentStep, blockerKind, nextActions, evidence, result, startedAt, completedAt, createdAt, updatedAt
+    from (
+      select
+        ${platformOnboardingRuns.id} as "id",
+        ${platformOnboardingRuns.platformSlug} as "platformSlug",
+        ${platformOnboardingRuns.configId} as "configId",
+        ${platformOnboardingRuns.source} as "source",
+        ${platformOnboardingRuns.status} as "status",
+        ${platformOnboardingRuns.currentStep} as "currentStep",
+        ${platformOnboardingRuns.blockerKind} as "blockerKind",
+        ${platformOnboardingRuns.nextActions} as "nextActions",
+        ${platformOnboardingRuns.evidence} as "evidence",
+        ${platformOnboardingRuns.result} as "result",
+        ${platformOnboardingRuns.startedAt} as "startedAt",
+        ${platformOnboardingRuns.completedAt} as "completedAt",
+        ${platformOnboardingRuns.createdAt} as "createdAt",
+        ${platformOnboardingRuns.updatedAt} as "updatedAt",
+        row_number() over (
+          partition by ${platformOnboardingRuns.platformSlug}
+          order by ${platformOnboardingRuns.updatedAt} desc, ${platformOnboardingRuns.id} desc
+        ) as rn
+      from ${platformOnboardingRuns}
+    ) where rn = 1
   `);
+  const rows = result.rows;
 
-  return result.rows as PlatformOnboardingRunRecord[];
+  return rows as PlatformOnboardingRunRecord[];
 }
 
 export function toRuntimeConfig(platform: string, config: ScraperConfig): PlatformRuntimeConfig {
@@ -1028,22 +1033,43 @@ export async function runPlatformOnboardingWorkflow(input: {
 
 /** Platform gezondheidsrapport: status per scraper + 24-uurs failure rate */
 export async function getHealth(): Promise<HealthReport> {
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
 
-  const [configs, statsRows] = await Promise.all([
-    db.select().from(scraperConfigs),
+  const [configs, recentRuns] = await Promise.all([
+    db
+      .select({
+        platform: scraperConfigs.platform,
+        isActive: scraperConfigs.isActive,
+        lastRunAt: scraperConfigs.lastRunAt,
+        lastRunStatus: scraperConfigs.lastRunStatus,
+        consecutiveFailures: scraperConfigs.consecutiveFailures,
+      })
+      .from(scraperConfigs),
     db
       .select({
         platform: scrapeResults.platform,
-        total: sql<number>`count(*)::int`,
-        failures: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
+        status: scrapeResults.status,
+        runAt: scrapeResults.runAt,
       })
-      .from(scrapeResults)
-      .where(gte(scrapeResults.runAt, twentyFourHoursAgo))
-      .groupBy(scrapeResults.platform),
+      .from(scrapeResults),
   ]);
 
-  const statsMap = new Map(statsRows.map((stats) => [stats.platform, stats]));
+  const statsMap = new Map<string, { total: number; failures: number }>();
+  for (const run of recentRuns) {
+    if (!run.runAt) continue;
+    const runTime =
+      run.runAt instanceof Date
+        ? run.runAt.getTime()
+        : typeof run.runAt === "number"
+          ? run.runAt
+          : new Date(String(run.runAt)).getTime();
+    if (!Number.isFinite(runTime) || runTime < twentyFourHoursAgo) continue;
+
+    const current = statsMap.get(run.platform) ?? { total: 0, failures: 0 };
+    current.total += 1;
+    if (run.status === "failed") current.failures += 1;
+    statsMap.set(run.platform, current);
+  }
 
   const health: PlatformHealth[] = configs.map((cfg) => {
     const failures = cfg.consecutiveFailures ?? 0;

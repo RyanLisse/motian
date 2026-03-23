@@ -1,0 +1,15 @@
+Add one story file per UI primitive in stories/, following the existing pattern (title Components/<Name>, Meta with component and tags, 1–2 StoryObj variants, argTypes for Controls).
+
+Files to create:
+- stories/button.stories.tsx: components/ui/button.tsx — variants (default, destructive, outline), sizes (default, sm, lg). argTypes for variant and size (CVA).
+- stories/badge.stories.tsx: components/ui/badge.tsx — default, secondary, destructive, outline.
+- stories/card.stories.tsx: components/ui/card.tsx — default card with header/content/footer.
+- stories/input.stories.tsx: components/ui/input.tsx — default, disabled, placeholder.
+- stories/dialog.stories.tsx: components/ui/dialog.tsx — closed and open (trigger + DialogContent).
+- stories/select.stories.tsx: components/ui/select.tsx — default with a few options.
+
+Success criteria: All six story files exist; each has at least default + one variant; Controls work where argTypes are set.
+
+Rationale: High-value primitives used across the app; design and product can review in isolation.
+
+Depends on: Bead 3 (improve existing stories) so the argTypes/autodocs pattern is consistent.

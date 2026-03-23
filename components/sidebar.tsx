@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   {
-    href: "/opdrachten",
+    href: "/vacatures",
     label: "Vacatures",
     icon: Briefcase,
     disabled: false,

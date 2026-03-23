@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { publish } from "../../lib/event-bus.js";
 import {
   eraseCandidateData,
   exportCandidateData,
@@ -126,7 +128,12 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
         error: "Bevestiging vereist: zet 'bevestig' op true om de verwijdering door te voeren.",
       };
     }
-    return eraseCandidateData(candidateId, requestedBy);
+    const result = await eraseCandidateData(candidateId, requestedBy);
+    revalidatePath("/kandidaten");
+    revalidatePath("/pipeline");
+    revalidatePath("/overzicht");
+    publish("candidate:deleted", { id: candidateId, gdprErasure: true });
+    return result;
   },
 
   scrub_contact_gegevens: async (raw) => {

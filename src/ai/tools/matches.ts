@@ -13,17 +13,17 @@ import {
 function revalidateMatchViews(
   match: { jobId?: string | null; candidateId?: string | null } | null,
 ) {
-  revalidatePath("/professionals");
-  revalidatePath("/opdrachten");
+  revalidatePath("/kandidaten");
+  revalidatePath("/vacatures");
   revalidatePath("/pipeline");
   revalidatePath("/overzicht");
 
   if (match?.candidateId) {
-    revalidatePath(`/professionals/${match.candidateId}`);
+    revalidatePath(`/kandidaten/${match.candidateId}`);
   }
 
   if (match?.jobId) {
-    revalidatePath(`/opdrachten/${match.jobId}`);
+    revalidatePath(`/vacatures/${match.jobId}`);
   }
 }
 

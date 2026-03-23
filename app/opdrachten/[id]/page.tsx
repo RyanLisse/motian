@@ -1,4 +1,3 @@
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import {
   ArrowRight,
   Award,
@@ -23,12 +22,12 @@ import { OpdrachtenDetailSheet } from "@/components/opdrachten-detail-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { db } from "@/src/db";
+import { and, db, desc, eq, isNull, ne, sql } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
 import { getGradedCandidates } from "@/src/services/grading";
 import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
-import { getJobReadSelection } from "@/src/services/jobs/repository";
+import { jobReadSelection } from "@/src/services/jobs/repository";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -190,7 +189,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
 
   // Fetch current job (respecting visibility rules)
   const rows = await db
-    .select(getJobReadSelection())
+    .select(jobReadSelection)
     .from(jobs)
     .where(and(eq(jobs.id, id), getVisibleVacancyCondition()))
     .limit(1);
@@ -211,7 +210,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
     await Promise.all([
       db
         .select({
-          ...getJobReadSelection(),
+          ...jobReadSelection,
           companyMatchRank,
         })
         .from(jobs)
@@ -280,7 +279,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
     if (stageDelta !== 0) return stageDelta;
     return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
   });
-  const gradingHref = `/opdrachten/${job.id}#ai-grading`;
+  const gradingHref = `/vacatures/${job.id}#ai-grading`;
   const pipelineHref = `/pipeline?vacature=${job.id}`;
   const nextPipelineAction =
     (stageCountMap.new ?? 0) > 0
@@ -325,9 +324,9 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
   }
 
   const listQuery = currentListParams.toString();
-  const listHref = listQuery ? `/opdrachten?${listQuery}` : "/opdrachten";
+  const listHref = listQuery ? `/vacatures?${listQuery}` : "/vacatures";
   const buildDetailHref = (jobId: string) =>
-    listQuery ? `/opdrachten/${jobId}?${listQuery}` : `/opdrachten/${jobId}`;
+    listQuery ? `/vacatures/${jobId}?${listQuery}` : `/vacatures/${jobId}`;
 
   // Extract jsonb fields — items can be strings or {isKnockout, description} objects
   const toStrings = (arr: unknown, clean = false): string[] => {
@@ -923,7 +922,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                           <div className="min-w-0">
                             {row.candidateId ? (
                               <Link
-                                href={`/professionals/${row.candidateId}`}
+                                href={`/kandidaten/${row.candidateId}`}
                                 className="text-sm font-semibold text-foreground transition-colors hover:text-primary"
                               >
                                 {row.candidateName ?? "Onbekende kandidaat"}
@@ -983,7 +982,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                         <div className="mt-3 flex flex-wrap gap-3 text-xs">
                           {row.candidateId ? (
                             <Link
-                              href={`/professionals/${row.candidateId}`}
+                              href={`/kandidaten/${row.candidateId}`}
                               className="text-primary hover:underline"
                             >
                               Open profiel

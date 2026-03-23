@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
       fileUrl,
     });
 
-    revalidatePath("/professionals");
-    revalidatePath("/opdrachten");
+    revalidatePath("/kandidaten");
+    revalidatePath("/vacatures");
     revalidatePath("/overzicht");
-    revalidatePath(`/professionals/${intake.candidate.id}`);
+    revalidatePath(`/kandidaten/${intake.candidate.id}`);
 
     return Response.json({
       message: existingCandidateId ? "Kandidaat verrijkt" : "Kandidaat aangemaakt",

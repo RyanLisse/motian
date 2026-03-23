@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
-  customType,
   index,
   integer,
   jsonb,
@@ -10,28 +9,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
-  uuid,
 } from "drizzle-orm/pg-core";
-
-// pgvector custom column type for Drizzle
-const vector = customType<{
-  data: number[];
-  driverParam: string;
-  config: { dimensions: number };
-}>({
-  dataType(config) {
-    return `vector(${config?.dimensions ?? 512})`;
-  },
-  fromDriver(value: unknown): number[] {
-    if (typeof value === "string") {
-      return value.replace(/^\[/, "").replace(/\]$/, "").split(",").map(Number);
-    }
-    return value as number[];
-  },
-  toDriver(value: number[]): string {
-    return `[${value.join(",")}]`;
-  },
-});
 
 // ========== Scraper Configuratie ==========
 export const platformCatalog = pgTable("platform_catalog", {
@@ -48,14 +26,14 @@ export const platformCatalog = pgTable("platform_catalog", {
   authSchema: jsonb("auth_schema").default({}),
   isEnabled: boolean("is_enabled").notNull().default(true),
   isSelfServe: boolean("is_self_serve").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
 });
 
 export const scraperConfigs = pgTable(
   "scraper_configs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     platform: text("platform").notNull(),
     baseUrl: text("base_url").notNull(),
     isActive: boolean("is_active").notNull().default(true),
@@ -71,8 +49,8 @@ export const scraperConfigs = pgTable(
     lastRunAt: timestamp("last_run_at"),
     lastRunStatus: text("last_run_status"),
     consecutiveFailures: integer("consecutive_failures").default(0),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     platformUniqueIdx: uniqueIndex("uq_scraper_configs_platform").on(table.platform),
@@ -83,12 +61,12 @@ export const scraperConfigs = pgTable(
 export const scrapeResults = pgTable(
   "scrape_results",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    configId: uuid("config_id").references(() => scraperConfigs.id, {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    configId: text("config_id").references(() => scraperConfigs.id, {
       onDelete: "set null",
     }),
     platform: text("platform").notNull(),
-    runAt: timestamp("run_at").defaultNow(),
+    runAt: timestamp("run_at").$defaultFn(() => new Date()),
     durationMs: integer("duration_ms"),
     jobsFound: integer("jobs_found").default(0),
     jobsNew: integer("jobs_new").default(0),
@@ -108,11 +86,11 @@ export const scrapeResults = pgTable(
 export const platformOnboardingRuns = pgTable(
   "platform_onboarding_runs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     platformSlug: text("platform_slug")
       .notNull()
       .references(() => platformCatalog.slug, { onDelete: "cascade" }),
-    configId: uuid("config_id").references(() => scraperConfigs.id, {
+    configId: text("config_id").references(() => scraperConfigs.id, {
       onDelete: "set null",
     }),
     source: text("source").notNull().default("ui"),
@@ -122,10 +100,10 @@ export const platformOnboardingRuns = pgTable(
     nextActions: jsonb("next_actions").default([]),
     evidence: jsonb("evidence").default({}),
     result: jsonb("result").default({}),
-    startedAt: timestamp("started_at").defaultNow(),
+    startedAt: timestamp("started_at").$defaultFn(() => new Date()),
     completedAt: timestamp("completed_at"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     platformSlugIdx: index("idx_platform_onboarding_runs_platform_slug").on(table.platformSlug),
@@ -142,7 +120,7 @@ export const platformOnboardingRuns = pgTable(
 export const jobs = pgTable(
   "jobs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     platform: text("platform").notNull(),
     externalId: text("external_id").notNull(),
     externalUrl: text("external_url"),
@@ -199,17 +177,17 @@ export const jobs = pgTable(
     sourcePlatform: text("source_platform"),
     categories: jsonb("categories").default([]),
     companyAddress: text("company_address"),
-    scrapedAt: timestamp("scraped_at").defaultNow(),
+    scrapedAt: timestamp("scraped_at").$defaultFn(() => new Date()),
     deletedAt: timestamp("deleted_at"),
     rawPayload: jsonb("raw_payload"),
-    embedding: vector("embedding", { dimensions: 512 }),
+    embedding: text("embedding"),
   },
   (table) => ({
     platformExternalIdx: uniqueIndex("uq_platform_external_id").on(
       table.platform,
       table.externalId,
     ),
-    titleBtreeIdx: index("idx_jobs_title_btree").on(table.title),
+    titleBtreeIdx: index("idx_jobs_title").on(table.title),
     platformIdx: index("idx_jobs_platform").on(table.platform),
     archivedAtIdx: index("idx_jobs_archived_at").on(table.archivedAt),
     scrapedAtIdx: index("idx_jobs_scraped_at").on(table.scrapedAt),
@@ -230,7 +208,7 @@ export const jobs = pgTable(
 export const candidates = pgTable(
   "candidates",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
     email: text("email"),
     phone: text("phone"),
@@ -248,23 +226,23 @@ export const candidates = pgTable(
     notes: text("notes"),
     hourlyRate: integer("hourly_rate"),
     availability: text("availability"),
-    embedding: vector("embedding", { dimensions: 512 }),
     resumeRaw: text("resume_raw"),
-    resumeParsedAt: timestamp("resume_parsed_at", { withTimezone: true }),
+    resumeParsedAt: timestamp("resume_parsed_at"),
     matchingStatus: text("matching_status").notNull().default("open"),
-    lastMatchedAt: timestamp("last_matched_at", { withTimezone: true }),
-    matchingStatusUpdatedAt: timestamp("matching_status_updated_at", { withTimezone: true })
+    lastMatchedAt: timestamp("last_matched_at"),
+    matchingStatusUpdatedAt: timestamp("matching_status_updated_at")
       .notNull()
-      .defaultNow(),
+      .$defaultFn(() => new Date()),
     skillsStructured: jsonb("skills_structured"),
     education: jsonb("education"),
     certifications: jsonb("certifications"),
     languageSkills: jsonb("language_skills"),
     consentGranted: boolean("consent_granted").default(false),
     dataRetentionUntil: timestamp("data_retention_until"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
     deletedAt: timestamp("deleted_at"),
+    embedding: text("embedding"),
   },
   (table) => ({
     emailUniqueIdx: uniqueIndex("uq_candidates_email")
@@ -290,8 +268,8 @@ export const escoSkills = pgTable(
     broaderUri: text("broader_uri"),
     escoVersion: text("esco_version").notNull(),
     rawConcept: jsonb("raw_concept").default({}),
-    importedAt: timestamp("imported_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    importedAt: timestamp("imported_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     preferredLabelEnIdx: index("idx_esco_skills_preferred_label_en").on(table.preferredLabelEn),
@@ -303,7 +281,7 @@ export const escoSkills = pgTable(
 export const skillAliases = pgTable(
   "skill_aliases",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     alias: text("alias").notNull(),
     normalizedAlias: text("normalized_alias").notNull(),
     language: text("language"),
@@ -312,7 +290,7 @@ export const skillAliases = pgTable(
     escoUri: text("esco_uri")
       .notNull()
       .references(() => escoSkills.uri, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     normalizedAliasIdx: index("idx_skill_aliases_normalized_alias").on(table.normalizedAlias),
@@ -328,8 +306,8 @@ export const skillAliases = pgTable(
 export const candidateSkills = pgTable(
   "candidate_skills",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    candidateId: uuid("candidate_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    candidateId: text("candidate_id")
       .notNull()
       .references(() => candidates.id, { onDelete: "cascade" }),
     escoUri: text("esco_uri")
@@ -342,8 +320,8 @@ export const candidateSkills = pgTable(
     critical: boolean("critical").notNull().default(false),
     mappingStrategy: text("mapping_strategy"),
     escoVersion: text("esco_version"),
-    mappedAt: timestamp("mapped_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    mappedAt: timestamp("mapped_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     candidateIdIdx: index("idx_candidate_skills_candidate_id").on(table.candidateId),
@@ -359,8 +337,8 @@ export const candidateSkills = pgTable(
 export const jobSkills = pgTable(
   "job_skills",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    jobId: uuid("job_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     escoUri: text("esco_uri")
@@ -375,8 +353,8 @@ export const jobSkills = pgTable(
     weight: real("weight"),
     mappingStrategy: text("mapping_strategy"),
     escoVersion: text("esco_version"),
-    mappedAt: timestamp("mapped_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    mappedAt: timestamp("mapped_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     jobIdIdx: index("idx_job_skills_job_id").on(table.jobId),
@@ -393,7 +371,7 @@ export const jobSkills = pgTable(
 export const skillMappings = pgTable(
   "skill_mappings",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     rawSkill: text("raw_skill").notNull(),
     normalizedSkill: text("normalized_skill").notNull(),
     escoUri: text("esco_uri").references(() => escoSkills.uri, { onDelete: "set null" }),
@@ -407,7 +385,7 @@ export const skillMappings = pgTable(
     sentToReview: boolean("sent_to_review").notNull().default(false),
     reviewStatus: text("review_status"),
     escoVersion: text("esco_version"),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     normalizedSkillIdx: index("idx_skill_mappings_normalized_skill").on(table.normalizedSkill),
@@ -424,9 +402,9 @@ export const skillMappings = pgTable(
 export const jobMatches = pgTable(
   "job_matches",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
-    candidateId: uuid("candidate_id").references(() => candidates.id, {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    candidateId: text("candidate_id").references(() => candidates.id, {
       onDelete: "set null",
     }),
     matchScore: real("match_score").notNull(),
@@ -443,7 +421,7 @@ export const jobMatches = pgTable(
     recommendation: text("recommendation"),
     recommendationConfidence: real("recommendation_confidence"),
     assessmentModel: text("assessment_model"),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     jobIdIdx: index("idx_job_matches_job_id").on(table.jobId),
@@ -460,15 +438,15 @@ export const jobMatches = pgTable(
 export const applications = pgTable(
   "applications",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
-    candidateId: uuid("candidate_id").references(() => candidates.id, { onDelete: "set null" }),
-    matchId: uuid("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    candidateId: text("candidate_id").references(() => candidates.id, { onDelete: "set null" }),
+    matchId: text("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
     stage: text("stage").notNull().default("new"),
     source: text("source").default("manual"),
     notes: text("notes"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
     deletedAt: timestamp("deleted_at"),
   },
   (table) => ({
@@ -477,7 +455,7 @@ export const applications = pgTable(
     stageIdx: index("idx_applications_stage").on(table.stage),
     jobCandidateUniqueIdx: uniqueIndex("uq_applications_job_candidate_active")
       .on(table.jobId, table.candidateId)
-      .where(sql`${table.deletedAt} IS NULL`),
+      .where(sql`deleted_at IS NULL`),
   }),
 );
 
@@ -485,8 +463,8 @@ export const applications = pgTable(
 export const interviews = pgTable(
   "interviews",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    applicationId: uuid("application_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    applicationId: text("application_id")
       .references(() => applications.id, { onDelete: "cascade" })
       .notNull(),
     scheduledAt: timestamp("scheduled_at").notNull(),
@@ -497,8 +475,8 @@ export const interviews = pgTable(
     status: text("status").notNull().default("scheduled"),
     feedback: text("feedback"),
     rating: integer("rating"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
     deletedAt: timestamp("deleted_at"),
   },
   (table) => ({
@@ -513,14 +491,14 @@ export const interviews = pgTable(
 export const gdprAuditLog = pgTable(
   "gdpr_audit_log",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     action: text("action").notNull(),
     subjectType: text("subject_type").notNull(),
     subjectId: text("subject_id").notNull(),
     requestedBy: text("requested_by").notNull(),
     reason: text("reason"),
     details: jsonb("details").default({}),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     subjectIdx: index("idx_gdpr_audit_subject").on(table.subjectType, table.subjectId),
@@ -533,7 +511,7 @@ export const gdprAuditLog = pgTable(
 export const chatSessions = pgTable(
   "chat_sessions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     sessionId: text("session_id").notNull(),
     messages: jsonb("messages").notNull().default([]),
     context: jsonb("context").default({}),
@@ -541,8 +519,8 @@ export const chatSessions = pgTable(
     title: text("title"),
     lastMessagePreview: text("last_message_preview"),
     tokensUsed: integer("tokens_used").default(0),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     sessionIdUniqueIdx: uniqueIndex("uq_chat_sessions_session_id").on(table.sessionId),
@@ -553,13 +531,13 @@ export const chatSessions = pgTable(
 export const chatSessionMessages = pgTable(
   "chat_session_messages",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     sessionId: text("session_id").notNull(),
     messageId: text("message_id").notNull(),
     role: text("role").notNull(),
     message: jsonb("message").notNull(),
     orderIndex: integer("order_index").notNull(),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     sessionMessageUniqueIdx: uniqueIndex("uq_chat_session_messages_session_message_id").on(
@@ -581,15 +559,15 @@ export const chatSessionMessages = pgTable(
 export const messages = pgTable(
   "messages",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    applicationId: uuid("application_id")
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    applicationId: text("application_id")
       .references(() => applications.id, { onDelete: "cascade" })
       .notNull(),
     direction: text("direction").notNull(),
     channel: text("channel").notNull(),
     subject: text("subject"),
     body: text("body").notNull(),
-    sentAt: timestamp("sent_at").defaultNow(),
+    sentAt: timestamp("sent_at").$defaultFn(() => new Date()),
     deletedAt: timestamp("deleted_at"),
   },
   (table) => ({
@@ -603,12 +581,12 @@ export const messages = pgTable(
 export const platformSettings = pgTable(
   "platform_settings",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     category: text("category").notNull(),
     key: text("key").notNull(),
     value: jsonb("value").notNull(),
     description: text("description"),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     categoryKeyUniqueIdx: uniqueIndex("uq_platform_settings_category_key").on(
@@ -619,16 +597,15 @@ export const platformSettings = pgTable(
   }),
 );
 
-
 // ========== Autopilot Runs ==========
 export const autopilotRuns = pgTable(
   "autopilot_runs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     runId: text("run_id").notNull().unique(),
-    status: text("status").notNull(), // running | completed | failed | timed_out
-    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
+    status: text("status").notNull(),
+    startedAt: timestamp("started_at").notNull(),
+    completedAt: timestamp("completed_at"),
     commitSha: text("commit_sha").notNull(),
     totalJourneys: integer("total_journeys").notNull().default(0),
     passedJourneys: integer("passed_journeys").notNull().default(0),
@@ -638,7 +615,7 @@ export const autopilotRuns = pgTable(
     findingsByCategory: jsonb("findings_by_category").default({}),
     reportUrl: text("report_url"),
     triggerRunId: text("trigger_run_id"),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     runIdUniqueIdx: uniqueIndex("uq_autopilot_runs_run_id").on(table.runId),
@@ -651,24 +628,24 @@ export const autopilotRuns = pgTable(
 export const autopilotFindings = pgTable(
   "autopilot_findings",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     findingId: text("finding_id").notNull(),
     runId: text("run_id").notNull().references(() => autopilotRuns.runId, { onDelete: "cascade" }),
-    category: text("category").notNull(), // bug | ux | perf | ai-quality
+    category: text("category").notNull(),
     surface: text("surface").notNull(),
     title: text("title").notNull(),
     description: text("description").notNull(),
-    severity: text("severity").notNull(), // critical | high | medium | low
+    severity: text("severity").notNull(),
     confidence: real("confidence").notNull(),
     autoFixable: boolean("auto_fixable").notNull().default(false),
-    status: text("status").notNull().default("detected"), // detected | validated | reported | dismissed
+    status: text("status").notNull().default("detected"),
     fingerprint: text("fingerprint").notNull(),
     suspectedRootCause: text("suspected_root_cause"),
     recommendedAction: text("recommended_action"),
     githubIssueNumber: integer("github_issue_number"),
     metadata: jsonb("metadata").default({}),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
   },
   (table) => ({
     findingIdUniqueIdx: uniqueIndex("uq_autopilot_findings_finding_id").on(table.findingId),

@@ -1,5 +1,7 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { embedCandidatesBatch, embedJobsBatch } from "@/src/services/embedding";
+import { and, db, isNotNull, isNull, jobs, or, sql } from "@/src/db";
+import { embedCandidatesBatch, embedJob } from "@/src/services/embedding";
+import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 
 /**
  * Hourly task to backfill missing embeddings for jobs and candidates.
@@ -15,22 +17,51 @@ export const embeddingsBatchTask = schedules.task({
   },
   run: async () => {
     // --- Jobs without embeddings ---
-    const jobResult = await embedJobsBatch({ limit: 200 });
+    const jobsWithout = await db
+      .select({ id: jobs.id, title: jobs.title })
+      .from(jobs)
+      .where(
+        and(
+          getVisibleVacancyCondition(),
+          isNull(jobs.embedding),
+          or(
+            isNotNull(jobs.descriptionSummary),
+            sql`nullif(trim(${jobs.description}), '') is not null`,
+          ),
+        ),
+      )
+      .limit(50);
+
+    let jobsEmbedded = 0;
+    const jobErrors: string[] = [];
+
+    for (const job of jobsWithout) {
+      try {
+        const success = await embedJob(job.id);
+        if (success) jobsEmbedded++;
+      } catch (err) {
+        jobErrors.push(`Job ${job.id} (${job.title}): ${String(err)}`);
+      }
+    }
 
     // --- Candidates without embeddings ---
-    const candidateResult = await embedCandidatesBatch({ limit: 200 });
+    const candidateResult = await embedCandidatesBatch({ limit: 50 });
 
     logger.info("Embeddings backfill voltooid", {
-      jobsEmbedded: jobResult.embedded,
-      jobsSkipped: jobResult.skipped,
-      jobErrors: jobResult.errors.length,
+      jobsFound: jobsWithout.length,
+      jobsEmbedded,
+      jobErrors: jobErrors.length,
       candidatesEmbedded: candidateResult.embedded,
       candidatesSkipped: candidateResult.skipped,
       candidateErrors: candidateResult.errors.length,
     });
 
     return {
-      jobs: jobResult,
+      jobs: {
+        found: jobsWithout.length,
+        embedded: jobsEmbedded,
+        errors: jobErrors,
+      },
       candidates: candidateResult,
     };
   },

@@ -17,7 +17,8 @@ vi.mock("../src/services/jobs", () => ({
   searchJobsUnified: mockSearchJobsUnified,
 }));
 
-vi.mock("../src/db", () => ({
+vi.mock("../src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
   db: {
     select: mockSelect,
   },

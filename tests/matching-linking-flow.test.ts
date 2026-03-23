@@ -370,7 +370,7 @@ describe("Matching linking flow — structural assertions", () => {
   });
 
   it("candidate detail keeps report and structured detail surfaces inside the matches section", () => {
-    const source = readFile("app/professionals/[id]/page.tsx");
+    const source = readFile("app/kandidaten/[id]/page.tsx");
     expect(source).toContain("ReportButton");
     expect(source).toContain("MatchDetail");
     expect(source).toContain('<section id="matches">');
@@ -406,7 +406,7 @@ describe("Matching linking flow — structural assertions", () => {
 describe("Matching linking flow — application helper behavior", () => {
   it("creates, reuses, and looks up an application by job and candidate", async () => {
     const { db, state } = createMockApplicationsDb();
-    vi.doMock("../src/db", () => ({ db }));
+    vi.doMock("../src/db", async () => ({ ...(await vi.importActual("../src/db")), db }));
 
     const { createOrReuseApplicationForMatch, getApplicationByJobAndCandidate } = await import(
       "../src/services/applications.js"
@@ -466,7 +466,7 @@ describe("Matching linking flow — application helper behavior", () => {
       1,
     );
     const { db, state } = createMockApplicationsDb([existing]);
-    vi.doMock("../src/db", () => ({ db }));
+    vi.doMock("../src/db", async () => ({ ...(await vi.importActual("../src/db")), db }));
 
     const { createOrReuseApplicationForMatch } = await import("../src/services/applications.js");
 

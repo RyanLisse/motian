@@ -236,7 +236,7 @@ function MatchCard({ match, candidateId }: { match: AutoMatchResult; candidateId
       {/* Links */}
       <div className="flex gap-3 pt-1">
         <Link
-          href={`/opdrachten/${match.jobId}`}
+          href={`/vacatures/${match.jobId}`}
           className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
         >
           Bekijk vacature
@@ -244,7 +244,7 @@ function MatchCard({ match, candidateId }: { match: AutoMatchResult; candidateId
         </Link>
         {match.matchId && (
           <Link
-            href={`/professionals/${candidateId}#matches`}
+            href={`/kandidaten/${candidateId}#matches`}
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
           >
             Bekijk matchkansen

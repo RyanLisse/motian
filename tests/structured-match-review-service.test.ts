@@ -35,12 +35,17 @@ const {
 
 vi.mock("drizzle-orm", () => ({ eq: mockEq }));
 vi.mock("next/cache", () => ({ revalidatePath: mockRevalidatePath }));
-vi.mock("@/src/db", () => ({
-  db: {
-    insert: vi.fn(() => ({ values: mockInsertValues })),
-    update: mockUpdate,
-  },
-}));
+vi.mock("@/src/db", async () => {
+  const actual = await import("@/src/db");
+  return {
+    db: {
+      insert: vi.fn(() => ({ values: mockInsertValues })),
+      update: mockUpdate,
+    },
+    // Re-export actual Drizzle helper
+    eq: actual.eq,
+  };
+});
 vi.mock("@/src/db/schema", () => ({ jobMatches: { id: "jobMatches.id" } }));
 vi.mock("@/src/services/candidates", () => ({ getCandidateById: mockGetCandidateById }));
 vi.mock("@/src/services/jobs", () => ({ getJobById: mockGetJobById }));
@@ -141,11 +146,11 @@ describe("structured-match-review service", () => {
   it("revalidates the shared match surfaces with optional pipeline support", () => {
     revalidateStructuredMatchViews("job-1", "candidate-1", { includePipeline: true });
 
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/professionals");
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/opdrachten");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/kandidaten");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/vacatures");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/overzicht");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/pipeline");
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/professionals/candidate-1");
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/opdrachten/job-1");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/kandidaten/candidate-1");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/vacatures/job-1");
   });
 });

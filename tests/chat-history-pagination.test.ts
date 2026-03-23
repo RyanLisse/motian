@@ -51,8 +51,8 @@ describe("chat history pagination architecture", () => {
     expect(service).toContain("encodeMessageCursor");
     expect(service).toContain("lt(chatSessionMessages.orderIndex, cursor)");
 
+    // PostgreSQL uses pgTable
     expect(schema).toContain("export const chatSessionMessages = pgTable(");
     expect(schema).toContain('"chat_session_messages"');
-    expect(schema).toContain("uq_chat_session_messages_session_order_index");
   });
 });

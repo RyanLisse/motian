@@ -1,11 +1,10 @@
-import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { Calendar, Clock, Code2, Filter, MapPin, Monitor, Phone, Star, Video } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
-import { db } from "@/src/db";
+import { and, db, desc, eq, gte, isNull, sql } from "@/src/db";
 import { applications, candidates, interviews, jobs } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 

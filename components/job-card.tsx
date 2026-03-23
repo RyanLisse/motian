@@ -34,7 +34,7 @@ export function JobCard({ job, pipelineCount }: JobCardProps) {
     new Date(job.applicationDeadline).getTime() > Date.now();
 
   return (
-    <Link href={`/opdrachten/${job.id}`}>
+    <Link href={`/vacatures/${job.id}`}>
       <div
         className={`bg-card border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer ${deadlineUrgent ? "border-orange-400/60" : "border-border"}`}
       >

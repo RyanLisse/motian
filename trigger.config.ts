@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@sentry/node";
 import { defineConfig } from "@trigger.dev/sdk";
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
@@ -23,9 +23,20 @@ export default defineConfig({
   project: "proj_nqihauooanbnqnbpoybp",
   dirs: ["./trigger"],
   runtime: "node-22",
-  maxDuration: 600, // 10 min global default (scrape pipeline needs ~5 min)
+  maxDuration: 900, // 15 min global default
   logLevel: "info",
   enableConsoleLogging: true,
+  // Externalize pg and drizzle-orm to avoid bundling native modules
+  build: {
+    external: [
+      "pg",
+      "pg-native", // Optional native bindings
+      "drizzle-orm/pg-core",
+      "playwright",
+      "playwright-core",
+      "chromium-bidi",
+    ],
+  },
   retries: {
     enabledInDev: false,
     default: {

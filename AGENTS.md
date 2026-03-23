@@ -209,6 +209,7 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 | Rate Limit      | `src/lib/rate-limit.ts`            | In-memory sliding window                                                |
 | Middleware      | `middleware.ts`                    | Bearer token auth (deprecated in Next.js 16)                            |
 | Sidebar         | `components/app-sidebar.tsx`       | Missing Interviews/Messages nav items                                   |
+| Filter UI       | `components/opdrachten-sidebar.tsx`, `components/shared/standard-filter-sidebar.tsx` | Standaard filter-UI voor alle lijstpagina's (zoek, dropdowns, uren, straal, sort, paginatie) |
 | Vercel Config   | `vercel.json`                      | Cron: scrape 6AM, vacancy-expiry 3AM                                    |
 
 ---
@@ -235,7 +236,20 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 - 4 test failures are pre-existing: 3 tests check for literal `"gemini-"` string in source but the code uses a `geminiFlash` alias from `src/lib/ai-models.ts`; 1 structural test flags an English `candidates` API route segment.
 - The Justfile uses `zsh` as its shell — use `pnpm` commands directly instead if `zsh` is not installed.
 - `bv` (Bead Viewer) without flags launches an interactive TUI that will block the session. Always use `bv --robot-*` flags.
-- The sidebar nav calls `/kandidaten` but the actual route is `/professionals` (Talent Pool submenu).
+- Sidebar and canonical route for talent pool: `/kandidaten`; implementation lives in `app/kandidaten` (app/professionals was removed).
+
+## Learned User Preferences
+
+- Use Kandidaten (not Professionals) for candidate UI labels and routes
+- Use Vacatures for job-related UI and canonical routes (not Opdrachten in user-facing copy)
+
+## Learned Workspace Facts
+
+- Canonical frontend routes: `/vacatures` and `/kandidaten`. Implementation: vacatures in app/opdrachten (re-exported by app/vacatures); kandidaten in app/kandidaten (app/professionals removed).
+- Structural tests require Dutch API path segments; avoid English segments like `/api/health`—use `/api/gezondheid`
+- Beads: mark complete with `bd close <id>`; `bd update --status done` is invalid—use `closed`
+- Do not close PRs as redundant without reviewing their content first
+- Git merge: use exact branch name with no trailing punctuation (e.g. no dot after name)
 
 <!-- TRIGGER.DEV basic START -->
 

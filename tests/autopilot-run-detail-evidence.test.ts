@@ -15,7 +15,8 @@ const selectMock = vi.fn(() => ({
 
 const downloadFileMock = vi.fn();
 
-vi.mock("@/src/db", () => ({
+vi.mock("@/src/db", async (importOriginal) => ({
+  ...(await importOriginal()),
   db: {
     select: selectMock,
   },

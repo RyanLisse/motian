@@ -54,8 +54,8 @@ describe("Recruiter-first navigation", () => {
     expect(source).toContain('title: "Interviews"');
 
     expect(source).toContain('url: "/overzicht"');
-    expect(source).toContain('url: "/opdrachten"');
-    expect(source).toContain('url: "/professionals"');
+    expect(source).toContain('url: "/vacatures"');
+    expect(source).toContain('url: "/kandidaten"');
     expect(source).toContain('url: "/pipeline"');
     expect(source).toContain('url: "/interviews"');
     expect(source).toContain('url: "/chat"');
@@ -95,14 +95,14 @@ describe("Recruiter-first overview", () => {
 
   it("keeps empty-state navigation inside candidate and vacancy flows", () => {
     const pipelineSource = readFile("app", "pipeline", "page.tsx");
-    const candidateSource = readFile("app", "professionals", "[id]", "page.tsx");
+    const candidateSource = readFile("app", "kandidaten", "[id]", "page.tsx");
 
-    expect(pipelineSource).toContain('href: "/professionals"');
-    expect(pipelineSource).toContain(`href: \`/opdrachten/\${vacatureId}\``);
+    expect(pipelineSource).toContain('href: "/kandidaten"');
+    expect(pipelineSource).toContain(`href: \`/vacatures/\${vacatureId}\``);
     expect(pipelineSource).not.toContain(
       `href: vacature ? \`/matching?jobId=\${vacatureId}\` : "/matching"`,
     );
-    expect(candidateSource).toContain(`href: \`/professionals/\${candidate.id}#matches\``);
+    expect(candidateSource).toContain(`href: \`/kandidaten/\${candidate.id}#matches\``);
     expect(candidateSource).toContain('label: "Bekijk matchkansen"');
     expect(candidateSource).toContain('<section id="matches">');
     expect(candidateSource).not.toContain(': { href: "/matching", label: "Bekijk matches" }');

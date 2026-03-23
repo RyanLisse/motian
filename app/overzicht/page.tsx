@@ -20,7 +20,7 @@ import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { getOverviewData } from "./data";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const PRIORITY_TONE_STYLES = {
   amber: {
@@ -99,7 +99,7 @@ export default async function OverzichtPage() {
       title: "Nieuwe vacatures opvolgen",
       description: "Bekijk verse instroom en bepaal direct waar sourcing of matching nodig is.",
       value: weeklyNew,
-      href: "/opdrachten",
+      href: "/vacatures",
       icon: <Briefcase className="h-4 w-4" />,
       tone: "green" as const,
     },
@@ -117,7 +117,7 @@ export default async function OverzichtPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {[
-              { label: "Vacatures", href: "/opdrachten" },
+              { label: "Vacatures", href: "/vacatures" },
               { label: "Pipeline", href: "/pipeline" },
               { label: "Interviews", href: "/interviews" },
             ].map((shortcut) => (
@@ -138,7 +138,7 @@ export default async function OverzichtPage() {
             icon={<Briefcase className="h-5 w-5" />}
             label="Open vacatures"
             value={totalJobs}
-            href="/opdrachten"
+            href="/vacatures"
           />
           <KPICard
             icon={<TrendingUp className="h-5 w-5" />}
@@ -146,7 +146,7 @@ export default async function OverzichtPage() {
             value={weeklyNew}
             iconClassName="text-primary/60"
             valueClassName="text-primary"
-            href="/opdrachten"
+            href="/vacatures"
           />
           <KPICard
             icon={<Kanban className="h-5 w-5" />}
@@ -249,7 +249,7 @@ export default async function OverzichtPage() {
               icon={<Briefcase className="h-4 w-4" />}
               action={
                 <Link
-                  href="/opdrachten"
+                  href="/vacatures"
                   className="flex items-center gap-1 text-xs text-primary hover:underline"
                 >
                   Alle vacatures <ArrowRight className="h-3 w-3" />
@@ -265,7 +265,7 @@ export default async function OverzichtPage() {
                   {recentJobs.map((job) => (
                     <Link
                       key={job.id}
-                      href={`/opdrachten/${job.id}`}
+                      href={`/vacatures/${job.id}`}
                       className="flex items-start justify-between gap-3 px-4 py-3 transition-colors first:pt-0 last:pb-0 hover:bg-accent -mx-4"
                     >
                       <div className="min-w-0 flex-1">

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import type { Job } from "./repository";
 

@@ -1,6 +1,5 @@
-import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db } from "@/src/db";
+import { db, eq } from "@/src/db";
 import { jobMatches } from "@/src/db/schema";
 import type { StructuredMatchOutput } from "@/src/schemas/matching";
 import { getCandidateById } from "@/src/services/candidates";
@@ -108,8 +107,8 @@ export function revalidateStructuredMatchViews(
   candidateId?: string | null,
   options: { includePipeline?: boolean } = {},
 ) {
-  revalidatePath("/professionals");
-  revalidatePath("/opdrachten");
+  revalidatePath("/kandidaten");
+  revalidatePath("/vacatures");
   revalidatePath("/overzicht");
 
   if (options.includePipeline) {
@@ -117,10 +116,10 @@ export function revalidateStructuredMatchViews(
   }
 
   if (candidateId) {
-    revalidatePath(`/professionals/${candidateId}`);
+    revalidatePath(`/kandidaten/${candidateId}`);
   }
 
   if (jobId) {
-    revalidatePath(`/opdrachten/${jobId}`);
+    revalidatePath(`/vacatures/${jobId}`);
   }
 }

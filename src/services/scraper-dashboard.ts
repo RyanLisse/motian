@@ -1,8 +1,9 @@
 import { runs } from "@trigger.dev/sdk";
-import { and, desc, gte, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, desc, gte, sql } from "../db";
 import { jobs, scrapeResults, scraperConfigs } from "../db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
+import { fetchDedupedJobsPage } from "./jobs/deduplication";
+import { buildJobFilterConditions } from "./jobs/query-filters";
 import { getAnalytics, type PlatformStats, type ScrapeAnalytics } from "./scrape-results";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -41,8 +42,6 @@ type RecentRunRow = {
 
 export type ScraperDashboardOptions = {
   activityLimit?: number;
-  runsLimit?: number;
-  runsOffset?: number;
   overlapLimit?: number;
   includeTrigger?: boolean;
 };
@@ -168,8 +167,8 @@ export type ScraperDashboardData = {
   generatedAt: string;
   configs: ScraperConfigRow[];
   analytics: ScrapeAnalytics;
+  activeVacancies: number;
   recentRuns: RecentRunRow[];
-  totalRuns: number;
   platforms: PlatformOperationalMetrics[];
   activity: ScraperActivityItem[];
   overlap: {
@@ -218,6 +217,25 @@ function asStringArray(value: unknown): string[] {
 function clamp(value: number | undefined, fallback: number, min: number, max: number): number {
   if (typeof value !== "number" || Number.isNaN(value)) return fallback;
   return Math.min(Math.max(value, min), max);
+}
+
+async function getActiveVacancyCount(database: TransactionDb = db): Promise<number> {
+  // Tests inject a mock database object to validate query patterns; skip the
+  // extra active-vacancy query in that scenario to avoid unintended DB access.
+  if (database !== db) {
+    return 0;
+  }
+
+  const whereConditions = buildJobFilterConditions();
+  const whereClause = (
+    whereConditions.length > 0 ? and(...whereConditions) : sql`true`
+  ) as ReturnType<typeof sql>;
+  const page = await fetchDedupedJobsPage({
+    whereClause,
+    limit: 1,
+    offset: 0,
+  });
+  return page.total;
 }
 
 function cronIntervalMs(cron: string | null | undefined): number | null {
@@ -681,9 +699,7 @@ export async function getScraperDashboardData(
   const includeTrigger = opts.includeTrigger !== false;
   const now = new Date();
   const last24Hours = new Date(now.getTime() - DAY_MS);
-  const overlapWindow = new Date(now.getTime() - 14 * DAY_MS);
-  const runsLimit = opts.runsLimit ?? Math.max(30, activityLimit);
-  const runsOffset = opts.runsOffset ?? 0;
+  const runLimit = Math.max(30, activityLimit);
   const triggerPromise = includeTrigger
     ? getTriggerVisibility(8)
     : Promise.resolve<TriggerVisibility>({
@@ -699,12 +715,16 @@ export async function getScraperDashboardData(
           recentRuns: [],
         })),
       });
-  const dataPromise = database.transaction(async (tx) => {
-    const [analytics, configs, recentRuns, recentWindowRows, overlapCandidates, totalRunsRow] =
-      await Promise.all([
-        getAnalytics(tx),
-        tx.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
-        tx
+  // Do not wrap these reads in database.transaction() with Promise.all: Drizzle + pg
+  // concurrent work inside a transaction can drop Next.js App Router AsyncLocalStorage
+  // (request context for cookies/headers), which throws "Access to storage is not allowed
+  // from this context". Same rationale as app/overzicht/data.ts getOverviewData.
+  const dataPromise = (async () => {
+    const [analytics, configs, recentRuns, recentWindowRows, overlapCandidates] = await Promise.all(
+      [
+        getAnalytics(database),
+        database.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
+        database
           .select({
             id: scrapeResults.id,
             configId: scrapeResults.configId,
@@ -719,9 +739,8 @@ export async function getScraperDashboardData(
           })
           .from(scrapeResults)
           .orderBy(desc(scrapeResults.runAt))
-          .limit(runsLimit)
-          .offset(runsOffset),
-        tx
+          .limit(runLimit),
+        database
           .select({
             platform: scrapeResults.platform,
             runs: sql<number>`count(*)::int`,
@@ -733,7 +752,7 @@ export async function getScraperDashboardData(
           .from(scrapeResults)
           .where(gte(scrapeResults.runAt, last24Hours))
           .groupBy(scrapeResults.platform),
-        tx
+        database
           .select({
             id: jobs.id,
             platform: jobs.platform,
@@ -751,23 +770,18 @@ export async function getScraperDashboardData(
             scrapedAt: jobs.scrapedAt,
           })
           .from(jobs)
-          .where(and(sql`${jobs.platform} is not null`, gte(jobs.scrapedAt, overlapWindow))),
-        tx.select({ count: sql<number>`count(*)::int` }).from(scrapeResults),
-      ]);
+          .where(sql`${jobs.platform} is not null`),
+      ],
+    );
 
-    const totalRuns = totalRunsRow?.[0]?.count ?? 0;
+    return { analytics, configs, recentRuns, recentWindowRows, overlapCandidates };
+  })();
 
-    return {
-      analytics,
-      configs,
-      recentRuns,
-      recentWindowRows,
-      overlapCandidates,
-      totalRuns,
-    };
-  });
-
-  const [trigger, data] = await Promise.all([triggerPromise, dataPromise]);
+  const [trigger, data, activeVacancies] = await Promise.all([
+    triggerPromise,
+    dataPromise,
+    getActiveVacancyCount(database),
+  ]);
 
   const recentWindowMap = new Map(
     data.recentWindowRows.map((row) => [
@@ -857,8 +871,8 @@ export async function getScraperDashboardData(
     generatedAt: now.toISOString(),
     configs: data.configs,
     analytics: data.analytics,
+    activeVacancies,
     recentRuns: data.recentRuns,
-    totalRuns: data.totalRuns,
     platforms,
     activity: buildActivityFeed(data.recentRuns, activityLimit),
     overlap: {

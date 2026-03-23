@@ -1,5 +1,4 @@
-import { and, eq, isNull, type SQL, sql } from "drizzle-orm";
-import { db } from "../db";
+import { and, db, eq, isNull, type SQL, sql } from "../db";
 import { candidates, jobs } from "../db/schema";
 import {
   tracedEmbed as embed,
@@ -242,7 +241,10 @@ export async function embedJob(jobId: string): Promise<boolean> {
   const text = buildJobEmbeddingText(job);
   const embedding = await generateEmbedding(text);
 
-  await db.update(jobs).set({ embedding }).where(eq(jobs.id, jobId));
+  await db
+    .update(jobs)
+    .set({ embedding: JSON.stringify(embedding) })
+    .where(eq(jobs.id, jobId));
 
   return true;
 }
@@ -320,7 +322,10 @@ export async function embedCandidate(candidateId: string): Promise<boolean> {
   if (text.length < 5) return false;
 
   const embedding = await generateEmbedding(text);
-  await db.update(candidates).set({ embedding }).where(eq(candidates.id, candidateId));
+  await db
+    .update(candidates)
+    .set({ embedding: JSON.stringify(embedding) })
+    .where(eq(candidates.id, candidateId));
 
   return true;
 }
@@ -375,7 +380,7 @@ export async function embedCandidatesBatch(opts: {
     validIndices.map((idx, i) =>
       db
         .update(candidates)
-        .set({ embedding: embeddings[i] })
+        .set({ embedding: JSON.stringify(embeddings[i]) })
         .where(eq(candidates.id, rows[idx].id)),
     ),
   );
@@ -412,21 +417,28 @@ export async function findSimilarJobsByEmbedding(
   const filterCondition = opts.filterCondition ?? sql`true`;
   const vectorStr = `[${queryEmbedding.join(",")}]`;
 
-  const results = await db.execute(sql`
+  const result = await (
+    db as unknown as {
+      execute(
+        sql: SQL,
+      ): Promise<{ rows: Array<{ id: string; title: string; similarity: number }> }>;
+    }
+  ).execute(sql`
     SELECT
       id,
       title,
-      1 - (embedding <=> ${vectorStr}::vector) AS similarity
+      1 - vector_distance_cos(embedding, vector32(${vectorStr})) AS similarity
     FROM jobs
     WHERE embedding IS NOT NULL
       AND deleted_at IS NULL
       AND ${filterCondition}
-      AND 1 - (embedding <=> ${vectorStr}::vector) >= ${minScore}
-    ORDER BY embedding <=> ${vectorStr}::vector
+      AND 1 - vector_distance_cos(embedding, vector32(${vectorStr})) >= ${minScore}
+    ORDER BY vector_distance_cos(embedding, vector32(${vectorStr}))
     LIMIT ${limit}
   `);
+  const rows = result.rows;
 
-  return (results.rows as Array<{ id: string; title: string; similarity: number }>).map((r) => ({
+  return rows.map((r) => ({
     id: r.id,
     title: r.title,
     similarity: Number(r.similarity),
