@@ -1,13 +1,12 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { PlatformCatalogEntryView } from "@/src/services/scrapers";
+import type { PlatformCatalogEntry } from "@/src/schemas/platform-catalog";
 
 function readSchemaKeys(schema: Record<string, unknown> | undefined): string[] {
   if (!schema || typeof schema !== "object") return [];
@@ -74,7 +73,7 @@ function parseJsonObject(value: string, fieldName: string): Record<string, unkno
   }
 }
 
-export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntryView }) {
+export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
   const router = useRouter();
   const [baseUrl, setBaseUrl] = useState(entry.config?.baseUrl ?? entry.defaultBaseUrl ?? "");
   const [cronExpression, setCronExpression] = useState(
@@ -168,20 +167,19 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntryView 
 
   return (
     <div className="space-y-4">
-      {entry.docsUrl ? (
-        <a
-          href={entry.docsUrl}
-          rel="noreferrer"
-          target="_blank"
-          className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
-        >
-          Open platformdocumentatie
-          <ExternalLink className="size-3.5" />
-        </a>
-      ) : null}
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">Platform slug</p>
         <p className="text-sm text-muted-foreground">{entry.slug}</p>
+        {entry.docsUrl?.startsWith("http") ? (
+          <a
+            href={entry.docsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex text-sm font-medium text-foreground underline underline-offset-4"
+          >
+            Open platformdocumentatie
+          </a>
+        ) : null}
       </div>
 
       <div className="space-y-1">

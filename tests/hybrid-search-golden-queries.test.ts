@@ -59,13 +59,12 @@ async function importHybridSearchGoldenHarness({
   });
 
   vi.doMock("../src/db", async () => {
-    const actual = await vi.importActual<typeof import("../src/db")>("../src/db");
+    const actual = await import("../src/db");
     return {
       db: { select: mockSelect },
-      // Re-export actual Drizzle helpers
       sql: actual.sql,
       and: actual.and,
-      like: actual.like,
+      ilike: actual.ilike,
       inArray: actual.inArray,
       or: actual.or,
       isPostgresDatabase: vi.fn(() => false),
@@ -90,7 +89,7 @@ async function importHybridSearchGoldenHarness({
   }));
   vi.doMock("drizzle-orm", () => ({
     and: (...args: unknown[]) => ({ type: "and", args }),
-    like: (...args: unknown[]) => ({ type: "like", args }),
+    ilike: (...args: unknown[]) => ({ type: "ilike", args }),
     inArray: (...args: unknown[]) => ({ type: "inArray", args }),
     or: (...args: unknown[]) => ({ type: "or", args }),
     sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
@@ -118,10 +117,10 @@ async function importHybridSearchGoldenHarness({
   vi.doMock("../src/services/jobs/query-filters", () => ({
     buildJobFilterConditions: vi.fn(() => []),
   }));
-  vi.doMock("../src/services/jobs/repository", () => {
-    const sel = { id: "jobs.id" };
-    return { jobReadSelection: sel, getJobReadSelection: () => sel };
-  });
+  vi.doMock("../src/services/jobs/repository", () => ({
+    jobReadSelection: { id: "jobs.id" },
+    getJobReadSelection: vi.fn(() => ({ id: "jobs.id" })),
+  }));
   vi.doMock("../src/services/jobs/deduplication", () => ({
     collapseScoredJobsByVacancy: vi.fn((entries: unknown[]) => entries),
     fetchDedupedJobIds: vi.fn().mockResolvedValue(textResultIds),
@@ -212,7 +211,7 @@ describe("hybrid search golden queries", () => {
         expect.objectContaining({ id: "job-3", score: 0.0159 }),
       ],
     });
-  }, 10_000);
+  });
 
   it("preserves total-count and offset semantics for the same golden ranking baseline", async () => {
     const { hybridSearchWithTotal } = await importHybridSearchGoldenHarness({
