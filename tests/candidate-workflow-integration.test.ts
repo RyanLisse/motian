@@ -30,4 +30,12 @@ describe("candidate workflow recommendation surfaces", () => {
     expect(source).toContain("useRouter");
     expect(source).toContain("router.refresh()");
   });
+
+  it("CV-based recruiter intake refreshes matches after the recruiter patch step", () => {
+    const source = readFile("components/candidate-wizard/wizard-step-profile.tsx");
+
+    expect(source).toContain("forceFresh = false");
+    expect(source).toContain("fetchCandidateMatches(candidateId, Boolean(uploadPreview))");
+    expect(source).toContain("if (!forceFresh)");
+  });
 });

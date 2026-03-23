@@ -475,20 +475,25 @@ export function WizardStepProfile({ onSubmit, onCancel }: WizardStepProfileProps
     void parseCvFile(file);
   };
 
-  const fetchCandidateMatches = async (candidateId: string): Promise<MatchSuggestionItem[]> => {
-    try {
-      const persisted = await fetchJson(`/api/candidates/${candidateId}/matches`);
-      if (Array.isArray(persisted)) {
-        const normalized = normalizeMatchSuggestions(persisted);
-        if (normalized.length > 0) return normalized;
-      }
+  const fetchCandidateMatches = async (
+    candidateId: string,
+    forceFresh = false,
+  ): Promise<MatchSuggestionItem[]> => {
+    if (!forceFresh) {
+      try {
+        const persisted = await fetchJson(`/api/candidates/${candidateId}/matches`);
+        if (Array.isArray(persisted)) {
+          const normalized = normalizeMatchSuggestions(persisted);
+          if (normalized.length > 0) return normalized;
+        }
 
-      if (isRecord(persisted) && Array.isArray(persisted.matches)) {
-        const normalized = normalizeMatchSuggestions(persisted.matches);
-        if (normalized.length > 0) return normalized;
+        if (isRecord(persisted) && Array.isArray(persisted.matches)) {
+          const normalized = normalizeMatchSuggestions(persisted.matches);
+          if (normalized.length > 0) return normalized;
+        }
+      } catch {
+        // Fall back to the existing POST match route below.
       }
-    } catch {
-      // Fall back to the existing POST match route below.
     }
 
     const generated = (await fetchJson(`/api/kandidaten/${candidateId}/match`, {
@@ -584,7 +589,7 @@ export function WizardStepProfile({ onSubmit, onCancel }: WizardStepProfileProps
         unknown
       >;
       const candidateData = isRecord(candidateBody.data) ? candidateBody.data : null;
-      const matches = await fetchCandidateMatches(candidateId);
+      const matches = await fetchCandidateMatches(candidateId, Boolean(uploadPreview));
       const recommendedMatch = matches.find((match) => match.isRecommended) ?? null;
       const profile = normalizeProfilePreview(
         candidateData,
