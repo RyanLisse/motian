@@ -12,6 +12,15 @@ const wishSchema = z.object({
   evaluationCriteria: z.string().optional(),
 });
 
+function normalizeArrayInput(value: unknown): unknown {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? [trimmed] : [];
+  }
+
+  return value;
+}
+
 export const unifiedJobSchema = z.object({
   // === Identificatie ===
   externalId: z.string().min(1),
@@ -58,8 +67,11 @@ export const unifiedJobSchema = z.object({
   allowsSubcontracting: z.boolean().optional(),
 
   // === Gestructureerde Eisen ===
-  requirements: z.array(z.union([z.string(), requirementSchema])).default([]),
-  wishes: z.array(z.union([z.string(), wishSchema])).default([]),
+  requirements: z.preprocess(
+    normalizeArrayInput,
+    z.array(z.union([z.string(), requirementSchema])).default([]),
+  ),
+  wishes: z.preprocess(normalizeArrayInput, z.array(z.union([z.string(), wishSchema])).default([])),
   competences: z.array(z.string()).default([]),
   conditions: z.array(z.string()).default([]),
 

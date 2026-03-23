@@ -64,6 +64,23 @@ describe("Unified Job Schema", () => {
     expect(unifiedJobSchema.safeParse(valid).success).toBe(true);
   });
 
+  it("should coerce a string requirements field into an array", () => {
+    const result = unifiedJobSchema.safeParse({
+      title: "Senior Frontend Developer",
+      company: "TechCorp",
+      location: "Amsterdam",
+      description: "We zoeken een ervaren developer met React kennis.",
+      externalId: "job-12346",
+      externalUrl: "https://nl.indeed.com/viewjob?jk=def456",
+      requirements: "React",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.requirements).toEqual(["React"]);
+    }
+  });
+
   it("should reject job without title", () => {
     const invalid = { title: "", externalId: "123", description: "kort" };
     expect(unifiedJobSchema.safeParse(invalid).success).toBe(false);

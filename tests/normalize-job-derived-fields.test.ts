@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { unifiedJobSchema } from "../src/schemas/job";
 
 const {
   mockDb,
@@ -33,7 +34,11 @@ vi.mock("../src/db", async (importOriginal) => ({
 }));
 vi.mock("../src/services/esco", () => ({ syncJobEscoSkills: mockSyncJobEscoSkills }));
 
-import { deriveJobSearchFields, normalizeAndSaveJobs } from "../src/services/normalize";
+import {
+  chunkJobInsertBatches,
+  deriveJobSearchFields,
+  normalizeAndSaveJobs,
+} from "../src/services/normalize";
 
 describe("normalizeAndSaveJobs derived fields", () => {
   beforeEach(() => {
@@ -93,5 +98,81 @@ describe("normalizeAndSaveJobs derived fields", () => {
     expect(conflictConfig.set).toHaveProperty("dedupeClientNormalized");
     expect(conflictConfig.set).toHaveProperty("dedupeLocationNormalized");
     expect(conflictConfig.set).toHaveProperty("searchText");
+  });
+});
+
+describe("chunkJobInsertBatches", () => {
+  it("splits on the configured row limit", () => {
+    const validItems = [
+      {
+        parsed: unifiedJobSchema.parse({
+          title: "A",
+          externalId: "a",
+          externalUrl: "https://example.com/a",
+          description: "Een valide vacaturebeschrijving voor A.",
+        }),
+        raw: { id: "a" },
+      },
+      {
+        parsed: unifiedJobSchema.parse({
+          title: "B",
+          externalId: "b",
+          externalUrl: "https://example.com/b",
+          description: "Een valide vacaturebeschrijving voor B.",
+        }),
+        raw: { id: "b" },
+      },
+      {
+        parsed: unifiedJobSchema.parse({
+          title: "C",
+          externalId: "c",
+          externalUrl: "https://example.com/c",
+          description: "Een valide vacaturebeschrijving voor C.",
+        }),
+        raw: { id: "c" },
+      },
+    ];
+
+    const batches = chunkJobInsertBatches(validItems, "striive", {
+      maxRows: 2,
+      maxBytes: 1_000_000,
+    });
+
+    expect(batches).toHaveLength(2);
+    expect(batches[0].items).toHaveLength(2);
+    expect(batches[1].items).toHaveLength(1);
+  });
+
+  it("splits on the configured byte budget", () => {
+    const oversizedPayload = "x".repeat(200);
+    const validItems = [
+      {
+        parsed: unifiedJobSchema.parse({
+          title: "Oversized A",
+          externalId: "oa",
+          externalUrl: "https://example.com/oa",
+          description: "Een valide vacaturebeschrijving voor oversized A.",
+        }),
+        raw: { blob: oversizedPayload },
+      },
+      {
+        parsed: unifiedJobSchema.parse({
+          title: "Oversized B",
+          externalId: "ob",
+          externalUrl: "https://example.com/ob",
+          description: "Een valide vacaturebeschrijving voor oversized B.",
+        }),
+        raw: { blob: oversizedPayload },
+      },
+    ];
+
+    const batches = chunkJobInsertBatches(validItems, "striive", {
+      maxRows: 50,
+      maxBytes: 250,
+    });
+
+    expect(batches).toHaveLength(2);
+    expect(batches[0].items).toHaveLength(1);
+    expect(batches[1].items).toHaveLength(1);
   });
 });

@@ -189,6 +189,62 @@ describe("Werkzoeken scraper", () => {
     expect(result.listings).toHaveLength(1);
   });
 
+  it("retries a temporary 403 on the listing page before failing", async () => {
+    let listingFetchAttempts = 0;
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("/vacatures-voor/techniek/")) {
+        listingFetchAttempts += 1;
+        if (listingFetchAttempts === 1) {
+          return new Response("forbidden", {
+            status: 403,
+            headers: { "Content-Type": "text/html" },
+          });
+        }
+
+        return new Response(LISTING_HTML, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (url.includes("/vacature/15167751-werkvoorbereider-engineer-hvac")) {
+        return new Response(DETAIL_HTML, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      return new Response("<html><body>Geen extra resultaten</body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    }) as typeof fetch;
+
+    const result = await werkzoekenAdapter.scrape(
+      {
+        slug: "werkzoeken",
+        baseUrl: "https://www.werkzoeken.nl",
+        parameters: {
+          sourcePath: "/vacatures-voor/techniek/",
+          maxPages: 10,
+          pnrStep: 10,
+          detailConcurrency: 1,
+          skipDetailEnrichment: true,
+        },
+        auth: {},
+      },
+      { limit: 1 },
+    );
+
+    expect(listingFetchAttempts).toBe(2);
+    expect(result.blockerKind).toBeUndefined();
+    expect(result.errors).toBeUndefined();
+    expect(result.listings).toHaveLength(1);
+  });
+
   it("jumps pages correctly with variable pnrStep values (e.g., pnrStep: 2)", async () => {
     const adapter = werkzoekenAdapter;
     let callCount = 0;

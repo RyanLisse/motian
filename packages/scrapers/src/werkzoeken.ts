@@ -18,6 +18,14 @@ import {
 
 const WERKZOEKEN_FETCH_TIMEOUT_MS = 20_000;
 const DEFAULT_WERKZOEKEN_ORIGIN = "https://www.werkzoeken.nl";
+const DEFAULT_REQUEST_HEADERS = {
+  Accept: "text/html,application/xhtml+xml",
+  "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
+  "User-Agent": "Mozilla/5.0 (compatible; MotianBot/1.0)",
+};
+const RETRYABLE_FETCH_STATUSES = new Set([403, 429]);
+const FETCH_RETRY_ATTEMPTS = 3;
+const FETCH_RETRY_DELAY_MS = 500;
 
 function parseSalaryValue(value: string | undefined): number | undefined {
   if (!value) return undefined;
@@ -165,18 +173,26 @@ export function parseWerkzoekenDetailPage(
 }
 
 async function fetchHtml(url: string): Promise<string> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; MotianBot/1.0)",
-    },
-    signal: AbortSignal.timeout(WERKZOEKEN_FETCH_TIMEOUT_MS),
-  });
+  for (let attempt = 1; attempt <= FETCH_RETRY_ATTEMPTS; attempt += 1) {
+    const response = await fetch(url, {
+      headers: DEFAULT_REQUEST_HEADERS,
+      signal: AbortSignal.timeout(WERKZOEKEN_FETCH_TIMEOUT_MS),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Werkzoeken fetch mislukt voor ${url}: ${response.status}`);
+    if (response.ok) {
+      return response.text();
+    }
+
+    const shouldRetry =
+      RETRYABLE_FETCH_STATUSES.has(response.status) && attempt < FETCH_RETRY_ATTEMPTS;
+    if (!shouldRetry) {
+      throw new Error(`Werkzoeken fetch mislukt voor ${url}: ${response.status}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, FETCH_RETRY_DELAY_MS * attempt));
   }
 
-  return response.text();
+  throw new Error(`Werkzoeken fetch mislukt voor ${url}: onverwachte retry-loop`);
 }
 
 async function enrichWerkzoekenListings(

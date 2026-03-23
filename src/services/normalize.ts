@@ -12,6 +12,22 @@ type JobDerivedFieldSource = Pick<
   "title" | "company" | "endClient" | "location" | "province" | "description"
 >;
 
+export type NormalizedJobItem = {
+  parsed: z.output<typeof unifiedJobSchema>;
+  raw: Record<string, unknown>;
+};
+
+export type PreparedJobInsert = {
+  item: NormalizedJobItem;
+  row: JobInsertRow;
+};
+
+export type PreparedJobBatch = {
+  items: PreparedJobInsert[];
+  startIndex: number;
+  endIndex: number;
+};
+
 /**
  * Max **byte** budget per dedupe column for the B-tree index.
  * Index row limit = 2704 bytes. Index has 3 text cols + scraped_at (8B) + id (16B) + ~80B tuple overhead.
@@ -22,6 +38,9 @@ type JobDerivedFieldSource = Pick<
  * = 2600 usable / 3 columns = 866. We use 700 for safety margin.
  */
 const DEDUPE_MAX_BYTES = 700;
+const MAX_INSERT_ROWS = 50;
+const MAX_INSERT_BYTES = 8 * 1024 * 1024;
+type JobInsertRow = typeof jobs.$inferInsert;
 
 function normalizeDedupePart(value: string | null | undefined) {
   let result = (value ?? "")
@@ -54,6 +73,67 @@ function normalizeSearchPart(value: string | null | undefined) {
   return (value ?? "").trim().replace(/\s+/g, " ");
 }
 
+function prepareJobInsertRow(item: NormalizedJobItem, platform: string): JobInsertRow {
+  return {
+    ...item.parsed,
+    ...deriveJobSearchFields(item.parsed),
+    platform,
+    rawPayload: item.raw,
+  };
+}
+
+export function chunkJobInsertBatches(
+  validItems: NormalizedJobItem[],
+  platform: string,
+  options?: { maxRows?: number; maxBytes?: number },
+): PreparedJobBatch[] {
+  const maxRows = options?.maxRows ?? MAX_INSERT_ROWS;
+  const maxBytes = options?.maxBytes ?? MAX_INSERT_BYTES;
+  const batches: PreparedJobBatch[] = [];
+
+  let currentItems: PreparedJobInsert[] = [];
+  let currentBytes = 0;
+  let currentStartIndex = 0;
+  let currentEndIndex = 0;
+
+  for (let index = 0; index < validItems.length; index += 1) {
+    const item = validItems[index];
+    const row = prepareJobInsertRow(item, platform);
+    const estimatedBytes = Buffer.byteLength(JSON.stringify(row), "utf8");
+    const wouldExceedRowLimit = currentItems.length >= maxRows;
+    const wouldExceedByteLimit =
+      currentItems.length > 0 && currentBytes + estimatedBytes > maxBytes;
+
+    if (currentItems.length > 0 && (wouldExceedRowLimit || wouldExceedByteLimit)) {
+      batches.push({
+        items: currentItems,
+        startIndex: currentStartIndex,
+        endIndex: currentEndIndex,
+      });
+      currentItems = [];
+      currentBytes = 0;
+    }
+
+    if (currentItems.length === 0) {
+      currentStartIndex = index;
+    }
+
+    currentItems.push({ item, row });
+    currentBytes += estimatedBytes;
+    currentEndIndex = index;
+  }
+
+  if (currentItems.length > 0) {
+    batches.push({
+      items: currentItems,
+      startIndex: currentStartIndex,
+      endIndex: currentEndIndex,
+    });
+  }
+
+  return batches;
+}
+
 export function deriveJobSearchFields(job: JobDerivedFieldSource) {
   return {
     dedupeTitleNormalized: normalizeDedupePart(job.title),
@@ -76,10 +156,7 @@ export async function normalizeAndSaveJobs(
   const allJobIds: string[] = [];
 
   // Stap 1: Valideer alle listings
-  const validItems: Array<{
-    parsed: z.output<typeof unifiedJobSchema>;
-    raw: Record<string, unknown>;
-  }> = [];
+  const validItems: NormalizedJobItem[] = [];
   const HOURS_MAX = 168;
   for (const raw of listings) {
     // Voor-processing voor veiligheid VÓÓR validatie (cap uren/week op 168)
@@ -119,20 +196,12 @@ export async function normalizeAndSaveJobs(
 
   // Stap 2: Batch upsert
   if (validItems.length > 0) {
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < validItems.length; i += BATCH_SIZE) {
-      const batch = validItems.slice(i, i + BATCH_SIZE);
+    const batches = chunkJobInsertBatches(validItems, platform);
+    for (const batch of batches) {
       try {
         const result = await db
           .insert(jobs)
-          .values(
-            batch.map((item) => ({
-              ...item.parsed,
-              ...deriveJobSearchFields(item.parsed),
-              platform,
-              rawPayload: item.raw,
-            })),
-          )
+          .values(batch.items.map(({ row }) => row))
           .onConflictDoUpdate({
             target: [jobs.platform, jobs.externalId],
             set: {
@@ -217,16 +286,16 @@ export async function normalizeAndSaveJobs(
           const chunk = result.slice(j, j + ESCO_CONCURRENCY);
           const settled = await Promise.allSettled(
             chunk.map(async (row) => {
-              const item = batch.find(
-                (batchItem) => batchItem.parsed.externalId === row.externalId,
+              const item = batch.items.find(
+                (batchItem) => batchItem.item.parsed.externalId === row.externalId,
               );
               if (!item) return;
 
               await syncJobEscoSkills({
                 jobId: row.id,
-                requirements: item.parsed.requirements,
-                wishes: item.parsed.wishes,
-                competences: item.parsed.competences,
+                requirements: item.item.parsed.requirements,
+                wishes: item.item.parsed.wishes,
+                competences: item.item.parsed.competences,
               });
             }),
           );
@@ -236,7 +305,7 @@ export async function normalizeAndSaveJobs(
           }
         }
       } catch (err) {
-        errors.push(`DB batch ${i}-${i + batch.length}: ${String(err)}`);
+        errors.push(`DB batch ${batch.startIndex}-${batch.endIndex}: ${String(err)}`);
       }
     }
   }
