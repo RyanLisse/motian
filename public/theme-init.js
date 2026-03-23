@@ -27,16 +27,28 @@
     length: 0,
   };
 
-  try {
-    if (typeof window !== "undefined" && !window.localStorage) {
-      Object.defineProperty(window, "localStorage", { value: noop, writable: true });
+  const patchStorage = (storageName) => {
+    if (typeof window === "undefined") return;
+
+    try {
+      if (window[storageName]) return;
+    } catch (e) {
+      // Ignore blocked getters and replace below.
     }
-    if (typeof window !== "undefined" && !window.sessionStorage) {
-      Object.defineProperty(window, "sessionStorage", { value: noop, writable: true });
+
+    try {
+      Object.defineProperty(window, storageName, {
+        configurable: true,
+        value: noop,
+        writable: true,
+      });
+    } catch (e) {
+      // Ignore storage access errors
     }
-  } catch (e) {
-    // Ignore storage access errors
-  }
+  };
+
+  patchStorage("localStorage");
+  patchStorage("sessionStorage");
 
   // Apply theme from cookie immediately to prevent flash
   try {

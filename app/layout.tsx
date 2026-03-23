@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import { headers } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 import { ChatContextProvider } from "@/components/chat/chat-context-provider";
 import { ChatWidget } from "@/components/chat/chat-widget";
@@ -37,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="nl" suppressHydrationWarning>
       <head>
-        <script src="/theme-init.js" async />
+        <Script src="/theme-init.js" strategy="beforeInteractive" />
       </head>
       <body
         className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable} min-h-screen bg-background antialiased`}

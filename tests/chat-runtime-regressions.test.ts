@@ -176,4 +176,20 @@ describe("chat runtime regressions", () => {
     expect(threadSource).toContain("hasPersistedChatSession(sessionId)");
     expect(threadSource).toContain("markPersistedChatSession(sessionId)");
   });
+
+  it("loads theme-init before hydration and patches blocked storage getters independently", () => {
+    const layoutSource = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
+    const themeInitSource = readFileSync(
+      new URL("../public/theme-init.js", import.meta.url),
+      "utf8",
+    );
+
+    expect(layoutSource).toContain('strategy="beforeInteractive"');
+    expect(layoutSource).not.toContain('<script src="/theme-init.js" async />');
+    expect(themeInitSource).toContain("const patchStorage = (storageName) => {");
+    expect(themeInitSource).toContain('patchStorage("localStorage");');
+    expect(themeInitSource).toContain('patchStorage("sessionStorage");');
+    expect(themeInitSource).not.toContain("!window.localStorage");
+    expect(themeInitSource).not.toContain("!window.sessionStorage");
+  });
 });
