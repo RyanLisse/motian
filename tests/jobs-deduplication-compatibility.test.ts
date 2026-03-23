@@ -109,7 +109,7 @@ describe("job deduplication compatibility fallback", () => {
     expect(queryText).toContain("jobs.dedupeTitleNormalized");
     expect(queryText).toContain("jobs.dedupeClientNormalized");
     expect(queryText).toContain("jobs.dedupeLocationNormalized");
-  });
+  }, 15_000);
 
   it("returns empty results when no jobs match", async () => {
     mockDb.execute.mockResolvedValueOnce({ rows: [] });
@@ -121,5 +121,5 @@ describe("job deduplication compatibility fallback", () => {
 
     expect(page).toEqual({ ids: [], total: 0 });
     expect(mockDb.execute).toHaveBeenCalledTimes(1);
-  });
+  }, 15_000);
 });

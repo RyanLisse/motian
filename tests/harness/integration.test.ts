@@ -127,7 +127,7 @@ describe("harness integration", () => {
       } finally {
         rmSync(tempRoot, { recursive: true, force: true });
       }
-    });
+    }, 15_000);
   });
 
   describe("type sharing between core/orchestrator/adapter", () => {

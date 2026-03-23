@@ -36,7 +36,7 @@ describe("vacancy retention surfaces", () => {
     const detailPage = readFile("app", "opdrachten", "[id]", "page.tsx");
 
     expect(analytics).toContain(
-      "database.select({ count: sql<number>`count(*)::int` }).from(jobs)",
+      "database.select({ count: sql<number>`cast(count(*) as integer)` }).from(jobs)",
     );
     expect(dashboard).toContain(`.where(sql\`${JOBS_PLATFORM_PLACEHOLDER} is not null\`)`);
     expect(dashboard).not.toContain(

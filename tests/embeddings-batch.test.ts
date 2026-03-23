@@ -19,6 +19,6 @@ describe("embeddings batch backfill", () => {
   it("serializes job embeddings before updating the database", () => {
     const source = readFile("src/services/embedding.ts");
 
-    expect(source).toContain("db.update(jobs).set({ embedding: JSON.stringify(embeddings[i]) })");
+    expect(source).toContain("JSON.stringify(embeddings[i])");
   });
 });

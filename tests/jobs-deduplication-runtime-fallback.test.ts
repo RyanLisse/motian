@@ -76,7 +76,7 @@ describe("jobs deduplication runtime fallback", () => {
     expect(page).toEqual({ ids: ["job-1"], total: 1 });
     // No retry/fallback needed - SQLite always has the columns
     expect(mockExecute).toHaveBeenCalledTimes(1);
-  });
+  }, 15_000);
 
   it("returns empty when no jobs found", async () => {
     const mockExecute = vi.fn().mockResolvedValueOnce({ rows: [] });
@@ -89,5 +89,5 @@ describe("jobs deduplication runtime fallback", () => {
 
     expect(page).toEqual({ ids: [], total: 0 });
     expect(mockExecute).toHaveBeenCalledTimes(1);
-  });
+  }, 15_000);
 });

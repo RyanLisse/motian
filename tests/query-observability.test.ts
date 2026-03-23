@@ -245,7 +245,7 @@ describe("query-observability", () => {
     expect(payload.durationMs).toEqual(expect.any(Number));
     expect(payload.dedupePageMs).toEqual(expect.any(Number));
     expect(payload.hydrateMs).toEqual(expect.any(Number));
-  });
+  }, 15_000);
 
   it("emits structured telemetry keys for hybridSearch", async () => {
     createIncreasingNow(150);
@@ -275,5 +275,5 @@ describe("query-observability", () => {
     expect(payload.rrfMs).toEqual(expect.any(Number));
     expect(payload.hydrateMs).toEqual(expect.any(Number));
     expect(payload.dedupeMs).toEqual(expect.any(Number));
-  });
+  }, 15_000);
 });

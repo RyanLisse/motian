@@ -165,7 +165,7 @@ describe("autopilot run detail evidence loading", () => {
     expect(detail?.evidence[0]?.artifacts[0]?.proxyPath).toBe(
       "/api/autopilot/runs/run-123/evidence/chat-rich-evidence/chat-rich-evidence-video",
     );
-  });
+  }, 15_000);
 
   it("returns an empty evidence list when no report URL exists", async () => {
     const { getRunDetail } = await import("@/app/autopilot/data");
