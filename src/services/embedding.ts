@@ -490,7 +490,10 @@ export async function embedJobsBatch(opts: {
 
   const updateResults = await Promise.allSettled(
     validIndices.map((idx, i) =>
-      db.update(jobs).set({ embedding: embeddings[i] }).where(eq(jobs.id, rows[idx].id)),
+      db
+        .update(jobs)
+        .set({ embedding: JSON.stringify(embeddings[i]) })
+        .where(eq(jobs.id, rows[idx].id)),
     ),
   );
 

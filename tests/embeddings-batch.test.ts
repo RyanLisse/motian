@@ -15,4 +15,10 @@ describe("embeddings batch backfill", () => {
     expect(source).toContain("isNotNull(jobs.descriptionSummary)");
     expect(source).toContain("nullif(trim(");
   });
+
+  it("serializes job embeddings before updating the database", () => {
+    const source = readFile("src/services/embedding.ts");
+
+    expect(source).toContain("db.update(jobs).set({ embedding: JSON.stringify(embeddings[i]) })");
+  });
 });
