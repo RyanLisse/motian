@@ -743,11 +743,11 @@ export async function getScraperDashboardData(
         database
           .select({
             platform: scrapeResults.platform,
-            runs: sql<number>`count(*)::int`,
-            successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
-            partialCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'partial')::int`,
-            failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
-            avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
+            runs: sql<number>`cast(count(*) as integer)`,
+            successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
+            partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
+            failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
+            avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
           })
           .from(scrapeResults)
           .where(gte(scrapeResults.runAt, last24Hours))

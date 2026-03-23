@@ -119,7 +119,22 @@ export const db = new Proxy({} as DatabaseClient, {
   get(_target, prop, receiver) {
     const client = getDatabaseClient();
     const value = Reflect.get(client, prop, receiver);
-    return typeof value === "function" ? value.bind(client) : value;
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+
+    if (prop === "execute") {
+      const all = Reflect.get(client, "all", receiver);
+      if (typeof all === "function") {
+        const boundAll = all.bind(client);
+        return async (query: unknown) => {
+          const rows = await boundAll(query);
+          return { rows };
+        };
+      }
+    }
+
+    return value;
   },
   has(_target, prop) {
     return prop in getDatabaseClient();

@@ -149,21 +149,21 @@ export async function getAnalytics(database: ScrapeResultsReader = db): Promise<
     database
       .select({
         platform: scrapeResults.platform,
-        totalRuns: sql<number>`count(*)::int`,
-        successCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'success')::int`,
-        partialCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'partial')::int`,
-        failedCount: sql<number>`count(*) filter (where ${scrapeResults.status} = 'failed')::int`,
-        totalJobsFound: sql<number>`coalesce(sum(${scrapeResults.jobsFound}), 0)::int`,
-        totalJobsNew: sql<number>`coalesce(sum(${scrapeResults.jobsNew}), 0)::int`,
-        totalDuplicates: sql<number>`coalesce(sum(${scrapeResults.duplicates}), 0)::int`,
-        avgDurationMs: sql<number>`coalesce(avg(${scrapeResults.durationMs}), 0)::int`,
+        totalRuns: sql<number>`cast(count(*) as integer)`,
+        successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
+        partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
+        failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
+        totalJobsFound: sql<number>`cast(coalesce(sum(${scrapeResults.jobsFound}), 0) as integer)`,
+        totalJobsNew: sql<number>`cast(coalesce(sum(${scrapeResults.jobsNew}), 0) as integer)`,
+        totalDuplicates: sql<number>`cast(coalesce(sum(${scrapeResults.duplicates}), 0) as integer)`,
+        avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
       })
       .from(scrapeResults)
       .groupBy(scrapeResults.platform),
-    database.select({ count: sql<number>`count(*)::int` }).from(jobs),
+    database.select({ count: sql<number>`cast(count(*) as integer)` }).from(jobs),
     database
       .select({
-        avgMs: sql<number>`(coalesce(round(avg(${scrapeResults.durationMs})), 0))::int`,
+        avgMs: sql<number>`cast(coalesce(round(avg(${scrapeResults.durationMs})), 0) as integer)`,
       })
       .from(scrapeResults),
   ]);
