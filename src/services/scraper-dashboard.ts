@@ -715,12 +715,16 @@ export async function getScraperDashboardData(
           recentRuns: [],
         })),
       });
-  const dataPromise = database.transaction(async (tx) => {
+  // Do not wrap these reads in database.transaction() with Promise.all: Drizzle + pg
+  // concurrent work inside a transaction can drop Next.js App Router AsyncLocalStorage
+  // (request context for cookies/headers), which throws "Access to storage is not allowed
+  // from this context". Same rationale as app/overzicht/data.ts getOverviewData.
+  const dataPromise = (async () => {
     const [analytics, configs, recentRuns, recentWindowRows, overlapCandidates] = await Promise.all(
       [
-        getAnalytics(tx),
-        tx.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
-        tx
+        getAnalytics(database),
+        database.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
+        database
           .select({
             id: scrapeResults.id,
             configId: scrapeResults.configId,
@@ -736,7 +740,7 @@ export async function getScraperDashboardData(
           .from(scrapeResults)
           .orderBy(desc(scrapeResults.runAt))
           .limit(runLimit),
-        tx
+        database
           .select({
             platform: scrapeResults.platform,
             runs: sql<number>`count(*)::int`,
@@ -748,7 +752,7 @@ export async function getScraperDashboardData(
           .from(scrapeResults)
           .where(gte(scrapeResults.runAt, last24Hours))
           .groupBy(scrapeResults.platform),
-        tx
+        database
           .select({
             id: jobs.id,
             platform: jobs.platform,
@@ -771,7 +775,7 @@ export async function getScraperDashboardData(
     );
 
     return { analytics, configs, recentRuns, recentWindowRows, overlapCandidates };
-  });
+  })();
 
   const [trigger, data, activeVacancies] = await Promise.all([
     triggerPromise,

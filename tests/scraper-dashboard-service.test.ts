@@ -74,6 +74,7 @@ function createMockDatabase(queryResults: unknown[][]) {
 
   const tx = { select };
   const database = {
+    select,
     transaction: vi.fn(async (callback: (input: typeof tx) => Promise<unknown>) => callback(tx)),
   };
 
@@ -160,8 +161,8 @@ describe("getScraperDashboardData", () => {
       "opdrachtoverheid",
       "striive",
     ]);
-    expect(singlePlatformDb.database.transaction).toHaveBeenCalledTimes(1);
-    expect(multiPlatformDb.database.transaction).toHaveBeenCalledTimes(1);
+    expect(singlePlatformDb.database.transaction).not.toHaveBeenCalled();
+    expect(multiPlatformDb.database.transaction).not.toHaveBeenCalled();
     expect(singlePlatformDb.select).toHaveBeenCalled();
     expect(multiPlatformDb.select).toHaveBeenCalled();
     expect(multiPlatformDb.select.mock.calls.length).toBe(

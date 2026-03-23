@@ -177,26 +177,6 @@ function createNormalizedPersistTx() {
   };
 }
 
-function _createLegacyPersistTx(existingMessages: UIMessage[]) {
-  const sessionOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
-  const sessionValues = vi.fn(() => ({ onConflictDoUpdate: sessionOnConflictDoUpdate }));
-  const updateSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
-
-  return {
-    tx: {
-      execute: vi.fn().mockResolvedValue(undefined),
-      insert: vi.fn(() => ({ values: sessionValues })),
-      select: vi.fn(() => ({
-        from: vi.fn(() => createResolvedChain([{ messages: existingMessages }])),
-      })),
-      update: vi.fn(() => ({ set: updateSet })),
-    },
-    sessionOnConflictDoUpdate,
-    sessionValues,
-    updateSet,
-  };
-}
-
 type TransactionCallback = (tx: unknown) => Promise<unknown>;
 
 describe("chat session compatibility fallback", () => {
