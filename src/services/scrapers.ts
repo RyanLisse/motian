@@ -452,12 +452,12 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
         authMode: row?.authMode ?? definition?.authMode ?? "none",
         attributionLabel:
           row?.attributionLabel ?? definition?.attributionLabel ?? fallbackDisplayName(slug),
-        description: row?.description ?? definition?.description ?? "",
+        description: definition?.description ?? row?.description ?? "",
         capabilities:
           (Array.isArray(row?.capabilities) ? (row?.capabilities as string[]) : undefined) ??
           definition?.capabilities ??
           [],
-        docsUrl: row?.docsUrl ?? definition?.docsUrl ?? null,
+        docsUrl: definition?.docsUrl ?? row?.docsUrl ?? null,
         defaultBaseUrl: row?.defaultBaseUrl ?? definition?.defaultBaseUrl ?? null,
         configSchema:
           (row?.configSchema as Record<string, unknown> | undefined) ??

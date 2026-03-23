@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 const { state, db, getPlatformAdapter, getPlatformDefinition, listPlatformDefinitions } =
   vi.hoisted(() => {
@@ -213,6 +214,7 @@ vi.mock("../src/lib/crypto", () => ({
 import {
   didConnectionSettingsChange,
   encryptAuthConfig,
+  listPlatformCatalog,
   triggerTestRun,
   validateConfig,
 } from "../src/services/scrapers";
@@ -246,6 +248,49 @@ describe("platform config service regressions", () => {
     getPlatformDefinition.mockClear();
     listPlatformDefinitions.mockClear();
     getPlatformAdapter.mockReturnValue(undefined);
+  });
+
+  it("prefers built-in platform docs metadata over stale catalog rows", async () => {
+    const werkzoekenDefinition = {
+      slug: "werkzoeken",
+      displayName: "Werkzoeken",
+      adapterKind: "http_html_list_detail",
+      authMode: "none",
+      attributionLabel: "Werkzoeken.nl",
+      capabilities: ["configurable_path", "pagination"],
+      description: "Publieke SSR vacaturekaartjes met de officiële documentatie",
+      docsUrl: "https://www.werkzoeken.nl/doc/",
+      defaultBaseUrl: "https://www.werkzoeken.nl",
+      configSchema: z.object({ sourcePath: z.string().optional() }),
+      authSchema: z.object({}),
+    };
+
+    listPlatformDefinitions.mockReturnValue([werkzoekenDefinition]);
+    getPlatformDefinition.mockImplementation((slug: string) =>
+      slug === "werkzoeken" ? werkzoekenDefinition : null,
+    );
+    state.platformCatalog = [
+      {
+        slug: "werkzoeken",
+        displayName: "Werkzoeken",
+        adapterKind: "http_html_list_detail",
+        authMode: "none",
+        attributionLabel: "Werkzoeken.nl",
+        description: "Stale description from an older seed",
+        capabilities: ["configurable_path", "pagination"],
+        docsUrl: "https://www.werkzoeken.nl/vacatures-voor/techniek/",
+        defaultBaseUrl: "https://www.werkzoeken.nl",
+        isEnabled: true,
+        isSelfServe: true,
+        updatedAt: new Date(),
+      },
+    ];
+
+    const catalog = await listPlatformCatalog();
+    const werkzoeken = catalog.find((entry) => entry.slug === "werkzoeken");
+
+    expect(werkzoeken?.description).toBe(werkzoekenDefinition.description);
+    expect(werkzoeken?.docsUrl).toBe(werkzoekenDefinition.docsUrl);
   });
 
   it("redacts secret config fields when unsupported platforms are validated or test-imported", async () => {

@@ -1,11 +1,10 @@
-import { ExternalLink } from "lucide-react";
 import { PlatformBadge } from "@/components/scraper/platform-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { PlatformCatalogEntryView } from "@/src/services/scrapers";
+import type { PlatformCatalogEntry } from "@/src/schemas/platform-catalog";
 import { PlatformCatalogCreateDrawer } from "./platform-catalog-create-drawer";
 import { PlatformOnboardingDrawer } from "./platform-onboarding-drawer";
 
-export function PlatformCatalogList({ entries }: { entries: PlatformCatalogEntryView[] }) {
+export function PlatformCatalogList({ entries }: { entries: PlatformCatalogEntry[] }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="border-dashed border-border bg-card lg:col-span-2">
@@ -33,17 +32,6 @@ export function PlatformCatalogList({ entries }: { entries: PlatformCatalogEntry
                   <CardTitle className="text-base">{entry.displayName}</CardTitle>
                 </div>
                 <p className="text-sm text-muted-foreground">{entry.description}</p>
-                {entry.docsUrl ? (
-                  <a
-                    href={entry.docsUrl}
-                    rel="noreferrer"
-                    target="_blank"
-                    className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
-                  >
-                    Documentatie openen
-                    <ExternalLink className="size-3.5" />
-                  </a>
-                ) : null}
               </div>
               <PlatformOnboardingDrawer entry={entry} />
             </div>
@@ -59,6 +47,18 @@ export function PlatformCatalogList({ entries }: { entries: PlatformCatalogEntry
               {entry.latestRun?.blockerKind ? ` · blocker: ${entry.latestRun.blockerKind}` : ""}
             </p>
             <p>Config: {entry.config ? entry.config.baseUrl : "Nog geen runtime configuratie"}</p>
+            {entry.docsUrl?.startsWith("http") ? (
+              <p>
+                <a
+                  href={entry.docsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-foreground underline underline-offset-4"
+                >
+                  Documentatie openen
+                </a>
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       ))}

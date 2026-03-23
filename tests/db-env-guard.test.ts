@@ -44,4 +44,16 @@ describe("@motian/db build safety", () => {
     expect(getDatabaseDialect()).toBe("postgres");
     expect(isPostgresDatabase()).toBe(true);
   }, 120_000);
+
+  it("exposes execute on the Turso fallback client", async () => {
+    vi.stubEnv("TURSO_DATABASE_URL", "file::memory:");
+
+    const dbModule = await import("../packages/db/src/index");
+    const tursoDb = dbModule.db as typeof dbModule.db & {
+      execute(query: unknown): Promise<{ rows: Array<{ x: number }> }>;
+    };
+    const result = await tursoDb.execute(dbModule.sql`select 1 as x`);
+
+    expect(result.rows).toEqual([{ x: 1 }]);
+  }, 120_000);
 });
