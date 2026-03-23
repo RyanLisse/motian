@@ -48,7 +48,6 @@ function createTursoDatabaseClient(config: {
     config.url.startsWith("libsql://") ||
     config.url.startsWith("https://") ||
     config.url.startsWith("wss://");
-
   if (isRemote && !config.authToken) {
     throw new Error(
       "TURSO_AUTH_TOKEN ontbreekt voor een remote TURSO_DATABASE_URL. Stel TURSO_AUTH_TOKEN in.",
@@ -81,8 +80,9 @@ function createDatabaseClient(): DatabaseClient {
   }
 
   if (tursoConfig) {
+    const client = createTursoDatabaseClient(tursoConfig);
     selectedDatabaseDialect = "sqlite";
-    return createTursoDatabaseClient(tursoConfig);
+    return client;
   }
 
   throw new Error(
@@ -105,9 +105,7 @@ export function getDatabaseDialect(): DatabaseDialect {
   }
 
   if (!selectedDatabaseDialect) {
-    throw new Error(
-      "Database dialect not initialized. Ensure getDatabaseClient() succeeds before calling getDatabaseDialect().",
-    );
+    throw new Error("Database dialect not initialized—ensure getDatabaseClient succeeded.");
   }
 
   return selectedDatabaseDialect;
