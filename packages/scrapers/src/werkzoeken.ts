@@ -19,13 +19,25 @@ import {
 const WERKZOEKEN_FETCH_TIMEOUT_MS = 20_000;
 const DEFAULT_WERKZOEKEN_ORIGIN = "https://www.werkzoeken.nl";
 const DEFAULT_REQUEST_HEADERS = {
-  Accept: "text/html,application/xhtml+xml",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
   "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
-  "User-Agent": "Mozilla/5.0 (compatible; MotianBot/1.0)",
+  "Cache-Control": "no-cache",
+  Pragma: "no-cache",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "same-origin",
+  "Upgrade-Insecure-Requests": "1",
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
 };
 const RETRYABLE_FETCH_STATUSES = new Set([403, 429]);
 const FETCH_RETRY_ATTEMPTS = 3;
 const FETCH_RETRY_DELAY_MS = 500;
+
+type WerkzoekenSession = {
+  cookieHeader?: string;
+  referer: string;
+};
 
 function parseSalaryValue(value: string | undefined): number | undefined {
   if (!value) return undefined;
@@ -71,6 +83,53 @@ function resolveWerkzoekenSourceUrl(baseUrl: string, sourcePath: string): URL {
   }
 
   return sourceUrl;
+}
+
+function extractWerkzoekenCookieHeader(response: Response): string | undefined {
+  const headers = response.headers as Headers & { getSetCookie?: () => string[] };
+  const setCookies =
+    headers.getSetCookie?.() ??
+    (response.headers.get("set-cookie") ? [response.headers.get("set-cookie") as string] : []);
+
+  const cookies = setCookies
+    .map((value) => value.split(";", 1)[0]?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  return cookies.length > 0 ? cookies.join("; ") : undefined;
+}
+
+async function fetchWerkzoekenResponse(
+  url: string,
+  options?: Partial<WerkzoekenSession>,
+): Promise<Response> {
+  const headers = new Headers(DEFAULT_REQUEST_HEADERS);
+  headers.set("Referer", options?.referer ?? DEFAULT_WERKZOEKEN_ORIGIN);
+
+  if (options?.cookieHeader) {
+    headers.set("Cookie", options.cookieHeader);
+  }
+
+  return fetch(url, {
+    headers,
+    signal: AbortSignal.timeout(WERKZOEKEN_FETCH_TIMEOUT_MS),
+  });
+}
+
+async function bootstrapWerkzoekenSession(
+  baseUrl: string,
+  sourcePath: string,
+): Promise<WerkzoekenSession> {
+  const sourceUrl = resolveWerkzoekenSourceUrl(baseUrl, sourcePath);
+  const response = await fetchWerkzoekenResponse(sourceUrl.toString());
+
+  if (!response.ok) {
+    throw new Error(`Werkzoeken session bootstrap mislukt voor ${sourceUrl}: ${response.status}`);
+  }
+
+  return {
+    cookieHeader: extractWerkzoekenCookieHeader(response),
+    referer: sourceUrl.toString(),
+  };
 }
 
 export function buildWerkzoekenListPageUrl(
@@ -172,12 +231,9 @@ export function parseWerkzoekenDetailPage(
   };
 }
 
-async function fetchHtml(url: string): Promise<string> {
+async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Promise<string> {
   for (let attempt = 1; attempt <= FETCH_RETRY_ATTEMPTS; attempt += 1) {
-    const response = await fetch(url, {
-      headers: DEFAULT_REQUEST_HEADERS,
-      signal: AbortSignal.timeout(WERKZOEKEN_FETCH_TIMEOUT_MS),
-    });
+    const response = await fetchWerkzoekenResponse(url, session);
 
     if (response.ok) {
       return response.text();
@@ -198,6 +254,7 @@ async function fetchHtml(url: string): Promise<string> {
 async function enrichWerkzoekenListings(
   listings: RawScrapedListing[],
   detailConcurrency: number,
+  session?: Partial<WerkzoekenSession>,
   limit?: number,
 ): Promise<RawScrapedListing[]> {
   const bounded = listings.slice(0, limit ?? listings.length);
@@ -209,7 +266,7 @@ async function enrichWerkzoekenListings(
       batch.map(async (listing) => {
         const externalUrl = String(listing.externalUrl ?? "");
         try {
-          const detailHtml = await fetchHtml(externalUrl);
+          const detailHtml = await fetchHtml(externalUrl, session);
           return {
             ...listing,
             ...parseWerkzoekenDetailPage(detailHtml, externalUrl),
@@ -234,6 +291,7 @@ async function scrapeWerkzoekenInternal(
   const pnrStep = parsePositiveInteger(config.parameters.pnrStep, 10);
   const detailConcurrency = parsePositiveInteger(config.parameters.detailConcurrency, 4);
   const skipDetail = Boolean(config.parameters.skipDetailEnrichment);
+  const session = await bootstrapWerkzoekenSession(config.baseUrl, sourcePath);
 
   // pnr= returns cumulative results (pnr=10 -> 500 results).
   // We use sliding window (fetch pnr=10, 20, 30...) to minimize redundant bandwidth.
@@ -242,7 +300,7 @@ async function scrapeWerkzoekenInternal(
 
   for (let page = pnrStep; page <= maxPages + pnrStep - 1; page += pnrStep) {
     const url = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, page);
-    const html = await fetchHtml(url);
+    const html = await fetchHtml(url, session);
     const parsed = parseWerkzoekenListingCards(html, config.baseUrl);
 
     // Filter out listings already seen from previous cumulative pages
@@ -289,6 +347,7 @@ async function scrapeWerkzoekenInternal(
   const enriched = await enrichWerkzoekenListings(
     listings,
     detailConcurrency,
+    session,
     options?.limit ?? (options?.smoke ? 3 : undefined),
   );
 
@@ -305,7 +364,8 @@ export const werkzoekenAdapter: PlatformAdapter = {
   async validate(config: PlatformRuntimeConfig): Promise<PlatformValidationResult> {
     const sourcePath = String(config.parameters.sourcePath ?? "/vacatures-voor/techniek/");
     const url = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, 1);
-    const html = await fetchHtml(url);
+    const session = await bootstrapWerkzoekenSession(config.baseUrl, sourcePath);
+    const html = await fetchHtml(url, session);
     const listings = parseWerkzoekenListingCards(html, config.baseUrl);
 
     if (listings.length === 0) {

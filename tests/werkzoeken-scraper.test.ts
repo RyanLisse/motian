@@ -195,6 +195,16 @@ describe("Werkzoeken scraper", () => {
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
 
+      if (url === "https://www.werkzoeken.nl/vacatures-voor/techniek/") {
+        return new Response(LISTING_HTML, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html",
+            "set-cookie": "Werkzoeken=session-cookie; path=/; HttpOnly",
+          },
+        });
+      }
+
       if (url.includes("/vacatures-voor/techniek/")) {
         listingFetchAttempts += 1;
         if (listingFetchAttempts === 1) {
@@ -245,6 +255,83 @@ describe("Werkzoeken scraper", () => {
     expect(result.listings).toHaveLength(1);
   });
 
+  it("bootstraps a cookie session before requesting the cumulative pnr page", async () => {
+    const requestedHeaders: Array<{ url: string; cookie: string | null; referer: string | null }> =
+      [];
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const headers = new Headers(init?.headers);
+      requestedHeaders.push({
+        url,
+        cookie: headers.get("Cookie"),
+        referer: headers.get("Referer"),
+      });
+
+      if (url === "https://www.werkzoeken.nl/vacatures-voor/techniek/") {
+        return new Response(LISTING_HTML, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html",
+            "set-cookie": "Werkzoeken=session-cookie; path=/; HttpOnly",
+          },
+        });
+      }
+
+      if (url.includes("?pnr=10")) {
+        if (headers.get("Cookie")?.includes("Werkzoeken=session-cookie")) {
+          return new Response(LISTING_HTML, {
+            status: 200,
+            headers: { "Content-Type": "text/html" },
+          });
+        }
+
+        return new Response("forbidden", {
+          status: 403,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (url.includes("/vacature/15167751-werkvoorbereider-engineer-hvac")) {
+        return new Response(DETAIL_HTML, {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      return new Response("<html><body>Geen extra resultaten</body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    }) as typeof fetch;
+
+    const result = await werkzoekenAdapter.scrape(
+      {
+        slug: "werkzoeken",
+        baseUrl: "https://www.werkzoeken.nl",
+        parameters: {
+          sourcePath: "/vacatures-voor/techniek/",
+          maxPages: 10,
+          pnrStep: 10,
+          detailConcurrency: 1,
+          skipDetailEnrichment: true,
+        },
+        auth: {},
+      },
+      { limit: 1 },
+    );
+
+    expect(result.blockerKind).toBeUndefined();
+    expect(result.errors).toBeUndefined();
+    expect(result.listings).toHaveLength(1);
+    expect(requestedHeaders[0]?.url).toBe("https://www.werkzoeken.nl/vacatures-voor/techniek/");
+    expect(requestedHeaders[1]?.url).toBe(
+      "https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=10",
+    );
+    expect(requestedHeaders[1]?.cookie).toBe("Werkzoeken=session-cookie");
+    expect(requestedHeaders[1]?.referer).toBe("https://www.werkzoeken.nl/vacatures-voor/techniek/");
+  });
+
   it("jumps pages correctly with variable pnrStep values (e.g., pnrStep: 2)", async () => {
     const adapter = werkzoekenAdapter;
     let callCount = 0;
@@ -255,28 +342,66 @@ describe("Werkzoeken scraper", () => {
       requestedUrls.push(urlStr);
       callCount++;
 
-      // Return a unique listing for each call to allow pagination to continue
-      if (callCount <= 2) {
-        const id = callCount === 1 ? "1" : "2";
-        const mockHtml = `
-          <div class="vacancy-list">
-            <a data-vacancyid="${id}" class="vacancy vac" href="/vacature/${id}">
-              <h3>Job ${id}</h3>
-            </a>
-          </div>
-        `;
-        return new Response(`<html><body>${mockHtml}</body></html>`, {
+      if (urlStr === "https://www.werkzoeken.nl/vacatures-voor/techniek/") {
+        return new Response(LISTING_HTML, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html",
+            "set-cookie": "Werkzoeken=session-cookie; path=/; HttpOnly",
+          },
+        });
+      }
+
+      if (urlStr.includes("?pnr=2")) {
+        const listingHtml = LISTING_HTML.replace(/15167751/g, "11111111").replace(
+          "Werkvoorbereider/Engineer HVAC tot &euro;4.800 bruto per maand",
+          "Job 1",
+        );
+        return new Response(`<html><body>${listingHtml}</body></html>`, {
           status: 200,
           headers: { "Content-Type": "text/html" },
         });
       }
-      return new Response(
-        '<html><body><div class="no-results">Geen resultaten</div></body></html>',
-        {
+
+      if (urlStr.includes("?pnr=4")) {
+        const listingHtml = LISTING_HTML.replace(/15167751/g, "22222222").replace(
+          "Werkvoorbereider/Engineer HVAC tot &euro;4.800 bruto per maand",
+          "Job 2",
+        );
+        return new Response(`<html><body>${listingHtml}</body></html>`, {
           status: 200,
           headers: { "Content-Type": "text/html" },
-        },
-      );
+        });
+      }
+
+      if (urlStr.includes("?pnr=6")) {
+        return new Response(
+          '<html><body><div class="no-results">Geen resultaten</div></body></html>',
+          {
+            status: 200,
+            headers: { "Content-Type": "text/html" },
+          },
+        );
+      }
+
+      if (urlStr.includes("/vacature/11111111")) {
+        return new Response(DETAIL_HTML.replace(/15167751/g, "11111111"), {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      if (urlStr.includes("/vacature/22222222")) {
+        return new Response(DETAIL_HTML.replace(/15167751/g, "22222222"), {
+          status: 200,
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      return new Response("<html><body>Geen extra resultaten</body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
     }) as typeof fetch;
 
     const config = {
@@ -296,10 +421,11 @@ describe("Werkzoeken scraper", () => {
     // 1. Initial (pnr=2)
     // 2. pnr=4 (2 + 2)
     // 3. pnr=6 (4 + 2) - this returns empty
+    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/");
     expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=2");
     expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=4");
     expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=6");
-    expect(callCount).toBe(5); // 3 listing pages + 2 detail pages
+    expect(callCount).toBe(6); // bootstrap + 3 listing pages + 2 detail pages
   });
 
   it("falls back to sane pagination and concurrency defaults when config numbers are invalid", async () => {
