@@ -312,8 +312,8 @@ describe("Opdrachten UI/API contracts", () => {
     expect(layout).toContain('import { listJobs } from "@/src/services/jobs"');
     expect(layout).toContain('getJobStatusCondition("open")');
     expect(layout).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
-    // SQLite uses json_each() instead of PostgreSQL's jsonb_array_elements_text()
-    expect(layout).toContain("json_each");
+    // PostgreSQL uses jsonb_array_elements_text() for JSON array iteration
+    expect(layout).toContain("jsonb_array_elements_text");
     expect(layout).toContain(
       'import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary"',
     );

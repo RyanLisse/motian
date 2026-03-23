@@ -14,26 +14,22 @@ export type DatabaseDialect = "postgres" | "sqlite";
 let selectedDatabaseDialect: DatabaseDialect | undefined;
 
 function getNeonUrl(): string | undefined {
-  const url = process.env.DATABASE_URL?.trim();
-  return url ? url : undefined;
+  return process.env.DATABASE_URL?.trim();
 }
 
-function getTursoConfig():
-  | {
-      url: string;
-      authToken: string | undefined;
-    }
-  | undefined {
+function getTursoConfig(): { url: string; authToken: string | undefined } | undefined {
   const url = process.env.TURSO_DATABASE_URL?.trim();
-  if (!url) return undefined;
+  if (!url) {
+    return undefined;
+  }
 
   return {
     url,
-    authToken: process.env.TURSO_AUTH_TOKEN?.trim(),
+    authToken: process.env.TURSO_AUTH_TOKEN?.trim() || undefined,
   };
 }
 
-function createNeonDatabaseClient(url: string) {
+function createNeonDatabaseClient(url: string): DatabaseClient {
   const pool = new Pool({
     connectionString: url,
     max: 5,
@@ -44,7 +40,10 @@ function createNeonDatabaseClient(url: string) {
   return drizzlePg(pool);
 }
 
-function createTursoDatabaseClient(config: { url: string; authToken: string | undefined }) {
+function createTursoDatabaseClient(config: {
+  url: string;
+  authToken: string | undefined;
+}): DatabaseClient {
   const isRemote =
     config.url.startsWith("libsql://") ||
     config.url.startsWith("https://") ||
@@ -56,10 +55,10 @@ function createTursoDatabaseClient(config: { url: string; authToken: string | un
   }
 
   const client = createClient(config);
-  return drizzleLibsql(client);
+  return drizzleLibsql(client) as unknown as DatabaseClient;
 }
 
-function createDatabaseClient() {
+function createDatabaseClient(): DatabaseClient {
   const neonUrl = getNeonUrl();
   const tursoConfig = getTursoConfig();
 
@@ -91,12 +90,12 @@ function createDatabaseClient() {
   );
 }
 
-type DatabaseClient = ReturnType<typeof createTursoDatabaseClient>;
+type DatabaseClient = ReturnType<typeof drizzlePg>;
 
 let databaseClient: DatabaseClient | undefined;
 
 function getDatabaseClient(): DatabaseClient {
-  databaseClient ??= createDatabaseClient() as unknown as DatabaseClient;
+  databaseClient ??= createDatabaseClient();
   return databaseClient;
 }
 

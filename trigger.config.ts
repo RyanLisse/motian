@@ -32,8 +32,6 @@ export default defineConfig({
       "pg",
       "pg-native", // Optional native bindings
       "drizzle-orm/pg-core",
-      "drizzle-orm/libsql",
-      "@libsql/client",
       "playwright",
       "playwright-core",
       "chromium-bidi",

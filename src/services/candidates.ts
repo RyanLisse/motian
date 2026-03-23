@@ -91,7 +91,6 @@ function candidateNameCondition(query: string) {
 
 function candidateSkillsCondition(skillsQuery: string) {
   const pattern = `%${escapeLike(skillsQuery).toLocaleLowerCase("nl-NL")}%`;
-
   return isPostgresDatabase()
     ? sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}::jsonb) AS t(value) WHERE lower(t.value) LIKE ${pattern} ESCAPE '\\')`
     : sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE lower(value) LIKE ${pattern} ESCAPE '\\')`;

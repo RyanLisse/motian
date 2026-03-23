@@ -7,16 +7,7 @@ type DedupableJob = Pick<Job, "title" | "company" | "endClient" | "province" | "
 
 type DedupedJobIdRow = { id: string };
 type DedupedJobPageRow = { id: string | null; total: number | string | null };
-type JobsDeduplicationMode = "normalized";
-type ResolvedJobsDeduplicationMode = JobsDeduplicationMode;
-
-const JOBS_DEDUPE_COLUMN_NAMES = [
-  "dedupe_title_normalized",
-  "dedupe_client_normalized",
-  "dedupe_location_normalized",
-] as const;
-
-let jobsDeduplicationMode: ResolvedJobsDeduplicationMode = "normalized";
+type ResolvedJobsDeduplicationMode = "normalized";
 
 function normalizeDeduplicationPart(value: string | null | undefined) {
   return (value ?? "")
@@ -64,39 +55,6 @@ function getListSortOrderSql(sortBy: ListJobsSortBy = "nieuwste") {
         resultOrderBy: sql`case when scraped_at is null then 1 else 0 end, scraped_at desc, id desc`,
       };
   }
-}
-
-function setJobsDeduplicationMode(
-  mode: ResolvedJobsDeduplicationMode,
-): ResolvedJobsDeduplicationMode {
-  jobsDeduplicationMode = mode;
-  return mode;
-}
-
-function readBooleanResult(value: boolean | number | string | null | undefined): boolean {
-  if (typeof value === "boolean") {
-    return value;
-  }
-
-  if (typeof value === "number") {
-    return value !== 0;
-  }
-
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return normalized === "true" || normalized === "t" || normalized === "1";
-  }
-
-  return false;
-}
-
-function quoteIdentifier(identifier: string): string {
-  return `"${identifier.replaceAll('"', '""')}"`;
-}
-
-async function jobsDeduplicationHelpersNeedBackfill(): Promise<boolean> {
-  // SQLite schema already includes dedup columns - no backfill needed
-  return false;
 }
 
 function getDeduplicationFallbackExpression(value: SQL): SQL {

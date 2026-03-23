@@ -60,7 +60,7 @@ export async function deleteMessage(id: string): Promise<boolean> {
     .update(messages)
     .set({ deletedAt: new Date() })
     .where(and(eq(messages.id, id), isNull(messages.deletedAt)));
-  return (result.rowsAffected ?? 0) > 0;
+  return (result.rowCount ?? 0) > 0;
 }
 
 export async function createMessage(data: {

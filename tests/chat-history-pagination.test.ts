@@ -51,8 +51,8 @@ describe("chat history pagination architecture", () => {
     expect(service).toContain("encodeMessageCursor");
     expect(service).toContain("lt(chatSessionMessages.orderIndex, cursor)");
 
-    // SQLite uses sqliteTable instead of pgTable
-    expect(schema).toContain("export const chatSessionMessages = sqliteTable(");
+    // PostgreSQL uses pgTable
+    expect(schema).toContain("export const chatSessionMessages = pgTable(");
     expect(schema).toContain('"chat_session_messages"');
   });
 });
