@@ -7,8 +7,7 @@ type DedupableJob = Pick<Job, "title" | "company" | "endClient" | "province" | "
 
 type DedupedJobIdRow = { id: string };
 type DedupedJobPageRow = { id: string | null; total: number | string | null };
-type JobsDeduplicationMode = "normalized";
-type ResolvedJobsDeduplicationMode = JobsDeduplicationMode;
+type ResolvedJobsDeduplicationMode = "normalized";
 
 function normalizeDeduplicationPart(value: string | null | undefined) {
   return (value ?? "")

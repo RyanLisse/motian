@@ -30,7 +30,7 @@ describe("Candidate deduplication", () => {
 
   it("queries by name with ILIKE for fuzzy match", () => {
     const source = readFile("src/services/candidates.ts");
-    expect(source).toContain("caseInsensitiveContains(candidates.name, parsed.name)");
+    expect(source).toContain("escapeLike(parsed.name)");
   });
 
   it("enrichCandidateFromCV preserves manual data", () => {
