@@ -5,7 +5,12 @@ import { withApiHandler } from "@/src/lib/api-handler";
 export const dynamic = "force-dynamic";
 
 export const POST = withApiHandler(
-  async (_request: Request, { params }: { params: Promise<{ platform: string }> }) => {
+  async (request: Request, { params }: { params: Promise<{ platform: string }> }) => {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { platform } = await params;
 
     const [config] = await db
