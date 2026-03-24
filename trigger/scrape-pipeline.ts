@@ -49,7 +49,7 @@ export const scrapePipelineTask = schedules.task({
     pattern: "0 * * * *", // Elk uur; per-platform cronExpression in de DB bepaalt wat echt due is
     timezone: "Europe/Amsterdam",
   },
-  maxDuration: 600, // 10 minutes — allows headroom for Firecrawl fallback retries and NVB province sharding
+  maxDuration: 900, // 15 minutes — NVB province sharding (12 provinces × paginated) needs full headroom
   run: async () => {
     const activeConfigs = await db
       .select()
