@@ -122,16 +122,44 @@ describe("mapSkillInput", () => {
   });
 
   it("sets reviewRequired when critical and alias confidence below threshold", async () => {
-    const escoUri = "http://data.europa.eu/esco/skill/react";
+    const escoUri = "http://data.europa.eu/esco/skill/vue";
     mockLimit.mockResolvedValueOnce([{ escoUri, confidence: 0.5 }]);
 
     const result = await mapSkillInput({
       ...baseInput,
-      rawSkill: "react",
+      rawSkill: "vue",
       critical: true,
     });
 
     expect(result.strategy).toBe("alias");
     expect(result.reviewRequired).toBe(true);
+  });
+
+  it("reuses cached alias lookups for repeated raw skills while persisting each mapping event", async () => {
+    const escoUri = "http://data.europa.eu/esco/skill/redux";
+    mockLimit.mockResolvedValueOnce([{ escoUri, confidence: 0.9 }]);
+
+    const first = await mapSkillInput({
+      ...baseInput,
+      rawSkill: "Redux",
+      contextId: "job-1",
+      contextType: "job",
+    });
+    const second = await mapSkillInput({
+      ...baseInput,
+      rawSkill: "Redux",
+      contextId: "job-2",
+      contextType: "job",
+    });
+
+    expect(first).toEqual({
+      escoUri,
+      confidence: 0.9,
+      strategy: "alias",
+      reviewRequired: false,
+    });
+    expect(second).toEqual(first);
+    expect(mockLimit).toHaveBeenCalledTimes(1);
+    expect(mockDb.insert).toHaveBeenCalledTimes(2);
   });
 });

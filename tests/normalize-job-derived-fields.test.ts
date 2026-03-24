@@ -7,6 +7,7 @@ const {
   mockOnConflictDoUpdate,
   mockReturning,
   mockValues,
+  mockIsEscoCatalogAvailable,
   mockSyncJobEscoSkills,
 } = vi.hoisted(() => {
   const mockReturning = vi.fn();
@@ -23,6 +24,7 @@ const {
     mockInsert,
     mockOnConflictDoUpdate,
     mockReturning,
+    mockIsEscoCatalogAvailable: vi.fn().mockResolvedValue(true),
     mockSyncJobEscoSkills: vi.fn(),
     mockValues,
   };
@@ -32,7 +34,10 @@ vi.mock("../src/db", async (importOriginal) => ({
   ...(await importOriginal()),
   db: mockDb,
 }));
-vi.mock("../src/services/esco", () => ({ syncJobEscoSkills: mockSyncJobEscoSkills }));
+vi.mock("../src/services/esco", () => ({
+  isEscoCatalogAvailable: mockIsEscoCatalogAvailable,
+  syncJobEscoSkills: mockSyncJobEscoSkills,
+}));
 
 import {
   chunkJobInsertBatches,
@@ -43,6 +48,7 @@ import {
 describe("normalizeAndSaveJobs derived fields", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsEscoCatalogAvailable.mockResolvedValue(true);
     mockReturning.mockResolvedValue([{ id: "job-1", externalId: "derived-1", isNew: true }]);
     mockSyncJobEscoSkills.mockResolvedValue(undefined);
   });

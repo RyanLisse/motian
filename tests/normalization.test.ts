@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { normalizeAndSaveJobs } from "../src/services/normalize";
 
+const { mockSyncJobEscoSkills, mockIsEscoCatalogAvailable } = vi.hoisted(() => ({
+  mockSyncJobEscoSkills: vi.fn().mockResolvedValue(undefined),
+  mockIsEscoCatalogAvailable: vi.fn().mockResolvedValue(true),
+}));
+
 const mockValues = vi.fn().mockImplementation(() => ({
   onConflictDoUpdate: vi.fn().mockReturnThis(),
   returning: vi.fn().mockResolvedValue([{ id: "uuid-1", externalId: "ext-1", isNew: true }]),
@@ -16,12 +21,14 @@ vi.mock("../src/db", async (importOriginal) => ({
 }));
 
 vi.mock("../src/services/esco", () => ({
-  syncJobEscoSkills: vi.fn().mockResolvedValue(undefined),
+  isEscoCatalogAvailable: mockIsEscoCatalogAvailable,
+  syncJobEscoSkills: mockSyncJobEscoSkills,
 }));
 
 describe("normalizeAndSaveJobs regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsEscoCatalogAvailable.mockResolvedValue(true);
   });
 
   it("should verify HTML stripping and range clamping", async () => {
@@ -64,5 +71,24 @@ describe("normalizeAndSaveJobs regression", () => {
     expect(valuesCall[1].endClient).toBe("Client X");
     expect(valuesCall[1].hoursPerWeek).toBe(168);
     expect(valuesCall[1].minHoursPerWeek).toBe(1);
+  });
+
+  it("skips ESCO sync entirely when the canonical ESCO catalog is unavailable", async () => {
+    mockIsEscoCatalogAvailable.mockResolvedValue(false);
+
+    await normalizeAndSaveJobs("test-platform", [
+      {
+        externalId: "ext-1",
+        externalUrl: "https://example.com/1",
+        title: "Software Engineer",
+        description: "This is a very long description that should pass validation.",
+        requirements: [{ description: "React", isKnockout: true }],
+        competences: ["TypeScript"],
+        status: "open",
+      },
+    ]);
+
+    expect(mockIsEscoCatalogAvailable).toHaveBeenCalledTimes(1);
+    expect(mockSyncJobEscoSkills).not.toHaveBeenCalled();
   });
 });

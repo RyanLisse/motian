@@ -2,7 +2,7 @@ import type { z } from "zod";
 import { stripHtml } from "../../packages/scrapers/src/strip-html";
 import { db, jobs, sql } from "../db";
 import { unifiedJobSchema } from "../schemas/job";
-import { syncJobEscoSkills } from "./esco";
+import { isEscoCatalogAvailable, syncJobEscoSkills } from "./esco";
 
 /** Permissive type for scraped data — Zod validates at runtime via safeParse */
 export type RawScrapedListing = Record<string, unknown>;
@@ -279,6 +279,11 @@ export async function normalizeAndSaveJobs(
         const updated = result.length - inserted;
         jobsNew += inserted;
         duplicates += updated;
+
+        const escoCatalogAvailable = await isEscoCatalogAvailable();
+        if (!escoCatalogAvailable) {
+          continue;
+        }
 
         // Parallel ESCO sync with concurrency cap to avoid exhausting Neon connection pool
         const ESCO_CONCURRENCY = 5;

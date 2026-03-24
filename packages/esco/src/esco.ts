@@ -66,12 +66,123 @@ export type WithCanonicalSkills<T, TCanonicalSkill> = T & {
   canonicalSkills: TCanonicalSkill[];
 };
 
+type CachedSkillResolution = Pick<MapSkillResult, "escoUri" | "confidence" | "strategy">;
+
+const skillResolutionCache = new Map<string, CachedSkillResolution>();
+let escoCatalogAvailablePromise: Promise<boolean> | null = null;
+
 function normalizeRawSkill(raw: string): string {
   return normalizeAlias(raw);
 }
 
 export function isEscoScoringEnabled(): boolean {
   return process.env.ESCO_SCORING_ENABLED !== "false";
+}
+
+export async function isEscoCatalogAvailable(): Promise<boolean> {
+  if (!escoCatalogAvailablePromise) {
+    escoCatalogAvailablePromise = (async () => {
+      try {
+        const [escoCountRow] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(escoSkills)
+          .limit(1);
+        const [aliasCountRow] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(skillAliases)
+          .limit(1);
+
+        return (escoCountRow?.count ?? 0) > 0 || (aliasCountRow?.count ?? 0) > 0;
+      } catch (err) {
+        if (isEscoTableMissing(err)) {
+          return false;
+        }
+        throw err;
+      }
+    })();
+  }
+
+  return escoCatalogAvailablePromise;
+}
+
+function buildSkillResolutionCacheKey(rawSkill: string, language: string): string {
+  return `${language}:${normalizeRawSkill(rawSkill)}`;
+}
+
+async function resolveSkillMatch(
+  rawSkill: string,
+  language: string,
+): Promise<CachedSkillResolution> {
+  const cacheKey = buildSkillResolutionCacheKey(rawSkill, language);
+  const cached = skillResolutionCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const normalized = normalizeRawSkill(rawSkill);
+  const rawEscaped = escapeLike(rawSkill.trim());
+  const resolved = (() => {
+    if (!normalized) {
+      return Promise.resolve({
+        escoUri: null,
+        confidence: 0,
+        strategy: "none",
+      } satisfies CachedSkillResolution);
+    }
+
+    return (async () => {
+      const aliasRows = await db
+        .select({
+          escoUri: skillAliases.escoUri,
+          confidence: skillAliases.confidence,
+        })
+        .from(skillAliases)
+        .where(
+          and(
+            eq(skillAliases.normalizedAlias, normalized),
+            sql`(${skillAliases.language} IS NULL OR ${skillAliases.language} = ${language})`,
+          ),
+        )
+        .limit(1);
+
+      if (aliasRows.length > 0) {
+        return {
+          escoUri: aliasRows[0].escoUri,
+          confidence: aliasRows[0].confidence ?? 0.9,
+          strategy: "alias",
+        } satisfies CachedSkillResolution;
+      }
+
+      const exactRows = await db
+        .select({ uri: escoSkills.uri })
+        .from(escoSkills)
+        .where(
+          or(
+            like(escoSkills.preferredLabelEn, rawEscaped),
+            like(escoSkills.preferredLabelNl, rawEscaped),
+          ),
+        )
+        .limit(1);
+
+      if (exactRows.length > 0) {
+        return {
+          escoUri: exactRows[0].uri,
+          confidence: 0.95,
+          strategy: "exact",
+        } satisfies CachedSkillResolution;
+      }
+
+      return {
+        escoUri: null,
+        confidence: 0,
+        strategy: "none",
+      } satisfies CachedSkillResolution;
+    })();
+  })();
+
+  const result = await resolved;
+  skillResolutionCache.set(cacheKey, result);
+  return result;
 }
 
 export async function mapSkillInput(input: MapSkillInput): Promise<MapSkillResult> {
@@ -83,52 +194,26 @@ export async function mapSkillInput(input: MapSkillInput): Promise<MapSkillResul
     }
 
     const language = input.language ?? "nl";
+    const resolved = await resolveSkillMatch(input.rawSkill, language);
 
-    const aliasRows = await db
-      .select({
-        escoUri: skillAliases.escoUri,
-        confidence: skillAliases.confidence,
-      })
-      .from(skillAliases)
-      .where(
-        and(
-          eq(skillAliases.normalizedAlias, normalized),
-          sql`(${skillAliases.language} IS NULL OR ${skillAliases.language} = ${language})`,
-        ),
-      )
-      .limit(1);
-
-    if (aliasRows.length > 0) {
-      const alias = aliasRows[0];
-      const confidence = alias.confidence ?? 0.9;
+    if (resolved.strategy === "alias") {
+      const confidence = resolved.confidence;
       const reviewRequired = input.critical && confidence < CRITICAL_REVIEW_THRESHOLD;
-      await persistMapping(input, alias.escoUri, "alias", confidence, reviewRequired);
+      await persistMapping(input, resolved.escoUri, "alias", confidence, reviewRequired);
       return {
-        escoUri: alias.escoUri,
+        escoUri: resolved.escoUri,
         confidence,
         strategy: "alias",
         reviewRequired,
       };
     }
 
-    const rawEscaped = escapeLike(input.rawSkill.trim());
-    const exactRows = await db
-      .select({ uri: escoSkills.uri })
-      .from(escoSkills)
-      .where(
-        or(
-          like(escoSkills.preferredLabelEn, rawEscaped),
-          like(escoSkills.preferredLabelNl, rawEscaped),
-        ),
-      )
-      .limit(1);
-
-    if (exactRows.length > 0) {
-      const confidence = 0.95;
+    if (resolved.strategy === "exact") {
+      const confidence = resolved.confidence;
       const reviewRequired = input.critical && confidence < CRITICAL_REVIEW_THRESHOLD;
-      await persistMapping(input, exactRows[0].uri, "exact", confidence, reviewRequired);
+      await persistMapping(input, resolved.escoUri, "exact", confidence, reviewRequired);
       return {
-        escoUri: exactRows[0].uri,
+        escoUri: resolved.escoUri,
         confidence,
         strategy: "exact",
         reviewRequired,
@@ -253,6 +338,10 @@ export async function syncCandidateEscoSkills(input: {
   skills?: unknown;
   skillsStructured?: unknown;
 }): Promise<void> {
+  if (!(await isEscoCatalogAvailable())) {
+    return;
+  }
+
   const seeds = extractCandidateSkillSeeds({
     skills: input.skills,
     skillsStructured:
@@ -290,6 +379,10 @@ export async function syncJobEscoSkills(input: {
   wishes?: unknown;
   competences?: unknown;
 }): Promise<void> {
+  if (!(await isEscoCatalogAvailable())) {
+    return;
+  }
+
   const seeds = extractJobSkillSeeds({
     requirements: Array.isArray(input.requirements) ? input.requirements : [],
     wishes: Array.isArray(input.wishes) ? input.wishes : [],
