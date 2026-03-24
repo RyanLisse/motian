@@ -392,6 +392,49 @@ async function scrapeWerkzoekenInternal(
         break;
       }
 
+      // Content-validation fallback: the site may return HTTP 200 with a captcha/cookie-wall
+      // instead of vacancy cards. Retry via Browserbase (real Chrome) before giving up.
+      if (process.env.BROWSERBASE_API_KEY) {
+        try {
+          const browserbaseHtml = await fetchViaBrowserbase(url);
+          const retryParsed = parseWerkzoekenListingCards(browserbaseHtml, config.baseUrl);
+          const retryNew = retryParsed.filter((l) => {
+            const id = String(l.externalId ?? "");
+            if (!id || seenIds.has(id)) return false;
+            seenIds.add(id);
+            return true;
+          });
+          if (retryNew.length > 0) {
+            // Browserbase succeeded — switch to Browserbase for remaining pages
+            listings.push(...retryNew);
+            session.cookieHeader = undefined; // Clear direct-fetch session
+            // Continue the loop with Browserbase-fetched pages
+            for (
+              let bbPage = page + pnrStep;
+              bbPage <= maxPages + pnrStep - 1;
+              bbPage += pnrStep
+            ) {
+              const bbUrl = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, bbPage);
+              const bbHtml = await fetchViaBrowserbase(bbUrl);
+              const bbParsed = parseWerkzoekenListingCards(bbHtml, config.baseUrl);
+              const bbNew = bbParsed.filter((l) => {
+                const id = String(l.externalId ?? "");
+                if (!id || seenIds.has(id)) return false;
+                seenIds.add(id);
+                return true;
+              });
+              if (bbNew.length === 0) break;
+              listings.push(...bbNew);
+              if (options?.smoke || (options?.limit && listings.length >= options.limit)) break;
+              await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
+            }
+            break; // Exit the main loop — we've handled remaining pages via Browserbase
+          }
+        } catch {
+          // Browserbase also failed — fall through to error
+        }
+      }
+
       return {
         listings,
         errors: ["Geen Werkzoeken vacaturekaarten gevonden op de resultatenpagina"],
