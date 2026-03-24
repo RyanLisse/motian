@@ -5,6 +5,20 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Server components can import DB directly
   serverExternalPackages: ["pg"],
+  async redirects() {
+    return [
+      {
+        source: "/opdrachten/:path*",
+        destination: "/vacatures/:path*",
+        permanent: true,
+      },
+      {
+        source: "/opdrachten",
+        destination: "/vacatures",
+        permanent: true,
+      },
+    ];
+  },
   turbopack: {
     root: process.cwd(),
   },
