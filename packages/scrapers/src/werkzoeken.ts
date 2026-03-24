@@ -272,6 +272,16 @@ async function fetchViaBrowserbase(url: string): Promise<string> {
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
 
+    // Werkzoeken uses CookieYes consent banner — dismiss it so content loads fully
+    await page
+      .evaluate(() => {
+        const btn = document.querySelector<HTMLButtonElement>(".cky-btn-accept");
+        if (btn) btn.click();
+      })
+      .catch(() => {});
+    // Brief settle after consent dismiss
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+
     return await page.content();
   } finally {
     await browser.close();
