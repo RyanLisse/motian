@@ -1,4 +1,4 @@
-import { additionalPackages } from "@trigger.dev/build/extensions/core";
+import { additionalPackages, syncEnvVars } from "@trigger.dev/build/extensions/core";
 import * as Sentry from "@sentry/node";
 import { defineConfig } from "@trigger.dev/sdk";
 
@@ -31,6 +31,12 @@ export default defineConfig({
   build: {
     extensions: [
       additionalPackages({ packages: ["@libsql/client"] }),
+      syncEnvVars(async () => {
+        const keys = ["FIRECRAWL_API_KEY"];
+        return keys
+          .filter((key) => process.env[key])
+          .map((key) => ({ name: key, value: process.env[key]! }));
+      }),
     ],
     external: [
       "pg",
