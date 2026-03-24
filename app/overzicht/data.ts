@@ -151,6 +151,8 @@ export async function getOverviewData(database: typeof db = db) {
   // and the pg driver's internal connection queueing mechanism used by transactions
   // loses this context during concurrent async operations in force-dynamic routes,
   // throwing "Access to storage is not allowed from this context".
+  const visibleCondition = and(ne(jobs.status, "archived"), isNull(jobs.deletedAt));
+
   const platformCounts = await database
     .select({
       platform: jobs.platform,
@@ -158,9 +160,26 @@ export async function getOverviewData(database: typeof db = db) {
       weeklyNew: sql<number>`cast(count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo}) as integer)`,
     })
     .from(jobs)
-    .where(and(ne(jobs.status, "archived"), isNull(jobs.deletedAt)))
+    .where(visibleCondition)
     .groupBy(jobs.platform)
     .orderBy(sql`count(*) desc`);
+
+  // Deduplicated total matching the vacatures page count
+  const dedupedTotalResult = await (
+    database as unknown as { execute(query: unknown): Promise<{ rows: Array<{ cnt: number }> }> }
+  ).execute(sql`
+    with ranked as (
+      select ${jobs.id},
+        row_number() over (
+          partition by ${jobs.dedupeTitleNormalized}, ${jobs.dedupeClientNormalized}, ${jobs.dedupeLocationNormalized}
+          order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
+        ) as rn
+      from ${jobs}
+      where ${visibleCondition}
+    )
+    select cast(count(*) as integer) as cnt from ranked where rn = 1
+  `);
+  const dedupedTotal = dedupedTotalResult.rows[0]?.cnt ?? 0;
 
   const recentJobs = await getRecentJobs(database);
 
@@ -251,6 +270,7 @@ export async function getOverviewData(database: typeof db = db) {
 
   return {
     activeScrapers,
+    dedupedTotal,
     locationCounts,
     pipelineStageCounts,
     platformCounts,
