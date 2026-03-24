@@ -72,8 +72,13 @@ const DETAIL_HTML = `
 const originalFetch = globalThis.fetch;
 
 describe("Werkzoeken scraper", () => {
+  const savedFirecrawlKey = process.env.FIRECRAWL_API_KEY;
+
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    // Restore Firecrawl key — tests exercise direct-fetch retries without fallback
+    if (savedFirecrawlKey) process.env.FIRECRAWL_API_KEY = savedFirecrawlKey;
+    else delete process.env.FIRECRAWL_API_KEY;
   });
 
   it("builds repeatable pagination URLs from the seeded techniek path", () => {
@@ -190,6 +195,7 @@ describe("Werkzoeken scraper", () => {
   });
 
   it("retries a temporary 403 on the listing page before failing", async () => {
+    delete process.env.FIRECRAWL_API_KEY;
     let listingFetchAttempts = 0;
 
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
@@ -256,6 +262,7 @@ describe("Werkzoeken scraper", () => {
   });
 
   it("bootstraps a cookie session before requesting the cumulative pnr page", async () => {
+    delete process.env.FIRECRAWL_API_KEY;
     const requestedHeaders: Array<{ url: string; cookie: string | null; referer: string | null }> =
       [];
 

@@ -268,9 +268,12 @@ async function fetchViaFirecrawl(url: string): Promise<string> {
 }
 
 async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Promise<string> {
+  // If Firecrawl is available, try direct fetch once then fallback immediately
+  // (avoids wasting 8s on retries that will fail on cloud IPs)
+  const maxAttempts = process.env.FIRECRAWL_API_KEY ? 1 : FETCH_RETRY_ATTEMPTS;
   let lastStatus = 0;
 
-  for (let attempt = 1; attempt <= FETCH_RETRY_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const response = await fetchWerkzoekenResponse(url, session);
 
     if (response.ok) {
@@ -279,7 +282,7 @@ async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Pro
 
     lastStatus = response.status;
     const shouldRetry =
-      RETRYABLE_FETCH_STATUSES.has(response.status) && attempt < FETCH_RETRY_ATTEMPTS;
+      RETRYABLE_FETCH_STATUSES.has(response.status) && attempt < maxAttempts;
     if (!shouldRetry) {
       break;
     }
