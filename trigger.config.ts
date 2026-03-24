@@ -30,7 +30,7 @@ export default defineConfig({
   // Externalize pg and drizzle-orm to avoid bundling native modules
   build: {
     extensions: [
-      additionalPackages({ packages: ["@libsql/client"] }),
+      additionalPackages({ packages: ["@libsql/client", "puppeteer-core"] }),
       syncEnvVars(async () => {
         const keys = [
           "DATABASE_URL",
