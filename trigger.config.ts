@@ -1,3 +1,4 @@
+import { additionalPackages } from "@trigger.dev/build/extensions/core";
 import * as Sentry from "@sentry/node";
 import { defineConfig } from "@trigger.dev/sdk";
 
@@ -28,10 +29,14 @@ export default defineConfig({
   enableConsoleLogging: true,
   // Externalize pg and drizzle-orm to avoid bundling native modules
   build: {
+    extensions: [
+      additionalPackages({ packages: ["@libsql/client"] }),
+    ],
     external: [
       "pg",
       "pg-native", // Optional native bindings
       "drizzle-orm/pg-core",
+      "@libsql/client",
       "playwright",
       "playwright-core",
       "chromium-bidi",
