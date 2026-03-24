@@ -34,6 +34,7 @@ const DEFAULT_REQUEST_HEADERS = {
 const RETRYABLE_FETCH_STATUSES = new Set([403, 429]);
 const FETCH_RETRY_ATTEMPTS = 4;
 const FETCH_RETRY_DELAY_MS = 2000;
+const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1/scrape";
 
 type WerkzoekenSession = {
   cookieHeader?: string;
@@ -123,14 +124,20 @@ async function bootstrapWerkzoekenSession(
   const sourceUrl = resolveWerkzoekenSourceUrl(baseUrl, sourcePath);
   const response = await fetchWerkzoekenResponse(sourceUrl.toString());
 
-  if (!response.ok) {
-    throw new Error(`Werkzoeken session bootstrap mislukt voor ${sourceUrl}: ${response.status}`);
+  if (response.ok) {
+    return {
+      cookieHeader: extractWerkzoekenCookieHeader(response),
+      referer: sourceUrl.toString(),
+    };
   }
 
-  return {
-    cookieHeader: extractWerkzoekenCookieHeader(response),
-    referer: sourceUrl.toString(),
-  };
+  // If bootstrap gets 403, fall back to Firecrawl — session cookies won't be available
+  // but pagination will still work via Firecrawl proxy for subsequent pages
+  if (RETRYABLE_FETCH_STATUSES.has(response.status) && process.env.FIRECRAWL_API_KEY) {
+    return { referer: sourceUrl.toString() };
+  }
+
+  throw new Error(`Werkzoeken session bootstrap mislukt voor ${sourceUrl}: ${response.status}`);
 }
 
 export function buildWerkzoekenListPageUrl(
@@ -232,7 +239,37 @@ export function parseWerkzoekenDetailPage(
   };
 }
 
+async function fetchViaFirecrawl(url: string): Promise<string> {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) {
+    throw new Error("FIRECRAWL_API_KEY niet geconfigureerd — kan niet terugvallen op Firecrawl");
+  }
+
+  const response = await fetch(FIRECRAWL_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url, formats: ["html"], waitFor: 2000 }),
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Firecrawl fallback mislukt voor ${url}: ${response.status}`);
+  }
+
+  const body = (await response.json()) as { success?: boolean; data?: { html?: string } };
+  if (!body.success || !body.data?.html) {
+    throw new Error(`Firecrawl retourneerde geen HTML voor ${url}`);
+  }
+
+  return body.data.html;
+}
+
 async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Promise<string> {
+  let lastStatus = 0;
+
   for (let attempt = 1; attempt <= FETCH_RETRY_ATTEMPTS; attempt += 1) {
     const response = await fetchWerkzoekenResponse(url, session);
 
@@ -240,16 +277,22 @@ async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Pro
       return response.text();
     }
 
+    lastStatus = response.status;
     const shouldRetry =
       RETRYABLE_FETCH_STATUSES.has(response.status) && attempt < FETCH_RETRY_ATTEMPTS;
     if (!shouldRetry) {
-      throw new Error(`Werkzoeken fetch mislukt voor ${url}: ${response.status}`);
+      break;
     }
 
     await new Promise((resolve) => setTimeout(resolve, FETCH_RETRY_DELAY_MS * attempt));
   }
 
-  throw new Error(`Werkzoeken fetch mislukt voor ${url}: onverwachte retry-loop`);
+  // Fallback: if direct fetch failed with 403/429, try Firecrawl as proxy
+  if (RETRYABLE_FETCH_STATUSES.has(lastStatus) && process.env.FIRECRAWL_API_KEY) {
+    return fetchViaFirecrawl(url);
+  }
+
+  throw new Error(`Werkzoeken fetch mislukt voor ${url}: ${lastStatus}`);
 }
 
 async function enrichWerkzoekenListings(
