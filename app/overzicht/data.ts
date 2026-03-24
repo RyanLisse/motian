@@ -152,6 +152,7 @@ export async function getOverviewData(database: typeof db = db) {
   // loses this context during concurrent async operations in force-dynamic routes,
   // throwing "Access to storage is not allowed from this context".
   const visibleCondition = and(ne(jobs.status, "archived"), isNull(jobs.deletedAt));
+  const openCondition = and(eq(jobs.status, "open"), isNull(jobs.deletedAt));
 
   const platformCounts = await database
     .select({
@@ -175,7 +176,7 @@ export async function getOverviewData(database: typeof db = db) {
           order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
         ) as rn
       from ${jobs}
-      where ${visibleCondition}
+      where ${openCondition}
     )
     select cast(count(*) as integer) as cnt from ranked where rn = 1
   `);
