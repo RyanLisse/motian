@@ -49,7 +49,7 @@ export const scrapePipelineTask = schedules.task({
     pattern: "0 * * * *", // Elk uur; per-platform cronExpression in de DB bepaalt wat echt due is
     timezone: "Europe/Amsterdam",
   },
-  maxDuration: 300, // 5 minutes — ESCO sync is now parallel, should complete in 1-2 min
+  maxDuration: 600, // 10 minutes — allows headroom for Firecrawl fallback retries and NVB province sharding
   run: async () => {
     const activeConfigs = await db
       .select()
