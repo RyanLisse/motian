@@ -46,7 +46,7 @@ function isDue(
 export const scrapePipelineTask = schedules.task({
   id: "scrape-pipeline",
   cron: {
-    pattern: "0 6,10,14,18 * * *", // Alleen tussen 06:00 en 18:00, elke 4 uur
+    pattern: "0 * * * *", // Elk uur; per-platform cronExpression in de DB bepaalt wat echt due is
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 300, // 5 minutes — ESCO sync is now parallel, should complete in 1-2 min

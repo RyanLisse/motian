@@ -211,13 +211,15 @@ export async function reviewCandidateMatches(
 ): Promise<CandidateMatchReviewResult> {
   const now = new Date();
   const matches = await autoMatchCandidateToJobs(candidateId, options.topN ?? 5);
-  const [existingApplications, updatedCandidate] = await Promise.all([
-    listApplications({ candidateId }),
-    updateCandidateMatchingStatus(candidateId, options.matchingStatus ?? "open", {
+  const existingApplications = await listApplications({ candidateId });
+  const updatedCandidate = await updateCandidateMatchingStatus(
+    candidateId,
+    options.matchingStatus ?? "open",
+    {
       lastMatchedAt: now,
       matchingStatusUpdatedAt: now,
-    }),
-  ]);
+    },
+  );
 
   const candidate = updatedCandidate ?? (await getCandidateById(candidateId));
   if (!candidate) {

@@ -798,6 +798,7 @@ export async function getScraperDashboardData(
     ]),
   );
 
+  const configByPlatform = new Map(data.configs.map((config) => [config.platform, config]));
   const latestRunByPlatform = new Map<string, RecentRunRow>();
   for (const run of data.recentRuns) {
     if (!latestRunByPlatform.has(run.platform)) {
@@ -807,6 +808,20 @@ export async function getScraperDashboardData(
 
   const latestErrorByPlatform = new Map<string, string>();
   for (const [platform, run] of latestRunByPlatform) {
+    const config = configByPlatform.get(platform);
+    const matchesConfigLastRun =
+      !config?.lastRunAt ||
+      (run.runAt ? run.runAt.getTime() === config.lastRunAt.getTime() : false);
+    const latestRunFailed =
+      run.status === "failed" ||
+      run.status === "partial" ||
+      config?.lastRunStatus === "failed" ||
+      config?.lastRunStatus === "partial";
+
+    if (!matchesConfigLastRun || !latestRunFailed) {
+      continue;
+    }
+
     const errors = asStringArray(run.errors);
     if (errors[0]) latestErrorByPlatform.set(platform, errors[0]);
   }
@@ -822,7 +837,7 @@ export async function getScraperDashboardData(
   const platforms = [...knownPlatforms]
     .sort((left, right) => left.localeCompare(right))
     .map((platform) => {
-      const config = data.configs.find((item) => item.platform === platform);
+      const config = configByPlatform.get(platform);
       const lifetime = analyticsByPlatform.get(platform) ?? emptyPlatformStats(platform);
       const recent24h = recentWindowMap.get(platform) ?? {
         runs: 0,

@@ -272,4 +272,74 @@ describe("getScraperDashboardData", () => {
     expect(result.platforms[0]?.status).toBe("gezond");
     expect(result.platforms[0]?.signals.map((signal) => signal.code)).not.toContain("latest_error");
   });
+
+  it("ignores older failed runs when config metadata points to a newer successful run outside the recent window", async () => {
+    mockRunsList.mockImplementation(() => emptyAsyncIterable());
+    const lastRunAt = new Date("2026-03-24T10:17:00.000Z");
+    const olderFailure = new Date("2026-03-24T03:17:00.000Z");
+    const mockDb = createMockDatabase([
+      [
+        {
+          platform: "striive",
+          totalRuns: 12,
+          successCount: 11,
+          partialCount: 0,
+          failedCount: 1,
+          totalJobsFound: 120,
+          totalJobsNew: 40,
+          totalDuplicates: 80,
+          avgDurationMs: 500,
+        },
+      ],
+      [{ count: 12 }],
+      [{ avgMs: 500 }],
+      [
+        {
+          id: "cfg-striive",
+          platform: "striive",
+          isActive: true,
+          baseUrl: "https://striive.example.com",
+          cronExpression: "0 */4 * * *",
+          lastRunAt,
+          lastRunStatus: "success",
+          consecutiveFailures: 0,
+        },
+      ],
+      [
+        {
+          id: "run-failed",
+          configId: "cfg-striive",
+          platform: "striive",
+          runAt: olderFailure,
+          durationMs: 500,
+          jobsFound: 0,
+          jobsNew: 0,
+          duplicates: 0,
+          status: "failed",
+          errors: ["Oude DB-fout"],
+        },
+      ],
+      [
+        {
+          platform: "striive",
+          runs: 1,
+          successCount: 1,
+          partialCount: 0,
+          failedCount: 0,
+          avgDurationMs: 500,
+        },
+      ],
+      [],
+    ]);
+
+    const result = await getScraperDashboardData(
+      { includeTrigger: false, activityLimit: 5, overlapLimit: 3 },
+      mockDb.database as never,
+    );
+
+    expect(result.platforms).toHaveLength(1);
+    expect(result.platforms[0]?.lastRunStatus).toBe("success");
+    expect(result.platforms[0]?.latestError).toBeNull();
+    expect(result.platforms[0]?.signals.map((signal) => signal.code)).not.toContain("latest_error");
+  });
 });
