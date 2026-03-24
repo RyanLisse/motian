@@ -35,7 +35,14 @@ export default defineConfig({
         const keys = ["DATABASE_URL", "FIRECRAWL_API_KEY"];
         return keys
           .filter((key) => process.env[key])
-          .map((key) => ({ name: key, value: process.env[key]! }));
+          .map((key) => {
+            let value = process.env[key]!;
+            // Strip channel_binding param — not supported by all pg client versions
+            if (key === "DATABASE_URL") {
+              value = value.replace(/[&?]channel_binding=[^&]*/g, "");
+            }
+            return { name: key, value };
+          });
       }),
     ],
     external: [
