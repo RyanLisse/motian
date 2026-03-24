@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ne, sql } from "../../db";
+import { and, asc, desc, eq, isNotNull, isNull, ne, or, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import type { Job } from "./repository";
 
@@ -80,7 +80,7 @@ export function deriveJobStatus({
 }
 
 export function getVisibleVacancyCondition() {
-  return ne(jobs.status, "archived");
+  return and(ne(jobs.status, "archived"), isNull(jobs.deletedAt));
 }
 
 export function getJobStatusCondition(status: JobStatus) {
@@ -89,7 +89,8 @@ export function getJobStatusCondition(status: JobStatus) {
   }
 
   if (status === "archived") {
-    return eq(jobs.status, "archived");
+    // Jobs are "archived" either by status='archived' or by being soft-deleted
+    return or(eq(jobs.status, "archived"), isNotNull(jobs.deletedAt));
   }
 
   return and(getVisibleVacancyCondition(), eq(jobs.status, status));

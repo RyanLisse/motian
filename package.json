@@ -58,6 +58,7 @@
     "pino": "^10.3.1",
     "posthog-js": "^1.352.1",
     "posthog-node": "^5.24.17",
+    "puppeteer-core": "^24.40.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

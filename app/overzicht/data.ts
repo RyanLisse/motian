@@ -1,4 +1,4 @@
-import { and, asc, db, desc, eq, gte, isNull, sql } from "@/src/db";
+import { and, asc, db, desc, eq, gte, isNull, ne, sql } from "@/src/db";
 import {
   applications,
   candidates,
@@ -72,7 +72,7 @@ async function getRecentJobs(database: typeof db): Promise<RecentJob[]> {
       province: jobs.province,
     })
     .from(jobs)
-    .where(isNull(jobs.deletedAt))
+    .where(and(ne(jobs.status, "archived"), isNull(jobs.deletedAt)))
     .orderBy(desc(jobs.scrapedAt), desc(jobs.id))
     .limit(200);
 
@@ -158,6 +158,7 @@ export async function getOverviewData(database: typeof db = db) {
       weeklyNew: sql<number>`cast(count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo}) as integer)`,
     })
     .from(jobs)
+    .where(and(ne(jobs.status, "archived"), isNull(jobs.deletedAt)))
     .groupBy(jobs.platform)
     .orderBy(sql`count(*) desc`);
 
@@ -185,7 +186,9 @@ export async function getOverviewData(database: typeof db = db) {
       count: sql<number>`cast(count(*) as integer)`,
     })
     .from(jobs)
-    .where(sql`${jobs.company} is not null`)
+    .where(
+      and(sql`${jobs.company} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
+    )
     .groupBy(jobs.company)
     .orderBy(sql`count(*) desc`)
     .limit(5);
@@ -196,7 +199,9 @@ export async function getOverviewData(database: typeof db = db) {
       count: sql<number>`cast(count(*) as integer)`,
     })
     .from(jobs)
-    .where(sql`${jobs.province} is not null`)
+    .where(
+      and(sql`${jobs.province} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
+    )
     .groupBy(jobs.province)
     .orderBy(sql`count(*) desc`)
     .limit(5);

@@ -31,6 +31,7 @@ export async function getJobStats(): Promise<{
         count: sql<number>`count(*)::int`,
       })
       .from(jobs)
+      .where(and(ne(jobs.status, "archived"), isNull(jobs.deletedAt)))
       .groupBy(jobs.platform)
       .orderBy(sql`count(*) desc`),
     db
@@ -39,6 +40,7 @@ export async function getJobStats(): Promise<{
         count: sql<number>`count(*)::int`,
       })
       .from(jobs)
+      .where(and(ne(jobs.status, "archived"), isNull(jobs.deletedAt)))
       .groupBy(jobs.province)
       .orderBy(sql`count(*) desc`)
       .limit(20),
@@ -48,7 +50,8 @@ export async function getJobStats(): Promise<{
         avgRateMin: sql<number | null>`avg(${jobs.rateMin})::float`,
         avgRateMax: sql<number | null>`avg(${jobs.rateMax})::float`,
       })
-      .from(jobs),
+      .from(jobs)
+      .where(and(ne(jobs.status, "archived"), isNull(jobs.deletedAt))),
   ]);
 
   const agg = aggRow[0];

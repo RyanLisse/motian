@@ -239,6 +239,30 @@ export function parseWerkzoekenDetailPage(
   };
 }
 
+async function fetchViaBrowserbase(url: string): Promise<string> {
+  const apiKey = process.env.BROWSERBASE_API_KEY;
+  const projectId = process.env.BROWSERBASE_PROJECT_ID;
+  if (!apiKey || !projectId) {
+    throw new Error("BROWSERBASE_API_KEY/PROJECT_ID niet geconfigureerd");
+  }
+
+  // Dynamic import to avoid bundling puppeteer-core when not used
+  const puppeteer = await import("puppeteer-core");
+  const browser = await puppeteer.default.connect({
+    browserWSEndpoint: `wss://connect.browserbase.com?apiKey=${apiKey}&projectId=${projectId}`,
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    // Brief wait for any deferred rendering of vacancy cards
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return await page.content();
+  } finally {
+    await browser.close();
+  }
+}
+
 async function fetchViaFirecrawl(url: string): Promise<string> {
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) {
@@ -290,9 +314,14 @@ async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Pro
     await new Promise((resolve) => setTimeout(resolve, FETCH_RETRY_DELAY_MS * attempt));
   }
 
-  // Fallback: if direct fetch failed with 403/429, try Firecrawl as proxy
-  if (RETRYABLE_FETCH_STATUSES.has(lastStatus) && process.env.FIRECRAWL_API_KEY) {
-    return fetchViaFirecrawl(url);
+  // Fallback chain: Browserbase (real Chrome, residential IP) → Firecrawl (JS rendering proxy)
+  if (RETRYABLE_FETCH_STATUSES.has(lastStatus)) {
+    if (process.env.BROWSERBASE_API_KEY) {
+      return fetchViaBrowserbase(url);
+    }
+    if (process.env.FIRECRAWL_API_KEY) {
+      return fetchViaFirecrawl(url);
+    }
   }
 
   throw new Error(`Werkzoeken fetch mislukt voor ${url}: ${lastStatus}`);

@@ -32,7 +32,6 @@ export function getJobReadSelection() {
       sql`coalesce(${jobs.province}, ${jobs.location}, '')`,
     ),
     searchText: getSearchTextCompatibilityExpression(),
-    archivedAt: sql<Date | null>`null`,
   };
 }
 
