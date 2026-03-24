@@ -798,12 +798,17 @@ export async function getScraperDashboardData(
     ]),
   );
 
-  const latestErrorByPlatform = new Map<string, string>();
+  const latestRunByPlatform = new Map<string, RecentRunRow>();
   for (const run of data.recentRuns) {
-    if (!latestErrorByPlatform.has(run.platform)) {
-      const errors = asStringArray(run.errors);
-      if (errors[0]) latestErrorByPlatform.set(run.platform, errors[0]);
+    if (!latestRunByPlatform.has(run.platform)) {
+      latestRunByPlatform.set(run.platform, run);
     }
+  }
+
+  const latestErrorByPlatform = new Map<string, string>();
+  for (const [platform, run] of latestRunByPlatform) {
+    const errors = asStringArray(run.errors);
+    if (errors[0]) latestErrorByPlatform.set(platform, errors[0]);
   }
 
   const analyticsByPlatform = new Map(

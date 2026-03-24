@@ -191,4 +191,85 @@ describe("getScraperDashboardData", () => {
       "scraper-health-check",
     ]);
   });
+
+  it("does not surface stale platform errors after a newer successful run", async () => {
+    mockRunsList.mockImplementation(() => emptyAsyncIterable());
+    const now = new Date();
+    const mockDb = createMockDatabase([
+      [
+        {
+          platform: "striive",
+          totalRuns: 2,
+          successCount: 1,
+          partialCount: 0,
+          failedCount: 1,
+          totalJobsFound: 20,
+          totalJobsNew: 10,
+          totalDuplicates: 10,
+          avgDurationMs: 500,
+        },
+      ],
+      [{ count: 12 }],
+      [{ avgMs: 500 }],
+      [
+        {
+          id: "cfg-striive",
+          platform: "striive",
+          isActive: true,
+          baseUrl: "https://striive.example.com",
+          cronExpression: "0 */4 * * *",
+          lastRunAt: now,
+          lastRunStatus: "success",
+          consecutiveFailures: 0,
+        },
+      ],
+      [
+        {
+          id: "run-success",
+          configId: "cfg-striive",
+          platform: "striive",
+          runAt: now,
+          durationMs: 500,
+          jobsFound: 10,
+          jobsNew: 4,
+          duplicates: 6,
+          status: "success",
+          errors: [],
+        },
+        {
+          id: "run-failed",
+          configId: "cfg-striive",
+          platform: "striive",
+          runAt: new Date(now.getTime() - 60_000),
+          durationMs: 500,
+          jobsFound: 0,
+          jobsNew: 0,
+          duplicates: 0,
+          status: "failed",
+          errors: ["Timeout bij import"],
+        },
+      ],
+      [
+        {
+          platform: "striive",
+          runs: 1,
+          successCount: 1,
+          partialCount: 0,
+          failedCount: 0,
+          avgDurationMs: 500,
+        },
+      ],
+      [],
+    ]);
+
+    const result = await getScraperDashboardData(
+      { includeTrigger: false, activityLimit: 5, overlapLimit: 3 },
+      mockDb.database as never,
+    );
+
+    expect(result.platforms).toHaveLength(1);
+    expect(result.platforms[0]?.latestError).toBeNull();
+    expect(result.platforms[0]?.status).toBe("gezond");
+    expect(result.platforms[0]?.signals.map((signal) => signal.code)).not.toContain("latest_error");
+  });
 });

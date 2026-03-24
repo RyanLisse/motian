@@ -27,12 +27,13 @@ const DEFAULT_REQUEST_HEADERS = {
   "Sec-Fetch-Mode": "navigate",
   "Sec-Fetch-Site": "same-origin",
   "Upgrade-Insecure-Requests": "1",
+  "Accept-Encoding": "gzip, deflate, br",
   "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
 };
 const RETRYABLE_FETCH_STATUSES = new Set([403, 429]);
-const FETCH_RETRY_ATTEMPTS = 3;
-const FETCH_RETRY_DELAY_MS = 500;
+const FETCH_RETRY_ATTEMPTS = 4;
+const FETCH_RETRY_DELAY_MS = 2000;
 
 type WerkzoekenSession = {
   cookieHeader?: string;
@@ -329,6 +330,11 @@ async function scrapeWerkzoekenInternal(
     listings.push(...newListings);
     if (options?.smoke || (options?.limit && listings.length >= options.limit)) {
       break;
+    }
+
+    // Throttle between pages to avoid rate limiting
+    if (page + pnrStep <= maxPages + pnrStep - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
     }
   }
 
