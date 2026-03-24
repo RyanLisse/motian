@@ -50,6 +50,7 @@ export const scrapePipelineTask = schedules.task({
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 900, // 15 minutes — NVB province sharding (12 provinces × paginated) needs full headroom
+  machine: { preset: "medium-1x" }, // 1 vCPU, 2 GB RAM — werkzoeken cumulative HTML + Firecrawl responses need headroom
   run: async () => {
     const activeConfigs = await db
       .select()
