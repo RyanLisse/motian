@@ -317,7 +317,9 @@ describe("Opdrachten UI/API contracts", () => {
     expect(layout).toContain(
       'import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary"',
     );
-    expect(layout).toContain('import { listEscoSkillsForFilter } from "@/src/services/esco"');
+    expect(layout).toContain(
+      'import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco"',
+    );
     expect(layout).toContain("await listEscoSkillsForFilter()");
     expect(layout).toContain("await getJobPipelineSummary(");
     expect(layout).toContain("skillOptions={skillOptions}");

@@ -112,6 +112,23 @@ describe("Hybrid scoring — rule + vector blend", () => {
     expect(result.reasoning).toContain("ESCO");
   });
 
+  it("falls back to legacy scoring when no canonical job skills are available", () => {
+    const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
+      candidateEscoSkills: [
+        {
+          escoUri: "skill:react",
+          label: "React",
+          confidence: 0.98,
+          critical: false,
+        },
+      ],
+      jobEscoSkills: [],
+    });
+
+    expect(result.model).toBe("rule-based-v1");
+    expect(result.reasoning).not.toContain("Geen ESCO-vaardigheden voor opdracht");
+  });
+
   it("falls back to legacy scoring when a critical canonical skill has low confidence", () => {
     const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
       candidateEscoSkills: [

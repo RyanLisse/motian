@@ -212,8 +212,11 @@ function isEscoScoringPathEnabled(options?: EscoMatchOptions): boolean {
     process.env.USE_ESCO_SCORING === "true" ||
     process.env.USE_ESCO_SCORING === "1" ||
     (typeof process.env.USE_ESCO_SCORING === "string" && process.env.USE_ESCO_SCORING.length > 0);
+  const hasJobEscoSkills =
+    Array.isArray(options?.jobEscoSkills) && options.jobEscoSkills.length > 0;
   return Boolean(
     (envFlag || isEscoScoringEnabled()) &&
+      hasJobEscoSkills &&
       options?.candidateEscoSkills != null &&
       options?.jobEscoSkills != null,
   );

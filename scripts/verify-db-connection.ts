@@ -12,7 +12,11 @@
  * Usage: tsx scripts/verify-db-connection.ts
  */
 
-import { db, sql } from "../src/db";
+import { config as dotenvConfig } from "dotenv";
+
+dotenvConfig({ path: ".env.local" });
+
+const { db, sql } = await import("../src/db");
 
 async function verifyDatabaseConnection() {
   console.log("🔍 Verifying database connection...\n");

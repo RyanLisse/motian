@@ -25,8 +25,9 @@ export function NavMain({
     icon?: LucideIcon;
     isActive?: boolean;
     badge?: { text: string; variant: string };
+    prefetch?: boolean;
     tooltip?: string;
-    items?: { title: string; url: string }[];
+    items?: { title: string; url: string; prefetch?: boolean }[];
   }[];
 }) {
   const pathname = usePathname();
@@ -64,7 +65,7 @@ export function NavMain({
                       {item.items.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
                           <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
-                            <Link href={subItem.url}>
+                            <Link href={subItem.url} prefetch={subItem.prefetch}>
                               <span>{subItem.title}</span>
                             </Link>
                           </SidebarMenuSubButton>
@@ -80,7 +81,7 @@ export function NavMain({
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.tooltip ?? item.title} isActive={isActive}>
-                <Link href={item.url}>
+                <Link href={item.url} prefetch={item.prefetch}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
                   {item.badge && (

@@ -10,7 +10,7 @@ import { and, db, desc, eq, isNull, like, sql } from "@/src/db";
 import { candidateSkills, candidates } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
 import { parsePagination } from "@/src/lib/pagination";
-import { listEscoSkillsForFilter } from "@/src/services/esco";
+import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco";
 
 export const dynamic = "force-dynamic";
 
@@ -43,10 +43,21 @@ export default async function KandidatenPage({ searchParams }: Props) {
   const escoUri = params.vaardigheid ?? "";
 
   let skillOptions: { uri: string; labelNl: string | null; labelEn: string }[] = [];
-  let escoSkillsAvailable = false;
+  let escoCatalogAvailable = false;
+  let escoCatalogMessage = "ESCO-filter is tijdelijk niet beschikbaar.";
   try {
-    skillOptions = await listEscoSkillsForFilter();
-    escoSkillsAvailable = true;
+    const [catalogStatus, nextSkillOptions] = await Promise.all([
+      getEscoCatalogStatus(),
+      listEscoSkillsForFilter(),
+    ]);
+    skillOptions = nextSkillOptions;
+    escoCatalogAvailable = catalogStatus.available;
+    if (catalogStatus.issue === "missing_catalog" || catalogStatus.issue === "missing_skills") {
+      escoCatalogMessage = "ESCO-catalogus ontbreekt; importeer eerst de dataset.";
+    } else if (catalogStatus.issue === "missing_aliases") {
+      escoCatalogMessage =
+        "ESCO-aliases ontbreken; exacte labels werken nog wel, maar mapping is beperkt.";
+    }
   } catch (err) {
     console.error("[Kandidaten] listEscoSkillsForFilter failed:", err);
   }
@@ -72,7 +83,7 @@ export default async function KandidatenPage({ searchParams }: Props) {
     conditions.push(eq(candidates.availability, availability));
   }
   // Only apply ESCO filter when skills loaded successfully (avoids query failure if candidate_skills missing)
-  if (escoUri && escoSkillsAvailable) {
+  if (escoUri && escoCatalogAvailable) {
     conditions.push(
       sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${escoUri})`,
     );
@@ -202,8 +213,13 @@ export default async function KandidatenPage({ searchParams }: Props) {
             defaultValue={escoUri}
             className="h-9 px-3 min-w-[180px] bg-card border border-border rounded-lg text-sm text-muted-foreground focus:outline-none focus:border-primary/40"
             title="Filter op canonieke vaardigheid (ESCO)"
+            disabled={!escoCatalogAvailable}
           >
-            <option value="">Alle vaardigheden</option>
+            <option value="">
+              {escoCatalogAvailable
+                ? "Alle vaardigheden"
+                : "ESCO-filter tijdelijk niet beschikbaar"}
+            </option>
             {skillOptions.map((s) => (
               <option key={s.uri} value={s.uri}>
                 {s.labelNl ?? s.labelEn}
@@ -217,6 +233,9 @@ export default async function KandidatenPage({ searchParams }: Props) {
             Zoeken
           </button>
         </form>
+        {!escoCatalogAvailable && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">{escoCatalogMessage}</p>
+        )}
 
         {/* Results count */}
         <div className="flex items-center justify-between">

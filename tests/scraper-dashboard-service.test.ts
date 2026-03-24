@@ -81,6 +81,48 @@ function createMockDatabase(queryResults: unknown[][]) {
   return { database, select, pending };
 }
 
+function createSerialMockDatabase(queryResults: unknown[][]) {
+  const pending = [...queryResults];
+  let activeSelects = 0;
+
+  const select = vi.fn(() => {
+    if (activeSelects > 0) {
+      throw new Error("Concurrent select() is not allowed for scraper dashboard reads");
+    }
+
+    const next = pending.shift();
+    if (!next) {
+      throw new Error("Unexpected extra select() while building scraper dashboard data");
+    }
+
+    activeSelects += 1;
+
+    const promise = Promise.resolve()
+      .then(() => next)
+      .finally(() => {
+        activeSelects -= 1;
+      }) as QueryChain;
+
+    const chain = Object.assign(promise, {
+      from: vi.fn(() => chain),
+      where: vi.fn(() => chain),
+      orderBy: vi.fn(() => chain),
+      limit: vi.fn(() => chain),
+      groupBy: vi.fn(() => chain),
+    });
+
+    return chain;
+  });
+
+  const tx = { select };
+  const database = {
+    select,
+    transaction: vi.fn(async (callback: (input: typeof tx) => Promise<unknown>) => callback(tx)),
+  };
+
+  return { database, select, pending };
+}
+
 function buildQueryResults(platforms: string[]) {
   const now = new Date("2026-03-10T09:00:00Z");
 
@@ -190,6 +232,25 @@ describe("getScraperDashboardData", () => {
       "scrape-pipeline",
       "scraper-health-check",
     ]);
+  });
+
+  it("serializes scraper dashboard reads to avoid request-context and connection failures", async () => {
+    mockRunsList.mockImplementation(() => emptyAsyncIterable());
+    const mockDb = createSerialMockDatabase(
+      buildQueryResults(["flextender", "opdrachtoverheid", "striive"]),
+    );
+
+    const result = await getScraperDashboardData(
+      { includeTrigger: false, activityLimit: 5, overlapLimit: 3 },
+      mockDb.database as never,
+    );
+
+    expect(result.platforms.map((platform) => platform.platform)).toEqual([
+      "flextender",
+      "opdrachtoverheid",
+      "striive",
+    ]);
+    expect(mockDb.pending).toHaveLength(0);
   });
 
   it("does not surface stale platform errors after a newer successful run", async () => {

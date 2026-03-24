@@ -345,4 +345,69 @@ describe("platform config service regressions", () => {
 
     expect(changed).toBe(false);
   });
+
+  it("serializes platform catalog reads so scraper routes do not burst database connections", async () => {
+    const customDefinition = {
+      slug: "customboard",
+      displayName: "Custom Board",
+      adapterKind: "custom",
+      authMode: "none",
+      attributionLabel: "Custom Board",
+      capabilities: [],
+      description: "Custom board",
+      docsUrl: "https://custom.example/docs",
+      defaultBaseUrl: "https://custom.example",
+      configSchema: z.object({}),
+      authSchema: z.object({}),
+    };
+
+    listPlatformDefinitions.mockReturnValue([customDefinition]);
+    getPlatformDefinition.mockImplementation((slug: string) =>
+      slug === "customboard" ? customDefinition : null,
+    );
+
+    let activeQueries = 0;
+
+    const runExclusive = <T>(value: T) => {
+      if (activeQueries > 0) {
+        throw new Error("Concurrent catalog query is not allowed");
+      }
+
+      activeQueries += 1;
+      return Promise.resolve()
+        .then(() => value)
+        .finally(() => {
+          activeQueries -= 1;
+        });
+    };
+
+    db.select.mockImplementation(() => {
+      let tableName = "";
+
+      const promise = Promise.resolve().then(async () => {
+        const rows = await runExclusive([
+          ...(state[tableName as keyof typeof state] as Array<Record<string, unknown>>),
+        ]);
+        return rows;
+      }) as Promise<Array<Record<string, unknown>>>;
+
+      const chain = Object.assign(promise, {
+        from: vi.fn((table: { __table: string }) => {
+          tableName = table.__table;
+          return chain;
+        }),
+        where: vi.fn(() => chain),
+        orderBy: vi.fn(() => chain),
+        limit: vi.fn(() => chain),
+      });
+
+      return chain;
+    });
+
+    db.execute.mockImplementation(async () => runExclusive({ rows: [] }));
+
+    const catalog = await listPlatformCatalog();
+
+    expect(catalog.find((entry) => entry.slug === "customboard")).toBeTruthy();
+  });
 });

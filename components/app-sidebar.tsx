@@ -54,6 +54,7 @@ const data = {
       title: "Pipeline",
       url: "/pipeline",
       icon: Kanban,
+      prefetch: false,
     },
     {
       title: "Interviews",

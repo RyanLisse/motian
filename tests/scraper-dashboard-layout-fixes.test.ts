@@ -9,11 +9,14 @@ function readFile(...segments: string[]) {
 }
 
 describe("scraper dashboard layout fixes", () => {
-  it("keeps the chat launcher off the scraper route and only mounts the panel when opened", () => {
+  it("disables the chat widget runtime on the scraper route and only mounts the panel when opened elsewhere", () => {
     const source = readFile("components", "chat", "chat-widget.tsx");
 
-    expect(source).toContain('const hideLauncher = pathname === "/scraper"');
-    expect(source).toContain("!open && !hideLauncher");
+    expect(source).toContain('const disableWidget = pathname === "/scraper"');
+    expect(source).toContain("if (disableWidget) return;");
+    expect(source).toContain(
+      'if (pathname === "/chat" || pathname === "/vacatures" || disableWidget) return null;',
+    );
     expect(source).toContain("{open && (");
     expect(source).toContain('role="dialog"');
   });
@@ -48,6 +51,14 @@ describe("scraper dashboard layout fixes", () => {
     expect(source).toContain(
       'className="wrap-break-word rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"',
     );
+  });
+
+  it("loads scraper page datasets sequentially instead of bursting dashboard and catalog queries together", () => {
+    const source = readFile("app", "scraper", "page.tsx");
+
+    expect(source).toContain("const scraperDashboard = await getScraperDashboardData(");
+    expect(source).toContain("const platformCatalog = await listPlatformCatalog();");
+    expect(source).not.toContain("await Promise.all([");
   });
 
   it("keeps recent activity logs clipped to the feed card and scroll viewport", () => {

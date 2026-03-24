@@ -431,11 +431,9 @@ export function toRuntimeConfig(platform: string, config: ScraperConfig): Platfo
 // ========== Service Functions ==========
 
 export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]> {
-  const [catalogRows, configs, runs] = await Promise.all([
-    db.select().from(platformCatalog).orderBy(asc(platformCatalog.slug)),
-    db.select().from(scraperConfigs).orderBy(asc(scraperConfigs.platform)),
-    listLatestOnboardingRuns(),
-  ]);
+  const catalogRows = await db.select().from(platformCatalog).orderBy(asc(platformCatalog.slug));
+  const configs = await db.select().from(scraperConfigs).orderBy(asc(scraperConfigs.platform));
+  const runs = await listLatestOnboardingRuns();
 
   const definitions = listPlatformDefinitions();
   const configMap = new Map(configs.map((config) => [config.platform, config]));

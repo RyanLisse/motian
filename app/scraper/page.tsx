@@ -236,17 +236,21 @@ function PlatformHealthCard({
 export const revalidate = 60;
 
 export default async function ScraperPage() {
-  const [
-    platformCatalog,
-    { analytics, activeVacancies, recentRuns: results, platforms, activity, overlap, trigger },
-  ] = await Promise.all([
-    listPlatformCatalog(),
-    getScraperDashboardData({
-      activityLimit: 20,
-      overlapLimit: 8,
-      includeTrigger: true,
-    }),
-  ]);
+  const scraperDashboard = await getScraperDashboardData({
+    activityLimit: 20,
+    overlapLimit: 8,
+    includeTrigger: true,
+  });
+  const platformCatalog = await listPlatformCatalog();
+  const {
+    analytics,
+    activeVacancies,
+    recentRuns: results,
+    platforms,
+    activity,
+    overlap,
+    trigger,
+  } = scraperDashboard;
 
   const attentionPlatforms = platforms.filter(
     (platform) => platform.status === "waarschuwing" || platform.status === "kritiek",

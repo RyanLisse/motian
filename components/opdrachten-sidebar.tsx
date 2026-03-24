@@ -82,6 +82,7 @@ interface OpdrachtenSidebarProps {
   endClients: string[];
   categories: string[];
   skillOptions: FilterOption[];
+  skillEmptyText?: string;
 }
 
 const CONTRACT_TYPES = [
@@ -454,6 +455,7 @@ export function OpdrachtenSidebar({
   endClients,
   categories,
   skillOptions,
+  skillEmptyText = "Geen vaardigheden gevonden.",
 }: OpdrachtenSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -774,7 +776,7 @@ export function OpdrachtenSidebar({
             options={skillOptions}
             placeholder="Vaardigheid"
             searchPlaceholder="Zoek ESCO vaardigheid..."
-            emptyText="Geen vaardigheden gevonden."
+            emptyText={skillEmptyText}
             clearLabel="Alle vaardigheden"
             buttonClassName={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}
             contentClassName={DARK_FILTER_MENU_CLASS}
@@ -1157,7 +1159,7 @@ export function OpdrachtenSidebar({
                   options={skillOptions}
                   placeholder="Alle vaardigheden"
                   searchPlaceholder="Zoek ESCO vaardigheid..."
-                  emptyText="Geen vaardigheden gevonden."
+                  emptyText={skillEmptyText}
                   clearLabel="Alle vaardigheden"
                   buttonClassName="h-11 rounded-lg border-border bg-background text-left text-sm"
                   triggerId="opdrachten-esco-vaardigheid"

@@ -66,6 +66,15 @@ describe("Recruiter-first navigation", () => {
     expect(source).not.toContain('url: "/messages"');
     expect(source).not.toContain('title: "Matching"');
   });
+
+  it("keeps heavy pipeline visuals out of eager sidebar prefetches", () => {
+    const sidebarSource = readFile("components", "app-sidebar.tsx");
+    const navSource = readFile("components", "nav-main.tsx");
+
+    expect(sidebarSource).toContain('title: "Pipeline"');
+    expect(sidebarSource).toContain("prefetch: false");
+    expect(navSource).toContain("prefetch={item.prefetch}");
+  });
 });
 
 describe("Recruiter-first overview", () => {

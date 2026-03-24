@@ -3,7 +3,7 @@ import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { db, sql } from "@/src/db";
 import { jobs } from "@/src/db/schema";
 import { DEFAULT_OPDRACHTEN_LIMIT } from "@/src/lib/opdrachten-filters";
-import { listEscoSkillsForFilter } from "@/src/services/esco";
+import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco";
 import { listJobs } from "@/src/services/jobs";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
 import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary";
@@ -13,6 +13,23 @@ export const dynamic = "force-dynamic";
 export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
   const activeJobsCondition = getJobStatusCondition("open");
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
+  const escoCatalogStatusPromise = (async () => {
+    try {
+      return await getEscoCatalogStatus();
+    } catch (error) {
+      console.error("[OpdrachtenLayout] getEscoCatalogStatus failed:", error);
+      return {
+        available: false,
+        issue: "missing_catalog" as const,
+        skillCount: 0,
+        aliasCount: 0,
+        mappingCount: 0,
+        jobSkillCount: 0,
+        candidateSkillCount: 0,
+        checkedAt: new Date().toISOString(),
+      };
+    }
+  })();
   const escoSkillRowsPromise = (async () => {
     try {
       return await listEscoSkillsForFilter();
@@ -22,24 +39,30 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
     }
   })();
 
-  const [{ data: sidebarJobRows, total: totalCount }, metaResult, categoryResult, escoSkillRows] =
-    await Promise.all([
-      listJobs({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" }),
-      db
-        .select({
-          platforms: sql<string | null>`json_agg(distinct ${jobs.platform})`,
-          endClients: sql<string | null>`json_agg(distinct ${persistedEndClient})`,
-        })
-        .from(jobs)
-        .where(activeJobsCondition),
-      db.execute(sql`
+  const [
+    { data: sidebarJobRows, total: totalCount },
+    metaResult,
+    categoryResult,
+    escoCatalogStatus,
+    escoSkillRows,
+  ] = await Promise.all([
+    listJobs({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" }),
+    db
+      .select({
+        platforms: sql<string | null>`json_agg(distinct ${jobs.platform})`,
+        endClients: sql<string | null>`json_agg(distinct ${persistedEndClient})`,
+      })
+      .from(jobs)
+      .where(activeJobsCondition),
+    db.execute(sql`
       SELECT DISTINCT je.value AS category
       FROM ${jobs}, LATERAL jsonb_array_elements_text(coalesce(${jobs.categories}::jsonb, '[]'::jsonb)) AS je(value)
       WHERE ${activeJobsCondition} AND je.value IS NOT NULL
       ORDER BY category ASC
     `),
-      escoSkillRowsPromise,
-    ]);
+    escoCatalogStatusPromise,
+    escoSkillRowsPromise,
+  ]);
 
   const categoryRows = (categoryResult.rows ?? []) as { category: string }[];
 
@@ -82,6 +105,12 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
     value: skill.uri,
     label: skill.labelNl ?? skill.labelEn,
   }));
+  const skillEmptyText =
+    escoCatalogStatus.issue === "missing_catalog" || escoCatalogStatus.issue === "missing_skills"
+      ? "ESCO-catalogus ontbreekt. Importeer eerst de dataset."
+      : escoCatalogStatus.issue === "missing_aliases"
+        ? "ESCO-aliases ontbreken. Mapping is tijdelijk beperkt."
+        : "Geen vaardigheden gevonden.";
 
   return (
     <OpdrachtenLayoutShell
@@ -93,6 +122,7 @@ export default async function OpdrachtenLayout({ children }: { children: React.R
           endClients={endClients}
           categories={categories}
           skillOptions={skillOptions}
+          skillEmptyText={skillEmptyText}
         />
       }
     >

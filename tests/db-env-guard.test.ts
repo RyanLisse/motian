@@ -45,6 +45,16 @@ describe("@motian/db build safety", () => {
     expect(isPostgresDatabase()).toBe(true);
   }, 120_000);
 
+  it("rejects a public database env var", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DATABASE_URL", "postgres://public.example");
+
+    const dbModule = await import("../packages/db/src/index");
+
+    expect(() => dbModule.getDatabaseDialect()).toThrowError(
+      /NEXT_PUBLIC_DATABASE_URL is set\. Keep the Neon connection string server-only in DATABASE_URL\./,
+    );
+  }, 120_000);
+
   it("exposes execute on the Turso fallback client", async () => {
     vi.stubEnv("TURSO_DATABASE_URL", "file::memory:");
 

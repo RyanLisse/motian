@@ -9,12 +9,21 @@ const MISSING_DATABASE_ENV_ERROR =
 const NEON_INIT_FAILED_PREFIX =
   "Neon initialization failed, falling back to Turso when available.";
 
+const PUBLIC_DATABASE_URL_ERROR =
+  "NEXT_PUBLIC_DATABASE_URL is set. Keep the Neon connection string server-only in DATABASE_URL.";
+
 export type DatabaseDialect = "postgres" | "sqlite";
 
 let selectedDatabaseDialect: DatabaseDialect | undefined;
 
 function getNeonUrl(): string | undefined {
   return process.env.DATABASE_URL?.trim();
+}
+
+function assertNoPublicDatabaseUrl(): void {
+  if (process.env.NEXT_PUBLIC_DATABASE_URL?.trim()) {
+    throw new Error(PUBLIC_DATABASE_URL_ERROR);
+  }
 }
 
 function getTursoConfig(): { url: string; authToken: string | undefined } | undefined {
@@ -59,6 +68,8 @@ function createTursoDatabaseClient(config: {
 }
 
 function createDatabaseClient(): DatabaseClient {
+  assertNoPublicDatabaseUrl();
+
   const neonUrl = getNeonUrl();
   const tursoConfig = getTursoConfig();
 

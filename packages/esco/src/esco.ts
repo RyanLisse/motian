@@ -18,6 +18,7 @@ import { normalizeAlias } from "./esco-import";
 
 const ESCO_VERSION = process.env.ESCO_VERSION ?? "v1.0";
 const CRITICAL_REVIEW_THRESHOLD = Number(process.env.ESCO_CRITICAL_REVIEW_THRESHOLD ?? "0.7");
+const ESCO_CATALOG_CACHE_TTL_MS = 60_000;
 
 function isEscoTableMissing(err: unknown): boolean {
   if (err instanceof Error) {
@@ -69,7 +70,25 @@ export type WithCanonicalSkills<T, TCanonicalSkill> = T & {
 type CachedSkillResolution = Pick<MapSkillResult, "escoUri" | "confidence" | "strategy">;
 
 const skillResolutionCache = new Map<string, CachedSkillResolution>();
-let escoCatalogAvailablePromise: Promise<boolean> | null = null;
+let escoCatalogStatusCache:
+  | {
+      expiresAt: number;
+      promise: Promise<EscoCatalogStatus>;
+    }
+  | null = null;
+
+export type EscoCatalogIssue = "missing_catalog" | "missing_skills" | "missing_aliases" | null;
+
+export type EscoCatalogStatus = {
+  available: boolean;
+  issue: EscoCatalogIssue;
+  skillCount: number;
+  aliasCount: number;
+  mappingCount: number;
+  jobSkillCount: number;
+  candidateSkillCount: number;
+  checkedAt: string;
+};
 
 function normalizeRawSkill(raw: string): string {
   return normalizeAlias(raw);
@@ -79,30 +98,88 @@ export function isEscoScoringEnabled(): boolean {
   return process.env.ESCO_SCORING_ENABLED !== "false";
 }
 
-export async function isEscoCatalogAvailable(): Promise<boolean> {
-  if (!escoCatalogAvailablePromise) {
-    escoCatalogAvailablePromise = (async () => {
-      try {
-        const [escoCountRow] = await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(escoSkills)
-          .limit(1);
-        const [aliasCountRow] = await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(skillAliases)
-          .limit(1);
-
-        return (escoCountRow?.count ?? 0) > 0 || (aliasCountRow?.count ?? 0) > 0;
-      } catch (err) {
-        if (isEscoTableMissing(err)) {
-          return false;
-        }
-        throw err;
-      }
-    })();
+function buildEscoCatalogIssue(skillCount: number, aliasCount: number): EscoCatalogIssue {
+  if (skillCount === 0 && aliasCount === 0) {
+    return "missing_catalog";
   }
 
-  return escoCatalogAvailablePromise;
+  if (skillCount === 0) {
+    return "missing_skills";
+  }
+
+  if (aliasCount === 0) {
+    return "missing_aliases";
+  }
+
+  return null;
+}
+
+export function resetEscoCatalogStatusCache(): void {
+  escoCatalogStatusCache = null;
+}
+
+async function loadEscoCatalogStatus(): Promise<EscoCatalogStatus> {
+  try {
+    const [escoCountRow, aliasCountRow, mappingCountRow, jobSkillCountRow, candidateSkillCountRow] =
+      await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(escoSkills).limit(1),
+        db.select({ count: sql<number>`count(*)::int` }).from(skillAliases).limit(1),
+        db.select({ count: sql<number>`count(*)::int` }).from(skillMappings).limit(1),
+        db.select({ count: sql<number>`count(*)::int` }).from(jobSkills).limit(1),
+        db.select({ count: sql<number>`count(*)::int` }).from(candidateSkills).limit(1),
+      ]);
+
+    const skillCount = escoCountRow[0]?.count ?? 0;
+    const aliasCount = aliasCountRow[0]?.count ?? 0;
+    const issue = buildEscoCatalogIssue(skillCount, aliasCount);
+
+    return {
+      available: skillCount > 0,
+      issue,
+      skillCount,
+      aliasCount,
+      mappingCount: mappingCountRow[0]?.count ?? 0,
+      jobSkillCount: jobSkillCountRow[0]?.count ?? 0,
+      candidateSkillCount: candidateSkillCountRow[0]?.count ?? 0,
+      checkedAt: new Date().toISOString(),
+    };
+  } catch (err) {
+    if (isEscoTableMissing(err)) {
+      return {
+        available: false,
+        issue: "missing_catalog",
+        skillCount: 0,
+        aliasCount: 0,
+        mappingCount: 0,
+        jobSkillCount: 0,
+        candidateSkillCount: 0,
+        checkedAt: new Date().toISOString(),
+      };
+    }
+    throw err;
+  }
+}
+
+export async function getEscoCatalogStatus(opts?: { refresh?: boolean }): Promise<EscoCatalogStatus> {
+  const refresh = opts?.refresh ?? false;
+  const now = Date.now();
+
+  if (!refresh && escoCatalogStatusCache && escoCatalogStatusCache.expiresAt > now) {
+    return escoCatalogStatusCache.promise;
+  }
+
+  const promise = loadEscoCatalogStatus();
+  escoCatalogStatusCache = {
+    expiresAt: now + ESCO_CATALOG_CACHE_TTL_MS,
+    promise,
+  };
+
+  return promise;
+}
+
+export async function isEscoCatalogAvailable(opts?: { refresh?: boolean }): Promise<boolean> {
+  const status = await getEscoCatalogStatus(opts);
+  return status.available;
 }
 
 function buildSkillResolutionCacheKey(rawSkill: string, language: string): string {
@@ -736,6 +813,7 @@ export type EscoSkillOption = {
 
 export async function listEscoSkillsForFilter(searchQuery?: string): Promise<EscoSkillOption[]> {
   try {
+    const sortLabel = sql<string>`coalesce(${escoSkills.preferredLabelNl}, ${escoSkills.preferredLabelEn})`;
     const baseQuery = db
       .select({
         uri: escoSkills.uri,
@@ -743,7 +821,7 @@ export async function listEscoSkillsForFilter(searchQuery?: string): Promise<Esc
         preferredLabelEn: escoSkills.preferredLabelEn,
       })
       .from(escoSkills)
-      .orderBy(escoSkills.preferredLabelNl ?? escoSkills.preferredLabelEn)
+      .orderBy(sortLabel)
       .limit(200);
 
     if (searchQuery?.trim()) {

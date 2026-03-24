@@ -32,7 +32,7 @@ export default defineConfig({
     extensions: [
       additionalPackages({ packages: ["@libsql/client"] }),
       syncEnvVars(async () => {
-        const keys = ["FIRECRAWL_API_KEY"];
+        const keys = ["DATABASE_URL", "FIRECRAWL_API_KEY"];
         return keys
           .filter((key) => process.env[key])
           .map((key) => ({ name: key, value: process.env[key]! }));

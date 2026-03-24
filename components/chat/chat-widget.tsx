@@ -229,15 +229,17 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
   const { activeContext, prepareFullPageHandoff } = useChatContext();
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState("");
-  const hideLauncher = pathname === "/scraper";
+  const disableWidget = pathname === "/scraper";
 
   useEffect(() => {
+    if (disableWidget) return;
+
     const timeout = window.setTimeout(() => {
       setSessionId(getOrCreateSessionId());
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, []);
+  }, [disableWidget]);
 
   const handleNewSession = useCallback(() => {
     const id = nanoid();
@@ -266,22 +268,26 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
   );
 
   useEffect(() => {
+    if (disableWidget) return;
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  }, [disableWidget, handleKeyDown]);
 
   useEffect(() => {
+    if (disableWidget) return;
+
     const handleOpen = () => setOpen(true);
 
     window.addEventListener(CHAT_WIDGET_OPEN_EVENT, handleOpen);
     return () => window.removeEventListener(CHAT_WIDGET_OPEN_EVENT, handleOpen);
-  }, []);
+  }, [disableWidget]);
 
-  if (pathname === "/chat" || pathname === "/vacatures") return null;
+  if (pathname === "/chat" || pathname === "/vacatures" || disableWidget) return null;
 
   return (
     <>
-      {!open && !hideLauncher && (
+      {!open && (
         <button
           type="button"
           onClick={() => setOpen(true)}

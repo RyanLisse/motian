@@ -2,13 +2,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockLimit, mockDb } = vi.hoisted(() => {
   const mockLimit = vi.fn();
+  const mockWhere = vi.fn().mockReturnValue({
+    limit: mockLimit,
+  });
+  const mockOrderBy = vi.fn().mockReturnValue({
+    where: mockWhere,
+    limit: mockLimit,
+  });
+  const mockFrom = vi.fn().mockReturnValue({
+    where: mockWhere,
+    orderBy: mockOrderBy,
+    limit: mockLimit,
+  });
   const mockDb = {
     select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: mockLimit,
-        }),
-      }),
+      from: mockFrom,
     }),
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
@@ -42,7 +50,12 @@ vi.mock("@motian/db", async (importOriginal) => ({
   skillMappings: {},
 }));
 
-import { mapSkillInput } from "../src/services/esco.js";
+import {
+  getEscoCatalogStatus,
+  isEscoCatalogAvailable,
+  mapSkillInput,
+  resetEscoCatalogStatusCache,
+} from "../src/services/esco.js";
 
 const baseInput = {
   rawSkill: "React",
@@ -54,10 +67,12 @@ const baseInput = {
 describe("mapSkillInput", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetEscoCatalogStatusCache();
   });
 
   afterEach(() => {
     mockLimit.mockReset();
+    resetEscoCatalogStatusCache();
   });
 
   it("returns none strategy and zero confidence for empty/whitespace rawSkill", async () => {
@@ -161,5 +176,48 @@ describe("mapSkillInput", () => {
     expect(second).toEqual(first);
     expect(mockLimit).toHaveBeenCalledTimes(1);
     expect(mockDb.insert).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a missing catalog when skills and aliases are both absent", async () => {
+    mockLimit
+      .mockResolvedValueOnce([{ count: 0 }])
+      .mockResolvedValueOnce([{ count: 0 }])
+      .mockResolvedValueOnce([{ count: 12 }])
+      .mockResolvedValueOnce([{ count: 0 }])
+      .mockResolvedValueOnce([{ count: 0 }]);
+
+    const status = await getEscoCatalogStatus({ refresh: true });
+
+    expect(status).toMatchObject({
+      available: false,
+      issue: "missing_catalog",
+      skillCount: 0,
+      aliasCount: 0,
+      mappingCount: 12,
+      jobSkillCount: 0,
+      candidateSkillCount: 0,
+    });
+    expect(await isEscoCatalogAvailable()).toBe(false);
+  });
+
+  it("keeps the catalog available but flags missing aliases when only canonical skills exist", async () => {
+    mockLimit
+      .mockResolvedValueOnce([{ count: 42 }])
+      .mockResolvedValueOnce([{ count: 0 }])
+      .mockResolvedValueOnce([{ count: 5 }])
+      .mockResolvedValueOnce([{ count: 7 }])
+      .mockResolvedValueOnce([{ count: 3 }]);
+
+    const status = await getEscoCatalogStatus({ refresh: true });
+
+    expect(status).toMatchObject({
+      available: true,
+      issue: "missing_aliases",
+      skillCount: 42,
+      aliasCount: 0,
+      mappingCount: 5,
+      jobSkillCount: 7,
+      candidateSkillCount: 3,
+    });
   });
 });
