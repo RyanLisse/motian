@@ -254,9 +254,24 @@ async function fetchViaBrowserbase(url: string): Promise<string> {
 
   try {
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    // Brief wait for any deferred rendering of vacancy cards
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
+
+    // Werkzoeken uses Cloudflare protection ("Just a moment...").
+    // Wait for the challenge to resolve by polling for vacancy content.
+    const maxWaitMs = 20_000;
+    const pollIntervalMs = 2_000;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitMs) {
+      const title = await page.title();
+      if (!title.includes("Just a moment") && !title.includes("Checking")) {
+        // Cloudflare challenge resolved — wait briefly for DOM to hydrate
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
     return await page.content();
   } finally {
     await browser.close();
