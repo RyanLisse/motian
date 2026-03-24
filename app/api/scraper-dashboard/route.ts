@@ -26,7 +26,11 @@ export const GET = withApiHandler(
       includeTrigger: params.includeTrigger !== "false",
     });
 
-    return Response.json({ data });
+    return Response.json({ data }, {
+      headers: {
+        "Cache-Control": "private, s-maxage=30, stale-while-revalidate=60",
+      },
+    });
   },
   {
     logPrefix: "Fout bij ophalen scraper dashboard data",

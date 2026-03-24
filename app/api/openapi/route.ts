@@ -1,7 +1,9 @@
 import { buildOpenApiDocument } from "@/src/lib/api-docs";
 
-export const dynamic = "force-dynamic";
-
 export async function GET(request: Request) {
-  return Response.json(buildOpenApiDocument(request));
+  return Response.json(buildOpenApiDocument(request), {
+    headers: {
+      "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+    },
+  });
 }

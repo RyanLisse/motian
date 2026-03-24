@@ -28,6 +28,18 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "2mb",
     },
     optimizeCss: true,
+    // Client-side router cache: reduce unnecessary SSR invocations
+    staleTimes: {
+      dynamic: 30, // Cache dynamic pages for 30s on client
+      static: 300, // Cache static pages for 5min on client
+    },
+  },
+  images: {
+    // Limit image optimization compute: only optimize common widths
+    deviceSizes: [640, 828, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    minimumCacheTTL: 3600, // Cache optimized images for 1 hour (default 60s)
+    formats: ["image/webp"], // Skip avif (slower to encode, more compute)
   },
 };
 

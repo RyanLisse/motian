@@ -13,5 +13,10 @@ export async function GET(req: Request) {
   const q = searchParams.get("q") ?? undefined;
 
   const skills = await listEscoSkillsForFilter(q);
-  return NextResponse.json(skills);
+  return NextResponse.json(skills, {
+    headers: {
+      // ESCO skills rarely change; cache aggressively
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+    },
+  });
 }
