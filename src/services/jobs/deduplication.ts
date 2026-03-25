@@ -158,10 +158,7 @@ function isPreferableDedupCandidate(
 export function collapseScoredJobsByVacancy<TJob extends DedupableJob>(
   entries: Array<{ job: TJob; score: number }>,
 ) {
-  const grouped = new Map<
-    string,
-    { job: TJob; score: number; representativeScore: number }
-  >();
+  const grouped = new Map<string, { job: TJob; score: number; representativeScore: number }>();
 
   for (const entry of entries) {
     const dedupeKey = getJobDeduplicationKey(entry.job);

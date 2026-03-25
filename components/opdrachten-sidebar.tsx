@@ -85,6 +85,27 @@ interface OpdrachtenSidebarProps {
   skillEmptyText?: string;
 }
 
+type SearchQueryKeyPayload = {
+  q: string;
+  platform: string;
+  endClient: string;
+  vaardigheid: string;
+  status: string;
+  provincie: string;
+  regios: string[];
+  vakgebieden: string[];
+  urenPerWeek: string;
+  urenPerWeekMin: string;
+  urenPerWeekMax: string;
+  straalKm: string;
+  contractType: string;
+  tariefMin: string;
+  tariefMax: string;
+  sort: string;
+  page: number;
+  limit: number;
+};
+
 const CONTRACT_TYPES = [
   { value: "freelance", label: "Freelance" },
   { value: "interim", label: "Interim" },
@@ -583,13 +604,53 @@ export function OpdrachtenSidebar({
     [debouncedHoursMin, debouncedHoursMax, urenPerWeekMin, urenPerWeekMax],
   );
   const effectiveHoursPerWeekBucket = debouncedHoursHasManualInput ? "" : urenPerWeek;
-  const sortedRegios = useMemo(
-    () => [...regios].sort((a, b) => a.localeCompare(b)),
-    [regios],
-  );
+  const sortedRegios = useMemo(() => [...regios].sort((a, b) => a.localeCompare(b)), [regios]);
   const sortedVakgebieden = useMemo(
     () => [...vakgebieden].sort((a, b) => a.localeCompare(b)),
     [vakgebieden],
+  );
+
+  const searchQueryKey = useMemo<SearchQueryKeyPayload>(
+    () => ({
+      q,
+      platform,
+      endClient,
+      vaardigheid,
+      status,
+      provincie,
+      regios: sortedRegios,
+      vakgebieden: sortedVakgebieden,
+      urenPerWeek: effectiveHoursPerWeekBucket,
+      urenPerWeekMin: debouncedHoursMin,
+      urenPerWeekMax: debouncedHoursMax,
+      straalKm: debouncedRadiusKm,
+      contractType,
+      tariefMin: debouncedRateMin,
+      tariefMax: debouncedRateMax,
+      sort,
+      page: pageParam,
+      limit: limitParam,
+    }),
+    [
+      q,
+      platform,
+      endClient,
+      vaardigheid,
+      status,
+      provincie,
+      sortedRegios,
+      sortedVakgebieden,
+      effectiveHoursPerWeekBucket,
+      debouncedHoursMin,
+      debouncedHoursMax,
+      debouncedRadiusKm,
+      contractType,
+      debouncedRateMin,
+      debouncedRateMax,
+      sort,
+      pageParam,
+      limitParam,
+    ],
   );
 
   useEffect(() => {
@@ -620,8 +681,6 @@ export function OpdrachtenSidebar({
     tariefMinParamFromUrl,
     tariefMaxParamFromUrl,
     urenPerWeek,
-    urenPerWeekMin,
-    urenPerWeekMax,
     router,
     pathname,
     searchParams,
@@ -647,27 +706,7 @@ export function OpdrachtenSidebar({
   }, [inputValue, pathname, q, searchParams, router]);
 
   const { data, error, isFetching } = useQuery({
-    queryKey: [
-      "opdrachten-search",
-      q,
-      platform,
-      endClient,
-      vaardigheid,
-      status,
-      provincie,
-      sortedRegios.join("|"),
-      sortedVakgebieden.join("|"),
-      effectiveHoursPerWeekBucket,
-      debouncedHoursMin,
-      debouncedHoursMax,
-      debouncedRadiusKm,
-      contractType,
-      debouncedRateMin,
-      debouncedRateMax,
-      sort,
-      pageParam,
-      limitParam,
-    ],
+    queryKey: ["opdrachten-search", searchQueryKey],
     queryFn: ({ signal }) =>
       searchJobs({
         q,
@@ -690,6 +729,7 @@ export function OpdrachtenSidebar({
         limit: limitParam,
         signal,
       }),
+    staleTime: 30_000,
     placeholderData: (prev) => prev,
     initialData:
       pageParam === 1 &&
@@ -946,7 +986,7 @@ export function OpdrachtenSidebar({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
-                <span className={DARK_FILTER_SECTION_LABEL_CLASS}>Uren per week</span>
+              <span className={DARK_FILTER_SECTION_LABEL_CLASS}>Uren per week</span>
               <span className={DARK_FILTER_SECTION_VALUE_CLASS}>
                 {summarizeHoursRange(hoursMinInput, hoursMaxInput)}
               </span>
@@ -974,12 +1014,12 @@ export function OpdrachtenSidebar({
           </div>
         </div>
 
-                <RadiusSliderField
-                  provinceAnchor={provinceAnchor}
-                  radiusKm={radiusKmInput}
-                  onRadiusChange={handleRadiusChange}
-                  compact
-                />
+        <RadiusSliderField
+          provinceAnchor={provinceAnchor}
+          radiusKm={radiusKmInput}
+          onRadiusChange={handleRadiusChange}
+          compact
+        />
 
         <div className="shrink-0 px-4 pb-4">
           <Select
@@ -1365,8 +1405,8 @@ export function OpdrachtenSidebar({
                   />
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {summarizeHoursRange(hoursMinInput, hoursMaxInput)} — vacatures overlappen met
-                  dit bereik.
+                  {summarizeHoursRange(hoursMinInput, hoursMaxInput)} — vacatures overlappen met dit
+                  bereik.
                 </p>
               </div>
 
@@ -1414,24 +1454,24 @@ export function OpdrachtenSidebar({
               <div>
                 <p className="mb-2 block text-sm font-medium text-foreground">Tarief per uur</p>
                 <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="Min"
-                  value={rateMinInput}
-                  onChange={(e) => handleRateMinChange(e.target.value)}
-                  className="h-11 rounded-lg border-border bg-background text-sm"
-                />
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="Max"
-                  value={rateMaxInput}
-                  onChange={(e) => handleRateMaxChange(e.target.value)}
-                  className="h-11 rounded-lg border-border bg-background text-sm"
-                />
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Min"
+                    value={rateMinInput}
+                    onChange={(e) => handleRateMinChange(e.target.value)}
+                    className="h-11 rounded-lg border-border bg-background text-sm"
+                  />
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Max"
+                    value={rateMaxInput}
+                    onChange={(e) => handleRateMaxChange(e.target.value)}
+                    className="h-11 rounded-lg border-border bg-background text-sm"
+                  />
+                </div>
               </div>
-            </div>
             </div>
           </div>
         </div>
