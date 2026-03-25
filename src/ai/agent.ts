@@ -41,6 +41,7 @@ const kandidaatTools = {
   verwijderKandidaat: tools.verwijderKandidaat,
   voegNotitieToe: tools.voegNotitieToe,
   autoMatchKandidaat: tools.autoMatchKandidaat,
+  cvIntakeResultaat: tools.cvIntakeResultaat,
 };
 
 const matchTools = {

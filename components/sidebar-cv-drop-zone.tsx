@@ -38,7 +38,9 @@ export function SidebarCvDropZone({
     e.stopPropagation();
     if (!e.dataTransfer?.types?.includes("Files")) return;
     dragDepthRef.current += 1;
-    setUploadState("dragging");
+    setUploadState((prev) =>
+      prev === "uploading" || prev === "success" || prev === "error" ? prev : "dragging",
+    );
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
