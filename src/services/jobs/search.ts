@@ -2,7 +2,11 @@ import { and, db, inArray, isPostgresDatabase, or, type SQL, sql } from "../../d
 import { jobs } from "../../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
-import { logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
+import {
+  type QueryPath,
+  logSlowQuery,
+  SEARCH_SLO_MS,
+} from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
 import { collapseScoredJobsByVacancy, fetchDedupedJobIds, loadJobsByIds } from "./deduplication";
 import {
@@ -15,6 +19,22 @@ import { getHybridSearchPolicy } from "./hybrid-search-policy";
 import { listJobs } from "./list";
 import { buildJobFilterConditions } from "./query-filters";
 import { type Job, jobReadSelection } from "./repository";
+
+type SearchTextResult = {
+  ids: string[];
+  queryPath: "search-text";
+};
+
+type VectorMatch = {
+  id: string;
+  title: string;
+  similarity: number;
+};
+
+type VectorSearchResult = {
+  matches: VectorMatch[];
+  queryPath: QueryPath;
+};
 
 export type SearchJobsOptions = {
   platform?: string;
@@ -146,25 +166,29 @@ async function searchJobIdsByTitle(
     limit?: number;
     filterCondition?: SQL;
   } = {},
-): Promise<string[]> {
+): Promise<SearchTextResult> {
   const safeLimit = Math.min(opts.limit ?? 50, 100);
   const filterCondition = opts.filterCondition ?? sql`true`;
   const tsInput = toTsQueryInput(query);
 
   if (tsInput && isPostgresDatabase()) {
-    const searchVector = sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, ''))`;
-    const searchRank = sql`ts_rank(${searchVector}, to_tsquery('dutch', ${tsInput}))`;
+    const searchQuery = sql`to_tsquery('dutch', ${tsInput})`;
+    const searchVector = sql`to_tsvector('dutch', coalesce(${jobs.searchText}, ''))`;
+    const searchRank = sql`ts_rank(${searchVector}, ${searchQuery})`;
     const ftsIds = await fetchDedupedJobIds({
-      whereClause:
-        and(filterCondition, sql`${searchVector} @@ to_tsquery('dutch', ${tsInput})`) ??
-        filterCondition,
+      whereClause: and(filterCondition, sql`${searchVector} @@ ${searchQuery}`) ?? filterCondition,
       limit: safeLimit,
       partitionOrderBy: sql`${searchRank} desc, ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
       resultOrderBy: sql`search_rank desc nulls last, scraped_at desc nulls last, id desc`,
       extraSelections: sql`${searchRank} as search_rank`,
     });
 
-    if (ftsIds.length > 0) return ftsIds;
+    if (ftsIds.length > 0) {
+      return {
+        ids: ftsIds,
+        queryPath: "search-text",
+      };
+    }
   }
 
   const words = query.trim().split(/\s+/).filter(Boolean);
@@ -176,7 +200,10 @@ async function searchJobIdsByTitle(
   return fetchDedupedJobIds({
     whereClause: and(filterCondition, titleConditions) ?? filterCondition,
     limit: safeLimit,
-  });
+  }).then((ids) => ({
+    ids,
+    queryPath: "search-text",
+  }));
 }
 
 /** Opdrachten zoeken op titel/omschrijving met full-text search (tsvector/GIN).
@@ -186,7 +213,7 @@ export async function searchJobsByTitle(
   limit?: number,
   status: JobStatus = "open",
 ): Promise<Job[]> {
-  const ids = await searchJobIdsByTitle(query, {
+  const { ids } = await searchJobIdsByTitle(query, {
     limit,
     filterCondition: getJobStatusCondition(status),
   });
@@ -231,7 +258,7 @@ export async function hybridSearchWithTotal(
   }).filter((condition): condition is SQL => Boolean(condition));
   const retrievalFilterCondition = buildSearchFilterCondition(filterConditions);
 
-  const [textResultIds, vectorResults] = await Promise.all([
+  const [textResult, vectorResult] = await Promise.all([
     (async () => {
       const textSearchStartedAt = Date.now();
       try {
@@ -243,10 +270,10 @@ export async function hybridSearchWithTotal(
         textSearchMs = Date.now() - textSearchStartedAt;
       }
     })(),
-    (async () => {
+    (async (): Promise<VectorSearchResult> => {
       try {
         if (!policy.shouldRunVectorSearch) {
-          return [];
+          return { matches: [], queryPath: "search-text" };
         }
 
         if (
@@ -265,7 +292,7 @@ export async function hybridSearchWithTotal(
           });
           vectorSearchMs = Date.now() - vectorSearchStartedAt;
 
-          return results;
+          return { matches: results, queryPath: "search-hybrid" };
         }
 
         if (
@@ -300,11 +327,14 @@ export async function hybridSearchWithTotal(
           const rows = result.rows;
           vectorSearchMs = Date.now() - vectorSearchStartedAt;
 
-          return rows.map((row) => ({
-            id: row.id,
-            title: row.title,
-            similarity: Number(row.similarity),
-          }));
+          return {
+            matches: rows.map((row) => ({
+              id: row.id,
+              title: row.title,
+              similarity: Number(row.similarity),
+            })),
+            queryPath: "search-hybrid",
+          };
         }
 
         if (typeof embeddingService.findSimilarJobs === "function") {
@@ -315,26 +345,30 @@ export async function hybridSearchWithTotal(
             filterCondition: retrievalFilterCondition,
           });
           vectorSearchMs = Date.now() - vectorSearchStartedAt;
-          return results;
+          return { matches: results, queryPath: "search-hybrid" };
         }
 
-        return [];
+        return { matches: [], queryPath: "search-hybrid" };
       } catch {
-        return [];
+        return { matches: [], queryPath: "search-hybrid-fallback" };
       }
     })(),
   ]);
 
+  const queryPath: QueryPath = policy.shouldRunVectorSearch
+    ? vectorResult.queryPath
+    : "search-text";
+
   const rrfStartedAt = Date.now();
   const scoreMap = new Map<string, { rrfScore: number; job?: HybridSearchRankJob | Job }>();
 
-  textResultIds.forEach((id, rank) => {
+  textResult.ids.forEach((id, rank) => {
     const entry = scoreMap.get(id) ?? { rrfScore: 0 };
     entry.rrfScore += 1 / (policy.k + rank + 1);
     scoreMap.set(id, entry);
   });
 
-  vectorResults.forEach((match, rank) => {
+  vectorResult.matches.forEach((match, rank) => {
     const entry = scoreMap.get(match.id) ?? { rrfScore: 0 };
     entry.rrfScore += 1 / (policy.k + rank + 1);
     scoreMap.set(match.id, entry);
@@ -360,6 +394,7 @@ export async function hybridSearchWithTotal(
       hydrationMode: policy.hydrationMode,
       vectorSearchEnabled: policy.shouldRunVectorSearch,
       vectorSearchSkippedReason: policy.vectorSearchSkippedReason,
+      queryPath,
     });
     return { data: [], total: 0 };
   }
@@ -444,6 +479,7 @@ export async function hybridSearchWithTotal(
     hydrationMode: policy.hydrationMode,
     vectorSearchEnabled: policy.shouldRunVectorSearch,
     vectorSearchSkippedReason: policy.vectorSearchSkippedReason,
+    queryPath,
   });
   return { data, total };
 }
