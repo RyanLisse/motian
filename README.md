@@ -983,6 +983,31 @@ Motian publiceert een live **read-only XML feed** voor **pull-based Salesforce i
 - **Salesforce object mapping**: `Application__c`, `Job__c`, `Candidate__c`
 - **Authenticatie**: de route hergebruikt de gedeelde `/api/*` bearer auth via `API_SECRET`, maar productie lijkt momenteel publiek bereikbaar omdat `API_SECRET` daar waarschijnlijk niet is ingesteld
 
+### Gebruik via API, CLI en MCP
+
+```bash
+# HTTP API
+curl "https://motian.vercel.app/api/salesforce-feed?entity=jobs&status=open&limit=25"
+
+# Lokale CLI
+pnpm cli salesforce:feed --entity jobs --status open --updated-since 2026-03-01T00:00:00.000Z --limit 25
+
+# MCP tool
+{
+  "name": "salesforce_feed",
+  "arguments": {
+    "entity": "jobs",
+    "status": "open",
+    "updatedSince": "2026-03-01T00:00:00.000Z",
+    "limit": 25
+  }
+}
+```
+
+- **CLI output**: JSON met `entity`, `count` en de ruwe `xml` string
+- **MCP output**: JSON met `entity`, `count` en dezelfde `xml` string
+- **Parity**: API, CLI en MCP gebruiken dezelfde service in `src/services/salesforce-feed.ts`
+
 ---
 
 ## Deployment

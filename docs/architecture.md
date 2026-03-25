@@ -98,6 +98,12 @@ Live URL: `https://motian.vercel.app/api/salesforce-feed`
 
 Supported query params: `entity`, `id`, `updatedSince`, `status`, `page`, `limit`.
 
+Other surfaces for the same export:
+
+- CLI: `pnpm cli salesforce:feed --entity jobs --status open --limit 25`
+- MCP: `salesforce_feed` tool with `{ entity, status, updatedSince, limit, offset|page }`
+- Contract: API returns raw XML; CLI and MCP wrap the same XML string in JSON metadata (`entity`, `count`, `xml`)
+
 ## AI Models
 
 | Model | Provider | Purpose | Service |
