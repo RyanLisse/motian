@@ -1,3 +1,4 @@
+import { dynamicAdapter } from "./dynamic-adapter";
 import { scrapeFlextender } from "./flextender";
 import { monsterboardAdapter } from "./monsterboard";
 import { scrapeOpdrachtoverheid } from "./opdrachtoverheid";
@@ -120,8 +121,28 @@ export function listPlatformCatalogEntries(): ImplementedPlatformDefinition[] {
   return [...implementedDefinitions];
 }
 
+/**
+ * Get the adapter for a platform.
+ * For hardcoded platforms, returns the specific adapter.
+ * For ai_dynamic platforms (not in the hardcoded list), returns the dynamic adapter.
+ */
 export function getPlatformAdapter(slug: string): PlatformAdapter | undefined {
-  return implementedDefinitionMap.get(slug)?.adapter;
+  const implemented = implementedDefinitionMap.get(slug)?.adapter;
+  if (implemented) return implemented;
+
+  // Dynamic platforms are resolved at runtime — the dynamic adapter is returned
+  // for any platform that has a scrapingStrategy in its config parameters.
+  // The caller (scrape-pipeline) will pass the config with the strategy.
+  return undefined;
+}
+
+/**
+ * Get the dynamic adapter for AI-analyzed platforms.
+ * This is used by the scrape pipeline when a platform has adapterKind "ai_dynamic"
+ * in the platform_catalog table but no hardcoded adapter.
+ */
+export function getDynamicAdapter(): PlatformAdapter {
+  return dynamicAdapter;
 }
 
 export function getImplementedPlatformDefinition(

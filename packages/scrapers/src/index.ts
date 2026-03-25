@@ -5,7 +5,9 @@ export {
   mapTenderActiveToStatus,
   scrapeOpdrachtoverheid,
 } from "./opdrachtoverheid";
+export { dynamicAdapter } from "./dynamic-adapter";
 export {
+  getDynamicAdapter,
   getImplementedPlatformDefinition,
   getPlatformAdapter,
   getPlatformDefinition,
@@ -20,6 +22,7 @@ export type {
   ImplementedPlatformDefinition,
   PlatformAdapter,
   PlatformAdapterKind,
+  PlatformAnalysisResult,
   PlatformAuthMode,
   PlatformBlockerKind,
   PlatformCapability,

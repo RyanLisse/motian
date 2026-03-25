@@ -23,6 +23,8 @@ const opdrachtTools = {
 
 const platformTools = {
   platformsList: tools.platformsList,
+  platformAnalyze: tools.platformAnalyze,
+  platformAutoSetup: tools.platformAutoSetup,
   platformCatalogCreate: tools.platformCatalogCreate,
   platformCatalogUpdate: tools.platformCatalogUpdate,
   platformConfigCreate: tools.platformConfigCreate,
@@ -127,6 +129,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
       "Data analyseren (tarieven, platforms, deadlines)",
       "Scrapers en scoring-batches starten voor opdrachten",
       "Platform onboarding beheren: catalogus, config, validatie en smoke imports",
+      "Nieuwe platformen automatisch toevoegen: URL analyseren → scraping strategie bepalen → volledig inrichten (platformAutoSetup)",
     ];
   }
 
@@ -156,6 +159,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
     "Scrapers starten voor nieuwe opdrachten",
     "Batch import draaien over actieve scrapers (importeerOpdrachtenBatch)",
     "Platform onboarding beheren: catalogus, config, validatie, test-import en activatie",
+    "Nieuwe platformen automatisch toevoegen: geef een URL en de agent analyseert de site, bepaalt de scraping strategie, en richt alles in (platformAnalyze + platformAutoSetup)",
     "Batch scoring draaien over actieve opdrachten (runKandidaatScoringBatch)",
     "GDPR retentie review uitvoeren (reviewGdprRetentie)",
     "GDPR: kandidaatdata exporteren, permanent verwijderen, contactgegevens scrubben",

@@ -1,7 +1,8 @@
+import { getDynamicAdapter } from "@motian/scrapers";
 import { publish } from "../lib/event-bus";
 import { normalizeAndSaveJobs } from "./normalize";
 import { recordScrapeResult } from "./record-scrape-result";
-import { getConfigByPlatform, toRuntimeConfig } from "./scrapers";
+import { getConfigByPlatform, getPlatformCatalogEntry, toRuntimeConfig } from "./scrapers";
 import { getPlatformAdapter } from "./scrapers/index";
 
 type ScrapeStatus = "success" | "partial" | "failed";
@@ -69,11 +70,17 @@ export async function runScrapePipeline(
   let listings: Record<string, unknown>[];
   let scrapeErrors: string[] = [];
   try {
-    const adapter = getPlatformAdapter(platform);
+    let adapter = getPlatformAdapter(platform);
     if (!adapter) {
-      const errors = [`Onbekend platform: ${platform}`];
-      await recordFailure(platform, errors, startTime);
-      return { jobsNew: 0, duplicates: 0, errors };
+      // Check if this is a dynamic (AI-analyzed) platform
+      const catalogEntry = await getPlatformCatalogEntry(platform);
+      if (catalogEntry?.adapterKind === "ai_dynamic") {
+        adapter = getDynamicAdapter();
+      } else {
+        const errors = [`Onbekend platform: ${platform}`];
+        await recordFailure(platform, errors, startTime);
+        return { jobsNew: 0, duplicates: 0, errors };
+      }
     }
 
     const config = await getConfigByPlatform(platform);

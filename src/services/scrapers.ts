@@ -1,4 +1,5 @@
 import {
+  getDynamicAdapter,
   getPlatformAdapter,
   getPlatformDefinition,
   listPlatformDefinitions,
@@ -303,7 +304,7 @@ async function recordOnboardingSnapshot(input: {
 }): Promise<PlatformOnboardingRunRecord> {
   await ensurePlatformCatalogExists(input.platform);
 
-  const supported = Boolean(getPlatformAdapter(input.platform));
+  const supported = Boolean(await resolveAdapter(input.platform));
   const latest = await getLatestOnboardingRun(input.platform);
   const initial = latest
     ? onboardingStateFromRecord(latest, supported)
@@ -349,7 +350,7 @@ async function ensureOnboardingDraft(
   const draft = createPlatformOnboardingRunDraft({
     platform,
     source,
-    supported: Boolean(getPlatformAdapter(platform)),
+    supported: Boolean(getPlatformAdapter(platform)), // Draft only needs hardcoded check
   });
 
   await db.insert(platformOnboardingRuns).values({
@@ -428,6 +429,30 @@ export function toRuntimeConfig(platform: string, config: ScraperConfig): Platfo
   };
 }
 
+// ========== Adapter Resolution ==========
+
+/**
+ * Resolve the platform adapter, falling back to the dynamic adapter
+ * for ai_dynamic platforms that have no hardcoded adapter.
+ */
+async function resolveAdapter(platform: string) {
+  const hardcoded = getPlatformAdapter(platform);
+  if (hardcoded) return hardcoded;
+
+  // Check if this is a dynamic platform in the catalog
+  const [catalogRow] = await db
+    .select({ adapterKind: platformCatalog.adapterKind })
+    .from(platformCatalog)
+    .where(eq(platformCatalog.slug, platform))
+    .limit(1);
+
+  if (catalogRow?.adapterKind === "ai_dynamic") {
+    return getDynamicAdapter();
+  }
+
+  return undefined;
+}
+
 // ========== Service Functions ==========
 
 export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]> {
@@ -479,7 +504,7 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
           (definition ? serializeZodSchema(definition.authSchema) : {}),
         isEnabled: row?.isEnabled ?? true,
         isSelfServe: row?.isSelfServe ?? Boolean(definition),
-        implemented: Boolean(getPlatformAdapter(slug)),
+        implemented: Boolean(getPlatformAdapter(slug)) || row?.adapterKind === "ai_dynamic",
         config: toPublicScraperConfig(configMap.get(slug) ?? null),
         latestRun: latestRunMap.get(slug) ?? null,
       };
@@ -664,22 +689,23 @@ export async function createConfig(data: CreatePlatformConfigData): Promise<Scra
     platform: data.platform,
     source: data.source ?? "ui",
     configId: config.id,
-    event: getPlatformAdapter(data.platform)
-      ? {
-          type: "config_saved",
-          configId: config.id,
-          evidence: {
-            baseUrl: config.baseUrl,
+    event:
+      getPlatformAdapter(data.platform) || catalog?.adapterKind === "ai_dynamic"
+        ? {
+            type: "config_saved",
+            configId: config.id,
+            evidence: {
+              baseUrl: config.baseUrl,
+            },
+          }
+        : {
+            type: "unsupported_source_detected",
+            blockerKind: "needs_implementation",
+            evidence: {
+              baseUrl: config.baseUrl,
+              message: "Platform heeft nog geen runtime adapter implementatie",
+            },
           },
-        }
-      : {
-          type: "unsupported_source_detected",
-          blockerKind: "needs_implementation",
-          evidence: {
-            baseUrl: config.baseUrl,
-            message: "Platform heeft nog geen runtime adapter implementatie",
-          },
-        },
   });
 
   return config;
@@ -740,22 +766,23 @@ export async function updateConfig(
       platform: existing.platform,
       source: "ui",
       configId: updated.id,
-      event: getPlatformAdapter(existing.platform)
-        ? {
-            type: "config_saved",
-            configId: updated.id,
-            evidence: {
-              baseUrl: updated.baseUrl,
+      event:
+        getPlatformAdapter(existing.platform) || (await resolveAdapter(existing.platform))
+          ? {
+              type: "config_saved",
+              configId: updated.id,
+              evidence: {
+                baseUrl: updated.baseUrl,
+              },
+            }
+          : {
+              type: "unsupported_source_detected",
+              blockerKind: "needs_implementation",
+              evidence: {
+                baseUrl: updated.baseUrl,
+                message: "Platform heeft nog geen runtime adapter implementatie",
+              },
             },
-          }
-        : {
-            type: "unsupported_source_detected",
-            blockerKind: "needs_implementation",
-            evidence: {
-              baseUrl: updated.baseUrl,
-              message: "Platform heeft nog geen runtime adapter implementatie",
-            },
-          },
     });
   }
 
@@ -784,7 +811,7 @@ export async function validateConfig(
     throw new Error(`Geen scraper configuratie gevonden voor ${platform}`);
   }
 
-  const adapter = getPlatformAdapter(platform);
+  const adapter = await resolveAdapter(platform);
   if (!adapter) {
     const onboardingRun = await recordOnboardingSnapshot({
       platform,
@@ -867,7 +894,7 @@ export async function triggerTestRun(
     throw new Error(`Geen scraper configuratie gevonden voor ${platform}`);
   }
 
-  const adapter = getPlatformAdapter(platform);
+  const adapter = await resolveAdapter(platform);
   if (!adapter) {
     const onboardingRun = await recordOnboardingSnapshot({
       platform,
