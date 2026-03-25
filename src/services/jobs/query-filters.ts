@@ -50,12 +50,11 @@ export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
   if (opts.company) conditions.push(eq(jobs.company, opts.company));
 
   if (opts.endClient) {
-    conditions.push(
-      or(
-        eq(jobs.endClient, opts.endClient),
-        and(isNull(jobs.endClient), eq(jobs.company, opts.endClient)),
-      ),
+    const endClientCondition = or(
+      eq(jobs.endClient, opts.endClient),
+      and(isNull(jobs.endClient), eq(jobs.company, opts.endClient)),
     );
+    if (endClientCondition) conditions.push(endClientCondition);
   }
 
   if (opts.escoUri) {

@@ -99,7 +99,9 @@ async function walkTree(uri: string, depth = 0): Promise<void> {
   try {
     concept = await fetchConcept(uri);
   } catch (err) {
-    console.error(`[WARN] Failed to fetch concept ${uri}: ${err instanceof Error ? err.message : err}`);
+    console.error(
+      `[WARN] Failed to fetch concept ${uri}: ${err instanceof Error ? err.message : err}`,
+    );
     return;
   }
   if (!concept) return;
@@ -123,7 +125,11 @@ async function walkTree(uri: string, depth = 0): Promise<void> {
   }
 
   // If no children, this is a leaf skill — fetch full details
-  if (narrower.length === 0 || concept.className === "Skill" || concept.className === "KnowledgeConcept") {
+  if (
+    narrower.length === 0 ||
+    concept.className === "Skill" ||
+    concept.className === "KnowledgeConcept"
+  ) {
     try {
       const skill = await fetchSkillResource(uri);
       if (skill) {
@@ -133,17 +139,21 @@ async function walkTree(uri: string, depth = 0): Promise<void> {
             uri: skill.uri ?? uri,
             preferredLabel: preferred,
             altLabels: extractAltLabels(skill),
-            broaderUri: concept._links?.broaderConcept?.[0]?.uri ?? concept._links?.broaderConcept?.uri,
+            broaderUri:
+              concept._links?.broaderConcept?.[0]?.uri ?? concept._links?.broaderConcept?.uri,
             skillType: skill.skillType ?? concept.className,
             reuseLevel: skill.reuseLevel,
           });
         }
       }
     } catch (err) {
-      console.error(`[WARN] Failed to fetch skill ${uri}: ${err instanceof Error ? err.message : err}`);
+      console.error(
+        `[WARN] Failed to fetch skill ${uri}: ${err instanceof Error ? err.message : err}`,
+      );
     }
     fetched++;
-    if (fetched % 100 === 0) console.error(`[progress] ${fetched} skills fetched, ${skills.length} valid`);
+    if (fetched % 100 === 0)
+      console.error(`[progress] ${fetched} skills fetched, ${skills.length} valid`);
     return;
   }
 
