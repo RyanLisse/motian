@@ -1,4 +1,4 @@
-import { isNull } from "drizzle-orm";
+import { and, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/src/db";
@@ -90,10 +90,13 @@ export const GET = withApiHandler(
       limitedMatches.map((m) => m.candidateId).filter(Boolean) as string[],
     );
 
-    // Fetch jobs connected via matches (not deleted)
-    const jobRows =
-      matchedJobIds.size > 0
-        ? await db
+    // Fetch jobs and candidates connected via matches in parallel (with IN clause, not full table scan)
+    const jobIdArray = [...matchedJobIds];
+    const candidateIdArray = [...matchedCandidateIds];
+
+    const [connectedJobRows, connectedCandidateRows] = await Promise.all([
+      jobIdArray.length > 0
+        ? db
             .select({
               id: jobs.id,
               title: jobs.title,
@@ -103,16 +106,10 @@ export const GET = withApiHandler(
               status: jobs.status,
             })
             .from(jobs)
-            .where(isNull(jobs.deletedAt))
-        : [];
-
-    // Filter to only jobs that appear in the matches
-    const connectedJobRows = jobRows.filter((j) => matchedJobIds.has(j.id));
-
-    // Fetch candidates connected via matches (not deleted)
-    const candidateRows =
-      matchedCandidateIds.size > 0
-        ? await db
+            .where(and(isNull(jobs.deletedAt), inArray(jobs.id, jobIdArray)))
+        : Promise.resolve([]),
+      candidateIdArray.length > 0
+        ? db
             .select({
               id: candidates.id,
               name: candidates.name,
@@ -120,20 +117,21 @@ export const GET = withApiHandler(
               location: candidates.location,
             })
             .from(candidates)
-            .where(isNull(candidates.deletedAt))
-        : [];
-
-    // Filter to only candidates that appear in the matches
-    const connectedCandidateRows = candidateRows.filter((c) => matchedCandidateIds.has(c.id));
+            .where(and(isNull(candidates.deletedAt), inArray(candidates.id, candidateIdArray)))
+        : Promise.resolve([]),
+    ]);
 
     // Collect valid entity IDs after deletedAt filter
     const validJobIds = new Set(connectedJobRows.map((j) => j.id));
     const validCandidateIds = new Set(connectedCandidateRows.map((c) => c.id));
 
-    // Get job skills for connected jobs
-    const allJobSkillRows =
-      validJobIds.size > 0
-        ? await db
+    // Get job skills and candidate skills in parallel (with IN clause)
+    const validJobIdArray = [...validJobIds];
+    const validCandidateIdArray = [...validCandidateIds];
+
+    const [filteredJobSkillRows, filteredCandidateSkillRows] = await Promise.all([
+      validJobIdArray.length > 0
+        ? db
             .select({
               id: jobSkills.id,
               jobId: jobSkills.jobId,
@@ -143,12 +141,10 @@ export const GET = withApiHandler(
               critical: jobSkills.critical,
             })
             .from(jobSkills)
-        : [];
-    const filteredJobSkillRows = allJobSkillRows.filter((js) => validJobIds.has(js.jobId));
-
-    const allCandidateSkillRows =
-      validCandidateIds.size > 0
-        ? await db
+            .where(inArray(jobSkills.jobId, validJobIdArray))
+        : Promise.resolve([]),
+      validCandidateIdArray.length > 0
+        ? db
             .select({
               id: candidateSkills.id,
               candidateId: candidateSkills.candidateId,
@@ -156,20 +152,21 @@ export const GET = withApiHandler(
               confidence: candidateSkills.confidence,
             })
             .from(candidateSkills)
-        : [];
-    const filteredCandidateSkillRows = allCandidateSkillRows.filter((cs) =>
-      validCandidateIds.has(cs.candidateId),
-    );
-
-    // Collect all skill URIs referenced
-    const referencedSkillUris = new Set([
-      ...filteredJobSkillRows.map((js) => js.escoUri),
-      ...filteredCandidateSkillRows.map((cs) => cs.escoUri),
+            .where(inArray(candidateSkills.candidateId, validCandidateIdArray))
+        : Promise.resolve([]),
     ]);
 
-    // Fetch top-level ESCO skills (broaderUri IS NULL)
-    const allSkillRows =
-      referencedSkillUris.size > 0
+    // Collect all skill URIs referenced
+    const referencedSkillUris = [
+      ...new Set([
+        ...filteredJobSkillRows.map((js) => js.escoUri),
+        ...filteredCandidateSkillRows.map((cs) => cs.escoUri),
+      ]),
+    ];
+
+    // Fetch top-level ESCO skills (broaderUri IS NULL, filtered by referenced URIs)
+    const filteredSkillRows =
+      referencedSkillUris.length > 0
         ? await db
             .select({
               uri: escoSkills.uri,
@@ -180,9 +177,8 @@ export const GET = withApiHandler(
               broaderUri: escoSkills.broaderUri,
             })
             .from(escoSkills)
-            .where(isNull(escoSkills.broaderUri))
+            .where(and(isNull(escoSkills.broaderUri), inArray(escoSkills.uri, referencedSkillUris)))
         : [];
-    const filteredSkillRows = allSkillRows.filter((s) => referencedSkillUris.has(s.uri));
 
     // Build nodes
     const jobNodes = connectedJobRows.map(buildJobNode);
@@ -222,7 +218,11 @@ export const GET = withApiHandler(
       hasMore,
     };
 
-    return Response.json(response);
+    return Response.json(response, {
+      headers: {
+        "Cache-Control": "private, s-maxage=30, stale-while-revalidate=60",
+      },
+    });
   },
   {
     logPrefix: "GET /api/visualisatie/graph",

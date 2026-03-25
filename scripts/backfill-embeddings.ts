@@ -16,7 +16,6 @@ async function main() {
   const BATCH_SIZE = 500;
   let totalEmbedded = 0;
   let totalSkipped = 0;
-  const _lastProcessedId = "";
 
   while (true) {
     console.log(`\n⏳ Processing next batch of ${BATCH_SIZE}...`);

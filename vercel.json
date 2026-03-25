@@ -1,3 +1,20 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "app/api/cv-analyse/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/embeddings/backfill/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/chat/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/matches/genereren/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/visualisatie/graph/route.ts": {
+      "maxDuration": 15
+    }
+  }
 }

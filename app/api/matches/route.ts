@@ -19,5 +19,9 @@ export const GET = withApiHandler(async (req: Request) => {
     offset,
   });
   const total = await countMatches({ jobId, candidateId, status });
-  return Response.json(paginatedResponse(data, total, { page, limit, offset }));
+  return Response.json(paginatedResponse(data, total, { page, limit, offset }), {
+    headers: {
+      "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30",
+    },
+  });
 });

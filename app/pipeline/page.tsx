@@ -107,18 +107,10 @@ export default async function PipelinePage({ searchParams }: Props) {
     kanbanConditions.push(eq(applications.jobId, vacatureId));
   }
 
-  // Fetch applications + KPIs + optional vacancy info in parallel
-  const [
-    rows,
-    totalResult,
-    newResult,
-    screeningResult,
-    interviewResult,
-    offerResult,
-    hiredResult,
-    kanbanRows,
-    vacatureRows,
-  ] = await Promise.all([
+  // Fetch applications + KPIs (consolidated into 1 query) + optional vacancy info in parallel
+  const kpiWhere = and(...kpiConditions);
+
+  const [rows, totalResult, kpiResult, kanbanRows, vacatureRows] = await Promise.all([
     // List view data (only if list view)
     view === "lijst"
       ? db
@@ -138,26 +130,17 @@ export default async function PipelinePage({ searchParams }: Props) {
           .offset(offset)
       : Promise.resolve([]),
     db.select({ count: sql<number>`count(*)::int` }).from(applications).where(whereClause),
+    // Single query with FILTER clauses instead of 5 separate count queries
     db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({
+        newCount: sql<number>`count(*) filter (where ${applications.stage} = 'new')::int`,
+        screeningCount: sql<number>`count(*) filter (where ${applications.stage} = 'screening')::int`,
+        interviewCount: sql<number>`count(*) filter (where ${applications.stage} = 'interview')::int`,
+        offerCount: sql<number>`count(*) filter (where ${applications.stage} = 'offer')::int`,
+        hiredCount: sql<number>`count(*) filter (where ${applications.stage} = 'hired')::int`,
+      })
       .from(applications)
-      .where(and(...kpiConditions, eq(applications.stage, "new"))),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(and(...kpiConditions, eq(applications.stage, "screening"))),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(and(...kpiConditions, eq(applications.stage, "interview"))),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(and(...kpiConditions, eq(applications.stage, "offer"))),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .where(and(...kpiConditions, eq(applications.stage, "hired"))),
+      .where(kpiWhere),
     // Kanban data (only if kanban view)
     view === "kanban"
       ? db
@@ -195,11 +178,12 @@ export default async function PipelinePage({ searchParams }: Props) {
 
   const totalCount = totalResult[0]?.count ?? 0;
   const totalPages = Math.ceil(totalCount / limit) || 1;
-  const newCount = newResult[0]?.count ?? 0;
-  const screeningCount = screeningResult[0]?.count ?? 0;
-  const interviewCount = interviewResult[0]?.count ?? 0;
-  const offerCount = offerResult[0]?.count ?? 0;
-  const hiredCount = hiredResult[0]?.count ?? 0;
+  const kpi = kpiResult[0];
+  const newCount = kpi?.newCount ?? 0;
+  const screeningCount = kpi?.screeningCount ?? 0;
+  const interviewCount = kpi?.interviewCount ?? 0;
+  const offerCount = kpi?.offerCount ?? 0;
+  const hiredCount = kpi?.hiredCount ?? 0;
   const allCount = newCount + screeningCount + interviewCount + offerCount + hiredCount;
 
   // Group kanban data by stage
