@@ -33,19 +33,25 @@ jobs:
     steps:
       - name: Parse event payload
         id: parse
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_ISSUE_ID: ${{ github.event.inputs.linear_issue_id }}
+          INPUT_SLUG: ${{ github.event.inputs.linear_issue_slug }}
+          DISPATCH_ISSUE_ID: ${{ github.event.client_payload.issue_id }}
+          DISPATCH_SLUG: ${{ github.event.client_payload.slug }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ISSUE_ID="${{ github.event.inputs.linear_issue_id }}"
-            SLUG="${{ github.event.inputs.linear_issue_slug }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            ISSUE_ID="$INPUT_ISSUE_ID"
+            SLUG="$INPUT_SLUG"
           else
-            ISSUE_ID="${{ github.event.client_payload.issue_id }}"
-            SLUG="${{ github.event.client_payload.slug }}"
+            ISSUE_ID="$DISPATCH_ISSUE_ID"
+            SLUG="$DISPATCH_SLUG"
           fi
           BRANCH="symphony/${ISSUE_ID}-${SLUG}"
           echo "issue_id=$ISSUE_ID" >> "$GITHUB_OUTPUT"
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          echo "Processing Linear issue: $ISSUE_ID → branch: $BRANCH"
+          echo "Processing Linear issue: $ISSUE_ID -> branch: $BRANCH"
 
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
