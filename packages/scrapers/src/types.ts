@@ -6,7 +6,8 @@ export type RawScrapedListing = Record<string, unknown>;
 export type PlatformAdapterKind =
   | "http_html_list_detail"
   | "browser_bootstrap_http_harvest"
-  | "api_json";
+  | "api_json"
+  | "ai_dynamic";
 
 export type PlatformAuthMode =
   | "none"
@@ -95,4 +96,36 @@ export type PlatformDefinition = {
 
 export type ImplementedPlatformDefinition = PlatformDefinition & {
   adapter: PlatformAdapter;
+};
+
+/** AI-generated scraping strategy from platform analysis. */
+export type PlatformAnalysisResult = {
+  slug: string;
+  displayName: string;
+  description: string;
+  defaultBaseUrl: string;
+  adapterKind: PlatformAdapterKind;
+  authMode: PlatformAuthMode;
+  capabilities: PlatformCapability[];
+  /** AI-inferred scraping configuration stored in parameters. */
+  scrapingStrategy: {
+    /** How to discover job listing URLs from the main page. */
+    listSelector: string;
+    /** CSS selector or JSON path for the link to each job detail page. */
+    linkSelector: string;
+    /** How pagination works on this platform. */
+    paginationType: "url_parameter" | "next_link" | "infinite_scroll" | "api_offset" | "none";
+    /** Pagination selector or URL pattern (e.g., "?page={n}" or CSS selector for next button). */
+    paginationSelector?: string;
+    /** Max pages to scrape per run. */
+    maxPages: number;
+    /** Field mapping: keys are unified job schema fields, values are CSS selectors or JSON paths. */
+    fieldMapping: Record<string, string>;
+    /** Whether a detail page fetch is needed for full data. */
+    needsDetailPage: boolean;
+    /** Optional: API endpoint discovered for structured data. */
+    apiEndpoint?: string;
+    /** Additional notes from AI analysis. */
+    notes?: string;
+  };
 };

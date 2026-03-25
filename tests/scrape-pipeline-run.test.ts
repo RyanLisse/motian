@@ -6,16 +6,20 @@ const {
   normalizeAndSaveJobs,
   recordScrapeResult,
   getConfigByPlatform,
+  getPlatformCatalogEntry,
   toRuntimeConfig,
   getPlatformAdapter,
+  getDynamicAdapter,
 } = vi.hoisted(() => ({
   publish: vi.fn(),
   enrichJobsBatch: vi.fn(() => Promise.resolve()),
   normalizeAndSaveJobs: vi.fn(),
   recordScrapeResult: vi.fn(() => Promise.resolve()),
   getConfigByPlatform: vi.fn(),
+  getPlatformCatalogEntry: vi.fn(),
   toRuntimeConfig: vi.fn(),
   getPlatformAdapter: vi.fn(),
+  getDynamicAdapter: vi.fn(),
 }));
 
 vi.mock("../src/lib/event-bus", () => ({ publish }));
@@ -30,10 +34,14 @@ vi.mock("../src/services/record-scrape-result", () => ({
 }));
 vi.mock("../src/services/scrapers", () => ({
   getConfigByPlatform,
+  getPlatformCatalogEntry,
   toRuntimeConfig,
 }));
 vi.mock("../src/services/scrapers/index", () => ({
   getPlatformAdapter,
+}));
+vi.mock("@motian/scrapers", () => ({
+  getDynamicAdapter,
 }));
 
 import { runScrapePipeline } from "../src/services/scrape-pipeline";
@@ -46,8 +54,11 @@ describe("runScrapePipeline", () => {
     recordScrapeResult.mockReset();
     recordScrapeResult.mockResolvedValue(undefined);
     getConfigByPlatform.mockReset();
+    getPlatformCatalogEntry.mockReset();
+    getPlatformCatalogEntry.mockResolvedValue(null);
     toRuntimeConfig.mockReset();
     getPlatformAdapter.mockReset();
+    getDynamicAdapter.mockReset();
   });
 
   it("records unsupported platforms as failed runs instead of returning early", async () => {
