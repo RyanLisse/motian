@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, isNull, ne, or, sql } from "../../db";
+import { and, asc, desc, eq, isNull, ne, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import type { Job } from "./repository";
 
@@ -89,11 +89,10 @@ export function getJobStatusCondition(status: JobStatus) {
   }
 
   if (status === "archived") {
-    // Jobs are "archived" either by status='archived' or by being soft-deleted
-    return or(eq(jobs.status, "archived"), isNotNull(jobs.deletedAt));
+    return eq(jobs.status, "archived");
   }
 
-  return and(getVisibleVacancyCondition(), eq(jobs.status, status));
+  return eq(jobs.status, status);
 }
 
 function getTimestamp(d: Date | string | null | undefined, fallback: number): number {

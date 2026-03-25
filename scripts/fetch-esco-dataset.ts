@@ -29,6 +29,7 @@ const seen = new Set<string>();
 const skills: EscoConcept[] = [];
 let fetched = 0;
 
+// biome-ignore lint/suspicious/noExplicitAny: external ESCO API returns dynamic JSON
 async function fetchConcept(uri: string): Promise<any> {
   const params = new URLSearchParams({ uri, language: LANGUAGES.join(",") });
   const url = `${API_BASE}/resource/concept?${params}`;
@@ -43,6 +44,7 @@ async function fetchConcept(uri: string): Promise<any> {
   return res.json();
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: external ESCO API returns dynamic JSON
 async function fetchSkillResource(uri: string): Promise<any> {
   const params = new URLSearchParams({ uri, language: LANGUAGES.join(",") });
   const url = `${API_BASE}/resource/skill?${params}`;
@@ -54,6 +56,7 @@ async function fetchSkillResource(uri: string): Promise<any> {
   return res.json();
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: external ESCO API returns dynamic JSON
 function extractLabels(data: any, field: string): Record<string, string> {
   const result: Record<string, string> = {};
   if (data?.[field]) {
@@ -64,6 +67,7 @@ function extractLabels(data: any, field: string): Record<string, string> {
   return result;
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: external ESCO API returns dynamic JSON
 function extractAltLabels(data: any): Record<string, string[]> {
   const result: Record<string, string[]> = {};
   if (data?.alternativeLabel) {
@@ -90,6 +94,7 @@ async function walkTree(uri: string, depth = 0): Promise<void> {
   seen.add(uri);
 
   await new Promise((r) => setTimeout(r, FETCH_DELAY_MS));
+  // biome-ignore lint/suspicious/noExplicitAny: external ESCO API returns dynamic JSON
   let concept: any;
   try {
     concept = await fetchConcept(uri);
