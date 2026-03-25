@@ -21,6 +21,16 @@ type CvIntakeOutput = {
   candidateUrl: string;
 };
 
+function isMatchEntry(m: unknown): m is CvIntakeOutput["matches"][number] {
+  if (typeof m !== "object" || m === null) return false;
+  const v = m as Record<string, unknown>;
+  return (
+    typeof v.jobId === "string" &&
+    typeof v.jobTitle === "string" &&
+    typeof v.quickScore === "number"
+  );
+}
+
 function isCvIntakeOutput(o: unknown): o is CvIntakeOutput {
   if (typeof o !== "object" || o === null) return false;
   const v = o as Record<string, unknown>;
@@ -28,7 +38,8 @@ function isCvIntakeOutput(o: unknown): o is CvIntakeOutput {
     typeof v.candidateId === "string" &&
     typeof v.candidateName === "string" &&
     Array.isArray(v.topSkills) &&
-    Array.isArray(v.matches)
+    Array.isArray(v.matches) &&
+    v.matches.every(isMatchEntry)
   );
 }
 
