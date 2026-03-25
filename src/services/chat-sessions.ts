@@ -135,11 +135,21 @@ function normalizeMessagePart(part: UIMessage["parts"][number]): UIMessage["part
   } as UIMessage["parts"][number];
 }
 
-export function normalizeChatMessage(message: UIMessage, fallbackId: string): UIMessage {
+export function normalizeChatMessage(
+  message: UIMessage | null | undefined,
+  fallbackId: string,
+): UIMessage {
+  const safeMessage = message ?? ({} as UIMessage);
+
   return {
-    ...message,
-    id: typeof message.id === "string" && message.id.length > 0 ? message.id : fallbackId,
-    parts: Array.isArray(message.parts) ? message.parts.map(normalizeMessagePart) : message.parts,
+    ...safeMessage,
+    role:
+      safeMessage.role === "assistant" || safeMessage.role === "user"
+        ? safeMessage.role
+        : "assistant",
+    id:
+      typeof safeMessage.id === "string" && safeMessage.id.length > 0 ? safeMessage.id : fallbackId,
+    parts: Array.isArray(safeMessage.parts) ? safeMessage.parts.map(normalizeMessagePart) : [],
   };
 }
 

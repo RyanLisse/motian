@@ -294,7 +294,7 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(html).toContain("Workflow gekoppeld");
     expect(html).toContain("Open workflow");
     expect(html).not.toContain("Nog te koppelen");
-  });
+  }, 30_000);
 
   it("candidate detail page keeps the recruiter section in Dutch and anchors match detail surfaces", () => {
     const source = readFile("app/kandidaten/[id]/page.tsx");

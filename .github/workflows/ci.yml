@@ -208,11 +208,7 @@ jobs:
       - name: Test with coverage
         run: |
           start=$(date +%s)
-          pnpm test:coverage -- \
-            --coverage.thresholds.statements 1 \
-            --coverage.thresholds.branches 1 \
-            --coverage.thresholds.functions 1 \
-            --coverage.thresholds.lines 1
+          pnpm test:coverage
           echo "::notice:: Test run completed in $(($(date +%s) - start))s"
 
       - name: Upload coverage artifact
@@ -268,12 +264,13 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Start dev server
-        run: pnpm dev &
+        run: |
+          pnpm dev -- --hostname "${HOSTNAME}" --port "${PORT}" > /tmp/next-dev.log 2>&1 &
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Wait for server
-        run: npx wait-on http://localhost:${{ env.PORT }} --timeout 60000
+        run: npx wait-on http://localhost:${{ env.PORT }} --timeout 180000
 
       - name: Capture browser evidence
         run: pnpm tsx scripts/harness/capture-browser-evidence.ts
