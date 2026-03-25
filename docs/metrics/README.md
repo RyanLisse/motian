@@ -40,6 +40,39 @@ scenario regresses more than 15% at `p95`:
 pnpm metrics:esco-rollout:compare docs/metrics/esco-rollout-snapshot-YYYY-MM-DD.json
 ```
 
+## Search path baseline captures (plan + latency)
+
+Baselines voor hoofdquery-paden in `src/services/jobs/search.ts`:
+
+```bash
+pnpm metrics:search-explain
+pnpm metrics:search-path-latency
+```
+
+`metrics:search-explain` schrijft:
+
+- `docs/metrics/search-path-explain-latest.json` met `EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT JSON)`
+- paden: `list`, `list-fts`, `search-text`, `search-hybrid` (hybrid-vector kandidatenpad)
+
+`metrics:search-path-latency` schrijft:
+
+- `docs/metrics/search-path-latency-latest.json`
+- `p50 / p95 / p99` per pad met fixed run-count (default 30 + 1 warmup)
+- `aggregated.successfulRuns` en `aggregated.failedRuns` voor één-run gezondheid
+
+Korte run-instructie:
+
+```bash
+pnpm benchmark:hybrid-search
+pnpm metrics:search-explain
+pnpm metrics:search-path-latency
+```
+
+Sla de JSON-bestanden op als baseline-versies tijdens meetmomenten, bijvoorbeeld:
+
+- `docs/metrics/search-path-explain-2026-03-25.json`
+- `docs/metrics/search-path-latency-2026-03-25.json`
+
 ## Wat vastleggen
 
 | Metric | Hoe |

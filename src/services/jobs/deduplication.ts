@@ -20,7 +20,7 @@ function normalizeDeduplicationPart(value: string | null | undefined) {
     .replace(/\s+/g, " ");
 }
 
-function getListSortOrderSql(sortBy: ListJobsSortBy = "nieuwste") {
+export function getListSortOrderSql(sortBy: ListJobsSortBy = "nieuwste") {
   switch (sortBy) {
     case "tarief_hoog":
       return {
@@ -64,7 +64,7 @@ function getDeduplicationFallbackExpression(value: SQL): SQL {
   return sql`lower(coalesce(${value}, ''))`;
 }
 
-function getDeduplicationPartitionExpressions(mode: ResolvedJobsDeduplicationMode) {
+export function getDeduplicationPartitionExpressions(mode: ResolvedJobsDeduplicationMode) {
   if (mode === "normalized") {
     return {
       title: sql`${jobs.dedupeTitleNormalized}`,
@@ -97,7 +97,7 @@ function computePreFetchLimit(offset: number, limit: number): number {
   return Math.min((offset + limit) * 5, DEDUPE_PRE_FETCH_CAP);
 }
 
-function buildDedupedJobsCte({
+export function buildDedupedJobsCte({
   whereClause,
   partitionOrderBy,
   deduplicationPartitionExpressions,
