@@ -245,7 +245,7 @@ export function OpdrachtenFilters({
                 clearTimeout(debounceTimers.current.tariefMin);
                 debounceTimers.current.tariefMin = setTimeout(() => {
                   updateParams({ tariefMin: value });
-                }, 600);
+                }, 400);
               }}
             />
             <span className="text-xs text-muted-foreground">-</span>
@@ -259,7 +259,7 @@ export function OpdrachtenFilters({
                 clearTimeout(debounceTimers.current.tariefMax);
                 debounceTimers.current.tariefMax = setTimeout(() => {
                   updateParams({ tariefMax: value });
-                }, 600);
+                }, 400);
               }}
             />
           </div>

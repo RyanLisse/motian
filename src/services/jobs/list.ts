@@ -2,7 +2,7 @@ import { and, db, desc, isPostgresDatabase, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
-import { LIST_SLO_MS, type QueryPath, logSlowQuery } from "../../lib/query-observability";
+import { LIST_SLO_MS, logSlowQuery, type QueryPath } from "../../lib/query-observability";
 import { fetchDedupedJobsPage, loadJobsByIds } from "./deduplication";
 import { getJobStatusCondition, type JobStatus, type ListJobsSortBy } from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
