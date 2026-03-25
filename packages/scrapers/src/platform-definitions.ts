@@ -137,6 +137,20 @@ export const platformDefinitions: PlatformDefinition[] = [
     authSchema: nvbAuthSchema,
   },
   {
+    slug: "mipublic",
+    displayName: "MiPublic",
+    adapterKind: "http_html_list_detail",
+    authMode: "none",
+    attributionLabel: "MiPublic",
+    badgeClassName: "border-teal-500/20 bg-teal-500/10 text-teal-600 dark:text-teal-400",
+    capabilities: ["detail_enrichment", "smoke_import", "validation"],
+    description:
+      "Publiek platform voor ZZP, interim en detachering opdrachten bij de overheid met JSON-LD vacaturedata.",
+    defaultBaseUrl: "https://mipublic.nl/zzp-opdrachten-overheid/",
+    configSchema: basicPlatformConfigSchema,
+    authSchema: emptyAuthSchema,
+  },
+  {
     slug: "werkzoeken",
     displayName: "Werkzoeken",
     adapterKind: "http_html_list_detail",
