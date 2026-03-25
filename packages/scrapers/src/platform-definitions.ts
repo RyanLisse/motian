@@ -42,6 +42,11 @@ const nvbAuthSchema = z
   })
   .default({ consentProfile: "minimal" });
 
+const mipublicConfigSchema = z.object({
+  baseUrl: z.union([z.string().url(), z.literal("")]),
+  parameters: z.record(z.unknown()).default({}),
+});
+
 const werkzoekenConfigSchema = z.object({
   baseUrl: z.string().url(),
   parameters: z
@@ -147,7 +152,7 @@ export const platformDefinitions: PlatformDefinition[] = [
     description:
       "Publiek platform voor ZZP, interim en detachering opdrachten bij de overheid met JSON-LD vacaturedata.",
     defaultBaseUrl: "https://mipublic.nl/zzp-opdrachten-overheid/",
-    configSchema: basicPlatformConfigSchema,
+    configSchema: mipublicConfigSchema,
     authSchema: emptyAuthSchema,
   },
   {

@@ -43,10 +43,11 @@ export const mipublicAdapter: PlatformAdapter = {
     try {
       page = await fetchPublicJobBoardPage(sourceUrl);
     } catch (error) {
+      console.error("[mipublic] validate: kon de MiPublic pagina niet ophalen", error);
       return {
         ok: false,
         status: "failed",
-        message: error instanceof Error ? error.message : String(error),
+        message: "Er is een fout opgetreden tijdens het ophalen van de MiPublic pagina.",
       };
     }
 
@@ -67,6 +68,18 @@ export const mipublicAdapter: PlatformAdapter = {
         status: "failed",
         message: "MiPublic bron-URL moet op mipublic.nl blijven.",
         blockerKind: "source_url_redirect",
+        evidence: {
+          finalUrl: page.url,
+          requestedUrl: page.requestedUrl,
+        },
+      };
+    }
+
+    if (page.status >= 400) {
+      return {
+        ok: false,
+        status: "failed",
+        message: `MiPublic bron-URL gaf HTTP ${page.status} terug.`,
         evidence: {
           finalUrl: page.url,
           requestedUrl: page.requestedUrl,
@@ -102,9 +115,10 @@ export const mipublicAdapter: PlatformAdapter = {
         listings: await scrapeMipublicListings(config),
       };
     } catch (error) {
+      console.error("[mipublic] scrape: kon de MiPublic vacatures niet ophalen", error);
       return {
         listings: [],
-        errors: [error instanceof Error ? error.message : String(error)],
+        errors: ["Er is een fout opgetreden tijdens het ophalen van MiPublic vacatures."],
       };
     }
   },
