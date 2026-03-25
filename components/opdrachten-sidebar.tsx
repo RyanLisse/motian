@@ -85,27 +85,6 @@ interface OpdrachtenSidebarProps {
   skillEmptyText?: string;
 }
 
-type SearchQueryKeyPayload = {
-  q: string;
-  platform: string;
-  endClient: string;
-  vaardigheid: string;
-  status: string;
-  provincie: string;
-  regios: string[];
-  vakgebieden: string[];
-  urenPerWeek: string;
-  urenPerWeekMin: string;
-  urenPerWeekMax: string;
-  straalKm: string;
-  contractType: string;
-  tariefMin: string;
-  tariefMax: string;
-  sort: string;
-  page: number;
-  limit: number;
-};
-
 const CONTRACT_TYPES = [
   { value: "freelance", label: "Freelance" },
   { value: "interim", label: "Interim" },
@@ -610,49 +589,6 @@ export function OpdrachtenSidebar({
     [vakgebieden],
   );
 
-  const searchQueryKey = useMemo<SearchQueryKeyPayload>(
-    () => ({
-      q,
-      platform,
-      endClient,
-      vaardigheid,
-      status,
-      provincie,
-      regios: sortedRegios,
-      vakgebieden: sortedVakgebieden,
-      urenPerWeek: effectiveHoursPerWeekBucket,
-      urenPerWeekMin: debouncedHoursMin,
-      urenPerWeekMax: debouncedHoursMax,
-      straalKm: debouncedRadiusKm,
-      contractType,
-      tariefMin: debouncedRateMin,
-      tariefMax: debouncedRateMax,
-      sort,
-      page: pageParam,
-      limit: limitParam,
-    }),
-    [
-      q,
-      platform,
-      endClient,
-      vaardigheid,
-      status,
-      provincie,
-      sortedRegios,
-      sortedVakgebieden,
-      effectiveHoursPerWeekBucket,
-      debouncedHoursMin,
-      debouncedHoursMax,
-      debouncedRadiusKm,
-      contractType,
-      debouncedRateMin,
-      debouncedRateMax,
-      sort,
-      pageParam,
-      limitParam,
-    ],
-  );
-
   useEffect(() => {
     const shouldPushHours = debouncedHoursHasManualInput;
     const shouldPushRadius = debouncedRadiusKm !== straalKm;
@@ -706,7 +642,27 @@ export function OpdrachtenSidebar({
   }, [inputValue, pathname, q, searchParams, router]);
 
   const { data, error, isFetching } = useQuery({
-    queryKey: ["opdrachten-search", searchQueryKey],
+    queryKey: [
+      "opdrachten-search",
+      q,
+      platform,
+      endClient,
+      vaardigheid,
+      status,
+      provincie,
+      sortedRegios.join("|"),
+      sortedVakgebieden.join("|"),
+      effectiveHoursPerWeekBucket,
+      debouncedHoursMin,
+      debouncedHoursMax,
+      debouncedRadiusKm,
+      contractType,
+      debouncedRateMin,
+      debouncedRateMax,
+      sort,
+      pageParam,
+      limitParam,
+    ],
     queryFn: ({ signal }) =>
       searchJobs({
         q,
@@ -986,7 +942,7 @@ export function OpdrachtenSidebar({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <span className={DARK_FILTER_SECTION_LABEL_CLASS}>Uren per week</span>
+                <span className={DARK_FILTER_SECTION_LABEL_CLASS}>Uren per week</span>
               <span className={DARK_FILTER_SECTION_VALUE_CLASS}>
                 {summarizeHoursRange(hoursMinInput, hoursMaxInput)}
               </span>
@@ -1472,6 +1428,7 @@ export function OpdrachtenSidebar({
                   />
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>
