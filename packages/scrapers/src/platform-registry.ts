@@ -1,4 +1,5 @@
 import { scrapeFlextender } from "./flextender";
+import { mipublicAdapter } from "./mipublic";
 import { monsterboardAdapter } from "./monsterboard";
 import { scrapeOpdrachtoverheid } from "./opdrachtoverheid";
 import { platformDefinitions } from "./platform-definitions";
@@ -94,6 +95,11 @@ const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefiniti
       return {
         ...definition,
         adapter: nationaleVacaturebankAdapter,
+      };
+    case "mipublic":
+      return {
+        ...definition,
+        adapter: mipublicAdapter,
       };
     case "monsterboard":
       return {

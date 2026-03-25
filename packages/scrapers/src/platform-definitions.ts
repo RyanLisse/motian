@@ -42,6 +42,11 @@ const nvbAuthSchema = z
   })
   .default({ consentProfile: "minimal" });
 
+const mipublicConfigSchema = z.object({
+  baseUrl: z.union([z.string().url(), z.literal("")]),
+  parameters: z.record(z.unknown()).default({}),
+});
+
 const werkzoekenConfigSchema = z.object({
   baseUrl: z.string().url(),
   parameters: z
@@ -135,6 +140,20 @@ export const platformDefinitions: PlatformDefinition[] = [
     docsUrl: "https://www.nationalevacaturebank.nl/vacatures/branche/ict",
     configSchema: nvbConfigSchema,
     authSchema: nvbAuthSchema,
+  },
+  {
+    slug: "mipublic",
+    displayName: "MiPublic",
+    adapterKind: "http_html_list_detail",
+    authMode: "none",
+    attributionLabel: "MiPublic",
+    badgeClassName: "border-teal-500/20 bg-teal-500/10 text-teal-600 dark:text-teal-400",
+    capabilities: ["detail_enrichment", "smoke_import", "validation"],
+    description:
+      "Publiek platform voor ZZP, interim en detachering opdrachten bij de overheid met JSON-LD vacaturedata.",
+    defaultBaseUrl: "https://mipublic.nl/zzp-opdrachten-overheid/",
+    configSchema: mipublicConfigSchema,
+    authSchema: emptyAuthSchema,
   },
   {
     slug: "werkzoeken",
