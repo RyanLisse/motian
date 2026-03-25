@@ -24,6 +24,7 @@ import {
   ConversationScrollButton,
 } from "@/src/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/src/components/ai-elements/message";
+import { isA2UIEnvelope } from "@/src/schemas/a2ui";
 import {
   CHAT_MESSAGE_ALLOWED_TAGS,
   CHAT_MESSAGE_COMPONENTS,
@@ -31,6 +32,9 @@ import {
 } from "./chat-message-links";
 import { ChatToolCall } from "./chat-tool-call";
 import { ToolErrorBlock } from "./genui";
+import { A2UIActionBar } from "./genui/a2ui-actions";
+import { resolveA2UIComponent } from "./genui/a2ui-bridge";
+import { A2UIFallback } from "./genui/a2ui-fallback";
 import { GenUILoadingSkeleton } from "./genui/genui-loading-skeleton";
 import { GENUI_REGISTRY } from "./genui/registry";
 
@@ -398,6 +402,32 @@ export function ChatMessages({
                         ? (toolPart.output as { error: string }).error
                         : "Er is iets misgegaan bij deze actie.";
                     return <ToolErrorBlock key={partKey} message={messageText} />;
+                  }
+
+                  // ── A2UI envelope detection ──
+                  if (
+                    toolPart.state === "output-available" &&
+                    toolPart.output !== undefined &&
+                    isA2UIEnvelope(toolPart.output)
+                  ) {
+                    const resolved = resolveA2UIComponent(toolPart.output);
+                    if (resolved.entry) {
+                      const GenUICard = resolved.entry.component;
+                      return (
+                        <Suspense
+                          key={partKey}
+                          fallback={<GenUILoadingSkeleton label={resolved.entry.label} />}
+                        >
+                          <div>
+                            <GenUICard output={resolved.props} />
+                            {resolved.actions && resolved.actions.length > 0 && (
+                              <A2UIActionBar actions={resolved.actions} />
+                            )}
+                          </div>
+                        </Suspense>
+                      );
+                    }
+                    return <A2UIFallback key={partKey} envelope={toolPart.output} />;
                   }
 
                   if (
