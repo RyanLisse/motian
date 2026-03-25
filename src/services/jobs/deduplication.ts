@@ -3,7 +3,10 @@ import { jobs } from "../../db/schema";
 import type { ListJobsSortBy } from "./filters";
 import { getJobReadSelection, type Job } from "./repository";
 
-type DedupableJob = Pick<Job, "title" | "company" | "endClient" | "province" | "location">;
+type DedupableJob = Pick<
+  Job,
+  "id" | "title" | "company" | "endClient" | "province" | "location" | "scrapedAt"
+>;
 
 type DedupedJobIdRow = { id: string };
 type DedupedJobPageRow = { id: string | null; total: number | string | null };
@@ -135,24 +138,51 @@ export function getJobDeduplicationKey(job: DedupableJob) {
   ].join("\u001f");
 }
 
+function isPreferableDedupCandidate(
+  candidate: { score: number; job: DedupableJob },
+  current: { score: number; job: DedupableJob },
+): boolean {
+  if (candidate.score !== current.score) {
+    return candidate.score > current.score;
+  }
+
+  const candidateDate = candidate.job.scrapedAt ? new Date(candidate.job.scrapedAt).getTime() : 0;
+  const currentDate = current.job.scrapedAt ? new Date(current.job.scrapedAt).getTime() : 0;
+  if (candidateDate !== currentDate) {
+    return candidateDate > currentDate;
+  }
+
+  return candidate.job.id > current.job.id;
+}
+
 export function collapseScoredJobsByVacancy<TJob extends DedupableJob>(
   entries: Array<{ job: TJob; score: number }>,
 ) {
-  const grouped = new Map<string, { job: TJob; score: number }>();
+  const grouped = new Map<string, { job: TJob; score: number; representativeScore: number }>();
 
   for (const entry of entries) {
     const dedupeKey = getJobDeduplicationKey(entry.job);
     const existing = grouped.get(dedupeKey);
 
     if (existing) {
+      const shouldReplaceRepresentative = isPreferableDedupCandidate(
+        { score: entry.score, job: entry.job as DedupableJob },
+        { score: existing.representativeScore, job: existing.job },
+      );
+
       existing.score += entry.score;
+      if (shouldReplaceRepresentative) {
+        existing.job = entry.job;
+        existing.representativeScore = entry.score;
+      }
+
       continue;
     }
 
-    grouped.set(dedupeKey, { ...entry });
+    grouped.set(dedupeKey, { ...entry, representativeScore: entry.score });
   }
 
-  return [...grouped.values()];
+  return [...grouped.values()].map(({ job, score }) => ({ job, score }));
 }
 
 export async function loadJobsByIds(ids: string[]): Promise<Job[]> {

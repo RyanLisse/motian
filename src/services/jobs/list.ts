@@ -2,7 +2,7 @@ import { and, db, desc, isPostgresDatabase, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
-import { LIST_SLO_MS, logSlowQuery } from "../../lib/query-observability";
+import { LIST_SLO_MS, logSlowQuery, type QueryPath } from "../../lib/query-observability";
 import { fetchDedupedJobsPage, loadJobsByIds } from "./deduplication";
 import { getJobStatusCondition, type JobStatus, type ListJobsSortBy } from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
@@ -46,7 +46,7 @@ export async function listJobs(
 ): Promise<{ data: Job[]; total: number }> {
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 50, 100);
-  const offset = opts.offset ?? 0;
+  const offset = Math.max(opts.offset ?? 0, 0);
   const conditions = buildJobFilterConditions({
     platform: opts.platform,
     company: opts.company,
@@ -75,13 +75,17 @@ export async function listJobs(
     radiusKm: opts.radiusKm,
   });
 
+  let queryPath: QueryPath = "list";
+
   if (opts.q) {
     const tsInput = toTsQueryInput(opts.q);
     if (tsInput && isPostgresDatabase()) {
+      queryPath = "list-fts";
       conditions.push(
-        sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, '')) @@ to_tsquery('dutch', ${tsInput})`,
+        sql`to_tsvector('dutch', coalesce(${jobs.searchText}, '')) @@ to_tsquery('dutch', ${tsInput})`,
       );
     } else {
+      queryPath = "list";
       conditions.push(caseInsensitiveContains(jobs.title, opts.q));
     }
   }
@@ -105,6 +109,7 @@ export async function listJobs(
     limit,
     offset,
     total,
+    queryPath,
     dedupePageMs,
     hydrateMs,
   });

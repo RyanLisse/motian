@@ -9,12 +9,20 @@ export const SEARCH_SLO_MS = 800;
 /** SLO-drempel list (listJobs): 500ms. */
 export const LIST_SLO_MS = 500;
 
+export type QueryPath =
+  | "search-text"
+  | "search-hybrid"
+  | "search-hybrid-fallback"
+  | "list"
+  | "list-fts";
+
 export type SlowQueryMeta = Record<string, unknown>;
 
 export type SlowQueryPayload = {
   operation: string;
   durationMs: number;
   thresholdMs: number;
+  queryPath?: QueryPath;
 } & SlowQueryMeta;
 
 export function buildSlowQueryPayload(

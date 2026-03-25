@@ -9,7 +9,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronLeft, ChevronRight, Loader2, RotateCcw, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { JobListItem } from "@/components/job-list-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,27 @@ interface OpdrachtenSidebarProps {
   skillOptions: FilterOption[];
   skillEmptyText?: string;
 }
+
+type SearchQueryKeyPayload = {
+  q: string;
+  platform: string;
+  endClient: string;
+  vaardigheid: string;
+  status: string;
+  provincie: string;
+  regios: string[];
+  vakgebieden: string[];
+  urenPerWeek: string;
+  urenPerWeekMin: string;
+  urenPerWeekMax: string;
+  straalKm: string;
+  contractType: string;
+  tariefMin: string;
+  tariefMax: string;
+  sort: string;
+  page: number;
+  limit: number;
+};
 
 const CONTRACT_TYPES = [
   { value: "freelance", label: "Freelance" },
@@ -187,6 +208,20 @@ function parseSearchResponse(payload: SearchResponsePayload): SearchResponse {
     perPage,
     totalPages,
   };
+}
+
+function useDebouncedValue<T>(value: T, delayMs = 300): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delayMs);
+
+    return () => clearTimeout(timeout);
+  }, [value, delayMs]);
+
+  return debouncedValue;
 }
 
 async function getSearchErrorMessage(response: Response) {
@@ -415,7 +450,8 @@ async function searchJobs({
   sort,
   page,
   limit,
-}: SearchJobsParams): Promise<SearchResponse> {
+  signal,
+}: SearchJobsParams & { signal?: AbortSignal }): Promise<SearchResponse> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (platform) params.set("platform", platform);
@@ -440,7 +476,9 @@ async function searchJobs({
   if (page > 1) params.set("pagina", String(page));
   if (limit !== DEFAULT_OPDRACHTEN_LIMIT) params.set("limit", String(limit));
 
-  const res = await fetch(`/api/opdrachten/zoeken?${params.toString()}`);
+  const res = await fetch(`/api/opdrachten/zoeken?${params.toString()}`, {
+    signal,
+  });
   if (!res.ok) {
     throw new Error(await getSearchErrorMessage(res));
   }
@@ -498,8 +536,8 @@ export function OpdrachtenSidebar({
     : OPDRACHTEN_SORT_OPTIONS.filter((option) => option.value !== "relevantie");
   const sort =
     !hasSearchQuery && parsedFilters.sort === "relevantie" ? "nieuwste" : parsedFilters.sort;
-  const tariefMinParam = searchParams.get("tariefMin") ?? "";
-  const tariefMaxParam = searchParams.get("tariefMax") ?? "";
+  const tariefMinParamFromUrl = parsedFilters.rateMin != null ? String(parsedFilters.rateMin) : "";
+  const tariefMaxParamFromUrl = parsedFilters.rateMax != null ? String(parsedFilters.rateMax) : "";
   const pageParam =
     Math.max(
       1,
@@ -521,6 +559,11 @@ export function OpdrachtenSidebar({
 
   const [inputValue, setInputValue] = useState(q);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [hoursMinInput, setHoursMinInput] = useState(urenPerWeekMin);
+  const [hoursMaxInput, setHoursMaxInput] = useState(urenPerWeekMax);
+  const [radiusKmInput, setRadiusKmInput] = useState(straalKm);
+  const [rateMinInput, setRateMinInput] = useState(tariefMinParamFromUrl);
+  const [rateMaxInput, setRateMaxInput] = useState(tariefMaxParamFromUrl);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const provinceAnchor = getProvinceAnchor(provincie);
   const regionOptions = useMemo<FilterOption[]>(
@@ -543,6 +586,105 @@ export function OpdrachtenSidebar({
   useEffect(() => {
     setInputValue(q);
   }, [q]);
+  useEffect(() => {
+    setHoursMinInput(urenPerWeekMin);
+    setHoursMaxInput(urenPerWeekMax);
+    setRadiusKmInput(straalKm);
+    setRateMinInput(tariefMinParamFromUrl);
+    setRateMaxInput(tariefMaxParamFromUrl);
+  }, [urenPerWeekMin, urenPerWeekMax, straalKm, tariefMinParamFromUrl, tariefMaxParamFromUrl]);
+
+  const debouncedHoursMin = useDebouncedValue(hoursMinInput);
+  const debouncedHoursMax = useDebouncedValue(hoursMaxInput);
+  const debouncedRadiusKm = useDebouncedValue(radiusKmInput);
+  const debouncedRateMin = useDebouncedValue(rateMinInput);
+  const debouncedRateMax = useDebouncedValue(rateMaxInput);
+  const debouncedHoursHasManualInput = useMemo(
+    () => debouncedHoursMin !== urenPerWeekMin || debouncedHoursMax !== urenPerWeekMax,
+    [debouncedHoursMin, debouncedHoursMax, urenPerWeekMin, urenPerWeekMax],
+  );
+  const effectiveHoursPerWeekBucket = debouncedHoursHasManualInput ? "" : urenPerWeek;
+  const sortedRegios = useMemo(() => [...regios].sort((a, b) => a.localeCompare(b)), [regios]);
+  const sortedVakgebieden = useMemo(
+    () => [...vakgebieden].sort((a, b) => a.localeCompare(b)),
+    [vakgebieden],
+  );
+
+  const searchQueryKey = useMemo<SearchQueryKeyPayload>(
+    () => ({
+      q,
+      platform,
+      endClient,
+      vaardigheid,
+      status,
+      provincie,
+      regios: sortedRegios,
+      vakgebieden: sortedVakgebieden,
+      urenPerWeek: effectiveHoursPerWeekBucket,
+      urenPerWeekMin: debouncedHoursMin,
+      urenPerWeekMax: debouncedHoursMax,
+      straalKm: debouncedRadiusKm,
+      contractType,
+      tariefMin: debouncedRateMin,
+      tariefMax: debouncedRateMax,
+      sort,
+      page: pageParam,
+      limit: limitParam,
+    }),
+    [
+      q,
+      platform,
+      endClient,
+      vaardigheid,
+      status,
+      provincie,
+      sortedRegios,
+      sortedVakgebieden,
+      effectiveHoursPerWeekBucket,
+      debouncedHoursMin,
+      debouncedHoursMax,
+      debouncedRadiusKm,
+      contractType,
+      debouncedRateMin,
+      debouncedRateMax,
+      sort,
+      pageParam,
+      limitParam,
+    ],
+  );
+
+  useEffect(() => {
+    const shouldPushHours = debouncedHoursHasManualInput;
+    const shouldPushRadius = debouncedRadiusKm !== straalKm;
+    const shouldPushRateMin = debouncedRateMin !== tariefMinParamFromUrl;
+    const shouldPushRateMax = debouncedRateMax !== tariefMaxParamFromUrl;
+
+    if (!shouldPushHours && !shouldPushRadius && !shouldPushRateMin && !shouldPushRateMax) return;
+
+    pushOpdrachtenParams(searchParams, router, pathname, {
+      urenPerWeek: shouldPushHours ? "" : urenPerWeek,
+      urenPerWeekMin: debouncedHoursMin,
+      urenPerWeekMax: debouncedHoursMax,
+      straalKm: debouncedRadiusKm,
+      tariefMin: debouncedRateMin,
+      tariefMax: debouncedRateMax,
+      pagina: "1",
+    });
+  }, [
+    debouncedHoursHasManualInput,
+    debouncedHoursMin,
+    debouncedHoursMax,
+    debouncedRadiusKm,
+    debouncedRateMin,
+    debouncedRateMax,
+    straalKm,
+    tariefMinParamFromUrl,
+    tariefMaxParamFromUrl,
+    urenPerWeek,
+    router,
+    pathname,
+    searchParams,
+  ]);
 
   // Debounce search input: push to URL after 300ms so queryKey updates (only when user typed, not when we synced from URL)
   useEffect(() => {
@@ -563,32 +705,9 @@ export function OpdrachtenSidebar({
     };
   }, [inputValue, pathname, q, searchParams, router]);
 
-  const deferredTariefMin = useDeferredValue(tariefMinParam);
-  const deferredTariefMax = useDeferredValue(tariefMaxParam);
-
   const { data, error, isFetching } = useQuery({
-    queryKey: [
-      "opdrachten-search",
-      q,
-      platform,
-      endClient,
-      vaardigheid,
-      status,
-      provincie,
-      regios.join("|"),
-      vakgebieden.join("|"),
-      urenPerWeek,
-      urenPerWeekMin,
-      urenPerWeekMax,
-      straalKm,
-      contractType,
-      deferredTariefMin,
-      deferredTariefMax,
-      sort,
-      pageParam,
-      limitParam,
-    ],
-    queryFn: () =>
+    queryKey: ["opdrachten-search", searchQueryKey],
+    queryFn: ({ signal }) =>
       searchJobs({
         q,
         platform,
@@ -596,19 +715,21 @@ export function OpdrachtenSidebar({
         vaardigheid,
         status,
         provincie,
-        regios,
-        vakgebieden,
-        urenPerWeek,
-        urenPerWeekMin,
-        urenPerWeekMax,
-        straalKm,
+        regios: sortedRegios,
+        vakgebieden: sortedVakgebieden,
+        urenPerWeek: effectiveHoursPerWeekBucket,
+        urenPerWeekMin: debouncedHoursMin,
+        urenPerWeekMax: debouncedHoursMax,
+        straalKm: debouncedRadiusKm,
         contractType,
-        tariefMin: deferredTariefMin,
-        tariefMax: deferredTariefMax,
+        tariefMin: debouncedRateMin,
+        tariefMax: debouncedRateMax,
         sort,
         page: pageParam,
         limit: limitParam,
+        signal,
       }),
+    staleTime: 30_000,
     placeholderData: (prev) => prev,
     initialData:
       pageParam === 1 &&
@@ -621,13 +742,12 @@ export function OpdrachtenSidebar({
       !provincie &&
       regios.length === 0 &&
       vakgebieden.length === 0 &&
-      !urenPerWeek &&
-      !urenPerWeekMin &&
-      !urenPerWeekMax &&
-      !straalKm &&
+      !debouncedHoursMin &&
+      !debouncedHoursMax &&
+      !debouncedRadiusKm &&
       !contractType &&
-      !deferredTariefMin &&
-      !deferredTariefMax &&
+      !debouncedRateMin &&
+      !debouncedRateMax &&
       sort === "nieuwste"
         ? {
             jobs: initialJobs,
@@ -658,10 +778,10 @@ export function OpdrachtenSidebar({
     Number(regios.length > 0) +
     Number(vakgebieden.length > 0) +
     Number(Boolean(urenPerWeek)) +
-    Number(Boolean(urenPerWeekMin || urenPerWeekMax)) +
-    Number(Boolean(straalKm)) +
+    Number(Boolean(hoursMinInput || hoursMaxInput)) +
+    Number(Boolean(radiusKmInput)) +
     Number(Boolean(contractType)) +
-    Number(Boolean(tariefMinParam || tariefMaxParam)) +
+    Number(Boolean(rateMinInput || rateMaxInput)) +
     Number(sort !== "nieuwste");
   const buildDetailHref = (jobId: string) => {
     const base = "/vacatures";
@@ -687,27 +807,40 @@ export function OpdrachtenSidebar({
   };
 
   const handleHoursRangeChange = (field: "urenPerWeekMin" | "urenPerWeekMax", value: string) => {
-    pushOpdrachtenParams(searchParams, router, pathname, {
-      urenPerWeek: "",
-      [field]: value,
-      pagina: "1",
-    });
+    if (field === "urenPerWeekMin") {
+      setHoursMinInput(value);
+      return;
+    }
+
+    setHoursMaxInput(value);
   };
 
   const handleRadiusChange = (value: string) => {
-    pushOpdrachtenParams(searchParams, router, pathname, {
-      straalKm: value,
-      pagina: "1",
-    });
+    setRadiusKmInput(value);
+  };
+
+  const handleRateMinChange = (value: string) => {
+    setRateMinInput(value);
+  };
+
+  const handleRateMaxChange = (value: string) => {
+    setRateMaxInput(value);
   };
 
   const handleProvinceChange = (value: string) => {
     const nextProvince = value === "__all__" ? "" : value;
-    pushOpdrachtenParams(searchParams, router, pathname, {
-      provincie: nextProvince,
-      straalKm: nextProvince ? straalKm : "",
-      pagina: "1",
-    });
+    if (!nextProvince) {
+      setRadiusKmInput("");
+    }
+
+    pushOpdrachtenParams(
+      searchParams,
+      router,
+      pathname,
+      nextProvince
+        ? { provincie: nextProvince, pagina: "1" }
+        : { provincie: "", straalKm: "", pagina: "1" },
+    );
   };
 
   const resetFilters = () => {
@@ -855,7 +988,7 @@ export function OpdrachtenSidebar({
             <div className="flex items-center justify-between gap-3">
               <span className={DARK_FILTER_SECTION_LABEL_CLASS}>Uren per week</span>
               <span className={DARK_FILTER_SECTION_VALUE_CLASS}>
-                {summarizeHoursRange(urenPerWeekMin, urenPerWeekMax)}
+                {summarizeHoursRange(hoursMinInput, hoursMaxInput)}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -864,7 +997,7 @@ export function OpdrachtenSidebar({
                 inputMode="numeric"
                 min="1"
                 placeholder="Min"
-                value={urenPerWeekMin}
+                value={hoursMinInput}
                 onChange={(e) => handleHoursRangeChange("urenPerWeekMin", e.target.value)}
                 className={DARK_FILTER_CONTROL_CLASS}
               />
@@ -873,7 +1006,7 @@ export function OpdrachtenSidebar({
                 inputMode="numeric"
                 min="1"
                 placeholder="Max"
-                value={urenPerWeekMax}
+                value={hoursMaxInput}
                 onChange={(e) => handleHoursRangeChange("urenPerWeekMax", e.target.value)}
                 className={DARK_FILTER_CONTROL_CLASS}
               />
@@ -883,7 +1016,7 @@ export function OpdrachtenSidebar({
 
         <RadiusSliderField
           provinceAnchor={provinceAnchor}
-          radiusKm={straalKm}
+          radiusKm={radiusKmInput}
           onRadiusChange={handleRadiusChange}
           compact
         />
@@ -1257,7 +1390,7 @@ export function OpdrachtenSidebar({
                     inputMode="numeric"
                     min="1"
                     placeholder="Min uren"
-                    value={urenPerWeekMin}
+                    value={hoursMinInput}
                     onChange={(e) => handleHoursRangeChange("urenPerWeekMin", e.target.value)}
                     className="h-11 rounded-lg border-border bg-background text-sm"
                   />
@@ -1266,14 +1399,14 @@ export function OpdrachtenSidebar({
                     inputMode="numeric"
                     min="1"
                     placeholder="Max uren"
-                    value={urenPerWeekMax}
+                    value={hoursMaxInput}
                     onChange={(e) => handleHoursRangeChange("urenPerWeekMax", e.target.value)}
                     className="h-11 rounded-lg border-border bg-background text-sm"
                   />
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {summarizeHoursRange(urenPerWeekMin, urenPerWeekMax)} — vacatures overlappen met
-                  dit bereik.
+                  {summarizeHoursRange(hoursMinInput, hoursMaxInput)} — vacatures overlappen met dit
+                  bereik.
                 </p>
               </div>
 
@@ -1281,7 +1414,7 @@ export function OpdrachtenSidebar({
                 <p className="mb-2 block text-sm font-medium text-foreground">Straal (km)</p>
                 <RadiusSliderField
                   provinceAnchor={provinceAnchor}
-                  radiusKm={straalKm}
+                  radiusKm={radiusKmInput}
                   onRadiusChange={handleRadiusChange}
                 />
               </div>
@@ -1325,26 +1458,16 @@ export function OpdrachtenSidebar({
                     type="number"
                     inputMode="numeric"
                     placeholder="Min"
-                    value={tariefMinParam}
-                    onChange={(e) =>
-                      pushOpdrachtenParams(searchParams, router, pathname, {
-                        tariefMin: e.target.value,
-                        pagina: "1",
-                      })
-                    }
+                    value={rateMinInput}
+                    onChange={(e) => handleRateMinChange(e.target.value)}
                     className="h-11 rounded-lg border-border bg-background text-sm"
                   />
                   <Input
                     type="number"
                     inputMode="numeric"
                     placeholder="Max"
-                    value={tariefMaxParam}
-                    onChange={(e) =>
-                      pushOpdrachtenParams(searchParams, router, pathname, {
-                        tariefMax: e.target.value,
-                        pagina: "1",
-                      })
-                    }
+                    value={rateMaxInput}
+                    onChange={(e) => handleRateMaxChange(e.target.value)}
                     className="h-11 rounded-lg border-border bg-background text-sm"
                   />
                 </div>
