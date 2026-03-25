@@ -14,6 +14,7 @@ import type * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
+import { SidebarCvDropZone } from "@/components/sidebar-cv-drop-zone";
 import { TeamSwitcher } from "@/components/team-switcher";
 import {
   Sidebar,
@@ -85,6 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
+      <SidebarCvDropZone />
       <SidebarFooter>
         <NavUser />
       </SidebarFooter>

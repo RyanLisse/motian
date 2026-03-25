@@ -94,6 +94,12 @@ export const GENUI_REGISTRY: Record<string, GenUIEntry> = {
     component: lazy(() => import("./canvas-embed").then((m) => ({ default: m.CanvasEmbed }))),
     label: "Canvas",
   },
+  cvIntakeResultaat: {
+    component: lazy(() =>
+      import("./cv-intake-card").then((m) => ({ default: m.CvIntakeCard })),
+    ),
+    label: "CV Intake",
+  },
   voerStructuredMatchUit: {
     component: lazy(() =>
       import("./comparison-table").then((m) => ({ default: m.ComparisonTable })),

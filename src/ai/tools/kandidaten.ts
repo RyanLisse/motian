@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { publish } from "@/src/lib/event-bus";
 import { autoMatchCandidateToJobs } from "@/src/services/auto-matching";
+import { reviewCandidateMatches } from "@/src/services/candidate-intake";
 import type { Candidate } from "@/src/services/candidates";
 import {
   addNoteToCandidate,
@@ -156,6 +157,40 @@ export const autoMatchKandidaat = tool({
       return { total: results.length, matches: results };
     } catch (err) {
       return { error: err instanceof Error ? err.message : "Auto-matching mislukt" };
+    }
+  },
+});
+
+export const cvIntakeResultaat = tool({
+  description:
+    "Toon het resultaat van een CV-intake met kandidaatprofiel en gevonden vacaturematches. Gebruik dit na een CV-upload om de samenvatting te tonen.",
+  inputSchema: z.object({
+    candidateId: z.string().uuid().describe("UUID van de kandidaat na CV-intake"),
+  }),
+  execute: async ({ candidateId }) => {
+    try {
+      const result = await reviewCandidateMatches(candidateId, { topN: 5 });
+      const topSkills = [
+        ...result.profile.hardSkills.slice(0, 4).map((s) => s.name),
+        ...result.profile.softSkills.slice(0, 2).map((s) => s.name),
+      ];
+      return {
+        candidateId: result.candidate.id,
+        candidateName: result.candidate.name,
+        candidateRole: result.profile.role,
+        topSkills,
+        matches: result.matches.map((m) => ({
+          jobId: m.jobId,
+          jobTitle: m.jobTitle,
+          company: m.company,
+          quickScore: m.quickScore,
+          recommendation: m.recommendation,
+          reasoning: m.reasoning,
+        })),
+        candidateUrl: `/kandidaten/${result.candidate.id}`,
+      };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "Intake resultaat ophalen mislukt" };
     }
   },
 });

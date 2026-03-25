@@ -22,6 +22,7 @@ export {
 // Kandidaten tools
 export {
   autoMatchKandidaat,
+  cvIntakeResultaat,
   getKandidaatDetail,
   maakKandidaatAan,
   updateKandidaat,
