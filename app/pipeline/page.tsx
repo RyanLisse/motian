@@ -110,13 +110,7 @@ export default async function PipelinePage({ searchParams }: Props) {
   // Fetch applications + KPIs (consolidated into 1 query) + optional vacancy info in parallel
   const kpiWhere = and(...kpiConditions);
 
-  const [
-    rows,
-    totalResult,
-    kpiResult,
-    kanbanRows,
-    vacatureRows,
-  ] = await Promise.all([
+  const [rows, totalResult, kpiResult, kanbanRows, vacatureRows] = await Promise.all([
     // List view data (only if list view)
     view === "lijst"
       ? db

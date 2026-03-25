@@ -1,6 +1,4 @@
-import { and, isNull } from "drizzle-orm";
 import { db } from "../src/db";
-import { jobs } from "../src/db/schema";
 import { embedJobsBatch } from "../src/services/embedding";
 
 async function main() {
@@ -11,6 +9,7 @@ async function main() {
     import("drizzle-orm").then(
       (m) => m.sql`SELECT count(*) FROM jobs WHERE embedding IS NULL AND deleted_at IS NULL`,
     ),
+    // biome-ignore lint/suspicious/noExplicitAny: raw SQL result shape is dynamic
   )) as any;
 
   console.log(`📊 Found ~${count} jobs without embeddings.`);
@@ -18,7 +17,6 @@ async function main() {
   const BATCH_SIZE = 500;
   let totalEmbedded = 0;
   let totalSkipped = 0;
-  const lastProcessedId = "";
 
   while (true) {
     console.log(`\n⏳ Processing next batch of ${BATCH_SIZE}...`);
