@@ -300,11 +300,11 @@ describe("cv-upload save route import wiring", () => {
   });
 });
 
-// ========== cv-upload-sidebar: /api/cv-upload/save endpoint ==========
+// ========== sidebar-cv-drop-zone: /api/cv-upload/save endpoint ==========
 
-describe("cv-upload-sidebar save endpoint integration", () => {
+describe("sidebar-cv-drop-zone save endpoint integration", () => {
   it("calls /api/cv-upload/save endpoint", () => {
-    const source = readFile("components/cv-upload-sidebar.tsx");
+    const source = readFile("components/sidebar-cv-drop-zone.tsx");
     expect(source).toContain("/api/cv-upload/save");
   });
 });

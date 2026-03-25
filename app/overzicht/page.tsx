@@ -43,6 +43,7 @@ const PRIORITY_TONE_STYLES = {
 
 export default async function OverzichtPage() {
   const {
+    dedupedTotal,
     platformCounts,
     recentJobs,
     activeScrapers,
@@ -52,7 +53,7 @@ export default async function OverzichtPage() {
     upcomingInterviews,
   } = await getOverviewData();
 
-  const totalJobs = platformCounts.reduce((sum, row) => sum + row.count, 0);
+  const totalJobs = dedupedTotal;
   const weeklyNew = platformCounts.reduce((sum, row) => sum + row.weeklyNew, 0);
 
   const pipelineMap: Record<string, number> = {};

@@ -239,6 +239,55 @@ export function parseWerkzoekenDetailPage(
   };
 }
 
+async function fetchViaBrowserbase(url: string): Promise<string> {
+  const apiKey = process.env.BROWSERBASE_API_KEY;
+  const projectId = process.env.BROWSERBASE_PROJECT_ID;
+  if (!apiKey || !projectId) {
+    throw new Error("BROWSERBASE_API_KEY/PROJECT_ID niet geconfigureerd");
+  }
+
+  // Dynamic import to avoid bundling puppeteer-core when not used
+  const puppeteer = await import("puppeteer-core");
+  const browser = await puppeteer.default.connect({
+    browserWSEndpoint: `wss://connect.browserbase.com?apiKey=${apiKey}&projectId=${projectId}`,
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
+
+    // Werkzoeken uses Cloudflare protection ("Just a moment...").
+    // Wait for the challenge to resolve by polling for vacancy content.
+    const maxWaitMs = 20_000;
+    const pollIntervalMs = 2_000;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitMs) {
+      const title = await page.title();
+      if (!title.includes("Just a moment") && !title.includes("Checking")) {
+        // Cloudflare challenge resolved — wait briefly for DOM to hydrate
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
+    // Werkzoeken uses CookieYes consent banner — dismiss it so content loads fully
+    await page
+      .evaluate(() => {
+        const btn = document.querySelector<HTMLButtonElement>(".cky-btn-accept");
+        if (btn) btn.click();
+      })
+      .catch(() => {});
+    // Brief settle after consent dismiss
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+
+    return await page.content();
+  } finally {
+    await browser.close();
+  }
+}
+
 async function fetchViaFirecrawl(url: string): Promise<string> {
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) {
@@ -268,9 +317,12 @@ async function fetchViaFirecrawl(url: string): Promise<string> {
 }
 
 async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Promise<string> {
+  // If Firecrawl is available, try direct fetch once then fallback immediately
+  // (avoids wasting 8s on retries that will fail on cloud IPs)
+  const maxAttempts = process.env.FIRECRAWL_API_KEY ? 1 : FETCH_RETRY_ATTEMPTS;
   let lastStatus = 0;
 
-  for (let attempt = 1; attempt <= FETCH_RETRY_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const response = await fetchWerkzoekenResponse(url, session);
 
     if (response.ok) {
@@ -279,7 +331,7 @@ async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Pro
 
     lastStatus = response.status;
     const shouldRetry =
-      RETRYABLE_FETCH_STATUSES.has(response.status) && attempt < FETCH_RETRY_ATTEMPTS;
+      RETRYABLE_FETCH_STATUSES.has(response.status) && attempt < maxAttempts;
     if (!shouldRetry) {
       break;
     }
@@ -287,9 +339,14 @@ async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Pro
     await new Promise((resolve) => setTimeout(resolve, FETCH_RETRY_DELAY_MS * attempt));
   }
 
-  // Fallback: if direct fetch failed with 403/429, try Firecrawl as proxy
-  if (RETRYABLE_FETCH_STATUSES.has(lastStatus) && process.env.FIRECRAWL_API_KEY) {
-    return fetchViaFirecrawl(url);
+  // Fallback chain: Browserbase (real Chrome, residential IP) → Firecrawl (JS rendering proxy)
+  if (RETRYABLE_FETCH_STATUSES.has(lastStatus)) {
+    if (process.env.BROWSERBASE_API_KEY) {
+      return fetchViaBrowserbase(url);
+    }
+    if (process.env.FIRECRAWL_API_KEY) {
+      return fetchViaFirecrawl(url);
+    }
   }
 
   throw new Error(`Werkzoeken fetch mislukt voor ${url}: ${lastStatus}`);
@@ -358,6 +415,49 @@ async function scrapeWerkzoekenInternal(
     if (newListings.length === 0) {
       if (page > pnrStep) {
         break;
+      }
+
+      // Content-validation fallback: the site may return HTTP 200 with a captcha/cookie-wall
+      // instead of vacancy cards. Retry via Browserbase (real Chrome) before giving up.
+      if (process.env.BROWSERBASE_API_KEY) {
+        try {
+          const browserbaseHtml = await fetchViaBrowserbase(url);
+          const retryParsed = parseWerkzoekenListingCards(browserbaseHtml, config.baseUrl);
+          const retryNew = retryParsed.filter((l) => {
+            const id = String(l.externalId ?? "");
+            if (!id || seenIds.has(id)) return false;
+            seenIds.add(id);
+            return true;
+          });
+          if (retryNew.length > 0) {
+            // Browserbase succeeded — switch to Browserbase for remaining pages
+            listings.push(...retryNew);
+            session.cookieHeader = undefined; // Clear direct-fetch session
+            // Continue the loop with Browserbase-fetched pages
+            for (
+              let bbPage = page + pnrStep;
+              bbPage <= maxPages + pnrStep - 1;
+              bbPage += pnrStep
+            ) {
+              const bbUrl = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, bbPage);
+              const bbHtml = await fetchViaBrowserbase(bbUrl);
+              const bbParsed = parseWerkzoekenListingCards(bbHtml, config.baseUrl);
+              const bbNew = bbParsed.filter((l) => {
+                const id = String(l.externalId ?? "");
+                if (!id || seenIds.has(id)) return false;
+                seenIds.add(id);
+                return true;
+              });
+              if (bbNew.length === 0) break;
+              listings.push(...bbNew);
+              if (options?.smoke || (options?.limit && listings.length >= options.limit)) break;
+              await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
+            }
+            break; // Exit the main loop — we've handled remaining pages via Browserbase
+          }
+        } catch {
+          // Browserbase also failed — fall through to error
+        }
       }
 
       return {

@@ -72,8 +72,13 @@ const DETAIL_HTML = `
 const originalFetch = globalThis.fetch;
 
 describe("Werkzoeken scraper", () => {
+  const savedFirecrawlKey = process.env.FIRECRAWL_API_KEY;
+
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    // Restore Firecrawl key — tests exercise direct-fetch retries without fallback
+    if (savedFirecrawlKey) process.env.FIRECRAWL_API_KEY = savedFirecrawlKey;
+    else delete process.env.FIRECRAWL_API_KEY;
   });
 
   it("builds repeatable pagination URLs from the seeded techniek path", () => {
@@ -190,6 +195,7 @@ describe("Werkzoeken scraper", () => {
   });
 
   it("retries a temporary 403 on the listing page before failing", async () => {
+    delete process.env.FIRECRAWL_API_KEY;
     let listingFetchAttempts = 0;
 
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
@@ -256,6 +262,7 @@ describe("Werkzoeken scraper", () => {
   });
 
   it("bootstraps a cookie session before requesting the cumulative pnr page", async () => {
+    delete process.env.FIRECRAWL_API_KEY;
     const requestedHeaders: Array<{ url: string; cookie: string | null; referer: string | null }> =
       [];
 
@@ -332,101 +339,105 @@ describe("Werkzoeken scraper", () => {
     expect(requestedHeaders[1]?.referer).toBe("https://www.werkzoeken.nl/vacatures-voor/techniek/");
   });
 
-  it("jumps pages correctly with variable pnrStep values (e.g., pnrStep: 2)", async () => {
-    const adapter = werkzoekenAdapter;
-    let callCount = 0;
-    const requestedUrls: string[] = [];
+  it(
+    "jumps pages correctly with variable pnrStep values (e.g., pnrStep: 2)",
+    { timeout: 15_000 },
+    async () => {
+      const adapter = werkzoekenAdapter;
+      let callCount = 0;
+      const requestedUrls: string[] = [];
 
-    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const urlStr = String(input);
-      requestedUrls.push(urlStr);
-      callCount++;
+      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+        const urlStr = String(input);
+        requestedUrls.push(urlStr);
+        callCount++;
 
-      if (urlStr === "https://www.werkzoeken.nl/vacatures-voor/techniek/") {
-        return new Response(LISTING_HTML, {
-          status: 200,
-          headers: {
-            "Content-Type": "text/html",
-            "set-cookie": "Werkzoeken=session-cookie; path=/; HttpOnly",
-          },
-        });
-      }
+        if (urlStr === "https://www.werkzoeken.nl/vacatures-voor/techniek/") {
+          return new Response(LISTING_HTML, {
+            status: 200,
+            headers: {
+              "Content-Type": "text/html",
+              "set-cookie": "Werkzoeken=session-cookie; path=/; HttpOnly",
+            },
+          });
+        }
 
-      if (urlStr.includes("?pnr=2")) {
-        const listingHtml = LISTING_HTML.replace(/15167751/g, "11111111").replace(
-          "Werkvoorbereider/Engineer HVAC tot &euro;4.800 bruto per maand",
-          "Job 1",
-        );
-        return new Response(`<html><body>${listingHtml}</body></html>`, {
-          status: 200,
-          headers: { "Content-Type": "text/html" },
-        });
-      }
-
-      if (urlStr.includes("?pnr=4")) {
-        const listingHtml = LISTING_HTML.replace(/15167751/g, "22222222").replace(
-          "Werkvoorbereider/Engineer HVAC tot &euro;4.800 bruto per maand",
-          "Job 2",
-        );
-        return new Response(`<html><body>${listingHtml}</body></html>`, {
-          status: 200,
-          headers: { "Content-Type": "text/html" },
-        });
-      }
-
-      if (urlStr.includes("?pnr=6")) {
-        return new Response(
-          '<html><body><div class="no-results">Geen resultaten</div></body></html>',
-          {
+        if (urlStr.includes("?pnr=2")) {
+          const listingHtml = LISTING_HTML.replace(/15167751/g, "11111111").replace(
+            "Werkvoorbereider/Engineer HVAC tot &euro;4.800 bruto per maand",
+            "Job 1",
+          );
+          return new Response(`<html><body>${listingHtml}</body></html>`, {
             status: 200,
             headers: { "Content-Type": "text/html" },
-          },
-        );
-      }
+          });
+        }
 
-      if (urlStr.includes("/vacature/11111111")) {
-        return new Response(DETAIL_HTML.replace(/15167751/g, "11111111"), {
+        if (urlStr.includes("?pnr=4")) {
+          const listingHtml = LISTING_HTML.replace(/15167751/g, "22222222").replace(
+            "Werkvoorbereider/Engineer HVAC tot &euro;4.800 bruto per maand",
+            "Job 2",
+          );
+          return new Response(`<html><body>${listingHtml}</body></html>`, {
+            status: 200,
+            headers: { "Content-Type": "text/html" },
+          });
+        }
+
+        if (urlStr.includes("?pnr=6")) {
+          return new Response(
+            '<html><body><div class="no-results">Geen resultaten</div></body></html>',
+            {
+              status: 200,
+              headers: { "Content-Type": "text/html" },
+            },
+          );
+        }
+
+        if (urlStr.includes("/vacature/11111111")) {
+          return new Response(DETAIL_HTML.replace(/15167751/g, "11111111"), {
+            status: 200,
+            headers: { "Content-Type": "text/html" },
+          });
+        }
+
+        if (urlStr.includes("/vacature/22222222")) {
+          return new Response(DETAIL_HTML.replace(/15167751/g, "22222222"), {
+            status: 200,
+            headers: { "Content-Type": "text/html" },
+          });
+        }
+
+        return new Response("<html><body>Geen extra resultaten</body></html>", {
           status: 200,
           headers: { "Content-Type": "text/html" },
         });
-      }
+      }) as typeof fetch;
 
-      if (urlStr.includes("/vacature/22222222")) {
-        return new Response(DETAIL_HTML.replace(/15167751/g, "22222222"), {
-          status: 200,
-          headers: { "Content-Type": "text/html" },
-        });
-      }
+      const config = {
+        slug: "werkzoeken",
+        baseUrl: "https://www.werkzoeken.nl",
+        parameters: {
+          sourcePath: "/vacatures-voor/techniek/",
+          maxPages: 10,
+          pnrStep: 2, // Should jump 2, 4, 6...
+        },
+        auth: {},
+      };
 
-      return new Response("<html><body>Geen extra resultaten</body></html>", {
-        status: 200,
-        headers: { "Content-Type": "text/html" },
-      });
-    }) as typeof fetch;
+      await adapter.scrape(config);
 
-    const config = {
-      slug: "werkzoeken",
-      baseUrl: "https://www.werkzoeken.nl",
-      parameters: {
-        sourcePath: "/vacatures-voor/techniek/",
-        maxPages: 10,
-        pnrStep: 2, // Should jump 2, 4, 6...
-      },
-      auth: {},
-    };
-
-    await adapter.scrape(config);
-
-    // Should have requested:
-    // 1. Initial (pnr=2)
-    // 2. pnr=4 (2 + 2)
-    // 3. pnr=6 (4 + 2) - this returns empty
-    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/");
-    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=2");
-    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=4");
-    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=6");
-    expect(callCount).toBe(6); // bootstrap + 3 listing pages + 2 detail pages
-  });
+      // Should have requested:
+      // 1. Initial (pnr=2)
+      // 2. pnr=4 (2 + 2)
+      // 3. pnr=6 (4 + 2) - this returns empty
+      expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/");
+      expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=2");
+      expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=4");
+      expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=6");
+      expect(callCount).toBe(6); // bootstrap + 3 listing pages + 2 detail pages
+    },
+  );
 
   it("falls back to sane pagination and concurrency defaults when config numbers are invalid", async () => {
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {

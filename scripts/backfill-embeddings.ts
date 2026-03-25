@@ -9,8 +9,7 @@ async function main() {
     import("drizzle-orm").then(
       (m) => m.sql`SELECT count(*) FROM jobs WHERE embedding IS NULL AND deleted_at IS NULL`,
     ),
-    // biome-ignore lint/suspicious/noExplicitAny: raw SQL result shape is dynamic
-  )) as any;
+  )) as unknown as [{ count: string }];
 
   console.log(`📊 Found ~${count} jobs without embeddings.`);
 

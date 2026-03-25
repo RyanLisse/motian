@@ -1,4 +1,4 @@
-import { and, asc, db, desc, eq, gte, isNull, sql } from "@/src/db";
+import { and, asc, db, desc, eq, gte, isNull, ne, sql } from "@/src/db";
 import {
   applications,
   candidates,
@@ -72,7 +72,7 @@ async function getRecentJobs(database: typeof db): Promise<RecentJob[]> {
       province: jobs.province,
     })
     .from(jobs)
-    .where(isNull(jobs.deletedAt))
+    .where(and(ne(jobs.status, "archived"), isNull(jobs.deletedAt)))
     .orderBy(desc(jobs.scrapedAt), desc(jobs.id))
     .limit(200);
 
@@ -151,6 +151,9 @@ export async function getOverviewData(database: typeof db = db) {
   // and the pg driver's internal connection queueing mechanism used by transactions
   // loses this context during concurrent async operations in force-dynamic routes,
   // throwing "Access to storage is not allowed from this context".
+  const visibleCondition = and(ne(jobs.status, "archived"), isNull(jobs.deletedAt));
+  const openCondition = and(eq(jobs.status, "open"), isNull(jobs.deletedAt));
+
   const platformCounts = await database
     .select({
       platform: jobs.platform,
@@ -158,8 +161,31 @@ export async function getOverviewData(database: typeof db = db) {
       weeklyNew: sql<number>`cast(count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo}) as integer)`,
     })
     .from(jobs)
+    .where(visibleCondition)
     .groupBy(jobs.platform)
     .orderBy(sql`count(*) desc`);
+
+  // Deduplicated total matching the vacatures page count
+  let dedupedTotal = 0;
+  try {
+    const dedupedTotalResult = await (
+      database as unknown as { execute(query: unknown): Promise<{ rows: Array<{ cnt: number }> }> }
+    ).execute(sql`
+      with ranked as (
+        select ${jobs.id},
+          row_number() over (
+            partition by ${jobs.dedupeTitleNormalized}, ${jobs.dedupeClientNormalized}, ${jobs.dedupeLocationNormalized}
+            order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
+          ) as rn
+        from ${jobs}
+        where ${openCondition}
+      )
+      select cast(count(*) as integer) as cnt from ranked where rn = 1
+    `);
+    dedupedTotal = dedupedTotalResult.rows[0]?.cnt ?? 0;
+  } catch {
+    // execute may not be available in all environments; fall back to 0
+  }
 
   const recentJobs = await getRecentJobs(database);
 
@@ -185,7 +211,9 @@ export async function getOverviewData(database: typeof db = db) {
       count: sql<number>`cast(count(*) as integer)`,
     })
     .from(jobs)
-    .where(sql`${jobs.company} is not null`)
+    .where(
+      and(sql`${jobs.company} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
+    )
     .groupBy(jobs.company)
     .orderBy(sql`count(*) desc`)
     .limit(5);
@@ -196,7 +224,9 @@ export async function getOverviewData(database: typeof db = db) {
       count: sql<number>`cast(count(*) as integer)`,
     })
     .from(jobs)
-    .where(sql`${jobs.province} is not null`)
+    .where(
+      and(sql`${jobs.province} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
+    )
     .groupBy(jobs.province)
     .orderBy(sql`count(*) desc`)
     .limit(5);
@@ -246,6 +276,7 @@ export async function getOverviewData(database: typeof db = db) {
 
   return {
     activeScrapers,
+    dedupedTotal,
     locationCounts,
     pipelineStageCounts,
     platformCounts,

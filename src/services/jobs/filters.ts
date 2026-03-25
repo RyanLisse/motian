@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ne, sql } from "../../db";
+import { and, asc, desc, eq, isNull, ne, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import type { Job } from "./repository";
 
@@ -80,7 +80,7 @@ export function deriveJobStatus({
 }
 
 export function getVisibleVacancyCondition() {
-  return ne(jobs.status, "archived");
+  return and(ne(jobs.status, "archived"), isNull(jobs.deletedAt));
 }
 
 export function getJobStatusCondition(status: JobStatus) {
@@ -92,7 +92,7 @@ export function getJobStatusCondition(status: JobStatus) {
     return eq(jobs.status, "archived");
   }
 
-  return and(getVisibleVacancyCondition(), eq(jobs.status, status));
+  return eq(jobs.status, status);
 }
 
 function getTimestamp(d: Date | string | null | undefined, fallback: number): number {

@@ -24,15 +24,20 @@ export default defineConfig({
   project: "proj_nqihauooanbnqnbpoybp",
   dirs: ["./trigger"],
   runtime: "node-22",
-  maxDuration: 900, // 15 min global default
+  maxDuration: 1800, // 30 min global default — scrape pipeline with Firecrawl needs headroom
   logLevel: "info",
   enableConsoleLogging: true,
   // Externalize pg and drizzle-orm to avoid bundling native modules
   build: {
     extensions: [
-      additionalPackages({ packages: ["@libsql/client"] }),
+      additionalPackages({ packages: ["@libsql/client", "puppeteer-core"] }),
       syncEnvVars(async () => {
-        const keys = ["DATABASE_URL", "FIRECRAWL_API_KEY"];
+        const keys = [
+          "DATABASE_URL",
+          "FIRECRAWL_API_KEY",
+          "BROWSERBASE_API_KEY",
+          "BROWSERBASE_PROJECT_ID",
+        ];
         return keys
           .filter((key) => process.env[key])
           .map((key) => {
@@ -52,6 +57,7 @@ export default defineConfig({
       "@libsql/client",
       "playwright",
       "playwright-core",
+      "puppeteer-core",
       "chromium-bidi",
     ],
   },
