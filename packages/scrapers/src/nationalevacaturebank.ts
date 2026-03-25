@@ -671,9 +671,8 @@ async function scrapePath(
     }
 
     if (parsed.length === 0) {
-      if (page === 1) {
-        errors.push(`Geen resultaten voor ${basePath}`);
-      }
+      // Empty first page is expected for sparse province/category combos (e.g. management in Zeeland).
+      // Only treat it as an error if this is the sole sourcePath (not province sharding).
       break;
     }
 
