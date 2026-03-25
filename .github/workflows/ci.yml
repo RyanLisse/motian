@@ -265,7 +265,7 @@ jobs:
 
       - name: Start dev server
         run: |
-          pnpm dev -- --hostname "${HOSTNAME}" --port "${PORT}" > /tmp/next-dev.log 2>&1 &
+          pnpm dev > /tmp/next-dev.log 2>&1 &
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
