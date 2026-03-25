@@ -2,6 +2,7 @@ import { and, db, desc, isPostgresDatabase, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
+import type { QueryPath } from "../../lib/query-observability";
 import { LIST_SLO_MS, logSlowQuery } from "../../lib/query-observability";
 import { fetchDedupedJobsPage, loadJobsByIds } from "./deduplication";
 import { getJobStatusCondition, type JobStatus, type ListJobsSortBy } from "./filters";
@@ -79,7 +80,7 @@ export async function listJobs(
     const tsInput = toTsQueryInput(opts.q);
     if (tsInput && isPostgresDatabase()) {
       conditions.push(
-        sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, '')) @@ to_tsquery('dutch', ${tsInput})`,
+        sql`to_tsvector('dutch', ${jobs.searchText}) @@ to_tsquery('dutch', ${tsInput})`,
       );
     } else {
       conditions.push(caseInsensitiveContains(jobs.title, opts.q));
@@ -101,7 +102,9 @@ export async function listJobs(
   const data = await loadJobsByIds(dedupedIds);
   const hydrateMs = Date.now() - hydrateStartedAt;
 
+  const queryPath: QueryPath = opts.q ? "list-fts" : "list";
   logSlowQuery("listJobs", Date.now() - start, LIST_SLO_MS, {
+    queryPath,
     limit,
     offset,
     total,

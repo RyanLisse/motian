@@ -394,6 +394,7 @@ type SearchJobsParams = {
   sort: string;
   page: number;
   limit: number;
+  signal?: AbortSignal;
 };
 
 async function searchJobs({
@@ -415,6 +416,7 @@ async function searchJobs({
   sort,
   page,
   limit,
+  signal,
 }: SearchJobsParams): Promise<SearchResponse> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
@@ -440,7 +442,7 @@ async function searchJobs({
   if (page > 1) params.set("pagina", String(page));
   if (limit !== DEFAULT_OPDRACHTEN_LIMIT) params.set("limit", String(limit));
 
-  const res = await fetch(`/api/opdrachten/zoeken?${params.toString()}`);
+  const res = await fetch(`/api/opdrachten/zoeken?${params.toString()}`, { signal });
   if (!res.ok) {
     throw new Error(await getSearchErrorMessage(res));
   }
@@ -588,7 +590,7 @@ export function OpdrachtenSidebar({
       pageParam,
       limitParam,
     ],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       searchJobs({
         q,
         platform,
@@ -608,6 +610,7 @@ export function OpdrachtenSidebar({
         sort,
         page: pageParam,
         limit: limitParam,
+        signal,
       }),
     placeholderData: (prev) => prev,
     initialData:

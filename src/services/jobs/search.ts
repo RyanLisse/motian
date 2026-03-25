@@ -2,6 +2,7 @@ import { and, db, inArray, isPostgresDatabase, or, type SQL, sql } from "../../d
 import { jobs } from "../../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
+import type { QueryPath } from "../../lib/query-observability";
 import { logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
 import { collapseScoredJobsByVacancy, fetchDedupedJobIds, loadJobsByIds } from "./deduplication";
@@ -152,12 +153,11 @@ async function searchJobIdsByTitle(
   const tsInput = toTsQueryInput(query);
 
   if (tsInput && isPostgresDatabase()) {
-    const searchVector = sql`to_tsvector('dutch', coalesce(${jobs.title}, '') || ' ' || coalesce(${jobs.company}, '') || ' ' || coalesce(${jobs.description}, '') || ' ' || coalesce(${jobs.location}, '') || ' ' || coalesce(${jobs.province}, ''))`;
-    const searchRank = sql`ts_rank(${searchVector}, to_tsquery('dutch', ${tsInput}))`;
+    const searchVector = sql`to_tsvector('dutch', ${jobs.searchText})`;
+    const tsQuery = sql`to_tsquery('dutch', ${tsInput})`;
+    const searchRank = sql`ts_rank(${searchVector}, ${tsQuery})`;
     const ftsIds = await fetchDedupedJobIds({
-      whereClause:
-        and(filterCondition, sql`${searchVector} @@ to_tsquery('dutch', ${tsInput})`) ??
-        filterCondition,
+      whereClause: and(filterCondition, sql`${searchVector} @@ ${tsQuery}`) ?? filterCondition,
       limit: safeLimit,
       partitionOrderBy: sql`${searchRank} desc, ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
       resultOrderBy: sql`search_rank desc nulls last, scraped_at desc nulls last, id desc`,
@@ -325,6 +325,12 @@ export async function hybridSearchWithTotal(
     })(),
   ]);
 
+  const queryPath: QueryPath = !policy.shouldRunVectorSearch
+    ? "text-only"
+    : vectorResults.length === 0
+      ? "hybrid-fallback"
+      : "hybrid";
+
   const rrfStartedAt = Date.now();
   const scoreMap = new Map<string, { rrfScore: number; job?: HybridSearchRankJob | Job }>();
 
@@ -344,6 +350,7 @@ export async function hybridSearchWithTotal(
   const candidateIds = [...scoreMap.keys()];
   if (candidateIds.length === 0) {
     logSlowQuery("hybridSearch", Date.now() - start, SEARCH_SLO_MS, {
+      queryPath,
       query: safeQuery,
       offset,
       total: 0,
@@ -428,6 +435,7 @@ export async function hybridSearchWithTotal(
   }
 
   logSlowQuery("hybridSearch", Date.now() - start, SEARCH_SLO_MS, {
+    queryPath,
     query: safeQuery,
     results: data.length,
     total,
