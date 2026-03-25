@@ -1,6 +1,6 @@
 import { type ComponentType, lazy } from "react";
 
-type GenUIEntry = {
+export type GenUIEntry = {
   component: React.LazyExoticComponent<ComponentType<{ output: unknown }>>;
   label: string;
 };
