@@ -18,6 +18,7 @@ export type WorkspaceSummary = {
       displayName: string;
       adapterKind: string;
       configured: boolean;
+      currentStep: string | null;
       blockerKind: string | null;
     }>;
   };
@@ -42,10 +43,23 @@ export async function getWorkspaceSummary(): Promise<WorkspaceSummary> {
   ]);
 
   const c = allCounts[0];
+  const openOnboardingStatuses = new Set([
+    "draft",
+    "researching",
+    "config_saved",
+    "waiting_for_credentials",
+    "waiting_for_external_approval",
+    "implementing",
+    "implementation_failed",
+    "validated",
+    "tested",
+    "active",
+    "monitoring",
+    "failed",
+    "needs_implementation",
+  ]);
   const pendingOnboarding = catalog.filter(
-    (entry) =>
-      entry.latestRun?.status &&
-      ["draft", "config_saved", "validated", "tested", "failed"].includes(entry.latestRun.status),
+    (entry) => entry.latestRun?.status && openOnboardingStatuses.has(entry.latestRun.status),
   ).length;
 
   return {
@@ -73,6 +87,7 @@ export async function getWorkspaceSummary(): Promise<WorkspaceSummary> {
         displayName: entry.displayName,
         adapterKind: entry.adapterKind,
         configured: Boolean(entry.config),
+        currentStep: entry.latestRun?.currentStep ?? null,
         blockerKind: entry.latestRun?.blockerKind ?? null,
       })),
     },

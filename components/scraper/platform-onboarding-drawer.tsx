@@ -25,7 +25,7 @@ export function PlatformOnboardingDrawer({ entry }: { entry: PlatformCatalogEntr
           <SheetTitle>{entry.displayName}</SheetTitle>
           <SheetDescription>
             {entry.description ||
-              "Configureer, valideer en test dit platform via dezelfde workflow als de agent tools."}
+              "Onderzoek, configureer, valideer, test en monitor dit platform via dezelfde workflow als de agent tools."}
           </SheetDescription>
         </SheetHeader>
         <div className="overflow-y-auto px-4 pb-6">

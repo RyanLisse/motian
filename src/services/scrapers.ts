@@ -32,6 +32,14 @@ export type ScraperConfig = typeof scraperConfigs.$inferSelect;
 export type SanitizedScraperConfig = Omit<ScraperConfig, "authConfigEncrypted" | "credentialsRef">;
 export type PlatformCatalogRow = typeof platformCatalog.$inferSelect;
 export type PlatformOnboardingRunRecord = typeof platformOnboardingRuns.$inferSelect;
+export type PlatformOnboardingRunView = Omit<
+  PlatformOnboardingRunRecord,
+  "nextActions" | "evidence" | "result"
+> & {
+  nextActions: string[];
+  evidence: Record<string, unknown>;
+  result: Record<string, unknown>;
+};
 type LatestPlatformOnboardingRunRow = PlatformOnboardingRunRecord;
 export type PublicScraperConfig = Omit<ScraperConfig, "authConfigEncrypted" | "credentialsRef"> & {
   hasAuthConfig: boolean;
@@ -109,23 +117,23 @@ export type PlatformCatalogEntryView = {
   isSelfServe: boolean;
   implemented: boolean;
   config: PublicScraperConfig | null;
-  latestRun: PlatformOnboardingRunRecord | null;
+  latestRun: PlatformOnboardingRunView | null;
 };
 
 export type PlatformValidationResponse = PlatformValidationResult & {
   config: SanitizedScraperConfig;
-  onboardingRun: PlatformOnboardingRunRecord;
+  onboardingRun: PlatformOnboardingRunView;
 };
 
 export type PlatformTestImportResponse = PlatformTestImportResult & {
   config: SanitizedScraperConfig;
-  onboardingRun: PlatformOnboardingRunRecord;
+  onboardingRun: PlatformOnboardingRunView;
 };
 
 export type PlatformOnboardingStatusResponse = {
   catalog: PlatformCatalogEntryView | null;
   config: PublicScraperConfig | null;
-  latestRun: PlatformOnboardingRunRecord | null;
+  latestRun: PlatformOnboardingRunView | null;
 };
 
 // ========== Private helpers ==========
@@ -290,6 +298,27 @@ function onboardingStateFromRecord(
   };
 }
 
+function sanitizeOnboardingRunRecord(
+  record: PlatformOnboardingRunRecord | null,
+): PlatformOnboardingRunView | null {
+  if (!record) {
+    return null;
+  }
+
+  return {
+    ...record,
+    nextActions: Array.isArray(record.nextActions) ? (record.nextActions as string[]) : [],
+    evidence:
+      record.evidence && typeof record.evidence === "object"
+        ? (record.evidence as Record<string, unknown>)
+        : {},
+    result:
+      record.result && typeof record.result === "object"
+        ? (record.result as Record<string, unknown>)
+        : {},
+  };
+}
+
 async function recordOnboardingSnapshot(input: {
   platform: string;
   source: PlatformOnboardingSource;
@@ -328,7 +357,7 @@ async function recordOnboardingSnapshot(input: {
       evidence: next.evidence,
       result: input.event.evidence ?? {},
       completedAt:
-        next.status === "active" || next.status === "needs_implementation" ? new Date() : null,
+        next.status === "completed" || next.status === "failed" ? new Date() : null,
       updatedAt: new Date(),
     })
     .returning();
@@ -506,7 +535,7 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
         isSelfServe: row?.isSelfServe ?? Boolean(definition),
         implemented: Boolean(getPlatformAdapter(slug)) || row?.adapterKind === "ai_dynamic",
         config: toPublicScraperConfig(configMap.get(slug) ?? null),
-        latestRun: latestRunMap.get(slug) ?? null,
+        latestRun: sanitizeOnboardingRunRecord(latestRunMap.get(slug) ?? null),
       };
     });
 }
@@ -835,7 +864,7 @@ export async function validateConfig(
         platform,
       },
       config: sanitizeConfig(config),
-      onboardingRun,
+      onboardingRun: sanitizeOnboardingRunRecord(onboardingRun)!,
     };
   }
 
@@ -880,7 +909,7 @@ export async function validateConfig(
       lastValidatedAt: new Date(),
       lastValidationError: result.ok ? null : result.message,
     }),
-    onboardingRun,
+    onboardingRun: sanitizeOnboardingRunRecord(onboardingRun)!,
   };
 }
 
@@ -916,7 +945,7 @@ export async function triggerTestRun(
       blockerKind: "needs_implementation",
       errors: ["Geen runtime adapter beschikbaar voor dit platform."],
       config: sanitizeConfig(config),
-      onboardingRun,
+      onboardingRun: sanitizeOnboardingRunRecord(onboardingRun)!,
     };
   }
 
@@ -968,7 +997,7 @@ export async function triggerTestRun(
       lastTestImportAt: new Date(),
       lastTestImportStatus: result.status,
     }),
-    onboardingRun,
+    onboardingRun: sanitizeOnboardingRunRecord(onboardingRun)!,
   };
 }
 
@@ -1036,7 +1065,7 @@ export async function getPlatformOnboardingStatus(
   return {
     catalog,
     config: toPublicScraperConfig(config),
-    latestRun,
+    latestRun: sanitizeOnboardingRunRecord(latestRun),
   };
 }
 
