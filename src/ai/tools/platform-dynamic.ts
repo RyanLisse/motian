@@ -99,8 +99,8 @@ export const platformAutoSetup = tool({
         activate,
       });
 
-      revalidateTag("scrapers");
-      revalidateTag("jobs");
+      revalidateTag("scrapers", "default");
+      revalidateTag("jobs", "default");
 
       return {
         success: true,
@@ -136,7 +136,7 @@ export const platformAutoSetup = tool({
             ],
       };
     } catch (err) {
-      revalidateTag("scrapers");
+      revalidateTag("scrapers", "default");
 
       return {
         success: false,
