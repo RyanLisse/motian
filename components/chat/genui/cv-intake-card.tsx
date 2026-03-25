@@ -22,13 +22,13 @@ type CvIntakeOutput = {
 };
 
 function isCvIntakeOutput(o: unknown): o is CvIntakeOutput {
+  if (typeof o !== "object" || o === null) return false;
+  const v = o as Record<string, unknown>;
   return (
-    typeof o === "object" &&
-    o !== null &&
-    "candidateId" in o &&
-    "candidateName" in o &&
-    "matches" in o &&
-    Array.isArray((o as CvIntakeOutput).matches)
+    typeof v.candidateId === "string" &&
+    typeof v.candidateName === "string" &&
+    Array.isArray(v.topSkills) &&
+    Array.isArray(v.matches)
   );
 }
 

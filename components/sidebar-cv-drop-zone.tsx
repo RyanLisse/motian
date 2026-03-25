@@ -2,7 +2,7 @@
 
 import { Check, FileUp, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { validateCvUploadFile } from "@/src/lib/cv-upload";
@@ -21,6 +21,15 @@ export function SidebarCvDropZone({
   const [message, setMessage] = useState<string | null>(null);
   const dragDepthRef = useRef(0);
   const resetTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const scheduleReset = useCallback(() => {
     if (resetTimerRef.current !== null) {
@@ -117,7 +126,11 @@ export function SidebarCvDropZone({
           throw new Error(body?.error ?? "Opslaan mislukt");
         }
 
-        const saveData = (await saveRes.json()) as { candidateId: string };
+        const saveData = (await saveRes.json()) as { candidateId?: string };
+
+        if (!saveData?.candidateId) {
+          throw new Error("Geen kandidaat-ID ontvangen van server");
+        }
 
         const action = duplicates?.exact ? "bijgewerkt" : "toegevoegd";
         setUploadState("success");
@@ -159,10 +172,8 @@ export function SidebarCvDropZone({
   );
 
   const stateIcon = {
-    idle: (
-      <FileUp className={cn("shrink-0 text-muted-foreground", collapsed ? "h-4 w-4" : "h-4 w-4")} />
-    ),
-    dragging: <FileUp className={cn("shrink-0 text-primary", collapsed ? "h-4 w-4" : "h-4 w-4")} />,
+    idle: <FileUp className="h-4 w-4 shrink-0 text-muted-foreground" />,
+    dragging: <FileUp className="h-4 w-4 shrink-0 text-primary" />,
     uploading: <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />,
     success: <Check className="h-4 w-4 shrink-0 text-emerald-500" />,
     error: <X className="h-4 w-4 shrink-0 text-destructive" />,
@@ -189,6 +200,8 @@ export function SidebarCvDropZone({
       {stateIcon[uploadState]}
       {!collapsed && (
         <span
+          aria-live={uploadState === "error" ? "assertive" : "polite"}
+          role={uploadState === "error" ? "alert" : "status"}
           className={cn(
             "text-center text-xs",
             uploadState === "error"
@@ -202,7 +215,9 @@ export function SidebarCvDropZone({
         </span>
       )}
       {collapsed && message && uploadState !== "idle" && uploadState !== "dragging" && (
-        <span className="sr-only">{message}</span>
+        <output aria-live="polite" className="sr-only">
+          {message}
+        </output>
       )}
     </section>
   );

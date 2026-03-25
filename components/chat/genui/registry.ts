@@ -96,7 +96,7 @@ export const GENUI_REGISTRY: Record<string, GenUIEntry> = {
   },
   cvIntakeResultaat: {
     component: lazy(() => import("./cv-intake-card").then((m) => ({ default: m.CvIntakeCard }))),
-    label: "CV Intake",
+    label: "CV-intake",
   },
   voerStructuredMatchUit: {
     component: lazy(() =>
