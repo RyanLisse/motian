@@ -3,9 +3,9 @@
 import { Check, FileUp, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { validateCvUploadFile } from "@/src/lib/cv-upload";
-import { useSidebar } from "@/components/ui/sidebar";
 
 type UploadState = "idle" | "dragging" | "uploading" | "success" | "error";
 
@@ -124,9 +124,7 @@ export function SidebarCvDropZone({
         router.push(`/kandidaten/${saveData.candidateId}`);
       } catch (error) {
         setUploadState("error");
-        setMessage(
-          error instanceof Error ? error.message : "Upload mislukt",
-        );
+        setMessage(error instanceof Error ? error.message : "Upload mislukt");
         scheduleReset();
       }
     },
@@ -158,7 +156,9 @@ export function SidebarCvDropZone({
   );
 
   const stateIcon = {
-    idle: <FileUp className={cn("shrink-0 text-muted-foreground", collapsed ? "h-4 w-4" : "h-4 w-4")} />,
+    idle: (
+      <FileUp className={cn("shrink-0 text-muted-foreground", collapsed ? "h-4 w-4" : "h-4 w-4")} />
+    ),
     dragging: <FileUp className={cn("shrink-0 text-primary", collapsed ? "h-4 w-4" : "h-4 w-4")} />,
     uploading: <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />,
     success: <Check className="h-4 w-4 shrink-0 text-emerald-500" />,
@@ -166,7 +166,8 @@ export function SidebarCvDropZone({
   };
 
   return (
-    <div
+    <section
+      aria-label="CV uploaden via drag-and-drop"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -200,6 +201,6 @@ export function SidebarCvDropZone({
       {collapsed && message && uploadState !== "idle" && uploadState !== "dragging" && (
         <span className="sr-only">{message}</span>
       )}
-    </div>
+    </section>
   );
 }

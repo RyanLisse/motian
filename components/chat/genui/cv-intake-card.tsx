@@ -38,10 +38,7 @@ function scoreColor(score: number): string {
   return "text-red-500";
 }
 
-const recommendationConfig: Record<
-  string,
-  { label: string; icon: string; classes: string }
-> = {
+const recommendationConfig: Record<string, { label: string; icon: string; classes: string }> = {
   go: {
     label: "Geschikt",
     icon: "\u2705",
@@ -73,9 +70,7 @@ export function CvIntakeCard({ output }: { output: unknown }) {
             <User className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground truncate">
-              {output.candidateName}
-            </p>
+            <p className="text-sm font-semibold text-foreground truncate">{output.candidateName}</p>
             {output.candidateRole && (
               <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {output.candidateRole}
@@ -108,9 +103,7 @@ export function CvIntakeCard({ output }: { output: unknown }) {
               </span>
             </div>
             {output.matches.map((match) => {
-              const rec = match.recommendation
-                ? recommendationConfig[match.recommendation]
-                : null;
+              const rec = match.recommendation ? recommendationConfig[match.recommendation] : null;
               return (
                 <div
                   key={match.jobId}

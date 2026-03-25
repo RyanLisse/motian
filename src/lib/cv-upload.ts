@@ -100,13 +100,11 @@ export function buildCvSummaryMessage({
   duplicates,
   parsed,
   matches,
-  recommendation,
 }: {
   candidateId: string;
   duplicates: { exact?: { id: string } } | undefined;
   parsed: ParsedCvSummary;
   matches?: CandidateIntakeMatch[];
-  recommendation?: CandidateIntakeMatch | null;
 }): { action: string; text: string; candidateUrl: string } {
   const action = duplicates?.exact ? "bijgewerkt" : "toegevoegd aan talentpool";
   const skillsList = [...parsed.skills.hard, ...parsed.skills.soft]

@@ -352,7 +352,6 @@ export function useChatCvUpload({
           duplicates,
           parsed,
           matches: saveData.matches,
-          recommendation: saveData.recommendation,
         });
 
         if (!isUploadCurrent(uploadId, controller)) {
