@@ -1,3 +1,5 @@
+import type { CandidateIntakeMatch } from "@/src/services/candidate-intake";
+
 export const CV_UPLOAD_MAX_SIZE_MB = 20;
 export const CV_UPLOAD_MAX_SIZE_BYTES = CV_UPLOAD_MAX_SIZE_MB * 1024 * 1024;
 
@@ -97,19 +99,42 @@ export function buildCvSummaryMessage({
   candidateId,
   duplicates,
   parsed,
+  matches,
 }: {
   candidateId: string;
   duplicates: { exact?: { id: string } } | undefined;
   parsed: ParsedCvSummary;
-}) {
+  matches?: CandidateIntakeMatch[];
+}): { action: string; text: string; candidateUrl: string } {
   const action = duplicates?.exact ? "bijgewerkt" : "toegevoegd aan talentpool";
   const skillsList = [...parsed.skills.hard, ...parsed.skills.soft]
     .map((skill) => skill.name)
     .slice(0, 8)
     .join(", ");
 
-  return {
-    action,
-    text: `Ik heb zojuist een CV geüpload voor ${parsed.name} (${parsed.role}). Het profiel is automatisch ${action}. Vaardigheden: ${skillsList}. Kandidaat ID: ${candidateId}. Geef een samenvatting van dit profiel en zoek passende vacatures.`,
-  };
+  const candidateUrl = `/kandidaten/${candidateId}`;
+
+  const hasMatches = matches && matches.length > 0;
+
+  let text = `Ik heb zojuist een CV geüpload voor ${parsed.name} (${parsed.role}). Het profiel is automatisch ${action}. Vaardigheden: ${skillsList}. Kandidaat ID: ${candidateId}.`;
+
+  if (hasMatches) {
+    const badgeMap: Record<string, string> = {
+      go: "\u2705",
+      "no-go": "\u274C",
+      conditional: "\u26A0\uFE0F",
+    };
+
+    const matchLines = matches.map((m) => {
+      const badge = m.recommendation ? (badgeMap[m.recommendation] ?? "") : "";
+      const company = m.company ? ` (${m.company})` : "";
+      return `- ${m.jobTitle}${company} \u2014 Score: ${m.quickScore}, Advies: ${badge}`;
+    });
+
+    text += ` Gevonden matches:\n${matchLines.join("\n")}\n\nToon een samenvatting met de gevonden matches.`;
+  } else {
+    text += " Geef een samenvatting van dit profiel en zoek passende vacatures.";
+  }
+
+  return { action, text, candidateUrl };
 }

@@ -8,6 +8,7 @@ import {
   CV_UPLOAD_MAX_SIZE_MB,
   validateCvUploadFile,
 } from "@/src/lib/cv-upload";
+import type { CandidateIntakeMatch } from "@/src/services/candidate-intake";
 import { usePromptInputAttachments } from "./prompt-input";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
@@ -335,7 +336,12 @@ export function useChatCvUpload({
           throw new Error(body?.error ?? "Opslaan mislukt");
         }
 
-        const saveData = (await saveRes.json()) as { candidateId: string };
+        const saveData = (await saveRes.json()) as {
+          candidateId: string;
+          matches?: CandidateIntakeMatch[];
+          recommendation?: CandidateIntakeMatch | null;
+          profile?: unknown;
+        };
 
         if (!isUploadCurrent(uploadId, controller)) {
           return;
@@ -345,6 +351,7 @@ export function useChatCvUpload({
           candidateId: saveData.candidateId,
           duplicates,
           parsed,
+          matches: saveData.matches,
         });
 
         if (!isUploadCurrent(uploadId, controller)) {

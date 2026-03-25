@@ -166,21 +166,26 @@ export async function getOverviewData(database: typeof db = db) {
     .orderBy(sql`count(*) desc`);
 
   // Deduplicated total matching the vacatures page count
-  const dedupedTotalResult = await (
-    database as unknown as { execute(query: unknown): Promise<{ rows: Array<{ cnt: number }> }> }
-  ).execute(sql`
-    with ranked as (
-      select ${jobs.id},
-        row_number() over (
-          partition by ${jobs.dedupeTitleNormalized}, ${jobs.dedupeClientNormalized}, ${jobs.dedupeLocationNormalized}
-          order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
-        ) as rn
-      from ${jobs}
-      where ${openCondition}
-    )
-    select cast(count(*) as integer) as cnt from ranked where rn = 1
-  `);
-  const dedupedTotal = dedupedTotalResult.rows[0]?.cnt ?? 0;
+  let dedupedTotal = 0;
+  try {
+    const dedupedTotalResult = await (
+      database as unknown as { execute(query: unknown): Promise<{ rows: Array<{ cnt: number }> }> }
+    ).execute(sql`
+      with ranked as (
+        select ${jobs.id},
+          row_number() over (
+            partition by ${jobs.dedupeTitleNormalized}, ${jobs.dedupeClientNormalized}, ${jobs.dedupeLocationNormalized}
+            order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
+          ) as rn
+        from ${jobs}
+        where ${openCondition}
+      )
+      select cast(count(*) as integer) as cnt from ranked where rn = 1
+    `);
+    dedupedTotal = dedupedTotalResult.rows[0]?.cnt ?? 0;
+  } catch {
+    // execute may not be available in all environments; fall back to 0
+  }
 
   const recentJobs = await getRecentJobs(database);
 
