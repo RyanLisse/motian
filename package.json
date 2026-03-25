@@ -92,6 +92,8 @@
     "benchmark:hybrid-search": "tsx scripts/benchmark-hybrid-search.ts",
     "metrics:esco-rollout": "tsx scripts/esco-rollout-snapshot.ts",
     "metrics:esco-rollout:compare": "tsx scripts/esco-rollout-compare.ts",
+    "metrics:search-path-latency": "tsx scripts/measure-search-path-latencies.ts",
+    "metrics:search-explain": "tsx scripts/explain-search-plans.ts",
     "harness:risk-tier": "tsx scripts/harness/risk-policy-gate.ts",
     "harness:pre-pr": "pnpm lint && pnpm exec tsc --noEmit && pnpm test && tsx scripts/harness/risk-policy-gate.ts",
     "harness:smoke": "vitest run tests/harness/",

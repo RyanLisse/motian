@@ -201,6 +201,14 @@ export const jobs = pgTable(
       table.id,
     ),
     platformUrlIdx: index("idx_platform_external_url").on(table.platform, table.externalUrl),
+    provinceIdx: index("idx_jobs_province").on(table.province),
+    contractTypeIdx: index("idx_jobs_contract_type").on(table.contractType),
+    workArrangementIdx: index("idx_jobs_work_arrangement").on(table.workArrangement),
+    postedAtIdx: index("idx_jobs_posted_at").on(table.postedAt),
+    startDateIdx: index("idx_jobs_start_date").on(table.startDate),
+    rateRangeIdx: index("idx_jobs_rate_range").on(table.rateMin, table.rateMax),
+    statusIdx: index("idx_jobs_status").on(table.status),
+    hoursIdx: index("idx_jobs_hours").on(table.minHoursPerWeek, table.hoursPerWeek),
   }),
 );
 

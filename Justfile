@@ -132,6 +132,14 @@ benchmark-hybrid-search:
 metrics-esco:
 	pnpm metrics:esco-rollout
 
+# Search path latency baseline (p50/p95/p99)
+metrics-search-path-latency:
+	pnpm metrics:search-path-latency
+
+# Explain capture for core search paths
+metrics-search-explain:
+	pnpm metrics:search-explain
+
 # ── CLI & MCP & TUI ───────────────────────────────
 
 # Run a CLI command (e.g. just cli kandidaten:zoek --query "Java")

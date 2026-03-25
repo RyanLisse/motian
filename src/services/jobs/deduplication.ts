@@ -20,7 +20,7 @@ function normalizeDeduplicationPart(value: string | null | undefined) {
     .replace(/\s+/g, " ");
 }
 
-function getListSortOrderSql(sortBy: ListJobsSortBy = "nieuwste") {
+export function getListSortOrderSql(sortBy: ListJobsSortBy = "nieuwste") {
   switch (sortBy) {
     case "tarief_hoog":
       return {
@@ -64,7 +64,7 @@ function getDeduplicationFallbackExpression(value: SQL): SQL {
   return sql`lower(coalesce(${value}, ''))`;
 }
 
-function getDeduplicationPartitionExpressions(mode: ResolvedJobsDeduplicationMode) {
+export function getDeduplicationPartitionExpressions(mode: ResolvedJobsDeduplicationMode) {
   if (mode === "normalized") {
     return {
       title: sql`${jobs.dedupeTitleNormalized}`,
@@ -90,33 +90,68 @@ async function withJobsDeduplicationCompatibility<T>(
   return runForMode("normalized");
 }
 
-function buildDedupedJobsCte({
+/** Maximum rows fed into the PARTITION BY window to bound CPU cost. */
+const DEDUPE_PRE_FETCH_CAP = 500;
+
+function computePreFetchLimit(offset: number, limit: number): number {
+  return Math.min((offset + limit) * 5, DEDUPE_PRE_FETCH_CAP);
+}
+
+export function buildDedupedJobsCte({
   whereClause,
   partitionOrderBy,
   deduplicationPartitionExpressions,
   extraSelections,
+  preFetchLimit,
 }: {
   whereClause: SQL;
   partitionOrderBy: SQL;
   deduplicationPartitionExpressions: ReturnType<typeof getDeduplicationPartitionExpressions>;
   extraSelections?: SQL;
+  /** When set, adds a pre_filtered CTE that caps rows before the window function. */
+  preFetchLimit?: number;
 }) {
+  const selectColumns = sql`
+    ${jobs.id} as id,
+    ${jobs.scrapedAt} as scraped_at,
+    case when ${jobs.rateMax} > 500 then null else ${jobs.rateMax} end as sort_rate_max,
+    ${jobs.rateMin} as sort_rate_min,
+    ${jobs.applicationDeadline} as sort_application_deadline,
+    ${jobs.postedAt} as sort_posted_at,
+    ${jobs.startDate} as sort_start_date
+    ${extraSelections ? sql`, ${extraSelections}` : sql``},
+    ${deduplicationPartitionExpressions.title} as dedupe_title,
+    ${deduplicationPartitionExpressions.client} as dedupe_client,
+    ${deduplicationPartitionExpressions.location} as dedupe_location`;
+
+  if (preFetchLimit != null && preFetchLimit > 0) {
+    return sql`
+      with pre_filtered as (
+        select ${selectColumns}
+        from ${jobs}
+        where ${whereClause}
+        order by ${partitionOrderBy}
+        limit ${preFetchLimit}
+      ),
+      ranked_jobs as (
+        select pre_filtered.*,
+          row_number() over (
+            partition by dedupe_title, dedupe_client, dedupe_location
+            order by ${partitionOrderBy}
+          ) as dedupe_rank
+        from pre_filtered
+      ),
+      deduped_jobs as (
+        select * from ranked_jobs where dedupe_rank = 1
+      )
+    `;
+  }
+
   return sql`
     with ranked_jobs as (
-      select
-        ${jobs.id} as id,
-        ${jobs.scrapedAt} as scraped_at,
-        case when ${jobs.rateMax} > 500 then null else ${jobs.rateMax} end as sort_rate_max,
-        ${jobs.rateMin} as sort_rate_min,
-        ${jobs.applicationDeadline} as sort_application_deadline,
-        ${jobs.postedAt} as sort_posted_at,
-        ${jobs.startDate} as sort_start_date
-        ${extraSelections ? sql`, ${extraSelections}` : sql``},
+      select ${selectColumns},
         row_number() over (
-          partition by
-            ${deduplicationPartitionExpressions.title},
-            ${deduplicationPartitionExpressions.client},
-            ${deduplicationPartitionExpressions.location}
+          partition by dedupe_title, dedupe_client, dedupe_location
           order by ${partitionOrderBy}
         ) as dedupe_rank
       from ${jobs}
@@ -229,6 +264,7 @@ export async function fetchDedupedJobIds({
         sql`${jobs.scrapedAt} desc, ${jobs.id} desc`,
       deduplicationPartitionExpressions: getDeduplicationPartitionExpressions(mode),
       extraSelections,
+      preFetchLimit: computePreFetchLimit(offset, limit),
     });
     const result = await (
       db as unknown as { execute(sql: SQL): Promise<{ rows: DedupedJobIdRow[] }> }
@@ -264,12 +300,13 @@ export async function fetchDedupedJobsPage({
       whereClause,
       partitionOrderBy: sortOrder.partitionOrderBy,
       deduplicationPartitionExpressions: getDeduplicationPartitionExpressions(mode),
+      preFetchLimit: computePreFetchLimit(offset, limit),
     });
     const result = await (
       db as unknown as { execute(sql: SQL): Promise<{ rows: DedupedJobPageRow[] }> }
     ).execute(sql`
       ${cte}
-      select id, (select cast(count(*) as integer) from deduped_jobs) as total
+      select id, cast(count(*) over() as integer) as total
       from deduped_jobs
       order by ${sortOrder.resultOrderBy}
       limit ${limit}

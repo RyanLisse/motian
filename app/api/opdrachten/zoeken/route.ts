@@ -55,9 +55,10 @@ export async function GET(req: NextRequest) {
     offset,
   });
 
-  const { hasPipelineByJobId, pipelineCountByJobId } = await getJobPipelineSummary(
-    result.data.map((job) => job.id),
-  );
+  const includePipeline = params.get("includePipeline") !== "false";
+  const { hasPipelineByJobId, pipelineCountByJobId } = includePipeline
+    ? await getJobPipelineSummary(result.data.map((job) => job.id))
+    : { hasPipelineByJobId: new Set<string>(), pipelineCountByJobId: new Map<string, number>() };
 
   const jobs = result.data.map((job) => ({
     id: job.id,
