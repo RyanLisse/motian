@@ -119,8 +119,9 @@ export function SidebarCvDropZone({
 
         const saveData = (await saveRes.json()) as { candidateId: string };
 
+        const action = duplicates?.exact ? "bijgewerkt" : "toegevoegd";
         setUploadState("success");
-        setMessage(`${parsed.name} toegevoegd`);
+        setMessage(`${parsed.name} ${action}`);
         scheduleReset();
         onUploadComplete?.(saveData.candidateId);
         router.push(`/kandidaten/${saveData.candidateId}`);

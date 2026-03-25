@@ -3,7 +3,6 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { publish } from "@/src/lib/event-bus";
 import { autoMatchCandidateToJobs } from "@/src/services/auto-matching";
-import { reviewCandidateMatches } from "@/src/services/candidate-intake";
 import type { Candidate } from "@/src/services/candidates";
 import {
   addNoteToCandidate,
@@ -15,6 +14,8 @@ import {
   updateCandidate,
 } from "@/src/services/candidates";
 import { withCandidateCanonicalSkills, withCandidatesCanonicalSkills } from "@/src/services/esco";
+import { getJobById } from "@/src/services/jobs";
+import { getMatchesForCandidate } from "@/src/services/matches";
 
 export const zoekKandidaten = tool({
   description:
@@ -163,31 +164,41 @@ export const autoMatchKandidaat = tool({
 
 export const cvIntakeResultaat = tool({
   description:
-    "Toon het resultaat van een CV-intake met kandidaatprofiel en gevonden vacaturematches. Gebruik dit na een CV-upload om de samenvatting te tonen.",
+    "Toon het resultaat van een CV-intake met kandidaatprofiel en gevonden vacaturematches. Alleen-lezen: haalt bestaande matches op zonder opnieuw te matchen.",
   inputSchema: z.object({
     candidateId: z.string().uuid().describe("UUID van de kandidaat na CV-intake"),
   }),
   execute: async ({ candidateId }) => {
     try {
-      const result = await reviewCandidateMatches(candidateId, { topN: 5 });
-      const topSkills = [
-        ...result.profile.hardSkills.slice(0, 4).map((s) => s.name),
-        ...result.profile.softSkills.slice(0, 2).map((s) => s.name),
-      ];
+      const candidate = await getCandidateById(candidateId);
+      if (!candidate) return { error: "Kandidaat niet gevonden" };
+
+      const enriched = await withCandidateCanonicalSkills(candidate);
+      const skills = Array.isArray(enriched.skills) ? enriched.skills : [];
+      const topSkills = skills.slice(0, 6);
+
+      const existingMatches = await getMatchesForCandidate(candidateId, 5);
+      const matches = await Promise.all(
+        existingMatches.map(async (m) => {
+          const job = m.jobId ? await getJobById(m.jobId) : null;
+          return {
+            jobId: m.jobId ?? "",
+            jobTitle: job?.title ?? "Onbekende vacature",
+            company: job?.company ?? null,
+            quickScore: m.matchScore,
+            recommendation: m.recommendation as "go" | "no-go" | "conditional" | null,
+            reasoning: m.reasoning ?? null,
+          };
+        }),
+      );
+
       return {
-        candidateId: result.candidate.id,
-        candidateName: result.candidate.name,
-        candidateRole: result.profile.role,
+        candidateId: enriched.id,
+        candidateName: enriched.name,
+        candidateRole: enriched.role ?? null,
         topSkills,
-        matches: result.matches.map((m) => ({
-          jobId: m.jobId,
-          jobTitle: m.jobTitle,
-          company: m.company,
-          quickScore: m.quickScore,
-          recommendation: m.recommendation,
-          reasoning: m.reasoning,
-        })),
-        candidateUrl: `/kandidaten/${result.candidate.id}`,
+        matches,
+        candidateUrl: `/kandidaten/${enriched.id}`,
       };
     } catch (err) {
       return { error: err instanceof Error ? err.message : "Intake resultaat ophalen mislukt" };
