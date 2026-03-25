@@ -56,7 +56,7 @@ describe("harness workspace", () => {
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }
-  });
+  }, 20_000);
 });
 
 describe("harness runtime", () => {

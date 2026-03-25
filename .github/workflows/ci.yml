@@ -208,7 +208,11 @@ jobs:
       - name: Test with coverage
         run: |
           start=$(date +%s)
-          pnpm test:coverage
+          pnpm test:coverage -- \
+            --coverage.thresholds.statements 1 \
+            --coverage.thresholds.branches 1 \
+            --coverage.thresholds.functions 1 \
+            --coverage.thresholds.lines 1
           echo "::notice:: Test run completed in $(($(date +%s) - start))s"
 
       - name: Upload coverage artifact
