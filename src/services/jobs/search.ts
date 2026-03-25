@@ -2,11 +2,7 @@ import { and, db, inArray, isPostgresDatabase, or, type SQL, sql } from "../../d
 import { jobs } from "../../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
-import {
-  type QueryPath,
-  logSlowQuery,
-  SEARCH_SLO_MS,
-} from "../../lib/query-observability";
+import { logSlowQuery, type QueryPath, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
 import { collapseScoredJobsByVacancy, fetchDedupedJobIds, loadJobsByIds } from "./deduplication";
 import {
