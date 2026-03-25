@@ -328,3 +328,40 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # ────────────────────────────────────────────────────────────
+  # Job 7: Symphony Gate
+  # Single required status check for Symphony auto-merge.
+  # Depends on all quality gates passing.
+  # ────────────────────────────────────────────────────────────
+  symphony-gate:
+    name: Symphony Gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - risk-policy-gate
+      - lint
+      - typecheck
+      - test
+      - build
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check all gates passed
+        run: |
+          echo "Risk Policy Gate: ${{ needs.risk-policy-gate.result }}"
+          echo "Lint: ${{ needs.lint.result }}"
+          echo "Typecheck: ${{ needs.typecheck.result }}"
+          echo "Test: ${{ needs.test.result }}"
+          echo "Build: ${{ needs.build.result }}"
+
+          if [[ "${{ needs.risk-policy-gate.result }}" != "success" ]] || \
+             [[ "${{ needs.lint.result }}" != "success" ]] || \
+             [[ "${{ needs.typecheck.result }}" != "success" ]] || \
+             [[ "${{ needs.test.result }}" != "success" ]] || \
+             [[ "${{ needs.build.result }}" != "success" ]]; then
+            echo "::error::One or more quality gates failed"
+            exit 1
+          fi
+          echo "All quality gates passed — safe for Symphony auto-merge"
