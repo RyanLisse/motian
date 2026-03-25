@@ -11,6 +11,8 @@ CREATE INDEX IF NOT EXISTS "idx_jobs_start_date" ON "jobs" ("start_date");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_jobs_rate_range" ON "jobs" ("rate_min", "rate_max");
 --> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_jobs_status" ON "jobs" ("status");
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_jobs_hours" ON "jobs" ("min_hours_per_week", "hours_per_week");
 --> statement-breakpoint
 -- JSONB categories operator checks (`?`) benefit from GIN indexing.

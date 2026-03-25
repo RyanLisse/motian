@@ -25,36 +25,47 @@ export function getListSortOrderSql(sortBy: ListJobsSortBy = "nieuwste") {
     case "tarief_hoog":
       return {
         partitionOrderBy: sql`case when ${jobs.rateMax} > 500 then 1 else 0 end, ${jobs.rateMax} desc nulls last, ${jobs.id} desc`,
+        rankedJobsOrderBy: sql`
+          case when sort_rate_max is null then 1 else 0 end,
+          sort_rate_max desc,
+          id desc
+        `,
         resultOrderBy: sql`case when sort_rate_max is null then 1 else 0 end, sort_rate_max desc, id desc`,
       };
     case "tarief_laag":
       return {
         partitionOrderBy: sql`${jobs.rateMin} asc nulls last, ${jobs.id} desc`,
+        rankedJobsOrderBy: sql`sort_rate_min asc nulls last, id desc`,
         resultOrderBy: sql`case when sort_rate_min is null then 1 else 0 end, sort_rate_min asc, id desc`,
       };
     case "deadline":
       return {
         partitionOrderBy: sql`${jobs.applicationDeadline} asc nulls last, ${jobs.id} desc`,
+        rankedJobsOrderBy: sql`sort_application_deadline asc nulls last, id desc`,
         resultOrderBy: sql`case when sort_application_deadline is null then 1 else 0 end, sort_application_deadline asc, id desc`,
       };
     case "deadline_desc":
       return {
         partitionOrderBy: sql`${jobs.applicationDeadline} desc nulls last, ${jobs.id} desc`,
+        rankedJobsOrderBy: sql`sort_application_deadline desc nulls last, id desc`,
         resultOrderBy: sql`case when sort_application_deadline is null then 1 else 0 end, sort_application_deadline desc, id desc`,
       };
     case "geplaatst":
       return {
         partitionOrderBy: sql`${jobs.postedAt} desc nulls last, ${jobs.id} desc`,
+        rankedJobsOrderBy: sql`sort_posted_at desc nulls last, id desc`,
         resultOrderBy: sql`case when sort_posted_at is null then 1 else 0 end, sort_posted_at desc, id desc`,
       };
     case "startdatum":
       return {
         partitionOrderBy: sql`${jobs.startDate} asc nulls last, ${jobs.id} desc`,
+        rankedJobsOrderBy: sql`sort_start_date asc nulls last, id desc`,
         resultOrderBy: sql`case when sort_start_date is null then 1 else 0 end, sort_start_date asc, id desc`,
       };
     default:
       return {
         partitionOrderBy: sql`${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
+        rankedJobsOrderBy: sql`case when scraped_at is null then 1 else 0 end, scraped_at desc, id desc`,
         resultOrderBy: sql`case when scraped_at is null then 1 else 0 end, scraped_at desc, id desc`,
       };
   }
@@ -100,12 +111,14 @@ function computePreFetchLimit(offset: number, limit: number): number {
 export function buildDedupedJobsCte({
   whereClause,
   partitionOrderBy,
+  rankedJobsOrderBy,
   deduplicationPartitionExpressions,
   extraSelections,
   preFetchLimit,
 }: {
   whereClause: SQL;
   partitionOrderBy: SQL;
+  rankedJobsOrderBy: SQL;
   deduplicationPartitionExpressions: ReturnType<typeof getDeduplicationPartitionExpressions>;
   extraSelections?: SQL;
   /** When set, adds a pre_filtered CTE that caps rows before the window function. */
@@ -137,7 +150,7 @@ export function buildDedupedJobsCte({
         select pre_filtered.*,
           row_number() over (
             partition by dedupe_title, dedupe_client, dedupe_location
-            order by ${partitionOrderBy}
+            order by ${rankedJobsOrderBy}
           ) as dedupe_rank
         from pre_filtered
       ),
@@ -243,6 +256,7 @@ export async function fetchDedupedJobIds({
   sortBy,
   partitionOrderBy,
   resultOrderBy,
+  rankedJobsOrderBy,
   extraSelections,
 }: {
   whereClause: SQL;
@@ -251,17 +265,22 @@ export async function fetchDedupedJobIds({
   sortBy?: ListJobsSortBy;
   partitionOrderBy?: SQL;
   resultOrderBy?: SQL;
+  rankedJobsOrderBy?: SQL;
   extraSelections?: SQL;
 }): Promise<string[]> {
   const sortOrder = sortBy ? getListSortOrderSql(sortBy) : undefined;
+  const finalPartitionOrderBy =
+    partitionOrderBy ?? sortOrder?.partitionOrderBy ?? sql`${jobs.scrapedAt} desc, ${jobs.id} desc`;
+  const finalRankedJobsOrderBy =
+    rankedJobsOrderBy ??
+    sortOrder?.rankedJobsOrderBy ??
+    sql`case when scraped_at is null then 1 else 0 end, scraped_at desc, id desc`;
 
   return withJobsDeduplicationCompatibility(async (mode) => {
     const cte = buildDedupedJobsCte({
       whereClause,
-      partitionOrderBy:
-        partitionOrderBy ??
-        sortOrder?.partitionOrderBy ??
-        sql`${jobs.scrapedAt} desc, ${jobs.id} desc`,
+      partitionOrderBy: finalPartitionOrderBy,
+      rankedJobsOrderBy: finalRankedJobsOrderBy,
       deduplicationPartitionExpressions: getDeduplicationPartitionExpressions(mode),
       extraSelections,
       preFetchLimit: computePreFetchLimit(offset, limit),
@@ -300,7 +319,7 @@ export async function fetchDedupedJobsPage({
       whereClause,
       partitionOrderBy: sortOrder.partitionOrderBy,
       deduplicationPartitionExpressions: getDeduplicationPartitionExpressions(mode),
-      preFetchLimit: computePreFetchLimit(offset, limit),
+      rankedJobsOrderBy: sortOrder.rankedJobsOrderBy,
     });
     const result = await (
       db as unknown as { execute(sql: SQL): Promise<{ rows: DedupedJobPageRow[] }> }

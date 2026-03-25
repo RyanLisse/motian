@@ -175,6 +175,7 @@ async function searchJobIdsByTitle(
       whereClause: and(filterCondition, sql`${searchVector} @@ ${searchQuery}`) ?? filterCondition,
       limit: safeLimit,
       partitionOrderBy: sql`${searchRank} desc, ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
+      rankedJobsOrderBy: sql`search_rank desc nulls last, scraped_at desc nulls last, id desc`,
       resultOrderBy: sql`search_rank desc nulls last, scraped_at desc nulls last, id desc`,
       extraSelections: sql`${searchRank} as search_rank`,
     });
