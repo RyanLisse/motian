@@ -251,6 +251,65 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 - Do not close PRs as redundant without reviewing their content first
 - Git merge: use exact branch name with no trailing punctuation (e.g. no dot after name)
 
+---
+
+## Symphony Integration
+
+This repository is **Symphony-ready**: OpenAI's Symphony monitors our Linear board, spawns coding agents, creates PRs, and auto-merges when CI passes.
+
+### How Symphony Works Here
+
+1. **Issue → Branch**: Symphony picks up "Ready for Dev" issues from Linear and creates a branch: `symphony/<issue-id>-<slug>`
+2. **Agent Coding**: Symphony agents write code following the conventions in this file
+3. **CI Gate**: All PRs must pass the `Symphony Gate` status check (lint + typecheck + test + build)
+4. **Auto-merge**: When all checks pass, the PR auto-merges
+
+### Risk Tiers (from harness.config.json)
+
+| Tier | Files | Merge Policy |
+|------|-------|--------------|
+| **High** | `schema.ts`, `gdpr.ts`, `crypto.ts`, `cron/**`, `drizzle/**` | All checks + human code review |
+| **Medium** | `src/services/**`, `src/ai/**`, `src/schemas/**`, `app/api/**` | All checks, no review needed |
+| **Low** | Everything else | Risk gate + lint only |
+
+### Forbidden Patterns for Agents
+
+- **Never** modify `src/db/schema.ts` or `drizzle/**` without human review
+- **Never** hardcode API keys or secrets
+- **Never** use `eslint` or `prettier` — use `pnpm lint` (Biome)
+- **Never** skip `pnpm test` before committing
+- **Never** use direct AI API calls — use `tracedGenerateText` from `src/lib/ai-models.ts`
+- **Always** write tests for new service code in `tests/` directory
+- **Always** use Dutch UI strings, English code variables
+- **Always** validate input with Zod schemas
+
+### Test Conventions for Agents
+
+```typescript
+// Pattern: vi.hoisted → vi.mock → import → describe
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockFn } = vi.hoisted(() => ({ mockFn: vi.fn() }));
+vi.mock("../src/path/to/module", () => ({ exportedFn: mockFn }));
+
+import { functionUnderTest } from "../src/path/to/test-target";
+
+describe("functionUnderTest", () => {
+  beforeEach(() => vi.clearAllMocks());
+  // ...tests
+});
+```
+
+### Coverage Thresholds
+
+Current minimum thresholds (enforced in CI):
+- Statements: 25%
+- Branches: 20%
+- Functions: 25%
+- Lines: 25%
+
+These ratchet upward over time. Never lower them.
+
 <!-- TRIGGER.DEV basic START -->
 
 # Trigger.dev Basic Tasks (v4)
@@ -1755,3 +1814,62 @@ Key properties available in run subscriptions:
 - **Cleanup subscriptions**: Backend subscriptions auto-complete, frontend hooks auto-cleanup
 
 <!-- TRIGGER.DEV realtime END -->
+
+---
+
+## Symphony Integration
+
+This repository is **Symphony-ready**: OpenAI's Symphony monitors our Linear board, spawns coding agents, creates PRs, and auto-merges when CI passes.
+
+### How Symphony Works Here
+
+1. **Issue → Branch**: Symphony picks up "Ready for Dev" issues from Linear and creates a branch: `symphony/<issue-id>-<slug>`
+2. **Agent Coding**: Symphony agents write code following the conventions in this file
+3. **CI Gate**: All PRs must pass the `Symphony Gate` status check (lint + typecheck + test + build)
+4. **Auto-merge**: When all checks pass, the PR auto-merges
+
+### Risk Tiers (from harness.config.json)
+
+| Tier | Files | Merge Policy |
+|------|-------|--------------|
+| **High** | `schema.ts`, `gdpr.ts`, `crypto.ts`, `cron/**`, `drizzle/**` | All checks + human code review |
+| **Medium** | `src/services/**`, `src/ai/**`, `src/schemas/**`, `app/api/**` | All checks, no review needed |
+| **Low** | Everything else | Risk gate + lint only |
+
+### Forbidden Patterns for Agents
+
+- **Never** modify `src/db/schema.ts` or `drizzle/**` without human review
+- **Never** hardcode API keys or secrets
+- **Never** use `eslint` or `prettier` — use `pnpm lint` (Biome)
+- **Never** skip `pnpm test` before committing
+- **Never** use direct AI API calls — use `tracedGenerateText` from `src/lib/ai-models.ts`
+- **Always** write tests for new service code in `tests/` directory
+- **Always** use Dutch UI strings, English code variables
+- **Always** validate input with Zod schemas
+
+### Test Conventions for Agents
+
+```typescript
+// Pattern: vi.hoisted → vi.mock → import → describe
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockFn } = vi.hoisted(() => ({ mockFn: vi.fn() }));
+vi.mock("../src/path/to/module", () => ({ exportedFn: mockFn }));
+
+import { functionUnderTest } from "../src/path/to/test-target";
+
+describe("functionUnderTest", () => {
+  beforeEach(() => vi.clearAllMocks());
+  // ...tests
+});
+```
+
+### Coverage Thresholds
+
+Current minimum thresholds (enforced in CI):
+- Statements: 25%
+- Branches: 20%
+- Functions: 25%
+- Lines: 25%
+
+These ratchet upward over time. Never lower them.

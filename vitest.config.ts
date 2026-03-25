@@ -33,10 +33,10 @@ export default defineConfig({
       ],
       // Gate: fail if coverage drops below minimum (raise over time)
       thresholds: {
-        statements: 1,
-        branches: 1,
-        functions: 1,
-        lines: 1,
+        statements: 25,
+        branches: 20,
+        functions: 25,
+        lines: 25,
       },
     },
   },
