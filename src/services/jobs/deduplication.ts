@@ -161,14 +161,18 @@ export function buildDedupedJobsCte({
   }
 
   return sql`
-    with ranked_jobs as (
-      select ${selectColumns},
-        row_number() over (
-          partition by dedupe_title, dedupe_client, dedupe_location
-          order by ${partitionOrderBy}
-        ) as dedupe_rank
+    with base_jobs as (
+      select ${selectColumns}
       from ${jobs}
       where ${whereClause}
+    ),
+    ranked_jobs as (
+      select base_jobs.*,
+        row_number() over (
+          partition by dedupe_title, dedupe_client, dedupe_location
+          order by ${rankedJobsOrderBy}
+        ) as dedupe_rank
+      from base_jobs
     ),
     deduped_jobs as (
       select *
@@ -255,7 +259,7 @@ export async function loadJobPageRowsByIds(ids: string[]) {
   const pipelineCounts = db
     .select({
       jobId: applications.jobId,
-      pipelineCount: sql<number>`sum(case when ${applications.stage} != 'rejected' then 1 else 0 end)::int`,
+      pipelineCount: sql<number>`sum(case when ${applications.stage} != 'rejected' then 1 else 0 end)::int`.as("pipeline_count"),
     })
     .from(applications)
     .where(
