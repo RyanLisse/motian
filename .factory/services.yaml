@@ -12,10 +12,3 @@ services:
     healthcheck: curl -sf http://localhost:3002/api/gezondheid
     port: 3002
     depends_on: []
-
-  turso:
-    start: echo "Turso is managed externally"
-    stop: echo "No stop needed"
-    healthcheck: echo "N/A"
-    port: 0
-    depends_on: []

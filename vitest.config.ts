@@ -1,7 +1,10 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
-process.env.TURSO_DATABASE_URL ??= "file::memory:";
+// Provide a fallback DATABASE_URL so unit tests that call isPostgresDatabase() can
+// initialise the Drizzle client without a real database connection.
+process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/motian_test";
+
 const coverageThreshold = Number(process.env.COVERAGE_THRESHOLD ?? "24");
 const normalizedCoverageThreshold = Number.isFinite(coverageThreshold)
   ? Math.min(Math.max(Math.trunc(coverageThreshold), 1), 100)
