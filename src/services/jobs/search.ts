@@ -106,7 +106,7 @@ function buildSearchFilterCondition(filterConditions: SQL[] = []): SQL {
   return filterConditions.length > 0 ? (and(...filterConditions) ?? sql`true`) : sql`true`;
 }
 
-type HybridSearchRankJob = Pick<
+export type HybridSearchRankJob = Pick<
   Job,
   | "id"
   | "title"
@@ -122,7 +122,7 @@ type HybridSearchRankJob = Pick<
   | "startDate"
 >;
 
-const hybridSearchRankSelection = {
+export const hybridSearchRankSelection = {
   id: jobs.id,
   title: jobs.title,
   company: jobs.company,
@@ -137,7 +137,7 @@ const hybridSearchRankSelection = {
   startDate: jobs.startDate,
 };
 
-function rankHybridCandidates<TJob extends HybridSearchRankJob>(
+export function rankHybridCandidates<TJob extends HybridSearchRankJob>(
   scoreMap: Map<string, { rrfScore: number; job?: TJob }>,
   sortBy?: ListJobsSortBy,
 ) {
@@ -156,7 +156,7 @@ function rankHybridCandidates<TJob extends HybridSearchRankJob>(
   return filtered;
 }
 
-async function searchJobIdsByTitle(
+export async function searchJobIdsByTitle(
   query: string,
   opts: {
     limit?: number;

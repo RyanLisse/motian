@@ -59,6 +59,17 @@ const werkzoekenConfigSchema = z.object({
     .default({}),
 });
 
+const mipublicConfigSchema = z.object({
+  baseUrl: z.string().url(),
+  parameters: z
+    .object({
+      sitemapPath: z.string().default("/vacature-sitemap.xml"),
+      detailConcurrency: z.number().int().min(1).max(8).default(4),
+      maxListings: z.number().int().min(1).max(500).optional(),
+    })
+    .default({}),
+});
+
 export const platformDefinitions: PlatformDefinition[] = [
   {
     slug: "flextender",
@@ -71,6 +82,25 @@ export const platformDefinitions: PlatformDefinition[] = [
     description: "Publieke Flextender opdrachten via widget/AJAX scraping.",
     defaultBaseUrl: "https://www.flextender.nl/opdrachten/",
     configSchema: basicPlatformConfigSchema,
+    authSchema: emptyAuthSchema,
+  },
+  {
+    slug: "mipublic",
+    displayName: "MiPublic",
+    adapterKind: "http_html_list_detail",
+    authMode: "none",
+    attributionLabel: "MiPublic",
+    badgeClassName: "border-cyan-500/20 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+    capabilities: ["detail_enrichment", "pagination", "smoke_import", "validation"],
+    description:
+      "Publieke WordPress vacaturebron met Yoast sitemap en JobPosting JSON-LD op detailpagina's.",
+    defaultBaseUrl: "https://mipublic.nl",
+    defaultParameters: {
+      sitemapPath: "/vacature-sitemap.xml",
+      detailConcurrency: 4,
+    },
+    docsUrl: "https://mipublic.nl/vacature-sitemap.xml",
+    configSchema: mipublicConfigSchema,
     authSchema: emptyAuthSchema,
   },
   {

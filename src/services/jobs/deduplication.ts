@@ -1,5 +1,5 @@
-import { db, inArray, type SQL, sql } from "../../db";
-import { jobs } from "../../db/schema";
+import { and, db, inArray, isNotNull, isNull, type SQL, sql } from "../../db";
+import { applications, jobs } from "../../db/schema";
 import type { ListJobsSortBy } from "./filters";
 import { getJobReadSelection, type Job } from "./repository";
 
@@ -233,6 +233,58 @@ export async function loadJobsByIds(ids: string[]): Promise<Job[]> {
   return ids.flatMap((id) => {
     const job = rowMap.get(id);
     return job ? [job] : [];
+  });
+}
+
+export async function loadJobPageRowsByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+
+  const pipelineCounts = db
+    .select({
+      jobId: applications.jobId,
+      pipelineCount: sql<number>`sum(case when ${applications.stage} != 'rejected' then 1 else 0 end)::int`,
+    })
+    .from(applications)
+    .where(
+      and(
+        inArray(applications.jobId, ids),
+        isNotNull(applications.jobId),
+        isNull(applications.deletedAt),
+      ),
+    )
+    .groupBy(applications.jobId)
+    .as("pipeline_counts");
+
+  const rows = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      company: sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`,
+      location: sql<string | null>`coalesce(${jobs.location}, ${jobs.province})`,
+      platform: jobs.platform,
+      workArrangement: jobs.workArrangement,
+      contractType: jobs.contractType,
+      applicationDeadline: jobs.applicationDeadline,
+      pipelineCount: sql<number>`coalesce(${pipelineCounts.pipelineCount}, 0)::int`,
+    })
+    .from(jobs)
+    .leftJoin(pipelineCounts, sql`${pipelineCounts.jobId} = ${jobs.id}`)
+    .where(inArray(jobs.id, ids))
+    .limit(ids.length);
+
+  const rowMap = new Map(
+    rows.map((row) => [
+      row.id,
+      {
+        ...row,
+        hasPipeline: row.pipelineCount > 0,
+      },
+    ]),
+  );
+
+  return ids.flatMap((id) => {
+    const row = rowMap.get(id);
+    return row ? [row] : [];
   });
 }
 

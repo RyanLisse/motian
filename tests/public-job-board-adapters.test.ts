@@ -136,4 +136,125 @@ describe("public job board adapters", () => {
       countryCode: "NL",
     });
   });
+
+  it("registers MiPublic and scrapes vacature detail pages from the sitemap", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url === "https://mipublic.nl/vacature-sitemap.xml") {
+          return createHtmlResponse({
+            url,
+            html: `<?xml version="1.0" encoding="UTF-8"?>
+              <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                <url>
+                  <loc>https://mipublic.nl/vacature/online-communicatie-adviseur/</loc>
+                </url>
+                <url>
+                  <loc>https://mipublic.nl/vacature/beleidsadviseur-wonen/</loc>
+                </url>
+              </urlset>`,
+            headers: { "content-type": "application/xml" },
+          });
+        }
+
+        if (url === "https://mipublic.nl/vacature/online-communicatie-adviseur/") {
+          return createHtmlResponse({
+            url,
+            html: `<html><head><script type="application/ld+json">${JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "JobPosting",
+                title: "Online Communicatie Adviseur (zzp - freelance - interim)",
+                description: "<p>Adviseer over digitale toegankelijkheid.</p>",
+                url,
+                identifier: { value: "mipublic-123" },
+                hiringOrganization: { name: "Gemeente Maassluis" },
+                jobLocation: {
+                  address: {
+                    addressLocality: "Gemeente Maassluis",
+                    addressRegion: "Zuid-Holland",
+                    addressCountry: "NL",
+                  },
+                },
+                baseSalary: {
+                  value: {
+                    value: "95",
+                    unitText: "HOUR",
+                  },
+                  currency: "EUR",
+                },
+                validThrough: "2026-07-31T23:59:59+02:00",
+                employmentType: ["FULL_TIME"],
+              },
+            ])}</script></head><body></body></html>`,
+          });
+        }
+
+        if (url === "https://mipublic.nl/vacature/beleidsadviseur-wonen/") {
+          return createHtmlResponse({
+            url,
+            html: `<html><head><script type="application/ld+json">${JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "JobPosting",
+                title: "Beleidsadviseur Wonen",
+                description: "<p>Bouw mee aan woonbeleid.</p>",
+                url,
+                identifier: { value: "mipublic-456" },
+                hiringOrganization: { name: "Gemeente Delft" },
+                jobLocation: {
+                  address: {
+                    addressLocality: "Delft",
+                    addressRegion: "Zuid-Holland",
+                    addressCountry: "NL",
+                  },
+                },
+                employmentType: ["FULL_TIME"],
+              },
+            ])}</script></head><body></body></html>`,
+          });
+        }
+
+        throw new Error(`Unexpected fetch for ${url}`);
+      }),
+    );
+
+    const adapter = getPlatformAdapter("mipublic");
+
+    expect(adapter).toBeDefined();
+    if (!adapter) {
+      throw new Error("MiPublic adapter should be registered");
+    }
+
+    const result = await adapter.scrape({
+      slug: "mipublic",
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+      auth: {},
+    });
+
+    expect(result.listings).toHaveLength(2);
+    expect(result.listings).toEqual([
+      expect.objectContaining({
+        title: "Online Communicatie Adviseur (zzp - freelance - interim)",
+        company: "Gemeente Maassluis",
+        externalId: "mipublic-123",
+        externalUrl: "https://mipublic.nl/vacature/online-communicatie-adviseur/",
+        location: "Gemeente Maassluis - Zuid-Holland",
+        province: "Zuid-Holland",
+        countryCode: "NL",
+        rateMin: 95,
+        rateMax: 95,
+      }),
+      expect.objectContaining({
+        title: "Beleidsadviseur Wonen",
+        company: "Gemeente Delft",
+        externalId: "mipublic-456",
+        externalUrl: "https://mipublic.nl/vacature/beleidsadviseur-wonen/",
+        location: "Delft - Zuid-Holland",
+      }),
+    ]);
+  });
 });

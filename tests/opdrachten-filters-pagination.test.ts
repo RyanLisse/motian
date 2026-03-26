@@ -276,60 +276,39 @@ describe("Opdrachten UI/API contracts", () => {
     const listRoute = readFile("app", "api", "opdrachten", "route.ts");
     const searchRoute = readFile("app", "api", "opdrachten", "zoeken", "route.ts");
 
-    expect(listRoute).toContain("validateOpdrachtenQueryParams(params)");
-    expect(listRoute).toContain("parseOpdrachtenFilters(params)");
-    expect(listRoute).toContain("categories: filters.categories");
-    expect(listRoute).toContain("escoUri: filters.escoUri");
-    expect(listRoute).toContain("regions: filters.regions");
-    expect(listRoute).toContain("hoursPerWeekBucket: filters.hoursPerWeek");
-    expect(listRoute).toContain("minHoursPerWeek: filters.hoursPerWeekMin");
-    expect(listRoute).toContain("maxHoursPerWeek: filters.hoursPerWeekMax");
-    expect(listRoute).toContain("hasExplicitOpdrachtenSort(params)");
-    expect(listRoute).toContain("DEFAULT_OPDRACHTEN_LIMIT");
+    expect(listRoute).toContain('import { runVacaturesSearch } from "@/src/lib/vacatures-search"');
+    expect(listRoute).toContain("const out = await runVacaturesSearch(params);");
+    expect(listRoute).toContain("paginatedResponse(data, result.total, { page, limit, offset })");
 
-    expect(searchRoute).toContain("validateOpdrachtenQueryParams(params)");
-    expect(searchRoute).toContain("parseOpdrachtenFilters(params)");
-    expect(searchRoute).toContain("categories: filters.categories");
-    expect(searchRoute).toContain("escoUri: filters.escoUri");
-    expect(searchRoute).toContain("regions: filters.regions");
-    expect(searchRoute).toContain("hoursPerWeekBucket: filters.hoursPerWeek");
-    expect(searchRoute).toContain("minHoursPerWeek: filters.hoursPerWeekMin");
-    expect(searchRoute).toContain("maxHoursPerWeek: filters.hoursPerWeekMax");
-    expect(searchRoute).toContain("radiusKm: filters.radiusKm");
-    expect(searchRoute).toContain("hasExplicitOpdrachtenSort(params)");
-    expect(searchRoute).toContain("sortBy,");
-    expect(searchRoute).toContain("searchJobsUnified({");
+    expect(searchRoute).toContain('import { runJobPageSearch } from "@/src/lib/job-search-runner"');
+    expect(searchRoute).toContain("const out = await runJobPageSearch(params);");
+    expect(searchRoute).not.toContain("getJobPipelineSummary");
     expect(searchRoute).toContain("perPage: limit");
-    expect(searchRoute).toContain("DEFAULT_OPDRACHTEN_LIMIT");
-    expect(searchRoute).toContain("applicationDeadline: job.applicationDeadline");
+    expect(searchRoute).toContain("jobs: result.data");
   });
 
-  it("layout seed includes persisted end-client, deadline context, category metadata, and shared pipeline summary wiring", () => {
+  it("layout seed includes persisted end-client, deadline context, category metadata, and shared page-query wiring", () => {
     const layout = readFile("app", "opdrachten", "layout.tsx");
-    const pipelineSummary = readFile("src", "services", "jobs", "pipeline-summary.ts");
+    const pageQuery = readFile("src", "services", "jobs", "page-query.ts");
+    const deduplication = readFile("src", "services", "jobs", "deduplication.ts");
 
-    expect(layout).toContain('listJobs({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" })');
-    expect(layout).toContain('import { listJobs } from "@/src/services/jobs"');
+    expect(layout).toContain('listJobsPage({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" })');
+    expect(layout).toContain('import { listJobsPage } from "@/src/services/jobs/page-query"');
     expect(layout).toContain('getJobStatusCondition("open")');
     expect(layout).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
     // PostgreSQL uses jsonb_array_elements_text() for JSON array iteration
     expect(layout).toContain("jsonb_array_elements_text");
     expect(layout).toContain(
-      'import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary"',
-    );
-    expect(layout).toContain(
       'import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco"',
     );
     expect(layout).toContain("await listEscoSkillsForFilter()");
-    expect(layout).toContain("await getJobPipelineSummary(");
     expect(layout).toContain("skillOptions={skillOptions}");
-    expect(layout).toContain("hasPipeline: hasPipelineByJobId.has(job.id)");
-    expect(layout).toContain("pipelineCount: pipelineCountByJobId.get(job.id) ?? 0");
-    expect(pipelineSummary).toContain("inArray(applications.jobId, jobIds)");
-    expect(pipelineSummary).toContain("groupBy(applications.jobId)");
+    expect(layout).toContain("jobs={sidebarJobs}");
+    expect(pageQuery).toContain("loadJobPageRowsByIds");
+    expect(deduplication).toContain("pipelineCount");
+    expect(deduplication).toContain("leftJoin(pipelineCounts");
     expect(layout).toContain("categories={categories}");
-    expect(layout).toContain("company: job.endClient ?? job.company");
-    expect(layout).toContain("applicationDeadline: job.applicationDeadline");
+    expect(deduplication).toContain("applicationDeadline");
   });
 
   it("detail routes preserve sidebar context and query-aware vacature links", () => {

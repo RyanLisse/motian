@@ -1,3 +1,7 @@
+import {
+  fetchPublicJobBoardPage,
+  parsePublicJobBoardJobPostings,
+} from "./public-job-board";
 import type {
   PlatformAdapter,
   PlatformRuntimeConfig,
@@ -6,119 +10,189 @@ import type {
   PlatformValidationResult,
   RawScrapedListing,
 } from "./types";
-import {
-  detectPublicJobBoardBlocker,
-  fetchPublicJobBoardPage,
-  scrapePublicJobBoard,
-} from "./public-job-board";
 
-const DEFAULT_MIPUBLIC_URL = "https://mipublic.nl/zzp-opdrachten-overheid/";
+const DEFAULT_MIPUBLIC_ORIGIN = "https://mipublic.nl";
+const DEFAULT_SITEMAP_PATH = "/vacature-sitemap.xml";
+const DEFAULT_DETAIL_CONCURRENCY = 4;
+const MAX_DETAIL_CONCURRENCY = 8;
 
-function isMipublicListingUrl(url: URL): boolean {
-  return (
-    url.hostname === "mipublic.nl" &&
-    (/^\/vacature\//.test(url.pathname) || /^\/zzp-opdrachten/.test(url.pathname))
-  );
+type MipublicOptions = {
+  detailConcurrency: number;
+  maxListings?: number;
+  sitemapUrl: string;
+};
+
+function normalizeMipublicOrigin(baseUrl: string): string {
+  const value = baseUrl.trim() || DEFAULT_MIPUBLIC_ORIGIN;
+  const url = new URL(value);
+
+  if (url.hostname !== "mipublic.nl") {
+    throw new Error("MiPublic bron-URL moet op mipublic.nl blijven.");
+  }
+
+  return url.origin;
 }
 
-function normalizeMipublicSourceUrl(baseUrl: string): string {
-  return baseUrl.trim() || DEFAULT_MIPUBLIC_URL;
+function resolveMipublicOptions(config: PlatformRuntimeConfig): MipublicOptions {
+  const parameters = config.parameters ?? {};
+  const normalizedOrigin = normalizeMipublicOrigin(config.baseUrl);
+  const sitemapPath =
+    typeof parameters.sitemapPath === "string" && parameters.sitemapPath.trim().length > 0
+      ? parameters.sitemapPath.trim()
+      : DEFAULT_SITEMAP_PATH;
+  const rawConcurrency =
+    typeof parameters.detailConcurrency === "number"
+      ? parameters.detailConcurrency
+      : DEFAULT_DETAIL_CONCURRENCY;
+  const detailConcurrency = Math.max(1, Math.min(MAX_DETAIL_CONCURRENCY, Math.trunc(rawConcurrency)));
+  const maxListings =
+    typeof parameters.maxListings === "number" && parameters.maxListings > 0
+      ? Math.trunc(parameters.maxListings)
+      : undefined;
+  const sitemapUrl = new URL(sitemapPath, normalizedOrigin).toString();
+
+  if (!sitemapUrl.startsWith(`${normalizedOrigin}/`)) {
+    throw new Error("MiPublic sitemapPath moet op dezelfde host blijven.");
+  }
+
+  return {
+    detailConcurrency,
+    maxListings,
+    sitemapUrl,
+  };
+}
+
+function extractSitemapUrls(xml: string): string[] {
+  const urls = new Set<string>();
+
+  for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/gi)) {
+    const value = match[1]?.trim();
+    if (!value) continue;
+
+    try {
+      const parsed = new URL(value);
+      if (parsed.hostname === "mipublic.nl" && /^\/vacature\/[^/]+\/?$/.test(parsed.pathname)) {
+        urls.add(parsed.toString());
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return [...urls];
+}
+
+async function mapWithConcurrency<TInput, TOutput>(
+  items: TInput[],
+  concurrency: number,
+  mapper: (item: TInput) => Promise<TOutput>,
+): Promise<TOutput[]> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const results: TOutput[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+
+  return results;
 }
 
 async function scrapeMipublicListings(
   config: PlatformRuntimeConfig,
-): Promise<RawScrapedListing[]> {
-  return scrapePublicJobBoard({
-    displayName: "MiPublic",
-    sourceUrl: normalizeMipublicSourceUrl(config.baseUrl),
-    isAllowedListingUrl: isMipublicListingUrl,
+  options?: { limit?: number },
+): Promise<PlatformScrapeResult> {
+  const resolved = resolveMipublicOptions(config);
+  const sitemapPage = await fetchPublicJobBoardPage(resolved.sitemapUrl);
+  const limit = options?.limit ?? resolved.maxListings;
+  const detailUrls = extractSitemapUrls(sitemapPage.html).slice(0, limit);
+
+  if (detailUrls.length === 0) {
+    return {
+      listings: [],
+      errors: ["MiPublic sitemap bevat geen parseerbare vacature-URLs."],
+    };
+  }
+
+  const results = await mapWithConcurrency(detailUrls, resolved.detailConcurrency, async (detailUrl) => {
+    try {
+      const detailPage = await fetchPublicJobBoardPage(detailUrl);
+      const listings = parsePublicJobBoardJobPostings(detailPage.html, detailPage.url);
+
+      if (listings.length === 0) {
+        return {
+          error: `MiPublic detailpagina bevat geen JobPosting-data: ${detailUrl}`,
+          listings: [] as RawScrapedListing[],
+        };
+      }
+
+      return { listings };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : String(error),
+        listings: [] as RawScrapedListing[],
+      };
+    }
   });
+
+  const listings = results.flatMap((entry) => entry.listings);
+  const errors = results.flatMap((entry) => (entry.error ? [entry.error] : []));
+
+  return {
+    listings,
+    errors: errors.length > 0 ? errors : undefined,
+  };
 }
 
 export const mipublicAdapter: PlatformAdapter = {
   async validate(config: PlatformRuntimeConfig): Promise<PlatformValidationResult> {
-    const sourceUrl = normalizeMipublicSourceUrl(config.baseUrl);
+    const resolved = resolveMipublicOptions(config);
+    const sitemapPage = await fetchPublicJobBoardPage(resolved.sitemapUrl);
+    const detailUrls = extractSitemapUrls(sitemapPage.html);
 
-    let page;
-    try {
-      page = await fetchPublicJobBoardPage(sourceUrl);
-    } catch (error) {
-      console.error("[mipublic] validate: kon de MiPublic pagina niet ophalen", error);
+    if (detailUrls.length === 0) {
       return {
         ok: false,
         status: "failed",
-        message: "Er is een fout opgetreden tijdens het ophalen van de MiPublic pagina.",
-      };
-    }
-
-    let parsedUrl: URL;
-    try {
-      parsedUrl = new URL(page.url);
-    } catch {
-      return {
-        ok: false,
-        status: "failed",
-        message: "MiPublic gaf een ongeldige redirect-URL terug.",
-      };
-    }
-
-    if (!isMipublicListingUrl(parsedUrl)) {
-      return {
-        ok: false,
-        status: "failed",
-        message: "MiPublic bron-URL moet op mipublic.nl blijven.",
-        blockerKind: "source_url_redirect",
-        evidence: {
-          finalUrl: page.url,
-          requestedUrl: page.requestedUrl,
-        },
-      };
-    }
-
-    if (page.status >= 400) {
-      return {
-        ok: false,
-        status: "failed",
-        message: `MiPublic bron-URL gaf HTTP ${page.status} terug.`,
-        evidence: {
-          finalUrl: page.url,
-          requestedUrl: page.requestedUrl,
-        },
-      };
-    }
-
-    const blocker = detectPublicJobBoardBlocker(page, "MiPublic");
-    if (blocker) {
-      return {
-        ok: false,
-        status: "failed",
-        message: blocker.message,
-        blockerKind: blocker.blockerKind,
-        evidence: blocker.evidence,
+        message: "MiPublic sitemap bevat geen parseerbare vacaturedetailpagina's.",
       };
     }
 
     return {
       ok: true,
       status: "validated",
-      message: "MiPublic bron-URL is geldig en klaar voor import.",
+      message: "MiPublic sitemap is geldig en bevat vacaturedetailpagina's.",
       evidence: {
-        finalUrl: page.url,
-        requestedUrl: page.requestedUrl,
+        sitemapUrl: resolved.sitemapUrl,
+        jobsFound: detailUrls.length,
+        sampleUrl: detailUrls[0],
       },
     };
   },
 
-  async scrape(config: PlatformRuntimeConfig): Promise<PlatformScrapeResult> {
+  async scrape(
+    config: PlatformRuntimeConfig,
+    options?: { limit?: number; smoke?: boolean },
+  ): Promise<PlatformScrapeResult> {
     try {
-      return {
-        listings: await scrapeMipublicListings(config),
-      };
+      return await scrapeMipublicListings(config, {
+        limit: options?.smoke ? Math.min(options?.limit ?? 5, 5) : options?.limit,
+      });
     } catch (error) {
-      console.error("[mipublic] scrape: kon de MiPublic vacatures niet ophalen", error);
       return {
         listings: [],
-        errors: ["Er is een fout opgetreden tijdens het ophalen van MiPublic vacatures."],
+        errors: [error instanceof Error ? error.message : String(error)],
       };
     }
   },
@@ -127,7 +201,10 @@ export const mipublicAdapter: PlatformAdapter = {
     config: PlatformRuntimeConfig,
     options?: { limit?: number },
   ): Promise<PlatformTestImportResult> {
-    const result = await mipublicAdapter.scrape(config);
+    const result = await mipublicAdapter.scrape(config, {
+      limit: options?.limit,
+      smoke: true,
+    });
     const listings = result.listings.slice(0, options?.limit ?? result.listings.length);
 
     return {
@@ -135,8 +212,6 @@ export const mipublicAdapter: PlatformAdapter = {
       jobsFound: listings.length,
       listings,
       errors: result.errors,
-      blockerKind: result.blockerKind,
-      evidence: result.evidence,
     };
   },
 };

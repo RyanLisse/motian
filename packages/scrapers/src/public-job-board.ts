@@ -88,6 +88,13 @@ export async function scrapePublicJobBoard({
   return dedupeListings(listings);
 }
 
+export function parsePublicJobBoardJobPostings(
+  html: string,
+  fallbackUrl: string,
+): RawScrapedListing[] {
+  return dedupeListings(mapJobPostingObjects(extractJobPostingObjects(html), fallbackUrl));
+}
+
 export async function fetchPublicJobBoardPage(
   url: string,
   requestHeaders: Record<string, string> = {},
