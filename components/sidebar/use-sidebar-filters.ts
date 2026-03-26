@@ -117,6 +117,22 @@ export function useSidebarFilters({
       ),
     ) || DEFAULT_OPDRACHTEN_LIMIT;
 
+  // Local filter state — updated immediately on user interaction.
+  // The TanStack Query key reads from these local values, not from useSearchParams(),
+  // because router.push defers URL updates via startTransition and useSearchParams
+  // doesn't reflect changes in time for the query key to change.
+  // URL push remains a side effect for bookmarking.
+  const [localStatus, setLocalStatus] = useState(status);
+  const [localPlatform, setLocalPlatform] = useState(platform);
+  const [localEndClient, setLocalEndClient] = useState(endClient);
+  const [localVaardigheid, setLocalVaardigheid] = useState(vaardigheid);
+  const [localProvincie, setLocalProvincie] = useState(provincie);
+  const [localContractType, setLocalContractType] = useState(contractType);
+  const [localSort, setLocalSort] = useState(sort);
+  const [localRegios, setLocalRegios] = useState(regios);
+  const [localVakgebieden, setLocalVakgebieden] = useState(vakgebieden);
+  const [localPage, setLocalPage] = useState(pageParam);
+
   const [inputValue, setInputValue] = useState(q);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [hoursMinInput, setHoursMinInput] = useState(urenPerWeekMin);
@@ -142,20 +158,26 @@ export function useSidebarFilters({
     [categories],
   );
 
-  // Sync URL q → local input only when the URL parameter actually changes.
-  // Intentionally omit inputValue to avoid a re-sync loop where typing 2+
-  // characters clears the input before the debounced URL push completes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
+  // Sync URL → local state when URL actually changes (browser back/forward, external navigation).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sync from URL on searchParams change only
   useEffect(() => {
     setInputValue(q);
-  }, [q]);
-  useEffect(() => {
+    setLocalStatus(status);
+    setLocalPlatform(platform);
+    setLocalEndClient(endClient);
+    setLocalVaardigheid(vaardigheid);
+    setLocalProvincie(provincie);
+    setLocalContractType(contractType);
+    setLocalSort(sort);
+    setLocalRegios(regios);
+    setLocalVakgebieden(vakgebieden);
+    setLocalPage(pageParam);
     setHoursMinInput(urenPerWeekMin);
     setHoursMaxInput(urenPerWeekMax);
     setRadiusKmInput(straalKm);
     setRateMinInput(tariefMinParamFromUrl);
     setRateMaxInput(tariefMaxParamFromUrl);
-  }, [urenPerWeekMin, urenPerWeekMax, straalKm, tariefMinParamFromUrl, tariefMaxParamFromUrl]);
+  }, [searchParams]);
 
   const debouncedHoursMin = useDebouncedValue(hoursMinInput);
   const debouncedHoursMax = useDebouncedValue(hoursMaxInput);
@@ -169,10 +191,10 @@ export function useSidebarFilters({
     [debouncedHoursMin, debouncedHoursMax, urenPerWeekMin, urenPerWeekMax],
   );
   const effectiveHoursPerWeekBucket = debouncedHoursHasManualInput ? "" : urenPerWeek;
-  const sortedRegios = useMemo(() => [...regios].sort((a, b) => a.localeCompare(b)), [regios]);
+  const sortedRegios = useMemo(() => [...localRegios].sort((a, b) => a.localeCompare(b)), [localRegios]);
   const sortedVakgebieden = useMemo(
-    () => [...vakgebieden].sort((a, b) => a.localeCompare(b)),
-    [vakgebieden],
+    () => [...localVakgebieden].sort((a, b) => a.localeCompare(b)),
+    [localVakgebieden],
   );
 
   // Use debouncedSearchQuery (from local input) instead of committedSearchQuery
@@ -182,42 +204,42 @@ export function useSidebarFilters({
   const searchQueryKey = useMemo<SearchQueryKeyPayload>(
     () => ({
       q: debouncedSearchQuery,
-      platform,
-      endClient,
-      vaardigheid,
-      status,
-      provincie,
+      platform: localPlatform,
+      endClient: localEndClient,
+      vaardigheid: localVaardigheid,
+      status: localStatus,
+      provincie: localProvincie,
       regios: sortedRegios,
       vakgebieden: sortedVakgebieden,
       urenPerWeek: effectiveHoursPerWeekBucket,
       urenPerWeekMin: debouncedHoursMin,
       urenPerWeekMax: debouncedHoursMax,
       straalKm: debouncedRadiusKm,
-      contractType,
+      contractType: localContractType,
       tariefMin: debouncedRateMin,
       tariefMax: debouncedRateMax,
-      sort,
-      page: pageParam,
+      sort: localSort,
+      page: localPage,
       limit: limitParam,
     }),
     [
       debouncedSearchQuery,
-      platform,
-      endClient,
-      vaardigheid,
-      status,
-      provincie,
+      localPlatform,
+      localEndClient,
+      localVaardigheid,
+      localStatus,
+      localProvincie,
       sortedRegios,
       sortedVakgebieden,
       effectiveHoursPerWeekBucket,
       debouncedHoursMin,
       debouncedHoursMax,
       debouncedRadiusKm,
-      contractType,
+      localContractType,
       debouncedRateMin,
       debouncedRateMax,
-      sort,
-      pageParam,
+      localSort,
+      localPage,
       limitParam,
     ],
   );
@@ -269,45 +291,45 @@ export function useSidebarFilters({
     queryFn: ({ signal }) =>
       searchJobs({
         q: debouncedSearchQuery,
-        platform,
-        endClient,
-        vaardigheid,
-        status,
-        provincie,
+        platform: localPlatform,
+        endClient: localEndClient,
+        vaardigheid: localVaardigheid,
+        status: localStatus,
+        provincie: localProvincie,
         regios: sortedRegios,
         vakgebieden: sortedVakgebieden,
         urenPerWeek: effectiveHoursPerWeekBucket,
         urenPerWeekMin: debouncedHoursMin,
         urenPerWeekMax: debouncedHoursMax,
         straalKm: debouncedRadiusKm,
-        contractType,
+        contractType: localContractType,
         tariefMin: debouncedRateMin,
         tariefMax: debouncedRateMax,
-        sort,
-        page: pageParam,
+        sort: localSort,
+        page: localPage,
         limit: limitParam,
         signal,
       }),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
     initialData:
-      pageParam === 1 &&
+      localPage === 1 &&
       limitParam === DEFAULT_OPDRACHTEN_LIMIT &&
       !debouncedSearchQuery &&
-      !platform &&
-      !endClient &&
-      !vaardigheid &&
-      status === "open" &&
-      !provincie &&
-      regios.length === 0 &&
-      vakgebieden.length === 0 &&
+      !localPlatform &&
+      !localEndClient &&
+      !localVaardigheid &&
+      localStatus === "open" &&
+      !localProvincie &&
+      localRegios.length === 0 &&
+      localVakgebieden.length === 0 &&
       !debouncedHoursMin &&
       !debouncedHoursMax &&
       !debouncedRadiusKm &&
-      !contractType &&
+      !localContractType &&
       !debouncedRateMin &&
       !debouncedRateMax &&
-      sort === "nieuwste"
+      localSort === "nieuwste"
         ? {
             jobs: initialJobs,
             total: initialTotal,
@@ -360,6 +382,14 @@ export function useSidebarFilters({
 
   const handleFilterChange = useCallback(
     (paramKey: string, value: string) => {
+      // Update local state immediately so TanStack Query key changes now
+      if (paramKey === "status") setLocalStatus(value === "" ? "open" : (value as typeof localStatus));
+      else if (paramKey === "platform") setLocalPlatform(value);
+      else if (paramKey === "endClient") setLocalEndClient(value);
+      else if (paramKey === "vaardigheid") setLocalVaardigheid(value);
+      else if (paramKey === "contractType") setLocalContractType(value);
+      else if (paramKey === "sort") setLocalSort((value || "nieuwste") as typeof localSort);
+      setLocalPage(1);
       pushParams({ [paramKey]: value, pagina: "1" });
     },
     [pushParams],
@@ -367,16 +397,22 @@ export function useSidebarFilters({
 
   const handleToggleRegio = useCallback(
     (value: string) => {
-      pushParams({ regio: toggleFilterValue(regios, value), pagina: "1" });
+      const next = toggleFilterValue(localRegios, value) as typeof localRegios;
+      setLocalRegios(next);
+      setLocalPage(1);
+      pushParams({ regio: next, pagina: "1" });
     },
-    [pushParams, regios],
+    [pushParams, localRegios],
   );
 
   const handleToggleVakgebied = useCallback(
     (value: string) => {
-      pushParams({ vakgebied: toggleFilterValue(vakgebieden, value), pagina: "1" });
+      const next = toggleFilterValue(localVakgebieden, value);
+      setLocalVakgebieden(next);
+      setLocalPage(1);
+      pushParams({ vakgebied: next, pagina: "1" });
     },
-    [pushParams, vakgebieden],
+    [pushParams, localVakgebieden],
   );
 
   const handleHoursRangeChange = useCallback(
@@ -397,6 +433,8 @@ export function useSidebarFilters({
   const handleProvinceChange = useCallback(
     (value: string) => {
       const nextProvince = value === "__all__" ? "" : value;
+      setLocalProvincie(nextProvince);
+      setLocalPage(1);
       if (!nextProvince) {
         setRadiusKmInput("");
       }
@@ -410,6 +448,22 @@ export function useSidebarFilters({
   );
 
   const resetFilters = useCallback(() => {
+    setLocalStatus("open");
+    setLocalPlatform("");
+    setLocalEndClient("");
+    setLocalVaardigheid("");
+    setLocalProvincie("");
+    setLocalContractType("");
+    setLocalSort("nieuwste");
+    setLocalRegios([]);
+    setLocalVakgebieden([]);
+    setLocalPage(1);
+    setInputValue("");
+    setHoursMinInput("");
+    setHoursMaxInput("");
+    setRadiusKmInput("");
+    setRateMinInput("");
+    setRateMaxInput("");
     router.push(getOpdrachtenBasePath(pathname));
   }, [router, pathname]);
 
