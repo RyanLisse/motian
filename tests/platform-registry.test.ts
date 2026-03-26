@@ -21,6 +21,12 @@ describe("platform registry", () => {
     );
   });
 
+  it("keeps the MiPublic adapter registered for scrape pipeline parity", () => {
+    const mipublic = getPlatformAdapter("mipublic");
+
+    expect(mipublic).toBeDefined();
+  });
+
   it("exposes metadata for NVB and Werkzoeken onboarding", () => {
     const nvb = getPlatformDefinition("nationalevacaturebank");
     const werkzoeken = getPlatformDefinition("werkzoeken");
