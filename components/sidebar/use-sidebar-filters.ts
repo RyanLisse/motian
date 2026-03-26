@@ -175,9 +175,13 @@ export function useSidebarFilters({
     [vakgebieden],
   );
 
+  // Use debouncedSearchQuery (from local input) instead of committedSearchQuery
+  // (from URL) as the query key. This ensures the fetch fires immediately when
+  // the user types, without waiting for the router.push → useSearchParams round-trip.
+  // The URL push remains a side effect for bookmarking/sharing.
   const searchQueryKey = useMemo<SearchQueryKeyPayload>(
     () => ({
-      q: committedSearchQuery,
+      q: debouncedSearchQuery,
       platform,
       endClient,
       vaardigheid,
@@ -197,7 +201,7 @@ export function useSidebarFilters({
       limit: limitParam,
     }),
     [
-      committedSearchQuery,
+      debouncedSearchQuery,
       platform,
       endClient,
       vaardigheid,
@@ -264,7 +268,7 @@ export function useSidebarFilters({
     queryKey: ["opdrachten-search", searchQueryKey],
     queryFn: ({ signal }) =>
       searchJobs({
-        q: committedSearchQuery,
+        q: debouncedSearchQuery,
         platform,
         endClient,
         vaardigheid,
@@ -289,7 +293,7 @@ export function useSidebarFilters({
     initialData:
       pageParam === 1 &&
       limitParam === DEFAULT_OPDRACHTEN_LIMIT &&
-      !committedSearchQuery &&
+      !debouncedSearchQuery &&
       !platform &&
       !endClient &&
       !vaardigheid &&
