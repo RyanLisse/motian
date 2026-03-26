@@ -139,7 +139,7 @@ export async function hybridSearchPageWithTotal(
     ? (and(...filterConditions) ?? sql`true`)
     : sql`true`;
 
-  const [textResultIds, vectorResults] = await Promise.all([
+  const [textResult, vectorResults] = await Promise.all([
     (async () => {
       const textSearchStartedAt = Date.now();
       try {
@@ -236,7 +236,7 @@ export async function hybridSearchPageWithTotal(
   const rrfStartedAt = Date.now();
   const scoreMap = new Map<string, { rrfScore: number; job?: HybridSearchRankJob }>();
 
-  textResultIds.forEach((id, rank) => {
+  textResult.ids.forEach((id, rank) => {
     const entry = scoreMap.get(id) ?? { rrfScore: 0 };
     entry.rrfScore += 1 / (policy.k + rank + 1);
     scoreMap.set(id, entry);

@@ -102,11 +102,6 @@ const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefiniti
         ...definition,
         adapter: nationaleVacaturebankAdapter,
       };
-    case "mipublic":
-      return {
-        ...definition,
-        adapter: mipublicAdapter,
-      };
     case "monsterboard":
       return {
         ...definition,

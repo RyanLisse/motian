@@ -195,6 +195,18 @@ async function importHybridJobsPageWithMocks() {
   vi.doMock("../src/services/jobs/query-filters", () => ({
     buildJobFilterConditions: vi.fn(() => []),
   }));
+  vi.doMock("../src/services/jobs/search", () => ({
+    hybridSearchRankSelection: {},
+    rankHybridCandidates: vi.fn((scoreMap: Map<string, { job?: { id: string } }>) =>
+      [...scoreMap.values()]
+        .filter((entry): entry is { job: { id: string } } => Boolean(entry.job))
+        .map((entry) => ({ job: entry.job })),
+    ),
+    searchJobIdsByTitle: vi.fn().mockResolvedValue({
+      ids: ["job-2", "job-1"],
+      queryPath: "search-text",
+    }),
+  }));
   vi.doMock("../src/services/embedding", () => ({
     generateQueryEmbedding: vi.fn(),
     findSimilarJobsByEmbedding: vi.fn(),
