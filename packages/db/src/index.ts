@@ -16,6 +16,74 @@ function assertNoPublicDatabaseUrl(): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Pool metrics
+// ---------------------------------------------------------------------------
+
+interface PoolMetrics {
+  total: number;
+  idle: number;
+  waiting: number;
+  errors: number;
+  avgConnectMs: number;
+}
+
+let poolRef: Pool | undefined;
+let connectErrors = 0;
+let connectTimings: number[] = [];
+let hasBeenUsed = false;
+
+function attachPoolListeners(pool: Pool): void {
+  pool.on("connect", () => {
+    hasBeenUsed = true;
+    connectTimings.push(Date.now());
+  });
+
+  pool.on("acquire", () => {
+    hasBeenUsed = true;
+  });
+
+  pool.on("error", () => {
+    connectErrors++;
+  });
+
+  pool.on("remove", () => {
+    // Connection removed from pool — no action needed beyond live stats
+  });
+
+  // Periodic metrics logger — unref so it never keeps the process alive
+  const interval = setInterval(() => {
+    if (!hasBeenUsed) return;
+    const m = getPoolMetrics();
+    console.log(
+      `[db-pool] total=${m.total} idle=${m.idle} waiting=${m.waiting} errors=${m.errors} avgConnectMs=${m.avgConnectMs}`,
+    );
+  }, 60_000);
+  interval.unref();
+}
+
+/**
+ * Returns a snapshot of the current pool health metrics.
+ */
+export function getPoolMetrics(): PoolMetrics {
+  const pool = poolRef;
+  const avg =
+    connectTimings.length >= 2
+      ? Math.round(
+          (connectTimings[connectTimings.length - 1] - connectTimings[0]) /
+            (connectTimings.length - 1),
+        )
+      : 0;
+
+  return {
+    total: pool?.totalCount ?? 0,
+    idle: pool?.idleCount ?? 0,
+    waiting: pool?.waitingCount ?? 0,
+    errors: connectErrors,
+    avgConnectMs: avg,
+  };
+}
+
 function createNeonDatabaseClient(url: string): DatabaseClient {
   const pool = new Pool({
     connectionString: url,
@@ -23,6 +91,9 @@ function createNeonDatabaseClient(url: string): DatabaseClient {
     idleTimeoutMillis: 60_000,
     connectionTimeoutMillis: 5_000,
   });
+
+  poolRef = pool;
+  attachPoolListeners(pool);
 
   return drizzlePg(pool);
 }

@@ -17,7 +17,7 @@ export type ScrapePipelineRunResult = {
   errors: string[];
 };
 
-const DEFAULT_SCRAPE_PIPELINE_CONCURRENCY = 2;
+const DEFAULT_SCRAPE_PIPELINE_CONCURRENCY = 4;
 
 function parseBoundedIntegerEnv(
   value: string | undefined,

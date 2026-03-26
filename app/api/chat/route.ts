@@ -11,6 +11,7 @@ import {
   tracedStreamText as streamText,
 } from "@/src/lib/ai-models";
 import { rateLimit } from "@/src/lib/rate-limit";
+import { createToolResultCache } from "@/src/lib/tool-result-cache";
 import {
   type ChatSessionContext,
   getRecentMessagesForContext,
@@ -205,12 +206,13 @@ export async function POST(req: Request) {
 
   const system = await buildSystemPrompt(ctx);
   const model = resolveChatModel(body.model);
+  const toolCache = createToolResultCache();
 
   const result = streamText({
     model,
     system,
     messages: await convertToModelMessages(modelMessages),
-    tools: getRecruitmentTools(ctx),
+    tools: getRecruitmentTools(ctx, toolCache),
     stopWhen: stepCountIs(5),
   });
 

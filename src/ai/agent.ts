@@ -1,3 +1,4 @@
+import type { ToolResultCache } from "@/src/lib/tool-result-cache";
 import { HYBRID_BLEND, SCORING_WEIGHTS } from "@/src/services/scoring";
 import { getWorkspaceSummary } from "@/src/services/workspace";
 import * as tools from "./tools";
@@ -166,28 +167,119 @@ function getCapabilityLines(context?: AgentContext): string[] {
   ];
 }
 
-export function getRecruitmentTools(context?: AgentContext) {
+/** Tool names that perform mutations and must never be cached. */
+const MUTATION_PREFIXES = ["maak_", "update_", "verwijder_", "stuur_", "wijs_"];
+const MUTATION_NAMES = new Set([
+  "maakKandidaatAan",
+  "updateKandidaat",
+  "verwijderKandidaat",
+  "maakMatchAan",
+  "keurMatchGoed",
+  "wijsMatchAf",
+  "verwijderMatch",
+  "maakSollicitatieAan",
+  "updateSollicitatieFase",
+  "verwijderSollicitatie",
+  "planInterview",
+  "updateInterview",
+  "verwijderInterview",
+  "stuurBericht",
+  "verwijderBericht",
+  "updateOpdracht",
+  "verwijderOpdracht",
+  "voegNotitieToe",
+  "triggerScraper",
+  "importeerOpdrachtenBatch",
+  "runKandidaatScoringBatch",
+  "reviewGdprRetentie",
+  "wisKandidaatData",
+  "scrubContactGegevens",
+  "platformCatalogCreate",
+  "platformCatalogUpdate",
+  "platformConfigCreate",
+  "platformConfigUpdate",
+  "platformActivate",
+  "platformAutoSetup",
+  "platformAnalyze",
+  "platformTestImport",
+  "renderCanvas",
+  "voerStructuredMatchUit",
+  "cvIntakeResultaat",
+  "autoMatchKandidaat",
+]);
+
+function isMutationTool(name: string): boolean {
+  if (MUTATION_NAMES.has(name)) return true;
+  for (const prefix of MUTATION_PREFIXES) {
+    if (name.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
+/**
+ * Wrap read-only tool execute functions with per-request caching.
+ * Mutation tools are returned untouched.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: tool types are complex generics from the AI SDK
+function withCache<T extends Record<string, any>>(toolMap: T, cache: ToolResultCache): T {
+  const wrapped = {} as Record<string, unknown>;
+  for (const [name, toolDef] of Object.entries(toolMap)) {
+    if (isMutationTool(name) || typeof toolDef?.execute !== "function") {
+      wrapped[name] = toolDef;
+      continue;
+    }
+    const originalExecute = toolDef.execute;
+    wrapped[name] = {
+      ...toolDef,
+      // biome-ignore lint/suspicious/noExplicitAny: wrapping generic tool execute
+      execute: async (args: any, options: any) => {
+        try {
+          const cached = cache.get(name, args);
+          if (cached !== undefined) return cached;
+        } catch {
+          // Cache read failed — fall through to normal execution
+        }
+        const result = await originalExecute(args, options);
+        try {
+          cache.set(name, args, result);
+        } catch {
+          // Cache write failed — non-critical
+        }
+        return result;
+      },
+    };
+  }
+  return wrapped as T;
+}
+
+export function getRecruitmentTools(context?: AgentContext, cache?: ToolResultCache) {
+  let selected: typeof recruitmentTools;
+
   if (isOpdrachtContext(context)) {
-    return {
+    selected = {
       ...opdrachtTools,
       ...platformTools,
       ...matchTools,
       ...sollicitatieTools,
-    };
-  }
-
-  if (isKandidaatContext(context)) {
-    return {
+    } as typeof recruitmentTools;
+  } else if (isKandidaatContext(context)) {
+    selected = {
       ...kandidaatTools,
       ...matchTools,
       ...sollicitatieTools,
       ...interviewTools,
       ...berichtTools,
       ...gdprTools,
-    };
+    } as typeof recruitmentTools;
+  } else {
+    selected = recruitmentTools;
   }
 
-  return recruitmentTools;
+  if (cache) {
+    return withCache(selected, cache);
+  }
+
+  return selected;
 }
 
 function sanitizePromptSlug(value: string): string {
