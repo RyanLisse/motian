@@ -6,13 +6,14 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getOpdrachtenBasePath } from "@/src/lib/opdrachten-filter-url";
 import {
   DEFAULT_OPDRACHTEN_LIMIT,
   getHoursRangeForBucket,
   getProvinceAnchor,
   MAX_OPDRACHTEN_LIMIT,
+  normalizeOpdrachtenSearchQuery,
   OPDRACHTEN_REGION_OPTIONS,
   OPDRACHTEN_SORT_OPTIONS,
   parseOpdrachtenFilters,
@@ -63,6 +64,7 @@ export function useSidebarFilters({
   // URL as source of truth for TanStack Query
   const parsedFilters = parseOpdrachtenFilters(new URLSearchParams(searchParams.toString()));
   const q = parsedFilters.q ?? "";
+  const committedSearchQuery = normalizeOpdrachtenSearchQuery(q) ?? "";
   const platform = parsedFilters.platform ?? "";
   const endClient = parsedFilters.endClient ?? "";
   const vaardigheid = parsedFilters.escoUri ?? "";
@@ -88,7 +90,7 @@ export function useSidebarFilters({
         : "";
   const straalKm = parsedFilters.radiusKm ? String(parsedFilters.radiusKm) : "";
   const contractType = parsedFilters.contractType ?? "";
-  const hasSearchQuery = q.length > 0;
+  const hasSearchQuery = committedSearchQuery.length > 0;
   const sortOptions = hasSearchQuery
     ? OPDRACHTEN_SORT_OPTIONS
     : OPDRACHTEN_SORT_OPTIONS.filter((option) => option.value !== "relevantie");
@@ -122,7 +124,6 @@ export function useSidebarFilters({
   const [radiusKmInput, setRadiusKmInput] = useState(straalKm);
   const [rateMinInput, setRateMinInput] = useState(tariefMinParamFromUrl);
   const [rateMaxInput, setRateMaxInput] = useState(tariefMaxParamFromUrl);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const provinceAnchor = getProvinceAnchor(provincie);
   const regionOptions = useMemo<FilterOption[]>(
     () =>
@@ -142,8 +143,11 @@ export function useSidebarFilters({
   );
 
   useEffect(() => {
+    if (!q && inputValue && !normalizeOpdrachtenSearchQuery(inputValue)) {
+      return;
+    }
     setInputValue(q);
-  }, [q]);
+  }, [q, inputValue]);
   useEffect(() => {
     setHoursMinInput(urenPerWeekMin);
     setHoursMaxInput(urenPerWeekMax);
@@ -157,6 +161,8 @@ export function useSidebarFilters({
   const debouncedRadiusKm = useDebouncedValue(radiusKmInput);
   const debouncedRateMin = useDebouncedValue(rateMinInput);
   const debouncedRateMax = useDebouncedValue(rateMaxInput);
+  const debouncedSearchInput = useDebouncedValue(inputValue);
+  const debouncedSearchQuery = normalizeOpdrachtenSearchQuery(debouncedSearchInput) ?? "";
   const debouncedHoursHasManualInput = useMemo(
     () => debouncedHoursMin !== urenPerWeekMin || debouncedHoursMax !== urenPerWeekMax,
     [debouncedHoursMin, debouncedHoursMax, urenPerWeekMin, urenPerWeekMax],
@@ -170,7 +176,7 @@ export function useSidebarFilters({
 
   const searchQueryKey = useMemo<SearchQueryKeyPayload>(
     () => ({
-      q,
+      q: committedSearchQuery,
       platform,
       endClient,
       vaardigheid,
@@ -190,7 +196,7 @@ export function useSidebarFilters({
       limit: limitParam,
     }),
     [
-      q,
+      committedSearchQuery,
       platform,
       endClient,
       vaardigheid,
@@ -244,30 +250,20 @@ export function useSidebarFilters({
     searchParams,
   ]);
 
-  // Debounce search input
   useEffect(() => {
-    if (inputValue === q) {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-        debounceRef.current = null;
-      }
-      return;
-    }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      pushOpdrachtenParams(searchParams, router, pathname, { q: inputValue, pagina: "1" });
-      debounceRef.current = null;
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [inputValue, pathname, q, searchParams, router]);
+    if (debouncedSearchQuery === committedSearchQuery) return;
+
+    pushOpdrachtenParams(searchParams, router, pathname, {
+      q: debouncedSearchQuery,
+      pagina: "1",
+    });
+  }, [debouncedSearchQuery, committedSearchQuery, pathname, searchParams, router]);
 
   const { data, error, isFetching } = useQuery({
     queryKey: ["opdrachten-search", searchQueryKey],
     queryFn: ({ signal }) =>
       searchJobs({
-        q,
+        q: committedSearchQuery,
         platform,
         endClient,
         vaardigheid,
@@ -292,7 +288,7 @@ export function useSidebarFilters({
     initialData:
       pageParam === 1 &&
       limitParam === DEFAULT_OPDRACHTEN_LIMIT &&
-      !q &&
+      !committedSearchQuery &&
       !platform &&
       !endClient &&
       !vaardigheid &&

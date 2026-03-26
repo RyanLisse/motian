@@ -3,6 +3,7 @@ import {
   getOpdrachtenServiceSort,
   hasExplicitOpdrachtenSort,
   MAX_OPDRACHTEN_LIMIT,
+  normalizeOpdrachtenSearchQuery,
   parseOpdrachtenFilters,
   validateOpdrachtenQueryParams,
 } from "@/src/lib/opdrachten-filters";
@@ -41,18 +42,19 @@ export async function runVacaturesSearch(
   }
 
   const filters = parseOpdrachtenFilters(params);
+  const q = normalizeOpdrachtenSearchQuery(filters.q);
   const { page, limit, offset } = parsePagination(params, {
     limit: DEFAULT_OPDRACHTEN_LIMIT,
     maxLimit: MAX_OPDRACHTEN_LIMIT,
   });
   const sortBy = getOpdrachtenServiceSort(
     filters.sort,
-    Boolean(filters.q?.trim()),
+    Boolean(q),
     hasExplicitOpdrachtenSort(params),
   );
 
   const result = await searchJobsUnified({
-    q: filters.q,
+    q: q || undefined,
     platform: filters.platform,
     endClient: filters.endClient,
     categories: filters.categories,

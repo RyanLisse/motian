@@ -259,6 +259,13 @@ export function normalizeOpdrachtenStatus(value: string | null | undefined): Opd
   }
 }
 
+export function normalizeOpdrachtenSearchQuery(
+  value: string | null | undefined,
+): string | undefined {
+  const normalized = value?.trim() ?? "";
+  return normalized.length >= 2 ? normalized : undefined;
+}
+
 export function normalizeOpdrachtenProvince(
   value: string | null | undefined,
 ): OpdrachtenProvince | undefined {
