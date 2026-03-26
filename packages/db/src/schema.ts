@@ -495,6 +495,18 @@ export const interviews = pgTable(
   }),
 );
 
+// ========== Sidebar Metadata (precomputed) ==========
+export const sidebarMetadata = pgTable("sidebar_metadata", {
+  id: text("id").primaryKey().default("default"),
+  totalCount: integer("total_count").notNull().default(0),
+  platforms: jsonb("platforms").notNull().default([]),
+  endClients: jsonb("end_clients").notNull().default([]),
+  categories: jsonb("categories").notNull().default([]),
+  skillOptions: jsonb("skill_options").notNull().default([]),
+  skillEmptyText: text("skill_empty_text").notNull().default("Geen vaardigheden gevonden."),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ========== GDPR Audit Log ==========
 export const gdprAuditLog = pgTable(
   "gdpr_audit_log",
