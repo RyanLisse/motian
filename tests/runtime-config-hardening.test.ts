@@ -14,7 +14,7 @@ describe("runtime config hardening regressions", () => {
     const serverSource = readFile("instrumentation.ts");
     const clientSource = readFile("instrumentation-client.ts");
     const triggerSource = readFile("trigger.config.ts");
-    const mcpSource = readFile("src", "mcp", "server.ts");
+    const mcpSource = readFile("src", "mcp", "create-server.ts");
 
     expect(serverSource).toContain("process.env.SENTRY_DSN");
     expect(clientSource).toContain("process.env.NEXT_PUBLIC_SENTRY_DSN");

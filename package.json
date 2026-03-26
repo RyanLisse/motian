@@ -33,6 +33,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vercel/blob": "^2.3.0",
+    "@vercel/mcp-adapter": "1.0.0",
     "@visual-json/core": "^0.1.1",
     "@visual-json/react": "^0.1.1",
     "@whiskeysockets/baileys": "7.0.0-rc.9",
