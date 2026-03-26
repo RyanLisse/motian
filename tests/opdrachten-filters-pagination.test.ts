@@ -11,6 +11,7 @@ import {
   getOpdrachtenServiceSort,
   hasExplicitOpdrachtenSort,
   MAX_OPDRACHTEN_LIMIT,
+  normalizeOpdrachtenSearchQuery,
   normalizeOpdrachtenStatus,
   OPDRACHTEN_PAGE_SIZE_OPTIONS,
   OPDRACHTEN_SORT_OPTIONS,
@@ -75,6 +76,22 @@ describe("Opdrachten status normalization", () => {
     expect(normalizeOpdrachtenStatus("closed")).toBe("closed");
     expect(normalizeOpdrachtenStatus("archived")).toBe("archived");
     expect(normalizeOpdrachtenStatus("all")).toBe("all");
+  });
+});
+
+describe("Opdrachten search query normalization", () => {
+  it("treats 0-1 character queries as empty", () => {
+    expect(normalizeOpdrachtenSearchQuery(undefined)).toBeUndefined();
+    expect(normalizeOpdrachtenSearchQuery("")).toBeUndefined();
+    expect(normalizeOpdrachtenSearchQuery("  ")).toBeUndefined();
+    expect(normalizeOpdrachtenSearchQuery("a")).toBeUndefined();
+    expect(normalizeOpdrachtenSearchQuery(" a ")).toBeUndefined();
+  });
+
+  it("keeps queries with 2+ characters", () => {
+    expect(normalizeOpdrachtenSearchQuery("ab")).toBe("ab");
+    expect(normalizeOpdrachtenSearchQuery("  ab ")).toBe("ab");
+    expect(normalizeOpdrachtenSearchQuery("zoekterm")).toBe("zoekterm");
   });
 });
 
@@ -221,6 +238,8 @@ describe("Opdrachten UI/API contracts", () => {
 
     expect(source).toContain('placeholder="Platform"');
     expect(source).toContain("SearchableCombobox");
+    expect(source).toContain("normalizeOpdrachtenSearchQuery");
+    expect(source).toContain("placeholderData: (prev) => prev");
     expect(source).toContain('searchPlaceholder="Zoek eindopdrachtgever..."');
     expect(source).toContain('clearLabel="Alle eindopdrachtgevers"');
     expect(source).toContain('triggerId="opdrachten-eindopdrachtgever"');
@@ -245,6 +264,9 @@ describe("Opdrachten UI/API contracts", () => {
     expect(source).toContain('option.value !== "relevantie"');
     expect(normalizedSource).toContain(
       'const sort = !hasSearchQuery && parsedFilters.sort === "relevantie" ? "nieuwste" : parsedFilters.sort;',
+    );
+    expect(normalizedSource).toContain(
+      "if (!q && inputValue && !normalizeOpdrachtenSearchQuery(inputValue)) { return; }",
     );
     expect(filtersSource).toContain("Sluitingsdatum oplopend");
     expect(filtersSource).toContain("Sluitingsdatum aflopend");
