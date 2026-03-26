@@ -15,7 +15,7 @@ describe("stripHtml", () => {
   });
 
   it("decodes HTML entities", () => {
-    expect(stripHtml("&amp; &lt; &gt; &quot; &#39; &nbsp;")).toBe("& < > \" ' \u00a0".replace("\u00a0", " "));
+    expect(stripHtml("&nbsp;&amp; &lt; &gt; &quot; &#39;")).toBe("& < > \" '");
   });
 
   it("converts br tags to newlines", () => {

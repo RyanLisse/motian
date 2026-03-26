@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { computeGradeBuckets, computeGradeFromParsed, extractRadarData } from "@/src/lib/grading-utils";
+import {
+  computeGradeBuckets,
+  computeGradeFromParsed,
+  extractRadarData,
+} from "@/src/lib/grading-utils";
 import type { CriterionResult } from "@/src/schemas/matching";
 
 describe("computeGradeBuckets", () => {
@@ -18,7 +22,12 @@ describe("computeGradeBuckets", () => {
   });
 
   it("handles all excellent scores", () => {
-    expect(computeGradeBuckets([100, 95, 91])).toEqual({ excellent: 3, strong: 0, good: 0, below: 0 });
+    expect(computeGradeBuckets([100, 95, 91])).toEqual({
+      excellent: 3,
+      strong: 0,
+      good: 0,
+      below: 0,
+    });
   });
 });
 
@@ -37,10 +46,38 @@ describe("extractRadarData", () => {
 
   it("computes radar values from criteria with stars", () => {
     const breakdown: CriterionResult[] = [
-      { criterion: "test", tier: "knockout", passed: true, stars: 4, evidence: "ev", confidence: "high" },
-      { criterion: "test", tier: "gunning", passed: null, stars: 3, evidence: "ev", confidence: "medium" },
-      { criterion: "test", tier: "gunning", passed: null, stars: 5, evidence: "ev", confidence: "high" },
-      { criterion: "test", tier: "process", passed: true, stars: 2, evidence: "ev", confidence: "low" },
+      {
+        criterion: "test",
+        tier: "knockout",
+        passed: true,
+        stars: 4,
+        evidence: "ev",
+        confidence: "high",
+      },
+      {
+        criterion: "test",
+        tier: "gunning",
+        passed: null,
+        stars: 3,
+        evidence: "ev",
+        confidence: "medium",
+      },
+      {
+        criterion: "test",
+        tier: "gunning",
+        passed: null,
+        stars: 5,
+        evidence: "ev",
+        confidence: "high",
+      },
+      {
+        criterion: "test",
+        tier: "process",
+        passed: true,
+        stars: 2,
+        evidence: "ev",
+        confidence: "low",
+      },
     ];
     const result = extractRadarData(breakdown);
     expect(result).toHaveLength(5);
@@ -50,9 +87,30 @@ describe("extractRadarData", () => {
 
   it("computes radar values from criteria without stars using pass rate", () => {
     const breakdown: CriterionResult[] = [
-      { criterion: "test", tier: "knockout", passed: true, stars: null, evidence: "ev", confidence: "high" },
-      { criterion: "test", tier: "knockout", passed: false, stars: null, evidence: "ev", confidence: "high" },
-      { criterion: "test", tier: "gunning", passed: null, stars: null, evidence: "ev", confidence: "medium" },
+      {
+        criterion: "test",
+        tier: "knockout",
+        passed: true,
+        stars: null,
+        evidence: "ev",
+        confidence: "high",
+      },
+      {
+        criterion: "test",
+        tier: "knockout",
+        passed: false,
+        stars: null,
+        evidence: "ev",
+        confidence: "high",
+      },
+      {
+        criterion: "test",
+        tier: "gunning",
+        passed: null,
+        stars: null,
+        evidence: "ev",
+        confidence: "medium",
+      },
     ];
     const result = extractRadarData(breakdown);
     expect(result).toHaveLength(5);
