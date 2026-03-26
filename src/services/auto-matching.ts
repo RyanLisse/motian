@@ -1,7 +1,7 @@
 import { notifySlack } from "../lib/notify-slack";
 import type { StructuredMatchOutput } from "../schemas/matching";
 import { type Candidate, getCandidateById, listActiveCandidates } from "./candidates";
-import { embedCandidate } from "./embedding";
+import { embedCandidate, findSimilarJobsByEmbedding, generateQueryEmbedding, buildCandidateEmbeddingText } from "./embedding";
 import {
   getCandidateSkills,
   getCandidateSkillsForCandidateIds,
@@ -10,6 +10,7 @@ import {
   isEscoScoringEnabled,
 } from "./esco";
 import { getJobById, type Job, listActiveJobs } from "./jobs";
+import { loadJobsByIds } from "./jobs/deduplication";
 import { type JudgeVerdict, judgeMatch } from "./match-judge";
 import { createMatch, getMatchByJobAndCandidate } from "./matches";
 import { extractRequirements } from "./requirement-extraction";
@@ -18,7 +19,7 @@ import { runStructuredMatch } from "./structured-matching";
 
 // ========== Config ==========
 
-const MIN_SCORE = 40;
+const MIN_SCORE = 25;
 const DEFAULT_TOP_N = 3;
 
 // ========== Types ==========
@@ -202,6 +203,45 @@ export async function autoMatchCandidateToJobs(
   const freshCandidate = await getCandidateById(candidateId);
   if (!freshCandidate) throw new Error("Kandidaat niet gevonden na embedding");
 
+  // Phase 1: Semantic pre-filter using HNSW vector search.
+  // Find the most semantically similar jobs (~3ms with HNSW index).
+  // Use cosine similarity as the primary score for semantically relevant jobs,
+  // since rule-based scoring fails when candidate lacks province/rate data.
+  if (freshCandidate.embedding) {
+    try {
+      const candidateText = buildCandidateEmbeddingText(freshCandidate);
+      const queryEmbedding = await generateQueryEmbedding(candidateText);
+      const similar = await findSimilarJobsByEmbedding(queryEmbedding, {
+        limit: 30,
+        minScore: 0.5,
+      });
+
+      if (similar.length > 0) {
+        const similarJobIds = similar.map((s) => s.id);
+        const similarityMap = new Map(similar.map((s) => [s.id, s.similarity]));
+        const semanticJobs = await loadJobsByIds(similarJobIds);
+
+        // Use semantic similarity (0-1) scaled to 0-100 as the match score.
+        // This bypasses rule-based scoring which fails for sparse candidate data.
+        const pairs = semanticJobs.map((job) => {
+          const similarity = similarityMap.get(job.id) ?? 0;
+          return {
+            job,
+            candidate: freshCandidate,
+            score: Math.round(similarity * 100),
+            reasoning: `Semantische overeenkomst: ${Math.round(similarity * 100)}% op basis van CV en functiebeschrijving`,
+            model: "embedding-cosine-v1",
+          };
+        });
+
+        return runAutoMatchPipeline(pairs, topN);
+      }
+    } catch (err) {
+      console.warn("[Auto-Match] Semantic pre-filter failed, falling back to rule-based:", err);
+    }
+  }
+
+  // Fallback: rule-based scoring against recent jobs
   const activeJobs = await listActiveJobs(500);
   if (activeJobs.length === 0) return [];
 

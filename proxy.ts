@@ -20,6 +20,12 @@ const FIRST_PARTY_PATHS = [
   "/api/events",
   "/api/cv-file",
   "/api/kandidaten",
+  "/api/matches",
+  "/api/vacatures",
+  "/api/interviews",
+  "/api/sollicitaties",
+  "/api/berichten",
+  "/api/instellingen",
 ];
 
 const PUBLIC_GET_PATHS = ["/api/vacatures/zoeken", "/api/opdrachten/zoeken"];
