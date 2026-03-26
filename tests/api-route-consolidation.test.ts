@@ -48,9 +48,7 @@ describe("API route consolidation — vacatures canonical, opdrachten re-exports
         const content = readRoute(opdrachten);
 
         // Should be short — just re-exports
-        const lines = content
-          .split("\n")
-          .filter((line) => line.trim().length > 0);
+        const lines = content.split("\n").filter((line) => line.trim().length > 0);
         expect(lines.length).toBeLessThanOrEqual(3);
 
         // Should re-export from vacatures equivalent
@@ -74,9 +72,7 @@ describe("API route consolidation — vacatures canonical, opdrachten re-exports
         expect(content).not.toContain("@/app/api/opdrachten/");
 
         // Should contain actual handler logic (imports, withApiHandler, etc.)
-        const lines = content
-          .split("\n")
-          .filter((line) => line.trim().length > 0);
+        const lines = content.split("\n").filter((line) => line.trim().length > 0);
         expect(lines.length).toBeGreaterThan(5);
       });
     });

@@ -588,7 +588,6 @@ motian/
 ├── docs/                         # Architectuur documentatie
 ├── drizzle/                      # Database migraties
 ├── extension/                    # Standalone WXT browser extension
-├── fumadocs/                     # Standalone Fumadocs/Next.js docs site
 ├── Justfile                      # Taak runner commando's
 └── vercel.json                   # Cron configuratie
 ```
@@ -789,8 +788,8 @@ Voeg `INSTALL_QLTY=1` toe als je tijdens bootstrap ook de Qlty CLI wilt installe
 
 ### Standalone subprojecten
 
-- `pnpm install` vanaf de repo-root bootstrap nu ook `agent/`, `fumadocs/` en `extension/` via `pnpm-workspace.yaml`.
-- `agent/` en `fumadocs/` behouden hun eigen `pnpm-lock.yaml` voor volledig standalone installs.
+- `pnpm install` vanaf de repo-root bootstrap nu ook `agent/` en `extension/` via `pnpm-workspace.yaml`.
+- `agent/` behoudt zijn eigen `pnpm-lock.yaml` voor volledig standalone installs.
 - `extension/` gebruikt bewust de root `pnpm-lock.yaml` als gepinde dependency-bron.
 - Zie de README in elke submap voor build/typecheck commando's en install-afhankelijke gegenereerde artifacts zoals `extension/.wxt/tsconfig.json`.
 
@@ -969,7 +968,18 @@ Alle API routes gebruiken **Nederlandse padnamen**.
 | `/api/events`                | GET       | SSE event stream                           |
 | `/api/reports`               | GET       | Platform rapporten genereren               |
 
-Open `/api-docs` in de hoofdapp voor interactieve API-documentatie op basis van Scalar.
+Open `/api-docs` in de hoofdapp voor de interactieve API-documentatie van Scalar.
+
+## Documentatie
+
+Motian gebruikt één levende API-documentatiesurface: **Scalar** op `/api-docs`.
+
+- **Live API-documentatie**: `/api-docs`
+- **OpenAPI-bron**: `/api/openapi`
+- **Architectuur en platformuitleg**: [docs/architecture.md](docs/architecture.md)
+- **Aanvullende repo-documentatie**: `docs/` met plannen, analyses, oplossingen en runbooks
+
+De oude Fumadocs-site is verwijderd; relevante inhoud is samengebracht in de hoofd-README, `docs/architecture.md` en de Scalar OpenAPI-documentatie.
 
 ---
 

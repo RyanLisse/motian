@@ -22,18 +22,18 @@ export function buildOpenApiDocument(request: Request): Record<string, unknown> 
       title: "Motian API",
       version: "0.1.0",
       description:
-        "External REST API for the Motian recruitment platform. Most endpoints use Dutch route names and bearer-token authentication.",
+        "Externe REST API voor het Motian recruitmentplatform. De meeste endpoints gebruiken Nederlandse route-namen en bearer-token authenticatie.",
     },
-    servers: [{ url: serverUrl, description: "Current API server" }],
+    servers: [{ url: serverUrl, description: "Huidige API-server" }],
     tags: [
-      { name: "System", description: "Health, documentation, and system routes" },
-      { name: "Jobs", description: "Vacancy listing and detail operations" },
-      { name: "Candidates", description: "Candidate listing and matching data" },
-      { name: "Matching", description: "Match retrieval and generation routes" },
-      { name: "Pipeline", description: "Applications, interviews, and messages" },
-      { name: "Scraping", description: "Scraping configuration and run history" },
-      { name: "Files", description: "CV upload and retrieval routes" },
-      { name: "Privacy", description: "GDPR export and deletion routes" },
+      { name: "System", description: "Gezondheid, documentatie en systeemroutes" },
+      { name: "Jobs", description: "Vacature-overzicht en detailoperaties" },
+      { name: "Candidates", description: "Kandidatenoverzicht en matchgegevens" },
+      { name: "Matching", description: "Routes voor matches ophalen en genereren" },
+      { name: "Pipeline", description: "Sollicitaties, interviews en berichten" },
+      { name: "Scraping", description: "Scraperconfiguratie en runhistorie" },
+      { name: "Files", description: "CV-upload en ophaalroutes" },
+      { name: "Privacy", description: "AVG-export- en verwijderroutes" },
     ],
     components: {
       securitySchemes: {
@@ -41,7 +41,7 @@ export function buildOpenApiDocument(request: Request): Record<string, unknown> 
           type: "http",
           scheme: "bearer",
           bearerFormat: "API secret",
-          description: "Send the API secret as `Authorization: Bearer <token>`.",
+          description: "Stuur de API-secret mee als `Authorization: Bearer <token>`.",
         },
       },
     },
@@ -50,162 +50,163 @@ export function buildOpenApiDocument(request: Request): Record<string, unknown> 
       [OPENAPI_ROUTE]: {
         get: {
           tags: ["System"],
-          summary: "Get the OpenAPI document",
+          summary: "OpenAPI-document ophalen",
           security: [],
-          responses: { "200": { description: "OpenAPI JSON document" } },
+          responses: { "200": { description: "OpenAPI JSON-document" } },
         },
       },
       "/api/gezondheid": {
         get: {
           tags: ["System"],
-          summary: "Read service health status",
+          summary: "Servicestatus lezen",
           security: [],
-          responses: { "200": { description: "Current health status" } },
+          responses: { "200": { description: "Huidige gezondheidsstatus" } },
         },
       },
       "/api/vacatures": {
         get: {
           tags: ["Jobs"],
-          summary: "List vacancies",
-          description: "Supports query, platform, location, status, rate, and pagination filters.",
-          responses: { "200": { description: "Paginated vacancy collection" } },
+          summary: "Vacatures ophalen",
+          description:
+            "Ondersteunt filters voor zoekterm, platform, locatie, status, tarief en paginering.",
+          responses: { "200": { description: "Gepagineerde verzameling vacatures" } },
         },
         post: {
           tags: ["Jobs"],
-          summary: "Create a vacancy",
-          responses: { "201": { description: "Created vacancy" } },
+          summary: "Vacature aanmaken",
+          responses: { "201": { description: "Aangemaakte vacature" } },
         },
       },
       "/api/vacatures/{id}": {
         get: {
           tags: ["Jobs"],
-          summary: "Get a vacancy by id",
+          summary: "Vacature ophalen op id",
           responses: {
-            "200": { description: "Vacancy detail" },
-            "404": { description: "Not found" },
+            "200": { description: "Vacaturedetail" },
+            "404": { description: "Niet gevonden" },
           },
         },
         patch: {
           tags: ["Jobs"],
-          summary: "Update a vacancy",
-          responses: { "200": { description: "Updated vacancy" } },
+          summary: "Vacature bijwerken",
+          responses: { "200": { description: "Bijgewerkte vacature" } },
         },
       },
       "/api/kandidaten": {
         get: {
           tags: ["Candidates"],
-          summary: "List candidates",
-          responses: { "200": { description: "Paginated candidate collection" } },
+          summary: "Kandidaten ophalen",
+          responses: { "200": { description: "Gepagineerde verzameling kandidaten" } },
         },
         post: {
           tags: ["Candidates"],
-          summary: "Create a candidate",
-          responses: { "201": { description: "Created candidate" } },
+          summary: "Kandidaat aanmaken",
+          responses: { "201": { description: "Aangemaakte kandidaat" } },
         },
       },
       "/api/candidates/{id}/matches": {
         get: {
           tags: ["Candidates"],
-          summary: "List saved matches for one candidate",
-          responses: { "200": { description: "Candidate match list" } },
+          summary: "Opgeslagen matches voor één kandidaat ophalen",
+          responses: { "200": { description: "Lijst met kandidaatmatches" } },
         },
       },
       "/api/matches": {
         get: {
           tags: ["Matching"],
-          summary: "List matches",
-          responses: { "200": { description: "Match collection" } },
+          summary: "Matches ophalen",
+          responses: { "200": { description: "Verzameling matches" } },
         },
         post: {
           tags: ["Matching"],
-          summary: "Create or persist a match result",
-          responses: { "201": { description: "Created match" } },
+          summary: "Matchresultaat aanmaken of opslaan",
+          responses: { "201": { description: "Aangemaakte match" } },
         },
       },
       "/api/sollicitaties": {
         get: {
           tags: ["Pipeline"],
-          summary: "List applications",
-          responses: { "200": { description: "Application collection" } },
+          summary: "Sollicitaties ophalen",
+          responses: { "200": { description: "Verzameling sollicitaties" } },
         },
         post: {
           tags: ["Pipeline"],
-          summary: "Create an application",
-          responses: { "201": { description: "Created application" } },
+          summary: "Sollicitatie aanmaken",
+          responses: { "201": { description: "Aangemaakte sollicitatie" } },
         },
       },
       "/api/interviews": {
         get: {
           tags: ["Pipeline"],
-          summary: "List interviews",
-          responses: { "200": { description: "Interview collection" } },
+          summary: "Interviews ophalen",
+          responses: { "200": { description: "Verzameling interviews" } },
         },
         post: {
           tags: ["Pipeline"],
-          summary: "Create an interview",
-          responses: { "201": { description: "Created interview" } },
+          summary: "Interview aanmaken",
+          responses: { "201": { description: "Aangemaakt interview" } },
         },
       },
       "/api/berichten": {
         get: {
           tags: ["Pipeline"],
-          summary: "List messages",
-          responses: { "200": { description: "Message collection" } },
+          summary: "Berichten ophalen",
+          responses: { "200": { description: "Verzameling berichten" } },
         },
         post: {
           tags: ["Pipeline"],
-          summary: "Create a message",
-          responses: { "201": { description: "Created message" } },
+          summary: "Bericht aanmaken",
+          responses: { "201": { description: "Aangemaakt bericht" } },
         },
       },
       "/api/cv-upload": {
         post: {
           tags: ["Files"],
-          summary: "Upload a CV file",
-          responses: { "200": { description: "Stored file metadata" } },
+          summary: "CV-bestand uploaden",
+          responses: { "200": { description: "Opgeslagen bestandsmetadata" } },
         },
       },
       "/api/cv-file": {
         get: {
           tags: ["Files"],
-          summary: "Read an uploaded CV file",
-          responses: { "200": { description: "CV file stream or metadata" } },
+          summary: "Geüpload CV-bestand ophalen",
+          responses: { "200": { description: "CV-bestandsstream of metadata" } },
         },
       },
       "/api/scraper-configuraties": {
         get: {
           tags: ["Scraping"],
-          summary: "List scraper configurations",
-          responses: { "200": { description: "Scraper configuration list" } },
+          summary: "Scraperconfiguraties ophalen",
+          responses: { "200": { description: "Lijst met scraperconfiguraties" } },
         },
         patch: {
           tags: ["Scraping"],
-          summary: "Update scraper configuration",
-          responses: { "200": { description: "Updated configuration" } },
+          summary: "Scraperconfiguratie bijwerken",
+          responses: { "200": { description: "Bijgewerkte configuratie" } },
         },
       },
       "/api/scrape-resultaten": {
         get: {
           tags: ["Scraping"],
-          summary: "List scrape run history",
-          responses: { "200": { description: "Scrape run collection" } },
+          summary: "Scraperunhistorie ophalen",
+          responses: { "200": { description: "Verzameling scraperuns" } },
         },
       },
       "/api/scrape/starten": {
         post: {
           tags: ["Scraping"],
-          summary: "Trigger a manual scrape",
+          summary: "Handmatige scrape starten",
           responses: {
-            "202": { description: "Scrape accepted" },
-            "200": { description: "Scrape started" },
+            "202": { description: "Scrape geaccepteerd" },
+            "200": { description: "Scrape gestart" },
           },
         },
       },
       "/api/gdpr/{action}": {
         post: {
           tags: ["Privacy"],
-          summary: "Run GDPR export or deletion actions",
-          responses: { "200": { description: "GDPR action completed" } },
+          summary: "AVG-export- of verwijderactie uitvoeren",
+          responses: { "200": { description: "AVG-actie voltooid" } },
         },
       },
     },
@@ -214,11 +215,11 @@ export function buildOpenApiDocument(request: Request): Record<string, unknown> 
 
 export function buildScalarHtml(specUrl: string): string {
   return `<!doctype html>
-<html lang="en">
+<html lang="nl">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Motian API Docs</title>
+    <title>Motian API-documentatie</title>
     <style>
       body { margin: 0; }
     </style>

@@ -100,22 +100,23 @@ export function OverviewFilterPanel({
   onResetFilters,
 }: OverviewFilterPanelProps) {
   return (
-    <div className="flex min-h-0 flex-col border-b border-border/70 px-3 py-3 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+    <div className="flex min-h-0 flex-col border-b border-border/70 px-3 py-2 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:mb-4">
+        <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-xl lg:text-2xl">
           Zoekfilter
         </h3>
         <button
           type="button"
           onClick={onResetFilters}
-          className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs font-semibold uppercase tracking-wide text-primary hover:bg-primary/5 hover:opacity-80"
+          className="inline-flex min-h-9 items-center gap-0.5 rounded-md px-1.5 text-xs font-semibold uppercase tracking-wide text-primary hover:bg-primary/5 hover:opacity-80 sm:min-h-11 sm:gap-1 sm:px-2"
         >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Wis filters
+          <RotateCcw className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          <span className="hidden sm:inline">Wis filters</span>
+          <span className="sm:hidden">Wissen</span>
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-4">
         <SidebarSearchBar
           value={inputValue}
           onChange={onInputChange}
@@ -127,7 +128,7 @@ export function OverviewFilterPanel({
           type="button"
           aria-expanded={mobileFiltersOpen}
           aria-controls="opdrachten-mobile-filters"
-          className="inline-flex min-h-11 w-full items-center justify-between rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground shadow-sm lg:hidden"
+          className="inline-flex min-h-9 w-full items-center justify-between rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground shadow-sm sm:min-h-11 sm:px-3 sm:text-sm lg:hidden"
           onClick={onToggleMobileFilters}
         >
           <span className="min-w-0 truncate">
@@ -136,7 +137,7 @@ export function OverviewFilterPanel({
           </span>
           <ChevronDown
             className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+              "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform sm:h-4 sm:w-4",
               mobileFiltersOpen && "rotate-180",
             )}
           />
@@ -157,65 +158,67 @@ export function OverviewFilterPanel({
         <div
           id="opdrachten-mobile-filters"
           className={cn(
-            "min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-3 sm:space-y-4 sm:p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0",
+            "min-h-0 flex-1 space-y-2 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-2.5 sm:space-y-3 sm:p-3 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:space-y-4",
             !mobileFiltersOpen && "hidden lg:block",
           )}
         >
-          <div>
-            <label
-              htmlFor="opdrachten-opdrachtgever"
-              className="mb-2 block text-sm font-medium text-foreground"
-            >
-              Platform
-            </label>
-            <Select
-              value={platform || "__all__"}
-              onValueChange={(v) => onFilterChange("platform", v === "__all__" ? "" : v)}
-            >
-              <SelectTrigger
-                id="opdrachten-opdrachtgever"
-                className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-left text-sm"
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:gap-0 lg:block">
+            <div>
+              <label
+                htmlFor="opdrachten-opdrachtgever"
+                className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm"
               >
-                <SelectValue placeholder="Alle platforms" />
-              </SelectTrigger>
-              <SelectContent className="bg-card border-border">
-                <SelectItem value="__all__" className="text-foreground">
-                  Alle platforms
-                </SelectItem>
-                {platforms.map((p) => (
-                  <SelectItem key={p} value={p} className="capitalize text-foreground">
-                    {p}
+                Platform
+              </label>
+              <Select
+                value={platform || "__all__"}
+                onValueChange={(v) => onFilterChange("platform", v === "__all__" ? "" : v)}
+              >
+                <SelectTrigger
+                  id="opdrachten-opdrachtgever"
+                  className="data-[size=default]:h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:data-[size=default]:h-11 sm:text-sm"
+                >
+                  <SelectValue placeholder="Alle platforms" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="__all__" className="text-foreground">
+                    Alle platforms
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                  {platforms.map((p) => (
+                    <SelectItem key={p} value={p} className="capitalize text-foreground">
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div>
-            <label
-              htmlFor="opdrachten-eindopdrachtgever"
-              className="mb-2 block text-sm font-medium text-foreground"
-            >
-              Eindopdrachtgever
-            </label>
-            <SearchableCombobox
-              value={endClient || undefined}
-              onValueChange={(value) => onFilterChange("endClient", value)}
-              options={endClients}
-              placeholder="Alle eindopdrachtgevers"
-              searchPlaceholder="Zoek eindopdrachtgever..."
-              emptyText="Geen eindopdrachtgevers gevonden."
-              clearLabel="Alle eindopdrachtgevers"
-              buttonClassName="h-11 rounded-lg border-border bg-background text-left text-sm"
-              triggerId="opdrachten-eindopdrachtgever"
-              ariaLabel="Eindopdrachtgever"
-            />
+            <div>
+              <label
+                htmlFor="opdrachten-eindopdrachtgever"
+                className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm"
+              >
+                Eindopdrachtgever
+              </label>
+              <SearchableCombobox
+                value={endClient || undefined}
+                onValueChange={(value) => onFilterChange("endClient", value)}
+                options={endClients}
+                placeholder="Alle eindopdrachtgevers"
+                searchPlaceholder="Zoek eindopdrachtgever..."
+                emptyText="Geen eindopdrachtgevers gevonden."
+                clearLabel="Alle eindopdrachtgevers"
+                buttonClassName="h-10 rounded-lg border-border bg-background text-left text-xs sm:h-11 sm:text-sm"
+                triggerId="opdrachten-eindopdrachtgever"
+                ariaLabel="Eindopdrachtgever"
+              />
+            </div>
           </div>
 
           <div>
             <label
               htmlFor="opdrachten-esco-vaardigheid"
-              className="mb-2 block text-sm font-medium text-foreground"
+              className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm"
             >
               Vaardigheid
             </label>
@@ -227,48 +230,50 @@ export function OverviewFilterPanel({
               searchPlaceholder="Zoek ESCO vaardigheid..."
               emptyText={skillEmptyText}
               clearLabel="Alle vaardigheden"
-              buttonClassName="h-11 rounded-lg border-border bg-background text-left text-sm"
+              buttonClassName="h-10 rounded-lg border-border bg-background text-left text-xs sm:h-11 sm:text-sm"
               triggerId="opdrachten-esco-vaardigheid"
               ariaLabel="ESCO vaardigheid"
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="opdrachten-status"
-              className="mb-2 block text-sm font-medium text-foreground"
-            >
-              Status
-            </label>
-            <Select
-              value={status}
-              onValueChange={(v) => onFilterChange("status", v === "open" ? "" : v)}
-            >
-              <SelectTrigger
-                id="opdrachten-status"
-                className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-left text-sm"
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-0 lg:block">
+            <div>
+              <label
+                htmlFor="opdrachten-status"
+                className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm"
               >
-                <SelectValue placeholder="Open" />
-              </SelectTrigger>
-              <SelectContent className="bg-card border-border">
-                <SelectItem value="open" className="text-foreground">
-                  Open
-                </SelectItem>
-                <SelectItem value="closed" className="text-foreground">
-                  Gesloten
-                </SelectItem>
-                <SelectItem value="archived" className="text-foreground">
-                  Gearchiveerd
-                </SelectItem>
-                <SelectItem value="all" className="text-foreground">
-                  Alles
-                </SelectItem>
-              </SelectContent>
-            </Select>
+                Status
+              </label>
+              <Select
+                value={status}
+                onValueChange={(v) => onFilterChange("status", v === "open" ? "" : v)}
+              >
+                <SelectTrigger
+                  id="opdrachten-status"
+                  className="data-[size=default]:h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:data-[size=default]:h-11 sm:text-sm"
+                >
+                  <SelectValue placeholder="Open" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="open" className="text-foreground">
+                    Open
+                  </SelectItem>
+                  <SelectItem value="closed" className="text-foreground">
+                    Gesloten
+                  </SelectItem>
+                  <SelectItem value="archived" className="text-foreground">
+                    Gearchiveerd
+                  </SelectItem>
+                  <SelectItem value="all" className="text-foreground">
+                    Alles
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div>
-            <p className="mb-2 block text-sm font-medium text-foreground">Regio</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Regio</p>
             <FilterChecklist
               idPrefix="opdrachten-regio"
               options={regionOptions}
@@ -277,35 +282,37 @@ export function OverviewFilterPanel({
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="opdrachten-locatie"
-              className="mb-2 block text-sm font-medium text-foreground"
-            >
-              Provincie
-            </label>
-            <Select value={provincie || "__all__"} onValueChange={onProvinceChange}>
-              <SelectTrigger
-                id="opdrachten-locatie"
-                className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-left text-sm"
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:gap-0 lg:block">
+            <div>
+              <label
+                htmlFor="opdrachten-locatie"
+                className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm"
               >
-                <SelectValue placeholder="Alle provincies" />
-              </SelectTrigger>
-              <SelectContent className="bg-card border-border">
-                <SelectItem value="__all__" className="text-foreground">
-                  Alle provincies
-                </SelectItem>
-                {OPDRACHTEN_PROVINCES.map((p) => (
-                  <SelectItem key={p} value={p} className="text-foreground">
-                    {p}
+                Provincie
+              </label>
+              <Select value={provincie || "__all__"} onValueChange={onProvinceChange}>
+                <SelectTrigger
+                  id="opdrachten-locatie"
+                  className="data-[size=default]:h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:data-[size=default]:h-11 sm:text-sm"
+                >
+                  <SelectValue placeholder="Alle provincies" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="__all__" className="text-foreground">
+                    Alle provincies
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  {OPDRACHTEN_PROVINCES.map((p) => (
+                    <SelectItem key={p} value={p} className="text-foreground">
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div>
-            <p className="mb-2 block text-sm font-medium text-foreground">Vakgebied</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Vakgebied</p>
             <FilterChecklist
               idPrefix="opdrachten-vakgebied"
               options={categoryOptions}
@@ -316,7 +323,7 @@ export function OverviewFilterPanel({
           </div>
 
           <div>
-            <p className="mb-2 block text-sm font-medium text-foreground">Uren per week</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Uren per week</p>
             <div className="grid grid-cols-2 gap-2">
               <Input
                 type="number"
@@ -325,7 +332,7 @@ export function OverviewFilterPanel({
                 placeholder="Min uren"
                 value={hoursMinInput}
                 onChange={(e) => onHoursRangeChange("urenPerWeekMin", e.target.value)}
-                className="h-11 rounded-lg border-border bg-background text-sm"
+                className="h-10 rounded-lg border-border bg-background text-xs sm:h-11 sm:text-sm"
               />
               <Input
                 type="number"
@@ -334,17 +341,17 @@ export function OverviewFilterPanel({
                 placeholder="Max uren"
                 value={hoursMaxInput}
                 onChange={(e) => onHoursRangeChange("urenPerWeekMax", e.target.value)}
-                className="h-11 rounded-lg border-border bg-background text-sm"
+                className="h-10 rounded-lg border-border bg-background text-xs sm:h-11 sm:text-sm"
               />
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground sm:mt-2">
               {summarizeHoursRange(hoursMinInput, hoursMaxInput)} — vacatures overlappen met dit
               bereik.
             </p>
           </div>
 
           <div>
-            <p className="mb-2 block text-sm font-medium text-foreground">Straal (km)</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Straal (km)</p>
             <RadiusSliderField
               provinceAnchor={provinceAnchor}
               radiusKm={radiusKmInput}
@@ -355,7 +362,7 @@ export function OverviewFilterPanel({
           <div>
             <label
               htmlFor="opdrachten-contracttype"
-              className="mb-2 block text-sm font-medium text-foreground"
+              className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm"
             >
               Contract type
             </label>
@@ -365,7 +372,7 @@ export function OverviewFilterPanel({
             >
               <SelectTrigger
                 id="opdrachten-contracttype"
-                className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-left text-sm"
+                className="data-[size=default]:h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:data-[size=default]:h-11 sm:text-sm"
               >
                 <SelectValue placeholder="Alle types" />
               </SelectTrigger>
@@ -383,7 +390,7 @@ export function OverviewFilterPanel({
           </div>
 
           <div>
-            <p className="mb-2 block text-sm font-medium text-foreground">Tarief per uur</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Tarief per uur</p>
             <div className="grid grid-cols-2 gap-2">
               <Input
                 type="number"
@@ -391,7 +398,7 @@ export function OverviewFilterPanel({
                 placeholder="Min"
                 value={rateMinInput}
                 onChange={(e) => onRateMinChange(e.target.value)}
-                className="h-11 rounded-lg border-border bg-background text-sm"
+                className="h-10 rounded-lg border-border bg-background text-xs sm:h-11 sm:text-sm"
               />
               <Input
                 type="number"
@@ -399,7 +406,7 @@ export function OverviewFilterPanel({
                 placeholder="Max"
                 value={rateMaxInput}
                 onChange={(e) => onRateMaxChange(e.target.value)}
-                className="h-11 rounded-lg border-border bg-background text-sm"
+                className="h-10 rounded-lg border-border bg-background text-xs sm:h-11 sm:text-sm"
               />
             </div>
           </div>

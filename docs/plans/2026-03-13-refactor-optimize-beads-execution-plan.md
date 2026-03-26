@@ -153,7 +153,7 @@
 ## Deferred (separate plans/beads)
 
 - Voice agent constructor (motian-pag)
-- Zod 4, Vitest 4, @types/node 25, deprecated deps, fumadocs overrides (motian-o9c, motian-kr2, motian-ln3, motian-51e, motian-s84)
+- Zod 4, Vitest 4, @types/node 25, deprecated deps, docs-site overrides (motian-o9c, motian-kr2, motian-ln3, motian-51e, motian-s84)
 
 ---
 

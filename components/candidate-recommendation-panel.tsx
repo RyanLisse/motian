@@ -3,7 +3,7 @@
 import { ArrowRight, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { MatchSuggestionCard } from "@/components/candidate-wizard/match-suggestion-card";
 import type { MatchSuggestionItem } from "@/components/candidate-wizard/types";
 import { Button } from "@/components/ui/button";
@@ -84,10 +84,6 @@ export function CandidateRecommendationPanel({
   const [matches, setMatches] = useState(initialMatches);
   const [pendingAction, setPendingAction] = useState<"refresh" | "link" | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMatches(initialMatches);
-  }, [initialMatches]);
 
   const recommendedMatch = useMemo(() => pickRecommendedMatch(matches), [matches]);
   const highlightedRecommendationSource: MatchSuggestionItem["recommendationSource"] =

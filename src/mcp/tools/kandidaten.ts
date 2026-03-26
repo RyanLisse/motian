@@ -12,10 +12,7 @@ import {
   searchCandidates,
   updateCandidate,
 } from "../../services/candidates";
-import {
-  withCandidateCanonicalSkills,
-  withCandidatesCanonicalSkills,
-} from "../../services/esco";
+import { withCandidateCanonicalSkills, withCandidatesCanonicalSkills } from "../../services/esco";
 
 // ========== Schemas ==========
 

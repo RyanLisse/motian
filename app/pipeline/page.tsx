@@ -21,7 +21,7 @@ import { and, db, desc, eq, isNull, sql } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 /** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {

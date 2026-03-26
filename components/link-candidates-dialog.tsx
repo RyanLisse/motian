@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { CandidateMatchItem } from "@/components/candidate-wizard/candidate-match-card";
 import { CandidateMatchCard } from "@/components/candidate-wizard/candidate-match-card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ interface LinkCandidatesDialogProps {
   jobTitle: string;
 }
 
+/** Auto-select the first available (unlinked) candidate for quick linking. */
 function getInitialSelection(items: CandidateMatchItem[]) {
   const firstAvailable = items.find((item) => !item.isLinked);
   return firstAvailable ? new Set([firstAvailable.matchId]) : new Set<string>();
@@ -26,6 +28,7 @@ function LinkCandidatesContent({
   matches,
   selected,
   submitting,
+  linkedCount,
   onToggle,
   onConfirm,
 }: {
@@ -36,6 +39,7 @@ function LinkCandidatesContent({
   matches: CandidateMatchItem[];
   selected: Set<string>;
   submitting: boolean;
+  linkedCount: number;
   onToggle: (matchId: string, checked: boolean) => void;
   onConfirm: () => Promise<void>;
 }) {
@@ -82,8 +86,8 @@ function LinkCandidatesContent({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Top-3 passende kandidaten voor &quot;{jobTitle}&quot;. Selecteer direct wie je aan screening
-        wilt toevoegen.
+        Top-3 passende kandidaten voor &quot;{jobTitle}&quot;. Vink aan wie je wilt toevoegen aan de
+        screening pipeline.
       </p>
       <div className="space-y-3">
         {matches.map((match) => (
@@ -95,6 +99,14 @@ function LinkCandidatesContent({
           />
         ))}
       </div>
+      {linkedCount > 0 ? (
+        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/30">
+          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+          <p className="text-sm text-green-800 dark:text-green-300">
+            {linkedCount} {linkedCount === 1 ? "kandidaat" : "kandidaten"} toegevoegd aan screening pipeline.
+          </p>
+        </div>
+      ) : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -124,16 +136,14 @@ function LinkCandidatesContent({
 
 export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogProps) {
   const router = useRouter();
-  const [matches, setMatches] = useState<CandidateMatchItem[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
+  const [userSelection, setUserSelection] = useState<Set<string> | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [linkedCount, setLinkedCount] = useState(0);
 
-  const fetchMatches = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
+  const { data: matches = [], isLoading, error: queryError } = useQuery({
+    queryKey: ["link-candidates", jobId],
+    queryFn: async () => {
       const res = await fetch(`/api/vacatures/${jobId}/match-kandidaten`, { method: "POST" });
       if (!res.ok) throw new Error("Matchen mislukt");
       const data = await res.json();
@@ -148,27 +158,25 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
           isLinked: linkedSet.has(match.candidateId as string),
         }),
       );
-      setMatches(items);
-      setSelected(getInitialSelection(items));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Matchen mislukt");
-    } finally {
-      setLoading(false);
-    }
-  }, [jobId]);
+      return items;
+    },
+  });
 
-  useEffect(() => {
-    void fetchMatches();
-  }, [fetchMatches]);
+  const selected = useMemo(
+    () => userSelection ?? getInitialSelection(matches),
+    [userSelection, matches],
+  );
+
+  const error = submitError || (queryError instanceof Error ? queryError.message : "");
 
   const toggle = useCallback((matchId: string, checked: boolean) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
+    setUserSelection((prev) => {
+      const next = new Set(prev ?? getInitialSelection(matches));
       if (checked) next.add(matchId);
       else next.delete(matchId);
       return next;
     });
-  }, []);
+  }, [matches]);
 
   const handleConfirm = async () => {
     const matchIds = matches
@@ -181,7 +189,7 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
     }
 
     setSubmitting(true);
-    setError("");
+    setSubmitError("");
     try {
       const res = await fetch(`/api/vacatures/${jobId}/koppel`, {
         method: "POST",
@@ -193,16 +201,12 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
         throw new Error(body?.error ?? "Koppelen mislukt");
       }
 
-      const linkedMatchIds = new Set(matchIds);
-      setMatches((prev) =>
-        prev.map((match) =>
-          linkedMatchIds.has(match.matchId) ? { ...match, isLinked: true } : match,
-        ),
-      );
-      setSelected(new Set());
+      const result = await res.json();
+      setLinkedCount(result.created ?? matchIds.length);
+      setUserSelection(new Set());
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Koppelen mislukt");
+      setSubmitError(err instanceof Error ? err.message : "Koppelen mislukt");
     } finally {
       setSubmitting(false);
     }
@@ -212,11 +216,12 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
     <LinkCandidatesContent
       jobId={jobId}
       jobTitle={jobTitle}
-      loading={loading}
+      loading={isLoading}
       error={error}
       matches={matches}
       selected={selected}
       submitting={submitting}
+      linkedCount={linkedCount}
       onToggle={toggle}
       onConfirm={handleConfirm}
     />

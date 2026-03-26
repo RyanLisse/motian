@@ -746,60 +746,67 @@ export async function getScraperDashboardData(
   // safely run in parallel with Promise.all. Do NOT use database.transaction()
   // here: Drizzle + pg concurrent work inside a transaction can drop Next.js
   // App Router AsyncLocalStorage (request context for cookies/headers).
-  const [analytics, configs, recentRuns, recentWindowRows, overlapCandidates, activeVacancies, trigger] =
-    await Promise.all([
-      getAnalyticsOrFallback(database),
-      database.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
-      database
-        .select({
-          id: scrapeResults.id,
-          configId: scrapeResults.configId,
-          platform: scrapeResults.platform,
-          runAt: scrapeResults.runAt,
-          durationMs: scrapeResults.durationMs,
-          jobsFound: scrapeResults.jobsFound,
-          jobsNew: scrapeResults.jobsNew,
-          duplicates: scrapeResults.duplicates,
-          status: scrapeResults.status,
-          errors: scrapeResults.errors,
-        })
-        .from(scrapeResults)
-        .orderBy(desc(scrapeResults.runAt))
-        .limit(runLimit),
-      database
-        .select({
-          platform: scrapeResults.platform,
-          runs: sql<number>`cast(count(*) as integer)`,
-          successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
-          partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
-          failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
-          avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
-        })
-        .from(scrapeResults)
-        .where(gte(scrapeResults.runAt, last24Hours))
-        .groupBy(scrapeResults.platform),
-      database
-        .select({
-          id: jobs.id,
-          platform: jobs.platform,
-          externalId: jobs.externalId,
-          externalUrl: jobs.externalUrl,
-          clientReferenceCode: jobs.clientReferenceCode,
-          title: jobs.title,
-          company: jobs.company,
-          endClient: jobs.endClient,
-          location: jobs.location,
-          province: jobs.province,
-          postedAt: jobs.postedAt,
-          applicationDeadline: jobs.applicationDeadline,
-          startDate: jobs.startDate,
-          scrapedAt: jobs.scrapedAt,
-        })
-        .from(jobs)
-        .where(sql`${jobs.platform} is not null`),
-      getActiveVacancyCount(database),
-      triggerPromise,
-    ]);
+  const [
+    analytics,
+    configs,
+    recentRuns,
+    recentWindowRows,
+    overlapCandidates,
+    activeVacancies,
+    trigger,
+  ] = await Promise.all([
+    getAnalyticsOrFallback(database),
+    database.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
+    database
+      .select({
+        id: scrapeResults.id,
+        configId: scrapeResults.configId,
+        platform: scrapeResults.platform,
+        runAt: scrapeResults.runAt,
+        durationMs: scrapeResults.durationMs,
+        jobsFound: scrapeResults.jobsFound,
+        jobsNew: scrapeResults.jobsNew,
+        duplicates: scrapeResults.duplicates,
+        status: scrapeResults.status,
+        errors: scrapeResults.errors,
+      })
+      .from(scrapeResults)
+      .orderBy(desc(scrapeResults.runAt))
+      .limit(runLimit),
+    database
+      .select({
+        platform: scrapeResults.platform,
+        runs: sql<number>`cast(count(*) as integer)`,
+        successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
+        partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
+        failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
+        avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
+      })
+      .from(scrapeResults)
+      .where(gte(scrapeResults.runAt, last24Hours))
+      .groupBy(scrapeResults.platform),
+    database
+      .select({
+        id: jobs.id,
+        platform: jobs.platform,
+        externalId: jobs.externalId,
+        externalUrl: jobs.externalUrl,
+        clientReferenceCode: jobs.clientReferenceCode,
+        title: jobs.title,
+        company: jobs.company,
+        endClient: jobs.endClient,
+        location: jobs.location,
+        province: jobs.province,
+        postedAt: jobs.postedAt,
+        applicationDeadline: jobs.applicationDeadline,
+        startDate: jobs.startDate,
+        scrapedAt: jobs.scrapedAt,
+      })
+      .from(jobs)
+      .where(sql`${jobs.platform} is not null`),
+    getActiveVacancyCount(database),
+    triggerPromise,
+  ]);
 
   const recentWindowMap = new Map(
     recentWindowRows.map((row) => [

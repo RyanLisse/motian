@@ -17,12 +17,14 @@ describe("API docs routes", () => {
     const response = await getOpenApi(new Request("http://localhost:3001/api/openapi"));
     const body = (await response.json()) as {
       openapi: string;
+      info: { description: string };
       servers: Array<{ url: string }>;
       paths: Record<string, unknown>;
     };
 
     expect(response.status).toBe(200);
     expect(body.openapi).toBe("3.1.0");
+    expect(body.info.description).toContain("Externe REST API");
     expect(body.servers[0]?.url).toBe("http://localhost:3001");
     expect(body.paths["/api/gezondheid"]).toBeDefined();
     expect(body.paths["/api/vacatures"]).toBeDefined();
@@ -42,6 +44,7 @@ describe("API docs routes", () => {
     const body = await response.text();
 
     expect(response.headers.get("content-type")).toContain("text/html");
+    expect(body).toContain("Motian API-documentatie");
     expect(body).toContain("Scalar.createApiReference");
     expect(body).toContain("http://localhost:3001/api/openapi");
   });

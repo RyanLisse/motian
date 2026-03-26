@@ -31,7 +31,7 @@ import { jobReadSelection } from "@/src/services/jobs/repository";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 export const maxDuration = 30;
 
 interface Props {

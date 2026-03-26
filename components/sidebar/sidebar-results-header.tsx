@@ -95,25 +95,29 @@ export function SidebarResultsHeader({
   }
 
   return (
-    <div className="min-w-0 space-y-2">
-      <div className="text-base font-semibold text-foreground sm:text-lg">
-        {displayTotal} vacatures weergegeven
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Badge
-          variant="outline"
-          className="max-w-full whitespace-normal wrap-break-word text-[11px] text-muted-foreground sm:text-xs"
-        >
-          {shortlistCount > 0 ? `${shortlistCount} met shortlist` : "Nog geen shortlist"}
-        </Badge>
-        {urgentDeadlineCount > 0 ? (
+    <div className="min-w-0">
+      {/* Mobile: single compact line with count + badges inline */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-start sm:gap-2">
+        <div className="text-sm font-semibold text-foreground sm:text-lg">
+          {displayTotal} vacatures
+          <span className="hidden sm:inline"> weergegeven</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           <Badge
             variant="outline"
-            className="max-w-full whitespace-normal wrap-break-word border-amber-500/20 bg-amber-500/10 text-[11px] text-amber-700 dark:text-amber-300 sm:text-xs"
+            className="max-w-full whitespace-normal wrap-break-word text-[10px] text-muted-foreground sm:text-xs"
           >
-            {urgentDeadlineCount} deadlines vragen aandacht
+            {shortlistCount > 0 ? `${shortlistCount} shortlist` : "Geen shortlist"}
           </Badge>
-        ) : null}
+          {urgentDeadlineCount > 0 ? (
+            <Badge
+              variant="outline"
+              className="max-w-full whitespace-normal wrap-break-word border-amber-500/20 bg-amber-500/10 text-[10px] text-amber-700 dark:text-amber-300 sm:text-xs"
+            >
+              {urgentDeadlineCount} deadlines
+            </Badge>
+          ) : null}
+        </div>
       </div>
     </div>
   );
