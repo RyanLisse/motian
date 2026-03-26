@@ -142,12 +142,13 @@ export function useSidebarFilters({
     [categories],
   );
 
+  // Sync URL q → local input only when the URL parameter actually changes.
+  // Intentionally omit inputValue to avoid a re-sync loop where typing 2+
+  // characters clears the input before the debounced URL push completes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
   useEffect(() => {
-    if (!q && inputValue && !normalizeOpdrachtenSearchQuery(inputValue)) {
-      return;
-    }
     setInputValue(q);
-  }, [q, inputValue]);
+  }, [q]);
   useEffect(() => {
     setHoursMinInput(urenPerWeekMin);
     setHoursMaxInput(urenPerWeekMax);
