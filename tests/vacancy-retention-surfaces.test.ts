@@ -33,7 +33,7 @@ describe("vacancy retention surfaces", () => {
     const analytics = readFile("src", "services", "scrape-results.ts");
     const dashboard = readFile("src", "services", "scraper-dashboard.ts");
     const workspace = readFile("src", "services", "workspace.ts");
-    const detailPage = readFile("app", "opdrachten", "[id]", "page.tsx");
+    const detailPage = readFile("app", "vacatures", "[id]", "page.tsx");
 
     expect(analytics).toContain(".select({ count: sql<number>`cast(count(*) as integer)` })");
     expect(analytics).toContain(".from(jobs)");

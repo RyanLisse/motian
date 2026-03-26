@@ -22,7 +22,7 @@ describe("opdracht detail archivedAt compatibility", () => {
   });
 
   it("uses one prioritized related-jobs read on the detail page while preserving compat selection", () => {
-    const source = readFile("app", "opdrachten", "[id]", "page.tsx");
+    const source = readFile("app", "vacatures", "[id]", "page.tsx");
 
     expect(source).toContain('import { jobReadSelection } from "@/src/services/jobs/repository"');
     expect(source).toContain("companyMatchRank");

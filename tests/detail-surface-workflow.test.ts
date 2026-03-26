@@ -39,7 +39,7 @@ afterEach(() => {
 
 describe("Detail surfaces recruiter workflow context", () => {
   it("job detail page preserves filters while surfacing recruiter cockpit and grading", () => {
-    const source = readFile("app/opdrachten/[id]/page.tsx");
+    const source = readFile("app/vacatures/[id]/page.tsx");
 
     expect(source).toContain("currentListParams.append(key, entry)");
     expect(source).toContain("const relatedLimit = 4");
@@ -127,7 +127,7 @@ describe("Detail surfaces recruiter workflow context", () => {
   });
 
   it("desktop vacature detail keeps the droppable wrapper in the flex height chain", () => {
-    const source = readFile("app/opdrachten/[id]/page.tsx");
+    const source = readFile("app/vacatures/[id]/page.tsx");
 
     expect(source).toContain("<DroppableVacancy");
     expect(source).toContain("jobId={job.id}");

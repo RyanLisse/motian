@@ -207,7 +207,7 @@ describe("Opdrachten UI/API contracts", () => {
     const filtersSource = readFile("src", "lib", "opdrachten-filters.ts");
     const filterUrlSource = readFile("src", "lib", "opdrachten-filter-url.ts");
     const comboboxSource = readFile("components", "ui", "searchable-combobox.tsx");
-    const toolbarFiltersSource = readFile("app", "opdrachten", "filters.tsx");
+    const toolbarFiltersSource = readFile("app", "vacatures", "filters.tsx");
 
     expect(source).toContain('placeholder="Platform"');
     expect(source).toContain("SearchableCombobox");
@@ -260,7 +260,7 @@ describe("Opdrachten UI/API contracts", () => {
   });
 
   it("detail page wires a shared end-client combobox into the existing context-aware navigation", () => {
-    const detailPage = readFile("app", "opdrachten", "[id]", "page.tsx");
+    const detailPage = readFile("app", "vacatures", "[id]", "page.tsx");
     const detailFilter = readFile("components", "opdracht-detail-end-client-filter.tsx");
 
     expect(detailPage).toContain("OpdrachtDetailEndClientFilter");
@@ -288,7 +288,7 @@ describe("Opdrachten UI/API contracts", () => {
   });
 
   it("layout seed includes persisted end-client, deadline context, category metadata, and shared page-query wiring", () => {
-    const layout = readFile("app", "opdrachten", "layout.tsx");
+    const layout = readFile("app", "vacatures", "layout.tsx");
     const pageQuery = readFile("src", "services", "jobs", "page-query.ts");
     const deduplication = readFile("src", "services", "jobs", "deduplication.ts");
 

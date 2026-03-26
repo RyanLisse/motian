@@ -377,13 +377,13 @@ describe("Matching linking flow — structural assertions", () => {
   });
 
   it("opdracht detail CTA says 'Koppel aan kandidaat' (desktop)", () => {
-    const source = readFile("app/opdrachten/[id]/page.tsx");
+    const source = readFile("app/vacatures/[id]/page.tsx");
     expect(source).toContain("Koppel aan kandidaat");
     expect(source).not.toContain(">Reageren<");
   });
 
   it("opdracht detail surfaces recruiter cockpit and grading anchors", () => {
-    const source = readFile("app/opdrachten/[id]/page.tsx");
+    const source = readFile("app/vacatures/[id]/page.tsx");
     expect(source).toContain('id="recruiter-cockpit"');
     expect(source).toContain('id="ai-grading"');
     expect(source).toContain("const gradingHref =");
