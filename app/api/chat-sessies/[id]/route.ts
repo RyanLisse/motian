@@ -2,7 +2,7 @@ import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
 import { deleteSession, getSession } from "@/src/services/chat-sessions";
 
-type RouteParams = { params: Promise<{ sessionId: string }> };
+type RouteParams = { params: Promise<{ id: string }> };
 
 const querySchema = z.object({
   limit: z.preprocess((v) => {
@@ -15,7 +15,7 @@ const querySchema = z.object({
 
 export const GET = withApiHandler(
   async (req: Request, { params }: RouteParams) => {
-    const { sessionId } = await params;
+    const { id } = await params;
     const url = new URL(req.url);
     const result = querySchema.safeParse({
       limit: url.searchParams.get("limit") ?? undefined,
@@ -26,7 +26,7 @@ export const GET = withApiHandler(
       return Response.json({ error: "Ongeldige parameters" }, { status: 400 });
     }
 
-    const session = await getSession(sessionId, {
+    const session = await getSession(id, {
       limit: result.data.limit,
       cursor: result.data.cursor ?? null,
     });
@@ -37,17 +37,17 @@ export const GET = withApiHandler(
 
     return Response.json(session);
   },
-  { logPrefix: "chat-sessies/[sessionId] GET", rateLimit: { interval: 60_000, limit: 30 } },
+  { logPrefix: "chat-sessies/[id] GET", rateLimit: { interval: 60_000, limit: 30 } },
 );
 
 export const DELETE = withApiHandler(
   async (_req: Request, { params }: RouteParams) => {
-    const { sessionId } = await params;
-    const deleted = await deleteSession(sessionId);
+    const { id } = await params;
+    const deleted = await deleteSession(id);
     if (!deleted) {
       return Response.json({ error: "Sessie niet gevonden" }, { status: 404 });
     }
     return Response.json({ success: true });
   },
-  { logPrefix: "chat-sessies/[sessionId] DELETE", rateLimit: { interval: 60_000, limit: 10 } },
+  { logPrefix: "chat-sessies/[id] DELETE", rateLimit: { interval: 60_000, limit: 10 } },
 );

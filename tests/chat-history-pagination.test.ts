@@ -30,7 +30,7 @@ describe("chat history pagination architecture", () => {
 
   it("supports cursor-based pagination on the chat session routes", () => {
     const listRoute = readFile("app", "api", "chat-sessies", "route.ts");
-    const detailRoute = readFile("app", "api", "chat-sessies", "[sessionId]", "route.ts");
+    const detailRoute = readFile("app", "api", "chat-sessies", "[id]", "route.ts");
     const service = readFile("src", "services", "chat-sessions.ts");
 
     expect(listRoute).toContain("cursor: z.string().min(1).optional()");

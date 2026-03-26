@@ -122,4 +122,48 @@ describe("job deduplication compatibility fallback", () => {
     expect(page).toEqual({ ids: [], total: 0 });
     expect(mockDb.execute).toHaveBeenCalledTimes(1);
   }, 15_000);
+
+  it("fetchDedupedJobIds returns id array using preFetch CTE path", async () => {
+    mockDb.execute.mockResolvedValueOnce({ rows: [{ id: "job-1" }, { id: "job-2" }] });
+
+    const { fetchDedupedJobIds } = await import("../src/services/jobs/deduplication");
+    const { sql } = await import("drizzle-orm");
+
+    const ids = await fetchDedupedJobIds({ whereClause: sql`true`, limit: 10, offset: 0 });
+
+    expect(ids).toEqual(["job-1", "job-2"]);
+    expect(mockDb.execute).toHaveBeenCalledTimes(1);
+
+    const queryText = collectSqlTokens(mockDb.execute.mock.calls[0]?.[0]).join(" ");
+    // preFetchLimit path uses pre_filtered CTE
+    expect(queryText).toContain("pre_filtered");
+  }, 15_000);
+
+  it("fetchDedupedJobIds returns empty array when no results", async () => {
+    mockDb.execute.mockResolvedValueOnce({ rows: [] });
+
+    const { fetchDedupedJobIds } = await import("../src/services/jobs/deduplication");
+    const { sql } = await import("drizzle-orm");
+
+    const ids = await fetchDedupedJobIds({ whereClause: sql`false`, limit: 10 });
+
+    expect(ids).toEqual([]);
+    expect(mockDb.execute).toHaveBeenCalledTimes(1);
+  }, 15_000);
+
+  it("fetchDedupedJobIds uses sortBy order when provided", async () => {
+    mockDb.execute.mockResolvedValueOnce({ rows: [{ id: "job-3" }] });
+
+    const { fetchDedupedJobIds } = await import("../src/services/jobs/deduplication");
+    const { sql } = await import("drizzle-orm");
+
+    const ids = await fetchDedupedJobIds({
+      whereClause: sql`true`,
+      limit: 5,
+      sortBy: "tarief_hoog",
+    });
+
+    expect(ids).toEqual(["job-3"]);
+    expect(mockDb.execute).toHaveBeenCalledTimes(1);
+  }, 15_000);
 });

@@ -1,11 +1,11 @@
 import { withApiHandler } from "@/src/lib/api-handler";
 import { a2uiEnvelopeSchema } from "@/src/schemas/a2ui";
 
-type RouteParams = { params: Promise<{ sessionId: string }> };
+type RouteParams = { params: Promise<{ id: string }> };
 
 export const POST = withApiHandler(
   async (req: Request, { params }: RouteParams) => {
-    const { sessionId } = await params;
+    const { id } = await params;
     const body = await req.json();
     const parsed = a2uiEnvelopeSchema.safeParse(body);
 
@@ -19,9 +19,9 @@ export const POST = withApiHandler(
     // TODO: inject envelope into chat session message stream
     return Response.json({
       ok: true,
-      sessionId,
+      sessionId: id,
       component: parsed.data.component,
     });
   },
-  { logPrefix: "chat-sessies/[sessionId]/a2ui POST", rateLimit: { interval: 60_000, limit: 30 } },
+  { logPrefix: "chat-sessies/[id]/a2ui POST", rateLimit: { interval: 60_000, limit: 30 } },
 );
