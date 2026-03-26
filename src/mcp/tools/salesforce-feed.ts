@@ -6,7 +6,7 @@ import {
   parseSalesforceFeedEntity,
   parseUpdatedSinceParam,
   SALESFORCE_FEED_ENTITIES,
-} from "../../services/salesforce-feed.js";
+} from "../../services/salesforce-feed";
 
 const salesforceFeedSchema = z.object({
   entity: z

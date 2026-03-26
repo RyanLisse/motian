@@ -1,8 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { publish } from "../../lib/event-bus.js";
-import { jsonObjectSchema } from "../../lib/json-value-schema.js";
+import { publish } from "../../lib/event-bus";
+import { jsonObjectSchema } from "../../lib/json-value-schema";
 import {
   activatePlatform,
   createConfig,
@@ -11,7 +11,7 @@ import {
   listPlatformCatalog,
   triggerTestRun,
   validateConfig,
-} from "../../services/scrapers.js";
+} from "../../services/scrapers";
 
 const platformSchema = z.object({
   platform: z.string().min(1).describe("Platform slug"),

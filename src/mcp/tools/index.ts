@@ -1,18 +1,18 @@
 import {
   handlers as advancedMatchingHandlers,
   tools as advancedMatchingTools,
-} from "./advanced-matching.js";
-import { handlers as analyticsHandlers, tools as analyticsTools } from "./analytics.js";
-import { handlers as gdprOpsHandlers, tools as gdprOpsTools } from "./gdpr-ops.js";
-import { handlers as kandidatenHandlers, tools as kandidatenTools } from "./kandidaten.js";
-import { handlers as matchHandlers, tools as matchTools } from "./matches.js";
-import { handlers as pipelineHandlers, tools as pipelineTools } from "./pipeline.js";
-import { handlers as platformsHandlers, tools as platformsTools } from "./platforms.js";
+} from "./advanced-matching";
+import { handlers as analyticsHandlers, tools as analyticsTools } from "./analytics";
+import { handlers as gdprOpsHandlers, tools as gdprOpsTools } from "./gdpr-ops";
+import { handlers as kandidatenHandlers, tools as kandidatenTools } from "./kandidaten";
+import { handlers as matchHandlers, tools as matchTools } from "./matches";
+import { handlers as pipelineHandlers, tools as pipelineTools } from "./pipeline";
+import { handlers as platformsHandlers, tools as platformsTools } from "./platforms";
 import {
   handlers as salesforceFeedHandlers,
   tools as salesforceFeedTools,
-} from "./salesforce-feed.js";
-import { handlers as vacatureHandlers, tools as vacatureTools } from "./vacatures.js";
+} from "./salesforce-feed";
+import { handlers as vacatureHandlers, tools as vacatureTools } from "./vacatures";
 
 export const allTools = [
   ...kandidatenTools,

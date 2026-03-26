@@ -1,7 +1,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import * as Sentry from "@sentry/node";
-import { allHandlers, allTools } from "./tools/index.js";
+import { allHandlers, allTools } from "./tools/index";
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
 

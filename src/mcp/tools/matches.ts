@@ -1,14 +1,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { publish } from "../../lib/event-bus.js";
+import { publish } from "../../lib/event-bus";
 import {
   createMatch,
   deleteMatch,
   getMatchById,
   listMatches,
   updateMatchStatus,
-} from "../../services/matches.js";
+} from "../../services/matches";
 
 // ========== Schemas ==========
 

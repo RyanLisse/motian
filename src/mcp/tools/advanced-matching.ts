@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { getCandidateById } from "../../services/candidates.js";
-import { findSimilarJobs } from "../../services/embedding.js";
-import { getJobById } from "../../services/jobs.js";
-import { extractRequirements } from "../../services/requirement-extraction.js";
-import { runStructuredMatch } from "../../services/structured-matching.js";
+import { getCandidateById } from "../../services/candidates";
+import { findSimilarJobs } from "../../services/embedding";
+import { getJobById } from "../../services/jobs";
+import { extractRequirements } from "../../services/requirement-extraction";
+import { runStructuredMatch } from "../../services/structured-matching";
 
 // ========== Schemas ==========
 

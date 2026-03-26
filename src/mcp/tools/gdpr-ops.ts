@@ -1,20 +1,20 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { publish } from "../../lib/event-bus.js";
+import { publish } from "../../lib/event-bus";
 import {
   eraseCandidateData,
   exportCandidateData,
   exportContactData,
   scrubContactData,
-} from "../../services/gdpr.js";
+} from "../../services/gdpr";
 import {
   importJobsFromActiveScrapers,
   reviewGdprRetention,
   runCandidateScoringBatch,
-} from "../../services/operations-console.js";
-import { runScrapePipeline } from "../../services/scrape-pipeline.js";
-import { getAllConfigs } from "../../services/scrapers.js";
+} from "../../services/operations-console";
+import { runScrapePipeline } from "../../services/scrape-pipeline";
+import { getAllConfigs } from "../../services/scrapers";
 
 // ========== Schemas ==========
 

@@ -1,11 +1,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { publish } from "../../lib/event-bus.js";
-import { autoMatchJobToCandidates } from "../../services/auto-matching.js";
-import { withJobCanonicalSkills, withJobsCanonicalSkills } from "../../services/esco.js";
-import type { ListJobsSortBy } from "../../services/jobs.js";
-import { deleteJob, getJobById, searchJobsUnified, updateJob } from "../../services/jobs.js";
+import { publish } from "../../lib/event-bus";
+import { autoMatchJobToCandidates } from "../../services/auto-matching";
+import { withJobCanonicalSkills, withJobsCanonicalSkills } from "../../services/esco";
+import type { ListJobsSortBy } from "../../services/jobs";
+import { deleteJob, getJobById, searchJobsUnified, updateJob } from "../../services/jobs";
 
 // ========== Schemas ==========
 

@@ -1,8 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { publish } from "../../lib/event-bus.js";
-import { autoMatchCandidateToJobs } from "../../services/auto-matching.js";
+import { publish } from "../../lib/event-bus";
+import { autoMatchCandidateToJobs } from "../../services/auto-matching";
 import {
   addNoteToCandidate,
   createCandidate,
@@ -11,11 +11,11 @@ import {
   listCandidates,
   searchCandidates,
   updateCandidate,
-} from "../../services/candidates.js";
+} from "../../services/candidates";
 import {
   withCandidateCanonicalSkills,
   withCandidatesCanonicalSkills,
-} from "../../services/esco.js";
+} from "../../services/esco";
 
 // ========== Schemas ==========
 

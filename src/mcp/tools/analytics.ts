@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { db, jobs, scrapeResults, sql } from "../../db/index.js";
+import { db, jobs, scrapeResults, sql } from "../../db/index";
 
 // ========== Schemas ==========
 

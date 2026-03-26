@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { publish } from "../../lib/event-bus.js";
+import { publish } from "../../lib/event-bus";
 import {
   createApplication,
   deleteApplication,
@@ -9,20 +9,20 @@ import {
   getApplicationStats,
   listApplications,
   updateApplicationStage,
-} from "../../services/applications.js";
+} from "../../services/applications";
 import {
   createInterview,
   deleteInterview,
   getInterviewById,
   listInterviews,
   updateInterview,
-} from "../../services/interviews.js";
+} from "../../services/interviews";
 import {
   createMessage,
   deleteMessage,
   getMessageById,
   listMessages,
-} from "../../services/messages.js";
+} from "../../services/messages";
 
 // ========== Schemas ==========
 
