@@ -39,9 +39,9 @@ export const embeddingsBatchTask = schedules.task({
     let nextIndex = 0;
 
     async function worker() {
-      while (nextIndex < jobsWithout.length) {
-        const currentIndex = nextIndex;
-        nextIndex += 1;
+      while (true) {
+        const currentIndex = nextIndex++;
+        if (currentIndex >= jobsWithout.length) break;
         const job = jobsWithout[currentIndex];
         try {
           const success = await embedJob(job.id);

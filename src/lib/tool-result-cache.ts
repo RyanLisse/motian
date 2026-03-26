@@ -1,4 +1,5 @@
-const TOOL_CACHE_TTL_MS = 30_000; // 30 seconds
+const TOOL_CACHE_TTL_MS = 30_000; // 30s — scoped to a single chat request turn
+const MAX_CACHE_ENTRIES = 100;
 
 type CachedResult = { value: unknown; expiresAt: number };
 
@@ -22,6 +23,10 @@ export function createToolResultCache() {
     set(toolName: string, args: unknown, value: unknown): void {
       const key = cacheKey(toolName, args);
       cache.set(key, { value, expiresAt: Date.now() + TOOL_CACHE_TTL_MS });
+      if (cache.size > MAX_CACHE_ENTRIES) {
+        const oldest = cache.keys().next().value;
+        if (oldest) cache.delete(oldest);
+      }
     },
   };
 }

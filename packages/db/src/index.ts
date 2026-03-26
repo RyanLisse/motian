@@ -30,6 +30,7 @@ interface PoolMetrics {
 
 let poolRef: Pool | undefined;
 let connectErrors = 0;
+const MAX_TIMING_SAMPLES = 100;
 let connectTimings: number[] = [];
 let hasBeenUsed = false;
 
@@ -37,6 +38,9 @@ function attachPoolListeners(pool: Pool): void {
   pool.on("connect", () => {
     hasBeenUsed = true;
     connectTimings.push(Date.now());
+    if (connectTimings.length > MAX_TIMING_SAMPLES) {
+      connectTimings = connectTimings.slice(-MAX_TIMING_SAMPLES);
+    }
   });
 
   pool.on("acquire", () => {
