@@ -291,23 +291,27 @@ describe("Opdrachten UI/API contracts", () => {
     const layout = readFile("app", "vacatures", "layout.tsx");
     const pageQuery = readFile("src", "services", "jobs", "page-query.ts");
     const deduplication = readFile("src", "services", "jobs", "deduplication.ts");
+    const sidebarMetadataService = readFile("src", "services", "sidebar-metadata.ts");
 
+    // Layout delegates to precomputed sidebar metadata service + live job list
     expect(layout).toContain('listJobsPage({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" })');
     expect(layout).toContain('import { listJobsPage } from "@/src/services/jobs/page-query"');
-    expect(layout).toContain('getJobStatusCondition("open")');
-    expect(layout).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
-    // PostgreSQL uses jsonb_array_elements_text() for JSON array iteration
-    expect(layout).toContain("jsonb_array_elements_text");
-    expect(layout).toContain(
-      'import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco"',
-    );
-    expect(layout).toContain("await listEscoSkillsForFilter()");
-    expect(layout).toContain("skillOptions={skillOptions}");
+    expect(layout).toContain("getSidebarMetadata");
+    expect(layout).toContain("refreshSidebarMetadata");
+    expect(layout).toContain("skillOptions={metadata.skillOptions}");
     expect(layout).toContain("jobs={sidebarJobs}");
+    expect(layout).toContain("categories={metadata.categories}");
+
+    // Query logic now lives in sidebar-metadata service
+    expect(sidebarMetadataService).toContain('getJobStatusCondition("open")');
+    expect(sidebarMetadataService).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
+    expect(sidebarMetadataService).toContain("jsonb_array_elements_text");
+    expect(sidebarMetadataService).toContain("listEscoSkillsForFilter");
+    expect(sidebarMetadataService).toContain("getEscoCatalogStatus");
+
     expect(pageQuery).toContain("loadJobPageRowsByIds");
     expect(deduplication).toContain("pipelineCount");
     expect(deduplication).toContain("leftJoin(pipelineCounts");
-    expect(layout).toContain("categories={categories}");
     expect(deduplication).toContain("applicationDeadline");
   });
 
