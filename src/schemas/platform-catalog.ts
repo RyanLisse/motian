@@ -22,6 +22,8 @@ export const platformCatalogEntrySchema = z.object({
   latestRun: z
     .object({
       status: z.string(),
+      currentStep: z.string(),
+      nextActions: z.array(z.string()),
       blockerKind: z.string().nullable(),
     })
     .nullable(),
@@ -46,6 +48,8 @@ export type PlatformCatalogEntry = {
   } | null;
   latestRun: {
     status: string;
+    currentStep: string;
+    nextActions: string[];
     blockerKind: string | null;
   } | null;
 };

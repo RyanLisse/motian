@@ -128,7 +128,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
       "Sollicitaties bekijken en pipeline-fases bijwerken",
       "Data analyseren (tarieven, platforms, deadlines)",
       "Scrapers en scoring-batches starten voor opdrachten",
-      "Platform onboarding beheren: catalogus, config, validatie en smoke imports",
+      "Platform onboarding beheren: catalogus, credentials, config, validatie, implementatie, monitoring en smoke imports",
       "Nieuwe platformen automatisch toevoegen: URL analyseren → scraping strategie bepalen → volledig inrichten (platformAutoSetup)",
     ];
   }
@@ -158,7 +158,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
     "Data analyseren (tarieven, platforms, deadlines)",
     "Scrapers starten voor nieuwe opdrachten",
     "Batch import draaien over actieve scrapers (importeerOpdrachtenBatch)",
-    "Platform onboarding beheren: catalogus, config, validatie, test-import en activatie",
+    "Platform onboarding beheren: catalogus, credentials, config, validatie, implementatie, test-import, activatie en monitoring",
     "Nieuwe platformen automatisch toevoegen: geef een URL en de agent analyseert de site, bepaalt de scraping strategie, en richt alles in (platformAnalyze + platformAutoSetup)",
     "Batch scoring draaien over actieve opdrachten (runKandidaatScoringBatch)",
     "GDPR retentie review uitvoeren (reviewGdprRetentie)",
@@ -252,7 +252,10 @@ async function getWorkspaceContext(): Promise<{
       .map((entry) => {
         const configState = entry.configured ? "ja" : "nee";
         const blocker = sanitizePromptBlockerKind(entry.blockerKind);
-        return `  platform=${sanitizePromptSlug(entry.slug)} configured=${configState} blocker=${blocker}`;
+        const currentStep = entry.currentStep
+          ? ` current_step=${sanitizePromptSlug(entry.currentStep)}`
+          : "";
+        return `  platform=${sanitizePromptSlug(entry.slug)} configured=${configState} blocker=${blocker}${currentStep}`;
       })
       .join("\n");
 

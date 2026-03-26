@@ -92,6 +92,7 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
 
   const configKeys = readSchemaKeys(entry.configSchema);
   const authKeys = readSchemaKeys(entry.authSchema);
+  const nextActions = entry.latestRun?.nextActions ?? [];
 
   async function callApi(action: "save" | "validate" | "test-import" | "activate") {
     setLoadingAction(action);
@@ -229,10 +230,22 @@ export function PlatformConfigForm({ entry }: { entry: PlatformCatalogEntry }) {
       </div>
 
       {entry.latestRun && (
-        <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
-          Laatste onboarding status:{" "}
-          <span className="font-medium text-foreground">{entry.latestRun.status}</span>
-          {entry.latestRun.blockerKind ? ` · blocker: ${entry.latestRun.blockerKind}` : ""}
+        <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
+          <div>
+            Laatste onboarding status:{" "}
+            <span className="font-medium text-foreground">{entry.latestRun.status}</span>
+            {entry.latestRun.blockerKind ? ` · blocker: ${entry.latestRun.blockerKind}` : ""}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-md border border-border/70 bg-background/60 p-2">
+              <p className="font-medium text-foreground">Volgende stap</p>
+              <p>{entry.latestRun.currentStep}</p>
+            </div>
+            <div className="rounded-md border border-border/70 bg-background/60 p-2">
+              <p className="font-medium text-foreground">Aanbevolen acties</p>
+              <p>{nextActions.length > 0 ? nextActions.join(", ") : "Geen open acties"}</p>
+            </div>
+          </div>
         </div>
       )}
 

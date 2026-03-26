@@ -690,6 +690,33 @@ function emptyPlatformStats(platform: string): PlatformStats {
   };
 }
 
+function emptyScrapeAnalytics(): ScrapeAnalytics {
+  return {
+    totalRuns: 0,
+    totalJobsFound: 0,
+    totalJobsNew: 0,
+    totalDuplicates: 0,
+    totalUniqueJobs: 0,
+    overallSuccessRate: 0,
+    avgDurationMs: 0,
+    byPlatform: [],
+  };
+}
+
+async function getAnalyticsOrFallback(database: TransactionDb): Promise<ScrapeAnalytics> {
+  try {
+    return await getAnalytics(database);
+  } catch (error) {
+    console.error(
+      "[scraper-dashboard] Analytics laden mislukt, toon dashboard zonder KPI-totalen",
+      {
+        error,
+      },
+    );
+    return emptyScrapeAnalytics();
+  }
+}
+
 export async function getScraperDashboardData(
   opts: ScraperDashboardOptions = {},
   database: TransactionDb = db,
@@ -720,7 +747,7 @@ export async function getScraperDashboardData(
   // (request context for cookies/headers), which throws "Access to storage is not allowed
   // from this context". Same rationale as app/overzicht/data.ts getOverviewData.
   const dataPromise = (async () => {
-    const analytics = await getAnalytics(database);
+    const analytics = await getAnalyticsOrFallback(database);
     const configs = await database.select().from(scraperConfigs).orderBy(scraperConfigs.platform);
     const recentRuns = await database
       .select({

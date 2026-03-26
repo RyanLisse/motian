@@ -46,6 +46,12 @@ export function PlatformCatalogList({ entries }: { entries: PlatformCatalogEntry
               </span>
               {entry.latestRun?.blockerKind ? ` · blocker: ${entry.latestRun.blockerKind}` : ""}
             </p>
+            {entry.latestRun?.currentStep ? (
+              <p>
+                Volgende stap:{" "}
+                <span className="font-medium text-foreground">{entry.latestRun.currentStep}</span>
+              </p>
+            ) : null}
             <p>Config: {entry.config ? entry.config.baseUrl : "Nog geen runtime configuratie"}</p>
             {entry.docsUrl?.startsWith("http") ? (
               <p>

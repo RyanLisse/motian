@@ -317,6 +317,14 @@ describe("platform config service regressions", () => {
     expect(testImport.config).not.toHaveProperty("credentialsRef");
   });
 
+  it("keeps resumable onboarding states open instead of stamping completedAt", async () => {
+    const validation = await validateConfig("customboard", "agent");
+
+    expect(validation.status).toBe("needs_implementation");
+    expect(validation.onboardingRun.completedAt).toBeNull();
+    expect(validation.onboardingRun.status).toBe("needs_implementation");
+  });
+
   it("compares decrypted auth payloads instead of ciphertext blobs", () => {
     const existing = {
       id: "cfg-1",

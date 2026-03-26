@@ -40,6 +40,20 @@ function createQueryChain(result: unknown[]) {
   return chain;
 }
 
+function createRejectingQueryChain(error: Error) {
+  const promise = Promise.reject(error) as QueryChain;
+  promise.catch(() => undefined);
+  const chain = Object.assign(promise, {
+    from: vi.fn(() => chain),
+    where: vi.fn(() => chain),
+    orderBy: vi.fn(() => chain),
+    limit: vi.fn(() => chain),
+    groupBy: vi.fn(() => chain),
+  });
+
+  return chain;
+}
+
 function emptyAsyncIterable() {
   return {
     [Symbol.asyncIterator]() {
@@ -112,6 +126,33 @@ function createSerialMockDatabase(queryResults: unknown[][]) {
     });
 
     return chain;
+  });
+
+  const tx = { select };
+  const database = {
+    select,
+    transaction: vi.fn(async (callback: (input: typeof tx) => Promise<unknown>) => callback(tx)),
+  };
+
+  return { database, select, pending };
+}
+
+function createAnalyticsFailureDatabase(queryResultsAfterAnalytics: unknown[][], error: Error) {
+  const pending = [...queryResultsAfterAnalytics];
+  let firstSelect = true;
+
+  const select = vi.fn(() => {
+    if (firstSelect) {
+      firstSelect = false;
+      return createRejectingQueryChain(error);
+    }
+
+    const next = pending.shift();
+    if (!next) {
+      throw new Error("Unexpected extra select() while building scraper dashboard data");
+    }
+
+    return createQueryChain(next);
   });
 
   const tx = { select };
@@ -250,6 +291,33 @@ describe("getScraperDashboardData", () => {
       "opdrachtoverheid",
       "striive",
     ]);
+    expect(mockDb.pending).toHaveLength(0);
+  });
+
+  it("degrades gracefully when analytics aggregation times out", async () => {
+    mockRunsList.mockImplementation(() => emptyAsyncIterable());
+    const analyticsError = new Error("Connection terminated due to connection timeout");
+    const mockDb = createAnalyticsFailureDatabase(
+      buildQueryResults(["flextender"]).slice(3),
+      analyticsError,
+    );
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const result = await getScraperDashboardData(
+      { includeTrigger: false, activityLimit: 5, overlapLimit: 3 },
+      mockDb.database as never,
+    );
+
+    expect(result.analytics.totalRuns).toBe(0);
+    expect(result.analytics.byPlatform).toEqual([]);
+    expect(result.platforms).toHaveLength(1);
+    expect(result.platforms[0]?.platform).toBe("flextender");
+    expect(result.platforms[0]?.lifetime.totalRuns).toBe(0);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[scraper-dashboard] Analytics laden mislukt, toon dashboard zonder KPI-totalen",
+      { error: analyticsError },
+    );
     expect(mockDb.pending).toHaveLength(0);
   });
 
