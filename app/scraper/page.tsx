@@ -384,7 +384,7 @@ async function ScraperDashboardContent() {
               aandacht vragen.
             </p>
           </CardHeader>
-          <CardContent className="min-w-0">
+          <CardContent className="min-w-0 overflow-x-auto">
             <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
