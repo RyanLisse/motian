@@ -1,4 +1,4 @@
-import { and, db, inArray, isPostgresDatabase, or, type SQL, sql } from "../../db";
+import { and, db, inArray, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
@@ -167,7 +167,7 @@ export async function searchJobIdsByTitle(
   const filterCondition = opts.filterCondition ?? sql`true`;
   const tsInput = toTsQueryInput(query);
 
-  if (tsInput && isPostgresDatabase()) {
+  if (tsInput) {
     const searchQuery = sql`to_tsquery('dutch', ${tsInput})`;
     const searchVector = sql`to_tsvector('dutch', coalesce(${jobs.searchText}, ''))`;
     const searchRank = sql`ts_rank(${searchVector}, ${searchQuery})`;

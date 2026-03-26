@@ -1,8 +1,8 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
-// Provide a fallback DATABASE_URL so unit tests that call isPostgresDatabase() can
-// initialise the Drizzle client without a real database connection.
+// Provide a fallback DATABASE_URL so unit tests can initialise the Drizzle client
+// without a real database connection.
 process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/motian_test";
 
 const coverageThreshold = Number(process.env.COVERAGE_THRESHOLD ?? "24");

@@ -34,7 +34,6 @@ async function importListJobsPageWithMocks() {
   vi.doMock("../src/db", async () => ({
     ...(await vi.importActual("../src/db")),
     and: (...args: unknown[]) => ({ type: "and", args }),
-    isPostgresDatabase: () => true,
     sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
       type: "sql",
       strings,
@@ -140,7 +139,6 @@ async function importHybridJobsPageWithMocks() {
       select: mockSelect,
     },
     inArray: (column: unknown, values: unknown[]) => ({ type: "inArray", column, values }),
-    isPostgresDatabase: () => true,
     or: (...args: unknown[]) => ({ type: "or", args }),
     sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
       type: "sql",

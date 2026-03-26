@@ -11,7 +11,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { config as dotenvConfig } from "dotenv";
 import { and, type SQL, sql } from "drizzle-orm";
-import { db, isPostgresDatabase } from "../src/db";
+import { db } from "../src/db";
 import { jobs } from "../src/db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../src/lib/helpers";
 import { LIST_SLO_MS, type QueryPath, SEARCH_SLO_MS } from "../src/lib/query-observability";
@@ -187,13 +187,6 @@ async function capturePlans() {
 }
 
 async function main() {
-  if (!isPostgresDatabase()) {
-    console.error(
-      "Explain capture requires PostgreSQL. Set DATABASE_URL and run against Postgres.",
-    );
-    process.exit(1);
-  }
-
   const explainPlans = await capturePlans();
 
   const payload = {

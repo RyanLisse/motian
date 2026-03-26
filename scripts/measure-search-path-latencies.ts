@@ -10,7 +10,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { config as dotenvConfig } from "dotenv";
-import { isPostgresDatabase } from "../src/db";
 import type { QueryPath } from "../src/lib/query-observability";
 import { computePercentile } from "../src/services/esco-rollout-metrics";
 import { searchJobsUnified } from "../src/services/jobs";
@@ -204,7 +203,7 @@ async function main() {
     generatedAt: new Date().toISOString(),
     runsPerScenario: BASELINE_MEASURED_RUNS,
     warmupRuns: WARMUP_RUNS,
-    isPostgresDatabase: isPostgresDatabase(),
+    isPostgresDatabase: true,
     ...summarizeLatencySnapshot(summaries),
   };
 

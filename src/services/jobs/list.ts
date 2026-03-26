@@ -1,4 +1,4 @@
-import { and, db, desc, isPostgresDatabase, sql } from "../../db";
+import { and, db, desc, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
@@ -79,7 +79,7 @@ export async function listJobs(
 
   if (opts.q) {
     const tsInput = toTsQueryInput(opts.q);
-    if (tsInput && isPostgresDatabase()) {
+    if (tsInput) {
       queryPath = "list-fts";
       conditions.push(
         sql`to_tsvector('dutch', coalesce(${jobs.searchText}, '')) @@ to_tsquery('dutch', ${tsInput})`,
