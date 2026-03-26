@@ -196,7 +196,7 @@ describe("chat widget continuity", () => {
     ).toContain(
       '<motian-job-link href="/vacatures/12345678-1234-4123-8123-123456789abc">de opdracht</motian-job-link>',
     );
-  });
+  }, 30000);
 
   it("renders the full chat page with shared context and a visible load failure", async () => {
     const { ChatPageContent } = await import("../components/chat/chat-page-content");

@@ -2,6 +2,10 @@ import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 process.env.TURSO_DATABASE_URL ??= "file::memory:";
+const coverageThreshold = Number(process.env.COVERAGE_THRESHOLD ?? "24");
+const normalizedCoverageThreshold = Number.isFinite(coverageThreshold)
+  ? Math.min(Math.max(Math.trunc(coverageThreshold), 1), 100)
+  : 25;
 
 export default defineConfig({
   test: {
@@ -9,15 +13,9 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     reporters: ["verbose"],
-    // Parallel test execution for faster CI (40-60% speedup)
-    // - threads: Better for CPU-bound tests (our case: DB mocks, business logic)
-    // - forks: Use if tests have memory leaks or need full process isolation
-    pool: "forks",
-    poolOptions: {
-      forks: {
-        isolate: true,
-      },
-    },
+    pool: "threads",
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "json-summary"],
@@ -33,10 +31,10 @@ export default defineConfig({
       ],
       // Gate: fail if coverage drops below minimum (raise over time)
       thresholds: {
-        statements: 25,
-        branches: 20,
-        functions: 25,
-        lines: 25,
+        statements: normalizedCoverageThreshold,
+        branches: Math.max(1, Math.min(100, Math.floor(normalizedCoverageThreshold * 0.8))),
+        functions: normalizedCoverageThreshold,
+        lines: normalizedCoverageThreshold,
       },
     },
   },

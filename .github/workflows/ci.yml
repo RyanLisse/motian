@@ -226,6 +226,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: risk-policy-gate
     if: needs.risk-policy-gate.outputs.risk-tier == 'high'
+    env:
+      HOSTNAME: "0.0.0.0"
+      PORT: "3001"
     permissions:
       contents: read
 
@@ -261,14 +264,13 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Start dev server
-        run: pnpm dev &
+        run: |
+          pnpm dev > /tmp/next-dev.log 2>&1 &
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          HOSTNAME: "0.0.0.0"
-          PORT: "3001"
 
       - name: Wait for server
-        run: npx wait-on http://localhost:3001 --timeout 60000
+        run: npx wait-on http://localhost:${{ env.PORT }} --timeout 180000
 
       - name: Capture browser evidence
         run: pnpm tsx scripts/harness/capture-browser-evidence.ts

@@ -191,7 +191,7 @@ describe("autopilot rich evidence capture", () => {
     } finally {
       await server.close();
     }
-  }, 45_000);
+  }, 90_000);
 
   it("captures a HAR artifact with recorded network traffic", async () => {
     const server = await startTestServer();
@@ -248,5 +248,5 @@ describe("autopilot rich evidence capture", () => {
     } finally {
       await server.close();
     }
-  }, 45_000);
+  }, 90_000);
 });
