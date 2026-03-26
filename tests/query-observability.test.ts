@@ -26,7 +26,6 @@ async function importListJobsWithTelemetryMocks() {
   vi.doMock("../src/db", async () => ({
     ...(await vi.importActual("../src/db")),
     db: {},
-    isPostgresDatabase: vi.fn(() => false),
   }));
   vi.doMock("../src/db/schema", () => ({
     jobs: {
@@ -37,6 +36,7 @@ async function importListJobsWithTelemetryMocks() {
       province: "jobs.province",
       scrapedAt: "jobs.scrapedAt",
       id: "jobs.id",
+      searchText: "jobs.searchText",
     },
   }));
   vi.doMock("drizzle-orm", () => ({
@@ -101,7 +101,6 @@ async function importHybridSearchWithTelemetryMocks() {
       execute: mockExecute,
       select: mockSelect,
     },
-    isPostgresDatabase: vi.fn(() => false),
   }));
   vi.doMock("../src/db/schema", () => ({
     jobs: {

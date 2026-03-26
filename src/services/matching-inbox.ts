@@ -1,4 +1,4 @@
-import { and, db, desc, eq, gte, inArray, isNull, isPostgresDatabase, sql } from "../db";
+import { and, db, desc, eq, gte, inArray, isNull, sql } from "../db";
 import { applications, candidates, jobMatches, jobs } from "../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../lib/helpers";
 import type { Candidate, CandidateMatchingStatus } from "./candidates";
@@ -63,7 +63,7 @@ function buildMatchingInboxConditions(opts: MatchingInboxQuery) {
   if (opts.query) {
     const tsInput = toTsQueryInput(opts.query);
     conditions.push(
-      tsInput && isPostgresDatabase()
+      tsInput
         ? sql`to_tsvector('dutch', coalesce(${candidates.name}, '') || ' ' || coalesce(${candidates.role}, '') || ' ' || coalesce(${candidates.location}, '')) @@ to_tsquery('dutch', ${tsInput})`
         : caseInsensitiveContains(candidates.name, opts.query),
     );

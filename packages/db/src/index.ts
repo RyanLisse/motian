@@ -53,10 +53,6 @@ export function getDatabaseDialect(): "postgres" {
   return "postgres";
 }
 
-export function isPostgresDatabase(): boolean {
-  return getDatabaseDialect() === "postgres";
-}
-
 export const db = new Proxy({} as DatabaseClient, {
   get(_target, prop, receiver) {
     const client = getDatabaseClient();

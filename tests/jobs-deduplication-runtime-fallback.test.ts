@@ -63,7 +63,7 @@ describe("jobs deduplication runtime fallback", () => {
     vi.unmock("../src/services/jobs/repository");
   });
 
-  // SQLite/Turso: No runtime fallback - columns always exist in schema
+  // Normalized columns always exist in schema - no runtime fallback needed
   it("uses normalized columns directly without fallback", async () => {
     const mockExecute = vi.fn().mockResolvedValueOnce({ rows: [{ id: "job-1", total: 1 }] });
     const { fetchDedupedJobsPage } = await loadDeduplicationModule(mockExecute);

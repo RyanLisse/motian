@@ -90,7 +90,7 @@ describe("job deduplication compatibility fallback", () => {
     mockDb.select.mockReset();
   });
 
-  // SQLite/Turso: Dedupe columns are always present in schema - no fallback behavior
+  // Dedupe columns are always present in schema - no fallback behavior
   it("uses normalized columns directly without checking schema", async () => {
     // With SQLite, we directly use the normalized columns - no schema check needed
     mockDb.execute.mockResolvedValueOnce({ rows: [{ id: "job-1", total: 1 }] });

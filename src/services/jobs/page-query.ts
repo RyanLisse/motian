@@ -1,4 +1,4 @@
-import { and, db, inArray, isPostgresDatabase, type SQL, sql } from "../../db";
+import { and, db, inArray, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
@@ -178,8 +178,7 @@ export async function hybridSearchPageWithTotal(
 
         if (
           typeof embeddingService.generateQueryEmbedding === "function" &&
-          typeof embeddingService.generateEmbedding === "function" &&
-          isPostgresDatabase()
+          typeof embeddingService.generateEmbedding === "function"
         ) {
           const embeddingStartedAt = Date.now();
           const queryEmbedding = await embeddingService.generateQueryEmbedding(query);

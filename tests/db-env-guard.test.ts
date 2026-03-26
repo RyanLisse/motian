@@ -29,10 +29,9 @@ describe("@motian/db build safety", () => {
   it("reports postgres as the active dialect when DATABASE_URL is configured", async () => {
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/motian");
 
-    const { getDatabaseDialect, isPostgresDatabase } = await import("../packages/db/src/index");
+    const { getDatabaseDialect } = await import("../packages/db/src/index");
 
     expect(getDatabaseDialect()).toBe("postgres");
-    expect(isPostgresDatabase()).toBe(true);
   }, 120_000);
 
   it("rejects a public database env var", async () => {

@@ -1,4 +1,4 @@
-import { and, db, desc, eq, inArray, isNull, isPostgresDatabase, sql } from "../db";
+import { and, db, desc, eq, inArray, isNull, sql } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
 import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
@@ -83,7 +83,7 @@ export async function getCandidateById(id: string): Promise<Candidate | null> {
 /** Build FTS or ILIKE condition for candidate name search. */
 function candidateNameCondition(query: string) {
   const tsInput = toTsQueryInput(query);
-  if (tsInput && isPostgresDatabase()) {
+  if (tsInput) {
     return sql`to_tsvector('dutch', coalesce(${candidates.name}, '') || ' ' || coalesce(${candidates.role}, '') || ' ' || coalesce(${candidates.location}, '')) @@ to_tsquery('dutch', ${tsInput})`;
   }
   return caseInsensitiveContains(candidates.name, query);
@@ -91,9 +91,7 @@ function candidateNameCondition(query: string) {
 
 function candidateSkillsCondition(skillsQuery: string) {
   const pattern = `%${escapeLike(skillsQuery).toLocaleLowerCase("nl-NL")}%`;
-  return isPostgresDatabase()
-    ? sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}::jsonb) AS t(value) WHERE lower(t.value) LIKE ${pattern} ESCAPE '\\')`
-    : sql`EXISTS (SELECT 1 FROM json_each(${candidates.skills}) WHERE lower(value) LIKE ${pattern} ESCAPE '\\')`;
+  return sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}::jsonb) AS t(value) WHERE lower(t.value) LIKE ${pattern} ESCAPE '\\')`;
 }
 
 /** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */

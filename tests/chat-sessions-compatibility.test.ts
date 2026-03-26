@@ -258,7 +258,7 @@ describe("chat session compatibility fallback", () => {
     expect(second.map((message) => message.id)).toEqual(["m2", "m3"]);
   });
 
-  // SQLite/Turso always uses normalized tables - legacy fallback tests simplified
+  // Normalized tables are always used - no legacy fallback needed
   it("appends to legacy session storage when chat_session_messages is unavailable", async () => {
     // With SQLite, we always use normalized tables - no fallback needed
     const { persistMessages } = await import("../src/services/chat-sessions");
