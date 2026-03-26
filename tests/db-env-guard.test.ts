@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("@motian/db build safety", () => {
   const originalDatabaseUrl = process.env.DATABASE_URL;
-  const originalTursoDatabaseUrl = process.env.TURSO_DATABASE_URL;
 
   beforeEach(() => {
     vi.resetModules();
@@ -17,23 +16,14 @@ describe("@motian/db build safety", () => {
     } else {
       process.env.DATABASE_URL = originalDatabaseUrl;
     }
-
-    if (originalTursoDatabaseUrl === undefined) {
-      delete process.env.TURSO_DATABASE_URL;
-    } else {
-      process.env.TURSO_DATABASE_URL = originalTursoDatabaseUrl;
-    }
   });
 
   it("allows module import without DATABASE_URL until the db client is used", async () => {
     delete process.env.DATABASE_URL;
-    delete process.env.TURSO_DATABASE_URL;
     const dbModule = await import("../packages/db/src/index");
 
     expect(dbModule).toHaveProperty("db");
-    expect(() => dbModule.getDatabaseDialect()).toThrowError(
-      /DATABASE_URL is not set and TURSO_DATABASE_URL is not set/,
-    );
+    expect(() => dbModule.getDatabaseDialect()).toThrowError(/DATABASE_URL is not set/);
   }, 120_000);
 
   it("reports postgres as the active dialect when DATABASE_URL is configured", async () => {
@@ -53,17 +43,5 @@ describe("@motian/db build safety", () => {
     expect(() => dbModule.getDatabaseDialect()).toThrowError(
       /NEXT_PUBLIC_DATABASE_URL is set\. Keep the Neon connection string server-only in DATABASE_URL\./,
     );
-  }, 120_000);
-
-  it("exposes execute on the Turso fallback client", async () => {
-    vi.stubEnv("TURSO_DATABASE_URL", "file::memory:");
-
-    const dbModule = await import("../packages/db/src/index");
-    const tursoDb = dbModule.db as typeof dbModule.db & {
-      execute(query: unknown): Promise<{ rows: Array<{ x: number }> }>;
-    };
-    const result = await tursoDb.execute(dbModule.sql`select 1 as x`);
-
-    expect(result.rows).toEqual([{ x: 1 }]);
   }, 120_000);
 });
