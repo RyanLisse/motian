@@ -1,80 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server";
-import {
-  DEFAULT_OPDRACHTEN_LIMIT,
-  getOpdrachtenServiceSort,
-  hasExplicitOpdrachtenSort,
-  MAX_OPDRACHTEN_LIMIT,
-  parseOpdrachtenFilters,
-  validateOpdrachtenQueryParams,
-} from "@/src/lib/opdrachten-filters";
-import { parsePagination } from "@/src/lib/pagination";
-import { searchJobsUnified } from "@/src/services/jobs";
-import { getJobPipelineSummary } from "@/src/services/jobs/pipeline-summary";
+import { runJobPageSearch } from "@/src/lib/job-search-runner";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
-  const validatedQuery = validateOpdrachtenQueryParams(params);
+  const out = await runJobPageSearch(params);
 
-  if (!validatedQuery.success) {
-    return NextResponse.json(
-      { error: "Ongeldige parameters", details: validatedQuery.error.flatten() },
-      { status: 400 },
-    );
+  if (!out.ok) {
+    return NextResponse.json(out.error.body, { status: out.error.status });
   }
 
-  const filters = parseOpdrachtenFilters(params);
-  const { page, limit, offset } = parsePagination(params, {
-    limit: DEFAULT_OPDRACHTEN_LIMIT,
-    maxLimit: MAX_OPDRACHTEN_LIMIT,
-  });
-  const sortBy = getOpdrachtenServiceSort(
-    filters.sort,
-    Boolean(filters.q?.trim()),
-    hasExplicitOpdrachtenSort(params),
-  );
-  const result = await searchJobsUnified({
-    q: filters.q,
-    platform: filters.platform,
-    endClient: filters.endClient,
-    categories: filters.categories,
-    escoUri: filters.escoUri,
-    status: filters.status,
-    province: filters.province,
-    regions: filters.regions,
-    rateMin: filters.rateMin,
-    rateMax: filters.rateMax,
-    contractType: filters.contractType,
-    hoursPerWeekBucket: filters.hoursPerWeek,
-    minHoursPerWeek: filters.hoursPerWeekMin,
-    maxHoursPerWeek: filters.hoursPerWeekMax,
-    radiusKm: filters.radiusKm,
-    sortBy,
-    limit,
-    offset,
-  });
-
-  const includePipeline = params.get("includePipeline") !== "false";
-  const { hasPipelineByJobId, pipelineCountByJobId } = includePipeline
-    ? await getJobPipelineSummary(result.data.map((job) => job.id))
-    : { hasPipelineByJobId: new Set<string>(), pipelineCountByJobId: new Map<string, number>() };
-
-  const jobs = result.data.map((job) => ({
-    id: job.id,
-    title: job.title,
-    company: job.endClient ?? job.company,
-    location: job.location,
-    platform: job.platform,
-    workArrangement: job.workArrangement,
-    contractType: job.contractType,
-    applicationDeadline: job.applicationDeadline,
-    hasPipeline: hasPipelineByJobId.has(job.id),
-    pipelineCount: pipelineCountByJobId.get(job.id) ?? 0,
-  }));
+  const { result, page, limit } = out.data;
 
   return NextResponse.json({
-    jobs,
+    jobs: result.data,
     total: result.total,
     page,
     perPage: limit,

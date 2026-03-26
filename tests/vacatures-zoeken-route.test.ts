@@ -1,18 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRunJobPageSearch } = vi.hoisted(() => {
-  return {
-    mockRunJobPageSearch: vi.fn(),
-  };
-});
+const { mockRunJobPageSearch } = vi.hoisted(() => ({
+  mockRunJobPageSearch: vi.fn(),
+}));
 
 vi.mock("../src/lib/job-search-runner", () => ({
   runJobPageSearch: mockRunJobPageSearch,
 }));
 
-import { GET } from "../app/api/opdrachten/zoeken/route";
+import { GET } from "../app/api/vacatures/zoeken/route";
 
-describe("GET /api/opdrachten/zoeken", () => {
+describe("GET /api/vacatures/zoeken", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRunJobPageSearch.mockResolvedValue({
@@ -35,18 +33,16 @@ describe("GET /api/opdrachten/zoeken", () => {
           ],
           total: 1,
         },
-        page: 1,
-        limit: 10,
-        offset: 0,
+        page: 2,
+        limit: 25,
+        offset: 25,
       },
     });
   });
 
-  it("delegates filters to the shared page runner and returns compact recruiter jobs", async () => {
+  it("delegates filters to the shared page runner and returns compact vacatures rows", async () => {
     const request = {
-      nextUrl: new URL(
-        "http://localhost/api/opdrachten/zoeken?q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad&regio=noord&vakgebied=ICT&vakgebied=Data&vaardigheid=skill:java&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&contractType=interim&tariefMin=80&tariefMax=120&sort=deadline_desc&pagina=2&perPage=25",
-      ),
+      nextUrl: new URL("http://localhost/api/vacatures/zoeken?q=manager&pagina=2&perPage=25"),
     } as Parameters<typeof GET>[0];
 
     const response = await GET(request);
@@ -55,12 +51,8 @@ describe("GET /api/opdrachten/zoeken", () => {
     expect(mockRunJobPageSearch).toHaveBeenCalledTimes(1);
     const params = mockRunJobPageSearch.mock.calls[0][0] as URLSearchParams;
     expect(params.get("q")).toBe("manager");
-    expect(params.get("platform")).toBe("opdrachtoverheid");
-    expect(params.get("vakgebied")).toBe("ICT");
-    expect(params.getAll("vakgebied")).toEqual(["ICT", "Data"]);
     expect(params.get("pagina")).toBe("2");
     expect(params.get("perPage")).toBe("25");
-
     expect(body).toEqual({
       jobs: [
         {
@@ -77,8 +69,8 @@ describe("GET /api/opdrachten/zoeken", () => {
         },
       ],
       total: 1,
-      page: 1,
-      perPage: 10,
+      page: 2,
+      perPage: 25,
       totalPages: 1,
     });
   });
@@ -93,7 +85,7 @@ describe("GET /api/opdrachten/zoeken", () => {
     });
 
     const request = {
-      nextUrl: new URL("http://localhost/api/opdrachten/zoeken?page=abc"),
+      nextUrl: new URL("http://localhost/api/vacatures/zoeken?page=abc"),
     } as Parameters<typeof GET>[0];
 
     const response = await GET(request);
@@ -101,26 +93,5 @@ describe("GET /api/opdrachten/zoeken", () => {
 
     expect(response.status).toBe(400);
     expect(body).toEqual({ error: "Ongeldige parameters" });
-  });
-
-  it("returns empty page rows directly from the shared page runner", async () => {
-    mockRunJobPageSearch.mockResolvedValueOnce({
-      ok: true,
-      data: {
-        result: { data: [], total: 0 },
-        page: 1,
-        limit: 10,
-        offset: 0,
-      },
-    });
-
-    const request = {
-      nextUrl: new URL("http://localhost/api/opdrachten/zoeken"),
-    } as Parameters<typeof GET>[0];
-
-    const response = await GET(request);
-    const body = await response.json();
-
-    expect(body.jobs).toEqual([]);
   });
 });

@@ -8,6 +8,12 @@ import {
 } from "./jobs/filters";
 import { type ListJobsOptions, listActiveJobs, listJobs as listJobsImpl } from "./jobs/list";
 import {
+  hybridSearchPageWithTotal as hybridSearchPageWithTotalImpl,
+  type JobPageResult,
+  type JobPageRow,
+  listJobsPage as listJobsPageImpl,
+} from "./jobs/page-query";
+import {
   deleteJob,
   getJobById as getJobByIdImpl,
   type Job,
@@ -56,6 +62,9 @@ export type UnifiedJobSearchResult = {
   data: Array<Job & { score?: number }>;
   total: number;
 };
+
+export type UnifiedJobPageSearchResult = JobPageResult;
+export type UnifiedJobPageRow = JobPageRow;
 
 export type {
   HybridSearchOptions,
@@ -143,6 +152,68 @@ export async function searchJobsUnified(
   };
   const result = await hybridSearchWithTotalImpl(query, hybridOpts);
   return { data: result.data, total: result.total };
+}
+
+export async function searchJobsPageUnified(
+  opts: UnifiedJobSearchOptions = {},
+): Promise<UnifiedJobPageSearchResult> {
+  const query = typeof opts.q === "string" ? opts.q.trim() : "";
+
+  if (!query) {
+    return listJobsPageImpl({
+      limit: opts.limit,
+      offset: opts.offset,
+      platform: opts.platform,
+      company: opts.company,
+      endClient: opts.endClient,
+      escoUri: opts.escoUri,
+      category: opts.category,
+      categories: opts.categories,
+      status: opts.status,
+      province: opts.province,
+      region: opts.region,
+      regions: opts.regions,
+      rateMin: opts.rateMin,
+      rateMax: opts.rateMax,
+      contractType: opts.contractType,
+      workArrangement: opts.workArrangement,
+      hoursPerWeekBucket: opts.hoursPerWeekBucket,
+      minHoursPerWeek: opts.minHoursPerWeek,
+      maxHoursPerWeek: opts.maxHoursPerWeek,
+      radiusKm: opts.radiusKm,
+      postedAfter: opts.postedAfter,
+      deadlineBefore: opts.deadlineBefore,
+      startDateAfter: opts.startDateAfter,
+      sortBy: opts.sortBy,
+    });
+  }
+
+  return hybridSearchPageWithTotalImpl(query, {
+    limit: opts.limit,
+    offset: opts.offset,
+    platform: opts.platform,
+    company: opts.company,
+    endClient: opts.endClient,
+    escoUri: opts.escoUri,
+    category: opts.category,
+    categories: opts.categories,
+    status: opts.status,
+    province: opts.province,
+    region: opts.region,
+    regions: opts.regions,
+    rateMin: opts.rateMin,
+    rateMax: opts.rateMax,
+    contractType: opts.contractType,
+    workArrangement: opts.workArrangement,
+    hoursPerWeekBucket: opts.hoursPerWeekBucket,
+    minHoursPerWeek: opts.minHoursPerWeek,
+    maxHoursPerWeek: opts.maxHoursPerWeek,
+    radiusKm: opts.radiusKm,
+    postedAfter: opts.postedAfter,
+    deadlineBefore: opts.deadlineBefore,
+    startDateAfter: opts.startDateAfter,
+    sortBy: opts.sortBy,
+  });
 }
 
 export async function getJobById(id: string): Promise<Job | null> {

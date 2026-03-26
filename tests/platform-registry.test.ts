@@ -12,6 +12,7 @@ describe("platform registry", () => {
     expect(getImplementedPlatformSlugs()).toEqual(
       expect.arrayContaining([
         "flextender",
+        "mipublic",
         "opdrachtoverheid",
         "striive",
         "nationalevacaturebank",

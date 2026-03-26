@@ -42,11 +42,6 @@ const nvbAuthSchema = z
   })
   .default({ consentProfile: "minimal" });
 
-const mipublicConfigSchema = z.object({
-  baseUrl: z.union([z.string().url(), z.literal("")]),
-  parameters: z.record(z.unknown()).default({}),
-});
-
 const werkzoekenConfigSchema = z.object({
   baseUrl: z.string().url(),
   parameters: z
@@ -55,6 +50,17 @@ const werkzoekenConfigSchema = z.object({
       maxPages: z.number().int().min(1).max(1500).default(1300),
       detailConcurrency: z.number().int().min(1).max(10).default(4),
       skipDetailEnrichment: z.boolean().default(false),
+    })
+    .default({}),
+});
+
+const mipublicConfigSchema = z.object({
+  baseUrl: z.string().url(),
+  parameters: z
+    .object({
+      sitemapPath: z.string().default("/vacature-sitemap.xml"),
+      detailConcurrency: z.number().int().min(1).max(8).default(4),
+      maxListings: z.number().int().min(1).max(500).optional(),
     })
     .default({}),
 });
@@ -71,6 +77,25 @@ export const platformDefinitions: PlatformDefinition[] = [
     description: "Publieke Flextender opdrachten via widget/AJAX scraping.",
     defaultBaseUrl: "https://www.flextender.nl/opdrachten/",
     configSchema: basicPlatformConfigSchema,
+    authSchema: emptyAuthSchema,
+  },
+  {
+    slug: "mipublic",
+    displayName: "MiPublic",
+    adapterKind: "http_html_list_detail",
+    authMode: "none",
+    attributionLabel: "MiPublic",
+    badgeClassName: "border-cyan-500/20 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+    capabilities: ["detail_enrichment", "pagination", "smoke_import", "validation"],
+    description:
+      "Publieke WordPress vacaturebron met Yoast sitemap en JobPosting JSON-LD op detailpagina's.",
+    defaultBaseUrl: "https://mipublic.nl",
+    defaultParameters: {
+      sitemapPath: "/vacature-sitemap.xml",
+      detailConcurrency: 4,
+    },
+    docsUrl: "https://mipublic.nl/vacature-sitemap.xml",
+    configSchema: mipublicConfigSchema,
     authSchema: emptyAuthSchema,
   },
   {
@@ -140,20 +165,6 @@ export const platformDefinitions: PlatformDefinition[] = [
     docsUrl: "https://www.nationalevacaturebank.nl/vacatures/branche/ict",
     configSchema: nvbConfigSchema,
     authSchema: nvbAuthSchema,
-  },
-  {
-    slug: "mipublic",
-    displayName: "MiPublic",
-    adapterKind: "http_html_list_detail",
-    authMode: "none",
-    attributionLabel: "MiPublic",
-    badgeClassName: "border-teal-500/20 bg-teal-500/10 text-teal-600 dark:text-teal-400",
-    capabilities: ["detail_enrichment", "smoke_import", "validation"],
-    description:
-      "Publiek platform voor ZZP, interim en detachering opdrachten bij de overheid met JSON-LD vacaturedata.",
-    defaultBaseUrl: "https://mipublic.nl/zzp-opdrachten-overheid/",
-    configSchema: mipublicConfigSchema,
-    authSchema: emptyAuthSchema,
   },
   {
     slug: "werkzoeken",

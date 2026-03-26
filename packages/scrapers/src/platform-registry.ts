@@ -82,6 +82,11 @@ const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefiniti
             "Configuratie is geldig. Opdrachtoverheid gebruikt een vaste API-bron tijdens runtime.",
         }),
       };
+    case "mipublic":
+      return {
+        ...definition,
+        adapter: mipublicAdapter,
+      };
     case "striive":
       return {
         ...definition,
@@ -96,11 +101,6 @@ const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefiniti
       return {
         ...definition,
         adapter: nationaleVacaturebankAdapter,
-      };
-    case "mipublic":
-      return {
-        ...definition,
-        adapter: mipublicAdapter,
       };
     case "monsterboard":
       return {

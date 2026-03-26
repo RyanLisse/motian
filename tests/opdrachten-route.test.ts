@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockSearchJobsUnified, mockWithJobsCanonicalSkills } = vi.hoisted(() => ({
-  mockSearchJobsUnified: vi.fn(),
+const { mockRunVacaturesSearch, mockWithJobsCanonicalSkills } = vi.hoisted(() => ({
+  mockRunVacaturesSearch: vi.fn(),
   mockWithJobsCanonicalSkills: vi.fn(),
 }));
 
-vi.mock("../src/services/jobs", () => ({
-  searchJobsUnified: mockSearchJobsUnified,
+vi.mock("../src/lib/vacatures-search", () => ({
+  runVacaturesSearch: mockRunVacaturesSearch,
 }));
 
 vi.mock("../src/services/esco", () => ({
@@ -18,11 +18,19 @@ import { GET } from "../app/api/opdrachten/route";
 describe("GET /api/opdrachten", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSearchJobsUnified.mockResolvedValue({ data: [], total: 0 });
+    mockRunVacaturesSearch.mockResolvedValue({
+      ok: true,
+      data: {
+        result: { data: [], total: 0 },
+        page: 1,
+        limit: 50,
+        offset: 0,
+      },
+    });
     mockWithJobsCanonicalSkills.mockResolvedValue([]);
   });
 
-  it("parses recruiter filters and pagination through the shared opdrachten contract", async () => {
+  it("delegates the request query to the shared vacatures search runner", async () => {
     const request = new Request(
       "http://localhost/api/opdrachten?q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad&regio=noord&vakgebied=ICT&vakgebied=Data&vaardigheid=skill:java&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&contractType=interim&tariefMin=80&tariefMax=120&sort=deadline_desc&pagina=2&perPage=25",
     );
@@ -30,58 +38,54 @@ describe("GET /api/opdrachten", () => {
     const response = await GET(request);
     const body = await response.json();
 
-    expect(mockSearchJobsUnified).toHaveBeenCalledWith({
-      q: "manager",
-      platform: "opdrachtoverheid",
-      endClient: "Gemeente Utrecht",
-      categories: ["ICT", "Data"],
-      escoUri: "skill:java",
-      status: "closed",
-      province: "Utrecht",
-      regions: ["randstad", "noord"],
-      rateMin: 80,
-      rateMax: 120,
-      contractType: "interim",
-      hoursPerWeekBucket: undefined,
-      minHoursPerWeek: 24,
-      maxHoursPerWeek: 36,
-      radiusKm: 25,
-      sortBy: "deadline_desc",
-      limit: 25,
-      offset: 25,
+    expect(mockRunVacaturesSearch).toHaveBeenCalledTimes(1);
+    const params = mockRunVacaturesSearch.mock.calls[0][0] as URLSearchParams;
+    expect(params.get("q")).toBe("manager");
+    expect(params.get("platform")).toBe("opdrachtoverheid");
+    expect(params.getAll("vakgebied")).toEqual(["ICT", "Data"]);
+    expect(params.get("pagina")).toBe("2");
+    expect(params.get("perPage")).toBe("25");
+    expect(body.perPage).toBe(50);
+    expect(body.page).toBe(1);
+  });
+
+  it("returns paginated canonicalized job data from the shared runner result", async () => {
+    mockRunVacaturesSearch.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        result: {
+          data: [{ id: "job-1", title: "Manager Inhuur" }],
+          total: 3,
+        },
+        page: 2,
+        limit: 25,
+        offset: 25,
+      },
     });
-    expect(body.perPage).toBe(25);
-    expect(body.page).toBe(2);
-  });
+    mockWithJobsCanonicalSkills.mockResolvedValueOnce([{ id: "job-1", title: "Manager Inhuur" }]);
 
-  it("maps relevance to search-mode ranking instead of forcing a fallback sort", async () => {
-    const request = new Request("http://localhost/api/opdrachten?q=manager&sort=relevantie");
-
+    const request = new Request("http://localhost/api/opdrachten?q=manager&pagina=2&perPage=25");
     await GET(request);
 
-    expect(mockSearchJobsUnified).toHaveBeenCalledWith(
-      expect.objectContaining({ q: "manager", sortBy: undefined }),
-    );
+    expect(mockWithJobsCanonicalSkills).toHaveBeenCalledWith([
+      { id: "job-1", title: "Manager Inhuur" },
+    ]);
   });
 
-  it("keeps query searches on relevance when no sort param is provided", async () => {
-    const request = new Request("http://localhost/api/opdrachten?q=manager");
+  it("returns runner validation errors unchanged", async () => {
+    mockRunVacaturesSearch.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        status: 400,
+        body: { error: "Ongeldige parameters" },
+      },
+    });
 
-    await GET(request);
-
-    expect(mockSearchJobsUnified).toHaveBeenCalledWith(
-      expect.objectContaining({ q: "manager", sortBy: undefined }),
-    );
-  });
-
-  it("returns 400 for malformed pagination params before hitting the service layer", async () => {
     const request = new Request("http://localhost/api/opdrachten?page=abc");
-
     const response = await GET(request);
     const body = await response.json();
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Ongeldige parameters");
-    expect(mockSearchJobsUnified).not.toHaveBeenCalled();
   });
 });
