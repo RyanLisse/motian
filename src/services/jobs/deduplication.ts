@@ -1,5 +1,6 @@
-import { and, db, inArray, isNotNull, isNull, type SQL, sql } from "../../db";
-import { applications, jobs } from "../../db/schema";
+import { and, db, eq, inArray, isNotNull, isNull, type SQL, sql } from "../../db";
+import { applications, jobDedupeRanks, jobs } from "../../db/schema";
+import { getDedupeRanksFreshness } from "./dedupe-ranks";
 import type { ListJobsSortBy } from "./filters";
 import { getJobReadSelection, type Job } from "./repository";
 
@@ -259,7 +260,10 @@ export async function loadJobPageRowsByIds(ids: string[]) {
   const pipelineCounts = db
     .select({
       jobId: applications.jobId,
-      pipelineCount: sql<number>`sum(case when ${applications.stage} != 'rejected' then 1 else 0 end)::int`.as("pipeline_count"),
+      pipelineCount:
+        sql<number>`sum(case when ${applications.stage} != 'rejected' then 1 else 0 end)::int`.as(
+          "pipeline_count",
+        ),
     })
     .from(applications)
     .where(
@@ -357,6 +361,44 @@ export async function fetchDedupedJobIds({
   });
 }
 
+/**
+ * Fast path: JOINs on precomputed `job_dedupe_ranks` instead of running
+ * the window-function CTE. Only usable when ranks are fresh (<30 min old).
+ */
+export async function fetchDedupedJobsPageFast({
+  whereClause,
+  limit,
+  offset = 0,
+  sortBy,
+}: {
+  whereClause: SQL;
+  limit: number;
+  offset?: number;
+  sortBy?: ListJobsSortBy;
+}): Promise<{ ids: string[]; total: number }> {
+  const sortOrder = getListSortOrderSql(sortBy);
+
+  const result = await (
+    db as unknown as { execute(sql: SQL): Promise<{ rows: DedupedJobPageRow[] }> }
+  ).execute(sql`
+    SELECT ${jobs.id} AS id, CAST(COUNT(*) OVER() AS integer) AS total
+    FROM ${jobs}
+    INNER JOIN ${jobDedupeRanks} ON ${jobDedupeRanks.jobId} = ${jobs.id}
+    WHERE ${whereClause}
+      AND ${eq(jobDedupeRanks.dedupeRank, 1)}
+    ORDER BY ${sortOrder.resultOrderBy}
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `);
+  const rows = result.rows;
+  const total = rows[0]?.total == null ? 0 : Number(rows[0].total);
+
+  return {
+    ids: rows.flatMap((row) => (row.id ? [row.id] : [])),
+    total,
+  };
+}
+
 export async function fetchDedupedJobsPage({
   whereClause,
   limit,
@@ -368,6 +410,17 @@ export async function fetchDedupedJobsPage({
   offset?: number;
   sortBy?: ListJobsSortBy;
 }): Promise<{ ids: string[]; total: number }> {
+  // Try fast path with precomputed ranks
+  try {
+    const { isFresh } = await getDedupeRanksFreshness();
+    if (isFresh) {
+      return fetchDedupedJobsPageFast({ whereClause, limit, offset, sortBy });
+    }
+  } catch {
+    // Ranks table may not exist yet or db is mocked — fall through to CTE
+  }
+
+  // Fallback: run the full CTE when ranks are stale (>30 min)
   const sortOrder = getListSortOrderSql(sortBy);
 
   return withJobsDeduplicationCompatibility(async (mode) => {
