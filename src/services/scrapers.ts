@@ -356,8 +356,7 @@ async function recordOnboardingSnapshot(input: {
       nextActions: next.nextActions,
       evidence: next.evidence,
       result: input.event.evidence ?? {},
-      completedAt:
-        next.status === "completed" || next.status === "failed" ? new Date() : null,
+      completedAt: next.status === "completed" || next.status === "failed" ? new Date() : null,
       updatedAt: new Date(),
     })
     .returning();

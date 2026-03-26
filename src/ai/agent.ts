@@ -252,7 +252,9 @@ async function getWorkspaceContext(): Promise<{
       .map((entry) => {
         const configState = entry.configured ? "ja" : "nee";
         const blocker = sanitizePromptBlockerKind(entry.blockerKind);
-        const currentStep = entry.currentStep ? ` current_step=${sanitizePromptSlug(entry.currentStep)}` : "";
+        const currentStep = entry.currentStep
+          ? ` current_step=${sanitizePromptSlug(entry.currentStep)}`
+          : "";
         return `  platform=${sanitizePromptSlug(entry.slug)} configured=${configState} blocker=${blocker}${currentStep}`;
       })
       .join("\n");

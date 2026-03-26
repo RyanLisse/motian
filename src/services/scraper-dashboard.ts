@@ -707,9 +707,12 @@ async function getAnalyticsOrFallback(database: TransactionDb): Promise<ScrapeAn
   try {
     return await getAnalytics(database);
   } catch (error) {
-    console.error("[scraper-dashboard] Analytics laden mislukt, toon dashboard zonder KPI-totalen", {
-      error,
-    });
+    console.error(
+      "[scraper-dashboard] Analytics laden mislukt, toon dashboard zonder KPI-totalen",
+      {
+        error,
+      },
+    );
     return emptyScrapeAnalytics();
   }
 }
