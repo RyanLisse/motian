@@ -191,7 +191,10 @@ export function useSidebarFilters({
     [debouncedHoursMin, debouncedHoursMax, urenPerWeekMin, urenPerWeekMax],
   );
   const effectiveHoursPerWeekBucket = debouncedHoursHasManualInput ? "" : urenPerWeek;
-  const sortedRegios = useMemo(() => [...localRegios].sort((a, b) => a.localeCompare(b)), [localRegios]);
+  const sortedRegios = useMemo(
+    () => [...localRegios].sort((a, b) => a.localeCompare(b)),
+    [localRegios],
+  );
   const sortedVakgebieden = useMemo(
     () => [...localVakgebieden].sort((a, b) => a.localeCompare(b)),
     [localVakgebieden],
@@ -383,7 +386,8 @@ export function useSidebarFilters({
   const handleFilterChange = useCallback(
     (paramKey: string, value: string) => {
       // Update local state immediately so TanStack Query key changes now
-      if (paramKey === "status") setLocalStatus(value === "" ? "open" : (value as typeof localStatus));
+      if (paramKey === "status")
+        setLocalStatus(value === "" ? "open" : (value as typeof localStatus));
       else if (paramKey === "platform") setLocalPlatform(value);
       else if (paramKey === "endClient") setLocalEndClient(value);
       else if (paramKey === "vaardigheid") setLocalVaardigheid(value);
