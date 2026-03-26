@@ -226,6 +226,8 @@ export const jobs = pgTable(
     statusProvinceIdx: index("idx_jobs_status_province").on(table.status, table.province),
     statusScrapedAtIdx: index("idx_jobs_status_scraped_at").on(table.status, table.scrapedAt),
     statusDeletedAtIdx: index("idx_jobs_status_deleted_at").on(table.status, table.deletedAt),
+    openActiveIdx: index("idx_jobs_open_active").on(table.status, table.scrapedAt).where(sql`deleted_at IS NULL AND status = 'open'`),
+    platformActiveIdx: index("idx_jobs_platform_active").on(table.platform, table.scrapedAt).where(sql`deleted_at IS NULL`),
   }),
 );
 
@@ -390,6 +392,7 @@ export const jobSkills = pgTable(
       table.source,
     ),
     criticalIdx: index("idx_job_skills_critical").on(table.critical),
+    escoJobIdx: index("idx_job_skills_esco_job").on(table.escoUri, table.jobId),
   }),
 );
 
@@ -481,6 +484,7 @@ export const applications = pgTable(
     jobCandidateUniqueIdx: uniqueIndex("uq_applications_job_candidate_active")
       .on(table.jobId, table.candidateId)
       .where(sql`deleted_at IS NULL`),
+    jobActiveIdx: index("idx_applications_job_active").on(table.jobId).where(sql`deleted_at IS NULL`),
   }),
 );
 

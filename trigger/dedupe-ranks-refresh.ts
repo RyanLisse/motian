@@ -1,8 +1,12 @@
-import { logger, task } from "@trigger.dev/sdk";
+import { logger, schedules } from "@trigger.dev/sdk";
 import { refreshDedupeRanks } from "../src/services/jobs/dedupe-ranks";
 
-export const dedupeRanksRefresh = task({
+export const dedupeRanksRefresh = schedules.task({
   id: "dedupe-ranks-refresh",
+  cron: {
+    pattern: "*/15 * * * *",
+    timezone: "Europe/Amsterdam",
+  },
   retry: {
     maxAttempts: 3,
     factor: 2,

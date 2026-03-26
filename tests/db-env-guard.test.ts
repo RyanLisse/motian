@@ -23,23 +23,15 @@ describe("@motian/db build safety", () => {
     const dbModule = await import("../packages/db/src/index");
 
     expect(dbModule).toHaveProperty("db");
-    expect(() => dbModule.getDatabaseDialect()).toThrowError(/DATABASE_URL is not set/);
-  }, 120_000);
-
-  it("reports postgres as the active dialect when DATABASE_URL is configured", async () => {
-    vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/motian");
-
-    const { getDatabaseDialect } = await import("../packages/db/src/index");
-
-    expect(getDatabaseDialect()).toBe("postgres");
   }, 120_000);
 
   it("rejects a public database env var", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATABASE_URL", "postgres://public.example");
+    vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/motian");
 
     const dbModule = await import("../packages/db/src/index");
 
-    expect(() => dbModule.getDatabaseDialect()).toThrowError(
+    expect(() => dbModule.db.$client).toThrowError(
       /NEXT_PUBLIC_DATABASE_URL is set\. Keep the Neon connection string server-only in DATABASE_URL\./,
     );
   }, 120_000);

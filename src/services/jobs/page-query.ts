@@ -157,75 +157,19 @@ export async function hybridSearchPageWithTotal(
           return [];
         }
 
-        if (
-          typeof embeddingService.generateQueryEmbedding === "function" &&
-          typeof embeddingService.findSimilarJobsByEmbedding === "function"
-        ) {
-          const embeddingStartedAt = Date.now();
-          const queryEmbedding = await embeddingService.generateQueryEmbedding(query);
-          embeddingMs = Date.now() - embeddingStartedAt;
+        const embeddingStartedAt = Date.now();
+        const queryEmbedding = await embeddingService.generateQueryEmbedding(query);
+        embeddingMs = Date.now() - embeddingStartedAt;
 
-          const vectorSearchStartedAt = Date.now();
-          const results = await embeddingService.findSimilarJobsByEmbedding(queryEmbedding, {
-            limit: policy.fetchSize,
-            minScore: policy.vectorMinScore,
-            filterCondition: retrievalFilterCondition,
-          });
-          vectorSearchMs = Date.now() - vectorSearchStartedAt;
+        const vectorSearchStartedAt = Date.now();
+        const results = await embeddingService.findSimilarJobsByEmbedding(queryEmbedding, {
+          limit: policy.fetchSize,
+          minScore: policy.vectorMinScore,
+          filterCondition: retrievalFilterCondition,
+        });
+        vectorSearchMs = Date.now() - vectorSearchStartedAt;
 
-          return results;
-        }
-
-        if (
-          typeof embeddingService.generateQueryEmbedding === "function" &&
-          typeof embeddingService.generateEmbedding === "function"
-        ) {
-          const embeddingStartedAt = Date.now();
-          const queryEmbedding = await embeddingService.generateQueryEmbedding(query);
-          embeddingMs = Date.now() - embeddingStartedAt;
-
-          const vectorStr = `[${queryEmbedding.join(",")}]`;
-          const vectorSearchStartedAt = Date.now();
-          const result = await (
-            db as unknown as {
-              execute(sql: SQL): Promise<{
-                rows: Array<{ id: string; title: string; similarity: number | string }>;
-              }>;
-            }
-          ).execute(sql`
-            SELECT
-              id,
-              title,
-              1 - (embedding <=> ${vectorStr}::vector) AS similarity
-            FROM jobs
-            WHERE embedding IS NOT NULL
-              AND deleted_at IS NULL
-              AND ${retrievalFilterCondition}
-              AND 1 - (embedding <=> ${vectorStr}::vector) >= ${policy.vectorMinScore}
-            ORDER BY embedding <=> ${vectorStr}::vector
-            LIMIT ${policy.fetchSize}
-          `);
-          vectorSearchMs = Date.now() - vectorSearchStartedAt;
-
-          return result.rows.map((row) => ({
-            id: row.id,
-            title: row.title,
-            similarity: Number(row.similarity),
-          }));
-        }
-
-        if (typeof embeddingService.findSimilarJobs === "function") {
-          const vectorSearchStartedAt = Date.now();
-          const results = await embeddingService.findSimilarJobs(query, {
-            limit: policy.fetchSize,
-            minScore: policy.vectorMinScore,
-            filterCondition: retrievalFilterCondition,
-          });
-          vectorSearchMs = Date.now() - vectorSearchStartedAt;
-          return results;
-        }
-
-        return [];
+        return results;
       } catch {
         return [];
       }

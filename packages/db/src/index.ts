@@ -48,11 +48,6 @@ function getDatabaseClient(): DatabaseClient {
   return databaseClient;
 }
 
-export function getDatabaseDialect(): "postgres" {
-  getDatabaseClient();
-  return "postgres";
-}
-
 export const db = new Proxy({} as DatabaseClient, {
   get(_target, prop, receiver) {
     const client = getDatabaseClient();
