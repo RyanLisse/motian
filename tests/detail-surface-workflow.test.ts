@@ -245,7 +245,7 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(html).toContain("Selecteer direct wie je aan screening wilt toevoegen.");
     expect(html).not.toContain("Recruiter cockpit");
     expect(html).not.toContain("AI Grading");
-    expect(fetchMock).toHaveBeenCalledWith("/api/opdrachten/job-1/match-kandidaten", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/vacatures/job-1/match-kandidaten", {
       method: "POST",
     });
 
@@ -254,7 +254,7 @@ describe("Detail surfaces recruiter workflow context", () => {
     await flushPromises();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/opdrachten/job-1/koppel",
+      "/api/vacatures/job-1/koppel",
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },

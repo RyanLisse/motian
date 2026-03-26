@@ -44,7 +44,7 @@ export function RunDetailJobs({
     setRawPayload(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/opdrachten/${jobId}/raw`);
+      const res = await fetch(`/api/vacatures/${jobId}/raw`);
       const json = await res.json();
       if (res.ok && json?.data?.rawPayload !== undefined) {
         setRawPayload(json.data.rawPayload as Record<string, unknown>);

@@ -12,13 +12,13 @@ describe("ESCO surface parity", () => {
   it("includes canonicalSkills in candidate and job API responses", () => {
     const kandidaatListRoute = readFile("app", "api", "kandidaten", "route.ts");
     const kandidaatDetailRoute = readFile("app", "api", "kandidaten", "[id]", "route.ts");
-    const opdrachtenListRoute = readFile("app", "api", "opdrachten", "route.ts");
-    const opdrachtenDetailRoute = readFile("app", "api", "opdrachten", "[id]", "route.ts");
+    const vacaturesListRoute = readFile("app", "api", "vacatures", "route.ts");
+    const vacaturesDetailRoute = readFile("app", "api", "vacatures", "[id]", "route.ts");
 
     expect(kandidaatListRoute).toContain("withCandidatesCanonicalSkills");
     expect(kandidaatDetailRoute).toContain("withCandidateCanonicalSkills");
-    expect(opdrachtenListRoute).toContain("withJobsCanonicalSkills");
-    expect(opdrachtenDetailRoute).toContain("withJobCanonicalSkills");
+    expect(vacaturesListRoute).toContain("withJobsCanonicalSkills");
+    expect(vacaturesDetailRoute).toContain("withJobCanonicalSkills");
   });
 
   it("includes canonicalSkills in AI, MCP, and voice candidate/job outputs", () => {

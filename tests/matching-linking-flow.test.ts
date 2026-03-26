@@ -364,7 +364,7 @@ describe("Matching linking flow — structural assertions", () => {
 
   it("wizard linking supports manual vacancy search and jobIds linking", () => {
     const source = readFile("components/candidate-wizard/wizard-step-linking.tsx");
-    expect(source).toContain("/api/opdrachten?q=");
+    expect(source).toContain("/api/vacatures?q=");
     expect(source).toContain("jobIds");
     expect(source).toContain("recommendedMatchId");
   });

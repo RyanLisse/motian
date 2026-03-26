@@ -273,8 +273,8 @@ describe("Opdrachten UI/API contracts", () => {
   });
 
   it("API routes consume the shared opdrachten parser and preserve pagination response shape", () => {
-    const listRoute = readFile("app", "api", "opdrachten", "route.ts");
-    const searchRoute = readFile("app", "api", "opdrachten", "zoeken", "route.ts");
+    const listRoute = readFile("app", "api", "vacatures", "route.ts");
+    const searchRoute = readFile("app", "api", "vacatures", "zoeken", "route.ts");
 
     expect(listRoute).toContain('import { runVacaturesSearch } from "@/src/lib/vacatures-search"');
     expect(listRoute).toContain("const out = await runVacaturesSearch(params);");

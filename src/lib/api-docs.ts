@@ -63,7 +63,7 @@ export function buildOpenApiDocument(request: Request): Record<string, unknown> 
           responses: { "200": { description: "Current health status" } },
         },
       },
-      "/api/opdrachten": {
+      "/api/vacatures": {
         get: {
           tags: ["Jobs"],
           summary: "List vacancies",
@@ -76,7 +76,7 @@ export function buildOpenApiDocument(request: Request): Record<string, unknown> 
           responses: { "201": { description: "Created vacancy" } },
         },
       },
-      "/api/opdrachten/{id}": {
+      "/api/vacatures/{id}": {
         get: {
           tags: ["Jobs"],
           summary: "Get a vacancy by id",
