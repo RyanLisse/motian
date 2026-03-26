@@ -22,7 +22,7 @@ const FIRST_PARTY_PATHS = [
   "/api/kandidaten",
 ];
 
-const PUBLIC_GET_PATHS = ["/api/opdrachten/zoeken"];
+const PUBLIC_GET_PATHS = ["/api/vacatures/zoeken", "/api/opdrachten/zoeken"];
 
 function matchesPublicPath(pathname: string, publicPath: string): boolean {
   return pathname === publicPath || pathname.startsWith(`${publicPath}/`);

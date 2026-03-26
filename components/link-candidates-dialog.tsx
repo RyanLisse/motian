@@ -134,7 +134,7 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/opdrachten/${jobId}/match-kandidaten`, { method: "POST" });
+      const res = await fetch(`/api/vacatures/${jobId}/match-kandidaten`, { method: "POST" });
       if (!res.ok) throw new Error("Matchen mislukt");
       const data = await res.json();
       const linkedSet = new Set<string>(data.alreadyLinked ?? []);
@@ -183,7 +183,7 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
     setSubmitting(true);
     setError("");
     try {
-      const res = await fetch(`/api/opdrachten/${jobId}/koppel`, {
+      const res = await fetch(`/api/vacatures/${jobId}/koppel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ matchIds }),

@@ -25,7 +25,7 @@ describe("API docs routes", () => {
     expect(body.openapi).toBe("3.1.0");
     expect(body.servers[0]?.url).toBe("http://localhost:3001");
     expect(body.paths["/api/gezondheid"]).toBeDefined();
-    expect(body.paths["/api/opdrachten"]).toBeDefined();
+    expect(body.paths["/api/vacatures"]).toBeDefined();
   });
 
   it("prefers PUBLIC_API_BASE_URL when generating the OpenAPI server URL", async () => {

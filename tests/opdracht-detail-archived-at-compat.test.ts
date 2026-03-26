@@ -13,7 +13,7 @@ describe("opdracht detail archivedAt compatibility", () => {
     const repositorySource = readFile("src", "services", "jobs", "repository.ts");
     const listSource = readFile("src", "services", "jobs", "list.ts");
     const searchSource = readFile("src", "services", "jobs", "search.ts");
-    const routeSource = readFile("app", "api", "opdrachten", "zoeken", "route.ts");
+    const routeSource = readFile("app", "api", "vacatures", "zoeken", "route.ts");
 
     expect(repositorySource).toContain("archivedAt: sql<Date | null>`null`");
     expect(listSource).toContain(".select(jobReadSelection)");

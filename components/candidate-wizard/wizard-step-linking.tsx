@@ -116,7 +116,7 @@ export function WizardStepLinking({ intake, onComplete, onSkip }: WizardStepLink
     setError("");
 
     try {
-      const response = await fetch(`/api/opdrachten?q=${encodeURIComponent(query)}&limit=5`);
+      const response = await fetch(`/api/vacatures?q=${encodeURIComponent(query)}&limit=5`);
       const body = await response.json().catch(() => null);
       if (!response.ok) {
         const message = isRecord(body) && typeof body.error === "string" ? body.error : null;

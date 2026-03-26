@@ -476,7 +476,7 @@ async function searchJobs({
   if (page > 1) params.set("pagina", String(page));
   if (limit !== DEFAULT_OPDRACHTEN_LIMIT) params.set("limit", String(limit));
 
-  const res = await fetch(`/api/opdrachten/zoeken?${params.toString()}`, {
+  const res = await fetch(`/api/vacatures/zoeken?${params.toString()}`, {
     signal,
   });
   if (!res.ok) {
