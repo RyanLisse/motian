@@ -82,7 +82,7 @@ export async function listJobs(
     if (tsInput) {
       queryPath = "list-fts";
       conditions.push(
-        sql`to_tsvector('dutch', coalesce(${jobs.searchText}, '')) @@ to_tsquery('dutch', ${tsInput})`,
+        sql`search_vector @@ to_tsquery('dutch', ${tsInput})`,
       );
     } else {
       queryPath = "list";

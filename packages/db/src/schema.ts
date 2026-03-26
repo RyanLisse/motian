@@ -194,6 +194,8 @@ export const jobs = pgTable(
     deletedAt: timestamp("deleted_at"),
     rawPayload: jsonb("raw_payload"),
     embedding: vector("embedding", { dimensions: 512 }),
+    // Precomputed tsvector for full-text search (managed by DB trigger, not Drizzle)
+    searchVector: text("search_vector"),
   },
   (table) => ({
     platformExternalIdx: uniqueIndex("uq_platform_external_id").on(
@@ -228,6 +230,11 @@ export const jobs = pgTable(
     statusDeletedAtIdx: index("idx_jobs_status_deleted_at").on(table.status, table.deletedAt),
     openActiveIdx: index("idx_jobs_open_active").on(table.status, table.scrapedAt).where(sql`deleted_at IS NULL AND status = 'open'`),
     platformActiveIdx: index("idx_jobs_platform_active").on(table.platform, table.scrapedAt).where(sql`deleted_at IS NULL`),
+    // GIN indexes managed via SQL (Drizzle lacks native GIN/tsvector support):
+    // - idx_jobs_search_vector: GIN on search_vector tsvector column (full-text search)
+    // - idx_jobs_title_trgm: GIN with gin_trgm_ops on title (fuzzy matching)
+    // - idx_jobs_search_text_trgm: GIN with gin_trgm_ops on search_text (fuzzy search)
+    // Trigger: jobs_search_vector_trigger auto-updates search_vector on search_text changes
   }),
 );
 

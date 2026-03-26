@@ -137,10 +137,10 @@ async function capturePlans() {
           "searchJobsUnified({ q: developer, ... }, list mode) + to_tsquery(prepared searchText) + dedupe",
         whereClause: and(
           whereClause,
-          sql`to_tsvector('dutch', coalesce(${jobs.searchText}, '')) @@ to_tsquery('dutch', ${searchTextQuery})`,
+          sql`search_vector @@ to_tsquery('dutch', ${searchTextQuery})`,
         ),
         sortOrder,
-        extraSelections: sql`ts_rank(to_tsvector('dutch', coalesce(${jobs.searchText}, '')), to_tsquery('dutch', ${searchTextQuery})) as search_rank`,
+        extraSelections: sql`ts_rank(search_vector, to_tsquery('dutch', ${searchTextQuery})) as search_rank`,
         limit,
         offset,
       }),
