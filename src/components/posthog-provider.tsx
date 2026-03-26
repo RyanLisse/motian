@@ -76,6 +76,17 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Suppress unhandled promise rejections from PostHog's internal async
+    // storage access (autocapture, session replay, event queue). These fire
+    // after init when the browser blocks localStorage in restricted contexts.
+    const suppressStorageRejection = (event: PromiseRejectionEvent) => {
+      const msg = event.reason?.message ?? String(event.reason ?? "");
+      if (msg.includes("storage") || msg.includes("Access to storage")) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener("unhandledrejection", suppressStorageRejection);
+
     try {
       posthog.init(key, getPostHogInitOptions(window));
     } catch (error) {
@@ -96,6 +107,10 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         console.error("PostHog initialization failed:", error);
       }
     }
+
+    return () => {
+      window.removeEventListener("unhandledrejection", suppressStorageRejection);
+    };
   }, []);
 
   if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) {
