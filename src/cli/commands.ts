@@ -48,6 +48,12 @@ import { createMessage, listMessages } from "../services/messages";
 // ========== GDPR ==========
 
 import { eraseCandidateData, exportCandidateData, scrubContactData } from "../services/gdpr";
+import {
+  buildSalesforceFeedXml,
+  getSalesforceFeed,
+  parseSalesforceFeedEntity,
+  parseUpdatedSinceParam,
+} from "../services/salesforce-feed";
 
 // ========== Operaties ==========
 
@@ -98,6 +104,20 @@ function optionalNumber(args: ParsedArgs, key: string): number | undefined {
 function optionalStringList(args: ParsedArgs, key: string): string[] | undefined {
   const val = args[key];
   return typeof val === "string" ? val.split(",").map((s) => s.trim()) : undefined;
+}
+
+function clampFeedLimit(value?: number): number {
+  if (value === undefined) return 50;
+  return Math.min(100, Math.max(1, value));
+}
+
+function resolveFeedOffset(args: ParsedArgs, limit: number): number {
+  const offset = optionalNumber(args, "offset");
+  if (offset !== undefined) return Math.max(0, offset);
+
+  const page = optionalNumber(args, "page");
+  const normalizedPage = page === undefined ? 1 : Math.max(1, page);
+  return normalizedPage > 1 ? (normalizedPage - 1) * limit : 0;
 }
 
 // ========== Command Registry ==========
@@ -710,6 +730,43 @@ export const commands: Record<string, Command> = {
         platform: optionalString(args, "platform"),
         limit: optionalNumber(args, "limit"),
       });
+    },
+  },
+
+  // ── Salesforce ────────────────────────────────────────────────────────
+
+  "salesforce:feed": {
+    description: "Toon de Salesforce XML-feed voor jobs, candidates of applications",
+    usage:
+      "[--entity <jobs|candidates|applications>] [--id <uuid>] [--status <status>] [--updated-since <ISO-datum>] [--limit <n>] [--offset <n>] [--page <n>]",
+    handler: async (args) => {
+      const entityArg = optionalString(args, "entity");
+      const entity = parseSalesforceFeedEntity(entityArg) ?? "applications";
+
+      if (entityArg && !parseSalesforceFeedEntity(entityArg)) {
+        throw new Error("Ongeldige entity. Gebruik jobs, candidates of applications.");
+      }
+
+      const updatedSince = parseUpdatedSinceParam(optionalString(args, "updated-since"));
+      if (optionalString(args, "updated-since") && updatedSince === null) {
+        throw new Error("Ongeldige updatedSince. Gebruik een geldige ISO 8601 datum.");
+      }
+
+      const limit = clampFeedLimit(optionalNumber(args, "limit"));
+      const records = await getSalesforceFeed({
+        entity,
+        id: optionalString(args, "id")?.trim() || undefined,
+        updatedSince: updatedSince ?? undefined,
+        status: optionalString(args, "status")?.trim() || undefined,
+        limit,
+        offset: resolveFeedOffset(args, limit),
+      });
+
+      return {
+        entity,
+        count: records.length,
+        xml: buildSalesforceFeedXml(records),
+      };
     },
   },
 
