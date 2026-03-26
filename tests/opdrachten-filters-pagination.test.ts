@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -21,6 +21,16 @@ import { parsePagination } from "../src/lib/pagination";
 
 function readFile(...segments: string[]) {
   return readFileSync(path.join(process.cwd(), ...segments), "utf8");
+}
+
+/** Read opdrachten-sidebar.tsx + all components/sidebar/* files as one combined string. */
+function readSidebarBundle() {
+  const main = readFile("components", "opdrachten-sidebar.tsx");
+  const sidebarDir = path.join(process.cwd(), "components", "sidebar");
+  const subFiles = readdirSync(sidebarDir)
+    .filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"))
+    .map((f) => readFileSync(path.join(sidebarDir, f), "utf8"));
+  return [main, ...subFiles].join("\n");
 }
 
 describe("Opdrachten pagination aliases", () => {
@@ -202,7 +212,7 @@ describe("Opdrachten filter URL helpers", () => {
 
 describe("Opdrachten UI/API contracts", () => {
   it("sidebar exposes enhanced recruiter filters and URL-backed sorting", () => {
-    const source = readFile("components", "opdrachten-sidebar.tsx");
+    const source = readSidebarBundle();
     const normalizedSource = source.replace(/\s+/g, " ");
     const filtersSource = readFile("src", "lib", "opdrachten-filters.ts");
     const filterUrlSource = readFile("src", "lib", "opdrachten-filter-url.ts");
@@ -223,7 +233,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(source).toContain("RadiusSliderField");
     expect(source).toContain("<Slider");
     expect(source).toContain("<Checkbox");
-    expect(source).toContain('handleFilterChange("status"');
+    expect(source).toContain('FilterChange("status"');
     expect(source).toContain('value="archived"');
     expect(source).toContain("Gearchiveerd");
     expect(source).toContain("handleToggleRegio");
@@ -317,13 +327,13 @@ describe("Opdrachten UI/API contracts", () => {
 
   it("detail routes preserve sidebar context and query-aware vacature links", () => {
     const shell = readFile("components", "opdrachten-layout-shell.tsx");
-    const sidebar = readFile("components", "opdrachten-sidebar.tsx");
+    const sidebar = readSidebarBundle();
     const listItem = readFile("components", "job-list-item.tsx");
 
     expect(shell).toContain('pathname.startsWith("/opdrachten/")');
     expect(shell).toContain("w-full md:w-[380px]");
     expect(shell).toContain("hidden md:flex");
-    expect(sidebar).toContain("const buildDetailHref = (jobId: string)");
+    expect(sidebar).toContain("buildDetailHref");
     expect(sidebar).toContain("href={buildDetailHref(job.id)}");
     expect(sidebar).toContain("getOpdrachtenBasePath(pathname)");
     expect(sidebar).toContain("deadlines vragen aandacht");
@@ -334,7 +344,7 @@ describe("Opdrachten UI/API contracts", () => {
   });
 
   it("overview results controls and cards reflow cleanly on narrow widths", () => {
-    const sidebar = readFile("components", "opdrachten-sidebar.tsx");
+    const sidebar = readSidebarBundle();
     const listItem = readFile("components", "job-list-item.tsx");
 
     expect(sidebar).toContain("grid-cols-[auto_minmax(0,1fr)]");
@@ -362,7 +372,7 @@ describe("Opdrachten UI/API contracts", () => {
   });
 
   it("uses the dark card-based filter panel as the primary sidebar UI", () => {
-    const sidebar = readFile("components", "opdrachten-sidebar.tsx");
+    const sidebar = readSidebarBundle();
     const normalizedSidebar = sidebar.replace(/\s+/g, " ");
 
     expect(normalizedSidebar).toContain(
@@ -378,7 +388,7 @@ describe("Opdrachten UI/API contracts", () => {
   });
 
   it("keeps mobile filters inside a bounded flex/min-h-0 scroll container", () => {
-    const sidebar = readFile("components", "opdrachten-sidebar.tsx");
+    const sidebar = readSidebarBundle();
     const normalizedSidebar = sidebar.replace(/\s+/g, " ");
 
     expect(normalizedSidebar).toContain(
