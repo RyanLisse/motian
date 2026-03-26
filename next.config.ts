@@ -38,8 +38,8 @@ const nextConfig: NextConfig = {
     // Limit image optimization compute: only optimize common widths
     deviceSizes: [640, 828, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
-    minimumCacheTTL: 3600, // Cache optimized images for 1 hour (default 60s)
-    formats: ["image/webp"], // Skip avif (slower to encode, more compute)
+    minimumCacheTTL: 86_400, // Cache optimized images for 24 hours
+    formats: ["image/avif", "image/webp"],
   },
 };
 

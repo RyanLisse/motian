@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DEFAULT_OPDRACHTEN_LIMIT } from "@/src/lib/opdrachten-filters";
 import { listJobsPage } from "@/src/services/jobs/page-query";
 import { getSidebarMetadata, refreshSidebarMetadata } from "@/src/services/sidebar-metadata";
@@ -7,24 +9,51 @@ import { getSidebarMetadata, refreshSidebarMetadata } from "@/src/services/sideb
 export const revalidate = 60;
 export const maxDuration = 30;
 
-export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
+function SidebarSkeleton() {
+  return (
+    <div className="flex h-full flex-col space-y-3 p-3">
+      <Skeleton className="h-9 w-full rounded-lg bg-muted" />
+      <div className="flex flex-wrap gap-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={`filter-${i}`} className="h-7 w-20 rounded-md bg-muted" />
+        ))}
+      </div>
+      <Skeleton className="h-4 w-32 bg-muted" />
+      <div className="flex-1 space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={`job-${i}`} className="h-20 rounded-lg bg-card" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function SidebarContent() {
   const [metadata, { data: sidebarJobs }] = await Promise.all([
     getSidebarMetadata().then((cached) => cached ?? refreshSidebarMetadata()),
     listJobsPage({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" }),
   ]);
 
   return (
+    <OpdrachtenSidebar
+      jobs={sidebarJobs}
+      totalCount={metadata.totalCount}
+      platforms={metadata.platforms}
+      endClients={metadata.endClients}
+      categories={metadata.categories}
+      skillOptions={metadata.skillOptions}
+      skillEmptyText={metadata.skillEmptyText}
+    />
+  );
+}
+
+export default function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
+  return (
     <OpdrachtenLayoutShell
       sidebar={
-        <OpdrachtenSidebar
-          jobs={sidebarJobs}
-          totalCount={metadata.totalCount}
-          platforms={metadata.platforms}
-          endClients={metadata.endClients}
-          categories={metadata.categories}
-          skillOptions={metadata.skillOptions}
-          skillEmptyText={metadata.skillEmptyText}
-        />
+        <Suspense fallback={<SidebarSkeleton />}>
+          <SidebarContent />
+        </Suspense>
       }
     >
       {children}

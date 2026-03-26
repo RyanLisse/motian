@@ -19,8 +19,8 @@ function assertNoPublicDatabaseUrl(): void {
 function createNeonDatabaseClient(url: string): DatabaseClient {
   const pool = new Pool({
     connectionString: url,
-    max: 5,
-    idleTimeoutMillis: 30_000,
+    max: 10,
+    idleTimeoutMillis: 60_000,
     connectionTimeoutMillis: 5_000,
   });
 

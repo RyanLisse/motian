@@ -243,7 +243,7 @@ export async function embedJob(jobId: string): Promise<boolean> {
 
   await db
     .update(jobs)
-    .set({ embedding: JSON.stringify(embedding) })
+    .set({ embedding: `[${embedding.join(",")}]` })
     .where(eq(jobs.id, jobId));
 
   return true;
@@ -324,7 +324,7 @@ export async function embedCandidate(candidateId: string): Promise<boolean> {
   const embedding = await generateEmbedding(text);
   await db
     .update(candidates)
-    .set({ embedding: JSON.stringify(embedding) })
+    .set({ embedding: `[${embedding.join(",")}]` })
     .where(eq(candidates.id, candidateId));
 
   return true;
@@ -380,7 +380,7 @@ export async function embedCandidatesBatch(opts: {
     validIndices.map((idx, i) =>
       db
         .update(candidates)
-        .set({ embedding: JSON.stringify(embeddings[i]) })
+        .set({ embedding: `[${embeddings[i].join(",")}]` })
         .where(eq(candidates.id, rows[idx].id)),
     ),
   );
@@ -427,13 +427,13 @@ export async function findSimilarJobsByEmbedding(
     SELECT
       id,
       title,
-      1 - vector_distance_cos(embedding, vector32(${vectorStr})) AS similarity
+      1 - (embedding <=> ${vectorStr}::vector) AS similarity
     FROM jobs
     WHERE embedding IS NOT NULL
       AND deleted_at IS NULL
       AND ${filterCondition}
-      AND 1 - vector_distance_cos(embedding, vector32(${vectorStr})) >= ${minScore}
-    ORDER BY vector_distance_cos(embedding, vector32(${vectorStr}))
+      AND 1 - (embedding <=> ${vectorStr}::vector) >= ${minScore}
+    ORDER BY embedding <=> ${vectorStr}::vector
     LIMIT ${limit}
   `);
   const rows = result.rows;
@@ -492,7 +492,7 @@ export async function embedJobsBatch(opts: {
     validIndices.map((idx, i) =>
       db
         .update(jobs)
-        .set({ embedding: JSON.stringify(embeddings[i]) })
+        .set({ embedding: `[${embeddings[i].join(",")}]` })
         .where(eq(jobs.id, rows[idx].id)),
     ),
   );

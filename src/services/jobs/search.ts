@@ -312,13 +312,13 @@ export async function hybridSearchWithTotal(
             SELECT
               id,
               title,
-              1 - vector_distance_cos(embedding, vector32(${vectorStr})) AS similarity
+              1 - (embedding <=> ${vectorStr}::vector) AS similarity
             FROM jobs
             WHERE embedding IS NOT NULL
               AND deleted_at IS NULL
               AND ${retrievalFilterCondition}
-              AND 1 - vector_distance_cos(embedding, vector32(${vectorStr})) >= ${policy.vectorMinScore}
-            ORDER BY vector_distance_cos(embedding, vector32(${vectorStr}))
+              AND 1 - (embedding <=> ${vectorStr}::vector) >= ${policy.vectorMinScore}
+            ORDER BY embedding <=> ${vectorStr}::vector
             LIMIT ${policy.fetchSize}
           `);
           const rows = result.rows;

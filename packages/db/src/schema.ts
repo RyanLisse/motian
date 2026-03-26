@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -10,6 +11,18 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+const vector = customType<{ data: string; driverParam: string; config: { dimensions: number } }>({
+  dataType(config) {
+    return `vector(${config?.dimensions ?? 512})`;
+  },
+  toDriver(value: string) {
+    return value;
+  },
+  fromDriver(value: unknown) {
+    return value as string;
+  },
+});
 
 // ========== Scraper Configuratie ==========
 export const platformCatalog = pgTable("platform_catalog", {
@@ -180,7 +193,7 @@ export const jobs = pgTable(
     scrapedAt: timestamp("scraped_at").$defaultFn(() => new Date()),
     deletedAt: timestamp("deleted_at"),
     rawPayload: jsonb("raw_payload"),
-    embedding: text("embedding"),
+    embedding: vector("embedding", { dimensions: 512 }),
   },
   (table) => ({
     platformExternalIdx: uniqueIndex("uq_platform_external_id").on(
@@ -209,6 +222,10 @@ export const jobs = pgTable(
     rateRangeIdx: index("idx_jobs_rate_range").on(table.rateMin, table.rateMax),
     statusIdx: index("idx_jobs_status").on(table.status),
     hoursIdx: index("idx_jobs_hours").on(table.minHoursPerWeek, table.hoursPerWeek),
+    statusPlatformIdx: index("idx_jobs_status_platform").on(table.status, table.platform),
+    statusProvinceIdx: index("idx_jobs_status_province").on(table.status, table.province),
+    statusScrapedAtIdx: index("idx_jobs_status_scraped_at").on(table.status, table.scrapedAt),
+    statusDeletedAtIdx: index("idx_jobs_status_deleted_at").on(table.status, table.deletedAt),
   }),
 );
 
@@ -250,7 +267,7 @@ export const candidates = pgTable(
     createdAt: timestamp("created_at").$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
     deletedAt: timestamp("deleted_at"),
-    embedding: text("embedding"),
+    embedding: vector("embedding", { dimensions: 512 }),
   },
   (table) => ({
     emailUniqueIdx: uniqueIndex("uq_candidates_email")

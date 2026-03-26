@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
 import { CrossPlatformListings } from "@/components/scraper/cross-platform-listings";
 import { formatPlatformLabel, PlatformBadge } from "@/components/scraper/platform-badge";
@@ -22,6 +23,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -233,9 +235,36 @@ function PlatformHealthCard({
   );
 }
 
+function DashboardSkeleton() {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={`kpi-${i}`} className="h-20 rounded-xl bg-card" />
+        ))}
+      </div>
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <Skeleton className="h-48 rounded-xl bg-card" />
+        <Skeleton className="h-48 rounded-xl bg-card" />
+      </div>
+      <Skeleton className="h-64 rounded-xl bg-card" />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+        <Skeleton className="h-48 rounded-xl bg-card" />
+        <Skeleton className="h-48 rounded-xl bg-card" />
+      </div>
+      <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={`health-${i}`} className="h-64 rounded-xl bg-card" />
+        ))}
+      </div>
+      <Skeleton className="h-48 rounded-xl bg-card" />
+    </>
+  );
+}
+
 export const revalidate = 60;
 
-export default async function ScraperPage() {
+async function ScraperDashboardContent() {
   const scraperDashboard = await getScraperDashboardData({
     activityLimit: 20,
     overlapLimit: 8,
@@ -264,6 +293,365 @@ export default async function ScraperPage() {
   }
 
   return (
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <KPICard
+          icon={<Activity className="h-4 w-4" />}
+          label="Totaal runs"
+          value={analytics.totalRuns}
+          iconClassName="text-primary/60"
+          valueClassName="text-primary"
+          compact
+          title="Aantal scrape-runs in de historie over alle platforms"
+        />
+        <KPICard
+          icon={<Search className="h-4 w-4" />}
+          label="Actieve vacatures"
+          value={activeVacancies}
+          iconClassName="text-blue-500/60"
+          valueClassName="text-blue-500"
+          compact
+          title="Huidig aantal zichtbare vacatures op de Vacatures-pagina (open en gededupliceerd)"
+        />
+        <KPICard
+          icon={<Layers3 className="h-4 w-4" />}
+          label="Overlapgroepen"
+          value={overlap.totalGroups}
+          iconClassName="text-violet-500/60"
+          valueClassName="text-violet-500"
+          compact
+          title="Groepen waarin meerdere bronnen waarschijnlijk dezelfde opdracht tonen"
+        />
+        <KPICard
+          icon={<Sparkles className="h-4 w-4" />}
+          label="Nieuw toegevoegd"
+          value={analytics.totalJobsNew}
+          iconClassName="text-green-500/60"
+          valueClassName="text-green-500"
+          compact
+          title="Cumulatief aantal nieuw opgeslagen vacatures over alle runs"
+        />
+        <KPICard
+          icon={<Database className="h-4 w-4" />}
+          label="Bijgewerkt"
+          value={analytics.totalDuplicates}
+          iconClassName="text-amber-500/60"
+          valueClassName="text-amber-500"
+          compact
+          title="Listings die op dezelfde bron opnieuw zijn binnengekomen en een bestaande vacature hebben bijgewerkt"
+        />
+        <KPICard
+          icon={<AlertTriangle className="h-4 w-4" />}
+          label="Platforms met aandacht"
+          value={attentionPlatforms}
+          iconClassName={attentionPlatforms > 0 ? "text-amber-500/60" : "text-emerald-500/60"}
+          valueClassName={attentionPlatforms > 0 ? "text-amber-500" : "text-emerald-500"}
+          compact
+          title="Platformen met waarschuwingen of kritieke health-signalen"
+        />
+      </div>
+
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <ScrapeMetricsExplainer />
+        <RecentActivityFeed activities={activity} />
+      </div>
+
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Layers3 className="h-4 w-4" />
+            Platformcatalogus en inrichting
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Recruiters en agenten gebruiken hier dezelfde bouwstenen: kies een platform, sla de
+            configuratie op, valideer de toegang en voer een proefimport uit.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <PlatformCatalogList entries={platformCatalog} />
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+        <Card className="min-w-0 overflow-hidden bg-card border-border">
+          <CardHeader className="min-w-0 pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarClock className="h-4 w-4 text-muted-foreground" />
+              Planning per platform
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Laat zien welke bron wanneer weer hoort te draaien en waar operationele signalen al
+              aandacht vragen.
+            </p>
+          </CardHeader>
+          <CardContent className="min-w-0">
+            <Table className="min-w-[760px]">
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead>Platform</TableHead>
+                  <TableHead>Schema</TableHead>
+                  <TableHead>Laatste run</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Volgende run</TableHead>
+                  <TableHead>Signaal</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {platforms.map((platform) => (
+                  <TableRow key={platform.platform} className="border-border">
+                    <TableCell>
+                      <PlatformBadge platform={platform.platform} className="text-[10px]" />
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {platform.cronExpression ?? "-"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(platform.lastRunAt)}
+                    </TableCell>
+                    <TableCell>
+                      {platform.circuitBreakerOpen ? (
+                        <Badge
+                          variant="outline"
+                          className="border-red-500/20 bg-red-500/10 text-[10px] text-red-500"
+                        >
+                          <AlertTriangle className="mr-1 h-3 w-3" />
+                          Circuit geopend
+                        </Badge>
+                      ) : platform.isOverdue ? (
+                        <Badge
+                          variant="outline"
+                          className="border-amber-500/20 bg-amber-500/10 text-[10px] text-amber-500"
+                        >
+                          <Clock className="mr-1 h-3 w-3" />
+                          Achterstallig
+                        </Badge>
+                      ) : (
+                        <StatusBadge status={platform.status} />
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(platform.nextRunAt)}
+                    </TableCell>
+                    <TableCell className="max-w-[320px] whitespace-normal">
+                      <span className="wrap-break-word text-xs text-muted-foreground">
+                        {platform.signals[0]?.message ?? "Geen open signaal"}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0 overflow-hidden bg-card border-border">
+          <CardHeader className="min-w-0 pb-3">
+            <CardTitle className="text-base">Trigger.dev zichtbaarheid</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Laatste taakruns van de automatisering achter de databronnen-monitoring.
+            </p>
+          </CardHeader>
+          <CardContent className="min-w-0 space-y-3">
+            {!trigger.available && (
+              <div className="wrap-break-word rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                Trigger.dev informatie is nu niet beschikbaar.
+                {trigger.reason ? ` Reden: ${trigger.reason}` : ""}
+              </div>
+            )}
+
+            {trigger.tasks.map((task) => {
+              const status = triggerStatusConfig(task.latestRun?.status ?? null);
+
+              return (
+                <div
+                  key={task.taskIdentifier}
+                  className="min-w-0 rounded-xl border border-border bg-muted/20 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground">{task.label}</p>
+                      <p className="mt-1 wrap-break-word text-xs text-muted-foreground">
+                        {task.cronExpression} · {task.timezone}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "max-w-full whitespace-normal wrap-break-word text-center",
+                        status.className,
+                      )}
+                    >
+                      {status.label}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                    <p>Laatste run: {formatDateTime(task.latestRun?.createdAt ?? null)}</p>
+                    {task.latestRun?.error && (
+                      <p className="wrap-break-word text-amber-600 dark:text-amber-400">
+                        {task.latestRun.error}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
+
+      {platforms.length > 0 && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Per-platform gezondheid</h2>
+            <p className="text-sm text-muted-foreground">
+              Historische statistieken, recente fouten en planningssignalen per bron in één kaart.
+            </p>
+          </div>
+
+          <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {platforms.map((platform) => (
+              <PlatformHealthCard
+                key={platform.platform}
+                platform={platform}
+                overlapCount={overlapCountByPlatform.get(platform.platform) ?? 0}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <CrossPlatformListings groups={overlap.groups} />
+
+      {/* Overzicht van alle scrape-runs */}
+      <Card className="bg-card border-border min-w-0">
+        <CardHeader>
+          <CardTitle className="text-base">Overzicht scrape-runs</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Alle recente scrapes. Hier zie je expliciet het verschil tussen nieuw, bijgewerkt
+            (zelfde bron) en overgeslagen, plus een link naar de run-details.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {results.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
+              <p className="text-sm font-medium text-muted-foreground">
+                Nog geen scrape-resultaten
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Start een scrape via de knop hierboven of wacht op de geplande run. Resultaten
+                verschijnen hier zodra er runs zijn uitgevoerd.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead>Bron / platform</TableHead>
+                    <TableHead>Datum en tijd</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right" title="Aantal gevonden items bij de bron">
+                      Gevonden
+                    </TableHead>
+                    <TableHead className="text-right" title="Nieuw opgeslagen in de database">
+                      Nieuw
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      title="Bestaande vacature bijgewerkt op dezelfde bron"
+                    >
+                      Bijgewerkt
+                    </TableHead>
+                    <TableHead className="text-right" title="Validatiefout of niet opgeslagen">
+                      Overgeslagen
+                    </TableHead>
+                    <TableHead className="text-right">Duur</TableHead>
+                    <TableHead>Fouten / waarschuwingen</TableHead>
+                    <TableHead className="w-[100px]">Actie</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {results.map((result) => {
+                    const errors = Array.isArray(result.errors) ? (result.errors as string[]) : [];
+
+                    return (
+                      <TableRow
+                        key={result.id}
+                        className="border-border hover:bg-muted/50 transition-colors"
+                      >
+                        <TableCell className="font-medium">
+                          <PlatformBadge platform={result.platform} className="text-[10px]" />
+                        </TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                          {result.runAt
+                            ? new Date(result.runAt).toLocaleString("nl-NL", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={result.status} />
+                        </TableCell>
+                        <TableCell className="text-right">{result.jobsFound}</TableCell>
+                        <TableCell className="text-right text-primary">{result.jobsNew}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {result.duplicates}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {(() => {
+                            const skipped =
+                              (result.jobsFound ?? 0) -
+                              (result.jobsNew ?? 0) -
+                              (result.duplicates ?? 0);
+                            return skipped > 0 ? skipped : "-";
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {result.durationMs ? `${(result.durationMs / 1000).toFixed(1)}s` : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {errors.length > 0 ? (
+                            <span
+                              className="flex items-center gap-1 text-xs text-amber-500 cursor-help max-w-[200px]"
+                              title={errors.join("\n")}
+                            >
+                              <AlertCircle className="h-3 w-3 shrink-0" />
+                              <span className="truncate">
+                                {errors.length === 1 ? errors[0] : `${errors.length} fouten`}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            href={`/scraper/runs/${result.id}`}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          >
+                            Bekijk details
+                            <ChevronRight className="h-3 w-3" />
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+export default function ScraperPage() {
+  return (
     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
       <div className="mx-auto min-w-0 max-w-[1400px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
         <PageHeader
@@ -273,362 +661,9 @@ export default async function ScraperPage() {
           <ScraperActions />
         </PageHeader>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <KPICard
-            icon={<Activity className="h-4 w-4" />}
-            label="Totaal runs"
-            value={analytics.totalRuns}
-            iconClassName="text-primary/60"
-            valueClassName="text-primary"
-            compact
-            title="Aantal scrape-runs in de historie over alle platforms"
-          />
-          <KPICard
-            icon={<Search className="h-4 w-4" />}
-            label="Actieve vacatures"
-            value={activeVacancies}
-            iconClassName="text-blue-500/60"
-            valueClassName="text-blue-500"
-            compact
-            title="Huidig aantal zichtbare vacatures op de Vacatures-pagina (open en gededupliceerd)"
-          />
-          <KPICard
-            icon={<Layers3 className="h-4 w-4" />}
-            label="Overlapgroepen"
-            value={overlap.totalGroups}
-            iconClassName="text-violet-500/60"
-            valueClassName="text-violet-500"
-            compact
-            title="Groepen waarin meerdere bronnen waarschijnlijk dezelfde opdracht tonen"
-          />
-          <KPICard
-            icon={<Sparkles className="h-4 w-4" />}
-            label="Nieuw toegevoegd"
-            value={analytics.totalJobsNew}
-            iconClassName="text-green-500/60"
-            valueClassName="text-green-500"
-            compact
-            title="Cumulatief aantal nieuw opgeslagen vacatures over alle runs"
-          />
-          <KPICard
-            icon={<Database className="h-4 w-4" />}
-            label="Bijgewerkt"
-            value={analytics.totalDuplicates}
-            iconClassName="text-amber-500/60"
-            valueClassName="text-amber-500"
-            compact
-            title="Listings die op dezelfde bron opnieuw zijn binnengekomen en een bestaande vacature hebben bijgewerkt"
-          />
-          <KPICard
-            icon={<AlertTriangle className="h-4 w-4" />}
-            label="Platforms met aandacht"
-            value={attentionPlatforms}
-            iconClassName={attentionPlatforms > 0 ? "text-amber-500/60" : "text-emerald-500/60"}
-            valueClassName={attentionPlatforms > 0 ? "text-amber-500" : "text-emerald-500"}
-            compact
-            title="Platformen met waarschuwingen of kritieke health-signalen"
-          />
-        </div>
-
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <ScrapeMetricsExplainer />
-          <RecentActivityFeed activities={activity} />
-        </div>
-
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Layers3 className="h-4 w-4" />
-              Platformcatalogus en inrichting
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Recruiters en agenten gebruiken hier dezelfde bouwstenen: kies een platform, sla de
-              configuratie op, valideer de toegang en voer een proefimport uit.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <PlatformCatalogList entries={platformCatalog} />
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
-          <Card className="min-w-0 overflow-hidden bg-card border-border">
-            <CardHeader className="min-w-0 pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                Planning per platform
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Laat zien welke bron wanneer weer hoort te draaien en waar operationele signalen al
-                aandacht vragen.
-              </p>
-            </CardHeader>
-            <CardContent className="min-w-0">
-              <Table className="min-w-[760px]">
-                <TableHeader>
-                  <TableRow className="border-border hover:bg-transparent">
-                    <TableHead>Platform</TableHead>
-                    <TableHead>Schema</TableHead>
-                    <TableHead>Laatste run</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Volgende run</TableHead>
-                    <TableHead>Signaal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {platforms.map((platform) => (
-                    <TableRow key={platform.platform} className="border-border">
-                      <TableCell>
-                        <PlatformBadge platform={platform.platform} className="text-[10px]" />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {platform.cronExpression ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDateTime(platform.lastRunAt)}
-                      </TableCell>
-                      <TableCell>
-                        {platform.circuitBreakerOpen ? (
-                          <Badge
-                            variant="outline"
-                            className="border-red-500/20 bg-red-500/10 text-[10px] text-red-500"
-                          >
-                            <AlertTriangle className="mr-1 h-3 w-3" />
-                            Circuit geopend
-                          </Badge>
-                        ) : platform.isOverdue ? (
-                          <Badge
-                            variant="outline"
-                            className="border-amber-500/20 bg-amber-500/10 text-[10px] text-amber-500"
-                          >
-                            <Clock className="mr-1 h-3 w-3" />
-                            Achterstallig
-                          </Badge>
-                        ) : (
-                          <StatusBadge status={platform.status} />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatDateTime(platform.nextRunAt)}
-                      </TableCell>
-                      <TableCell className="max-w-[320px] whitespace-normal">
-                        <span className="wrap-break-word text-xs text-muted-foreground">
-                          {platform.signals[0]?.message ?? "Geen open signaal"}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Card className="min-w-0 overflow-hidden bg-card border-border">
-            <CardHeader className="min-w-0 pb-3">
-              <CardTitle className="text-base">Trigger.dev zichtbaarheid</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Laatste taakruns van de automatisering achter de databronnen-monitoring.
-              </p>
-            </CardHeader>
-            <CardContent className="min-w-0 space-y-3">
-              {!trigger.available && (
-                <div className="wrap-break-word rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-                  Trigger.dev informatie is nu niet beschikbaar.
-                  {trigger.reason ? ` Reden: ${trigger.reason}` : ""}
-                </div>
-              )}
-
-              {trigger.tasks.map((task) => {
-                const status = triggerStatusConfig(task.latestRun?.status ?? null);
-
-                return (
-                  <div
-                    key={task.taskIdentifier}
-                    className="min-w-0 rounded-xl border border-border bg-muted/20 p-4"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-foreground">{task.label}</p>
-                        <p className="mt-1 wrap-break-word text-xs text-muted-foreground">
-                          {task.cronExpression} · {task.timezone}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "max-w-full whitespace-normal wrap-break-word text-center",
-                          status.className,
-                        )}
-                      >
-                        {status.label}
-                      </Badge>
-                    </div>
-                    <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                      <p>Laatste run: {formatDateTime(task.latestRun?.createdAt ?? null)}</p>
-                      {task.latestRun?.error && (
-                        <p className="wrap-break-word text-amber-600 dark:text-amber-400">
-                          {task.latestRun.error}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        </div>
-
-        {platforms.length > 0 && (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Per-platform gezondheid</h2>
-              <p className="text-sm text-muted-foreground">
-                Historische statistieken, recente fouten en planningssignalen per bron in één kaart.
-              </p>
-            </div>
-
-            <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {platforms.map((platform) => (
-                <PlatformHealthCard
-                  key={platform.platform}
-                  platform={platform}
-                  overlapCount={overlapCountByPlatform.get(platform.platform) ?? 0}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        <CrossPlatformListings groups={overlap.groups} />
-
-        {/* Overzicht van alle scrape-runs */}
-        <Card className="bg-card border-border min-w-0">
-          <CardHeader>
-            <CardTitle className="text-base">Overzicht scrape-runs</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Alle recente scrapes. Hier zie je expliciet het verschil tussen nieuw, bijgewerkt
-              (zelfde bron) en overgeslagen, plus een link naar de run-details.
-            </p>
-          </CardHeader>
-          <CardContent>
-            {results.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Nog geen scrape-resultaten
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Start een scrape via de knop hierboven of wacht op de geplande run. Resultaten
-                  verschijnen hier zodra er runs zijn uitgevoerd.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead>Bron / platform</TableHead>
-                      <TableHead>Datum en tijd</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right" title="Aantal gevonden items bij de bron">
-                        Gevonden
-                      </TableHead>
-                      <TableHead className="text-right" title="Nieuw opgeslagen in de database">
-                        Nieuw
-                      </TableHead>
-                      <TableHead
-                        className="text-right"
-                        title="Bestaande vacature bijgewerkt op dezelfde bron"
-                      >
-                        Bijgewerkt
-                      </TableHead>
-                      <TableHead className="text-right" title="Validatiefout of niet opgeslagen">
-                        Overgeslagen
-                      </TableHead>
-                      <TableHead className="text-right">Duur</TableHead>
-                      <TableHead>Fouten / waarschuwingen</TableHead>
-                      <TableHead className="w-[100px]">Actie</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {results.map((result) => {
-                      const errors = Array.isArray(result.errors)
-                        ? (result.errors as string[])
-                        : [];
-
-                      return (
-                        <TableRow
-                          key={result.id}
-                          className="border-border hover:bg-muted/50 transition-colors"
-                        >
-                          <TableCell className="font-medium">
-                            <PlatformBadge platform={result.platform} className="text-[10px]" />
-                          </TableCell>
-                          <TableCell className="text-muted-foreground whitespace-nowrap">
-                            {result.runAt
-                              ? new Date(result.runAt).toLocaleString("nl-NL", {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge status={result.status} />
-                          </TableCell>
-                          <TableCell className="text-right">{result.jobsFound}</TableCell>
-                          <TableCell className="text-right text-primary">
-                            {result.jobsNew}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {result.duplicates}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {(() => {
-                              const skipped =
-                                (result.jobsFound ?? 0) -
-                                (result.jobsNew ?? 0) -
-                                (result.duplicates ?? 0);
-                              return skipped > 0 ? skipped : "-";
-                            })()}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {result.durationMs ? `${(result.durationMs / 1000).toFixed(1)}s` : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {errors.length > 0 ? (
-                              <span
-                                className="flex items-center gap-1 text-xs text-amber-500 cursor-help max-w-[200px]"
-                                title={errors.join("\n")}
-                              >
-                                <AlertCircle className="h-3 w-3 shrink-0" />
-                                <span className="truncate">
-                                  {errors.length === 1 ? errors[0] : `${errors.length} fouten`}
-                                </span>
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Link
-                              href={`/scraper/runs/${result.id}`}
-                              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                            >
-                              Bekijk details
-                              <ChevronRight className="h-3 w-3" />
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <Suspense fallback={<DashboardSkeleton />}>
+          <ScraperDashboardContent />
+        </Suspense>
       </div>
     </div>
   );

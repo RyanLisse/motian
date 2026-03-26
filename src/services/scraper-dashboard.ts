@@ -742,70 +742,67 @@ export async function getScraperDashboardData(
           recentRuns: [],
         })),
       });
-  // Do not wrap these reads in database.transaction() with Promise.all: Drizzle + pg
-  // concurrent work inside a transaction can drop Next.js App Router AsyncLocalStorage
-  // (request context for cookies/headers), which throws "Access to storage is not allowed
-  // from this context". Same rationale as app/overzicht/data.ts getOverviewData.
-  const dataPromise = (async () => {
-    const analytics = await getAnalyticsOrFallback(database);
-    const configs = await database.select().from(scraperConfigs).orderBy(scraperConfigs.platform);
-    const recentRuns = await database
-      .select({
-        id: scrapeResults.id,
-        configId: scrapeResults.configId,
-        platform: scrapeResults.platform,
-        runAt: scrapeResults.runAt,
-        durationMs: scrapeResults.durationMs,
-        jobsFound: scrapeResults.jobsFound,
-        jobsNew: scrapeResults.jobsNew,
-        duplicates: scrapeResults.duplicates,
-        status: scrapeResults.status,
-        errors: scrapeResults.errors,
-      })
-      .from(scrapeResults)
-      .orderBy(desc(scrapeResults.runAt))
-      .limit(runLimit);
-    const recentWindowRows = await database
-      .select({
-        platform: scrapeResults.platform,
-        runs: sql<number>`cast(count(*) as integer)`,
-        successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
-        partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
-        failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
-        avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
-      })
-      .from(scrapeResults)
-      .where(gte(scrapeResults.runAt, last24Hours))
-      .groupBy(scrapeResults.platform);
-    const overlapCandidates = await database
-      .select({
-        id: jobs.id,
-        platform: jobs.platform,
-        externalId: jobs.externalId,
-        externalUrl: jobs.externalUrl,
-        clientReferenceCode: jobs.clientReferenceCode,
-        title: jobs.title,
-        company: jobs.company,
-        endClient: jobs.endClient,
-        location: jobs.location,
-        province: jobs.province,
-        postedAt: jobs.postedAt,
-        applicationDeadline: jobs.applicationDeadline,
-        startDate: jobs.startDate,
-        scrapedAt: jobs.scrapedAt,
-      })
-      .from(jobs)
-      .where(sql`${jobs.platform} is not null`);
-
-    return { analytics, configs, recentRuns, recentWindowRows, overlapCandidates };
-  })();
-
-  const data = await dataPromise;
-  const activeVacancies = await getActiveVacancyCount(database);
-  const trigger = await triggerPromise;
+  // These are independent read queries (NOT inside a transaction), so they can
+  // safely run in parallel with Promise.all. Do NOT use database.transaction()
+  // here: Drizzle + pg concurrent work inside a transaction can drop Next.js
+  // App Router AsyncLocalStorage (request context for cookies/headers).
+  const [analytics, configs, recentRuns, recentWindowRows, overlapCandidates, activeVacancies, trigger] =
+    await Promise.all([
+      getAnalyticsOrFallback(database),
+      database.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
+      database
+        .select({
+          id: scrapeResults.id,
+          configId: scrapeResults.configId,
+          platform: scrapeResults.platform,
+          runAt: scrapeResults.runAt,
+          durationMs: scrapeResults.durationMs,
+          jobsFound: scrapeResults.jobsFound,
+          jobsNew: scrapeResults.jobsNew,
+          duplicates: scrapeResults.duplicates,
+          status: scrapeResults.status,
+          errors: scrapeResults.errors,
+        })
+        .from(scrapeResults)
+        .orderBy(desc(scrapeResults.runAt))
+        .limit(runLimit),
+      database
+        .select({
+          platform: scrapeResults.platform,
+          runs: sql<number>`cast(count(*) as integer)`,
+          successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
+          partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
+          failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
+          avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
+        })
+        .from(scrapeResults)
+        .where(gte(scrapeResults.runAt, last24Hours))
+        .groupBy(scrapeResults.platform),
+      database
+        .select({
+          id: jobs.id,
+          platform: jobs.platform,
+          externalId: jobs.externalId,
+          externalUrl: jobs.externalUrl,
+          clientReferenceCode: jobs.clientReferenceCode,
+          title: jobs.title,
+          company: jobs.company,
+          endClient: jobs.endClient,
+          location: jobs.location,
+          province: jobs.province,
+          postedAt: jobs.postedAt,
+          applicationDeadline: jobs.applicationDeadline,
+          startDate: jobs.startDate,
+          scrapedAt: jobs.scrapedAt,
+        })
+        .from(jobs)
+        .where(sql`${jobs.platform} is not null`),
+      getActiveVacancyCount(database),
+      triggerPromise,
+    ]);
 
   const recentWindowMap = new Map(
-    data.recentWindowRows.map((row) => [
+    recentWindowRows.map((row) => [
       row.platform,
       {
         runs: row.runs,
@@ -819,9 +816,9 @@ export async function getScraperDashboardData(
     ]),
   );
 
-  const configByPlatform = new Map(data.configs.map((config) => [config.platform, config]));
+  const configByPlatform = new Map(configs.map((config) => [config.platform, config]));
   const latestRunByPlatform = new Map<string, RecentRunRow>();
-  for (const run of data.recentRuns) {
+  for (const run of recentRuns) {
     if (!latestRunByPlatform.has(run.platform)) {
       latestRunByPlatform.set(run.platform, run);
     }
@@ -848,11 +845,11 @@ export async function getScraperDashboardData(
   }
 
   const analyticsByPlatform = new Map(
-    data.analytics.byPlatform.map((platformStats) => [platformStats.platform, platformStats]),
+    analytics.byPlatform.map((platformStats) => [platformStats.platform, platformStats]),
   );
   const knownPlatforms = new Set<string>([
-    ...data.configs.map((config) => config.platform),
-    ...data.analytics.byPlatform.map((row) => row.platform),
+    ...configs.map((config) => config.platform),
+    ...analytics.byPlatform.map((row) => row.platform),
   ]);
 
   const platforms = [...knownPlatforms]
@@ -903,19 +900,19 @@ export async function getScraperDashboardData(
       } satisfies PlatformOperationalMetrics;
     });
 
-  const allOverlapGroups = buildListingOverlapGroups(data.overlapCandidates).sort(
+  const allOverlapGroups = buildListingOverlapGroups(overlapCandidates).sort(
     (left, right) => right.platforms.length - left.platforms.length,
   );
   const overlapGroups = allOverlapGroups.slice(0, overlapLimit);
 
   return {
     generatedAt: now.toISOString(),
-    configs: data.configs,
-    analytics: data.analytics,
+    configs,
+    analytics,
     activeVacancies,
-    recentRuns: data.recentRuns,
+    recentRuns,
     platforms,
-    activity: buildActivityFeed(data.recentRuns, activityLimit),
+    activity: buildActivityFeed(recentRuns, activityLimit),
     overlap: {
       totalGroups: allOverlapGroups.length,
       groups: overlapGroups,

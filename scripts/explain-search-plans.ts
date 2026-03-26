@@ -163,14 +163,14 @@ async function capturePlans() {
   const vectorPlan = await runExplain(sql`
     SELECT
       id,
-      1 - vector_distance_cos(embedding, vector32(${vector})) AS similarity
+      1 - (embedding <=> ${vector}::vector) AS similarity
     FROM jobs
     WHERE ${and(
       sql`embedding IS NOT NULL`,
       whereClause,
-      sql`1 - vector_distance_cos(embedding, vector32(${vector})) >= 0.3`,
+      sql`1 - (embedding <=> ${vector}::vector) >= 0.3`,
     )}
-    ORDER BY vector_distance_cos(embedding, vector32(${vector}))
+    ORDER BY embedding <=> ${vector}::vector
     LIMIT ${limit}
     OFFSET ${offset}
   `);

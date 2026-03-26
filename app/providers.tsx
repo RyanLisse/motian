@@ -11,7 +11,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 30_000,
+            staleTime: 5 * 60_000, // 5 minutes — recruitment data tolerates staleness
+            gcTime: 10 * 60_000,
             refetchOnWindowFocus: false,
           },
         },
