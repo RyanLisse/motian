@@ -18,7 +18,7 @@ export async function refreshDedupeRanks(): Promise<{
   const statusCondition = getVisibleVacancyCondition();
 
   const result = await (
-    db as unknown as { execute(sql: ReturnType<typeof sql>): Promise<{ rowCount: number }> }
+    db as unknown as { execute(query: unknown): Promise<{ rowCount: number }> }
   ).execute(sql`
     WITH ranked AS (
       SELECT

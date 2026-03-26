@@ -64,6 +64,7 @@ export function createMotianMCPServer(): Server {
  * Registers tools via the underlying raw Server to reuse existing
  * tool definitions without converting to the McpServer.tool() format.
  */
-export function initializeMotianTools(mcpServer: { server: Server }): void {
-  registerToolHandlers(mcpServer.server);
+export function initializeMotianTools(mcpServerOrRaw: Server | { server: Server }): void {
+  const server = "server" in mcpServerOrRaw ? mcpServerOrRaw.server : mcpServerOrRaw;
+  registerToolHandlers(server);
 }

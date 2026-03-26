@@ -2,7 +2,7 @@ import { createMcpHandler } from "@vercel/mcp-adapter";
 import { initializeMotianTools } from "@/src/mcp/create-server";
 
 const handler = createMcpHandler(
-  (server) => {
+  (server: Parameters<typeof initializeMotianTools>[0]) => {
     initializeMotianTools(server);
   },
   {

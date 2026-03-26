@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { OpdrachtenFilters } from "@/app/opdrachten/filters";
+import { OpdrachtenFilters } from "@/app/vacatures/filters";
 
 const meta: Meta<typeof OpdrachtenFilters> = {
   title: "Components/OpdrachtenFilters",

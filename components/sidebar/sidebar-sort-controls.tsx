@@ -11,12 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { OPDRACHTEN_SORT_OPTIONS } from "@/src/lib/opdrachten-filters";
+
 import { DARK_FILTER_MENU_CLASS, DARK_FILTER_TRIGGER_CLASS } from "./sidebar-types";
 
 interface SidebarSortControlsProps {
   sort: string;
-  sortOptions: typeof OPDRACHTEN_SORT_OPTIONS;
+  sortOptions: readonly { readonly value: string; readonly label: string }[];
   onSortChange: (value: string) => void;
   variant: "compact" | "overview";
 }

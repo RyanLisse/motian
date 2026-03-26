@@ -46,7 +46,7 @@ interface CompactSidebarFiltersProps {
   radiusKmInput: string;
   provinceAnchor: ProvinceAnchor;
   sort: string;
-  sortOptions: { value: string; label: string }[];
+  sortOptions: readonly { readonly value: string; readonly label: string }[];
   onFilterChange: (paramKey: string, value: string) => void;
   onProvinceChange: (value: string) => void;
   onToggleRegio: (value: string) => void;
