@@ -5,6 +5,7 @@ import { listJobsPage } from "@/src/services/jobs/page-query";
 import { getSidebarMetadata, refreshSidebarMetadata } from "@/src/services/sidebar-metadata";
 
 export const revalidate = 60;
+export const maxDuration = 30;
 
 export default async function OpdrachtenLayout({ children }: { children: React.ReactNode }) {
   const [metadata, { data: sidebarJobs }] = await Promise.all([

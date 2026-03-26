@@ -32,6 +32,7 @@ import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 interface Props {
   params: Promise<{ id: string }>;
