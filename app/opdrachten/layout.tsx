@@ -41,7 +41,7 @@ const DEFAULT_SKILL_EMPTY_TEXT = "Geen vaardigheden gevonden.";
 
 const sidebarSummaryCache = new Map<string, SidebarSummaryCacheEntry>();
 
-function resolveSkillEmptyText(issue: string) {
+function resolveSkillEmptyText(issue: string | null) {
   return issue === "missing_catalog" || issue === "missing_skills"
     ? "ESCO-catalogus ontbreekt. Importeer eerst de dataset."
     : issue === "missing_aliases"
