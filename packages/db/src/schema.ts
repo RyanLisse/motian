@@ -507,6 +507,16 @@ export const sidebarMetadata = pgTable("sidebar_metadata", {
   computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ========== Job Dedupe Ranks (precomputed) ==========
+export const jobDedupeRanks = pgTable("job_dedupe_ranks", {
+  jobId: text("job_id")
+    .primaryKey()
+    .references(() => jobs.id, { onDelete: "cascade" }),
+  dedupeRank: integer("dedupe_rank").notNull(),
+  dedupeGroup: text("dedupe_group").notNull(),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ========== GDPR Audit Log ==========
 export const gdprAuditLog = pgTable(
   "gdpr_audit_log",
