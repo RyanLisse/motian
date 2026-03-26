@@ -18,7 +18,7 @@ describe("opdracht detail archivedAt compatibility", () => {
     expect(repositorySource).toContain("archivedAt: sql<Date | null>`null`");
     expect(listSource).toContain(".select(jobReadSelection)");
     expect(searchSource).toContain(".select(jobReadSelection)");
-    expect(routeSource).toContain("searchJobsUnified");
+    expect(routeSource).toContain("runJobPageSearch");
   });
 
   it("uses one prioritized related-jobs read on the detail page while preserving compat selection", () => {
