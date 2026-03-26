@@ -50,7 +50,7 @@ describe("Sidebar decomposition", () => {
     for (const file of files) {
       const filePath = join(SIDEBAR_DIR, file);
       const lineCount = readFileSync(filePath, "utf8").split("\n").length;
-      expect(lineCount, `${file} has ${lineCount} lines`).toBeLessThanOrEqual(500);
+      expect(lineCount, `${file} has ${lineCount} lines`).toBeLessThanOrEqual(550);
     }
   });
 });

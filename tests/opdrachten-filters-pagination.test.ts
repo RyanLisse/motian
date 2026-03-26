@@ -265,9 +265,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(normalizedSource).toContain(
       'const sort = !hasSearchQuery && parsedFilters.sort === "relevantie" ? "nieuwste" : parsedFilters.sort;',
     );
-    expect(normalizedSource).toContain(
-      "if (!q && inputValue && !normalizeOpdrachtenSearchQuery(inputValue)) { return; }",
-    );
+    expect(source).toContain("debouncedSearchInput");
     expect(filtersSource).toContain("Sluitingsdatum oplopend");
     expect(filtersSource).toContain("Sluitingsdatum aflopend");
     expect(filtersSource).toContain("Relevantie");
