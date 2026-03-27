@@ -25,7 +25,7 @@ import { DeleteCandidateButton } from "@/components/delete-candidate-button";
 import { EditCandidateFields } from "@/components/edit-candidate-fields";
 import { MatchDetail } from "@/components/matching/match-detail";
 import { ReportButton } from "@/components/matching/report-button";
-import { ScreeningCallButton } from "@/components/screening-call";
+import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
 import { SkillsRadar } from "@/components/skills-radar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

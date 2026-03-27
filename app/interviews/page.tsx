@@ -1,4 +1,5 @@
 import { Calendar, Clock, Filter, Monitor, Star } from "lucide-react";
+import { Suspense } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -26,7 +27,33 @@ const MAX_PER_PAGE = 50;
 
 const STATUSES = ["scheduled", "completed", "cancelled"];
 
-export default async function InterviewsPage({ searchParams }: Props) {
+function InterviewsSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <div>
+          <div className="h-7 w-32 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-56 rounded bg-muted animate-pulse mt-2" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton items
+            <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+        <div className="h-10 w-64 rounded bg-muted animate-pulse" />
+        <div className="grid gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton items
+            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function InterviewsContent({ searchParams }: Props) {
   const params = await searchParams;
   const statusFilter = params.status ?? "";
 
@@ -194,5 +221,13 @@ export default async function InterviewsPage({ searchParams }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+export default function InterviewsPage({ searchParams }: Props) {
+  return (
+    <Suspense fallback={<InterviewsSkeleton />}>
+      <InterviewsContent searchParams={searchParams} />
+    </Suspense>
   );
 }

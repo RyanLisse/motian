@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { db, desc, gte, sql } from "@/src/db";
 import { agentEvents } from "@/src/db/schema";
 
-export async function getAgentDashboardData() {
+export const getAgentDashboardData = cache(async function getAgentDashboardData() {
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [totalEvents, events24h, statusCounts, agentCounts24h, typeCounts24h, recentEvents] =
     await Promise.all([
@@ -71,4 +72,4 @@ export async function getAgentDashboardData() {
     ),
     recentEvents,
   };
-}
+});

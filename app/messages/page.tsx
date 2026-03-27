@@ -1,4 +1,5 @@
 import { ArrowDownLeft, ArrowUpRight, Filter, MessageSquare } from "lucide-react";
+import { Suspense } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -25,7 +26,33 @@ interface Props {
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 50;
 
-export default async function MessagesPage({ searchParams }: Props) {
+function MessagesSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <div>
+          <div className="h-7 w-32 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-56 rounded bg-muted animate-pulse mt-2" />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton items
+            <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+        <div className="h-10 w-64 rounded bg-muted animate-pulse" />
+        <div className="grid gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton items
+            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function MessagesContent({ searchParams }: Props) {
   const params = await searchParams;
   const directionFilter = params.direction ?? "";
   const channelFilter = params.channel ?? "";
@@ -41,24 +68,7 @@ export default async function MessagesPage({ searchParams }: Props) {
     maxLimit: MAX_PER_PAGE,
   });
 
-  // KPI counts
-  const directionCounts = await db
-    .select({
-      direction: messages.direction,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(messages)
-    .where(isNull(messages.deletedAt))
-    .groupBy(messages.direction);
-
-  let totalMessages = 0;
-  const dirMap: Record<string, number> = {};
-  for (const row of directionCounts) {
-    dirMap[row.direction] = row.count;
-    totalMessages += row.count;
-  }
-
-  // Query messages with joins
+  // Query conditions (needed by both KPI and list queries)
   const conditions = [isNull(messages.deletedAt)];
   if (directionFilter && ["inbound", "outbound"].includes(directionFilter)) {
     conditions.push(eq(messages.direction, directionFilter));
@@ -68,7 +78,16 @@ export default async function MessagesPage({ searchParams }: Props) {
   }
   const where = and(...conditions);
 
-  const [rows, countRows] = await Promise.all([
+  // Parallelize all three queries: KPI direction counts + filtered rows + filtered count
+  const [directionCounts, rows, countRows] = await Promise.all([
+    db
+      .select({
+        direction: messages.direction,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(messages)
+      .where(isNull(messages.deletedAt))
+      .groupBy(messages.direction),
     db
       .select({
         message: messages,
@@ -85,6 +104,13 @@ export default async function MessagesPage({ searchParams }: Props) {
       .offset(offset),
     db.select({ count: sql<number>`count(*)::int` }).from(messages).where(where),
   ]);
+
+  let totalMessages = 0;
+  const dirMap: Record<string, number> = {};
+  for (const row of directionCounts) {
+    dirMap[row.direction] = row.count;
+    totalMessages += row.count;
+  }
 
   const totalFiltered = countRows[0]?.count ?? 0;
   const totalPages = Math.ceil(totalFiltered / limit) || 1;
@@ -197,5 +223,13 @@ export default async function MessagesPage({ searchParams }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+export default function MessagesPage({ searchParams }: Props) {
+  return (
+    <Suspense fallback={<MessagesSkeleton />}>
+      <MessagesContent searchParams={searchParams} />
+    </Suspense>
   );
 }

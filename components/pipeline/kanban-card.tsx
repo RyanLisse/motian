@@ -3,7 +3,7 @@
 import { GripVertical } from "lucide-react";
 import Link from "next/link";
 import { type DragEvent, useCallback, useRef, useState } from "react";
-import { ScreeningCallButton } from "@/components/screening-call";
+import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
 import { Badge } from "@/components/ui/badge";
 
 export interface KanbanCardData {

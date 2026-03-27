@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, asc, db, desc, eq, gte, isNull, ne, sql } from "@/src/db";
 import {
   applications,
@@ -140,7 +141,7 @@ async function getRecentScrapes(database: typeof db): Promise<RecentScrape[]> {
   );
 }
 
-export async function getOverviewData(database: typeof db = db) {
+export const getOverviewData = cache(async function getOverviewData(database: typeof db = db) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const now = new Date();
@@ -154,125 +155,143 @@ export async function getOverviewData(database: typeof db = db) {
   const visibleCondition = and(ne(jobs.status, "archived"), isNull(jobs.deletedAt));
   const openCondition = and(eq(jobs.status, "open"), isNull(jobs.deletedAt));
 
-  const platformCounts = await database
-    .select({
-      platform: jobs.platform,
-      count: sql<number>`cast(count(*) as integer)`,
-      weeklyNew: sql<number>`cast(count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo}) as integer)`,
-    })
-    .from(jobs)
-    .where(visibleCondition)
-    .groupBy(jobs.platform)
-    .orderBy(sql`count(*) desc`);
+  const dedupedTotalPromise = (async () => {
+    try {
+      const dedupedTotalResult = await (
+        database as unknown as {
+          execute(query: unknown): Promise<{ rows: Array<{ cnt: number }> }>;
+        }
+      ).execute(sql`
+        with ranked as (
+          select ${jobs.id},
+            row_number() over (
+              partition by ${jobs.dedupeTitleNormalized}, ${jobs.dedupeClientNormalized}, ${jobs.dedupeLocationNormalized}
+              order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
+            ) as rn
+          from ${jobs}
+          where ${openCondition}
+        )
+        select cast(count(*) as integer) as cnt from ranked where rn = 1
+      `);
+      return dedupedTotalResult.rows[0]?.cnt ?? 0;
+    } catch {
+      // execute may not be available in all environments; fall back to 0
+      return 0;
+    }
+  })();
 
-  // Deduplicated total matching the vacatures page count
-  let dedupedTotal = 0;
-  try {
-    const dedupedTotalResult = await (
-      database as unknown as { execute(query: unknown): Promise<{ rows: Array<{ cnt: number }> }> }
-    ).execute(sql`
-      with ranked as (
-        select ${jobs.id},
-          row_number() over (
-            partition by ${jobs.dedupeTitleNormalized}, ${jobs.dedupeClientNormalized}, ${jobs.dedupeLocationNormalized}
-            order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
-          ) as rn
-        from ${jobs}
-        where ${openCondition}
+  const [
+    platformCounts,
+    dedupedTotal,
+    recentJobs,
+    activeScrapers,
+    recentScrapes,
+    topCompanies,
+    locationCounts,
+    pipelineStageCounts,
+    upcomingInterviewCountResult,
+    upcomingInterviews,
+  ] = await Promise.all([
+    database
+      .select({
+        platform: jobs.platform,
+        count: sql<number>`cast(count(*) as integer)`,
+        weeklyNew: sql<number>`cast(count(*) filter (where ${jobs.scrapedAt} >= ${sevenDaysAgo}) as integer)`,
+      })
+      .from(jobs)
+      .where(visibleCondition)
+      .groupBy(jobs.platform)
+      .orderBy(sql`count(*) desc`),
+
+    dedupedTotalPromise,
+
+    getRecentJobs(database),
+
+    database
+      .select({
+        id: scraperConfigs.id,
+        platform: scraperConfigs.platform,
+        isActive: scraperConfigs.isActive,
+        cronExpression: scraperConfigs.cronExpression,
+        consecutiveFailures: scraperConfigs.consecutiveFailures,
+        lastRunAt: scraperConfigs.lastRunAt,
+        lastRunStatus: scraperConfigs.lastRunStatus,
+        updatedAt: scraperConfigs.updatedAt,
+      })
+      .from(scraperConfigs)
+      .where(eq(scraperConfigs.isActive, true)),
+
+    getRecentScrapes(database),
+
+    database
+      .select({
+        company: jobs.company,
+        count: sql<number>`cast(count(*) as integer)`,
+      })
+      .from(jobs)
+      .where(
+        and(sql`${jobs.company} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
       )
-      select cast(count(*) as integer) as cnt from ranked where rn = 1
-    `);
-    dedupedTotal = dedupedTotalResult.rows[0]?.cnt ?? 0;
-  } catch {
-    // execute may not be available in all environments; fall back to 0
-  }
+      .groupBy(jobs.company)
+      .orderBy(sql`count(*) desc`)
+      .limit(5),
 
-  const recentJobs = await getRecentJobs(database);
+    database
+      .select({
+        province: jobs.province,
+        count: sql<number>`cast(count(*) as integer)`,
+      })
+      .from(jobs)
+      .where(
+        and(sql`${jobs.province} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
+      )
+      .groupBy(jobs.province)
+      .orderBy(sql`count(*) desc`)
+      .limit(5),
 
-  const activeScrapers = await database
-    .select({
-      id: scraperConfigs.id,
-      platform: scraperConfigs.platform,
-      isActive: scraperConfigs.isActive,
-      cronExpression: scraperConfigs.cronExpression,
-      consecutiveFailures: scraperConfigs.consecutiveFailures,
-      lastRunAt: scraperConfigs.lastRunAt,
-      lastRunStatus: scraperConfigs.lastRunStatus,
-      updatedAt: scraperConfigs.updatedAt,
-    })
-    .from(scraperConfigs)
-    .where(eq(scraperConfigs.isActive, true));
+    database
+      .select({
+        stage: applications.stage,
+        count: sql<number>`cast(count(*) as integer)`,
+      })
+      .from(applications)
+      .where(isNull(applications.deletedAt))
+      .groupBy(applications.stage),
 
-  const recentScrapes = await getRecentScrapes(database);
-
-  const topCompanies = await database
-    .select({
-      company: jobs.company,
-      count: sql<number>`cast(count(*) as integer)`,
-    })
-    .from(jobs)
-    .where(
-      and(sql`${jobs.company} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
-    )
-    .groupBy(jobs.company)
-    .orderBy(sql`count(*) desc`)
-    .limit(5);
-
-  const locationCounts = await database
-    .select({
-      province: jobs.province,
-      count: sql<number>`cast(count(*) as integer)`,
-    })
-    .from(jobs)
-    .where(
-      and(sql`${jobs.province} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
-    )
-    .groupBy(jobs.province)
-    .orderBy(sql`count(*) desc`)
-    .limit(5);
-
-  const pipelineStageCounts = await database
-    .select({
-      stage: applications.stage,
-      count: sql<number>`cast(count(*) as integer)`,
-    })
-    .from(applications)
-    .where(isNull(applications.deletedAt))
-    .groupBy(applications.stage);
-
-  const upcomingInterviewCountResult = await database
-    .select({ count: sql<number>`cast(count(*) as integer)` })
-    .from(interviews)
-    .where(
-      and(
-        isNull(interviews.deletedAt),
-        eq(interviews.status, "scheduled"),
-        gte(interviews.scheduledAt, now),
+    database
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(interviews)
+      .where(
+        and(
+          isNull(interviews.deletedAt),
+          eq(interviews.status, "scheduled"),
+          gte(interviews.scheduledAt, now),
+        ),
       ),
-    );
 
-  const upcomingInterviews = await database
-    .select({
-      id: interviews.id,
-      scheduledAt: interviews.scheduledAt,
-      type: interviews.type,
-      candidateName: candidates.name,
-      jobTitle: jobs.title,
-      jobCompany: jobs.company,
-    })
-    .from(interviews)
-    .innerJoin(applications, eq(interviews.applicationId, applications.id))
-    .leftJoin(candidates, eq(applications.candidateId, candidates.id))
-    .leftJoin(jobs, eq(applications.jobId, jobs.id))
-    .where(
-      and(
-        isNull(interviews.deletedAt),
-        eq(interviews.status, "scheduled"),
-        gte(interviews.scheduledAt, now),
-      ),
-    )
-    .orderBy(asc(interviews.scheduledAt))
-    .limit(4);
+    database
+      .select({
+        id: interviews.id,
+        scheduledAt: interviews.scheduledAt,
+        type: interviews.type,
+        candidateName: candidates.name,
+        jobTitle: jobs.title,
+        jobCompany: jobs.company,
+      })
+      .from(interviews)
+      .innerJoin(applications, eq(interviews.applicationId, applications.id))
+      .leftJoin(candidates, eq(applications.candidateId, candidates.id))
+      .leftJoin(jobs, eq(applications.jobId, jobs.id))
+      .where(
+        and(
+          isNull(interviews.deletedAt),
+          eq(interviews.status, "scheduled"),
+          gte(interviews.scheduledAt, now),
+        ),
+      )
+      .orderBy(asc(interviews.scheduledAt))
+      .limit(4),
+  ]);
 
   return {
     activeScrapers,
@@ -286,4 +305,4 @@ export async function getOverviewData(database: typeof db = db) {
     upcomingInterviewCountResult,
     upcomingInterviews,
   };
-}
+});

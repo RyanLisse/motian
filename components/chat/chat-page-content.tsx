@@ -16,6 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { nanoid } from "nanoid";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ChatPromptComposer } from "@/src/components/ai-elements/chat-prompt-composer";
@@ -30,7 +31,11 @@ import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { ChatMessages, type ChatSuggestion } from "./chat-messages";
 import { readSessionStorage, writeSessionStorage } from "./chat-session-storage";
 import { useChatThread } from "./use-chat-thread";
-import { VoiceSession } from "./voice-session";
+
+const VoiceSession = dynamic(
+  () => import("./voice-session").then((m) => ({ default: m.VoiceSession })),
+  { ssr: false },
+);
 
 const CHAT_MODELS = [
   { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite", provider: "Google" },

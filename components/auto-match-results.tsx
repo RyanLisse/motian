@@ -16,7 +16,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-import { ScreeningCallButton } from "@/components/screening-call";
+import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
 import { Button } from "@/components/ui/button";
 import type { StructuredMatchOutput } from "@/src/schemas/matching";
 
