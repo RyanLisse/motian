@@ -4,12 +4,14 @@ import { GripVertical } from "lucide-react";
 import Link from "next/link";
 import { type DragEvent, useCallback, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { ScreeningCallButton } from "@/components/screening-call";
 
 export interface KanbanCardData {
   id: string;
   candidateId: string | null;
   candidateName: string | null;
   candidateEmail: string | null;
+  jobId: string | null;
   jobTitle: string | null;
   jobCompany: string | null;
   source: string | null;
@@ -111,6 +113,16 @@ export function KanbanCard({ card }: KanbanCardProps) {
               >
                 {Math.round(card.matchScore)}%
               </Badge>
+            )}
+            {card.candidateId && (
+              <ScreeningCallButton
+                candidateId={card.candidateId}
+                candidateName={card.candidateName ?? "Kandidaat"}
+                jobId={card.jobId ?? undefined}
+                jobTitle={card.jobTitle ?? undefined}
+                matchScore={card.matchScore ?? undefined}
+                variant="icon"
+              />
             )}
             {card.source && (
               <span className="text-[9px] text-muted-foreground capitalize">{card.source}</span>

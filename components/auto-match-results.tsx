@@ -17,6 +17,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { ScreeningCallButton } from "@/components/screening-call";
 import type { StructuredMatchOutput } from "@/src/schemas/matching";
 
 type JudgeVerdict = {
@@ -41,9 +42,10 @@ type AutoMatchResult = {
 
 interface AutoMatchResultsProps {
   candidateId: string;
+  candidateName?: string;
 }
 
-export function AutoMatchResults({ candidateId }: AutoMatchResultsProps) {
+export function AutoMatchResults({ candidateId, candidateName }: AutoMatchResultsProps) {
   const { data, status, error } = useQuery<AutoMatchResult[]>({
     queryKey: ["auto-match", candidateId],
     queryFn: async () => {
@@ -114,13 +116,13 @@ export function AutoMatchResults({ candidateId }: AutoMatchResultsProps) {
       </div>
 
       {matches.map((match) => (
-        <MatchCard key={match.jobId} match={match} candidateId={candidateId} />
+        <MatchCard key={match.jobId} match={match} candidateId={candidateId} candidateName={candidateName} />
       ))}
     </div>
   );
 }
 
-function MatchCard({ match, candidateId }: { match: AutoMatchResult; candidateId: string }) {
+function MatchCard({ match, candidateId, candidateName }: { match: AutoMatchResult; candidateId: string; candidateName?: string }) {
   const sr = match.structuredResult;
   const recommendation = sr?.recommendation;
   const router = useRouter();
@@ -306,6 +308,15 @@ function MatchCard({ match, candidateId }: { match: AutoMatchResult; candidateId
             )}
           </Button>
         )}
+        <ScreeningCallButton
+          candidateId={candidateId}
+          candidateName={candidateName ?? "Kandidaat"}
+          jobId={match.jobId}
+          jobTitle={match.jobTitle}
+          matchId={match.matchId}
+          matchScore={match.quickScore}
+          variant="compact"
+        />
         <Link
           href={`/vacatures/${match.jobId}`}
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline"

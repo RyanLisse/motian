@@ -22,6 +22,7 @@ import type { MatchSuggestionItem } from "@/components/candidate-wizard/types";
 import { CvDocumentViewerLazy } from "@/components/cv-document-viewer-lazy";
 import { CvDropZone } from "@/components/cv-drop-zone";
 import { DeleteCandidateButton } from "@/components/delete-candidate-button";
+import { ScreeningCallButton } from "@/components/screening-call";
 import { EditCandidateFields } from "@/components/edit-candidate-fields";
 import { MatchDetail } from "@/components/matching/match-detail";
 import { ReportButton } from "@/components/matching/report-button";
@@ -428,6 +429,16 @@ export default async function KandidaatDetailPage({ params }: Props) {
                   <Bookmark className="h-4 w-4" />
                   Kandidaat opslaan
                 </Button>
+                {candidate.phone && (
+                  <ScreeningCallButton
+                    candidateId={candidate.id}
+                    candidateName={candidate.name}
+                    jobId={primaryActiveApplication?.job?.id ?? undefined}
+                    jobTitle={primaryActiveApplication?.job?.title ?? undefined}
+                    matchScore={primaryActiveApplication?.linkedMatch?.matchScore ?? undefined}
+                    variant="full"
+                  />
+                )}
               </div>
             </div>
           </div>
