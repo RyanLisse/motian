@@ -1,9 +1,9 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import type { CandidateMatchItem } from "@/components/candidate-wizard/candidate-match-card";
 import { CandidateMatchCard } from "@/components/candidate-wizard/candidate-match-card";
 import { Button } from "@/components/ui/button";
@@ -103,7 +103,8 @@ function LinkCandidatesContent({
         <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/30">
           <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
           <p className="text-sm text-green-800 dark:text-green-300">
-            {linkedCount} {linkedCount === 1 ? "kandidaat" : "kandidaten"} toegevoegd aan screening pipeline.
+            {linkedCount} {linkedCount === 1 ? "kandidaat" : "kandidaten"} toegevoegd aan screening
+            pipeline.
           </p>
         </div>
       ) : null}
@@ -141,7 +142,11 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
   const [submitError, setSubmitError] = useState("");
   const [linkedCount, setLinkedCount] = useState(0);
 
-  const { data: matches = [], isLoading, error: queryError } = useQuery({
+  const {
+    data: matches = [],
+    isLoading,
+    error: queryError,
+  } = useQuery({
     queryKey: ["link-candidates", jobId],
     queryFn: async () => {
       const res = await fetch(`/api/vacatures/${jobId}/match-kandidaten`, { method: "POST" });
@@ -169,14 +174,17 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
 
   const error = submitError || (queryError instanceof Error ? queryError.message : "");
 
-  const toggle = useCallback((matchId: string, checked: boolean) => {
-    setUserSelection((prev) => {
-      const next = new Set(prev ?? getInitialSelection(matches));
-      if (checked) next.add(matchId);
-      else next.delete(matchId);
-      return next;
-    });
-  }, [matches]);
+  const toggle = useCallback(
+    (matchId: string, checked: boolean) => {
+      setUserSelection((prev) => {
+        const next = new Set(prev ?? getInitialSelection(matches));
+        if (checked) next.add(matchId);
+        else next.delete(matchId);
+        return next;
+      });
+    },
+    [matches],
+  );
 
   const handleConfirm = async () => {
     const matchIds = matches

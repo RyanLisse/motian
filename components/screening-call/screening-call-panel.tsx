@@ -1,30 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
+  AlertTriangle,
+  Briefcase,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+  Mic,
+  MicOff,
   Phone,
   PhoneCall,
   PhoneOff,
-  Mic,
-  MicOff,
-  MessageSquare,
-  User,
-  Briefcase,
   Star,
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
-  AlertTriangle,
+  User,
 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 type CallState = "idle" | "creating" | "ready" | "active" | "completed" | "error";
 
@@ -130,9 +130,7 @@ export function ScreeningCallPanel({
             <PhoneCall className="h-5 w-5 text-primary" />
             Screening gesprek
           </SheetTitle>
-          <SheetDescription>
-            AI-gestuurd screeninggesprek met {candidateName}
-          </SheetDescription>
+          <SheetDescription>AI-gestuurd screeninggesprek met {candidateName}</SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
@@ -172,11 +170,7 @@ export function ScreeningCallPanel({
                   className="h-9 w-9"
                   onClick={() => setIsMuted(!isMuted)}
                 >
-                  {isMuted ? (
-                    <MicOff className="h-4 w-4" />
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )}
+                  {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
               )}
               {callState === "ready" && (
@@ -188,11 +182,7 @@ export function ScreeningCallPanel({
                 </Button>
               )}
               {callState === "active" && (
-                <Button
-                  variant="destructive"
-                  onClick={endCall}
-                  className="gap-1.5"
-                >
+                <Button variant="destructive" onClick={endCall} className="gap-1.5">
                   <PhoneOff className="h-4 w-4" /> Beëindig
                 </Button>
               )}
@@ -206,18 +196,12 @@ export function ScreeningCallPanel({
               <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <User className="h-3.5 w-3.5" /> Kandidaat
               </div>
-              <p className="text-sm font-medium">
-                {candidateContext.name ?? candidateName}
-              </p>
+              <p className="text-sm font-medium">{candidateContext.name ?? candidateName}</p>
               {candidateContext.role && (
-                <p className="text-xs text-muted-foreground">
-                  {candidateContext.role}
-                </p>
+                <p className="text-xs text-muted-foreground">{candidateContext.role}</p>
               )}
               {candidateContext.location && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {candidateContext.location}
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{candidateContext.location}</p>
               )}
               {candidateContext.hourlyRate && (
                 <p className="mt-1 text-xs">€{candidateContext.hourlyRate}/uur</p>
@@ -229,18 +213,12 @@ export function ScreeningCallPanel({
               <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Briefcase className="h-3.5 w-3.5" /> Vacature
               </div>
-              <p className="text-sm font-medium">
-                {jobContext.title ?? jobTitle ?? "—"}
-              </p>
+              <p className="text-sm font-medium">{jobContext.title ?? jobTitle ?? "—"}</p>
               {jobContext.company && (
-                <p className="text-xs text-muted-foreground">
-                  {jobContext.company}
-                </p>
+                <p className="text-xs text-muted-foreground">{jobContext.company}</p>
               )}
               {jobContext.location && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {jobContext.location}
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{jobContext.location}</p>
               )}
               {(jobContext.rateMin || jobContext.rateMax) && (
                 <p className="mt-1 text-xs">
@@ -305,10 +283,7 @@ export function ScreeningCallPanel({
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold dark:bg-muted/50">
                           {i + 1}
                         </span>
-                        <Badge
-                          variant="outline"
-                          className="text-[10px]"
-                        >
+                        <Badge variant="outline" className="text-[10px]">
                           {q.category === "ai_generated"
                             ? "AI"
                             : q.category === "template"
@@ -318,9 +293,7 @@ export function ScreeningCallPanel({
                       </div>
                       <p className="text-sm">{q.question}</p>
                     </div>
-                    {q.answer && (
-                      <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-green-600" />
-                    )}
+                    {q.answer && <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-green-600" />}
                   </div>
                   {q.answer && (
                     <p className="mt-2 border-t border-border/50 pt-2 text-xs text-muted-foreground dark:border-input/30">
@@ -362,9 +335,7 @@ export function ScreeningCallPanel({
                     <div
                       key={i}
                       className={`text-xs ${
-                        entry.speaker === "agent"
-                          ? "text-primary"
-                          : "text-foreground"
+                        entry.speaker === "agent" ? "text-primary" : "text-foreground"
                       }`}
                     >
                       <span className="font-medium">
@@ -390,9 +361,7 @@ export function ScreeningCallPanel({
           {callState === "completed" && callDetails?.callSummary && (
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 dark:border-primary/20 dark:bg-primary/5">
               <h3 className="mb-2 text-sm font-semibold">Gespreksresultaat</h3>
-              <p className="text-sm text-muted-foreground">
-                {callDetails.callSummary}
-              </p>
+              <p className="text-sm text-muted-foreground">{callDetails.callSummary}</p>
               {callDetails.recommendedNextStep && (
                 <div className="mt-2">
                   <Badge

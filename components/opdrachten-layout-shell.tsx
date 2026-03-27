@@ -18,9 +18,7 @@ export function OpdrachtenLayoutShell({
       <div
         className={cn(
           "border-border bg-sidebar flex min-h-0 flex-col",
-          isDetailPage
-            ? "hidden md:flex md:w-[380px] md:shrink-0 md:border-r"
-            : "w-full",
+          isDetailPage ? "hidden md:flex md:w-[380px] md:shrink-0 md:border-r" : "w-full",
         )}
       >
         {sidebar}
@@ -28,9 +26,7 @@ export function OpdrachtenLayoutShell({
       <div
         className={cn(
           "min-w-0",
-          isDetailPage
-            ? "flex min-w-0 flex-1 flex-col overflow-hidden"
-            : "hidden",
+          isDetailPage ? "flex min-w-0 flex-1 flex-col overflow-hidden" : "hidden",
         )}
       >
         {children}

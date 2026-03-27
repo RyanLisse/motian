@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { Suspense, type ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -233,9 +233,7 @@ async function DashboardContent() {
             }
           >
             {recentJobs.length === 0 ? (
-              <p className="py-4 text-sm text-muted-foreground">
-                Nog geen vacatures beschikbaar.
-              </p>
+              <p className="py-4 text-sm text-muted-foreground">Nog geen vacatures beschikbaar.</p>
             ) : (
               <div className="divide-y divide-border">
                 {recentJobs.map((job) => (

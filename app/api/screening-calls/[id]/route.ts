@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
-import {
-  getScreeningCall,
-  updateScreeningCall,
-} from "@/src/services/screening-calls";
+import { getScreeningCall, updateScreeningCall } from "@/src/services/screening-calls";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +16,7 @@ export const GET = withApiHandler(
 );
 
 const updateSchema = z.object({
-  status: z
-    .enum(["pending", "ringing", "active", "completed", "failed", "cancelled"])
-    .optional(),
+  status: z.enum(["pending", "ringing", "active", "completed", "failed", "cancelled"]).optional(),
   transcript: z.array(z.unknown()).optional(),
   callSummary: z.string().optional(),
   callNotes: z.string().optional(),
@@ -50,15 +45,9 @@ export const PATCH = withApiHandler(
       return Response.json({ data: updated });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return Response.json(
-          { error: "Ongeldige invoer", details: error.errors },
-          { status: 400 },
-        );
+        return Response.json({ error: "Ongeldige invoer", details: error.errors }, { status: 400 });
       }
-      return Response.json(
-        { error: "Internal server error" },
-        { status: 500 },
-      );
+      return Response.json({ error: "Internal server error" }, { status: 500 });
     }
   },
 );

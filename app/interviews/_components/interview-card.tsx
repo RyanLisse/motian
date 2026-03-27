@@ -35,7 +35,12 @@ interface InterviewCardProps {
   jobCompany: string | null;
 }
 
-export function InterviewCard({ interview, candidateName, jobTitle, jobCompany }: InterviewCardProps) {
+export function InterviewCard({
+  interview,
+  candidateName,
+  jobTitle,
+  jobCompany,
+}: InterviewCardProps) {
   const TypeIcon = typeIcons[interview.type] ?? Monitor;
 
   return (
@@ -50,25 +55,15 @@ export function InterviewCard({ interview, candidateName, jobTitle, jobCompany }
               {candidateName ?? "Onbekend"}
             </span>
             <span className="text-xs text-muted-foreground">→</span>
-            <span className="text-sm text-muted-foreground truncate">
-              {jobTitle ?? "Onbekend"}
-            </span>
+            <span className="text-sm text-muted-foreground truncate">{jobTitle ?? "Onbekend"}</span>
           </div>
-          {jobCompany && (
-            <p className="text-xs text-muted-foreground">{jobCompany}</p>
-          )}
+          {jobCompany && <p className="text-xs text-muted-foreground">{jobCompany}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Badge
-            variant="outline"
-            className={`text-xs ${statusColors[interview.status] ?? ""}`}
-          >
+          <Badge variant="outline" className={`text-xs ${statusColors[interview.status] ?? ""}`}>
             {statusLabels[interview.status] ?? interview.status}
           </Badge>
-          <Badge
-            variant="outline"
-            className={`text-xs ${typeColors[interview.type] ?? ""}`}
-          >
+          <Badge variant="outline" className={`text-xs ${typeColors[interview.type] ?? ""}`}>
             <TypeIcon className="h-3 w-3 mr-1" />
             {interview.type}
           </Badge>
@@ -100,9 +95,7 @@ export function InterviewCard({ interview, candidateName, jobTitle, jobCompany }
         )}
       </div>
       {interview.feedback && (
-        <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-          {interview.feedback}
-        </p>
+        <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{interview.feedback}</p>
       )}
     </div>
   );

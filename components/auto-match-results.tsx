@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Building2,
@@ -13,11 +14,10 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import { useCallback, useState } from "react";
 import { ScreeningCallButton } from "@/components/screening-call";
+import { Button } from "@/components/ui/button";
 import type { StructuredMatchOutput } from "@/src/schemas/matching";
 
 type JudgeVerdict = {
@@ -73,12 +73,8 @@ export function AutoMatchResults({ candidateId, candidateName }: AutoMatchResult
       <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
         <div>
-          <p className="text-sm font-medium text-primary">
-            Top matches worden beoordeeld...
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Gedetailleerde beoordeling per criterium
-          </p>
+          <p className="text-sm font-medium text-primary">Top matches worden beoordeeld...</p>
+          <p className="text-xs text-muted-foreground">Gedetailleerde beoordeling per criterium</p>
         </div>
       </div>
     );
@@ -116,13 +112,26 @@ export function AutoMatchResults({ candidateId, candidateName }: AutoMatchResult
       </div>
 
       {matches.map((match) => (
-        <MatchCard key={match.jobId} match={match} candidateId={candidateId} candidateName={candidateName} />
+        <MatchCard
+          key={match.jobId}
+          match={match}
+          candidateId={candidateId}
+          candidateName={candidateName}
+        />
       ))}
     </div>
   );
 }
 
-function MatchCard({ match, candidateId, candidateName }: { match: AutoMatchResult; candidateId: string; candidateName?: string }) {
+function MatchCard({
+  match,
+  candidateId,
+  candidateName,
+}: {
+  match: AutoMatchResult;
+  candidateId: string;
+  candidateName?: string;
+}) {
   const sr = match.structuredResult;
   const recommendation = sr?.recommendation;
   const router = useRouter();
@@ -279,12 +288,7 @@ function MatchCard({ match, candidateId, candidateName }: { match: AutoMatchResu
             </button>
           </div>
         ) : linkState === "error" ? (
-          <Button
-            size="sm"
-            variant="destructive"
-            className="h-8 text-xs"
-            onClick={handleLink}
-          >
+          <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={handleLink}>
             <XCircle className="mr-1.5 h-3.5 w-3.5" />
             Mislukt — probeer opnieuw
           </Button>

@@ -10,10 +10,7 @@ function readFile(...segments: string[]): string {
 
 /** Read all chat route module source (route.ts + _helpers.ts) for contract checks. */
 function readChatModule(): string {
-  return [
-    readFile("app/api/chat/route.ts"),
-    readFile("app/api/chat/_helpers.ts"),
-  ].join("\n");
+  return [readFile("app/api/chat/route.ts"), readFile("app/api/chat/_helpers.ts")].join("\n");
 }
 
 describe("chat route title persistence", () => {

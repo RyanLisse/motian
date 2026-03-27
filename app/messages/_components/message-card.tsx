@@ -50,20 +50,15 @@ export function MessageCard({ message, candidateName, jobTitle }: MessageCardPro
             )}
             <span className="text-sm font-semibold text-foreground truncate">
               {message.subject ??
-                message.body.substring(0, 80) +
-                  (message.body.length > 80 ? "..." : "")}
+                message.body.substring(0, 80) + (message.body.length > 80 ? "..." : "")}
             </span>
           </div>
           <p className="text-xs text-muted-foreground ml-6">
-            {candidateName ?? "Onbekend"}{" "}
-            {jobTitle ? `\u00b7 ${jobTitle}` : ""}
+            {candidateName ?? "Onbekend"} {jobTitle ? `\u00b7 ${jobTitle}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Badge
-            variant="outline"
-            className={`text-xs ${channelColors[message.channel] ?? ""}`}
-          >
+          <Badge variant="outline" className={`text-xs ${channelColors[message.channel] ?? ""}`}>
             <ChannelIcon className="h-3 w-3 mr-1" />
             {channelLabels[message.channel] ?? message.channel}
           </Badge>

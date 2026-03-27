@@ -1,7 +1,7 @@
 "use client";
 
-import { Phone, PhoneCall, PhoneOff, Loader2 } from "lucide-react";
-import { useState, useCallback } from "react";
+import { Loader2, Phone, PhoneCall, PhoneOff } from "lucide-react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScreeningCallPanel } from "./screening-call-panel";
 
@@ -118,11 +118,7 @@ export function ScreeningCallButton({
     <>
       <Button
         variant={
-          callState === "error"
-            ? "destructive"
-            : callState === "active"
-              ? "default"
-              : "outline"
+          callState === "error" ? "destructive" : callState === "active" ? "default" : "outline"
         }
         size="sm"
         className={`gap-1.5 ${
@@ -135,9 +131,7 @@ export function ScreeningCallButton({
       >
         {icon}
         {variant === "full" || variant === "compact" ? (
-          <span className={variant === "compact" ? "hidden sm:inline" : ""}>
-            {label}
-          </span>
+          <span className={variant === "compact" ? "hidden sm:inline" : ""}>{label}</span>
         ) : null}
       </Button>
       {panelOpen && callData && (

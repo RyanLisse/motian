@@ -1,8 +1,7 @@
-import type { FieldStyleProps } from "./_components/job-field-types";
 import { JobContractSection } from "./_components/job-contract-section";
 import { JobDeadlineSection } from "./_components/job-deadline-section";
 import { JobDesktopExtrasSection } from "./_components/job-desktop-extras-section";
-import type { JobData } from "./_components/job-field-types";
+import type { FieldStyleProps, JobData } from "./_components/job-field-types";
 import { JobLocationSection } from "./_components/job-location-section";
 import { JobMetaSection } from "./_components/job-meta-section";
 import { JobRequirementsSection } from "./_components/job-requirements-section";
@@ -29,9 +28,7 @@ export function JobDetailFields({ job, metaFields = [], variant }: JobDetailFiel
       ? "text-muted-foreground text-xs mb-0.5 flex items-center gap-1"
       : "text-muted-foreground text-xs mb-0.5 flex items-center gap-1.5",
     ddClass: isMobile ? "text-foreground text-xs" : "text-foreground",
-    ddFontClass: isMobile
-      ? "text-foreground font-medium text-xs"
-      : "text-foreground font-medium",
+    ddFontClass: isMobile ? "text-foreground font-medium text-xs" : "text-foreground font-medium",
   };
 
   return (

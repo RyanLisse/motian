@@ -1,19 +1,13 @@
-import { withApiHandler } from "@/src/lib/api-handler";
-import { getLiveKitConfigStatus } from "@/src/lib/livekit";
-import {
-  getScreeningCall,
-  updateScreeningCall,
-} from "@/src/services/screening-calls";
 import { RoomAgentDispatch, RoomConfiguration } from "@livekit/protocol";
 import { AccessToken } from "livekit-server-sdk";
+import { withApiHandler } from "@/src/lib/api-handler";
+import { getLiveKitConfigStatus } from "@/src/lib/livekit";
+import { getScreeningCall, updateScreeningCall } from "@/src/services/screening-calls";
 
 export const dynamic = "force-dynamic";
 
 export const POST = withApiHandler(
-  async (
-    _request: Request,
-    { params }: { params: Promise<{ id: string }> },
-  ) => {
+  async (_request: Request, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
     const configStatus = getLiveKitConfigStatus();
     if (!configStatus.enabled) {
@@ -22,10 +16,7 @@ export const POST = withApiHandler(
 
     const call = await getScreeningCall(id);
     if (!call) {
-      return Response.json(
-        { error: "Screening call niet gevonden" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Screening call niet gevonden" }, { status: 404 });
     }
 
     const { apiKey, apiSecret, url } = configStatus.config;

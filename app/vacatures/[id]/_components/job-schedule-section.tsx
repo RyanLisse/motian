@@ -5,7 +5,12 @@ import type { FieldStyleProps, JobData } from "./job-field-types";
 type JobScheduleSectionProps = {
   job: Pick<
     JobData,
-    "startDate" | "endDate" | "hoursPerWeek" | "minHoursPerWeek" | "durationMonths" | "extensionPossible"
+    | "startDate"
+    | "endDate"
+    | "hoursPerWeek"
+    | "minHoursPerWeek"
+    | "durationMonths"
+    | "extensionPossible"
   >;
   styles: FieldStyleProps;
 };

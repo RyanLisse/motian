@@ -1,5 +1,5 @@
 import { db, desc, eq } from "../db";
-import { screeningCalls, candidates, jobs, jobMatches } from "../db/schema";
+import { candidates, jobMatches, jobs, screeningCalls } from "../db/schema";
 
 // ---------- Types ----------
 export interface ScreeningQuestion {
@@ -43,8 +43,7 @@ const TEMPLATE_QUESTIONS: Omit<ScreeningQuestion, "id">[] = [
     priority: 4,
   },
   {
-    question:
-      "Bent u bereid om op locatie te werken, of heeft u een voorkeur voor remote/hybride?",
+    question: "Bent u bereid om op locatie te werken, of heeft u een voorkeur voor remote/hybride?",
     category: "template",
     priority: 5,
   },
@@ -68,9 +67,7 @@ export async function generateScreeningQuestions(
   const missingSkills = requirements.filter(
     (req) =>
       !skills.some(
-        (s) =>
-          typeof s === "string" &&
-          s.toLowerCase().includes(String(req).toLowerCase()),
+        (s) => typeof s === "string" && s.toLowerCase().includes(String(req).toLowerCase()),
       ),
   );
   if (missingSkills.length > 0) {
@@ -139,9 +136,7 @@ export async function generateScreeningQuestions(
     ...q,
     id: crypto.randomUUID(),
   }));
-  return [...aiQuestions, ...templateWithIds].sort(
-    (a, b) => a.priority - b.priority,
-  );
+  return [...aiQuestions, ...templateWithIds].sort((a, b) => a.priority - b.priority);
 }
 
 // ---------- CRUD ----------
@@ -230,10 +225,7 @@ export async function createScreeningCall(input: CreateScreeningCallInput) {
 }
 
 export async function getScreeningCall(id: string) {
-  const [call] = await db
-    .select()
-    .from(screeningCalls)
-    .where(eq(screeningCalls.id, id));
+  const [call] = await db.select().from(screeningCalls).where(eq(screeningCalls.id, id));
   return call ?? null;
 }
 
