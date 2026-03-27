@@ -213,7 +213,9 @@ export function OpdrachtenSidebar({
             />
             <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="hidden text-xs text-muted-foreground sm:inline sm:text-sm">Per pagina:</span>
+                <span className="hidden text-xs text-muted-foreground sm:inline sm:text-sm">
+                  Per pagina:
+                </span>
                 <Select
                   value={String(displayPerPage)}
                   onValueChange={(v) =>

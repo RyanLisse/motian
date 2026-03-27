@@ -273,7 +273,9 @@ export function OverviewFilterPanel({
           </div>
 
           <div>
-            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Regio</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
+              Regio
+            </p>
             <FilterChecklist
               idPrefix="opdrachten-regio"
               options={regionOptions}
@@ -312,7 +314,9 @@ export function OverviewFilterPanel({
           </div>
 
           <div>
-            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Vakgebied</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
+              Vakgebied
+            </p>
             <FilterChecklist
               idPrefix="opdrachten-vakgebied"
               options={categoryOptions}
@@ -323,7 +327,9 @@ export function OverviewFilterPanel({
           </div>
 
           <div>
-            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Uren per week</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
+              Uren per week
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <Input
                 type="number"
@@ -351,7 +357,9 @@ export function OverviewFilterPanel({
           </div>
 
           <div>
-            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Straal (km)</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
+              Straal (km)
+            </p>
             <RadiusSliderField
               provinceAnchor={provinceAnchor}
               radiusKm={radiusKmInput}
@@ -390,7 +398,9 @@ export function OverviewFilterPanel({
           </div>
 
           <div>
-            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">Tarief per uur</p>
+            <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
+              Tarief per uur
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <Input
                 type="number"

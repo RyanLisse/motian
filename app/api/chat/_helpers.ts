@@ -2,12 +2,9 @@ import type { UIMessage } from "ai";
 import { z } from "zod";
 import { and, db, eq, isNull } from "@/src/db";
 import { chatSessions } from "@/src/db/schema";
-import {
-  tracedGenerateObject as generateObject,
-  resolveChatModel,
-} from "@/src/lib/ai-models";
-import { incrementSessionTokens } from "@/src/services/chat-sessions";
+import { tracedGenerateObject as generateObject, resolveChatModel } from "@/src/lib/ai-models";
 import { rateLimit } from "@/src/lib/rate-limit";
+import { incrementSessionTokens } from "@/src/services/chat-sessions";
 
 // ---------------------------------------------------------------------------
 // Rate limiter (shared singleton)
@@ -73,7 +70,9 @@ export function checkRateLimit(ip: string): Response | null {
 
 export async function parseRequestBody(
   req: Request,
-): Promise<{ messages: UIMessage[]; context: z.infer<typeof contextSchema>; model: string } | Response> {
+): Promise<
+  { messages: UIMessage[]; context: z.infer<typeof contextSchema>; model: string } | Response
+> {
   const body = await req.json().catch(() => null);
   const requestMessages = Array.isArray(body?.messages)
     ? (body.messages as UIMessage[])
@@ -106,7 +105,6 @@ type SessionSnapshot =
   | { messageCount: null; tokensUsed: null; loadFailed: true };
 
 export function checkTokenBudget(
-  sessionId: string,
   snapshot: SessionSnapshot | null,
   maxTokens: number | undefined,
 ): Response | null {
@@ -179,10 +177,7 @@ export async function generateSessionTitle(
 // trackTokenUsage
 // ---------------------------------------------------------------------------
 
-export function trackTokenUsage(
-  resultPromise: Promise<unknown>,
-  sessionId: string,
-): void {
+export function trackTokenUsage(resultPromise: Promise<unknown>, sessionId: string): void {
   void Promise.resolve(resultPromise)
     .then(async (final) => {
       const usage = (final as { usage?: { promptTokens?: number; completionTokens?: number } })

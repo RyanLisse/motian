@@ -94,7 +94,10 @@ export async function POST(req: Request) {
 
   // 4. Token budget checking
   if (sessionId) {
-    const budgetResponse = checkTokenBudget(sessionId, sessionSnapshot, CHAT_MAX_TOKENS_PER_SESSION);
+    const budgetResponse = checkTokenBudget(
+      sessionSnapshot,
+      CHAT_MAX_TOKENS_PER_SESSION,
+    );
     if (budgetResponse) return budgetResponse;
   }
 

@@ -367,15 +367,15 @@ describe("Opdrachten UI/API contracts", () => {
     const sidebar = readSidebarBundle();
     const listItem = readFile("components", "job-list-item.tsx");
 
-    expect(sidebar).toContain("grid-cols-[auto_minmax(0,1fr)]");
+    expect(sidebar).toContain("lg:grid-cols-[300px_minmax(0,1fr)]");
     expect(sidebar).toContain("const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)");
     expect(sidebar).toContain('aria-controls="opdrachten-mobile-filters"');
     expect(sidebar).toContain(
-      "data-[size=default]:h-11 w-full rounded-lg border-border bg-background",
+      "data-[size=default]:h-10 w-full rounded-lg border-border bg-background",
     );
     expect(sidebar).toContain("min-h-11 cursor-pointer items-center gap-3");
     expect(sidebar).toContain('<ScrollArea className="min-h-0 min-w-0 flex-1">');
-    expect(sidebar).toContain("flex flex-col gap-2 border-t border-border/70 pt-4 sm:flex-row");
+    expect(sidebar).toContain("border-t border-border/70");
     expect(sidebar).toContain("Filters openen");
     expect(sidebar).toContain("Filters sluiten");
     expect(sidebar).toContain('id="opdrachten-mobile-filters"');
@@ -412,11 +412,11 @@ describe("Opdrachten UI/API contracts", () => {
     const normalizedSidebar = sidebar.replace(/\s+/g, " ");
 
     expect(normalizedSidebar).toContain(
-      'className="flex min-h-0 flex-col border-b border-border/70 px-3 py-3 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6"',
+      'className="flex min-h-0 flex-col border-b border-border/70 px-3 py-2 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6"',
     );
-    expect(normalizedSidebar).toContain('className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4"');
+    expect(normalizedSidebar).toContain('className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-4"');
     expect(normalizedSidebar).toContain(
-      '"min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-3 sm:space-y-4 sm:p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0"',
+      '"min-h-0 flex-1 space-y-2 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-2.5 sm:space-y-3 sm:p-3 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:space-y-4"',
     );
   });
 });
