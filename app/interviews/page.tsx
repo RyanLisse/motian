@@ -1,12 +1,12 @@
-import { Calendar, Clock, Code2, Filter, MapPin, Monitor, Phone, Star, Video } from "lucide-react";
+import { Calendar, Clock, Filter, Monitor, Star } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
-import { Badge } from "@/components/ui/badge";
 import { and, db, desc, eq, gte, isNull, sql } from "@/src/db";
 import { applications, candidates, interviews, jobs } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
+import { InterviewCard, statusLabels } from "./_components/interview-card";
 
 export const dynamic = "force-dynamic";
 
@@ -23,32 +23,6 @@ interface Props {
 
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 50;
-
-const statusColors: Record<string, string> = {
-  scheduled: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  completed: "bg-primary/10 text-primary border-primary/20",
-  cancelled: "bg-red-500/10 text-red-500 border-red-500/20",
-};
-
-const statusLabels: Record<string, string> = {
-  scheduled: "Gepland",
-  completed: "Afgerond",
-  cancelled: "Geannuleerd",
-};
-
-const typeIcons: Record<string, typeof Phone> = {
-  phone: Phone,
-  video: Video,
-  onsite: MapPin,
-  technical: Code2,
-};
-
-const typeColors: Record<string, string> = {
-  phone: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  video: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-  onsite: "bg-orange-500/10 text-orange-500 border-orange-500/20",
-  technical: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
-};
 
 const STATUSES = ["scheduled", "completed", "cancelled"];
 
@@ -192,77 +166,15 @@ export default async function InterviewsPage({ searchParams }: Props) {
               {totalPages}
             </p>
             <div className="grid gap-3">
-              {rows.map((row) => {
-                const TypeIcon = typeIcons[row.interview.type] ?? Monitor;
-                return (
-                  <div
-                    key={row.interview.id}
-                    className="bg-card border border-border rounded-lg p-4 hover:border-primary/30 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold text-foreground truncate">
-                            {row.candidateName ?? "Onbekend"}
-                          </span>
-                          <span className="text-xs text-muted-foreground">→</span>
-                          <span className="text-sm text-muted-foreground truncate">
-                            {row.jobTitle ?? "Onbekend"}
-                          </span>
-                        </div>
-                        {row.jobCompany && (
-                          <p className="text-xs text-muted-foreground">{row.jobCompany}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${statusColors[row.interview.status] ?? ""}`}
-                        >
-                          {statusLabels[row.interview.status] ?? row.interview.status}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${typeColors[row.interview.type] ?? ""}`}
-                        >
-                          <TypeIcon className="h-3 w-3 mr-1" />
-                          {row.interview.type}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(row.interview.scheduledAt).toLocaleDateString("nl-NL", {
-                          weekday: "short",
-                          day: "numeric",
-                          month: "short",
-                        })}{" "}
-                        {new Date(row.interview.scheduledAt).toLocaleTimeString("nl-NL", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {row.interview.duration ?? 60} min
-                      </span>
-                      <span>{row.interview.interviewer}</span>
-                      {row.interview.rating && (
-                        <span className="flex items-center gap-0.5">
-                          <Star className="h-3 w-3 text-yellow-500" />
-                          {row.interview.rating}/5
-                        </span>
-                      )}
-                    </div>
-                    {row.interview.feedback && (
-                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-                        {row.interview.feedback}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+              {rows.map((row) => (
+                <InterviewCard
+                  key={row.interview.id}
+                  interview={row.interview}
+                  candidateName={row.candidateName}
+                  jobTitle={row.jobTitle}
+                  jobCompany={row.jobCompany}
+                />
+              ))}
             </div>
 
             {/* Pagination */}

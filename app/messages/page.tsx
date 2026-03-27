@@ -2,19 +2,16 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Filter,
-  Globe,
-  Mail,
   MessageSquare,
-  Phone,
 } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
-import { Badge } from "@/components/ui/badge";
 import { and, db, desc, eq, isNull, sql } from "@/src/db";
 import { applications, candidates, jobs, messages } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
+import { MessageCard, channelLabels, directionLabels } from "./_components/message-card";
 
 export const dynamic = "force-dynamic";
 
@@ -32,29 +29,6 @@ interface Props {
 
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 50;
-
-const channelColors: Record<string, string> = {
-  email: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  phone: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-  platform: "bg-orange-500/10 text-orange-500 border-orange-500/20",
-};
-
-const channelIcons: Record<string, typeof Mail> = {
-  email: Mail,
-  phone: Phone,
-  platform: Globe,
-};
-
-const channelLabels: Record<string, string> = {
-  email: "E-mail",
-  phone: "Telefoon",
-  platform: "Platform",
-};
-
-const directionLabels: Record<string, string> = {
-  inbound: "Inkomend",
-  outbound: "Uitgaand",
-};
 
 export default async function MessagesPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -201,62 +175,14 @@ export default async function MessagesPage({ searchParams }: Props) {
               {totalPages}
             </p>
             <div className="grid gap-3">
-              {rows.map((row) => {
-                const ChannelIcon = channelIcons[row.message.channel] ?? Mail;
-                const isInbound = row.message.direction === "inbound";
-                return (
-                  <div
-                    key={row.message.id}
-                    className="bg-card border border-border rounded-lg p-4 hover:border-primary/30 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          {isInbound ? (
-                            <ArrowDownLeft className="h-4 w-4 text-blue-500 shrink-0" />
-                          ) : (
-                            <ArrowUpRight className="h-4 w-4 text-primary shrink-0" />
-                          )}
-                          <span className="text-sm font-semibold text-foreground truncate">
-                            {row.message.subject ??
-                              row.message.body.substring(0, 80) +
-                                (row.message.body.length > 80 ? "..." : "")}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground ml-6">
-                          {row.candidateName ?? "Onbekend"}{" "}
-                          {row.jobTitle ? `· ${row.jobTitle}` : ""}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${channelColors[row.message.channel] ?? ""}`}
-                        >
-                          <ChannelIcon className="h-3 w-3 mr-1" />
-                          {channelLabels[row.message.channel] ?? row.message.channel}
-                        </Badge>
-                      </div>
-                    </div>
-                    {row.message.subject && (
-                      <p className="mt-2 text-xs text-muted-foreground ml-6 line-clamp-2">
-                        {row.message.body.substring(0, 120)}
-                        {row.message.body.length > 120 ? "..." : ""}
-                      </p>
-                    )}
-                    <div className="mt-2 text-xs text-muted-foreground ml-6">
-                      {row.message.sentAt &&
-                        new Date(row.message.sentAt).toLocaleDateString("nl-NL", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                    </div>
-                  </div>
-                );
-              })}
+              {rows.map((row) => (
+                <MessageCard
+                  key={row.message.id}
+                  message={row.message}
+                  candidateName={row.candidateName}
+                  jobTitle={row.jobTitle}
+                />
+              ))}
             </div>
 
             {/* Pagination */}

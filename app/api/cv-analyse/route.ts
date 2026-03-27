@@ -10,6 +10,7 @@ import {
   processStoredCV,
 } from "@/src/services/cv-analysis-pipeline";
 import type { cvAnalysisPipelineTask } from "@/trigger/cv-analysis-pipeline";
+import { requireBlobToken, validateFileFromForm } from "../_shared/cv-helpers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,37 +29,20 @@ function enqueuePipelineEvent(
 }
 
 export async function POST(request: NextRequest) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  const blobError = requireBlobToken();
+  if (blobError) {
     console.error("[CV Analyse] BLOB_READ_WRITE_TOKEN is not configured");
-    return Response.json(
-      { error: "Bestandsopslag is niet geconfigureerd. Stel BLOB_READ_WRITE_TOKEN in." },
-      { status: 503 },
-    );
+    return blobError;
   }
 
   const formData = await request.formData();
-  const file = formData.get("cv") as File | null;
+  const validation = await validateFileFromForm(formData, "cv", {
+    allowedTypes: [...CV_ALLOWED_TYPES],
+    maxSizeMB: MAX_SIZE_MB,
+  });
+  if (!validation.ok) return validation.response;
 
-  if (!file) {
-    return Response.json({ error: "Geen bestand ontvangen" }, { status: 400 });
-  }
-
-  const mimeType = file.type;
-  if (!CV_ALLOWED_TYPES.includes(mimeType as AllowedMimeType)) {
-    return Response.json(
-      { error: "Ongeldig bestandstype. Alleen PDF en Word (.docx) zijn toegestaan." },
-      { status: 400 },
-    );
-  }
-
-  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-    return Response.json(
-      { error: `Bestand te groot. Maximaal ${MAX_SIZE_MB}MB toegestaan.` },
-      { status: 400 },
-    );
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const { file, buffer, mimeType } = validation;
   const allowedMimeType = mimeType as AllowedMimeType;
   const asyncRequested = request.nextUrl.searchParams.get("async") === "1";
 

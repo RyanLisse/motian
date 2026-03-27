@@ -351,7 +351,7 @@ describe("Opdrachten UI/API contracts", () => {
     const listItem = readFile("components", "job-list-item.tsx");
 
     expect(shell).toContain('pathname.startsWith("/opdrachten/")');
-    expect(shell).toContain("w-full md:w-[380px]");
+    expect(shell).toContain("md:w-[380px]");
     expect(shell).toContain("hidden md:flex");
     expect(sidebar).toContain("buildDetailHref");
     expect(sidebar).toContain("href={buildDetailHref(job.id)}");

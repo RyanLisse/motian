@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { requireBlobToken } from "../_shared/cv-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +28,9 @@ export async function GET(request: NextRequest) {
     return new Response("Invalid URL", { status: 400 });
   }
 
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) {
-    return new Response("Blob storage not configured", { status: 503 });
-  }
+  const blobError = requireBlobToken();
+  if (blobError) return blobError;
+  const token = process.env.BLOB_READ_WRITE_TOKEN as string;
 
   const upstream = await fetch(blobUrl, {
     headers: { Authorization: `Bearer ${token}` },
