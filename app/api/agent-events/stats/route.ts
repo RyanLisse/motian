@@ -88,10 +88,7 @@ export const GET = withApiHandler(async () => {
     0;
   const failedCount =
     statusCounts.find((s: { status: string; count: number }) => s.status === "failed")?.count ?? 0;
-  const total24h = eventsByAgent24h.reduce(
-    (sum: number, a: { count: number }) => sum + a.count,
-    0,
-  );
+  const total24h = eventsByAgent24h.reduce((sum: number, a: { count: number }) => sum + a.count, 0);
 
   return Response.json({
     data: {
