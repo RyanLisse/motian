@@ -57,24 +57,24 @@ async function AgentDashboardContent() {
       </div>
 
       {/* Pipeline Visualization */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="rounded-xl border border-border bg-card p-4">
         <PipelineVisualization stepCounts={stepCounts} />
       </div>
 
       {/* Agent Activity Breakdown */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <h3 className="mb-3 text-sm font-semibold text-gray-700">Agent Activiteit (24 uur)</h3>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Agent Activiteit (24 uur)</h3>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           {["intake", "matcher", "screener", "scheduler", "sourcing", "communicator"].map(
             (agent) => (
               <div
                 key={agent}
-                className="flex flex-col items-center rounded-lg border border-gray-100 bg-gray-50 p-3"
+                className="flex flex-col items-center rounded-lg border border-border bg-muted/30 p-3"
               >
-                <span className="text-2xl font-bold text-gray-900">
+                <span className="text-2xl font-bold text-foreground">
                   {agentCounts24h[agent] ?? 0}
                 </span>
-                <span className="mt-1 text-xs capitalize text-gray-500">{agent}</span>
+                <span className="mt-1 text-xs capitalize text-muted-foreground">{agent}</span>
               </div>
             ),
           )}
@@ -82,8 +82,8 @@ async function AgentDashboardContent() {
       </div>
 
       {/* Activity Feed */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
           <Bot className="h-4 w-4" />
           Live Activiteit Feed
         </h3>
@@ -115,17 +115,19 @@ function AgentDashboardSkeleton() {
 
 export default function AgentsPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Agent Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Overzicht van alle autonome agents en hun activiteit
-        </p>
-      </div>
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Agent Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Overzicht van alle autonome agents en hun activiteit
+          </p>
+        </div>
 
-      <Suspense fallback={<AgentDashboardSkeleton />}>
-        <AgentDashboardContent />
-      </Suspense>
+        <Suspense fallback={<AgentDashboardSkeleton />}>
+          <AgentDashboardContent />
+        </Suspense>
+      </div>
     </div>
   );
 }

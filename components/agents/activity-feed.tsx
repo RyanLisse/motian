@@ -79,7 +79,7 @@ const STATUS_ICON: Record<string, typeof CheckCircle2> = {
 
 const STATUS_COLOR: Record<string, string> = {
   completed: "text-green-500",
-  pending: "text-gray-400",
+  pending: "text-muted-foreground",
   processing: "text-blue-500 animate-spin",
   failed: "text-red-500",
 };
@@ -158,8 +158,8 @@ export function AgentActivityFeed() {
           onClick={() => setFilter(null)}
           className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
             filter === null
-              ? "bg-gray-900 text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              ? "bg-foreground text-background"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
           Alle agents
@@ -173,7 +173,7 @@ export function AgentActivityFeed() {
               onClick={() => setFilter(filter === agent ? null : agent)}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 filter === agent
-                  ? "bg-gray-900 text-white"
+                  ? "bg-foreground text-background"
                   : `${AGENT_COLORS[agent]} hover:opacity-80`
               }`}
             >
@@ -189,11 +189,11 @@ export function AgentActivityFeed() {
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-            <div key={`skeleton-${i}`} className="h-14 animate-pulse rounded-lg bg-gray-100" />
+            <div key={`skeleton-${i}`} className="h-14 animate-pulse rounded-lg bg-muted" />
           ))}
         </div>
       ) : events.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Bot className="mb-2 h-8 w-8" />
           <p className="text-sm">Nog geen agent activiteit</p>
         </div>
@@ -203,14 +203,14 @@ export function AgentActivityFeed() {
             const AgentIcon = AGENT_ICONS[event.sourceAgent] ?? Bot;
             const StatusIcon = STATUS_ICON[event.status] ?? Clock;
             const agentColor = AGENT_COLORS[event.sourceAgent] ?? "";
-            const statusColor = STATUS_COLOR[event.status] ?? "text-gray-400";
+            const statusColor = STATUS_COLOR[event.status] ?? "text-muted-foreground";
             const label = EVENT_LABELS[event.eventType] ?? event.eventType;
             const payload = event.payload as Record<string, unknown>;
 
             return (
               <div
                 key={event.id}
-                className="flex items-start gap-3 rounded-lg border border-gray-100 bg-white p-3 transition-colors hover:bg-gray-50"
+                className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/30"
               >
                 <div className={`rounded-lg p-2 ${agentColor}`}>
                   <AgentIcon className="h-4 w-4" />
@@ -218,13 +218,13 @@ export function AgentActivityFeed() {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900">{label}</span>
+                    <span className="text-sm font-medium text-foreground">{label}</span>
                     <Badge variant="outline" className="text-[10px]">
                       {event.sourceAgent}
                     </Badge>
                   </div>
 
-                  <p className="mt-0.5 truncate text-xs text-gray-500">
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     {!!payload.candidateName && `${String(payload.candidateName)}`}
                     {!!payload.jobTitle && ` → ${String(payload.jobTitle)}`}
                     {!!payload.score && ` (${String(payload.score)}%)`}
@@ -235,7 +235,7 @@ export function AgentActivityFeed() {
 
                 <div className="flex flex-col items-end gap-1">
                   <StatusIcon className={`h-3.5 w-3.5 ${statusColor}`} />
-                  <span className="whitespace-nowrap text-[10px] text-gray-400">
+                  <span className="whitespace-nowrap text-[10px] text-muted-foreground">
                     {formatTime(event.createdAt)}
                   </span>
                 </div>

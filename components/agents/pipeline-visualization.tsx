@@ -97,7 +97,7 @@ interface PipelineVisualizationProps {
 export function PipelineVisualization({ activeStep, stepCounts }: PipelineVisualizationProps) {
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-gray-700">Agent Pipeline</h3>
+      <h3 className="text-sm font-semibold text-foreground">Agent Pipeline</h3>
 
       {/* Horizontal pipeline */}
       <div className="flex items-center gap-1 overflow-x-auto pb-2">
@@ -113,7 +113,7 @@ export function PipelineVisualization({ activeStep, stepCounts }: PipelineVisual
                 className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-2.5 transition-all ${
                   isActive
                     ? `${step.color} border-transparent text-white shadow-lg shadow-${step.color}/20`
-                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                    : "border-border bg-card text-muted-foreground hover:border-border/80"
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -124,7 +124,7 @@ export function PipelineVisualization({ activeStep, stepCounts }: PipelineVisual
                 {count != null && (
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                      isActive ? "bg-white/20" : "bg-gray-100 text-gray-600"
+                      isActive ? "bg-white/20" : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {count}
@@ -134,7 +134,7 @@ export function PipelineVisualization({ activeStep, stepCounts }: PipelineVisual
 
               {/* Arrow between steps */}
               {index < PIPELINE_STEPS.length - 1 && (
-                <ArrowRight className="mx-1 h-4 w-4 flex-shrink-0 text-gray-300" />
+                <ArrowRight className="mx-1 h-4 w-4 flex-shrink-0 text-muted-foreground/50" />
               )}
             </div>
           );
@@ -142,16 +142,16 @@ export function PipelineVisualization({ activeStep, stepCounts }: PipelineVisual
       </div>
 
       {/* Sourcing Agent — shown separately as a loop */}
-      <div className="flex items-center gap-2 rounded-lg border border-dashed border-cyan-300 bg-cyan-50/50 px-3 py-2">
+      <div className="flex items-center gap-2 rounded-lg border border-dashed border-cyan-500/30 bg-cyan-500/5 px-3 py-2">
         <Search className="h-4 w-4 text-cyan-600" />
         <div className="flex-1">
-          <span className="text-xs font-medium text-cyan-700">Sourcing Agent</span>
-          <span className="ml-2 text-[10px] text-cyan-500">
+          <span className="text-xs font-medium text-cyan-400">Sourcing Agent</span>
+          <span className="ml-2 text-[10px] text-cyan-400/70">
             Proactief kandidaten zoeken voor ondervoorziene vacatures (nachtelijk)
           </span>
         </div>
         {stepCounts?.sourcing != null && (
-          <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-700">
+          <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold text-cyan-400">
             {stepCounts.sourcing}
           </span>
         )}
