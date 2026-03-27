@@ -22,7 +22,6 @@ overrides:
   effect@<3.20.0: '>=3.20.0'
   picomatch@<2.3.2: '>=2.3.2'
   picomatch@>=4.0.0 <4.0.4: '>=4.0.4'
-  next@>=16.0.1 <16.1.7: '>=16.1.7'
   brace-expansion@<5.0.5: '>=5.0.5'
   smol-toml@<1.6.1: '>=1.6.1'
 
@@ -163,7 +162,7 @@ importers:
         specifier: ^5.1.6
         version: 5.1.6
       next:
-        specifier: '>=16.1.7'
+        specifier: ^16.1.6
         version: 16.2.1(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       next-themes:
         specifier: ^0.4.6
@@ -3038,7 +3037,7 @@ packages:
     resolution: {integrity: sha512-SmybDiZdI4c7GQYvi+HNBKbnKOmIaiqsLj67vVVV0tN6A1iX9OrP5jldxawzrd9wn5oXDhHSyzJmyKwdOu7/MQ==}
     engines: {node: '>=18'}
     peerDependencies:
-      next: '>=16.1.7'
+      next: ^13.2.0 || ^14.0 || ^15.0.0-rc.0 || ^16.0.0-0
 
   '@sentry/node-core@10.43.0':
     resolution: {integrity: sha512-w2H3NSkNMoYOS7o7mR55BM7+xL++dPxMSv1/XDfsra9FYHGppO+Mxk667Ee5k+uDi+wNIioICIh+5XOvZh4+HQ==}
@@ -3175,7 +3174,7 @@ packages:
   '@storybook/nextjs-vite@10.2.10':
     resolution: {integrity: sha512-8kXTvfzwK1uZhlKLCy410RHs7Q/lodWsDWVduRMs2PcJzVpnQuDwCb3mr8DvRMJDglLRSOEZkOG6W6ymFtITVA==}
     peerDependencies:
-      next: '>=16.1.7'
+      next: ^14.1.0 || ^15.0.0 || ^16.0.0
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       storybook: ^10.2.10
@@ -3629,7 +3628,7 @@ packages:
     hasBin: true
     peerDependencies:
       '@modelcontextprotocol/sdk': ^1.12.0
-      next: '>=16.1.7'
+      next: '>=13.0.0'
     peerDependenciesMeta:
       next:
         optional: true
@@ -6129,7 +6128,7 @@ packages:
     hasBin: true
     peerDependencies:
       '@modelcontextprotocol/sdk': 1.26.0
-      next: '>=16.1.7'
+      next: '>=13.0.0'
     peerDependenciesMeta:
       next:
         optional: true
@@ -8102,7 +8101,7 @@ packages:
   vite-plugin-storybook-nextjs@3.1.12:
     resolution: {integrity: sha512-/9qKlYWHVXz6AnQBngxD+v26fbdfVaTXeQqVQOvWocOE03FV+sdkwVsallJbmb8iMrkO36G7iLd2T1J0BXUIVQ==}
     peerDependencies:
-      next: '>=16.1.7'
+      next: ^14.1.0 || ^15.0.0 || ^16.0.0
       storybook: ^0.0.0-0 || ^9.0.0 || ^10.0.0 || ^10.0.0-0 || ^10.1.0-0 || ^10.2.0-0 || ^10.3.0-0
       vite: ^5.0.0 || ^6.0.0 || ^7.0.0
 
