@@ -17,7 +17,6 @@ describe("chat route title persistence", () => {
   it("persists the session before title generation and updates title conditionally", () => {
     const route = readFile("app/api/chat/route.ts");
     const helpers = readFile("app/api/chat/_helpers.ts");
-    const source = readChatModule();
 
     // persistMessages must come before generateSessionTitle in the route handler
     const persistIndex = route.indexOf("await persistMessages({");
