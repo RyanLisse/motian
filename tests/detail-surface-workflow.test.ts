@@ -35,6 +35,7 @@ afterEach(() => {
   vi.doUnmock("@/components/ui/sheet");
   vi.doUnmock("@/components/candidate-wizard/candidate-match-card");
   vi.doUnmock("@/components/ui/button");
+  vi.doUnmock("@tanstack/react-query");
 });
 
 describe("Detail surfaces recruiter workflow context", () => {
@@ -157,7 +158,7 @@ describe("Detail surfaces recruiter workflow context", () => {
       },
     ];
 
-    const stateValues = [matches, new Set(["match-1"]), false, false, ""];
+    const stateValues = [new Set(["match-1"]), false, "", 0];
     let stateIndex = 0;
 
     vi.doMock("react", async () => {
@@ -179,6 +180,15 @@ describe("Detail surfaces recruiter workflow context", () => {
     vi.doMock("next/navigation", () => ({
       useRouter: () => ({ refresh: mockRefresh }),
     }));
+
+    vi.doMock("@tanstack/react-query", async () => {
+      const actual =
+        await vi.importActual<typeof import("@tanstack/react-query")>("@tanstack/react-query");
+      return {
+        ...actual,
+        useQuery: () => ({ data: matches, isLoading: false, error: null }),
+      };
+    });
 
     vi.doMock("@/components/candidate-wizard/candidate-match-card", () => ({
       CandidateMatchCard: ({
@@ -242,12 +252,9 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(html).toContain("Alice Example");
     expect(html).toContain("Bob Example");
     expect(html).toContain("Koppel aan screening");
-    expect(html).toContain("Selecteer direct wie je aan screening wilt toevoegen.");
+    expect(html).toContain("Geselecteerde kandidaten gaan direct naar screening.");
     expect(html).not.toContain("Recruiter cockpit");
     expect(html).not.toContain("AI Grading");
-    expect(fetchMock).toHaveBeenCalledWith("/api/vacatures/job-1/match-kandidaten", {
-      method: "POST",
-    });
 
     buttonClicks.at(-1)?.();
     await flushPromises();

@@ -406,6 +406,7 @@ function DashboardSkeleton() {
       {/* KPI Cards Skeleton */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
           <div key={i} className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-3 mb-3">
               <Skeleton className="h-5 w-5 rounded" />
@@ -426,6 +427,7 @@ function DashboardSkeleton() {
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
             <div key={i} className="rounded-xl border border-border bg-accent/20 p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <Skeleton className="h-9 w-9 rounded-lg" />
@@ -442,6 +444,7 @@ function DashboardSkeleton() {
       <div className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
         <div className="space-y-6">
           {Array.from({ length: 2 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
             <div key={i} className="rounded-xl border border-border bg-card p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -451,6 +454,7 @@ function DashboardSkeleton() {
               </div>
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, j) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
                   <Skeleton key={j} className="h-12 w-full" />
                 ))}
               </div>
@@ -467,6 +471,7 @@ function DashboardSkeleton() {
             </div>
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
@@ -484,6 +489,7 @@ function DashboardSkeleton() {
         </div>
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
             <Skeleton key={i} className="h-8 w-full" />
           ))}
         </div>

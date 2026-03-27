@@ -10,6 +10,7 @@ export default function ScraperLoading() {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
             <Skeleton key={`kpi-${i}`} className="h-20 rounded-xl bg-card" />
           ))}
         </div>
@@ -24,6 +25,7 @@ export default function ScraperLoading() {
         </div>
         <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
             <Skeleton key={`health-${i}`} className="h-64 rounded-xl bg-card" />
           ))}
         </div>

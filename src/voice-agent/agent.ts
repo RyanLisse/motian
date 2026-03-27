@@ -65,7 +65,6 @@ import {
 import {
   createScreeningCall,
   getScreeningCall,
-  getScreeningCallByRoom,
   updateScreeningCall,
 } from "../services/screening-calls.js";
 import { runStructuredMatch } from "../services/structured-matching.js";

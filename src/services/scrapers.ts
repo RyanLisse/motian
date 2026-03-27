@@ -863,7 +863,7 @@ export async function validateConfig(
         platform,
       },
       config: sanitizeConfig(config),
-      onboardingRun: sanitizeOnboardingRunRecord(onboardingRun)!,
+      onboardingRun: sanitizeOnboardingRunRecord(onboardingRun) as PlatformOnboardingRunView,
     };
   }
 
@@ -908,7 +908,7 @@ export async function validateConfig(
       lastValidatedAt: new Date(),
       lastValidationError: result.ok ? null : result.message,
     }),
-    onboardingRun: sanitizeOnboardingRunRecord(onboardingRun)!,
+    onboardingRun: sanitizeOnboardingRunRecord(onboardingRun) as PlatformOnboardingRunView,
   };
 }
 
@@ -944,7 +944,7 @@ export async function triggerTestRun(
       blockerKind: "needs_implementation",
       errors: ["Geen runtime adapter beschikbaar voor dit platform."],
       config: sanitizeConfig(config),
-      onboardingRun: sanitizeOnboardingRunRecord(onboardingRun)!,
+      onboardingRun: sanitizeOnboardingRunRecord(onboardingRun) as PlatformOnboardingRunView,
     };
   }
 
@@ -996,7 +996,7 @@ export async function triggerTestRun(
       lastTestImportAt: new Date(),
       lastTestImportStatus: result.status,
     }),
-    onboardingRun: sanitizeOnboardingRunRecord(onboardingRun)!,
+    onboardingRun: sanitizeOnboardingRunRecord(onboardingRun) as PlatformOnboardingRunView,
   };
 }
 

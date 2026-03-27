@@ -56,7 +56,7 @@ export function ScreeningCallPanel({
   matchScore,
   onStateChange,
 }: ScreeningCallPanelProps) {
-  const [callDetails, setCallDetails] = useState<any>(null);
+  const [callDetails, setCallDetails] = useState<Record<string, unknown> | null>(null);
   const [callState, setCallState] = useState<CallState>("ready");
   const [isMuted, setIsMuted] = useState(false);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
@@ -93,7 +93,7 @@ export function ScreeningCallPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "active" }),
       });
-    } catch (err) {
+    } catch {
       setCallState("error");
       setError("Kan geen verbinding maken met de spraakagent");
     }
@@ -331,8 +331,9 @@ export function ScreeningCallPanel({
                       : "Transcript verschijnt hier tijdens het gesprek"}
                   </p>
                 ) : (
-                  transcript.map((entry: any, i: number) => (
+                  transcript.map((entry: { speaker: string; text: string }, i: number) => (
                     <div
+                      // biome-ignore lint/suspicious/noArrayIndexKey: transcript entries have no stable id
                       key={i}
                       className={`text-xs ${
                         entry.speaker === "agent" ? "text-primary" : "text-foreground"

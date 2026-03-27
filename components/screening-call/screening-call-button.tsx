@@ -31,7 +31,7 @@ export function ScreeningCallButton({
   className,
 }: ScreeningCallButtonProps) {
   const [callState, setCallState] = useState<CallState>("idle");
-  const [callData, setCallData] = useState<any>(null);
+  const [callData, setCallData] = useState<{ id: string } | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
   const initiateCall = useCallback(async () => {
