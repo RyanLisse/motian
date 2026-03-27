@@ -154,7 +154,7 @@ export const agentMatcherTask = task({
         quickScore: m.quickScore,
         overallScore: m.structuredResult?.overallScore ?? m.quickScore,
         recommendation: m.structuredResult?.recommendation ?? null,
-        judgeVerdict: m.judgeVerdict?.verdict ?? null,
+        judgeVerdict: m.judgeVerdict?.adjustedRecommendation ?? null,
       })),
       screeningCallsCreated,
       screeningResults,

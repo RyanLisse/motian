@@ -225,11 +225,11 @@ export function AgentActivityFeed() {
                   </div>
 
                   <p className="mt-0.5 truncate text-xs text-gray-500">
-                    {payload.candidateName && `${payload.candidateName}`}
-                    {payload.jobTitle && ` → ${payload.jobTitle}`}
-                    {payload.score && ` (${payload.score}%)`}
-                    {payload.matchCount != null && ` • ${payload.matchCount} matches`}
-                    {payload.emailId && ` • verzonden`}
+                    {!!payload.candidateName && `${String(payload.candidateName)}`}
+                    {!!payload.jobTitle && ` → ${String(payload.jobTitle)}`}
+                    {!!payload.score && ` (${String(payload.score)}%)`}
+                    {payload.matchCount != null && ` • ${String(payload.matchCount)} matches`}
+                    {!!payload.emailId && " • verzonden"}
                   </p>
                 </div>
 

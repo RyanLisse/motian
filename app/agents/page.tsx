@@ -33,24 +33,24 @@ async function AgentDashboardContent() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         <KPICard
-          title="Events (24u)"
+          label="Events (24u)"
           value={kpi.events24h}
           icon={<Activity className="h-4 w-4" />}
         />
         <KPICard
-          title="Totaal verwerkt"
+          label="Totaal verwerkt"
           value={kpi.totalEvents}
           icon={<TrendingUp className="h-4 w-4" />}
         />
-        <KPICard title="In wachtrij" value={kpi.pending} icon={<Clock className="h-4 w-4" />} />
+        <KPICard label="In wachtrij" value={kpi.pending} icon={<Clock className="h-4 w-4" />} />
         <KPICard
-          title="Voltooid"
+          label="Voltooid"
           value={kpi.completed}
           icon={<CheckCircle2 className="h-4 w-4" />}
         />
-        <KPICard title="Mislukt" value={kpi.failed} icon={<AlertTriangle className="h-4 w-4" />} />
+        <KPICard label="Mislukt" value={kpi.failed} icon={<AlertTriangle className="h-4 w-4" />} />
         <KPICard
-          title="Slagingspercentage"
+          label="Slagingspercentage"
           value={`${kpi.successRate}%`}
           icon={<Zap className="h-4 w-4" />}
         />

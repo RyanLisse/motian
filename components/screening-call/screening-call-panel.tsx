@@ -56,7 +56,15 @@ export function ScreeningCallPanel({
   matchScore,
   onStateChange,
 }: ScreeningCallPanelProps) {
-  const [callDetails, setCallDetails] = useState<Record<string, unknown> | null>(null);
+  const [callDetails, setCallDetails] = useState<{
+    matchContext?: Record<string, unknown>;
+    candidateContext?: Record<string, unknown>;
+    jobContext?: Record<string, unknown>;
+    transcript?: { speaker: string; text: string }[];
+    callSummary?: string;
+    recommendedNextStep?: string;
+    [key: string]: unknown;
+  } | null>(null);
   const [callState, setCallState] = useState<CallState>("ready");
   const [isMuted, setIsMuted] = useState(false);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
@@ -111,11 +119,11 @@ export function ScreeningCallPanel({
     });
   }, [callId]);
 
-  const questions: ScreeningQuestion[] = callDetails?.screeningQuestions ?? [];
-  const candidateContext = callDetails?.candidateContext ?? {};
-  const jobContext = callDetails?.jobContext ?? {};
-  const matchContext = callDetails?.matchContext ?? {};
-  const transcript = callDetails?.transcript ?? [];
+  const questions = (callDetails?.screeningQuestions ?? []) as ScreeningQuestion[];
+  const candidateContext = (callDetails?.candidateContext ?? {}) as Record<string, unknown>;
+  const jobContext = (callDetails?.jobContext ?? {}) as Record<string, unknown>;
+  const matchContext = (callDetails?.matchContext ?? {}) as Record<string, unknown>;
+  const transcript = (callDetails?.transcript ?? []) as { speaker: string; text: string }[];
 
   return (
     <Sheet
@@ -196,15 +204,19 @@ export function ScreeningCallPanel({
               <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <User className="h-3.5 w-3.5" /> Kandidaat
               </div>
-              <p className="text-sm font-medium">{candidateContext.name ?? candidateName}</p>
-              {candidateContext.role && (
-                <p className="text-xs text-muted-foreground">{candidateContext.role}</p>
+              <p className="text-sm font-medium">
+                {String(candidateContext.name ?? candidateName)}
+              </p>
+              {!!candidateContext.role && (
+                <p className="text-xs text-muted-foreground">{String(candidateContext.role)}</p>
               )}
-              {candidateContext.location && (
-                <p className="mt-1 text-xs text-muted-foreground">{candidateContext.location}</p>
+              {!!candidateContext.location && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {String(candidateContext.location)}
+                </p>
               )}
-              {candidateContext.hourlyRate && (
-                <p className="mt-1 text-xs">€{candidateContext.hourlyRate}/uur</p>
+              {!!candidateContext.hourlyRate && (
+                <p className="mt-1 text-xs">€{String(candidateContext.hourlyRate)}/uur</p>
               )}
             </div>
 
@@ -213,29 +225,29 @@ export function ScreeningCallPanel({
               <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Briefcase className="h-3.5 w-3.5" /> Vacature
               </div>
-              <p className="text-sm font-medium">{jobContext.title ?? jobTitle ?? "—"}</p>
-              {jobContext.company && (
-                <p className="text-xs text-muted-foreground">{jobContext.company}</p>
+              <p className="text-sm font-medium">{String(jobContext.title ?? jobTitle ?? "—")}</p>
+              {!!jobContext.company && (
+                <p className="text-xs text-muted-foreground">{String(jobContext.company)}</p>
               )}
-              {jobContext.location && (
-                <p className="mt-1 text-xs text-muted-foreground">{jobContext.location}</p>
+              {!!jobContext.location && (
+                <p className="mt-1 text-xs text-muted-foreground">{String(jobContext.location)}</p>
               )}
-              {(jobContext.rateMin || jobContext.rateMax) && (
+              {!!(jobContext.rateMin || jobContext.rateMax) && (
                 <p className="mt-1 text-xs">
-                  €{jobContext.rateMin ?? "?"} – €{jobContext.rateMax ?? "?"}/uur
+                  €{String(jobContext.rateMin ?? "?")} – €{String(jobContext.rateMax ?? "?")}/uur
                 </p>
               )}
             </div>
           </div>
 
           {/* Match Score */}
-          {(matchScore ?? matchContext.matchScore) && (
+          {!!(matchScore ?? matchContext.matchScore) && (
             <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 dark:bg-muted/10 dark:border-input">
               <Star className="h-4 w-4 text-yellow-500" />
               <span className="text-sm font-medium">
-                Match score: {matchScore ?? matchContext.matchScore}%
+                Match score: {matchScore ?? String(matchContext.matchScore)}%
               </span>
-              {matchContext.recommendation && (
+              {!!matchContext.recommendation && (
                 <Badge
                   variant="outline"
                   className={
@@ -246,12 +258,12 @@ export function ScreeningCallPanel({
                         : "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400"
                   }
                 >
-                  {matchContext.recommendation}
+                  {String(matchContext.recommendation)}
                 </Badge>
               )}
-              {matchContext.reasoning && (
+              {!!matchContext.reasoning && (
                 <p className="text-xs text-muted-foreground line-clamp-2">
-                  {matchContext.reasoning}
+                  {String(matchContext.reasoning)}
                 </p>
               )}
             </div>
@@ -362,7 +374,7 @@ export function ScreeningCallPanel({
           {callState === "completed" && callDetails?.callSummary && (
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 dark:border-primary/20 dark:bg-primary/5">
               <h3 className="mb-2 text-sm font-semibold">Gespreksresultaat</h3>
-              <p className="text-sm text-muted-foreground">{callDetails.callSummary}</p>
+              <p className="text-sm text-muted-foreground">{String(callDetails.callSummary)}</p>
               {callDetails.recommendedNextStep && (
                 <div className="mt-2">
                   <Badge
