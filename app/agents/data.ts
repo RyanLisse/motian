@@ -45,9 +45,13 @@ export async function getAgentDashboardData() {
       db.select().from(agentEvents).orderBy(desc(agentEvents.createdAt)).limit(5),
     ]);
 
-  const pending = statusCounts.find((s) => s.status === "pending")?.count ?? 0;
-  const completed = statusCounts.find((s) => s.status === "completed")?.count ?? 0;
-  const failed = statusCounts.find((s) => s.status === "failed")?.count ?? 0;
+  const pending =
+    statusCounts.find((s: { status: string; count: number }) => s.status === "pending")?.count ?? 0;
+  const completed =
+    statusCounts.find((s: { status: string; count: number }) => s.status === "completed")?.count ??
+    0;
+  const failed =
+    statusCounts.find((s: { status: string; count: number }) => s.status === "failed")?.count ?? 0;
 
   return {
     kpi: {
@@ -59,8 +63,12 @@ export async function getAgentDashboardData() {
       successRate:
         completed + failed > 0 ? Math.round((completed / (completed + failed)) * 100) : 100,
     },
-    agentCounts24h: Object.fromEntries(agentCounts24h.map((a) => [a.sourceAgent, a.count])),
-    typeCounts24h: Object.fromEntries(typeCounts24h.map((t) => [t.eventType, t.count])),
+    agentCounts24h: Object.fromEntries(
+      agentCounts24h.map((a: { sourceAgent: string; count: number }) => [a.sourceAgent, a.count]),
+    ),
+    typeCounts24h: Object.fromEntries(
+      typeCounts24h.map((t: { eventType: string; count: number }) => [t.eventType, t.count]),
+    ),
     recentEvents,
   };
 }

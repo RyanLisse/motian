@@ -81,10 +81,17 @@ export const GET = withApiHandler(async () => {
   ]);
 
   // Derive KPIs
-  const pendingCount = statusCounts.find((s) => s.status === "pending")?.count ?? 0;
-  const completedCount = statusCounts.find((s) => s.status === "completed")?.count ?? 0;
-  const failedCount = statusCounts.find((s) => s.status === "failed")?.count ?? 0;
-  const total24h = eventsByAgent24h.reduce((sum, a) => sum + a.count, 0);
+  const pendingCount =
+    statusCounts.find((s: { status: string; count: number }) => s.status === "pending")?.count ?? 0;
+  const completedCount =
+    statusCounts.find((s: { status: string; count: number }) => s.status === "completed")?.count ??
+    0;
+  const failedCount =
+    statusCounts.find((s: { status: string; count: number }) => s.status === "failed")?.count ?? 0;
+  const total24h = eventsByAgent24h.reduce(
+    (sum: number, a: { count: number }) => sum + a.count,
+    0,
+  );
 
   return Response.json({
     data: {
