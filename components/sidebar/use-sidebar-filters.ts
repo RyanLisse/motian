@@ -159,9 +159,15 @@ export function useSidebarFilters({
   );
 
   // Sync URL → local state when URL actually changes (browser back/forward, external navigation).
+  // Skip resetting inputValue if the URL query matches what we already debounced —
+  // this prevents the search bar from "jumping" while the user is still typing.
   // biome-ignore lint/correctness/useExhaustiveDependencies: sync from URL on searchParams change only
   useEffect(() => {
-    setInputValue(q);
+    const normalizedUrlQ = normalizeOpdrachtenSearchQuery(q) ?? "";
+    const normalizedLocal = normalizeOpdrachtenSearchQuery(inputValue) ?? "";
+    if (normalizedUrlQ !== normalizedLocal) {
+      setInputValue(q);
+    }
     setLocalStatus(status);
     setLocalPlatform(platform);
     setLocalEndClient(endClient);
