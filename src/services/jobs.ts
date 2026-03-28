@@ -14,6 +14,7 @@ import {
   listJobsPage as listJobsPageImpl,
 } from "./jobs/page-query";
 import {
+  createJob,
   deleteJob,
   getJobById as getJobByIdImpl,
   type Job,
@@ -75,6 +76,7 @@ export type {
   SearchJobsOptions,
 };
 export {
+  createJob,
   deleteJob,
   deriveJobStatus,
   getActivePipelineCount,

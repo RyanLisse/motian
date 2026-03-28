@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { DataRefreshListener } from "@/components/data-refresh-listener";
 import { PageHeader } from "@/components/page-header";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import type { KanbanCardData } from "@/components/pipeline/kanban-card";
@@ -540,8 +541,20 @@ async function PipelineContent({ searchParams }: Props) {
 
 export default function PipelinePage(props: Props) {
   return (
-    <Suspense fallback={<PipelineSkeleton />}>
-      <PipelineContent {...props} />
-    </Suspense>
+    <>
+      <DataRefreshListener
+        events={[
+          "application:created",
+          "application:stage_changed",
+          "application:deleted",
+          "match:created",
+          "match:updated",
+          "match:deleted",
+        ]}
+      />
+      <Suspense fallback={<PipelineSkeleton />}>
+        <PipelineContent {...props} />
+      </Suspense>
+    </>
   );
 }

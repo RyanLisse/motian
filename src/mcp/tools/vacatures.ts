@@ -5,7 +5,13 @@ import { publish } from "../../lib/event-bus";
 import { autoMatchJobToCandidates } from "../../services/auto-matching";
 import { withJobCanonicalSkills, withJobsCanonicalSkills } from "../../services/esco";
 import type { ListJobsSortBy } from "../../services/jobs";
-import { deleteJob, getJobById, searchJobsUnified, updateJob } from "../../services/jobs";
+import {
+  createJob,
+  deleteJob,
+  getJobById,
+  searchJobsUnified,
+  updateJob,
+} from "../../services/jobs";
 
 // ========== Schemas ==========
 
@@ -67,6 +73,22 @@ const verwijderVacatureSchema = z.object({
   id: z.string().uuid().describe("UUID van de vacature"),
 });
 
+const maakVacatureAanSchema = z.object({
+  title: z.string().describe("Functietitel van de vacature"),
+  platform: z.string().default("handmatig").describe("Platform herkomst (standaard 'handmatig')"),
+  externalId: z.string().optional().describe("Extern ID (wordt automatisch gegenereerd als leeg)"),
+  company: z.string().optional().describe("Opdrachtgever / bedrijf"),
+  endClient: z.string().optional().describe("Eindklant"),
+  description: z.string().optional().describe("Omschrijving van de vacature"),
+  location: z.string().optional().describe("Locatie (stad of regio)"),
+  province: z.string().optional().describe("Provincie"),
+  rateMin: z.number().optional().describe("Minimaal uurtarief in EUR"),
+  rateMax: z.number().optional().describe("Maximaal uurtarief in EUR"),
+  contractType: z.string().optional().describe("Contract type: freelance, interim, vast"),
+  workArrangement: z.string().optional().describe("Werkvorm: hybride, op_locatie, remote"),
+  hoursPerWeek: z.number().optional().describe("Uren per week"),
+});
+
 const autoMatchVacatureSchema = z.object({
   jobId: z.string().uuid().describe("UUID van de vacature om te matchen"),
 });
@@ -79,6 +101,12 @@ export const tools = [
     description:
       "Zoek en filter vacatures. Met zoekterm: hybrid search (tekst + semantisch). Zonder: gefilterde lijst. Ondersteunt sortering op tarief, datum en deadline.",
     inputSchema: zodToJsonSchema(zoekVacaturesSchema, { $refStrategy: "none" }),
+  },
+  {
+    name: "maak_vacature_aan",
+    description:
+      "Maak een nieuwe vacature handmatig aan. Gebruik voor vacatures die niet via een scraper binnenkomen.",
+    inputSchema: zodToJsonSchema(maakVacatureAanSchema, { $refStrategy: "none" }),
   },
   {
     name: "vacature_detail",
@@ -125,6 +153,18 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     });
     const vacatures = await withJobsCanonicalSkills(result.data);
     return { total: result.total, vacatures };
+  },
+
+  maak_vacature_aan: async (raw) => {
+    const data = maakVacatureAanSchema.parse(raw);
+    const result = await createJob({
+      ...data,
+      externalId: data.externalId || `handmatig-${crypto.randomUUID()}`,
+    });
+    revalidatePath("/vacatures");
+    revalidatePath("/overzicht");
+    publish("job:created", { id: result.id });
+    return withJobCanonicalSkills(result);
   },
 
   vacature_detail: async (raw) => {

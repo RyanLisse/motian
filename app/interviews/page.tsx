@@ -1,5 +1,6 @@
 import { Calendar, Clock, Filter, Monitor, Star } from "lucide-react";
 import { Suspense } from "react";
+import { DataRefreshListener } from "@/components/data-refresh-listener";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
@@ -224,8 +225,13 @@ async function InterviewsContent({ searchParams }: Props) {
 
 export default function InterviewsPage({ searchParams }: Props) {
   return (
-    <Suspense fallback={<InterviewsSkeleton />}>
-      <InterviewsContent searchParams={searchParams} />
-    </Suspense>
+    <>
+      <DataRefreshListener
+        events={["interview:scheduled", "interview:updated", "interview:deleted"]}
+      />
+      <Suspense fallback={<InterviewsSkeleton />}>
+        <InterviewsContent searchParams={searchParams} />
+      </Suspense>
+    </>
   );
 }

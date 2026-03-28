@@ -149,6 +149,39 @@ export async function updateJobEnrichment(
   return rows[0] ?? null;
 }
 
+/** Handmatig een vacature aanmaken. Retourneert de nieuwe job. */
+export async function createJob(
+  data: Pick<Job, "title" | "platform" | "externalId"> &
+    Partial<
+      Pick<
+        Job,
+        | "company"
+        | "endClient"
+        | "description"
+        | "location"
+        | "province"
+        | "rateMin"
+        | "rateMax"
+        | "contractType"
+        | "workArrangement"
+        | "externalUrl"
+        | "hoursPerWeek"
+      >
+    >,
+): Promise<Job> {
+  const rows = await db.insert(jobs).values(data).returning(getJobReadSelection());
+
+  if (rows[0]?.id) {
+    try {
+      await upsertJobsByIds([rows[0].id]);
+    } catch (err) {
+      console.error(`[Jobs] Typesense sync error for ${rows[0].id}:`, err);
+    }
+  }
+
+  return rows[0];
+}
+
 /** Opdracht archiveren. Retourneert true als de status is bijgewerkt. */
 export async function deleteJob(id: string): Promise<boolean> {
   const rows = await db
