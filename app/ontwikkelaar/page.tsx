@@ -130,7 +130,7 @@ export default function OntwikkelaarPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-card">
+          <Card id="mcp" className="border-border bg-card">
             <CardHeader className="space-y-3">
               <CardTitle className="text-base">MCP Verbinden</CardTitle>
               <p className="text-sm text-muted-foreground">
