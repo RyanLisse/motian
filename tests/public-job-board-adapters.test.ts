@@ -257,4 +257,60 @@ describe("public job board adapters", () => {
       }),
     ]);
   });
+
+  it("falls back to HTML title extraction when MiPublic pages lack JSON-LD", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url === "https://mipublic.nl/vacature-sitemap.xml") {
+          return createHtmlResponse({
+            url,
+            html: `<?xml version="1.0" encoding="UTF-8"?>
+              <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                <url>
+                  <loc>https://mipublic.nl/vacature/java-script-specialist/</loc>
+                </url>
+              </urlset>`,
+            headers: { "content-type": "application/xml" },
+          });
+        }
+
+        if (url === "https://mipublic.nl/vacature/java-script-specialist/") {
+          return createHtmlResponse({
+            url,
+            html: `<html>
+              <head><title>Java script specialist - MiPublic</title></head>
+              <body>
+                <h1>Java script specialist</h1>
+                <p>NFI (Netherlands Forensic Institute)</p>
+                <p>Zuid-Holland</p>
+              </body>
+            </html>`,
+          });
+        }
+
+        throw new Error(`Unexpected fetch for ${url}`);
+      }),
+    );
+
+    const adapter = getPlatformAdapter("mipublic");
+    expect(adapter).toBeDefined();
+
+    const result = await adapter!.scrape({
+      slug: "mipublic",
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+      auth: {},
+    });
+
+    expect(result.listings).toHaveLength(1);
+    expect(result.listings[0]).toMatchObject({
+      title: "Java script specialist",
+      externalId: "java-script-specialist",
+      externalUrl: "https://mipublic.nl/vacature/java-script-specialist/",
+    });
+    expect(result.errors).toBeUndefined();
+  });
 });

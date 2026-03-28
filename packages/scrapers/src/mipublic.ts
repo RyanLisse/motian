@@ -1,3 +1,4 @@
+import { stripHtml } from "./lib/utils";
 import {
   fetchPublicJobBoardPage,
   parsePublicJobBoardJobPostings,
@@ -109,6 +110,31 @@ async function mapWithConcurrency<TInput, TOutput>(
   return results;
 }
 
+/**
+ * Fallback parser for MiPublic detail pages that lack JSON-LD JobPosting data.
+ * Extracts a minimal listing from <title> or <h1> tags so the vacancy is not
+ * silently dropped.
+ */
+function parseMipublicHtmlFallback(html: string, detailUrl: string): RawScrapedListing | null {
+  const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+
+  const rawTitle =
+    (h1Match ? stripHtml(h1Match[1]).trim() : null) ??
+    (titleTagMatch ? titleTagMatch[1].replace(/\s*[-–|].*$/, "").trim() : null);
+
+  if (!rawTitle || rawTitle.length < 3) return null;
+
+  const slug = new URL(detailUrl).pathname.replace(/^\/vacature\//, "").replace(/\/+$/, "");
+
+  return {
+    title: rawTitle,
+    description: `${rawTitle} - vacature via MiPublic`,
+    externalId: slug || detailUrl,
+    externalUrl: detailUrl,
+  };
+}
+
 async function scrapeMipublicListings(
   config: PlatformRuntimeConfig,
   options?: { limit?: number },
@@ -131,6 +157,10 @@ async function scrapeMipublicListings(
       const listings = parsePublicJobBoardJobPostings(detailPage.html, detailPage.url);
 
       if (listings.length === 0) {
+        const fallback = parseMipublicHtmlFallback(detailPage.html, detailUrl);
+        if (fallback) {
+          return { listings: [fallback] };
+        }
         return {
           error: `MiPublic detailpagina bevat geen JobPosting-data: ${detailUrl}`,
           listings: [] as RawScrapedListing[],
