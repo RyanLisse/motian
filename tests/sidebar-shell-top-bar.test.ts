@@ -45,4 +45,3 @@ describe("sidebar shell top-bar refactor", () => {
     expect(widgetSource).toContain("handleFileChange");
   });
 });
-
