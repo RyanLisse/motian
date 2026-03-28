@@ -55,6 +55,7 @@ describe("Recruiter-first navigation", () => {
     expect(source).toContain('title: "Interviews"');
     expect(source).toContain('title: "Berichten"');
     expect(source).toContain('title: "Automatisering"');
+    expect(source).toContain('title: "Ontwikkelaar"');
 
     expect(source).toContain('url: "/overzicht"');
     expect(source).toContain('url: "/vacatures"');
@@ -63,6 +64,7 @@ describe("Recruiter-first navigation", () => {
     expect(source).toContain('url: "/interviews"');
     expect(source).toContain('url: "/messages"');
     expect(source).toContain('url: "/automatisering"');
+    expect(source).toContain('url: "/ontwikkelaar"');
 
     expect(source).not.toContain('title: "Aanbevelingen"');
     expect(source).not.toContain('title: "Matching"');
@@ -77,6 +79,10 @@ describe("Recruiter-first navigation", () => {
     expect(commandPaletteSource).toContain('label: "Databronnen"');
     expect(commandPaletteSource).toContain('label: "Matching"');
     expect(commandPaletteSource).toContain('label: "AI Assistent"');
+    expect(commandPaletteSource).toContain('label: "API Documentatie"');
+    expect(commandPaletteSource).toContain('label: "XML Feed"');
+    expect(commandPaletteSource).toContain('label: "MCP Server"');
+    expect(commandPaletteSource).toContain('label: "OpenAPI Spec"');
   });
 
   it("keeps heavy pipeline visuals out of eager sidebar prefetches", () => {

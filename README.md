@@ -127,6 +127,12 @@ graph TB
         SF[Salesforce]
     end
 
+    subgraph DevPortal["🛠️ Ontwikkelaar Portal"]
+        APIDOCS["/api-docs — Scalar UI"]
+        OPENAPI["/api/openapi — OpenAPI 3.1"]
+        MCPHTTP["/api/mcp — HTTP Transport"]
+    end
+
     FX --> SC
     ST --> SC
     OO --> SC
@@ -158,6 +164,9 @@ graph TB
     CAND --> FEED
     APP --> FEED
     FEED --> SF
+
+    APIDOCS --> OPENAPI
+    MCPHTTP --> MCPS
 ```
 
 ### Dataflow — Van Scrape tot Zoeken
@@ -653,6 +662,7 @@ Elke scraper implementeert een gemeenschappelijke interface en wordt georkestree
 | `/scraper`         | Configuratie    | Platform scraper instellingen en handmatige triggers                              |
 | `/chat`            | AI Chat         | Volledig scherm chat met model picker, stemherkenning, sessiegeschiedenis         |
 | `/settings`        | Instellingen    | Platform instellingen (matching, gegevensbeheer, meldingen)                      |
+| `/ontwikkelaar`    | Ontwikkelaar    | Ontwikkelaar hub — API docs, feeds, MCP info                                    |
 
 ### Belangrijke UI Componenten
 
@@ -695,6 +705,28 @@ Model Context Protocol server voor IDE en CLI integratie:
 - **42 Tools**: kandidaten, vacatures, matches, sollicitaties, interviews, berichten, GDPR, operaties, analyse, scraping
 - **Integratie**: werkt met Claude Code, Cursor, Windsurf en andere MCP-compatibele clients
 - **Starten**: `pnpm mcp`
+
+#### MCP Verbindingsmethoden
+
+| Methode | Commando / URL | Gebruik |
+|---------|---------------|---------|
+| Stdio | `pnpm mcp` | IDE-integratie (VS Code, Cursor) |
+| HTTP | `POST /api/mcp` | Externe applicaties |
+| CLI | `pnpm cli` | Interactieve terminal |
+
+#### Configuratie voor Claude Code
+
+```json
+{
+  "mcpServers": {
+    "motian": {
+      "command": "pnpm",
+      "args": ["mcp"],
+      "cwd": "/pad/naar/motian"
+    }
+  }
+}
+```
 
 ---
 
@@ -1029,6 +1061,35 @@ pnpm cli salesforce:feed --entity jobs --status open --updated-since 2026-03-01T
 - **CLI output**: JSON met `entity`, `count` en de ruwe `xml` string
 - **MCP output**: JSON met `entity`, `count` en dezelfde `xml` string
 - **Parity**: API, CLI en MCP gebruiken dezelfde service in `src/services/salesforce-feed.ts`
+
+---
+
+## Ontwikkelaar Portal
+
+Motian biedt een ingebouwd ontwikkelaarsportaal op `/ontwikkelaar` met:
+
+| Pagina | URL | Beschrijving |
+|--------|-----|-------------|
+| API Documentatie | `/api-docs` | Interactieve Scalar UI voor alle REST endpoints |
+| OpenAPI Spec | `/api/openapi` | OpenAPI 3.1 JSON specificatie |
+| XML Feed | `/api/salesforce-feed` | Salesforce-compatible XML export |
+| MCP Server | `/api/mcp` | Model Context Protocol (HTTP transport) |
+
+### Snelle start
+
+```bash
+# Interactieve API docs openen
+open http://localhost:3001/api-docs
+
+# OpenAPI spec downloaden
+curl http://localhost:3001/api/openapi > openapi.json
+
+# XML feed testen
+curl "http://localhost:3001/api/salesforce-feed?entity=jobs&limit=5"
+
+# MCP server starten (stdio)
+pnpm mcp
+```
 
 ---
 

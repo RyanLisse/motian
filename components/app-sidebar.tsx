@@ -3,6 +3,7 @@
 import {
   Briefcase,
   Calendar,
+  Code,
   GalleryVerticalEnd,
   Kanban,
   LayoutDashboard,
@@ -83,6 +84,17 @@ const data = {
           url: "/automatisering",
           icon: Wrench,
           matchPaths: ["/agents", "/autopilot", "/scraper"],
+        },
+      ],
+    },
+    {
+      label: "Ontwikkelaar",
+      items: [
+        {
+          title: "Ontwikkelaar",
+          url: "/ontwikkelaar",
+          icon: Code,
+          matchPaths: ["/api-docs"],
         },
       ],
     },
