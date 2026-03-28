@@ -51,12 +51,12 @@ describe("scraper dashboard layout fixes", () => {
     );
   });
 
-  it("loads scraper page datasets sequentially instead of bursting dashboard and catalog queries together", () => {
+  it("loads scraper page datasets in parallel for faster page loads", () => {
     const source = readFile("app", "scraper", "page.tsx");
 
-    expect(source).toContain("const scraperDashboard = await getScraperDashboardData(");
-    expect(source).toContain("const platformCatalog = await listPlatformCatalog();");
-    expect(source).not.toContain("await Promise.all([");
+    expect(source).toContain("await Promise.all([");
+    expect(source).toContain("getScraperDashboardData(");
+    expect(source).toContain("listPlatformCatalog(),");
   });
 
   it("keeps recent activity logs clipped to the feed card and scroll viewport", () => {

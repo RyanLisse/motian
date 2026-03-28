@@ -9,6 +9,7 @@ import {
   Phone,
   Sparkles,
 } from "lucide-react";
+import nextDynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CandidateNotes } from "@/components/candidate-notes";
@@ -16,13 +17,11 @@ import { EmploymentCard } from "@/components/candidate-profile/employment-card";
 import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
 import { OpenToOffersRing } from "@/components/candidate-profile/open-to-offers-ring";
 import { SkillsExperienceSection } from "@/components/candidate-profile/skills-experience-section";
-import { CandidateRecommendationPanel } from "@/components/candidate-recommendation-panel";
 import type { MatchSuggestionItem } from "@/components/candidate-wizard/types";
 import { CvDocumentViewerLazy } from "@/components/cv-document-viewer-lazy";
 import { CvDropZone } from "@/components/cv-drop-zone";
 import { DeleteCandidateButton } from "@/components/delete-candidate-button";
 import { EditCandidateFields } from "@/components/edit-candidate-fields";
-import { MatchDetail } from "@/components/matching/match-detail";
 import { ReportButton } from "@/components/matching/report-button";
 import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
 import { SkillsRadar } from "@/components/skills-radar";
@@ -45,6 +44,22 @@ import {
 import type { CriterionResult } from "@/src/schemas/matching";
 
 export const dynamic = "force-dynamic";
+
+const CandidateRecommendationPanel = nextDynamic(
+  () =>
+    import("@/components/candidate-recommendation-panel").then((mod) => ({
+      default: mod.CandidateRecommendationPanel,
+    })),
+  { ssr: false, loading: () => <div className="animate-pulse h-48 rounded-xl bg-muted" /> },
+);
+
+const MatchDetail = nextDynamic(
+  () =>
+    import("@/components/matching/match-detail").then((mod) => ({
+      default: mod.MatchDetail,
+    })),
+  { ssr: false, loading: () => <div className="animate-pulse h-32 rounded-xl bg-muted" /> },
+);
 
 interface Props {
   params: Promise<{ id: string }>;

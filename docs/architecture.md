@@ -4,8 +4,6 @@ AI-Assisted Recruitment Operations Platform built with Next.js 16, React 19, Dri
 
 De live API-documentatie staat in Scalar op `/api-docs`. Deze pagina is de centrale architectuur- en platformuitleg voor de hoofdapp.
 
-> **Interactive visual explainer**: Open `app/visual-explainer/page.tsx` or visit `/visual-explainer` for diagrams and flowcharts.
-
 ## System Overview
 
 ```

@@ -23,6 +23,8 @@ Historical redirect behaviour (kept for structural tests):
 redirect("/kandidaten")
 */
 
+export const revalidate = 60;
+
 interface Props {
   searchParams: Promise<{
     jobId?: string;

@@ -33,24 +33,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/src/lib/helpers";
 import {
   getScraperDashboardData,
   type PlatformOperationalMetrics,
 } from "@/src/services/scraper-dashboard";
 import { listPlatformCatalog } from "@/src/services/scrapers";
 import { ScraperActions } from "./actions";
-
-function formatDateTime(value: Date | string | null | undefined) {
-  if (!value) return "-";
-
-  return new Date(value).toLocaleString("nl-NL", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function signalToneClass(level: "info" | "warning" | "critical") {
   if (level === "critical") {
@@ -186,11 +175,11 @@ function PlatformHealthCard({
           </div>
           <div className="flex items-center justify-between gap-3">
             <span>Laatste run</span>
-            <span>{formatDateTime(platform.lastRunAt)}</span>
+            <span>{formatDateTime(platform.lastRunAt, "full", "-")}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span>Volgende run</span>
-            <span>{formatDateTime(platform.nextRunAt)}</span>
+            <span>{formatDateTime(platform.nextRunAt, "full", "-")}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span>Gem. duur</span>
@@ -267,12 +256,14 @@ function DashboardSkeleton() {
 export const revalidate = 60;
 
 async function ScraperDashboardContent() {
-  const scraperDashboard = await getScraperDashboardData({
-    activityLimit: 20,
-    overlapLimit: 8,
-    includeTrigger: true,
-  });
-  const platformCatalog = await listPlatformCatalog();
+  const [scraperDashboard, platformCatalog] = await Promise.all([
+    getScraperDashboardData({
+      activityLimit: 20,
+      overlapLimit: 8,
+      includeTrigger: true,
+    }),
+    listPlatformCatalog(),
+  ]);
   const {
     analytics,
     activeVacancies,
@@ -408,7 +399,7 @@ async function ScraperDashboardContent() {
                       {platform.cronExpression ?? "-"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatDateTime(platform.lastRunAt)}
+                      {formatDateTime(platform.lastRunAt, "full", "-")}
                     </TableCell>
                     <TableCell>
                       {platform.circuitBreakerOpen ? (
@@ -432,7 +423,7 @@ async function ScraperDashboardContent() {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatDateTime(platform.nextRunAt)}
+                      {formatDateTime(platform.nextRunAt, "full", "-")}
                     </TableCell>
                     <TableCell className="max-w-[320px] whitespace-normal">
                       <span className="wrap-break-word text-xs text-muted-foreground">
@@ -487,7 +478,9 @@ async function ScraperDashboardContent() {
                     </Badge>
                   </div>
                   <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    <p>Laatste run: {formatDateTime(task.latestRun?.createdAt ?? null)}</p>
+                    <p>
+                      Laatste run: {formatDateTime(task.latestRun?.createdAt ?? null, "full", "-")}
+                    </p>
                     {task.latestRun?.error && (
                       <p className="wrap-break-word text-amber-600 dark:text-amber-400">
                         {task.latestRun.error}
@@ -585,15 +578,7 @@ async function ScraperDashboardContent() {
                           <PlatformBadge platform={result.platform} className="text-[10px]" />
                         </TableCell>
                         <TableCell className="text-muted-foreground whitespace-nowrap">
-                          {result.runAt
-                            ? new Date(result.runAt).toLocaleString("nl-NL", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "-"}
+                          {formatDateTime(result.runAt, "full", "-")}
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={result.status} />

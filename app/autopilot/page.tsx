@@ -46,6 +46,8 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
+export const revalidate = 300;
+
 export default async function AutopilotPage() {
   const { runs } = await getAutopilotDashboardData();
 

@@ -12,9 +12,9 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AIGrading } from "@/components/ai-grading";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { LinkCandidatesDialog } from "@/components/link-candidates-dialog";
 import { OpdrachtDetailEndClientFilter } from "@/components/opdracht-detail-end-client-filter";
@@ -38,6 +38,11 @@ import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 import { jobReadSelection } from "@/src/services/jobs/repository";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
+
+const AIGrading = dynamic(
+  () => import("@/components/ai-grading").then((mod) => ({ default: mod.AIGrading })),
+  { ssr: false, loading: () => <div className="animate-pulse h-64 rounded-xl bg-muted" /> },
+);
 
 export const revalidate = 30;
 export const maxDuration = 30;
