@@ -35,7 +35,7 @@ export async function GET(_request: NextRequest) {
               : "Niet verbonden",
       },
       {
-        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
       },
     );
   } catch (_err) {

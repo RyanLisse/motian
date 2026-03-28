@@ -220,7 +220,7 @@ export const GET = withApiHandler(
 
     return Response.json(response, {
       headers: {
-        "Cache-Control": "private, s-maxage=30, stale-while-revalidate=60",
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
       },
     });
   },

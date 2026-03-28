@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ ru
         error: run.error?.message ?? null,
       },
       {
-        headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+        headers: { "Cache-Control": "private, max-age=15" },
       },
     );
   } catch (error) {

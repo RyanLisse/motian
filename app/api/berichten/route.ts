@@ -23,7 +23,7 @@ export const GET = withApiHandler(async (req: Request) => {
   });
   const total = await countMessages({ applicationId, direction, channel });
   return Response.json(paginatedResponse(data, total, { page, limit, offset }), {
-    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    headers: { "Cache-Control": "public, s-maxage=5, stale-while-revalidate=10" },
   });
 });
 

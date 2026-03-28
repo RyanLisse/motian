@@ -112,7 +112,7 @@ export const GET = withApiHandler(async () => {
       },
     },
     {
-      headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+      headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
     },
   );
 });

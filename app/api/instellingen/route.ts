@@ -11,7 +11,7 @@ export const GET = withApiHandler(
     return Response.json(
       { data: settings },
       {
-        headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+        headers: { "Cache-Control": "private, max-age=15" },
       },
     );
   },

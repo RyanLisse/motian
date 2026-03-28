@@ -25,7 +25,7 @@ export const GET = withApiHandler(
 
     const page = await listSessions({ limit: params.limit, cursor: params.cursor ?? null });
     return Response.json(page, {
-      headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+      headers: { "Cache-Control": "private, max-age=15" },
     });
   },
   { logPrefix: "chat-sessies", rateLimit: { interval: 60_000, limit: 30 } },

@@ -26,7 +26,7 @@ export const GET = withApiHandler(
     return Response.json(
       { data: await withJobCanonicalSkills(job) },
       {
-        headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
       },
     );
   },
