@@ -3,6 +3,7 @@ import { stripHtml } from "../../packages/scrapers/src/strip-html";
 import { db, jobs, sql } from "../db";
 import { unifiedJobSchema } from "../schemas/job";
 import { isEscoCatalogAvailable, syncJobEscoSkills } from "./esco";
+import { upsertJobsByIds } from "./search-index/typesense-sync";
 
 /** Permissive type for scraped data — Zod validates at runtime via safeParse */
 export type RawScrapedListing = Record<string, unknown>;
@@ -275,6 +276,12 @@ export async function normalizeAndSaveJobs(
         for (const row of result) {
           allJobIds.push(row.id);
         }
+
+        // Typesense sync is non-fatal — don't let it block ESCO processing
+        upsertJobsByIds(result.map((row) => row.id)).catch((err) =>
+          console.error("[Normalize] Typesense sync error:", err),
+        );
+
         const inserted = result.filter((r) => r.isNew).length;
         const updated = result.length - inserted;
         jobsNew += inserted;

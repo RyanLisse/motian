@@ -1,5 +1,6 @@
 import { and, db, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
+import { deleteJobsByIds, upsertJobsByIds } from "../search-index/typesense-sync";
 
 export type Job = typeof jobs.$inferSelect;
 
@@ -103,6 +104,14 @@ export async function updateJob(
     .where(eq(jobs.id, id))
     .returning(getJobReadSelection());
 
+  if (rows[0]?.id) {
+    try {
+      await upsertJobsByIds([rows[0].id]);
+    } catch (err) {
+      console.error(`[Jobs] Typesense sync error for ${rows[0].id}:`, err);
+    }
+  }
+
   return rows[0] ?? null;
 }
 
@@ -129,6 +138,14 @@ export async function updateJobEnrichment(
     .where(eq(jobs.id, id))
     .returning(getJobReadSelection());
 
+  if (rows[0]?.id) {
+    try {
+      await upsertJobsByIds([rows[0].id]);
+    } catch (err) {
+      console.error(`[Jobs] Typesense sync error for ${rows[0].id}:`, err);
+    }
+  }
+
   return rows[0] ?? null;
 }
 
@@ -142,6 +159,14 @@ export async function deleteJob(id: string): Promise<boolean> {
     })
     .where(and(eq(jobs.id, id), or(ne(jobs.status, "archived"), isNotNull(jobs.deletedAt))))
     .returning({ id: jobs.id });
+
+  if (rows.length > 0) {
+    try {
+      await deleteJobsByIds(rows.map((row) => row.id));
+    } catch (err) {
+      console.error(`[Jobs] Typesense delete error for ${id}:`, err);
+    }
+  }
 
   return rows.length > 0;
 }

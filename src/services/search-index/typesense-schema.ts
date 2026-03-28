@@ -1,0 +1,43 @@
+export const TYPESENSE_JOBS_SCHEMA = {
+  name: "jobs",
+  enable_nested_fields: false,
+  fields: [
+    { name: "id", type: "string" },
+    { name: "title", type: "string" },
+    { name: "searchText", type: "string" },
+    { name: "platform", type: "string", facet: true, optional: true },
+    { name: "company", type: "string", facet: true, optional: true },
+    { name: "endClient", type: "string", facet: true, optional: true },
+    { name: "status", type: "string", facet: true, optional: true },
+    { name: "province", type: "string", facet: true, optional: true },
+    { name: "contractType", type: "string", facet: true, optional: true },
+    { name: "workArrangement", type: "string", facet: true, optional: true },
+    { name: "categories", type: "string[]", facet: true, optional: true },
+    { name: "rateMin", type: "int32", optional: true, sort: true },
+    { name: "rateMax", type: "int32", optional: true, sort: true },
+    { name: "hoursPerWeek", type: "int32", optional: true, sort: true },
+    { name: "minHoursPerWeek", type: "int32", optional: true, sort: true },
+    { name: "applicationDeadlineTs", type: "int64", optional: true, sort: true },
+    { name: "postedAtTs", type: "int64", optional: true, sort: true },
+    { name: "startDateTs", type: "int64", optional: true, sort: true },
+    { name: "scrapedAtTs", type: "int64", optional: true, sort: true },
+  ],
+  default_sorting_field: "scrapedAtTs",
+} as const;
+
+export const TYPESENSE_CANDIDATES_SCHEMA = {
+  name: "candidates",
+  enable_nested_fields: false,
+  fields: [
+    { name: "id", type: "string" },
+    { name: "name", type: "string" },
+    { name: "role", type: "string", optional: true },
+    { name: "location", type: "string", optional: true },
+    { name: "skills", type: "string[]", optional: true },
+    { name: "searchText", type: "string" },
+    { name: "matchingStatus", type: "string", facet: true, optional: true },
+    { name: "createdAtTs", type: "int64", optional: true, sort: true },
+    { name: "updatedAtTs", type: "int64", optional: true, sort: true },
+  ],
+  default_sorting_field: "createdAtTs",
+} as const;

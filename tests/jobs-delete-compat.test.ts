@@ -34,9 +34,14 @@ vi.mock("../src/db/schema", () => ({ jobs }));
 
 vi.mock("drizzle-orm", () => ({
   and: (...args: unknown[]) => ({ type: "and", args }),
+  asc: (column: unknown) => ({ type: "asc", column }),
+  desc: (column: unknown) => ({ type: "desc", column }),
   eq: (column: unknown, value: unknown) => ({ type: "eq", column, value }),
   getTableColumns: (table: Record<string, unknown>) => table,
+  inArray: (column: unknown, values: unknown[]) => ({ type: "inArray", column, values }),
   isNotNull: (column: unknown) => ({ type: "isNotNull", column }),
+  isNull: (column: unknown) => ({ type: "isNull", column }),
+  like: (column: unknown, value: unknown) => ({ type: "like", column, value }),
   ne: (column: unknown, value: unknown) => ({ type: "ne", column, value }),
   or: (...args: unknown[]) => ({ type: "or", args }),
   sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ type: "sql", strings, values }),

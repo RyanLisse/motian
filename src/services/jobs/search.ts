@@ -4,6 +4,7 @@ import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
 import { logSlowQuery, type QueryPath, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
+import { searchJobIdsByTypesense } from "../search-index/typesense-search";
 import { collapseScoredJobsByVacancy, fetchDedupedJobIds, loadJobsByIds } from "./deduplication";
 import {
   getJobStatusCondition,
@@ -161,10 +162,43 @@ export async function searchJobIdsByTitle(
   opts: {
     limit?: number;
     filterCondition?: SQL;
+    typesenseOptions?: HybridSearchOptions;
   } = {},
 ): Promise<SearchTextResult> {
   const safeLimit = Math.min(opts.limit ?? 50, 100);
   const filterCondition = opts.filterCondition ?? sql`true`;
+
+  if (opts.typesenseOptions) {
+    try {
+      // Request extra results so dedup still yields enough after collapsing.
+      const externalResult = await searchJobIdsByTypesense(query, {
+        ...opts.typesenseOptions,
+        limit: safeLimit * 2,
+      });
+
+      if (externalResult && externalResult.ids.length > 0) {
+        // Run Typesense IDs through vacancy-level deduplication.
+        const dedupedIds = await fetchDedupedJobIds({
+          whereClause:
+            and(filterCondition, inArray(jobs.id, externalResult.ids)) ?? filterCondition,
+          limit: safeLimit,
+          partitionOrderBy: sql`${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
+          rankedJobsOrderBy: sql`scraped_at desc nulls last, id desc`,
+          resultOrderBy: sql`scraped_at desc nulls last, id desc`,
+        });
+
+        if (dedupedIds.length > 0) {
+          return {
+            ids: dedupedIds,
+            queryPath: "search-text",
+          };
+        }
+      }
+    } catch {
+      // Fall back to PostgreSQL text retrieval when Typesense is unavailable.
+    }
+  }
+
   const tsInput = toTsQueryInput(query);
 
   if (tsInput) {
@@ -213,6 +247,7 @@ export async function searchJobsByTitle(
   const { ids } = await searchJobIdsByTitle(query, {
     limit,
     filterCondition: getJobStatusCondition(status),
+    typesenseOptions: { status, limit },
   });
 
   return loadJobsByIds(ids);
@@ -262,6 +297,12 @@ export async function hybridSearchWithTotal(
         return await searchJobIdsByTitle(query, {
           limit: policy.fetchSize,
           filterCondition: retrievalFilterCondition,
+          typesenseOptions: {
+            ...opts,
+            status: requestedStatus,
+            limit: policy.fetchSize,
+            offset: 0,
+          },
         });
       } finally {
         textSearchMs = Date.now() - textSearchStartedAt;
