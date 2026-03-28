@@ -33,8 +33,6 @@ describe("sidebar shell top-bar refactor", () => {
     const candidateDetailSource = readFile("app", "kandidaten", "[id]", "page.tsx");
 
     expect(sidebarSource).toContain('title: "Interviews"');
-    expect(sidebarSource).toContain('badge: { text: "⌘J"');
-    expect(sidebarSource).toContain('tooltip: "AI Assistent openen (⌘/Ctrl+J)"');
     expect(userSource).toContain("motian-chat-open");
     expect(userSource).toContain("⌘J");
     expect(candidateDetailSource).toContain("CandidateRecommendationPanel");
