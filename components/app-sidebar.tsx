@@ -50,7 +50,6 @@ const data = {
           title: "Overzicht",
           url: "/overzicht",
           icon: LayoutDashboard,
-          isActive: true,
         },
         {
           title: "Vacatures",
