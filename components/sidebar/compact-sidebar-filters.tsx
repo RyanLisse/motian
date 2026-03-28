@@ -84,8 +84,8 @@ export function CompactSidebarFilters({
 }: CompactSidebarFiltersProps) {
   return (
     <>
-      <div className="grid shrink-0 gap-3 px-4">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="grid shrink-0 gap-2 px-3">
+        <div className="grid grid-cols-2 gap-2">
           <Select
             value={platform || undefined}
             onValueChange={(v) => onFilterChange("platform", v === "__all__" ? "" : v)}
@@ -175,7 +175,7 @@ export function CompactSidebarFilters({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <CompactMultiSelectFilter
             label="Regio"
             options={regionOptions}
@@ -200,14 +200,14 @@ export function CompactSidebarFilters({
           />
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <span className={DARK_FILTER_SECTION_LABEL_CLASS}>Uren per week</span>
             <span className={DARK_FILTER_SECTION_VALUE_CLASS}>
               {summarizeHoursRange(hoursMinInput, hoursMaxInput)}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <Input
               type="number"
               inputMode="numeric"

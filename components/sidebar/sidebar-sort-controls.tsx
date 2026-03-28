@@ -51,10 +51,10 @@ export function SidebarSortControls({
   }
 
   return (
-    <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:w-auto sm:items-center">
-      <span className="text-xs text-muted-foreground sm:text-sm">Sorteren:</span>
+    <div className="flex items-center gap-1.5 sm:gap-2">
+      <span className="hidden text-xs text-muted-foreground sm:inline sm:text-sm">Sorteren:</span>
       <Select value={sort} onValueChange={handleChange}>
-        <SelectTrigger className="data-[size=default]:h-11 w-full rounded-lg border-primary/40 bg-background text-sm font-semibold text-primary sm:w-[210px] sm:rounded-full sm:data-[size=default]:h-10">
+        <SelectTrigger className="data-[size=default]:h-9 w-full rounded-md border-primary/40 bg-background text-xs font-semibold text-primary sm:w-[210px] sm:rounded-full sm:data-[size=default]:h-10 sm:text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="bg-card border-border">

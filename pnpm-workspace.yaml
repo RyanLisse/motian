@@ -1,5 +1,4 @@
 packages:
   - "agent"
-  - "fumadocs"
   - "extension"
   - "packages/*"

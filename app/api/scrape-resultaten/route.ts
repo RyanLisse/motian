@@ -11,7 +11,12 @@ export const GET = withApiHandler(
     const limit = parseInt(searchParams.get("limit") ?? "50", 10);
 
     const results = await getHistory({ platform, limit });
-    return Response.json({ data: results, total: results.length });
+    return Response.json(
+      { data: results, total: results.length },
+      {
+        headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij ophalen scrape resultaten",

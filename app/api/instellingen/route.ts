@@ -8,7 +8,12 @@ export const dynamic = "force-dynamic";
 export const GET = withApiHandler(
   async (_request: NextRequest) => {
     const settings = await getAllSettings();
-    return Response.json({ data: settings });
+    return Response.json(
+      { data: settings },
+      {
+        headers: { "Cache-Control": "private, max-age=15" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij ophalen instellingen",
@@ -21,7 +26,12 @@ export const PUT = withApiHandler(
     const body = await request.json();
     const parsed = settingsPayloadSchema.partial().parse(body);
     const updated = await updateSettings(parsed);
-    return Response.json({ data: updated });
+    return Response.json(
+      { data: updated },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij bijwerken instellingen",

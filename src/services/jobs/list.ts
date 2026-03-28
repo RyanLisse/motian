@@ -81,9 +81,7 @@ export async function listJobs(
     const tsInput = toTsQueryInput(opts.q);
     if (tsInput) {
       queryPath = "list-fts";
-      conditions.push(
-        sql`search_vector @@ to_tsquery('dutch', ${tsInput})`,
-      );
+      conditions.push(sql`search_vector @@ to_tsquery('dutch', ${tsInput})`);
     } else {
       queryPath = "list";
       conditions.push(caseInsensitiveContains(jobs.title, opts.q));

@@ -23,7 +23,12 @@ export const GET = withApiHandler(
     if (!application) {
       return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: application });
+    return Response.json(
+      { data: application },
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   },
   { logPrefix: "GET /api/sollicitaties/[id] error" },
 );
@@ -45,7 +50,12 @@ export const PATCH = withApiHandler(
     }
     revalidatePath("/pipeline");
     publish("application:updated", { applicationId: id, stage: parsed.data.stage });
-    return Response.json({ data: application });
+    return Response.json(
+      { data: application },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "PATCH /api/sollicitaties/[id] error" },
 );
@@ -58,7 +68,12 @@ export const DELETE = withApiHandler(
       return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }
     revalidatePath("/pipeline");
-    return Response.json({ data: { id, deleted: true } });
+    return Response.json(
+      { data: { id, deleted: true } },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "DELETE /api/sollicitaties/[id] error" },
 );

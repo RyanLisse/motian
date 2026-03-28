@@ -12,15 +12,20 @@ export const GET = withApiHandler(
     if (!job) {
       return Response.json({ error: "Vacature niet gevonden" }, { status: 404 });
     }
-    return Response.json({
-      data: {
-        id: job.id,
-        title: job.title,
-        platform: job.platform,
-        externalId: job.externalId,
-        rawPayload: job.rawPayload ?? null,
+    return Response.json(
+      {
+        data: {
+          id: job.id,
+          title: job.title,
+          platform: job.platform,
+          externalId: job.externalId,
+          rawPayload: job.rawPayload ?? null,
+        },
       },
-    });
+      {
+        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+      },
+    );
   },
   {
     logPrefix: "GET /api/vacatures/[id]/raw",

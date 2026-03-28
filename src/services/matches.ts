@@ -1,4 +1,4 @@
-import { and, db, desc, eq, sql } from "../db";
+import { and, db, desc, eq, inArray, sql } from "../db";
 import { jobMatches } from "../db/schema";
 import { createOrReuseApplicationForMatch } from "./applications";
 
@@ -79,6 +79,13 @@ export async function getMatchById(id: string): Promise<Match | null> {
   const rows = await db.select().from(jobMatches).where(eq(jobMatches.id, id)).limit(1);
 
   return rows[0] ?? null;
+}
+
+/** Meerdere matches ophalen op ID in een enkele query. */
+export async function getMatchesByIds(ids: string[]): Promise<Match[]> {
+  if (ids.length === 0) return [];
+
+  return db.select().from(jobMatches).where(inArray(jobMatches.id, ids));
 }
 
 /** Match-status bijwerken met reviewer en tijdstempel. Retourneert bijgewerkte match of null. */

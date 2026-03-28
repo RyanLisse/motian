@@ -5,6 +5,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ChatContextProvider } from "@/components/chat/chat-context-provider";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { CommandPaletteLoader } from "@/components/command-palette-loader";
 import { SidebarLayout } from "@/components/sidebar-layout";
 import { getRequestOrigin, getStableChatOrigin } from "@/src/lib/chat-origin";
 import { Providers } from "./providers";
@@ -47,6 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ChatContextProvider>
             <SidebarLayout>{children}</SidebarLayout>
             <ChatWidget currentOrigin={currentOrigin} />
+            <CommandPaletteLoader />
           </ChatContextProvider>
         </Providers>
       </body>

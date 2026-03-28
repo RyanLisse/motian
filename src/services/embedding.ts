@@ -375,24 +375,21 @@ export async function embedCandidatesBatch(opts: {
 
   const embeddings = await generateEmbeddings(validTexts);
 
-  // Batch update all embeddings in parallel instead of sequential loop
-  const updateResults = await Promise.allSettled(
-    validIndices.map((idx, i) =>
-      db
-        .update(candidates)
-        .set({ embedding: `[${embeddings[i].join(",")}]` })
-        .where(eq(candidates.id, rows[idx].id)),
-    ),
-  );
+  // Batch update all embeddings in a single query using UPDATE ... FROM VALUES
+  try {
+    const valueRows = validIndices.map(
+      (idx, i) => sql`(${rows[idx].id}::uuid, ${`[${embeddings[i].join(",")}]`}::vector)`,
+    );
 
-  for (let i = 0; i < updateResults.length; i++) {
-    if (updateResults[i].status === "fulfilled") {
-      embedded++;
-    } else {
-      errors.push(
-        `Candidate ${rows[validIndices[i]].id}: ${String((updateResults[i] as PromiseRejectedResult).reason)}`,
-      );
-    }
+    await db.execute(sql`
+      UPDATE candidates SET embedding = batch.emb
+      FROM (VALUES ${sql.join(valueRows, sql`, `)}) AS batch(id, emb)
+      WHERE candidates.id = batch.id
+    `);
+
+    embedded = validIndices.length;
+  } catch (err) {
+    errors.push(`Batch update failed: ${String(err)}`);
   }
 
   return { embedded, skipped, errors };
@@ -488,23 +485,21 @@ export async function embedJobsBatch(opts: {
 
   const embeddings = await generateEmbeddings(validTexts);
 
-  const updateResults = await Promise.allSettled(
-    validIndices.map((idx, i) =>
-      db
-        .update(jobs)
-        .set({ embedding: `[${embeddings[i].join(",")}]` })
-        .where(eq(jobs.id, rows[idx].id)),
-    ),
-  );
+  // Batch update all embeddings in a single query using UPDATE ... FROM VALUES
+  try {
+    const valueRows = validIndices.map(
+      (idx, i) => sql`(${rows[idx].id}::uuid, ${`[${embeddings[i].join(",")}]`}::vector)`,
+    );
 
-  for (let i = 0; i < updateResults.length; i++) {
-    if (updateResults[i].status === "fulfilled") {
-      embedded++;
-    } else {
-      errors.push(
-        `Job ${rows[validIndices[i]].id}: ${String((updateResults[i] as PromiseRejectedResult).reason)}`,
-      );
-    }
+    await db.execute(sql`
+      UPDATE jobs SET embedding = batch.emb
+      FROM (VALUES ${sql.join(valueRows, sql`, `)}) AS batch(id, emb)
+      WHERE jobs.id = batch.id
+    `);
+
+    embedded = validIndices.length;
+  } catch (err) {
+    errors.push(`Batch update failed: ${String(err)}`);
   }
 
   return { embedded, skipped, errors };

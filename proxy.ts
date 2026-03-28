@@ -3,7 +3,7 @@ import { buildCorsHeaders, getAllowedCorsOrigin, shouldRejectCorsPreflight } fro
 import { shouldAllowMissingApiSecret } from "@/src/lib/runtime-config";
 
 /** Routes that bypass bearer token authentication completely (health, cron, docs) */
-const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi"];
+const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi", "/api/debug-error"];
 
 /**
  * First-party browser routes: accessible without bearer token ONLY for

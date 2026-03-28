@@ -1,6 +1,8 @@
 import { Activity, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -46,7 +48,23 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
-export default async function AutopilotPage() {
+export const revalidate = 300;
+
+function AutopilotSkeleton() {
+  return (
+    <div className="flex-1 flex flex-col bg-background p-6">
+      <div className="max-w-7xl w-full mx-auto space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-64 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+async function AutopilotContent() {
   const { runs } = await getAutopilotDashboardData();
 
   return (
@@ -130,5 +148,13 @@ export default async function AutopilotPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AutopilotPage() {
+  return (
+    <Suspense fallback={<AutopilotSkeleton />}>
+      <AutopilotContent />
+    </Suspense>
   );
 }

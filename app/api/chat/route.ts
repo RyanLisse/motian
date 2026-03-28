@@ -1,43 +1,27 @@
 import { convertToModelMessages, stepCountIs, type UIMessage } from "ai";
 import { nanoid } from "nanoid";
 import { after } from "next/server";
-import { z } from "zod";
 import { buildSystemPrompt, getRecruitmentTools } from "@/src/ai/agent";
-import { and, db, eq, isNull } from "@/src/db";
-import { chatSessions } from "@/src/db/schema";
-import {
-  tracedGenerateObject as generateObject,
-  resolveChatModel,
-  tracedStreamText as streamText,
-} from "@/src/lib/ai-models";
-import { rateLimit } from "@/src/lib/rate-limit";
-import { createToolResultCache } from "@/src/lib/tool-result-cache";
+import { resolveChatModel, tracedStreamText as streamText } from "@/src/lib/ai-models";
 import {
   type ChatSessionContext,
   getRecentMessagesForContext,
   getSessionRequestSnapshot,
-  incrementSessionTokens,
   persistMessages,
 } from "@/src/services/chat-sessions";
+import {
+  CHAT_MAX_TOKENS_PER_SESSION,
+  checkRateLimit,
+  checkTokenBudget,
+  extractClientIp,
+  generateSessionTitle,
+  parseRequestBody,
+  trackTokenUsage,
+} from "./_helpers";
 
-const limiter = rateLimit({ interval: 60_000, limit: 20 });
-
-/** Optioneel max tokens per sessie (env CHAT_MAX_TOKENS_PER_SESSION). Bij overschrijding: 429 + fallbackmelding. */
-const CHAT_MAX_TOKENS_PER_SESSION = (() => {
-  const raw = process.env.CHAT_MAX_TOKENS_PER_SESSION;
-  if (!raw) return undefined;
-  const n = Number.parseInt(raw, 10);
-  return Number.isFinite(n) && n > 0 ? n : undefined;
-})();
-
-const contextSchema = z
-  .object({
-    route: z.string().max(200).nullish(),
-    entityId: z.string().uuid().nullish(),
-    entityType: z.enum(["opdracht", "kandidaat"]).nullish(),
-    sessionId: z.string().max(100).nullish(),
-  })
-  .nullish();
+// ---------------------------------------------------------------------------
+// Internal utilities
+// ---------------------------------------------------------------------------
 
 function getMessageText(message: UIMessage): string {
   const textParts = Array.isArray(message.parts)
@@ -84,36 +68,23 @@ async function loadSessionSnapshotOrFallback(sessionId: string): Promise<Session
   }
 }
 
+// ---------------------------------------------------------------------------
+// POST handler
+// ---------------------------------------------------------------------------
+
 export async function POST(req: Request) {
-  const ip =
-    req.headers.get("x-real-ip") ??
-    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    "anonymous";
-  const { success, reset } = limiter.check(ip);
-  if (!success) {
-    return Response.json(
-      { error: "Te veel verzoeken. Probeer het later opnieuw." },
-      { status: 429, headers: { "Retry-After": String(Math.ceil((reset - Date.now()) / 1000)) } },
-    );
-  }
+  // 1. Rate limiting
+  const ip = extractClientIp(req);
+  const rateLimitResponse = checkRateLimit(ip);
+  if (rateLimitResponse) return rateLimitResponse;
 
-  const body = await req.json().catch(() => null);
-  const requestMessages = Array.isArray(body?.messages)
-    ? (body.messages as UIMessage[])
-    : body?.message
-      ? ([body.message] as UIMessage[])
-      : [];
+  // 2. Body parsing & validation
+  const parsed = await parseRequestBody(req);
+  if (parsed instanceof Response) return parsed;
+  const { messages: requestMessages, context: contextData, model: requestModel } = parsed;
 
-  if (!body || requestMessages.length === 0) {
-    return Response.json({ error: "Ongeldige aanvraag" }, { status: 400 });
-  }
-
-  const contextResult = contextSchema.safeParse(body.context);
-  if (!contextResult.success) {
-    return Response.json({ error: "Ongeldige context" }, { status: 400 });
-  }
-
-  const ctx = (contextResult.data ?? undefined) as ChatSessionContext | undefined;
+  // 3. Session context extraction
+  const ctx = (contextData ?? undefined) as ChatSessionContext | undefined;
   const sessionId = ctx?.sessionId;
   const latestUserMessage = [...requestMessages]
     .reverse()
@@ -121,29 +92,13 @@ export async function POST(req: Request) {
   const latestUserText = latestUserMessage ? getMessageText(latestUserMessage) : "";
   const sessionSnapshot = sessionId ? await loadSessionSnapshotOrFallback(sessionId) : null;
 
-  // AI-budget (Fase 4): als er een sessielimiet is en we hebben een sessionId, check tokensUsed
-  if (sessionId && CHAT_MAX_TOKENS_PER_SESSION != null) {
-    if (sessionSnapshot?.loadFailed) {
-      return Response.json(
-        {
-          error:
-            "Je sessie heeft het tokenbudget bereikt. Start een nieuw gesprek om verder te gaan.",
-        },
-        { status: 429 },
-      );
-    }
-    const used = sessionSnapshot?.tokensUsed ?? 0;
-    if (used >= CHAT_MAX_TOKENS_PER_SESSION) {
-      return Response.json(
-        {
-          error:
-            "Je sessie heeft het tokenbudget bereikt. Start een nieuw gesprek om verder te gaan.",
-        },
-        { status: 429 },
-      );
-    }
+  // 4. Token budget checking
+  if (sessionId) {
+    const budgetResponse = checkTokenBudget(sessionSnapshot, CHAT_MAX_TOKENS_PER_SESSION);
+    if (budgetResponse) return budgetResponse;
   }
 
+  // 5. User message persistence & title generation
   let userMessagesPersisted = true;
   if (sessionId) {
     try {
@@ -164,87 +119,31 @@ export async function POST(req: Request) {
       requestMessages.filter((message) => message.role === "user").length === 1;
 
     if (shouldGenerateTitle) {
-      after(async () => {
-        let title: string | null = null;
-
-        try {
-          const titleResult = await generateObject({
-            model: resolveChatModel("gemini-3.1-flash-lite"),
-            schema: z.object({
-              title: z
-                .string()
-                .max(50)
-                .describe("Korte titel voor dit gesprek in 3-6 woorden, Nederlands"),
-            }),
-            prompt: `Genereer een korte titel (3-6 woorden) voor dit gesprek. Gebruikersvraag: "${latestUserText.slice(0, 200)}"`,
-          });
-          title = (titleResult.object as { title: string }).title;
-        } catch (err) {
-          console.error("[chat] Title generation failed:", err);
-          return;
-        }
-
-        try {
-          await db
-            .update(chatSessions)
-            .set({
-              title,
-              updatedAt: new Date(),
-            })
-            .where(and(eq(chatSessions.sessionId, sessionId), isNull(chatSessions.title)));
-        } catch (err) {
-          console.error("[chat] Title update failed:", err);
-        }
-      });
+      after(() => generateSessionTitle(sessionId, latestUserText));
     }
   }
 
+  // 6. Session message loading
   const modelMessages =
     sessionId && userMessagesPersisted
       ? await loadSessionMessagesOrFallback(sessionId, undefined, requestMessages)
       : requestMessages;
 
+  // 7. Stream setup & response
   const system = await buildSystemPrompt(ctx);
-  const model = resolveChatModel(body.model);
-  const toolCache = createToolResultCache();
+  const model = resolveChatModel(requestModel);
 
   const result = streamText({
     model,
     system,
     messages: await convertToModelMessages(modelMessages),
-    tools: getRecruitmentTools(ctx, toolCache),
+    tools: getRecruitmentTools(ctx),
     stopWhen: stepCountIs(5),
   });
 
-  // Na afloop van de stream: sessie-tokenbudget bijwerken (Fase 4) + AI-cost logging
+  // Track token usage after stream completes
   if (sessionId) {
-    void Promise.resolve(result)
-      .then(async (final) => {
-        const usage = final?.usage as
-          | { promptTokens?: number; completionTokens?: number }
-          | undefined;
-        if (!usage) return;
-        const prompt = usage.promptTokens ?? 0;
-        const completion = usage.completionTokens ?? 0;
-        const delta = prompt + completion;
-        if (delta <= 0) return;
-        console.log(
-          JSON.stringify({
-            flow: "chat",
-            promptTokens: prompt,
-            completionTokens: completion,
-            totalTokens: delta,
-            sessionId,
-          }),
-        );
-
-        try {
-          await incrementSessionTokens(sessionId, delta);
-        } catch (err) {
-          console.error("[chat] Token usage update failed:", err);
-        }
-      })
-      .catch(() => {});
+    trackTokenUsage(Promise.resolve(result), sessionId);
   }
 
   return result.toUIMessageStreamResponse({

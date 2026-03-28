@@ -26,7 +26,12 @@ export const GET = withApiHandler(async (request: Request) => {
 
   if (stats === "true") {
     const data = await getApplicationStats();
-    return Response.json({ data });
+    return Response.json(
+      { data },
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   }
 
   const jobId = params.get("jobId") ?? undefined;
@@ -36,7 +41,9 @@ export const GET = withApiHandler(async (request: Request) => {
 
   const data = await listApplications({ jobId, candidateId, stage, limit, offset });
   const total = await countApplications({ jobId, candidateId, stage });
-  return Response.json(paginatedResponse(data, total, { page, limit, offset }));
+  return Response.json(paginatedResponse(data, total, { page, limit, offset }), {
+    headers: { "Cache-Control": "no-store" },
+  });
 });
 
 export const POST = withApiHandler(async (request: Request) => {
@@ -52,5 +59,11 @@ export const POST = withApiHandler(async (request: Request) => {
   revalidatePath("/pipeline");
   revalidatePath("/overzicht");
   publish("application:created", { applicationId: application.id });
-  return Response.json({ data: application }, { status: 201 });
+  return Response.json(
+    { data: application },
+    {
+      status: 201,
+      headers: { "Cache-Control": "private, no-cache, no-store" },
+    },
+  );
 });

@@ -18,7 +18,12 @@ export const DELETE = withApiHandler(
 
     const requestedBy = request.headers.get("x-requested-by") ?? "system";
     const data = await scrubContactData(identifier, requestedBy);
-    return Response.json({ data });
+    return Response.json(
+      { data },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij verwijderen contactgegevens",

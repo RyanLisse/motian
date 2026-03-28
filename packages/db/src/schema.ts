@@ -635,6 +635,50 @@ export const messages = pgTable(
   }),
 );
 
+// ========== Screening Calls ==========
+export const screeningCalls = pgTable(
+  "screening_calls",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    candidateId: text("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    matchId: text("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
+    applicationId: text("application_id").references(() => applications.id, { onDelete: "set null" }),
+    // LiveKit room details
+    roomName: text("room_name").notNull(),
+    roomToken: text("room_token"),
+    // Call state
+    status: text("status").notNull().default("pending"), // pending, ringing, active, completed, failed, cancelled
+    initiatedBy: text("initiated_by").default("recruiter"), // recruiter, ai_agent
+    // Screening context
+    screeningQuestions: jsonb("screening_questions").default([]), // Array of { question, category, aiGenerated, answer?, sentiment? }
+    candidateContext: jsonb("candidate_context").default({}), // Snapshot of candidate data at call time
+    jobContext: jsonb("job_context").default({}), // Snapshot of job data at call time
+    matchContext: jsonb("match_context").default({}), // Match score, reasoning, criteria
+    // Results
+    transcript: jsonb("transcript").default([]), // Array of { speaker, text, timestamp }
+    callSummary: text("call_summary"),
+    callNotes: text("call_notes"),
+    callDurationSeconds: integer("call_duration_seconds"),
+    candidateSentiment: text("candidate_sentiment"), // positive, neutral, negative
+    recommendedNextStep: text("recommended_next_step"), // proceed, reject, follow_up
+    // Timestamps
+    startedAt: timestamp("started_at"),
+    endedAt: timestamp("ended_at"),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    candidateIdIdx: index("idx_screening_calls_candidate_id").on(table.candidateId),
+    jobIdIdx: index("idx_screening_calls_job_id").on(table.jobId),
+    statusIdx: index("idx_screening_calls_status").on(table.status),
+    createdAtIdx: index("idx_screening_calls_created_at").on(table.createdAt),
+    roomNameIdx: uniqueIndex("uq_screening_calls_room_name").on(table.roomName),
+  }),
+);
+
 // ========== Platform Instellingen ==========
 export const platformSettings = pgTable(
   "platform_settings",
@@ -711,5 +755,45 @@ export const autopilotFindings = pgTable(
     fingerprintIdx: index("idx_autopilot_findings_fingerprint").on(table.fingerprint),
     severityIdx: index("idx_autopilot_findings_severity").on(table.severity),
     statusIdx: index("idx_autopilot_findings_status").on(table.status),
+  }),
+);
+
+// ========== Agent Events (persistent event bus) ==========
+export const agentEvents = pgTable(
+  "agent_events",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    // Which agent emitted this event
+    sourceAgent: text("source_agent").notNull(), // intake, matcher, screener, scheduler, sourcing, communicator
+    // What happened
+    eventType: text("event_type").notNull(), // e.g. candidate.parsed, match.created, screening.requested
+    // Entity references (nullable — not all events have all refs)
+    candidateId: text("candidate_id").references(() => candidates.id, { onDelete: "set null" }),
+    jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    matchId: text("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
+    screeningCallId: text("screening_call_id").references(() => screeningCalls.id, {
+      onDelete: "set null",
+    }),
+    // Event payload — arbitrary structured data
+    payload: jsonb("payload").default({}),
+    // Processing state for downstream consumers
+    status: text("status").notNull().default("pending"), // pending, processing, completed, failed
+    processedBy: text("processed_by"), // which agent picked this up
+    processedAt: timestamp("processed_at"),
+    errorMessage: text("error_message"),
+    // Trigger.dev run reference for traceability
+    triggerRunId: text("trigger_run_id"),
+    // Timestamps
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    sourceAgentIdx: index("idx_agent_events_source_agent").on(table.sourceAgent),
+    eventTypeIdx: index("idx_agent_events_event_type").on(table.eventType),
+    statusIdx: index("idx_agent_events_status").on(table.status),
+    candidateIdx: index("idx_agent_events_candidate_id").on(table.candidateId),
+    jobIdx: index("idx_agent_events_job_id").on(table.jobId),
+    createdAtIdx: index("idx_agent_events_created_at").on(table.createdAt),
+    // Composite: find pending events for a specific type efficiently
+    pendingByTypeIdx: index("idx_agent_events_pending_type").on(table.status, table.eventType),
   }),
 );

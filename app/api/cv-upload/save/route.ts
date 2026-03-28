@@ -45,17 +45,22 @@ export async function POST(request: NextRequest) {
     revalidatePath("/overzicht");
     revalidatePath(`/kandidaten/${intake.candidate.id}`);
 
-    return Response.json({
-      message: existingCandidateId ? "Kandidaat verrijkt" : "Kandidaat aangemaakt",
-      candidate: intake.candidate,
-      profile: intake.profile,
-      matches: intake.matches,
-      recommendation: intake.recommendation,
-      matchingStatus: intake.matchingStatus,
-      alreadyLinked: intake.alreadyLinked,
-      fileUrl,
-      candidateId: intake.candidate.id,
-    });
+    return Response.json(
+      {
+        message: existingCandidateId ? "Kandidaat verrijkt" : "Kandidaat aangemaakt",
+        candidate: intake.candidate,
+        profile: intake.profile,
+        matches: intake.matches,
+        recommendation: intake.recommendation,
+        matchingStatus: intake.matchingStatus,
+        alreadyLinked: intake.alreadyLinked,
+        fileUrl,
+        candidateId: intake.candidate.id,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (err) {
     console.error("[CV Save]", err);
 

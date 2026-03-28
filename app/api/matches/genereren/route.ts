@@ -56,15 +56,20 @@ export async function POST(request: NextRequest) {
     revalidatePath("/overzicht");
     publish("matches:generated", { jobId, matchesCreated: result.matchesCreated });
 
-    return Response.json({
-      message: "Match generatie voltooid",
-      jobId,
-      matchesCreated: result.matchesCreated,
-      duplicateMatches: result.duplicateMatches,
-      totalCandidatesScored: result.totalCandidatesScored,
-      topScore: result.topScore,
-      ...(result.errors.length > 0 ? { errors: result.errors } : {}),
-    });
+    return Response.json(
+      {
+        message: "Match generatie voltooid",
+        jobId,
+        matchesCreated: result.matchesCreated,
+        duplicateMatches: result.duplicateMatches,
+        totalCandidatesScored: result.totalCandidatesScored,
+        topScore: result.topScore,
+        ...(result.errors.length > 0 ? { errors: result.errors } : {}),
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (_err) {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }

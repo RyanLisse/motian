@@ -12,16 +12,26 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AIGrading } from "@/components/ai-grading";
+import { Suspense } from "react";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { LinkCandidatesDialog } from "@/components/link-candidates-dialog";
 import { OpdrachtDetailEndClientFilter } from "@/components/opdracht-detail-end-client-filter";
 import { OpdrachtenDetailSheet } from "@/components/opdrachten-detail-sheet";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { and, db, desc, eq, isNull, ne, sql } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
@@ -31,7 +41,12 @@ import { jobReadSelection } from "@/src/services/jobs/repository";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
-export const dynamic = "force-dynamic";
+const AIGrading = dynamic(
+  () => import("@/components/ai-grading").then((mod) => ({ default: mod.AIGrading })),
+  { loading: () => <div className="animate-pulse h-64 rounded-xl bg-muted" /> },
+);
+
+export const revalidate = 30;
 export const maxDuration = 30;
 
 interface Props {
@@ -183,7 +198,31 @@ function SectionBlock({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-export default async function OpdrachtDetailPage({ params, searchParams }: Props) {
+function OpdrachtDetailSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <Skeleton className="h-5 w-64" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-72" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+            <Skeleton key={`kpi-${i}`} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Skeleton className="h-64 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-64 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function OpdrachtDetailContent({ params, searchParams }: Props) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
@@ -594,14 +633,21 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
       >
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="border-b border-border bg-background/95 px-4 py-4 sm:px-6">
-            <Link
-              href={listHref}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              &larr; Terug naar vacatures
-            </Link>
+            <Breadcrumb className="mb-4">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href="/vacatures">Vacatures</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{job.title}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
 
-            <div className="mt-4">
+            <div>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <Badge
                   variant="outline"
@@ -656,7 +702,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                   <JsonViewer data={job as unknown as Record<string, unknown>} />
                 </div>
               </div>
-              <h1 className="text-lg font-bold text-foreground sm:text-xl">{job.title}</h1>
+              <h1 className="text-xl font-bold text-foreground">{job.title}</h1>
               {job.company ? (
                 <p className="mt-1 text-sm text-muted-foreground">{job.company}</p>
               ) : null}
@@ -1121,5 +1167,13 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
         </div>
       </OpdrachtenDetailSheet>
     </DroppableVacancy>
+  );
+}
+
+export default function OpdrachtDetailPage(props: Props) {
+  return (
+    <Suspense fallback={<OpdrachtDetailSkeleton />}>
+      <OpdrachtDetailContent {...props} />
+    </Suspense>
   );
 }

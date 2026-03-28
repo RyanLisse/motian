@@ -17,10 +17,15 @@ export const POST = withApiHandler(
     revalidatePath("/overzicht");
     revalidatePath(`/kandidaten/${id}`);
 
-    return Response.json({
-      candidate,
-      matchingStatus: candidate.matchingStatus,
-    });
+    return Response.json(
+      {
+        candidate,
+        matchingStatus: candidate.matchingStatus,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "POST /api/kandidaten/[id]/geen-match error" },
 );

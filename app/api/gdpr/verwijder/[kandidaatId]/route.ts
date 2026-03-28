@@ -14,7 +14,12 @@ export const DELETE = withApiHandler(
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
 
-    return Response.json({ data: result });
+    return Response.json(
+      { data: result },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij verwijderen kandidaatgegevens",

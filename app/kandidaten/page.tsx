@@ -1,18 +1,21 @@
 import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { AddCandidateWizard } from "@/components/add-candidate-wizard";
 import { DraggableCandidate } from "@/components/draggable-candidate";
+import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { and, db, desc, eq, isNull, like, sql } from "@/src/db";
 import { candidateSkills, candidates } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
 import { parsePagination } from "@/src/lib/pagination";
 import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 /** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
@@ -36,7 +39,30 @@ const availabilityLabels: Record<string, string> = {
   "3_maanden": "Binnen 3 maanden",
 };
 
-export default async function KandidatenPage({ searchParams }: Props) {
+function KandidatenSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+            <Skeleton key={`kpi-${i}`} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-9 w-full rounded-lg" />
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+            <Skeleton key={`card-${i}`} className="h-40 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function KandidatenContent({ searchParams }: Props) {
   const params = await searchParams;
   const query = params.q ?? "";
   const availability = params.beschikbaarheid ?? "";
@@ -160,18 +186,12 @@ export default async function KandidatenPage({ searchParams }: Props) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Kandidaten</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Talent pool — overzicht van alle kandidaten
-            </p>
-          </div>
+        <PageHeader title="Kandidaten" description="Talent pool — overzicht van alle kandidaten">
           <AddCandidateWizard />
-        </div>
+        </PageHeader>
 
         {/* KPI row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <KPICard icon={<Users className="h-4 w-4" />} label="Totaal" value={totalCount} />
           <KPICard
             icon={<Zap className="h-4 w-4" />}
@@ -187,8 +207,8 @@ export default async function KandidatenPage({ searchParams }: Props) {
         </div>
 
         {/* Search + filters */}
-        <form className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
+        <form className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3">
+          <div className="relative col-span-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
@@ -266,9 +286,9 @@ export default async function KandidatenPage({ searchParams }: Props) {
                   candidateName={candidate.name}
                 >
                   <Link href={`/kandidaten/${candidate.id}`}>
-                    <div className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer pl-6">
+                    <div className="bg-card border border-border rounded-lg p-3 sm:p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer pl-6">
                       {/* Name + source */}
-                      <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
                         <div>
                           <h3 className="text-sm font-semibold text-foreground leading-snug">
                             {candidate.name}
@@ -288,7 +308,7 @@ export default async function KandidatenPage({ searchParams }: Props) {
                       </div>
 
                       {/* Meta */}
-                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-3">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-2 sm:mb-3">
                         {candidate.location && (
                           <span className="flex items-center gap-1.5">
                             <MapPin className="h-3.5 w-3.5" />
@@ -305,7 +325,7 @@ export default async function KandidatenPage({ searchParams }: Props) {
 
                       {/* Skills */}
                       {skills.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-3">
+                        <div className="flex flex-wrap gap-1.5 mb-2 sm:mb-3">
                           {skills.slice(0, 5).map((skill) => (
                             <Badge
                               key={`${candidate.id}-${skill}`}
@@ -364,5 +384,13 @@ export default async function KandidatenPage({ searchParams }: Props) {
         <div className="h-8" />
       </div>
     </div>
+  );
+}
+
+export default function KandidatenPage(props: Props) {
+  return (
+    <Suspense fallback={<KandidatenSkeleton />}>
+      <KandidatenContent {...props} />
+    </Suspense>
   );
 }

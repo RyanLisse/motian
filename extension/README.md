@@ -7,7 +7,7 @@ Standalone browser extension built with WXT + React.
 - From the repo root: `pnpm install`
 - Or from this directory: `pnpm install`
 
-Unlike `agent/` and `fumadocs/`, this folder does **not** keep its own lockfile.
+Unlike `agent/`, this folder does **not** keep its own lockfile.
 The canonical pinned dependency set for the extension is the repo-root `pnpm-lock.yaml`.
 
 ## Commands

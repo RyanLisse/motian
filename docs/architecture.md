@@ -2,7 +2,7 @@
 
 AI-Assisted Recruitment Operations Platform built with Next.js 16, React 19, Drizzle ORM, Neon PostgreSQL + pgvector, Trigger.dev, and multiple AI models (Gemini, GPT-5, Grok).
 
-> **Interactive visual explainer**: Open `app/visual-explainer/page.tsx` or visit `/visual-explainer` for diagrams and flowcharts.
+De live API-documentatie staat in Scalar op `/api-docs`. Deze pagina is de centrale architectuur- en platformuitleg voor de hoofdapp.
 
 ## System Overview
 

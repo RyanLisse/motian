@@ -1,22 +1,16 @@
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  Filter,
-  Globe,
-  Mail,
-  MessageSquare,
-  Phone,
-} from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Filter, MessageSquare } from "lucide-react";
+import { Suspense } from "react";
+import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
-import { Badge } from "@/components/ui/badge";
 import { and, db, desc, eq, isNull, sql } from "@/src/db";
 import { applications, candidates, jobs, messages } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
+import { channelLabels, directionLabels, MessageCard } from "./_components/message-card";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 /** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
@@ -33,30 +27,33 @@ interface Props {
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 50;
 
-const channelColors: Record<string, string> = {
-  email: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  phone: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-  platform: "bg-orange-500/10 text-orange-500 border-orange-500/20",
-};
+function MessagesSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <div>
+          <div className="h-7 w-32 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-56 rounded bg-muted animate-pulse mt-2" />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton items
+            <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+        <div className="h-10 w-64 rounded bg-muted animate-pulse" />
+        <div className="grid gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton items
+            <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-const channelIcons: Record<string, typeof Mail> = {
-  email: Mail,
-  phone: Phone,
-  platform: Globe,
-};
-
-const channelLabels: Record<string, string> = {
-  email: "E-mail",
-  phone: "Telefoon",
-  platform: "Platform",
-};
-
-const directionLabels: Record<string, string> = {
-  inbound: "Inkomend",
-  outbound: "Uitgaand",
-};
-
-export default async function MessagesPage({ searchParams }: Props) {
+async function MessagesContent({ searchParams }: Props) {
   const params = await searchParams;
   const directionFilter = params.direction ?? "";
   const channelFilter = params.channel ?? "";
@@ -72,24 +69,7 @@ export default async function MessagesPage({ searchParams }: Props) {
     maxLimit: MAX_PER_PAGE,
   });
 
-  // KPI counts
-  const directionCounts = await db
-    .select({
-      direction: messages.direction,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(messages)
-    .where(isNull(messages.deletedAt))
-    .groupBy(messages.direction);
-
-  let totalMessages = 0;
-  const dirMap: Record<string, number> = {};
-  for (const row of directionCounts) {
-    dirMap[row.direction] = row.count;
-    totalMessages += row.count;
-  }
-
-  // Query messages with joins
+  // Query conditions (needed by both KPI and list queries)
   const conditions = [isNull(messages.deletedAt)];
   if (directionFilter && ["inbound", "outbound"].includes(directionFilter)) {
     conditions.push(eq(messages.direction, directionFilter));
@@ -99,7 +79,16 @@ export default async function MessagesPage({ searchParams }: Props) {
   }
   const where = and(...conditions);
 
-  const [rows, countRows] = await Promise.all([
+  // Parallelize all three queries: KPI direction counts + filtered rows + filtered count
+  const [directionCounts, rows, countRows] = await Promise.all([
+    db
+      .select({
+        direction: messages.direction,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(messages)
+      .where(isNull(messages.deletedAt))
+      .groupBy(messages.direction),
     db
       .select({
         message: messages,
@@ -117,16 +106,20 @@ export default async function MessagesPage({ searchParams }: Props) {
     db.select({ count: sql<number>`count(*)::int` }).from(messages).where(where),
   ]);
 
+  let totalMessages = 0;
+  const dirMap: Record<string, number> = {};
+  for (const row of directionCounts) {
+    dirMap[row.direction] = row.count;
+    totalMessages += row.count;
+  }
+
   const totalFiltered = countRows[0]?.count ?? 0;
   const totalPages = Math.ceil(totalFiltered / limit) || 1;
 
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Berichten</h1>
-          <p className="text-sm text-muted-foreground mt-1">Communicatie met kandidaten</p>
-        </div>
+        <PageHeader title="Berichten" description="Communicatie met kandidaten" />
 
         {/* KPI row */}
         <div className="grid grid-cols-3 gap-3">
@@ -201,62 +194,14 @@ export default async function MessagesPage({ searchParams }: Props) {
               {totalPages}
             </p>
             <div className="grid gap-3">
-              {rows.map((row) => {
-                const ChannelIcon = channelIcons[row.message.channel] ?? Mail;
-                const isInbound = row.message.direction === "inbound";
-                return (
-                  <div
-                    key={row.message.id}
-                    className="bg-card border border-border rounded-lg p-4 hover:border-primary/30 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          {isInbound ? (
-                            <ArrowDownLeft className="h-4 w-4 text-blue-500 shrink-0" />
-                          ) : (
-                            <ArrowUpRight className="h-4 w-4 text-primary shrink-0" />
-                          )}
-                          <span className="text-sm font-semibold text-foreground truncate">
-                            {row.message.subject ??
-                              row.message.body.substring(0, 80) +
-                                (row.message.body.length > 80 ? "..." : "")}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground ml-6">
-                          {row.candidateName ?? "Onbekend"}{" "}
-                          {row.jobTitle ? `· ${row.jobTitle}` : ""}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${channelColors[row.message.channel] ?? ""}`}
-                        >
-                          <ChannelIcon className="h-3 w-3 mr-1" />
-                          {channelLabels[row.message.channel] ?? row.message.channel}
-                        </Badge>
-                      </div>
-                    </div>
-                    {row.message.subject && (
-                      <p className="mt-2 text-xs text-muted-foreground ml-6 line-clamp-2">
-                        {row.message.body.substring(0, 120)}
-                        {row.message.body.length > 120 ? "..." : ""}
-                      </p>
-                    )}
-                    <div className="mt-2 text-xs text-muted-foreground ml-6">
-                      {row.message.sentAt &&
-                        new Date(row.message.sentAt).toLocaleDateString("nl-NL", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                    </div>
-                  </div>
-                );
-              })}
+              {rows.map((row) => (
+                <MessageCard
+                  key={row.message.id}
+                  message={row.message}
+                  candidateName={row.candidateName}
+                  jobTitle={row.jobTitle}
+                />
+              ))}
             </div>
 
             {/* Pagination */}
@@ -276,5 +221,13 @@ export default async function MessagesPage({ searchParams }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+export default function MessagesPage({ searchParams }: Props) {
+  return (
+    <Suspense fallback={<MessagesSkeleton />}>
+      <MessagesContent searchParams={searchParams} />
+    </Suspense>
   );
 }

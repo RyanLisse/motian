@@ -62,6 +62,11 @@ import {
   triggerTestRun,
   validateConfig,
 } from "../services/scrapers.js";
+import {
+  createScreeningCall,
+  getScreeningCall,
+  updateScreeningCall,
+} from "../services/screening-calls.js";
 import { runStructuredMatch } from "../services/structured-matching.js";
 
 /**
@@ -827,6 +832,90 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
             "Bekijk GDPR-retentiestatus: hoeveel kandidaten hebben een verlopen bewaartermijn",
           parameters: z.object({}),
           execute: async () => reviewGdprRetention(),
+        }),
+
+        // ========== Screening Calls ==========
+
+        startScreeningGesprek: llm.tool({
+          description:
+            "Start een AI-screeninggesprek met een kandidaat. Maakt een gespreksruimte aan met screeningvragen op basis van de match context.",
+          parameters: z.object({
+            kandidaatId: z.string().describe("UUID van de kandidaat"),
+            vacatureId: z.string().optional().describe("UUID van de vacature (optioneel)"),
+            matchId: z.string().optional().describe("UUID van de match (optioneel)"),
+          }),
+          execute: async ({ kandidaatId, vacatureId, matchId }) => {
+            const call = await createScreeningCall({
+              candidateId: kandidaatId,
+              jobId: vacatureId,
+              matchId,
+              initiatedBy: "ai_agent",
+            });
+            return {
+              callId: call.id,
+              roomName: call.roomName,
+              status: call.status,
+              vragen: call.screeningQuestions,
+              kandidaat: call.candidateContext,
+              vacature: call.jobContext,
+              matchInfo: call.matchContext,
+            };
+          },
+        }),
+
+        getScreeningGesprek: llm.tool({
+          description: "Haal de details op van een screeninggesprek via ID",
+          parameters: z.object({
+            callId: z.string().describe("UUID van het screeninggesprek"),
+          }),
+          execute: async ({ callId }) => {
+            const call = await getScreeningCall(callId);
+            if (!call) return { error: "Screeninggesprek niet gevonden" };
+            return {
+              id: call.id,
+              status: call.status,
+              kandidaat: call.candidateContext,
+              vacature: call.jobContext,
+              vragen: call.screeningQuestions,
+              transcript: call.transcript,
+              samenvatting: call.callSummary,
+              aanbeveling: call.recommendedNextStep,
+              sentiment: call.candidateSentiment,
+              duur: call.callDurationSeconds,
+            };
+          },
+        }),
+
+        updateScreeningGesprek: llm.tool({
+          description:
+            "Werk een screeninggesprek bij met transcript, samenvatting of aanbeveling. Gebruik na afloop van het gesprek.",
+          parameters: z.object({
+            callId: z.string().describe("UUID van het screeninggesprek"),
+            status: z
+              .enum(["active", "completed", "failed", "cancelled"])
+              .optional()
+              .describe("Nieuwe status"),
+            samenvatting: z.string().optional().describe("Samenvatting van het gesprek"),
+            aanbeveling: z
+              .enum(["proceed", "reject", "follow_up"])
+              .optional()
+              .describe("Aanbevolen volgende stap"),
+            sentiment: z
+              .enum(["positive", "neutral", "negative"])
+              .optional()
+              .describe("Sentiment van de kandidaat"),
+          }),
+          execute: async ({ callId, status, samenvatting, aanbeveling, sentiment }) => {
+            const updated = await updateScreeningCall(callId, {
+              ...(status ? { status } : {}),
+              ...(samenvatting ? { callSummary: samenvatting } : {}),
+              ...(aanbeveling ? { recommendedNextStep: aanbeveling } : {}),
+              ...(sentiment ? { candidateSentiment: sentiment } : {}),
+              ...(status === "completed" ? { endedAt: new Date() } : {}),
+            });
+            if (!updated) return { error: "Screeninggesprek niet gevonden" };
+            return { id: updated.id, status: updated.status };
+          },
         }),
       },
     });

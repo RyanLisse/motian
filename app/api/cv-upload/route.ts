@@ -4,16 +4,14 @@ import { uploadFile } from "@/src/lib/file-storage";
 import { rateLimit } from "@/src/lib/rate-limit";
 import { findDuplicateCandidate } from "@/src/services/candidates";
 import { parseCV } from "@/src/services/cv-parser";
+import { extractClientIp, requireBlobToken } from "../_shared/cv-helpers";
 
 export const dynamic = "force-dynamic";
 
 const limiter = rateLimit({ interval: 60_000, limit: 10 });
 
 export async function POST(request: NextRequest) {
-  const ip =
-    request.headers.get("x-real-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    "anonymous";
+  const ip = extractClientIp(request);
   const { success, reset } = limiter.check(ip);
   if (!success) {
     return Response.json(
@@ -23,13 +21,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Early check for required env vars
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    const blobError = requireBlobToken();
+    if (blobError) {
       console.error("[CV Upload] BLOB_READ_WRITE_TOKEN is not configured");
-      return Response.json(
-        { error: "Bestandsopslag is niet geconfigureerd. Stel BLOB_READ_WRITE_TOKEN in." },
-        { status: 503 },
-      );
+      return blobError;
     }
 
     const formData = await request.formData();
@@ -58,14 +53,19 @@ export async function POST(request: NextRequest) {
     // Check for duplicates
     const duplicates = await findDuplicateCandidate(parsed);
 
-    return Response.json({
-      parsed,
-      fileUrl,
-      duplicates: {
-        exact: duplicates.exact,
-        similar: duplicates.similar,
+    return Response.json(
+      {
+        parsed,
+        fileUrl,
+        duplicates: {
+          exact: duplicates.exact,
+          similar: duplicates.similar,
+        },
       },
-    });
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Onbekende fout";
     console.error("[CV Upload] Error:", message, err);

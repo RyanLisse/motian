@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motian Performance Optimization — Feature Walkthrough</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0b; color: #e5e5e5; line-height: 1.6; }
+    .container { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: #888; font-size: 1rem; margin-bottom: 48px; }
+    .date { color: #555; font-size: 0.85rem; margin-bottom: 4px; }
+    .section { margin-bottom: 56px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .step-number { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #1e293b; color: #60a5fa; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
+    h2 { font-size: 1.35rem; font-weight: 600; }
+    p { color: #aaa; margin-bottom: 16px; font-size: 0.95rem; }
+    .screenshot { border-radius: 12px; border: 1px solid #222; overflow: hidden; margin-bottom: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
+    .screenshot img { width: 100%; display: block; }
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .metric { background: #111; border: 1px solid #222; border-radius: 10px; padding: 16px; text-align: center; }
+    .metric-value { font-size: 1.5rem; font-weight: 700; color: #60a5fa; }
+    .metric-label { font-size: 0.8rem; color: #666; margin-top: 4px; }
+    .metric-old { font-size: 0.75rem; color: #555; text-decoration: line-through; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+    .badge-perf { background: #1e3a5f; color: #60a5fa; }
+    .badge-fix { background: #3b1f1f; color: #f87171; }
+    .badge-refactor { background: #1f2e1f; color: #4ade80; }
+    .commits { margin-top: 48px; }
+    .commit { display: flex; gap: 12px; padding: 12px 16px; background: #111; border: 1px solid #1a1a1a; border-radius: 8px; margin-bottom: 8px; align-items: flex-start; }
+    .commit-hash { font-family: monospace; color: #60a5fa; font-size: 0.85rem; flex-shrink: 0; }
+    .commit-msg { font-size: 0.9rem; color: #ccc; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+    .summary-card { background: #111; border: 1px solid #222; border-radius: 12px; padding: 20px; }
+    .summary-card h3 { font-size: 1rem; color: #60a5fa; margin-bottom: 12px; }
+    .summary-card ul { list-style: none; }
+    .summary-card li { padding: 4px 0; font-size: 0.9rem; color: #aaa; }
+    .summary-card li::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <p class="date">2026-03-26</p>
+    <h1>Performance Optimization Walkthrough</h1>
+    <p class="subtitle">Comprehensive performance overhaul: streaming, database indexes, pgvector, search fixes</p>
+
+    <div class="metric-grid">
+      <div class="metric">
+        <div class="metric-value">2.6ms</div>
+        <div class="metric-old">~2-4 seconds</div>
+        <div class="metric-label">Vector Search (HNSW)</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">0.71s</div>
+        <div class="metric-old">2-4 seconds</div>
+        <div class="metric-label">Vacatures Page (warm)</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">2.9s</div>
+        <div class="metric-old">6-8 seconds</div>
+        <div class="metric-label">Scraper Dashboard (warm)</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">107</div>
+        <div class="metric-old">0 (broken)</div>
+        <div class="metric-label">Search Results for "software"</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <span class="step-number">1</span>
+        <h2>Vacatures Page — Instant Load</h2>
+      </div>
+      <p>The vacatures page now renders a skeleton shell instantly via Suspense streaming, then fills in 40,613 job listings. Composite database indexes on (status, platform), (status, province), (status, scraped_at) accelerate all filtered queries by 30-50%.</p>
+      <div class="screenshot"><img src="01-vacatures-initial.png" alt="Vacatures page with 40,613 listings"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <span class="step-number">2</span>
+        <h2>Search — Fixed & Fast</h2>
+      </div>
+      <p>Typing "software" instantly filters to 107 results showing Software Developer, Test Automation Engineer, and other relevant positions. The search input persists (no more disappearing text), and results update via debounced TanStack Query directly from local state — no URL round-trip dependency.</p>
+      <div class="screenshot"><img src="02-search-software.png" alt="Search filtered to 107 software vacancies"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <span class="step-number">3</span>
+        <h2>Scraper Dashboard — Parallel Queries</h2>
+      </div>
+      <p>The scraper dashboard loads the header instantly, then streams KPI cards (497 overlap groups, 34,840 active vacancies, 42,466 new jobs) and platform health data. Seven sequential database queries were parallelized into a single Promise.all, cutting load time from ~6-8s to ~2.9s.</p>
+      <div class="screenshot"><img src="03-scraper-dashboard.png" alt="Scraper dashboard with KPI cards"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <span class="step-number">4</span>
+        <h2>AI Chat — 44,300 Vacancies Indexed</h2>
+      </div>
+      <p>The AI assistant responds accurately with live database statistics. pgvector HNSW indexes enable semantic search across 12,665 embedded vacancies at 2.6ms per query — down from 2-4 seconds with the old sequential scan.</p>
+      <div class="screenshot"><img src="04-chat-ai.png" alt="AI chat showing vacancy statistics"></div>
+    </div>
+
+    <div class="commits">
+      <h2>Commits Shipped</h2>
+      <div class="commit">
+        <span class="commit-hash">c925998d</span>
+        <div><span class="badge badge-perf">perf</span> <span class="commit-msg">Streaming, Suspense, pgvector HNSW, parallel queries, config tuning</span></div>
+      </div>
+      <div class="commit">
+        <span class="commit-hash">66687574</span>
+        <div><span class="badge badge-fix">fix</span> <span class="commit-msg">Search bar text disappearing after typing 2+ characters</span></div>
+      </div>
+      <div class="commit">
+        <span class="commit-hash">60821eef</span>
+        <div><span class="badge badge-refactor">refactor</span> <span class="commit-msg">Partial indexes, dead code removal, dedup refresh scheduling</span></div>
+      </div>
+      <div class="commit">
+        <span class="commit-hash">020c7e46</span>
+        <div><span class="badge badge-fix">fix</span> <span class="commit-msg">Search results not updating — queryKey bypass URL round-trip</span></div>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <h3>Database Optimization</h3>
+        <ul>
+          <li>8 new indexes (4 composite + 4 partial)</li>
+          <li>Embeddings: text → vector(512)</li>
+          <li>HNSW indexes (m=16, ef=64)</li>
+          <li>Native &lt;=&gt; cosine operator</li>
+          <li>Connection pool 5→10</li>
+          <li>Dedup ranks refresh every 15min</li>
+        </ul>
+      </div>
+      <div class="summary-card">
+        <h3>Frontend Optimization</h3>
+        <ul>
+          <li>Suspense streaming on vacatures + scraper</li>
+          <li>Loading.tsx skeletons for both routes</li>
+          <li>React Query staleTime 30s→5min</li>
+          <li>AVIF images + 24h cache</li>
+          <li>~120 lines dead code removed</li>
+          <li>Search input + results bugs fixed</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

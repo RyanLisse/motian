@@ -36,7 +36,7 @@ Backlog items derived from `qlty smells --all`, package audit, and simplificatio
 - **Vitest 4** — DevDep upgrade path; run full test suite after bump.
 - **@types/node 25** — Major; validate Node version and typings before upgrading.
 - **Deprecated deps** — pnpm reported deprecated subdependencies (e.g. @esbuild-kit/*, boolean, fluent-ffmpeg). Audit and replace or pin.
-- **fumadocs pnpm.overrides** — Move to root `package.json` if needed so overrides take effect (warning in install).
+- **docs-site pnpm.overrides** — Move to the relevant root `package.json` if needed so overrides take effect (warning in install).
 
 ## Sentry
 

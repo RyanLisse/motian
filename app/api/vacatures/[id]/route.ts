@@ -23,7 +23,12 @@ export const GET = withApiHandler(
     if (!job) {
       return Response.json({ error: "Vacature niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: await withJobCanonicalSkills(job) });
+    return Response.json(
+      { data: await withJobCanonicalSkills(job) },
+      {
+        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+      },
+    );
   },
   { logPrefix: "GET /api/vacatures/[id] error" },
 );
@@ -43,7 +48,12 @@ export const PATCH = withApiHandler(
     if (!job) {
       return Response.json({ error: "Vacature niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: await withJobCanonicalSkills(job) });
+    return Response.json(
+      { data: await withJobCanonicalSkills(job) },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "PATCH /api/vacatures/[id] error" },
 );
@@ -55,7 +65,12 @@ export const DELETE = withApiHandler(
     if (!archived) {
       return Response.json({ error: "Vacature niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: { id, archived: true } });
+    return Response.json(
+      { data: { id, archived: true } },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "DELETE /api/vacatures/[id] error" },
 );

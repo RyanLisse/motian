@@ -61,10 +61,12 @@ describe("Recruiter-first navigation", () => {
     expect(source).toContain('url: "/chat"');
 
     expect(source).not.toContain('title: "Aanbevelingen"');
-    expect(source).not.toContain('url: "/matching"');
-    expect(source).not.toContain('title: "Berichten"');
-    expect(source).not.toContain('url: "/messages"');
-    expect(source).not.toContain('title: "Matching"');
+
+    // Matching, Berichten and Messages are now in the sidebar under "Automatisering" and "Werving" groups
+    expect(source).toContain('url: "/matching"');
+    expect(source).toContain('title: "Berichten"');
+    expect(source).toContain('url: "/messages"');
+    expect(source).toContain('title: "Matching"');
   });
 
   it("keeps heavy pipeline visuals out of eager sidebar prefetches", () => {

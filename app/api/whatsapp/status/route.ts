@@ -6,11 +6,16 @@ export async function GET(_request: NextRequest) {
   const enabled = process.env.WHATSAPP_ENABLED === "true";
 
   if (!enabled) {
-    return NextResponse.json({
-      enabled: false,
-      status: "disabled",
-      message: "WhatsApp integratie is uitgeschakeld",
-    });
+    return NextResponse.json(
+      {
+        enabled: false,
+        status: "disabled",
+        message: "WhatsApp integratie is uitgeschakeld",
+      },
+      {
+        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+      },
+    );
   }
 
   try {
@@ -18,16 +23,21 @@ export async function GET(_request: NextRequest) {
     const gateway = getWhatsAppGateway();
     const status = gateway.getStatus();
 
-    return NextResponse.json({
-      enabled: true,
-      status,
-      message:
-        status === "connected"
-          ? "WhatsApp verbonden"
-          : status === "connecting"
-            ? "Bezig met verbinden..."
-            : "Niet verbonden",
-    });
+    return NextResponse.json(
+      {
+        enabled: true,
+        status,
+        message:
+          status === "connected"
+            ? "WhatsApp verbonden"
+            : status === "connecting"
+              ? "Bezig met verbinden..."
+              : "Niet verbonden",
+      },
+      {
+        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+      },
+    );
   } catch (_err) {
     return NextResponse.json(
       {

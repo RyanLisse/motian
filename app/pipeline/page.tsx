@@ -10,6 +10,8 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
+import { PageHeader } from "@/components/page-header";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import type { KanbanCardData } from "@/components/pipeline/kanban-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -17,11 +19,12 @@ import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { and, db, desc, eq, isNull, sql } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 /** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
@@ -68,7 +71,25 @@ const stageIcons: Record<string, typeof Inbox> = {
 
 const KANBAN_STAGES = ["new", "screening", "interview", "offer", "hired"] as const;
 
-export default async function PipelinePage({ searchParams }: Props) {
+function PipelineSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+            <Skeleton key={`kpi-${i}`} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-[400px] rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+async function PipelineContent({ searchParams }: Props) {
   const params = await searchParams;
   const stageFilter = params.fase ?? "";
   const view = params.weergave === "lijst" ? "lijst" : "kanban";
@@ -150,6 +171,7 @@ export default async function PipelinePage({ searchParams }: Props) {
             candidateId: applications.candidateId,
             candidateName: candidates.name,
             candidateEmail: candidates.email,
+            jobId: applications.jobId,
             jobTitle: jobs.title,
             jobCompany: jobs.company,
             source: applications.source,
@@ -199,6 +221,7 @@ export default async function PipelinePage({ searchParams }: Props) {
       candidateId: row.candidateId,
       candidateName: row.candidateName,
       candidateEmail: row.candidateEmail,
+      jobId: row.jobId,
       jobTitle: row.jobTitle,
       jobCompany: row.jobCompany,
       source: row.source,
@@ -292,18 +315,14 @@ export default async function PipelinePage({ searchParams }: Props) {
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">
-              {vacature ? `Pipeline — ${vacature.title}` : "Pipeline"}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {vacature
-                ? `Volg kandidaten voor deze vacature door elke fase`
-                : "Sollicitatiepipeline — volg kandidaten door elke fase"}
-            </p>
-          </div>
-
+        <PageHeader
+          title={vacature ? `Pipeline — ${vacature.title}` : "Pipeline"}
+          description={
+            vacature
+              ? "Volg kandidaten voor deze vacature door elke fase"
+              : "Sollicitatiepipeline — volg kandidaten door elke fase"
+          }
+        >
           {/* View toggle */}
           <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
             <Link
@@ -329,7 +348,7 @@ export default async function PipelinePage({ searchParams }: Props) {
               Lijst
             </Link>
           </div>
-        </div>
+        </PageHeader>
 
         {/* KPI row */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -516,5 +535,13 @@ export default async function PipelinePage({ searchParams }: Props) {
         <div className="h-8" />
       </div>
     </div>
+  );
+}
+
+export default function PipelinePage(props: Props) {
+  return (
+    <Suspense fallback={<PipelineSkeleton />}>
+      <PipelineContent {...props} />
+    </Suspense>
   );
 }

@@ -1,8 +1,10 @@
 import { Activity, AlertCircle, CheckCircle2, ExternalLink, XCircle } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { EvidenceViewer } from "@/components/autopilot/evidence-viewer";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -78,11 +80,24 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
-export default async function AutopilotRunDetailPage({
-  params,
-}: {
-  params: Promise<{ runId: string }>;
-}) {
+type RunDetailProps = { params: Promise<{ runId: string }> };
+
+function AutopilotRunDetailSkeleton() {
+  return (
+    <div className="flex-1 flex flex-col bg-background p-6">
+      <div className="max-w-7xl w-full mx-auto space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-48 rounded-lg" />
+        <Skeleton className="h-64 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+async function AutopilotRunDetailContent({ params }: RunDetailProps) {
   const { runId } = await params;
   const data = await getRunDetail(runId);
 
@@ -259,5 +274,13 @@ export default async function AutopilotRunDetailPage({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AutopilotRunDetailPage(props: RunDetailProps) {
+  return (
+    <Suspense fallback={<AutopilotRunDetailSkeleton />}>
+      <AutopilotRunDetailContent {...props} />
+    </Suspense>
   );
 }

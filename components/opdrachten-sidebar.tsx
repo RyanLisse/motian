@@ -199,8 +199,8 @@ export function OpdrachtenSidebar({
           onResetFilters={resetFilters}
         />
 
-        <div className="flex h-full min-h-0 min-w-0 flex-col px-3 py-2.5 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-6 overflow-hidden">
-          <div className="mb-2.5 flex flex-col gap-2.5 border-b border-border/70 pb-2.5 sm:mb-4 sm:gap-3 sm:pb-4">
+        <div className="flex h-full min-h-0 min-w-0 flex-col px-3 py-2 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-6 overflow-hidden">
+          <div className="mb-2 flex flex-col gap-2 border-b border-border/70 pb-2 sm:mb-4 sm:gap-3 sm:pb-4">
             <SidebarResultsHeader
               displayTotal={displayTotal}
               shortlistCount={shortlistCount}
@@ -211,9 +211,11 @@ export function OpdrachtenSidebar({
               pushParams={pushParams}
               variant="overview"
             />
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:w-auto sm:items-center">
-                <span className="text-xs text-muted-foreground sm:text-sm">Per pagina:</span>
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="hidden text-xs text-muted-foreground sm:inline sm:text-sm">
+                  Per pagina:
+                </span>
                 <Select
                   value={String(displayPerPage)}
                   onValueChange={(v) =>
@@ -223,7 +225,7 @@ export function OpdrachtenSidebar({
                     })
                   }
                 >
-                  <SelectTrigger className="data-[size=default]:h-11 w-full rounded-lg border-border bg-background text-sm font-semibold text-foreground sm:w-[110px] sm:rounded-full sm:data-[size=default]:h-10">
+                  <SelectTrigger className="data-[size=default]:h-9 w-full rounded-md border-border bg-background text-xs font-semibold text-foreground sm:w-[110px] sm:rounded-full sm:data-[size=default]:h-10 sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">

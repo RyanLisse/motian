@@ -55,29 +55,29 @@ export function SidebarPagination({
   }
 
   return (
-    <div className="mt-4 flex flex-col gap-2 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3 sm:mt-4 sm:pt-4">
       <Button
         variant="outline"
         size="sm"
-        className="h-11 w-full border-border bg-background text-foreground sm:h-9 sm:w-auto"
+        className="h-9 border-border bg-background text-foreground"
         disabled={pageParam <= 1 || isFetching}
         onClick={goToPrev}
       >
-        <ChevronLeft className="mr-1 h-4 w-4" />
+        <ChevronLeft className="mr-1 h-3.5 w-3.5" />
         Vorige
       </Button>
-      <p className="text-center text-sm text-muted-foreground">
-        Pagina {pageParam} van {totalPages}
+      <p className="text-center text-xs text-muted-foreground sm:text-sm">
+        {pageParam} / {totalPages}
       </p>
       <Button
         variant="outline"
         size="sm"
-        className="h-11 w-full border-border bg-background text-foreground sm:h-9 sm:w-auto"
+        className="h-9 border-border bg-background text-foreground"
         disabled={pageParam >= totalPages || isFetching}
         onClick={goToNext}
       >
         Volgende
-        <ChevronRight className="ml-1 h-4 w-4" />
+        <ChevronRight className="ml-1 h-3.5 w-3.5" />
       </Button>
     </div>
   );

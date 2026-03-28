@@ -1,7 +1,12 @@
 import { notifySlack } from "../lib/notify-slack";
 import type { StructuredMatchOutput } from "../schemas/matching";
 import { type Candidate, getCandidateById, listActiveCandidates } from "./candidates";
-import { embedCandidate, findSimilarJobsByEmbedding, generateQueryEmbedding, buildCandidateEmbeddingText } from "./embedding";
+import {
+  buildCandidateEmbeddingText,
+  embedCandidate,
+  findSimilarJobsByEmbedding,
+  generateQueryEmbedding,
+} from "./embedding";
 import {
   getCandidateSkills,
   getCandidateSkillsForCandidateIds,

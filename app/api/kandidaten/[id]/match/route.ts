@@ -16,14 +16,19 @@ export const POST = withApiHandler(
       matchingStatus: "in_review",
     });
 
-    return Response.json({
-      candidate: result.candidate,
-      profile: result.profile,
-      matches: result.matches,
-      recommendation: result.recommendation,
-      matchingStatus: result.matchingStatus,
-      alreadyLinked: result.alreadyLinked,
-    });
+    return Response.json(
+      {
+        candidate: result.candidate,
+        profile: result.profile,
+        matches: result.matches,
+        recommendation: result.recommendation,
+        matchingStatus: result.matchingStatus,
+        alreadyLinked: result.alreadyLinked,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "POST /api/kandidaten/[id]/match error" },
 );

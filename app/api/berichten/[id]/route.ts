@@ -10,7 +10,12 @@ export const DELETE = withApiHandler(
     if (!deleted) {
       return Response.json({ error: "Bericht niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: { id } });
+    return Response.json(
+      { data: { id } },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "DELETE /api/berichten/[id] error" },
 );

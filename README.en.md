@@ -578,7 +578,6 @@ motian/
 ├── docs/                         # Architecture documentation
 ├── drizzle/                      # Database migrations
 ├── extension/                    # Standalone WXT browser extension
-├── fumadocs/                     # Standalone Fumadocs/Next.js docs site
 ├── Justfile                      # Task runner commands
 └── vercel.json                   # Cron job configuration
 ```
@@ -779,8 +778,8 @@ Add `INSTALL_QLTY=1` if you also want bootstrap to install the Qlty CLI when it 
 
 ### Standalone subprojects
 
-- `pnpm install` from the repo root now bootstraps `agent/`, `fumadocs/`, and `extension/` through `pnpm-workspace.yaml`.
-- `agent/` and `fumadocs/` keep their own `pnpm-lock.yaml` files for fully standalone installs.
+- `pnpm install` from the repo root now bootstraps `agent/` and `extension/` through `pnpm-workspace.yaml`.
+- `agent/` keeps its own `pnpm-lock.yaml` file for fully standalone installs.
 - `extension/` intentionally uses the root `pnpm-lock.yaml` as its pinned dependency source.
 - See each subproject README for build/typecheck commands and install-generated artifacts such as `extension/.wxt/tsconfig.json`.
 

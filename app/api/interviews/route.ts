@@ -17,13 +17,18 @@ export const GET = withApiHandler(async (req: Request) => {
 
   if (searchParams.get("upcoming") === "true") {
     const data = await getUpcomingInterviews();
-    return Response.json({
-      data,
-      total: data.length,
-      page: 1,
-      perPage: data.length,
-      totalPages: 1,
-    });
+    return Response.json(
+      {
+        data,
+        total: data.length,
+        page: 1,
+        perPage: data.length,
+        totalPages: 1,
+      },
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   }
 
   const { page, limit, offset } = parsePagination(searchParams);
@@ -37,7 +42,9 @@ export const GET = withApiHandler(async (req: Request) => {
     offset,
   });
   const total = await countInterviews({ applicationId, status });
-  return Response.json(paginatedResponse(data, total, { page, limit, offset }));
+  return Response.json(paginatedResponse(data, total, { page, limit, offset }), {
+    headers: { "Cache-Control": "no-store" },
+  });
 });
 
 const CreateSchema = z.object({
@@ -63,5 +70,11 @@ export const POST = withApiHandler(async (req: Request) => {
   });
   revalidatePath("/interviews");
   publish("interview:created", { interviewId: interview.id });
-  return Response.json({ data: interview }, { status: 201 });
+  return Response.json(
+    { data: interview },
+    {
+      status: 201,
+      headers: { "Cache-Control": "private, no-cache, no-store" },
+    },
+  );
 });

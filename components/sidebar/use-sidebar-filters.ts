@@ -6,7 +6,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { getOpdrachtenBasePath } from "@/src/lib/opdrachten-filter-url";
 import {
   DEFAULT_OPDRACHTEN_LIMIT,
@@ -57,6 +57,9 @@ export function useSidebarFilters({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
+  // Track whether the latest URL change was triggered by us (not browser back/forward)
+  const selfPushRef = useRef(false);
   const isOverviewPage = pathname === "/vacatures";
   const match = pathname.match(/^\/(?:vacatures|opdrachten)\/(.+)$/);
   const activeId = match?.[1] ?? null;
@@ -158,9 +161,15 @@ export function useSidebarFilters({
     [categories],
   );
 
-  // Sync URL → local state when URL actually changes (browser back/forward, external navigation).
+  // Sync URL → local state ONLY for external navigation (browser back/forward, link click).
+  // Skip entirely when the URL change was triggered by our own pushOpdrachtenParams calls,
+  // because local state is already correct and re-setting it causes layout shifts + input resets.
   // biome-ignore lint/correctness/useExhaustiveDependencies: sync from URL on searchParams change only
   useEffect(() => {
+    if (selfPushRef.current) {
+      selfPushRef.current = false;
+      return;
+    }
     setInputValue(q);
     setLocalStatus(status);
     setLocalPlatform(platform);
@@ -255,14 +264,17 @@ export function useSidebarFilters({
 
     if (!shouldPushHours && !shouldPushRadius && !shouldPushRateMin && !shouldPushRateMax) return;
 
-    pushOpdrachtenParams(searchParams, router, pathname, {
-      urenPerWeek: shouldPushHours ? "" : urenPerWeek,
-      urenPerWeekMin: debouncedHoursMin,
-      urenPerWeekMax: debouncedHoursMax,
-      straalKm: debouncedRadiusKm,
-      tariefMin: debouncedRateMin,
-      tariefMax: debouncedRateMax,
-      pagina: "1",
+    selfPushRef.current = true;
+    startTransition(() => {
+      pushOpdrachtenParams(searchParams, router, pathname, {
+        urenPerWeek: shouldPushHours ? "" : urenPerWeek,
+        urenPerWeekMin: debouncedHoursMin,
+        urenPerWeekMax: debouncedHoursMax,
+        straalKm: debouncedRadiusKm,
+        tariefMin: debouncedRateMin,
+        tariefMax: debouncedRateMax,
+        pagina: "1",
+      });
     });
   }, [
     debouncedHoursHasManualInput,
@@ -283,9 +295,12 @@ export function useSidebarFilters({
   useEffect(() => {
     if (debouncedSearchQuery === committedSearchQuery) return;
 
-    pushOpdrachtenParams(searchParams, router, pathname, {
-      q: debouncedSearchQuery,
-      pagina: "1",
+    selfPushRef.current = true;
+    startTransition(() => {
+      pushOpdrachtenParams(searchParams, router, pathname, {
+        q: debouncedSearchQuery,
+        pagina: "1",
+      });
     });
   }, [debouncedSearchQuery, committedSearchQuery, pathname, searchParams, router]);
 
@@ -378,7 +393,10 @@ export function useSidebarFilters({
 
   const pushParams = useCallback(
     (overrides: Record<string, FilterOverrideValue>) => {
-      pushOpdrachtenParams(searchParams, router, pathname, overrides);
+      selfPushRef.current = true;
+      startTransition(() => {
+        pushOpdrachtenParams(searchParams, router, pathname, overrides);
+      });
     },
     [searchParams, router, pathname],
   );

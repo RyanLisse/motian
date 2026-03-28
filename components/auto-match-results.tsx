@@ -1,11 +1,13 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Building2,
   CheckCircle2,
   ExternalLink,
   Gavel,
+  Link2,
   Loader2,
   MapPin,
   Star,
@@ -13,7 +15,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
+import { Button } from "@/components/ui/button";
 import type { StructuredMatchOutput } from "@/src/schemas/matching";
 
 type JudgeVerdict = {
@@ -38,72 +42,39 @@ type AutoMatchResult = {
 
 interface AutoMatchResultsProps {
   candidateId: string;
+  candidateName?: string;
 }
 
-export function AutoMatchResults({ candidateId }: AutoMatchResultsProps) {
-  const router = useRouter();
-  const [status, setStatus] = useState<"loading" | "done" | "error">("loading");
-  const [phase, setPhase] = useState<"scanning" | "matching">("scanning");
-  const [matches, setMatches] = useState<AutoMatchResult[]>([]);
-  const [error, setError] = useState<string | null>(null);
+export function AutoMatchResults({ candidateId, candidateName }: AutoMatchResultsProps) {
+  const { data, status, error } = useQuery<AutoMatchResult[]>({
+    queryKey: ["auto-match", candidateId],
+    queryFn: async () => {
+      const res = await fetch("/api/matches/auto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateId }),
+      });
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function runAutoMatch() {
-      try {
-        // Phase 1: scanning
-        setPhase("scanning");
-        await new Promise((r) => setTimeout(r, 800));
-        if (cancelled) return;
-        setPhase("matching");
-
-        const res = await fetch("/api/matches/auto", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ candidateId }),
-        });
-
-        if (cancelled) return;
-
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error ?? "Auto-matching mislukt");
-        }
-
-        const data = await res.json();
-        setMatches(data.matches ?? []);
-        setStatus("done");
-        router.refresh();
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Onbekende fout");
-          setStatus("error");
-        }
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? "Auto-matching mislukt");
       }
-    }
 
-    runAutoMatch();
-    return () => {
-      cancelled = true;
-    };
-  }, [candidateId, router]);
+      const result = await res.json();
+      return (result.matches ?? []) as AutoMatchResult[];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  if (status === "loading") {
+  const matches = data ?? [];
+
+  if (status === "pending") {
     return (
       <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
         <div>
-          <p className="text-sm font-medium text-primary">
-            {phase === "scanning"
-              ? "Vacatures worden gescand..."
-              : "Top matches worden beoordeeld..."}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {phase === "scanning"
-              ? "Alle actieve vacatures worden vergeleken"
-              : "Gedetailleerde beoordeling per criterium"}
-          </p>
+          <p className="text-sm font-medium text-primary">Top matches worden beoordeeld...</p>
+          <p className="text-xs text-muted-foreground">Gedetailleerde beoordeling per criterium</p>
         </div>
       </div>
     );
@@ -113,7 +84,9 @@ export function AutoMatchResults({ candidateId }: AutoMatchResultsProps) {
     return (
       <div className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-4">
         <XCircle className="h-5 w-5 text-destructive" />
-        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-sm text-destructive">
+          {error instanceof Error ? error.message : "Onbekende fout"}
+        </p>
       </div>
     );
   }
@@ -139,15 +112,73 @@ export function AutoMatchResults({ candidateId }: AutoMatchResultsProps) {
       </div>
 
       {matches.map((match) => (
-        <MatchCard key={match.jobId} match={match} candidateId={candidateId} />
+        <MatchCard
+          key={match.jobId}
+          match={match}
+          candidateId={candidateId}
+          candidateName={candidateName}
+        />
       ))}
     </div>
   );
 }
 
-function MatchCard({ match, candidateId }: { match: AutoMatchResult; candidateId: string }) {
+function MatchCard({
+  match,
+  candidateId,
+  candidateName,
+}: {
+  match: AutoMatchResult;
+  candidateId: string;
+  candidateName?: string;
+}) {
   const sr = match.structuredResult;
   const recommendation = sr?.recommendation;
+  const router = useRouter();
+  const [linkState, setLinkState] = useState<"idle" | "linking" | "linked" | "error">("idle");
+
+  const handleLink = useCallback(async () => {
+    setLinkState("linking");
+    try {
+      const res = await fetch(`/api/kandidaten/${candidateId}/koppel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          match.matchId ? { matchIds: [match.matchId] } : { jobIds: [match.jobId] },
+        ),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? "Koppelen mislukt");
+      }
+      setLinkState("linked");
+      router.refresh();
+    } catch {
+      setLinkState("error");
+      setTimeout(() => setLinkState("idle"), 3000);
+    }
+  }, [candidateId, match.matchId, match.jobId, router]);
+
+  const handleUnlink = useCallback(async () => {
+    setLinkState("linking");
+    try {
+      // Find the application for this candidate+job to delete it
+      const searchRes = await fetch(
+        `/api/sollicitaties?candidateId=${candidateId}&jobId=${match.jobId}`,
+      );
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        const app = searchData.data?.[0];
+        if (app?.id) {
+          await fetch(`/api/sollicitaties/${app.id}`, { method: "DELETE" });
+        }
+      }
+      setLinkState("idle");
+      router.refresh();
+    } catch {
+      setLinkState("idle");
+    }
+  }, [candidateId, match.jobId, router]);
 
   return (
     <div className="rounded-lg border bg-card p-4 space-y-3">
@@ -173,13 +204,20 @@ function MatchCard({ match, candidateId }: { match: AutoMatchResult; candidateId
         <RecommendationBadge recommendation={recommendation} />
       </div>
 
+      {/* Fit summary — why this candidate matches */}
+      {sr?.recommendationReasoning && (
+        <p className="text-xs leading-relaxed text-muted-foreground line-clamp-3">
+          {sr.recommendationReasoning}
+        </p>
+      )}
+
       {/* Score bars */}
       <div className="space-y-1.5">
         <ScoreBar label="Snelle score" score={match.quickScore} />
         {sr && <ScoreBar label="Beoordeling" score={sr.overallScore} />}
       </div>
 
-      {/* Top criteria (gunning stars) */}
+      {/* Top criteria (knockout + gunning) */}
       {sr && sr.criteriaBreakdown.length > 0 && (
         <div className="space-y-1">
           {sr.criteriaBreakdown
@@ -233,24 +271,63 @@ function MatchCard({ match, candidateId }: { match: AutoMatchResult; candidateId
         </div>
       )}
 
-      {/* Links */}
-      <div className="flex gap-3 pt-1">
+      {/* Actions: Link button + view vacancy */}
+      <div className="flex items-center gap-2 pt-1">
+        {linkState === "linked" ? (
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-green-100 px-3 py-1.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Gekoppeld
+            </span>
+            <button
+              type="button"
+              onClick={handleUnlink}
+              className="text-xs text-muted-foreground hover:text-destructive hover:underline"
+            >
+              Ontkoppel
+            </button>
+          </div>
+        ) : linkState === "error" ? (
+          <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={handleLink}>
+            <XCircle className="mr-1.5 h-3.5 w-3.5" />
+            Mislukt — probeer opnieuw
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            className="h-8 text-xs"
+            onClick={handleLink}
+            disabled={linkState === "linking"}
+          >
+            {linkState === "linking" ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                Koppelen...
+              </>
+            ) : (
+              <>
+                <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                Koppel aan screening
+              </>
+            )}
+          </Button>
+        )}
+        <ScreeningCallButton
+          candidateId={candidateId}
+          candidateName={candidateName ?? "Kandidaat"}
+          jobId={match.jobId}
+          jobTitle={match.jobTitle}
+          matchId={match.matchId}
+          matchScore={match.quickScore}
+          variant="compact"
+        />
         <Link
           href={`/vacatures/${match.jobId}`}
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline"
         >
           Bekijk vacature
           <ExternalLink className="h-3 w-3" />
         </Link>
-        {match.matchId && (
-          <Link
-            href={`/kandidaten/${candidateId}#matches`}
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            Bekijk matchkansen
-            <ExternalLink className="h-3 w-3" />
-          </Link>
-        )}
       </div>
     </div>
   );

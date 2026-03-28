@@ -18,14 +18,14 @@ interface SidebarSearchBarProps {
 export function SidebarSearchBar({ value, onChange, isFetching, variant }: SidebarSearchBarProps) {
   if (variant === "compact") {
     return (
-      <div className="shrink-0 px-4 pb-4 pt-5">
+      <div className="shrink-0 px-4 pb-3 pt-3">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/40" />
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
           <Input
             placeholder="Zoek vacatures..."
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className={cn("h-14 rounded-[24px] pl-12 pr-11 text-[17px]", DARK_FILTER_CONTROL_CLASS)}
+            className={cn("h-11 rounded-xl pl-12 pr-11 text-sm", DARK_FILTER_CONTROL_CLASS)}
           />
           {isFetching && (
             <Loader2 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-white/45" />

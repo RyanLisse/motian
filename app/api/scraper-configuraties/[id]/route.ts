@@ -37,7 +37,12 @@ export const PATCH = withApiHandler(
       return Response.json({ error: "Scraper configuratie niet gevonden" }, { status: 404 });
     }
 
-    return Response.json({ data: config });
+    return Response.json(
+      { data: config },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij bijwerken scraper configuratie",
