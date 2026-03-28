@@ -170,16 +170,28 @@ export async function searchJobIdsByTitle(
 
   if (opts.typesenseOptions) {
     try {
+      // Request extra results so dedup still yields enough after collapsing.
       const externalResult = await searchJobIdsByTypesense(query, {
         ...opts.typesenseOptions,
-        limit: safeLimit,
+        limit: safeLimit * 2,
       });
 
       if (externalResult && externalResult.ids.length > 0) {
-        return {
-          ids: externalResult.ids,
-          queryPath: "search-text",
-        };
+        // Run Typesense IDs through vacancy-level deduplication.
+        const dedupedIds = await fetchDedupedJobIds({
+          whereClause: and(filterCondition, inArray(jobs.id, externalResult.ids)) ?? filterCondition,
+          limit: safeLimit,
+          partitionOrderBy: sql`${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
+          rankedJobsOrderBy: sql`scraped_at desc nulls last, id desc`,
+          resultOrderBy: sql`scraped_at desc nulls last, id desc`,
+        });
+
+        if (dedupedIds.length > 0) {
+          return {
+            ids: dedupedIds,
+            queryPath: "search-text",
+          };
+        }
       }
     } catch {
       // Fall back to PostgreSQL text retrieval when Typesense is unavailable.

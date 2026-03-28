@@ -11,7 +11,7 @@ type TypesenseRequestOptions = {
   skipNotFound?: boolean;
 };
 
-const ensuredCollections = new Set<string>();
+const ensuredCollections = new Map<string, Promise<void>>();
 
 function buildUrl(path: string, searchParams?: URLSearchParams) {
   const config = getTypesenseConfig();
@@ -65,22 +65,50 @@ function getCollectionSchema(collection: "jobs" | "candidates", name: string) {
   return { ...TYPESENSE_CANDIDATES_SCHEMA, name };
 }
 
+/** Drop a Typesense collection so it can be recreated fresh (used by reindex). */
+export async function dropTypesenseCollection(collection: "jobs" | "candidates") {
+  const config = getTypesenseConfig();
+  if (!config) return;
+
+  const collectionName = config.collections[collection];
+  await typesenseRequest(`/collections/${collectionName}`, {
+    method: "DELETE",
+    skipNotFound: true,
+  });
+
+  // Clear the memoized bootstrap promise so ensureTypesenseCollection recreates it.
+  for (const [key] of ensuredCollections) {
+    if (key.startsWith(`${collection}:`)) ensuredCollections.delete(key);
+  }
+}
+
 export async function ensureTypesenseCollection(collection: "jobs" | "candidates") {
   const config = getTypesenseConfig();
   if (!config) return;
 
   const collectionName = config.collections[collection];
   const cacheKey = `${collection}:${collectionName}`;
-  if (ensuredCollections.has(cacheKey)) return;
 
-  const existing = await typesenseRequest(`/collections/${collectionName}`, { skipNotFound: true });
-  if (!existing) {
-    await typesenseRequest("/collections", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(getCollectionSchema(collection, collectionName)),
-    });
+  const existing = ensuredCollections.get(cacheKey);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    const found = await typesenseRequest(`/collections/${collectionName}`, { skipNotFound: true });
+    if (!found) {
+      await typesenseRequest("/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(getCollectionSchema(collection, collectionName)),
+      });
+    }
+  })();
+
+  ensuredCollections.set(cacheKey, promise);
+
+  try {
+    await promise;
+  } catch (err) {
+    ensuredCollections.delete(cacheKey);
+    throw err;
   }
-
-  ensuredCollections.add(cacheKey);
 }

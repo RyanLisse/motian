@@ -2,6 +2,7 @@ import { and, asc, db, isNull } from "../src/db";
 import { candidates, jobs } from "../src/db/schema";
 import { getTypesenseConfig } from "../src/lib/typesense";
 import { getVisibleVacancyCondition } from "../src/services/jobs/filters";
+import { dropTypesenseCollection } from "../src/services/search-index/typesense-client";
 import {
   ensureTypesenseCollections,
   upsertCandidatesByIds,
@@ -64,6 +65,9 @@ async function main() {
     throw new Error("Typesense is niet geconfigureerd. Zet TYPESENSE_URL en TYPESENSE_API_KEY.");
   }
 
+  // Drop and recreate collections to remove stale/archived documents.
+  await dropTypesenseCollection("jobs");
+  await dropTypesenseCollection("candidates");
   await ensureTypesenseCollections();
   const [jobsProcessed, candidatesProcessed] = await Promise.all([
     reindexJobs(),

@@ -277,7 +277,10 @@ export async function normalizeAndSaveJobs(
           allJobIds.push(row.id);
         }
 
-        await upsertJobsByIds(result.map((row) => row.id));
+        // Typesense sync is non-fatal — don't let it block ESCO processing
+        upsertJobsByIds(result.map((row) => row.id)).catch((err) =>
+          console.error("[Normalize] Typesense sync error:", err),
+        );
 
         const inserted = result.filter((r) => r.isNew).length;
         const updated = result.length - inserted;

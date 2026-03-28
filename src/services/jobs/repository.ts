@@ -105,7 +105,11 @@ export async function updateJob(
     .returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    await upsertJobsByIds([rows[0].id]);
+    try {
+      await upsertJobsByIds([rows[0].id]);
+    } catch (err) {
+      console.error(`[Jobs] Typesense sync error for ${rows[0].id}:`, err);
+    }
   }
 
   return rows[0] ?? null;
@@ -135,7 +139,11 @@ export async function updateJobEnrichment(
     .returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    await upsertJobsByIds([rows[0].id]);
+    try {
+      await upsertJobsByIds([rows[0].id]);
+    } catch (err) {
+      console.error(`[Jobs] Typesense sync error for ${rows[0].id}:`, err);
+    }
   }
 
   return rows[0] ?? null;
@@ -153,7 +161,11 @@ export async function deleteJob(id: string): Promise<boolean> {
     .returning({ id: jobs.id });
 
   if (rows.length > 0) {
-    await deleteJobsByIds(rows.map((row) => row.id));
+    try {
+      await deleteJobsByIds(rows.map((row) => row.id));
+    } catch (err) {
+      console.error(`[Jobs] Typesense delete error for ${id}:`, err);
+    }
   }
 
   return rows.length > 0;

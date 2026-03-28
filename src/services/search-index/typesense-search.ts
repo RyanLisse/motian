@@ -132,8 +132,14 @@ async function searchCollectionByIds<TDocument extends { id: string }>(
     return { ids: [], total: 0 };
   }
 
+  const ids = (response.hits ?? []).map((hit) => hit.document.id);
+
+  // Note: `total` reflects the Typesense match count, which may differ from
+  // the hydrated result count (e.g. if documents were deleted from the DB but
+  // not yet removed from the index). Callers should rely on ids.length for
+  // the actual page size and use `total` only for approximate pagination.
   return {
-    ids: (response.hits ?? []).map((hit) => hit.document.id),
+    ids,
     total: response.found ?? 0,
   };
 }

@@ -103,13 +103,14 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
 
   try {
     const externalResult = await searchCandidateIdsByTypesense({ ...opts, limit, offset });
-    if (externalResult) {
+    if (externalResult && externalResult.ids.length > 0) {
       const hydrated = await getCandidatesByIds(externalResult.ids);
       const candidatesById = new Map(hydrated.map((candidate) => [candidate.id, candidate]));
       return externalResult.ids
         .map((id) => candidatesById.get(id))
         .filter((candidate): candidate is Candidate => Boolean(candidate));
     }
+    // Zero hits from Typesense: fall through to PostgreSQL (cold index).
   } catch {
     // Fall back to PostgreSQL search when Typesense is unavailable.
   }
@@ -232,7 +233,12 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     skills: candidate.skills,
   });
 
-  await upsertCandidatesByIds([candidate.id]);
+  // Typesense sync is non-fatal — don't fail the mutation on index errors.
+  try {
+    await upsertCandidatesByIds([candidate.id]);
+  } catch (err) {
+    console.error(`[Candidates] Typesense sync error for ${candidate.id}:`, err);
+  }
 
   return candidate;
 }
@@ -267,7 +273,12 @@ export async function updateCandidate(
     console.error(`[Candidates] Embedding refresh error for ${candidate.id}:`, err);
   }
 
-  await upsertCandidatesByIds([candidate.id]);
+  // Typesense sync is non-fatal — don't fail the mutation on index errors.
+  try {
+    await upsertCandidatesByIds([candidate.id]);
+  } catch (err) {
+    console.error(`[Candidates] Typesense sync error for ${candidate.id}:`, err);
+  }
 
   return candidate;
 }
@@ -302,7 +313,11 @@ export async function updateCandidateMatchingStatus(
     .returning();
 
   if (rows[0]?.id) {
-    await upsertCandidatesByIds([rows[0].id]);
+    try {
+      await upsertCandidatesByIds([rows[0].id]);
+    } catch (err) {
+      console.error(`[Candidates] Typesense sync error for ${rows[0].id}:`, err);
+    }
   }
 
   return rows[0] ?? null;
@@ -339,7 +354,11 @@ export async function deleteCandidate(id: string): Promise<boolean> {
     .returning();
 
   if (rows.length > 0) {
-    await deleteCandidatesByIds([id]);
+    try {
+      await deleteCandidatesByIds([id]);
+    } catch (err) {
+      console.error(`[Candidates] Typesense delete error for ${id}:`, err);
+    }
   }
 
   return rows.length > 0;

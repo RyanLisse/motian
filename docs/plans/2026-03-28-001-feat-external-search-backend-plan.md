@@ -10,9 +10,9 @@ depth: deep
 
 Motian already has a solid PostgreSQL search core:
 
-- Vacatures use full-text search plus pgvector hybrid retrieval and RRF in [`src/services/jobs/search.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs/search.ts)
-- Paginated vacature search uses the same contract in [`src/services/jobs/page-query.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs/page-query.ts)
-- Kandidaten search is still database-bound in [`src/services/candidates.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/candidates.ts)
+- Vacatures use full-text search plus pgvector hybrid retrieval and RRF in [`src/services/jobs/search.ts`](src/services/jobs/search.ts)
+- Paginated vacature search uses the same contract in [`src/services/jobs/page-query.ts`](src/services/jobs/page-query.ts)
+- Kandidaten search is still database-bound in [`src/services/candidates.ts`](src/services/candidates.ts)
 
 The new request is to add an external search engine. The goal is not to rewrite every search caller, but to introduce an optional backend that improves text retrieval speed, typo tolerance, and future extensibility while preserving existing API/UI/AI/CLI contracts and keeping Postgres as the source of truth.
 
@@ -62,15 +62,15 @@ That operational weight is not justified for this codebase’s current scale.
 
 ## Existing Patterns To Preserve
 
-- [`src/services/jobs.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs.ts) is the stable barrel for every vacature search surface.
-- [`src/lib/job-search-runner.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/lib/job-search-runner.ts) and [`src/lib/vacatures-search.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/lib/vacatures-search.ts) already centralize URL/query parsing.
+- [`src/services/jobs.ts`](src/services/jobs.ts) is the stable barrel for every vacature search surface.
+- [`src/lib/job-search-runner.ts`](src/lib/job-search-runner.ts) and [`src/lib/vacatures-search.ts`](src/lib/vacatures-search.ts) already centralize URL/query parsing.
 - Vacature callers across API, AI tools, MCP, voice, and CLI already route through `searchJobsUnified()` or `searchJobsPageUnified()`.
 - Candidate callers across API, AI tools, MCP, voice, and CLI already route through `searchCandidates()` / `listCandidates()`.
 - Normalization and enrichment already define the durable write seams:
-  - [`src/services/normalize.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/normalize.ts)
-  - [`src/services/jobs/repository.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs/repository.ts)
-  - [`src/services/candidates.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/candidates.ts)
-  - [`src/services/embedding.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/embedding.ts)
+  - [`src/services/normalize.ts`](src/services/normalize.ts)
+  - [`src/services/jobs/repository.ts`](src/services/jobs/repository.ts)
+  - [`src/services/candidates.ts`](src/services/candidates.ts)
+  - [`src/services/embedding.ts`](src/services/embedding.ts)
 
 ## High-Level Technical Design
 
@@ -147,19 +147,19 @@ For jobs, do **not** move vector retrieval to Typesense in the first implementat
 
 ### 1. Add Typesense client, config, and document mappers
 
-- [ ] Add the `typesense` dependency in [`package.json`](/Users/cortex-air/.codex/worktrees/93bd/motian/package.json)
+- [ ] Add the `typesense` dependency in [`package.json`](package.json)
 - [ ] Add env docs for:
   - `TYPESENSE_URL`
   - `TYPESENSE_API_KEY`
   - `TYPESENSE_JOBS_COLLECTION`
   - `TYPESENSE_CANDIDATES_COLLECTION`
-  in [`.env.example`](/Users/cortex-air/.codex/worktrees/93bd/motian/.env.example)
+  in [`.env.example`](.env.example)
 - [ ] Create a small Typesense client/config module, for example:
-  - [`src/lib/typesense.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/lib/typesense.ts)
+  - [`src/lib/typesense.ts`](src/lib/typesense.ts)
 - [ ] Create document mapping helpers, for example:
-  - [`src/services/search-index/typesense-documents.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/search-index/typesense-documents.ts)
+  - [`src/services/search-index/typesense-documents.ts`](src/services/search-index/typesense-documents.ts)
 - [ ] Create collection bootstrap helpers, for example:
-  - [`src/services/search-index/typesense-schema.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/search-index/typesense-schema.ts)
+  - [`src/services/search-index/typesense-schema.ts`](src/services/search-index/typesense-schema.ts)
 
 **Technical design notes**
 
@@ -170,7 +170,7 @@ For jobs, do **not** move vector retrieval to Typesense in the first implementat
 ### 2. Add search-index sync service
 
 - [ ] Create a sync module, for example:
-  - [`src/services/search-index/typesense-sync.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/search-index/typesense-sync.ts)
+  - [`src/services/search-index/typesense-sync.ts`](src/services/search-index/typesense-sync.ts)
 - [ ] Expose operations such as:
   - `ensureCollections()`
   - `upsertJobsByIds(ids)`
@@ -186,8 +186,8 @@ For jobs, do **not** move vector retrieval to Typesense in the first implementat
 
 ### 3. Wire job writes into index sync
 
-- [ ] Update [`src/services/normalize.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/normalize.ts) so successful upsert batches trigger `upsertJobsByIds()`
-- [ ] Update [`src/services/jobs/repository.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs/repository.ts):
+- [ ] Update [`src/services/normalize.ts`](src/services/normalize.ts) so successful upsert batches trigger `upsertJobsByIds()`
+- [ ] Update [`src/services/jobs/repository.ts`](src/services/jobs/repository.ts):
   - `updateJob()` → reindex changed job
   - `updateJobEnrichment()` → reindex changed job
   - `deleteJob()` → delete or tombstone the job in Typesense
@@ -198,7 +198,7 @@ Treat this as characterization-first work: preserve current job write behavior a
 
 ### 4. Wire candidate writes into index sync
 
-- [ ] Update [`src/services/candidates.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/candidates.ts):
+- [ ] Update [`src/services/candidates.ts`](src/services/candidates.ts):
   - `createCandidate()`
   - `updateCandidate()`
   - `deleteCandidate()`
@@ -208,9 +208,9 @@ Treat this as characterization-first work: preserve current job write behavior a
 ### 5. Add Typesense-backed vacature text retrieval
 
 - [ ] Create a search adapter, for example:
-  - [`src/services/search-index/typesense-search.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/search-index/typesense-search.ts)
-- [ ] Update [`src/services/jobs/search.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs/search.ts) so the text branch can use Typesense retrieval when configured
-- [ ] Update [`src/services/jobs/page-query.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs/page-query.ts) so paginated search uses the same adapter
+  - [`src/services/search-index/typesense-search.ts`](src/services/search-index/typesense-search.ts)
+- [ ] Update [`src/services/jobs/search.ts`](src/services/jobs/search.ts) so the text branch can use Typesense retrieval when configured
+- [ ] Update [`src/services/jobs/page-query.ts`](src/services/jobs/page-query.ts) so paginated search uses the same adapter
 
 **Technical design notes**
 
@@ -221,7 +221,7 @@ Treat this as characterization-first work: preserve current job write behavior a
 
 ### 6. Add Typesense-backed kandidaat retrieval
 
-- [ ] Update [`src/services/candidates.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/candidates.ts) so `searchCandidates()` and `countCandidates()` can use Typesense when configured
+- [ ] Update [`src/services/candidates.ts`](src/services/candidates.ts) so `searchCandidates()` and `countCandidates()` can use Typesense when configured
 
 **Technical design notes**
 
@@ -232,7 +232,7 @@ Treat this as characterization-first work: preserve current job write behavior a
 ### 7. Add rollout and recovery tooling
 
 - [ ] Add a one-shot reindex script, for example:
-  - [`scripts/reindex-typesense.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/scripts/reindex-typesense.ts)
+  - [`scripts/reindex-typesense.ts`](scripts/reindex-typesense.ts)
 - [ ] Add a package script entry such as `search:reindex`
 - [ ] Ensure the script can:
   - create collections if missing
@@ -241,7 +241,7 @@ Treat this as characterization-first work: preserve current job write behavior a
 
 ### 8. Documentation and ops notes
 
-- [ ] Update [README.md](/Users/cortex-air/.codex/worktrees/93bd/motian/README.md) with a short “external search” section
+- [ ] Update [README.md](README.md) with a short “external search” section
 - [ ] Document that Typesense is optional and PostgreSQL remains the fallback
 - [ ] Document the initial reindex step for a new environment
 
@@ -292,29 +292,29 @@ Treat this as characterization-first work: preserve current job write behavior a
 
 ### New Tests
 
-- [ ] [`tests/typesense-config.test.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/tests/typesense-config.test.ts)
+- [ ] [`tests/typesense-config.test.ts`](tests/typesense-config.test.ts)
   - env-gated enable/disable behavior
   - collection-name defaults
-- [ ] [`tests/typesense-documents.test.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/tests/typesense-documents.test.ts)
+- [ ] [`tests/typesense-documents.test.ts`](tests/typesense-documents.test.ts)
   - job document mapping
   - candidate document mapping
   - null/array normalization
-- [ ] [`tests/typesense-sync.test.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/tests/typesense-sync.test.ts)
+- [ ] [`tests/typesense-sync.test.ts`](tests/typesense-sync.test.ts)
   - upsert/delete behavior
   - missing-row handling
 
 ### Existing Tests To Update Or Extend
 
-- [ ] [`tests/unified-search.test.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/tests/unified-search.test.ts)
+- [ ] [`tests/unified-search.test.ts`](tests/unified-search.test.ts)
   - Typesense-enabled vacature text path delegates correctly
   - fallback path remains unchanged when Typesense is disabled or fails
-- [ ] [`tests/jobs-page-unified.test.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/tests/jobs-page-unified.test.ts)
+- [ ] [`tests/jobs-page-unified.test.ts`](tests/jobs-page-unified.test.ts)
   - paginated vacature search preserves page/total contract with Typesense text retrieval
 - [ ] Add or extend candidate search tests, for example:
-  - [`tests/candidate-search.test.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/tests/candidate-search.test.ts)
+  - [`tests/candidate-search.test.ts`](tests/candidate-search.test.ts)
   to prove Typesense path and DB fallback
 - [ ] Add structural wiring tests similar to:
-  - [`tests/esco-ingestion-wiring.test.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/tests/esco-ingestion-wiring.test.ts)
+  - [`tests/esco-ingestion-wiring.test.ts`](tests/esco-ingestion-wiring.test.ts)
   for search-index sync on write paths
 
 ## Risks & Mitigations
@@ -346,16 +346,16 @@ Treat this as characterization-first work: preserve current job write behavior a
 
 - User request on March 28, 2026: “add typesense or meilisearch” and follow-up “also check opensearch”
 - Related repo code:
-  - [`src/services/jobs/search.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs/search.ts)
-  - [`src/services/jobs/page-query.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs/page-query.ts)
-  - [`src/services/jobs.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs.ts)
-  - [`src/services/candidates.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/candidates.ts)
-  - [`src/services/normalize.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/normalize.ts)
-  - [`src/services/jobs/repository.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/jobs/repository.ts)
-  - [`src/services/embedding.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/services/embedding.ts)
-  - [`src/lib/job-search-runner.ts`](/Users/cortex-air/.codex/worktrees/93bd/motian/src/lib/job-search-runner.ts)
+  - [`src/services/jobs/search.ts`](src/services/jobs/search.ts)
+  - [`src/services/jobs/page-query.ts`](src/services/jobs/page-query.ts)
+  - [`src/services/jobs.ts`](src/services/jobs.ts)
+  - [`src/services/candidates.ts`](src/services/candidates.ts)
+  - [`src/services/normalize.ts`](src/services/normalize.ts)
+  - [`src/services/jobs/repository.ts`](src/services/jobs/repository.ts)
+  - [`src/services/embedding.ts`](src/services/embedding.ts)
+  - [`src/lib/job-search-runner.ts`](src/lib/job-search-runner.ts)
 - Adjacent requirements doc:
-  - [`docs/brainstorms/2026-03-26-instant-vacatures-search-requirements.md`](/Users/cortex-air/.codex/worktrees/93bd/motian/docs/brainstorms/2026-03-26-instant-vacatures-search-requirements.md)
+  - [`docs/brainstorms/2026-03-26-instant-vacatures-search-requirements.md`](docs/brainstorms/2026-03-26-instant-vacatures-search-requirements.md)
 - Official docs consulted:
   - [Typesense Search API](https://typesense.org/docs/30.1/api/search.html)
   - [Typesense Vector Search](https://typesense.org/docs/27.1/api/vector-search.html)
