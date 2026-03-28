@@ -52,7 +52,7 @@ const CandidateRecommendationPanel = nextDynamic(
     import("@/components/candidate-recommendation-panel").then((mod) => ({
       default: mod.CandidateRecommendationPanel,
     })),
-  { ssr: false, loading: () => <div className="animate-pulse h-48 rounded-xl bg-muted" /> },
+  { loading: () => <div className="animate-pulse h-48 rounded-xl bg-muted" /> },
 );
 
 const MatchDetail = nextDynamic(
@@ -60,7 +60,7 @@ const MatchDetail = nextDynamic(
     import("@/components/matching/match-detail").then((mod) => ({
       default: mod.MatchDetail,
     })),
-  { ssr: false, loading: () => <div className="animate-pulse h-32 rounded-xl bg-muted" /> },
+  { loading: () => <div className="animate-pulse h-32 rounded-xl bg-muted" /> },
 );
 
 interface Props {

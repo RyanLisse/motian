@@ -43,7 +43,7 @@ import { JsonViewer } from "./json-viewer";
 
 const AIGrading = dynamic(
   () => import("@/components/ai-grading").then((mod) => ({ default: mod.AIGrading })),
-  { ssr: false, loading: () => <div className="animate-pulse h-64 rounded-xl bg-muted" /> },
+  { loading: () => <div className="animate-pulse h-64 rounded-xl bg-muted" /> },
 );
 
 export const revalidate = 30;
