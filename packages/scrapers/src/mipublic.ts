@@ -115,23 +115,23 @@ async function mapWithConcurrency<TInput, TOutput>(
  * Extracts a minimal listing from <title> or <h1> tags so the vacancy is not
  * silently dropped.
  */
-function parseMipublicHtmlFallback(html: string, detailUrl: string): RawScrapedListing | null {
+function parseMipublicHtmlFallback(html: string, canonicalUrl: string): RawScrapedListing | null {
   const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
 
   const rawTitle =
     (h1Match ? stripHtml(h1Match[1]).trim() : null) ??
-    (titleTagMatch ? titleTagMatch[1].replace(/\s*[-–|].*$/, "").trim() : null);
+    (titleTagMatch ? titleTagMatch[1].replace(/\s+[-–|]\s+MiPublic.*$/i, "").trim() : null);
 
   if (!rawTitle || rawTitle.length < 3) return null;
 
-  const slug = new URL(detailUrl).pathname.replace(/^\/vacature\//, "").replace(/\/+$/, "");
+  const slug = new URL(canonicalUrl).pathname.replace(/^\/vacature\//, "").replace(/\/+$/, "");
 
   return {
     title: rawTitle,
     description: `${rawTitle} - vacature via MiPublic`,
-    externalId: slug || detailUrl,
-    externalUrl: detailUrl,
+    externalId: slug || canonicalUrl,
+    externalUrl: canonicalUrl,
   };
 }
 
@@ -157,7 +157,10 @@ async function scrapeMipublicListings(
       const listings = parsePublicJobBoardJobPostings(detailPage.html, detailPage.url);
 
       if (listings.length === 0) {
-        const fallback = parseMipublicHtmlFallback(detailPage.html, detailUrl);
+        const canFallback = detailPage.status < 400;
+        const fallback = canFallback
+          ? parseMipublicHtmlFallback(detailPage.html, detailPage.url)
+          : null;
         if (fallback) {
           return { listings: [fallback] };
         }

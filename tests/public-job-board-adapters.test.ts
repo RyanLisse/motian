@@ -313,4 +313,145 @@ describe("public job board adapters", () => {
     });
     expect(result.errors).toBeUndefined();
   });
+
+  it("does not import 404 pages as fallback vacancies", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url === "https://mipublic.nl/vacature-sitemap.xml") {
+          return createHtmlResponse({
+            url,
+            html: `<?xml version="1.0" encoding="UTF-8"?>
+              <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                <url>
+                  <loc>https://mipublic.nl/vacature/verwijderd/</loc>
+                </url>
+              </urlset>`,
+            headers: { "content-type": "application/xml" },
+          });
+        }
+
+        if (url === "https://mipublic.nl/vacature/verwijderd/") {
+          return createHtmlResponse({
+            url,
+            status: 404,
+            html: `<html><head><title>Pagina niet gevonden - MiPublic</title></head>
+              <body><h1>Pagina niet gevonden</h1></body></html>`,
+          });
+        }
+
+        throw new Error(`Unexpected fetch for ${url}`);
+      }),
+    );
+
+    const adapter = getPlatformAdapter("mipublic");
+    const result = await adapter!.scrape({
+      slug: "mipublic",
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+      auth: {},
+    });
+
+    expect(result.listings).toHaveLength(0);
+    expect(result.errors).toBeDefined();
+  });
+
+  it("preserves hyphenated titles in title-only fallback path", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url === "https://mipublic.nl/vacature-sitemap.xml") {
+          return createHtmlResponse({
+            url,
+            html: `<?xml version="1.0" encoding="UTF-8"?>
+              <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                <url>
+                  <loc>https://mipublic.nl/vacature/front-end-developer/</loc>
+                </url>
+              </urlset>`,
+            headers: { "content-type": "application/xml" },
+          });
+        }
+
+        if (url === "https://mipublic.nl/vacature/front-end-developer/") {
+          return createHtmlResponse({
+            url,
+            html: `<html>
+              <head><title>Front-end Developer - MiPublic</title></head>
+              <body><p>Geen h1 op deze pagina</p></body>
+            </html>`,
+          });
+        }
+
+        throw new Error(`Unexpected fetch for ${url}`);
+      }),
+    );
+
+    const adapter = getPlatformAdapter("mipublic");
+    const result = await adapter!.scrape({
+      slug: "mipublic",
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+      auth: {},
+    });
+
+    expect(result.listings).toHaveLength(1);
+    expect(result.listings[0]).toMatchObject({
+      title: "Front-end Developer",
+      externalId: "front-end-developer",
+    });
+  });
+
+  it("uses canonical URL after redirect for fallback listings", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url === "https://mipublic.nl/vacature-sitemap.xml") {
+          return createHtmlResponse({
+            url,
+            html: `<?xml version="1.0" encoding="UTF-8"?>
+              <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                <url>
+                  <loc>https://mipublic.nl/vacature/old-slug/</loc>
+                </url>
+              </urlset>`,
+            headers: { "content-type": "application/xml" },
+          });
+        }
+
+        if (url === "https://mipublic.nl/vacature/old-slug/") {
+          return createHtmlResponse({
+            url: "https://mipublic.nl/vacature/canonical-slug/",
+            html: `<html>
+              <head><title>Projectleider - MiPublic</title></head>
+              <body><h1>Projectleider</h1></body>
+            </html>`,
+          });
+        }
+
+        throw new Error(`Unexpected fetch for ${url}`);
+      }),
+    );
+
+    const adapter = getPlatformAdapter("mipublic");
+    const result = await adapter!.scrape({
+      slug: "mipublic",
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+      auth: {},
+    });
+
+    expect(result.listings).toHaveLength(1);
+    expect(result.listings[0]).toMatchObject({
+      title: "Projectleider",
+      externalId: "canonical-slug",
+      externalUrl: "https://mipublic.nl/vacature/canonical-slug/",
+    });
+  });
 });
