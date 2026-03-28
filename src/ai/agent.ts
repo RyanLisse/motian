@@ -8,7 +8,7 @@ type AgentContext = {
   entityId?: string | null;
   entityType?: string | null;
   turnCount?: number;
-  sessionId?: string;
+  sessionId?: string | null;
 } | null;
 
 const opdrachtTools = {
