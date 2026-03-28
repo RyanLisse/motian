@@ -18,7 +18,7 @@ export const GET = withApiHandler(
     const jobsParam = searchParams.get("jobs");
 
     // Validate jobs parameter: null/undefined = omit, "summary"/"full" = valid, otherwise 400 error
-    let jobs: "summary" | "full" | undefined = undefined;
+    let jobs: "summary" | "full" | undefined;
 
     if (jobsParam !== null) {
       const jobsSchema = z.enum(["summary", "full"]);
@@ -60,7 +60,7 @@ export const GET = withApiHandler(
         },
       },
       {
-        headers: { "Cache-Control": "private, max-age=15, stale-while-revalidate=30" },
+        headers: { "Cache-Control": "private, max-age=30" },
       },
     );
   },

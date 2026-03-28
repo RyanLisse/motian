@@ -15,7 +15,7 @@ export const GET = withApiHandler(
     return Response.json(
       { data: interview },
       {
-        headers: { "Cache-Control": "private, max-age=15" },
+        headers: { "Cache-Control": "no-store" },
       },
     );
   },

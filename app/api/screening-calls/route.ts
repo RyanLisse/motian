@@ -42,7 +42,7 @@ export const GET = withApiHandler(async (request: Request) => {
   return Response.json(
     { data: calls },
     {
-      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": "no-store" },
     },
   );
 });

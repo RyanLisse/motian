@@ -29,7 +29,7 @@ export const GET = withApiHandler(async (request: Request) => {
     return Response.json(
       { data },
       {
-        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+        headers: { "Cache-Control": "no-store" },
       },
     );
   }
@@ -42,7 +42,7 @@ export const GET = withApiHandler(async (request: Request) => {
   const data = await listApplications({ jobId, candidateId, stage, limit, offset });
   const total = await countApplications({ jobId, candidateId, stage });
   return Response.json(paginatedResponse(data, total, { page, limit, offset }), {
-    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    headers: { "Cache-Control": "no-store" },
   });
 });
 

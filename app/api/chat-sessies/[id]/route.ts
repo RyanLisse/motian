@@ -36,7 +36,7 @@ export const GET = withApiHandler(
     }
 
     return Response.json(session, {
-      headers: { "Cache-Control": "private, max-age=15" },
+      headers: { "Cache-Control": "private, no-store" },
     });
   },
   { logPrefix: "chat-sessies/[id] GET", rateLimit: { interval: 60_000, limit: 30 } },

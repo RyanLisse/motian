@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       totalPages: Math.ceil(result.total / limit),
     },
     {
-      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" },
     },
   );
 }

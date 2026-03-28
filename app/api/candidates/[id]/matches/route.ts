@@ -102,6 +102,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   });
 
   return Response.json(matches, {
-    headers: { "Cache-Control": "private, max-age=15" },
+    headers: { "Cache-Control": "private, no-store" },
   });
 }

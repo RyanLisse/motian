@@ -26,7 +26,7 @@ export const GET = withApiHandler(
     return Response.json(
       { data: application },
       {
-        headers: { "Cache-Control": "private, max-age=15" },
+        headers: { "Cache-Control": "no-store" },
       },
     );
   },

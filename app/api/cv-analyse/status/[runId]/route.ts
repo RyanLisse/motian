@@ -9,10 +9,6 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ ru
   try {
     const run = await runs.retrieve(runId);
 
-    // Only cache terminal states (completed/failed), not in-flight states
-    const isTerminal = run.isCompleted || run.isFailed;
-    const cacheControl = isTerminal ? "private, max-age=15" : "no-store";
-
     return Response.json(
       {
         id: run.id,
@@ -26,7 +22,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ ru
         error: run.error?.message ?? null,
       },
       {
-        headers: { "Cache-Control": cacheControl },
+        headers: { "Cache-Control": "no-store" },
       },
     );
   } catch (error) {

@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
     return new Response(markdown, {
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        "Cache-Control": "no-store",
       },
     });
   } catch (_err) {
