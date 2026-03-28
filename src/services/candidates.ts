@@ -3,6 +3,8 @@ import { candidateSkills, candidates } from "../db/schema";
 import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
 import { syncCandidateEscoSkills } from "./esco";
+import { searchCandidateIdsByTypesense } from "./search-index/typesense-search";
+import { deleteCandidatesByIds, upsertCandidatesByIds } from "./search-index/typesense-sync";
 
 // ========== Types ==========
 
@@ -99,6 +101,19 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = Math.max(0, opts.offset ?? 0);
 
+  try {
+    const externalResult = await searchCandidateIdsByTypesense({ ...opts, limit, offset });
+    if (externalResult) {
+      const hydrated = await getCandidatesByIds(externalResult.ids);
+      const candidatesById = new Map(hydrated.map((candidate) => [candidate.id, candidate]));
+      return externalResult.ids
+        .map((id) => candidatesById.get(id))
+        .filter((candidate): candidate is Candidate => Boolean(candidate));
+    }
+  } catch {
+    // Fall back to PostgreSQL search when Typesense is unavailable.
+  }
+
   const conditions = [isNull(candidates.deletedAt)];
 
   if (opts.query) {
@@ -137,6 +152,15 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
 export async function countCandidates(
   opts: Omit<SearchCandidatesOptions, "limit" | "offset"> = {},
 ): Promise<number> {
+  try {
+    const externalResult = await searchCandidateIdsByTypesense(opts);
+    if (externalResult) {
+      return externalResult.total;
+    }
+  } catch {
+    // Fall back to PostgreSQL counting when Typesense is unavailable.
+  }
+
   const conditions = [isNull(candidates.deletedAt)];
 
   if (opts.query) {
@@ -208,6 +232,8 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     skills: candidate.skills,
   });
 
+  await upsertCandidatesByIds([candidate.id]);
+
   return candidate;
 }
 
@@ -241,6 +267,8 @@ export async function updateCandidate(
     console.error(`[Candidates] Embedding refresh error for ${candidate.id}:`, err);
   }
 
+  await upsertCandidatesByIds([candidate.id]);
+
   return candidate;
 }
 
@@ -272,6 +300,10 @@ export async function updateCandidateMatchingStatus(
     .set(updates)
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
     .returning();
+
+  if (rows[0]?.id) {
+    await upsertCandidatesByIds([rows[0].id]);
+  }
 
   return rows[0] ?? null;
 }
@@ -305,6 +337,10 @@ export async function deleteCandidate(id: string): Promise<boolean> {
     .set({ deletedAt: new Date() })
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
     .returning();
+
+  if (rows.length > 0) {
+    await deleteCandidatesByIds([id]);
+  }
 
   return rows.length > 0;
 }
@@ -346,6 +382,9 @@ export async function findDuplicateCandidate(
           .set({ deletedAt: null, updatedAt: new Date() })
           .where(eq(candidates.id, row.id))
           .returning();
+        if (restored[0]?.id) {
+          await upsertCandidatesByIds([restored[0].id]);
+        }
         return { exact: restored[0] ?? row, similar: [] };
       }
       return { exact: row, similar: [] };
@@ -419,6 +458,8 @@ export async function enrichCandidateFromCV(
     skills: candidate.skills,
     skillsStructured: candidate.skillsStructured,
   });
+
+  await upsertCandidatesByIds([candidate.id]);
 
   return candidate;
 }

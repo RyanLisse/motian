@@ -84,6 +84,7 @@
     "track:ai-costs": "npx ccusage",
     "baseline:metrics": "tsx scripts/baseline-metrics.ts",
     "benchmark:hybrid-search": "tsx scripts/benchmark-hybrid-search.ts",
+    "search:reindex": "tsx scripts/reindex-typesense.ts",
     "metrics:esco-rollout": "tsx scripts/esco-rollout-snapshot.ts",
     "metrics:esco-rollout:compare": "tsx scripts/esco-rollout-compare.ts",
     "metrics:search-path-latency": "tsx scripts/measure-search-path-latencies.ts",

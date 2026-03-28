@@ -27,6 +27,18 @@ Motian is een **Nederlands recruitment operations platform** dat vacatures autom
 
 Gebouwd voor recruiters en detacheringsbureaus die actief zijn in de Nederlandse publieke sector.
 
+## Externe zoekindex
+
+Motian kan optioneel een **Typesense** index gebruiken voor snelle tekst-retrieval op vacatures en kandidaten, terwijl PostgreSQL de bron van waarheid blijft.
+
+- Zonder `TYPESENSE_URL` en `TYPESENSE_API_KEY` blijft de applicatie volledig op de bestaande PostgreSQL zoekpaden draaien.
+- Met Typesense ingeschakeld gebruikt de app externe tekstzoekresultaten waar dat veilig kan, met fallback naar PostgreSQL bij fouten of niet-ondersteunde filters.
+- Na het activeren van Typesense kun je de index vullen met:
+
+```bash
+pnpm search:reindex
+```
+
 ## Autopilot
 
 **Status**: Autopilot Phase 4 is afgerond. Nachtelijke audits slaan nu naast screenshots en console logs ook **video**, **Playwright traces** en **HAR netwerklogs** op. In de run-detail pagina op `/autopilot/[runId]` kun je deze bewijslast direct bekijken of downloaden.
