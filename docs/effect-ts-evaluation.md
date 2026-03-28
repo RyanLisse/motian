@@ -2,7 +2,7 @@
 
 ## Context
 
-You asked whether rewriting in Effect-TS would yield performance wins. After analyzing the full codebase architecture, the honest answer is: **no meaningful runtime performance gains, and likely a net negative on developer velocity.**
+This evaluation examines whether rewriting in Effect-TS would yield performance wins. After analyzing the full codebase architecture, the conclusion for this project is: **no meaningful runtime performance gains, and likely a net negative on developer velocity.**
 
 ## What Effect-TS Actually Gives You
 
@@ -25,7 +25,7 @@ Effect-TS is a **correctness and composability** library, not a performance libr
 - **Chat**: Waiting on Gemini/GPT model inference (network-bound)
 - **Database**: Waiting on Neon PostgreSQL (network-bound)
 
-Effect-TS fibers don't make network calls faster. Your existing `Promise.allSettled` pool with configurable concurrency (1-10) already saturates what the external services can handle.
+Effect-TS fibers won't reduce the latency of individual network calls. Your existing `Promise.allSettled` pool with configurable concurrency (1-10) already saturates what the external services can handle.
 
 ### 2. Effect-TS adds overhead, not removes it
 - **Bundle size**: +50-100KB for the Effect runtime
@@ -60,19 +60,21 @@ These are correctness wins, not speed wins. And the cost is:
 |--------|--------|
 | **70 production dependencies** | Most have no Effect wrappers — you'd write adapters for Drizzle, AI SDK, Trigger.dev, LiveKit, Sentry, PostHog, Slack, Baileys... |
 | **Team learning curve** | Effect-TS has a steep ramp — generators, layers, services, fiber semantics |
-| **Next.js integration** | Effect doesn't have first-class Next.js App Router support; Server Components + Effect is friction |
+| **Next.js integration** | As of this writing, Effect's Next.js App Router integration is still maturing; Server Components + Effect adds friction |
 | **Trigger.dev tasks** | Run in isolated containers — Effect's DI provides zero value there |
 | **Vercel AI SDK** | Has its own streaming paradigm that doesn't compose with Effect streams |
 | **Testing** | Vitest works great now; Effect testing requires `Effect.runPromise` wrappers everywhere |
 
 ## Recommendation
 
-**Don't rewrite.** The ROI is negative. Your architecture is already well-structured for the workload:
+**For this project, a rewrite is not recommended.** Given the current architecture and workload profile, the ROI is unlikely to be positive:
 
-- Trigger.dev handles background job orchestration better than hand-rolled Effect fibers
-- Vercel AI SDK handles streaming better than Effect streams for LLM use cases
+- Trigger.dev handles background job orchestration well for this use case
+- Vercel AI SDK handles streaming effectively for LLM workloads
 - Drizzle ORM handles DB access cleanly without needing Effect layers
 - The scrape pipeline's pool pattern is simple and effective
+
+This conclusion is scoped to the Bozeman/Motian codebase as evaluated; teams with different constraints may reach different conclusions.
 
 If you want to improve performance, higher-impact moves would be:
 1. **Parallelize embedding batch processing** (currently sequential within batches)
