@@ -179,7 +179,8 @@ export async function searchJobIdsByTitle(
       if (externalResult && externalResult.ids.length > 0) {
         // Run Typesense IDs through vacancy-level deduplication.
         const dedupedIds = await fetchDedupedJobIds({
-          whereClause: and(filterCondition, inArray(jobs.id, externalResult.ids)) ?? filterCondition,
+          whereClause:
+            and(filterCondition, inArray(jobs.id, externalResult.ids)) ?? filterCondition,
           limit: safeLimit,
           partitionOrderBy: sql`${jobs.scrapedAt} desc nulls last, ${jobs.id} desc`,
           rankedJobsOrderBy: sql`scraped_at desc nulls last, id desc`,
