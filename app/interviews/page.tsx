@@ -1,5 +1,6 @@
 import { Calendar, Clock, Filter, Monitor, Star } from "lucide-react";
 import { Suspense } from "react";
+import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -134,10 +135,7 @@ async function InterviewsContent({ searchParams }: Props) {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Interviews</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gesprekken plannen en bijhouden</p>
-        </div>
+        <PageHeader title="Interviews" description="Gesprekken plannen en bijhouden" />
 
         {/* KPI row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

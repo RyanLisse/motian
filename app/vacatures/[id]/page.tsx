@@ -20,6 +20,14 @@ import { LinkCandidatesDialog } from "@/components/link-candidates-dialog";
 import { OpdrachtDetailEndClientFilter } from "@/components/opdracht-detail-end-client-filter";
 import { OpdrachtenDetailSheet } from "@/components/opdrachten-detail-sheet";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { and, db, desc, eq, isNull, ne, sql } from "@/src/db";
@@ -594,14 +602,21 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
       >
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="border-b border-border bg-background/95 px-4 py-4 sm:px-6">
-            <Link
-              href={listHref}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              &larr; Terug naar vacatures
-            </Link>
+            <Breadcrumb className="mb-4">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href="/vacatures">Vacatures</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{job.title}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
 
-            <div className="mt-4">
+            <div>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <Badge
                   variant="outline"
@@ -656,7 +671,7 @@ export default async function OpdrachtDetailPage({ params, searchParams }: Props
                   <JsonViewer data={job as unknown as Record<string, unknown>} />
                 </div>
               </div>
-              <h1 className="text-lg font-bold text-foreground sm:text-xl">{job.title}</h1>
+              <h1 className="text-xl font-bold text-foreground">{job.title}</h1>
               {job.company ? (
                 <p className="mt-1 text-sm text-muted-foreground">{job.company}</p>
               ) : null}

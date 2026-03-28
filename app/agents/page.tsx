@@ -2,6 +2,7 @@ import { Activity, AlertTriangle, Bot, CheckCircle2, Clock, TrendingUp, Zap } fr
 import { Suspense } from "react";
 import { AgentActivityFeed } from "@/components/agents/activity-feed";
 import { PipelineVisualization } from "@/components/agents/pipeline-visualization";
+import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAgentDashboardData } from "./data";
@@ -117,12 +118,10 @@ export default function AgentsPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Agent Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Overzicht van alle autonome agents en hun activiteit
-          </p>
-        </div>
+        <PageHeader
+          title="Agent Dashboard"
+          description="Overzicht van alle autonome agents en hun activiteit"
+        />
 
         <Suspense fallback={<AgentDashboardSkeleton />}>
           <AgentDashboardContent />

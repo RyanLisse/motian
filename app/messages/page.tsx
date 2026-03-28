@@ -1,5 +1,6 @@
 import { ArrowDownLeft, ArrowUpRight, Filter, MessageSquare } from "lucide-react";
 import { Suspense } from "react";
+import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -118,10 +119,7 @@ async function MessagesContent({ searchParams }: Props) {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Berichten</h1>
-          <p className="text-sm text-muted-foreground mt-1">Communicatie met kandidaten</p>
-        </div>
+        <PageHeader title="Berichten" description="Communicatie met kandidaten" />
 
         {/* KPI row */}
         <div className="grid grid-cols-3 gap-3">

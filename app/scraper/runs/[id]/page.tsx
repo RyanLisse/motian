@@ -1,6 +1,5 @@
 import {
   AlertCircle,
-  ArrowLeft,
   CalendarClock,
   CheckCircle,
   Clock,
@@ -8,12 +7,12 @@ import {
   Search,
   XCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { RunDetailJobs } from "@/components/scraper/run-detail-jobs";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buildBreadcrumbs } from "@/src/lib/breadcrumbs";
 import { getJobsForRun, getRunById } from "@/src/services/scrape-results";
 
 export const dynamic = "force-dynamic";
@@ -37,15 +36,10 @@ export default async function ScraperRunDetailPage({ params }: PageProps) {
         <PageHeader
           title={`Scrape-run: ${run.platform}`}
           description={`Run van ${run.runAt ? new Date(run.runAt).toLocaleString("nl-NL", { dateStyle: "long", timeStyle: "short" }) : "onbekend"}`}
-        >
-          <Link
-            href="/scraper"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Terug naar overzicht
-          </Link>
-        </PageHeader>
+          breadcrumbs={buildBreadcrumbs(`/scraper/runs/${id}`, {
+            [id]: `${run.platform} run`,
+          })}
+        />
 
         {/* Run-samenvatting */}
         <Card className="bg-card border-border">

@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import type { KanbanCardData } from "@/components/pipeline/kanban-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -294,18 +295,14 @@ export default async function PipelinePage({ searchParams }: Props) {
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">
-              {vacature ? `Pipeline — ${vacature.title}` : "Pipeline"}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {vacature
-                ? `Volg kandidaten voor deze vacature door elke fase`
-                : "Sollicitatiepipeline — volg kandidaten door elke fase"}
-            </p>
-          </div>
-
+        <PageHeader
+          title={vacature ? `Pipeline — ${vacature.title}` : "Pipeline"}
+          description={
+            vacature
+              ? "Volg kandidaten voor deze vacature door elke fase"
+              : "Sollicitatiepipeline — volg kandidaten door elke fase"
+          }
+        >
           {/* View toggle */}
           <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
             <Link
@@ -331,7 +328,7 @@ export default async function PipelinePage({ searchParams }: Props) {
               Lijst
             </Link>
           </div>
-        </div>
+        </PageHeader>
 
         {/* KPI row */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
@@ -8,6 +9,11 @@ import { ChatWidget } from "@/components/chat/chat-widget";
 import { SidebarLayout } from "@/components/sidebar-layout";
 import { getRequestOrigin, getStableChatOrigin } from "@/src/lib/chat-origin";
 import { Providers } from "./providers";
+
+const CommandPalette = dynamic(
+  () => import("@/components/command-palette").then((mod) => ({ default: mod.CommandPalette })),
+  { ssr: false },
+);
 
 const inter = Inter({
   subsets: ["latin"],
@@ -47,6 +53,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ChatContextProvider>
             <SidebarLayout>{children}</SidebarLayout>
             <ChatWidget currentOrigin={currentOrigin} />
+            <CommandPalette />
           </ChatContextProvider>
         </Providers>
       </body>

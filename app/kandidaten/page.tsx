@@ -2,6 +2,7 @@ import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { AddCandidateWizard } from "@/components/add-candidate-wizard";
 import { DraggableCandidate } from "@/components/draggable-candidate";
+import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
@@ -160,15 +161,9 @@ export default async function KandidatenPage({ searchParams }: Props) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold text-foreground">Kandidaten</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Talent pool — overzicht van alle kandidaten
-            </p>
-          </div>
+        <PageHeader title="Kandidaten" description="Talent pool — overzicht van alle kandidaten">
           <AddCandidateWizard />
-        </div>
+        </PageHeader>
 
         {/* KPI row */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3">

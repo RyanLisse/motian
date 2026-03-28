@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   ArrowRight,
   Bookmark,
   Briefcase,
@@ -28,6 +27,14 @@ import { ReportButton } from "@/components/matching/report-button";
 import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
 import { SkillsRadar } from "@/components/skills-radar";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { and, db, desc, eq, isNull } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
@@ -383,15 +390,21 @@ export default async function KandidaatDetailPage({ params }: Props) {
     <CvDropZone candidateId={candidate.id}>
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-6 py-6">
-          {/* Back + delete */}
+          {/* Breadcrumb + delete */}
           <div className="flex items-center justify-between mb-6">
-            <Link
-              href="/kandidaten"
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Terug naar kandidaten
-            </Link>
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href="/kandidaten">Kandidaten</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{candidate.name}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
             <DeleteCandidateButton candidateId={candidate.id} candidateName={candidate.name} />
           </div>
 
@@ -399,7 +412,7 @@ export default async function KandidaatDetailPage({ params }: Props) {
           <div className="flex flex-wrap items-start gap-4 justify-between mb-8">
             <OpenToOffersRing percentage={openToOffersPct} label="Open voor aanbiedingen" />
             <div className="flex-1 min-w-0 text-center sm:text-left">
-              <h1 className="text-2xl font-bold text-foreground">{candidate.name}</h1>
+              <h1 className="text-xl font-bold text-foreground">{candidate.name}</h1>
               {candidate.role && (
                 <p className="text-base font-semibold text-muted-foreground mt-0.5">
                   {candidate.role}

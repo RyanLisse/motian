@@ -9,14 +9,12 @@ function readFile(...segments: string[]) {
 }
 
 describe("scraper dashboard layout fixes", () => {
-  it("disables the chat widget runtime on the scraper route and only mounts the panel when opened elsewhere", () => {
+  it("shows the chat widget on all pages except the dedicated chat page", () => {
     const source = readFile("components", "chat", "chat-widget.tsx");
 
-    expect(source).toContain('const disableWidget = pathname === "/scraper"');
-    expect(source).toContain("if (disableWidget) return;");
-    expect(source).toContain(
-      'if (pathname === "/chat" || pathname === "/vacatures" || disableWidget) return null;',
-    );
+    // Chat widget is now visible on all pages except /chat (the full-page view replaces it)
+    expect(source).toContain('if (pathname === "/chat") return null;');
+    expect(source).not.toContain("disableWidget");
     expect(source).toContain("{open && (");
     expect(source).toContain('role="dialog"');
   });

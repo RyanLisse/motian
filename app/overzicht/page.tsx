@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
+import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -502,30 +503,25 @@ export default function OverzichtPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Overzicht</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Je command center voor vacatures, kandidaten en opvolging.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: "Vacatures", href: "/vacatures" },
-              { label: "Pipeline", href: "/pipeline" },
-              { label: "Interviews", href: "/interviews" },
-            ].map((shortcut) => (
-              <Link
-                key={shortcut.href}
-                href={shortcut.href}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                {shortcut.label}
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            ))}
-          </div>
-        </div>
+        <PageHeader
+          title="Overzicht"
+          description="Je command center voor vacatures, kandidaten en opvolging."
+        >
+          {[
+            { label: "Vacatures", href: "/vacatures" },
+            { label: "Pipeline", href: "/pipeline" },
+            { label: "Interviews", href: "/interviews" },
+          ].map((shortcut) => (
+            <Link
+              key={shortcut.href}
+              href={shortcut.href}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            >
+              {shortcut.label}
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          ))}
+        </PageHeader>
 
         <Suspense fallback={<DashboardSkeleton />}>
           <DashboardContent />
