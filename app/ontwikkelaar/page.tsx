@@ -8,8 +8,7 @@ const SURFACES = [
     title: "API Documentatie",
     href: "/api-docs",
     icon: FileJson,
-    description:
-      "Interactieve OpenAPI documentatie met Scalar UI. Bekijk en test alle endpoints.",
+    description: "Interactieve OpenAPI documentatie met Scalar UI. Bekijk en test alle endpoints.",
     tone: "text-blue-600 dark:text-blue-400",
     external: true,
   },
@@ -17,8 +16,7 @@ const SURFACES = [
     title: "XML Feed",
     href: "/api/salesforce-feed",
     icon: Rss,
-    description:
-      "Salesforce-compatible XML export voor vacatures, kandidaten en sollicitaties.",
+    description: "Salesforce-compatible XML export voor vacatures, kandidaten en sollicitaties.",
     tone: "text-emerald-600 dark:text-emerald-400",
     external: true,
   },
@@ -26,8 +24,7 @@ const SURFACES = [
     title: "MCP Server",
     href: "#mcp",
     icon: Plug,
-    description:
-      "Model Context Protocol server met 42 tools. Verbind via IDE, CLI of HTTP.",
+    description: "Model Context Protocol server met 42 tools. Verbind via IDE, CLI of HTTP.",
     tone: "text-violet-600 dark:text-violet-400",
     external: false,
   },
@@ -35,8 +32,7 @@ const SURFACES = [
     title: "OpenAPI Spec",
     href: "/api/openapi",
     icon: Code,
-    description:
-      "Ruwe OpenAPI 3.1 JSON specificatie voor automatisering en codegeneratie.",
+    description: "Ruwe OpenAPI 3.1 JSON specificatie voor automatisering en codegeneratie.",
     tone: "text-amber-600 dark:text-amber-400",
     external: true,
   },

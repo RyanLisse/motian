@@ -298,7 +298,7 @@ describe("public job board adapters", () => {
     const adapter = getPlatformAdapter("mipublic");
     expect(adapter).toBeDefined();
 
-    const result = await adapter!.scrape({
+    const result = await adapter?.scrape({
       slug: "mipublic",
       baseUrl: "https://mipublic.nl",
       parameters: {},
@@ -347,7 +347,7 @@ describe("public job board adapters", () => {
     );
 
     const adapter = getPlatformAdapter("mipublic");
-    const result = await adapter!.scrape({
+    const result = await adapter?.scrape({
       slug: "mipublic",
       baseUrl: "https://mipublic.nl",
       parameters: {},
@@ -392,7 +392,7 @@ describe("public job board adapters", () => {
     );
 
     const adapter = getPlatformAdapter("mipublic");
-    const result = await adapter!.scrape({
+    const result = await adapter?.scrape({
       slug: "mipublic",
       baseUrl: "https://mipublic.nl",
       parameters: {},
@@ -440,7 +440,7 @@ describe("public job board adapters", () => {
     );
 
     const adapter = getPlatformAdapter("mipublic");
-    const result = await adapter!.scrape({
+    const result = await adapter?.scrape({
       slug: "mipublic",
       baseUrl: "https://mipublic.nl",
       parameters: {},
