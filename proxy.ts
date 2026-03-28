@@ -26,6 +26,7 @@ const FIRST_PARTY_PATHS = [
   "/api/sollicitaties",
   "/api/berichten",
   "/api/instellingen",
+  "/api/salesforce-feed",
 ];
 
 const PUBLIC_GET_PATHS = ["/api/vacatures/zoeken", "/api/opdrachten/zoeken"];

@@ -57,10 +57,23 @@ describe("API auth via proxy", () => {
     }
   });
 
-  it("requires the shared bearer token for /api/salesforce-feed", async () => {
+  it("allows same-origin access to /api/salesforce-feed without a bearer token", () => {
     process.env.API_SECRET = "test-secret";
 
+    // Same-origin requests (no Origin header) are allowed as first-party browser routes
     const response = proxy(new NextRequest("http://localhost/api/salesforce-feed"));
+
+    expect(response.status).toBe(200);
+  });
+
+  it("blocks cross-origin /api/salesforce-feed without a bearer token", async () => {
+    process.env.API_SECRET = "test-secret";
+
+    const response = proxy(
+      new NextRequest("http://localhost/api/salesforce-feed", {
+        headers: { Origin: "https://evil.example.com" },
+      }),
+    );
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({
@@ -216,12 +229,16 @@ describe("API auth via proxy", () => {
     expect(response.status).toBe(200);
   });
 
-  it("fails closed in production when API_SECRET is missing", async () => {
+  it("fails closed in production for cross-origin salesforce-feed when API_SECRET is missing", async () => {
     delete process.env.API_SECRET;
     process.env.NODE_ENV = "production";
     process.env.VERCEL_ENV = "production";
 
-    const response = proxy(new NextRequest("http://localhost/api/salesforce-feed"));
+    const response = proxy(
+      new NextRequest("http://localhost/api/salesforce-feed", {
+        headers: { Origin: "https://external.example.com" },
+      }),
+    );
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({
