@@ -31,7 +31,12 @@ export const PATCH = withApiHandler(
     if (match.candidateId) revalidatePath(`/kandidaten/${match.candidateId}`);
     if (match.jobId) revalidatePath(`/vacatures/${match.jobId}`);
     publish("match:updated", { matchId: id, status: result.data.status });
-    return Response.json({ data: match });
+    return Response.json(
+      { data: match },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "PATCH /api/matches/[id] error" },
 );

@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDateTime } from "@/src/lib/helpers";
 import { getOverviewData } from "./data";
 
 export const revalidate = 60;
@@ -258,7 +259,9 @@ async function DashboardContent() {
                             {job.location}
                           </span>
                         )}
-                        {job.scrapedAt && <span>{formatDateTime(job.scrapedAt)}</span>}
+                        {job.scrapedAt && (
+                          <span>{formatDateTime(job.scrapedAt, "compact", "Onbekend moment")}</span>
+                        )}
                       </div>
                     </div>
                     <Badge
@@ -314,7 +317,7 @@ async function DashboardContent() {
                       </Badge>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {formatDateTime(interview.scheduledAt)}
+                      {formatDateTime(interview.scheduledAt, "compact", "Onbekend moment")}
                     </p>
                   </Link>
                 ))}
@@ -404,97 +407,15 @@ async function DashboardContent() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      {/* KPI Cards Skeleton */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-          <div key={i} className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <Skeleton className="h-5 w-5 rounded" />
-              <Skeleton className="h-8 w-12" />
-            </div>
-            <Skeleton className="h-4 w-32" />
-          </div>
+          <Skeleton key={i} className="h-20 rounded-xl" />
         ))}
       </div>
-
-      {/* "Wat vraagt nu aandacht?" Skeleton */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-4 w-4 rounded" />
-            <Skeleton className="h-5 w-40" />
-          </div>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-            <div key={i} className="rounded-xl border border-border bg-accent/20 p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <Skeleton className="h-9 w-9 rounded-lg" />
-                <Skeleton className="h-8 w-8" />
-              </div>
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-32" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Grid Skeleton */}
-      <div className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
-        <div className="space-y-6">
-          {Array.from({ length: 2 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-            <div key={i} className="rounded-xl border border-border bg-card p-4">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-4 w-4 rounded" />
-                  <Skeleton className="h-5 w-40" />
-                </div>
-              </div>
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, j) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-                  <Skeleton key={j} className="h-12 w-full" />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-4 w-4 rounded" />
-                <Skeleton className="h-5 w-40" />
-              </div>
-            </div>
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Databronnen Skeleton */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-4 w-4 rounded" />
-            <Skeleton className="h-5 w-40" />
-          </div>
-        </div>
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-            <Skeleton key={i} className="h-8 w-full" />
-          ))}
-        </div>
-      </div>
+      <Skeleton className="h-48 rounded-xl" />
+      <Skeleton className="h-64 rounded-xl" />
+      <Skeleton className="h-48 rounded-xl" />
     </div>
   );
 }
@@ -529,17 +450,6 @@ export default function OverzichtPage() {
       </div>
     </div>
   );
-}
-
-function formatDateTime(value: Date | string | null | undefined) {
-  if (!value) return "Onbekend moment";
-
-  return new Date(value).toLocaleString("nl-NL", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function DashboardCard({

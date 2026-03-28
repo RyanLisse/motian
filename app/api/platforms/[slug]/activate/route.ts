@@ -11,7 +11,12 @@ export async function POST(
   try {
     const { slug } = await params;
     const data = await activatePlatform(slug, "ui");
-    return Response.json({ data });
+    return Response.json(
+      { data },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (error) {
     console.error("Fout bij activeren platform:", error);
     Sentry.captureException(error, { tags: { source: "platform-activate-route" } });

@@ -90,24 +90,29 @@ export const GET = withApiHandler(async () => {
     statusCounts.find((s: { status: string; count: number }) => s.status === "failed")?.count ?? 0;
   const total24h = eventsByAgent24h.reduce((sum: number, a: { count: number }) => sum + a.count, 0);
 
-  return Response.json({
-    data: {
-      kpi: {
-        totalEvents,
-        eventsLast24h: total24h,
-        pendingCount,
-        completedCount,
-        failedCount,
-        successRate:
-          completedCount + failedCount > 0
-            ? Math.round((completedCount / (completedCount + failedCount)) * 100)
-            : 100,
+  return Response.json(
+    {
+      data: {
+        kpi: {
+          totalEvents,
+          eventsLast24h: total24h,
+          pendingCount,
+          completedCount,
+          failedCount,
+          successRate:
+            completedCount + failedCount > 0
+              ? Math.round((completedCount / (completedCount + failedCount)) * 100)
+              : 100,
+        },
+        eventsByAgent24h,
+        eventsByType24h,
+        eventsByAgent7d,
+        statusCounts,
+        recentErrors,
       },
-      eventsByAgent24h,
-      eventsByType24h,
-      eventsByAgent7d,
-      statusCounts,
-      recentErrors,
     },
-  });
+    {
+      headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+    },
+  );
 });

@@ -24,11 +24,16 @@ export const POST = withApiHandler(
     }
 
     if ((config.consecutiveFailures ?? 0) === 0) {
-      return Response.json({
-        platform,
-        previousFailures: 0,
-        message: `Circuit breaker voor ${platform} staat al open (geen fouten)`,
-      });
+      return Response.json(
+        {
+          platform,
+          previousFailures: 0,
+          message: `Circuit breaker voor ${platform} staat al open (geen fouten)`,
+        },
+        {
+          headers: { "Cache-Control": "private, no-cache, no-store" },
+        },
+      );
     }
 
     await db
@@ -36,11 +41,16 @@ export const POST = withApiHandler(
       .set({ consecutiveFailures: 0, lastRunStatus: null })
       .where(eq(scraperConfigs.id, config.id));
 
-    return Response.json({
-      platform,
-      previousFailures: config.consecutiveFailures,
-      message: `Circuit breaker voor ${platform} gereset`,
-    });
+    return Response.json(
+      {
+        platform,
+        previousFailures: config.consecutiveFailures,
+        message: `Circuit breaker voor ${platform} gereset`,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij resetten circuit breaker",

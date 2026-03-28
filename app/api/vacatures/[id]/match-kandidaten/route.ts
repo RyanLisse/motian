@@ -17,16 +17,21 @@ export const POST = withApiHandler(
     const alreadyLinked = existing
       .map((a) => a.candidateId)
       .filter((candidateId): candidateId is string => candidateId != null);
-    return Response.json({
-      matches: matches.map((m) => ({
-        candidateId: m.candidateId,
-        candidateName: m.candidateName,
-        quickScore: m.quickScore,
-        matchId: m.matchId,
-        reasoning: m.structuredResult?.recommendationReasoning ?? null,
-      })),
-      alreadyLinked,
-    });
+    return Response.json(
+      {
+        matches: matches.map((m) => ({
+          candidateId: m.candidateId,
+          candidateName: m.candidateName,
+          quickScore: m.quickScore,
+          matchId: m.matchId,
+          reasoning: m.structuredResult?.recommendationReasoning ?? null,
+        })),
+        alreadyLinked,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "POST /api/vacatures/[id]/match-kandidaten error" },
 );

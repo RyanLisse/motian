@@ -21,7 +21,12 @@ export const POST = withApiHandler(
     }
 
     const analysis = await analyzePlatform(parsed.data.url);
-    return Response.json({ data: analysis });
+    return Response.json(
+      { data: analysis },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij platform analyse",

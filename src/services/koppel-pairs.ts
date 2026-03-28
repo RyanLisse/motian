@@ -1,4 +1,4 @@
-import { getMatchById } from "@/src/services/matches";
+import { getMatchesByIds } from "@/src/services/matches";
 
 export type CandidateKoppelPair = { jobId: string; matchId?: string | null };
 export type JobKoppelPair = { candidateId: string; matchId?: string | null };
@@ -14,11 +14,10 @@ export async function resolveKoppelPairsForCandidate(
   { ok: true; pairs: CandidateKoppelPair[] } | { ok: false; status: 400; body: { error: string } }
 > {
   if (matchIds?.length) {
-    const matchRecords = await Promise.all(matchIds.map((id) => getMatchById(id)));
+    const matchRecords = await getMatchesByIds(matchIds);
     const pairs = matchRecords
       .filter(
-        (m): m is NonNullable<typeof m> & { jobId: string } =>
-          m != null && m.candidateId === candidateId && m.jobId != null,
+        (m): m is typeof m & { jobId: string } => m.candidateId === candidateId && m.jobId != null,
       )
       .map((m) => ({ jobId: m.jobId, matchId: m.id }));
     return { ok: true, pairs };
@@ -44,11 +43,10 @@ export async function resolveKoppelPairsForJob(
   { ok: true; pairs: JobKoppelPair[] } | { ok: false; status: 400; body: { error: string } }
 > {
   if (matchIds?.length) {
-    const matchRecords = await Promise.all(matchIds.map((id) => getMatchById(id)));
+    const matchRecords = await getMatchesByIds(matchIds);
     const pairs = matchRecords
       .filter(
-        (m): m is NonNullable<typeof m> & { candidateId: string } =>
-          m != null && m.jobId === jobId && m.candidateId != null,
+        (m): m is typeof m & { candidateId: string } => m.jobId === jobId && m.candidateId != null,
       )
       .map((m) => ({ candidateId: m.candidateId, matchId: m.id }));
     return { ok: true, pairs };

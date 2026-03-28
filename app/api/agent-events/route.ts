@@ -25,5 +25,10 @@ export const GET = withApiHandler(async (request: Request) => {
     eventType: params.eventType as AgentEventType | undefined,
   });
 
-  return Response.json({ data: events, count: events.length });
+  return Response.json(
+    { data: events, count: events.length },
+    {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    },
+  );
 });

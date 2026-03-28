@@ -15,8 +15,13 @@ export async function POST(request: NextRequest) {
 
   const result = await embedCandidatesBatch({ limit });
 
-  return Response.json({
-    message: `${result.embedded} kandidaten geëmbed, ${result.skipped} overgeslagen`,
-    ...result,
-  });
+  return Response.json(
+    {
+      message: `${result.embedded} kandidaten geëmbed, ${result.skipped} overgeslagen`,
+      ...result,
+    },
+    {
+      headers: { "Cache-Control": "private, no-cache, no-store" },
+    },
+  );
 }

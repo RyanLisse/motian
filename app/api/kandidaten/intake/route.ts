@@ -69,5 +69,6 @@ export const POST = withApiHandler(async (request: Request) => {
 
   return Response.json(result, {
     status: parsed.data.existingCandidateId ? 200 : 201,
+    headers: { "Cache-Control": "private, no-cache, no-store" },
   });
 });

@@ -43,7 +43,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
   }
 
-  return Response.json(updated);
+  return Response.json(updated, {
+    headers: { "Cache-Control": "private, no-cache, no-store" },
+  });
 }
 
 /** DELETE /api/candidates/[id] — soft-delete candidate + remove blob file */
@@ -80,5 +82,10 @@ export async function DELETE(
     );
   }
 
-  return Response.json({ deleted: true });
+  return Response.json(
+    { deleted: true },
+    {
+      headers: { "Cache-Control": "private, no-cache, no-store" },
+    },
+  );
 }

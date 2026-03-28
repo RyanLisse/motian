@@ -51,5 +51,8 @@ export async function GET() {
     };
   }
 
-  return Response.json(diagnostics, { status: 200 });
+  return Response.json(diagnostics, {
+    status: 200,
+    headers: { "Cache-Control": "no-store" },
+  });
 }

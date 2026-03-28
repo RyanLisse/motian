@@ -19,7 +19,12 @@ const postSchema = z.object({
 export const GET = withApiHandler(
   async (_request: NextRequest) => {
     const configs = await getAllConfigs();
-    return Response.json({ data: configs, total: configs.length });
+    return Response.json(
+      { data: configs, total: configs.length },
+      {
+        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij ophalen scraper configuraties",
@@ -40,7 +45,13 @@ export const POST = withApiHandler(
     }
 
     const config = await createConfig({ ...parsed.data, source: "ui" });
-    return Response.json({ data: config }, { status: 201 });
+    return Response.json(
+      { data: config },
+      {
+        status: 201,
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij aanmaken scraper configuratie",

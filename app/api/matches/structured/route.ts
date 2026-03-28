@@ -40,10 +40,15 @@ export async function POST(request: NextRequest) {
       recommendation: outcome.result.recommendation,
     });
 
-    return Response.json({
-      message: "Gestructureerde beoordeling voltooid",
-      result: outcome.result,
-    });
+    return Response.json(
+      {
+        message: "Gestructureerde beoordeling voltooid",
+        result: outcome.result,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (_err) {
     console.error("[Structured Match API]", _err);
     return Response.json({ error: "Interne serverfout" }, { status: 500 });

@@ -24,7 +24,12 @@ export const GET = withApiHandler(
       groupBy: params.groupBy,
     });
 
-    return Response.json({ data });
+    return Response.json(
+      { data },
+      {
+        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij ophalen scraper analyse",

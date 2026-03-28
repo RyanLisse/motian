@@ -26,11 +26,16 @@ export async function POST(request: NextRequest) {
       revalidateTag(tag, "default");
     }
 
-    return NextResponse.json({
-      revalidated: true,
-      tags,
-      timestamp: new Date().toISOString(),
-    });
+    return NextResponse.json(
+      {
+        revalidated: true,
+        tags,
+        timestamp: new Date().toISOString(),
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch {
     return NextResponse.json({ revalidated: false, error: "Ongeldige aanvraag" }, { status: 400 });
   }

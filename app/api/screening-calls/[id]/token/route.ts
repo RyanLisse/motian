@@ -73,7 +73,10 @@ export const POST = withApiHandler(
         participant_token: participantToken,
         room_name: call.roomName,
       },
-      { status: 201 },
+      {
+        status: 201,
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
     );
   },
 );

@@ -1,4 +1,4 @@
-import { db } from "../db";
+import { db, sql } from "../db";
 import { platformSettings } from "../db/schema";
 import { DEFAULT_SETTINGS, SETTING_DEFINITIONS, type SettingsPayload } from "../schemas/settings";
 
@@ -22,28 +22,31 @@ export async function getAllSettings(): Promise<SettingsPayload> {
   return result as SettingsPayload;
 }
 
-/** Update settings by upserting each changed key. Returns the updated payload. */
+/** Update settings by upserting changed keys in a single batch. Returns the updated payload. */
 export async function updateSettings(payload: Partial<SettingsPayload>): Promise<SettingsPayload> {
   const entries = Object.entries(payload) as [keyof SettingsPayload, unknown][];
 
-  for (const [key, value] of entries) {
-    const def = SETTING_DEFINITIONS[key];
-    if (!def) continue;
+  const validEntries = entries.filter(([key]) => SETTING_DEFINITIONS[key]);
 
+  if (validEntries.length > 0) {
+    const now = new Date();
+    const values = validEntries.map(([key, value]) => ({
+      category: SETTING_DEFINITIONS[key].category,
+      key,
+      value,
+      description: SETTING_DEFINITIONS[key].description,
+      updatedAt: now,
+    }));
+
+    // Batch upsert: single INSERT ... ON CONFLICT for all settings at once
     await db
       .insert(platformSettings)
-      .values({
-        category: def.category,
-        key,
-        value,
-        description: def.description,
-        updatedAt: new Date(),
-      })
+      .values(values)
       .onConflictDoUpdate({
         target: [platformSettings.category, platformSettings.key],
         set: {
-          value,
-          updatedAt: new Date(),
+          value: sql`excluded.value`,
+          updatedAt: sql`excluded.updated_at`,
         },
       });
   }
