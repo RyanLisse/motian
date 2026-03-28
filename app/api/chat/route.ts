@@ -130,7 +130,7 @@ export async function POST(req: Request) {
       : requestMessages;
 
   // 7. Stream setup & response
-  const system = await buildSystemPrompt(ctx);
+  const system = await buildSystemPrompt(ctx ? { ...ctx, turnCount: requestMessages.length } : ctx);
   const model = resolveChatModel(requestModel);
 
   const result = streamText({

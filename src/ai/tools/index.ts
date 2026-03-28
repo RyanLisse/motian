@@ -62,6 +62,8 @@ export {
 } from "./platforms";
 export { queryOpdrachten } from "./query-opdrachten";
 export { readCanvasState } from "./read-canvas-state";
+// Semantic search tool
+export { semantischZoeken } from "./semantic-search";
 // Sollicitatie tools
 export {
   getSollicitatieDetail,

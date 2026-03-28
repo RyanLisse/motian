@@ -17,8 +17,9 @@ function normalizeParams(params: Record<string, unknown>) {
     : undefined;
   const rateMin =
     typeof params.rateMin === "number" && params.rateMin > 0 ? params.rateMin : undefined;
+  const RATE_CAP = Number(process.env.RATE_CAP_EUR) || 500;
   const rateMax =
-    typeof params.rateMax === "number" && params.rateMax < 500 ? params.rateMax : undefined;
+    typeof params.rateMax === "number" && params.rateMax < RATE_CAP ? params.rateMax : undefined;
   const province =
     typeof params.province === "string" &&
     params.province.length > 0 &&

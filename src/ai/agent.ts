@@ -7,6 +7,8 @@ type AgentContext = {
   route?: string | null;
   entityId?: string | null;
   entityType?: string | null;
+  turnCount?: number;
+  sessionId?: string;
 } | null;
 
 const opdrachtTools = {
@@ -20,6 +22,7 @@ const opdrachtTools = {
   importeerOpdrachtenBatch: tools.importeerOpdrachtenBatch,
   runKandidaatScoringBatch: tools.runKandidaatScoringBatch,
   reviewGdprRetentie: tools.reviewGdprRetentie,
+  semantischZoeken: tools.semantischZoeken,
 };
 
 const platformTools = {
@@ -128,6 +131,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
       "Kandidaten matchen op opdrachten en matchresultaten beoordelen",
       "Sollicitaties bekijken en pipeline-fases bijwerken",
       "Data analyseren (tarieven, platforms, deadlines)",
+      "Semantisch zoeken naar vacatures op basis van beschrijving of profiel (vector embeddings)",
       "Scrapers en scoring-batches starten voor opdrachten",
       "Platform onboarding beheren: catalogus, credentials, config, validatie, implementatie, monitoring en smoke imports",
       "Nieuwe platformen automatisch toevoegen: URL analyseren → scraping strategie bepalen → volledig inrichten (platformAutoSetup)",
@@ -152,6 +156,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
     "Kandidaten zoeken op vaardigheden, rol, naam of locatie",
     "Automatisch matchen van kandidaten met vacatures (top 3 met gedetailleerde beoordeling)",
     "Diepgaande gestructureerde matching (Mariënne-methodologie) met knock-out criteria en gunningscriteria",
+    "Semantisch zoeken naar vacatures op basis van beschrijving of profiel (vector embeddings)",
     "Matches aanmaken, bekijken, goedkeuren, afwijzen en verwijderen",
     "Sollicitaties aanmaken en door de pipeline verplaatsen",
     "Interviews plannen en bijwerken",
@@ -403,11 +408,17 @@ Belangrijk: Vraag ALTIJD om expliciete bevestiging van de gebruiker voordat je w
 
 Matching gewichten (totaal 100): Skills ${SCORING_WEIGHTS.skills}%, Locatie ${SCORING_WEIGHTS.location}%, Tarief ${SCORING_WEIGHTS.rate}%, Rol ${SCORING_WEIGHTS.role}%.
 Hybride scoring: ${Math.round(HYBRID_BLEND.ruleWeight * 100)}% regelgebaseerd + ${Math.round(HYBRID_BLEND.vectorWeight * 100)}% semantisch (indien embeddings beschikbaar).
+Matching configuratie: top ${process.env.AUTO_MATCH_TOP_N || "3"} resultaten, min score ${process.env.AUTO_MATCH_MIN_SCORE || "25"}%, max tarief cap €${process.env.RATE_CAP_EUR || "500"}/uur.
 
-Zoektips: queryOpdrachten zoekt op losse woorden in de titel. Gebruik korte termen (bijv. "jurist" i.p.v. "juridische functies"). Voor semantisch zoeken gebruik matchKandidaten met een beschrijving.
+Zoektips: queryOpdrachten zoekt op losse woorden in de titel. Gebruik korte termen (bijv. "jurist" i.p.v. "juridische functies"). Voor semantisch zoeken gebruik semantischZoeken met een beschrijving of profiel, of matchKandidaten voor kandidaat-vacature matching.
 
 Tarief-vragen: Voor "hoogste tarief" of "duurste vacature" gebruik queryOpdrachten met sortBy="tarief_hoog" en limit=5 (ZONDER q). Voor tarief-statistieken gebruik analyseData met analysis="top_tarieven" of "avg_rates". Gebruik NOOIT rateMin/rateMax filters als de gebruiker alleen wil weten wat het hoogste/laagste tarief is.
 ${workspace.text}`;
+
+  // Session awareness
+  if (context?.turnCount !== undefined) {
+    prompt += `\n\nSessiecontext: Dit is bericht ${context.turnCount} in deze conversatie.`;
+  }
 
   if (context?.route) {
     prompt += `\n\nHuidige pagina: ${context.route}`;

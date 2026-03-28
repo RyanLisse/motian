@@ -24,8 +24,8 @@ import { runStructuredMatch } from "./structured-matching";
 
 // ========== Config ==========
 
-const MIN_SCORE = 25;
-const DEFAULT_TOP_N = 3;
+const MIN_SCORE = Number(process.env.AUTO_MATCH_MIN_SCORE) || 25;
+const DEFAULT_TOP_N = Number(process.env.AUTO_MATCH_TOP_N) || 3;
 
 // ========== Types ==========
 

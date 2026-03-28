@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useEventSource } from "@/src/hooks/use-event-source";
 
 /**
@@ -20,6 +20,14 @@ export function DataRefreshListener({ events }: { events: string[] }) {
   }, [router, events]);
 
   useEventSource(handlers);
+
+  useEffect(() => {
+    function onDataChanged() {
+      router.refresh();
+    }
+    window.addEventListener("motian-data-changed", onDataChanged);
+    return () => window.removeEventListener("motian-data-changed", onDataChanged);
+  }, [router]);
 
   return null;
 }

@@ -23,6 +23,8 @@ export function useAction() {
         throw new Error(text || `Fout ${res.status}`);
       }
       setState("success");
+      // Notify data pages to refresh after mutation
+      window.dispatchEvent(new CustomEvent("motian-data-changed"));
     } catch (err) {
       setState("error");
       setErrorMsg(err instanceof Error ? err.message : "Actie mislukt");
