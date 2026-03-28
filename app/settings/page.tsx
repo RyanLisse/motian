@@ -3,7 +3,7 @@ import { SettingsForm } from "@/components/settings-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAllSettings } from "@/src/services/settings";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 function SettingsSkeleton() {
   return (
