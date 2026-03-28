@@ -46,7 +46,7 @@ describe("API docs routes", () => {
     expect(response.headers.get("content-type")).toContain("text/html");
     expect(body).toContain("Motian API-documentatie");
     expect(body).toContain("Scalar.createApiReference");
-    expect(body).toContain("http://localhost:3001/api/openapi");
+    expect(body).toContain("/api/openapi");
   });
 });
 
