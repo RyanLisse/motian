@@ -60,7 +60,7 @@ export function stripDiacritics(s: string): string {
 
 // Common Dutch diacritics mapping for SQL translate()
 const DIACRITICS_FROM = "àáâãäåæèéêëìíîïòóôõöùúûüýÿñçÀÁÂÃÄÅÆÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝÑÇ";
-const DIACRITICS_TO = "aaaaaaaeeeeiiiioooooouuuuyyncAAAAAAAEEEEIIIIOOOOOUUUUYNC";
+const DIACRITICS_TO = "aaaaaaaeeeeiiiiooooouuuuyyncAAAAAAAEEEEIIIIOOOOOUUUUYNC";
 
 /**
  * Cross-database case-insensitive + accent-insensitive "contains" filter.
@@ -82,7 +82,7 @@ export function toTsQueryInput(s: string): string {
   return stripDiacritics(s)
     .trim()
     .split(/\s+/)
-    .map((w) => w.replace(/[^a-zA-Z0-9]/g, ""))
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ""))
     .filter((w) => w.length > 0)
     .map((w) => `${w}:*`)
     .join(" & ");

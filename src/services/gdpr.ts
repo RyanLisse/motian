@@ -243,12 +243,13 @@ export async function scrubContactData(
     const agent = job.agentContact as { email?: string; name?: string } | null;
     const recruiter = job.recruiterContact as { email?: string; name?: string } | null;
 
+    const lowerIdentifier = identifier.toLowerCase();
     const matchAgent =
-      agent?.email?.toLowerCase() === identifier.toLowerCase() ||
-      agent?.name?.toLowerCase() === identifier.toLowerCase();
+      agent?.email?.toLowerCase().includes(lowerIdentifier) ||
+      agent?.name?.toLowerCase().includes(lowerIdentifier);
     const matchRecruiter =
-      recruiter?.email?.toLowerCase() === identifier.toLowerCase() ||
-      recruiter?.name?.toLowerCase() === identifier.toLowerCase();
+      recruiter?.email?.toLowerCase().includes(lowerIdentifier) ||
+      recruiter?.name?.toLowerCase().includes(lowerIdentifier);
 
     if (matchAgent && matchRecruiter) {
       nullBothIds.push(job.id);
