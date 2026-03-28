@@ -35,14 +35,26 @@ export const embeddingsBatchTask = schedules.task({
     let jobsEmbedded = 0;
     const jobErrors: string[] = [];
 
-    for (const job of jobsWithout) {
-      try {
-        const success = await embedJob(job.id);
-        if (success) jobsEmbedded++;
-      } catch (err) {
-        jobErrors.push(`Job ${job.id} (${job.title}): ${String(err)}`);
+    const EMBEDDING_CONCURRENCY = 5;
+    let nextIndex = 0;
+
+    async function worker() {
+      while (true) {
+        const currentIndex = nextIndex++;
+        if (currentIndex >= jobsWithout.length) break;
+        const job = jobsWithout[currentIndex];
+        try {
+          const success = await embedJob(job.id);
+          if (success) jobsEmbedded++;
+        } catch (err) {
+          jobErrors.push(`Job ${job.id} (${job.title}): ${String(err)}`);
+        }
       }
     }
+
+    await Promise.all(
+      Array.from({ length: Math.min(EMBEDDING_CONCURRENCY, jobsWithout.length) }, () => worker()),
+    );
 
     // --- Candidates without embeddings ---
     const candidateResult = await embedCandidatesBatch({ limit: 50 });

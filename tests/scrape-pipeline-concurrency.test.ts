@@ -23,7 +23,7 @@ import {
 
 describe("getScrapePipelineConcurrency", () => {
   it("uses the default and clamps env overrides", () => {
-    expect(getScrapePipelineConcurrency({} as NodeJS.ProcessEnv)).toBe(2);
+    expect(getScrapePipelineConcurrency({} as NodeJS.ProcessEnv)).toBe(4);
     expect(
       getScrapePipelineConcurrency({ SCRAPE_PIPELINE_CONCURRENCY: "0" } as NodeJS.ProcessEnv),
     ).toBe(1);
@@ -32,7 +32,7 @@ describe("getScrapePipelineConcurrency", () => {
     ).toBe(10);
     expect(
       getScrapePipelineConcurrency({ SCRAPE_PIPELINE_CONCURRENCY: "abc" } as NodeJS.ProcessEnv),
-    ).toBe(2);
+    ).toBe(4);
   });
 });
 
