@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageHeader } from "@/components/page-header";
 import { SettingsForm } from "@/components/settings-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAllSettings } from "@/src/services/settings";
@@ -26,12 +27,14 @@ async function SettingsContent() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[800px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Instellingen</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Platformconfiguratie en gebruikersinstellingen
-          </p>
-        </div>
+        <PageHeader
+          title="Instellingen"
+          description="Platformconfiguratie en gebruikersinstellingen"
+          breadcrumbs={[
+            { label: "Overzicht", href: "/overzicht" },
+            { label: "Instellingen", href: "/settings" },
+          ]}
+        />
 
         <SettingsForm initial={settings} />
       </div>

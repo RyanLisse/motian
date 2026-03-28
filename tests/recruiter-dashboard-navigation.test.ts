@@ -46,27 +46,37 @@ function collectRepositoryFiles(directory: string, files: string[] = []) {
 describe("Recruiter-first navigation", () => {
   it("keeps recruiter workflow routes prominent in the sidebar", () => {
     const source = readFile("components", "app-sidebar.tsx");
+    const commandPaletteSource = readFile("components", "command-palette.tsx");
 
     expect(source).toContain('title: "Overzicht"');
     expect(source).toContain('title: "Vacatures"');
     expect(source).toContain('title: "Kandidaten"');
     expect(source).toContain('title: "Pipeline"');
     expect(source).toContain('title: "Interviews"');
+    expect(source).toContain('title: "Berichten"');
+    expect(source).toContain('title: "Automatisering"');
 
     expect(source).toContain('url: "/overzicht"');
     expect(source).toContain('url: "/vacatures"');
     expect(source).toContain('url: "/kandidaten"');
     expect(source).toContain('url: "/pipeline"');
     expect(source).toContain('url: "/interviews"');
-    expect(source).toContain('url: "/chat"');
+    expect(source).toContain('url: "/messages"');
+    expect(source).toContain('url: "/automatisering"');
 
     expect(source).not.toContain('title: "Aanbevelingen"');
+    expect(source).not.toContain('title: "Matching"');
+    expect(source).not.toContain('title: "AI Assistent"');
+    expect(source).not.toContain('title: "Agents"');
+    expect(source).not.toContain('title: "Autopilot"');
+    expect(source).not.toContain('title: "Databronnen"');
 
-    // Matching, Berichten and Messages are now in the sidebar under "Automatisering" and "Werving" groups
-    expect(source).toContain('url: "/matching"');
-    expect(source).toContain('title: "Berichten"');
-    expect(source).toContain('url: "/messages"');
-    expect(source).toContain('title: "Matching"');
+    expect(commandPaletteSource).toContain('label: "Automatisering"');
+    expect(commandPaletteSource).toContain('label: "Agents"');
+    expect(commandPaletteSource).toContain('label: "Autopilot"');
+    expect(commandPaletteSource).toContain('label: "Databronnen"');
+    expect(commandPaletteSource).toContain('label: "Matching"');
+    expect(commandPaletteSource).toContain('label: "AI Assistent"');
   });
 
   it("keeps heavy pipeline visuals out of eager sidebar prefetches", () => {
@@ -76,6 +86,15 @@ describe("Recruiter-first navigation", () => {
     expect(sidebarSource).toContain('title: "Pipeline"');
     expect(sidebarSource).toContain("prefetch: false");
     expect(navSource).toContain("prefetch={item.prefetch}");
+  });
+
+  it("keeps Automatisering active for demoted operational pages", () => {
+    const sidebarSource = readFile("components", "app-sidebar.tsx");
+    const navSource = readFile("components", "nav-main.tsx");
+
+    expect(sidebarSource).toContain('matchPaths: ["/agents", "/autopilot", "/scraper"]');
+    expect(navSource).toContain("item.matchPaths?.some");
+    expect(navSource).toContain("pathname === matchPath");
   });
 });
 

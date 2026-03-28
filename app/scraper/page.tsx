@@ -21,6 +21,7 @@ import { ScrapeMetricsExplainer } from "@/components/scraper/scrape-metrics-expl
 import { KPICard } from "@/components/shared/kpi-card";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -642,10 +643,20 @@ export default function ScraperPage() {
     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
       <div className="mx-auto min-w-0 max-w-[1400px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
         <PageHeader
-          title="Scraper-dashboard"
+          title="Databronnen"
           description="Volg databronnen, overlap tussen platforms en operationele gezondheid vanuit één overzicht"
+          breadcrumbs={[
+            { label: "Overzicht", href: "/overzicht" },
+            { label: "Automatisering", href: "/automatisering" },
+            { label: "Databronnen", href: "/scraper" },
+          ]}
         >
-          <ScraperActions />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link href="/automatisering">Terug naar Automatisering</Link>
+            </Button>
+            <ScraperActions />
+          </div>
         </PageHeader>
 
         <Suspense fallback={<DashboardSkeleton />}>

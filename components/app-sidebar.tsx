@@ -1,19 +1,15 @@
 "use client";
 
 import {
-  Activity,
-  Bot,
   Briefcase,
   Calendar,
   GalleryVerticalEnd,
-  GitCompareArrows,
   Kanban,
   LayoutDashboard,
   MessageSquare,
   Search,
-  Sparkles,
   Users,
-  Zap,
+  Wrench,
 } from "lucide-react";
 import type * as React from "react";
 
@@ -80,39 +76,13 @@ const data = {
       ],
     },
     {
-      label: "Automatisering",
+      label: "Platform",
       items: [
         {
-          title: "Matching",
-          url: "/matching",
-          icon: GitCompareArrows,
-        },
-        {
-          title: "Agents",
-          url: "/agents",
-          icon: Bot,
-        },
-        {
-          title: "Autopilot",
-          url: "/autopilot",
-          icon: Sparkles,
-        },
-        {
-          title: "Databronnen",
-          url: "/scraper",
-          icon: Activity,
-        },
-      ],
-    },
-    {
-      label: "Hulpmiddelen",
-      items: [
-        {
-          title: "AI Assistent",
-          url: "/chat",
-          icon: Zap,
-          badge: { text: "⌘J", variant: "outline" },
-          tooltip: "AI Assistent openen (⌘/Ctrl+J)",
+          title: "Automatisering",
+          url: "/automatisering",
+          icon: Wrench,
+          matchPaths: ["/agents", "/autopilot", "/scraper"],
         },
       ],
     },
