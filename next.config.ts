@@ -52,5 +52,6 @@ export default withSentryConfig(nextConfig, {
     // Cleanup sourcemaps after upload to reduce deployment size (5-10MB saved)
     deleteSourcemapsAfterUpload: process.env.NODE_ENV === "production",
   },
-  disableLogger: process.env.NODE_ENV === "production",
+  // Debug logging removal: Turbopack doesn't support webpack.treeshake.removeDebugLogging,
+  // so we rely on tree-shaking to strip debug calls in production builds.
 });
