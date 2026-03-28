@@ -19,7 +19,12 @@ const postSchema = z.object({
 export const GET = withApiHandler(
   async () => {
     const data = await listPlatformCatalog();
-    return Response.json({ data, total: data.length });
+    return Response.json(
+      { data, total: data.length },
+      {
+        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij ophalen platforms",
@@ -39,7 +44,13 @@ export const POST = withApiHandler(
     }
 
     const data = await createPlatformCatalogEntry({ ...parsed.data, source: "ui" });
-    return Response.json({ data }, { status: 201 });
+    return Response.json(
+      { data },
+      {
+        status: 201,
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij aanmaken platform catalogus entry",

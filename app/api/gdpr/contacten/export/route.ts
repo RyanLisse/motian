@@ -18,7 +18,12 @@ export const GET = withApiHandler(
 
     const requestedBy = request.headers.get("x-requested-by") ?? "system";
     const data = await exportContactData(identifier, requestedBy);
-    return Response.json({ data });
+    return Response.json(
+      { data },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij exporteren contactgegevens",

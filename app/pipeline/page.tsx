@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import type { KanbanCardData } from "@/components/pipeline/kanban-card";
@@ -18,6 +19,7 @@ import { FilterTabs } from "@/components/shared/filter-tabs";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { and, db, desc, eq, isNull, sql } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
@@ -69,7 +71,25 @@ const stageIcons: Record<string, typeof Inbox> = {
 
 const KANBAN_STAGES = ["new", "screening", "interview", "offer", "hired"] as const;
 
-export default async function PipelinePage({ searchParams }: Props) {
+function PipelineSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+            <Skeleton key={`kpi-${i}`} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-[400px] rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+async function PipelineContent({ searchParams }: Props) {
   const params = await searchParams;
   const stageFilter = params.fase ?? "";
   const view = params.weergave === "lijst" ? "lijst" : "kanban";
@@ -515,5 +535,13 @@ export default async function PipelinePage({ searchParams }: Props) {
         <div className="h-8" />
       </div>
     </div>
+  );
+}
+
+export default function PipelinePage(props: Props) {
+  return (
+    <Suspense fallback={<PipelineSkeleton />}>
+      <PipelineContent {...props} />
+    </Suspense>
   );
 }

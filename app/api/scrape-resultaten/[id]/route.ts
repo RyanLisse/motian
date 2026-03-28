@@ -24,22 +24,27 @@ export const GET = withApiHandler(
       });
     }
 
-    return Response.json({
-      data: {
-        id: run.id,
-        configId: run.configId,
-        platform: run.platform,
-        runAt: run.runAt,
-        durationMs: run.durationMs,
-        jobsFound: run.jobsFound,
-        jobsNew: run.jobsNew,
-        duplicates: run.duplicates,
-        status: run.status,
-        errors: run.errors,
-        jobIds: run.jobIds,
-        jobs: jobsParam ? jobs : undefined,
+    return Response.json(
+      {
+        data: {
+          id: run.id,
+          configId: run.configId,
+          platform: run.platform,
+          runAt: run.runAt,
+          durationMs: run.durationMs,
+          jobsFound: run.jobsFound,
+          jobsNew: run.jobsNew,
+          duplicates: run.duplicates,
+          status: run.status,
+          errors: run.errors,
+          jobIds: run.jobIds,
+          jobs: jobsParam ? jobs : undefined,
+        },
       },
-    });
+      {
+        headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+      },
+    );
   },
   {
     logPrefix: "GET /api/scrape-resultaten/[id]",

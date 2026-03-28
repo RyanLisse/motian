@@ -9,17 +9,22 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ ru
   try {
     const run = await runs.retrieve(runId);
 
-    return Response.json({
-      id: run.id,
-      status: run.status,
-      isCompleted: run.isCompleted,
-      isExecuting: run.isExecuting,
-      isSuccess: run.isSuccess,
-      isFailed: run.isFailed,
-      metadata: run.metadata ?? null,
-      output: run.output ?? null,
-      error: run.error?.message ?? null,
-    });
+    return Response.json(
+      {
+        id: run.id,
+        status: run.status,
+        isCompleted: run.isCompleted,
+        isExecuting: run.isExecuting,
+        isSuccess: run.isSuccess,
+        isFailed: run.isFailed,
+        metadata: run.metadata ?? null,
+        output: run.output ?? null,
+        error: run.error?.message ?? null,
+      },
+      {
+        headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+      },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Onbekende fout";
     return Response.json({ error: message }, { status: 404 });

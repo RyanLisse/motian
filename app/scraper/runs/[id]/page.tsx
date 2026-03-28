@@ -8,10 +8,12 @@ import {
   XCircle,
 } from "lucide-react";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
 import { RunDetailJobs } from "@/components/scraper/run-detail-jobs";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { buildBreadcrumbs } from "@/src/lib/breadcrumbs";
 import { getJobsForRun, getRunById } from "@/src/services/scrape-results";
 
@@ -19,7 +21,22 @@ export const dynamic = "force-dynamic";
 
 type PageProps = { params: Promise<{ id: string }> };
 
-export default async function ScraperRunDetailPage({ params }: PageProps) {
+function ScraperRunDetailSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-8 w-64" />
+        </div>
+        <Skeleton className="h-48 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+async function ScraperRunDetailContent({ params }: PageProps) {
   const { id } = await params;
   const run = await getRunById(id);
   if (!run) notFound();
@@ -151,5 +168,13 @@ export default async function ScraperRunDetailPage({ params }: PageProps) {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ScraperRunDetailPage(props: PageProps) {
+  return (
+    <Suspense fallback={<ScraperRunDetailSkeleton />}>
+      <ScraperRunDetailContent {...props} />
+    </Suspense>
   );
 }

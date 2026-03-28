@@ -55,22 +55,27 @@ export const POST = withApiHandler(
       activate,
     });
 
-    return Response.json({
-      data: {
-        platform: analysis.slug,
-        displayName: analysis.displayName,
-        adapterKind: analysis.adapterKind,
-        validation: {
-          ok: result.validation.ok,
-          message: result.validation.message,
+    return Response.json(
+      {
+        data: {
+          platform: analysis.slug,
+          displayName: analysis.displayName,
+          adapterKind: analysis.adapterKind,
+          validation: {
+            ok: result.validation.ok,
+            message: result.validation.message,
+          },
+          testImport: {
+            status: result.testImport.status,
+            jobsFound: result.testImport.jobsFound,
+          },
+          activated: result.activated,
         },
-        testImport: {
-          status: result.testImport.status,
-          jobsFound: result.testImport.jobsFound,
-        },
-        activated: result.activated,
       },
-    });
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "Fout bij automatische platform setup",

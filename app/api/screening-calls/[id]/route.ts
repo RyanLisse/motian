@@ -11,7 +11,12 @@ export const GET = withApiHandler(
     if (!call) {
       return Response.json({ error: "Niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: call });
+    return Response.json(
+      { data: call },
+      {
+        headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+      },
+    );
   },
 );
 
@@ -42,7 +47,12 @@ export const PATCH = withApiHandler(
       if (!updated) {
         return Response.json({ error: "Niet gevonden" }, { status: 404 });
       }
-      return Response.json({ data: updated });
+      return Response.json(
+        { data: updated },
+        {
+          headers: { "Cache-Control": "private, no-cache, no-store" },
+        },
+      );
     } catch (error) {
       if (error instanceof z.ZodError) {
         return Response.json({ error: "Ongeldige invoer", details: error.errors }, { status: 400 });

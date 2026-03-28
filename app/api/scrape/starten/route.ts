@@ -45,10 +45,15 @@ export async function POST(request: NextRequest) {
     revalidatePath("/scraper");
     revalidatePath("/overzicht");
 
-    return Response.json({
-      message: `Scrape gestart voor ${summary.totalPlatforms} platform(en)`,
-      platforms: summary.platforms,
-    });
+    return Response.json(
+      {
+        message: `Scrape gestart voor ${summary.totalPlatforms} platform(en)`,
+        platforms: summary.platforms,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (_err) {
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
   }

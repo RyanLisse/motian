@@ -12,7 +12,12 @@ export const GET = withApiHandler(
     if (!interview) {
       return Response.json({ error: "Interview niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: interview });
+    return Response.json(
+      { data: interview },
+      {
+        headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+      },
+    );
   },
   { logPrefix: "GET /api/interviews/[id] error" },
 );
@@ -40,7 +45,12 @@ export const PATCH = withApiHandler(
       return Response.json({ error: "Interview niet gevonden" }, { status: 404 });
     }
     revalidatePath("/interviews");
-    return Response.json({ data: interview });
+    return Response.json(
+      { data: interview },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "PATCH /api/interviews/[id] error" },
 );
@@ -53,7 +63,12 @@ export const DELETE = withApiHandler(
       return Response.json({ error: "Interview niet gevonden" }, { status: 404 });
     }
     revalidatePath("/interviews");
-    return Response.json({ data: { id } });
+    return Response.json(
+      { data: { id } },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "DELETE /api/interviews/[id] error" },
 );

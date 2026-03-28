@@ -12,6 +12,7 @@ import {
 import nextDynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { CandidateNotes } from "@/components/candidate-notes";
 import { EmploymentCard } from "@/components/candidate-profile/employment-card";
 import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
@@ -35,6 +36,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { and, db, desc, eq, isNull } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import {
@@ -196,7 +198,29 @@ function getLanguageSkills(languageSkills: unknown): Array<{ language: string; l
     .filter((l) => l.language);
 }
 
-export default async function KandidaatDetailPage({ params }: Props) {
+function KandidaatDetailSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <Skeleton className="h-5 w-64" />
+        <div className="flex items-start gap-4">
+          <Skeleton className="h-16 w-16 rounded-full" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Skeleton className="h-64 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-64 rounded-xl" />
+        </div>
+        <Skeleton className="h-48 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+async function KandidaatDetailContent({ params }: Props) {
   const { id } = await params;
 
   const candidateSelect = {
@@ -1028,5 +1052,13 @@ export default async function KandidaatDetailPage({ params }: Props) {
         </div>
       </div>
     </CvDropZone>
+  );
+}
+
+export default function KandidaatDetailPage(props: Props) {
+  return (
+    <Suspense fallback={<KandidaatDetailSkeleton />}>
+      <KandidaatDetailContent {...props} />
+    </Suspense>
   );
 }

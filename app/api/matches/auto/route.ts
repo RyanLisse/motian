@@ -39,13 +39,18 @@ export const POST = withApiHandler(
     if (candidateId) revalidatePath(`/kandidaten/${candidateId}`);
     if (jobId) revalidatePath(`/vacatures/${jobId}`);
 
-    return Response.json({
-      message:
-        matches.length > 0
-          ? `${matches.length} matches gevonden`
-          : "Geen geschikte matches gevonden",
-      matches,
-    });
+    return Response.json(
+      {
+        message:
+          matches.length > 0
+            ? `${matches.length} matches gevonden`
+            : "Geen geschikte matches gevonden",
+        matches,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   {
     logPrefix: "POST /api/matches/auto error",

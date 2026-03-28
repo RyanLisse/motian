@@ -16,10 +16,15 @@ export async function GET() {
     getReviewQueueSummary(),
   ]);
 
-  return NextResponse.json({
-    catalog,
-    mapping: mappingStats,
-    reviewQueue,
-    timestamp: new Date().toISOString(),
-  });
+  return NextResponse.json(
+    {
+      catalog,
+      mapping: mappingStats,
+      reviewQueue,
+      timestamp: new Date().toISOString(),
+    },
+    {
+      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+    },
+  );
 }

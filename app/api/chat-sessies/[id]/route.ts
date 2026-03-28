@@ -35,7 +35,9 @@ export const GET = withApiHandler(
       return Response.json({ error: "Sessie niet gevonden" }, { status: 404 });
     }
 
-    return Response.json(session);
+    return Response.json(session, {
+      headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+    });
   },
   { logPrefix: "chat-sessies/[id] GET", rateLimit: { interval: 60_000, limit: 30 } },
 );
@@ -47,7 +49,12 @@ export const DELETE = withApiHandler(
     if (!deleted) {
       return Response.json({ error: "Sessie niet gevonden" }, { status: 404 });
     }
-    return Response.json({ success: true });
+    return Response.json(
+      { success: true },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "chat-sessies/[id] DELETE", rateLimit: { interval: 60_000, limit: 10 } },
 );

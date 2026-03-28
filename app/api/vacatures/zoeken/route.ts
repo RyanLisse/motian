@@ -13,11 +13,16 @@ export async function GET(req: NextRequest) {
 
   const { result, page, limit } = out.data;
 
-  return NextResponse.json({
-    jobs: result.data,
-    total: result.total,
-    page,
-    perPage: limit,
-    totalPages: Math.ceil(result.total / limit),
-  });
+  return NextResponse.json(
+    {
+      jobs: result.data,
+      total: result.total,
+      page,
+      perPage: limit,
+      totalPages: Math.ceil(result.total / limit),
+    },
+    {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    },
+  );
 }

@@ -65,10 +65,15 @@ export const POST = withApiHandler(
     for (const candidateId of linkedCandidateIds) {
       revalidatePath(`/kandidaten/${candidateId}`);
     }
-    return Response.json({
-      created: result.created.length,
-      alreadyLinked: result.alreadyLinked,
-    });
+    return Response.json(
+      {
+        created: result.created.length,
+        alreadyLinked: result.alreadyLinked,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "POST /api/vacatures/[id]/koppel error" },
 );

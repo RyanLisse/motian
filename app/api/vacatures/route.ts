@@ -16,5 +16,7 @@ export const GET = withApiHandler(async (request: Request) => {
 
   const { result, page, limit, offset } = out.data;
   const data = await withJobsCanonicalSkills(result.data);
-  return Response.json(paginatedResponse(data, result.total, { page, limit, offset }));
+  return Response.json(paginatedResponse(data, result.total, { page, limit, offset }), {
+    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+  });
 });

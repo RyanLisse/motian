@@ -63,6 +63,7 @@ export const GET = withApiHandler(async (request: Request) => {
 
     return Response.json(
       paginatedResponse(dataWithCanonicalSkills, total, { page, limit, offset }),
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } },
     );
   }
 
@@ -73,7 +74,9 @@ export const GET = withApiHandler(async (request: Request) => {
   const total = useSearch ? await countCandidates({ query: q, location }) : await countCandidates();
   const dataWithCanonicalSkills = await withCandidatesCanonicalSkills(data);
 
-  return Response.json(paginatedResponse(dataWithCanonicalSkills, total, { page, limit, offset }));
+  return Response.json(paginatedResponse(dataWithCanonicalSkills, total, { page, limit, offset }), {
+    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+  });
 });
 
 export const POST = withApiHandler(async (request: Request) => {
@@ -88,5 +91,11 @@ export const POST = withApiHandler(async (request: Request) => {
   const candidate = await createCandidate(parsed.data);
   revalidatePath("/kandidaten");
   revalidatePath("/overzicht");
-  return Response.json({ data: await withCandidateCanonicalSkills(candidate) }, { status: 201 });
+  return Response.json(
+    { data: await withCandidateCanonicalSkills(candidate) },
+    {
+      status: 201,
+      headers: { "Cache-Control": "private, no-cache, no-store" },
+    },
+  );
 });

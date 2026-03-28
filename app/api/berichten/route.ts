@@ -22,7 +22,9 @@ export const GET = withApiHandler(async (req: Request) => {
     offset,
   });
   const total = await countMessages({ applicationId, direction, channel });
-  return Response.json(paginatedResponse(data, total, { page, limit, offset }));
+  return Response.json(paginatedResponse(data, total, { page, limit, offset }), {
+    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+  });
 });
 
 const CreateSchema = z.object({
@@ -46,5 +48,11 @@ export const POST = withApiHandler(async (req: Request) => {
   }
   revalidatePath("/messages");
   publish("message:created", { messageId: message.id, direction: result.data.direction });
-  return Response.json({ data: message }, { status: 201 });
+  return Response.json(
+    { data: message },
+    {
+      status: 201,
+      headers: { "Cache-Control": "private, no-cache, no-store" },
+    },
+  );
 });

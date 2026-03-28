@@ -53,14 +53,19 @@ export async function POST(request: NextRequest) {
     // Check for duplicates
     const duplicates = await findDuplicateCandidate(parsed);
 
-    return Response.json({
-      parsed,
-      fileUrl,
-      duplicates: {
-        exact: duplicates.exact,
-        similar: duplicates.similar,
+    return Response.json(
+      {
+        parsed,
+        fileUrl,
+        duplicates: {
+          exact: duplicates.exact,
+          similar: duplicates.similar,
+        },
       },
-    });
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Onbekende fout";
     console.error("[CV Upload] Error:", message, err);

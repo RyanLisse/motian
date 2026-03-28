@@ -17,11 +17,16 @@ export const POST = withApiHandler(
     }
 
     // TODO: inject envelope into chat session message stream
-    return Response.json({
-      ok: true,
-      sessionId: id,
-      component: parsed.data.component,
-    });
+    return Response.json(
+      {
+        ok: true,
+        sessionId: id,
+        component: parsed.data.component,
+      },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "chat-sessies/[id]/a2ui POST", rateLimit: { interval: 60_000, limit: 30 } },
 );

@@ -234,35 +234,52 @@ export async function scrubContactData(
       ),
     );
 
-  // Build update list, then execute in parallel instead of sequential loop
-  const scrubOps: { id: string; updates: Record<string, null> }[] = [];
+  // Group job IDs by which fields need to be nulled, then batch update per group
+  const nullBothIds: string[] = [];
+  const nullAgentOnlyIds: string[] = [];
+  const nullRecruiterOnlyIds: string[] = [];
+
   for (const job of matchingJobs) {
-    const updates: Record<string, null> = {};
     const agent = job.agentContact as { email?: string; name?: string } | null;
     const recruiter = job.recruiterContact as { email?: string; name?: string } | null;
 
-    if (
+    const matchAgent =
       agent?.email?.toLowerCase() === identifier.toLowerCase() ||
-      agent?.name?.toLowerCase() === identifier.toLowerCase()
-    ) {
-      updates.agentContact = null;
-    }
-    if (
+      agent?.name?.toLowerCase() === identifier.toLowerCase();
+    const matchRecruiter =
       recruiter?.email?.toLowerCase() === identifier.toLowerCase() ||
-      recruiter?.name?.toLowerCase() === identifier.toLowerCase()
-    ) {
-      updates.recruiterContact = null;
-    }
+      recruiter?.name?.toLowerCase() === identifier.toLowerCase();
 
-    if (Object.keys(updates).length > 0) {
-      scrubOps.push({ id: job.id, updates });
+    if (matchAgent && matchRecruiter) {
+      nullBothIds.push(job.id);
+    } else if (matchAgent) {
+      nullAgentOnlyIds.push(job.id);
+    } else if (matchRecruiter) {
+      nullRecruiterOnlyIds.push(job.id);
     }
   }
 
-  await Promise.all(
-    scrubOps.map((op) => db.update(jobs).set(op.updates).where(eq(jobs.id, op.id))),
-  );
-  const scrubbed = scrubOps.length;
+  const batchOps: Promise<unknown>[] = [];
+  if (nullBothIds.length > 0) {
+    batchOps.push(
+      db
+        .update(jobs)
+        .set({ agentContact: null, recruiterContact: null })
+        .where(inArray(jobs.id, nullBothIds)),
+    );
+  }
+  if (nullAgentOnlyIds.length > 0) {
+    batchOps.push(
+      db.update(jobs).set({ agentContact: null }).where(inArray(jobs.id, nullAgentOnlyIds)),
+    );
+  }
+  if (nullRecruiterOnlyIds.length > 0) {
+    batchOps.push(
+      db.update(jobs).set({ recruiterContact: null }).where(inArray(jobs.id, nullRecruiterOnlyIds)),
+    );
+  }
+  await Promise.all(batchOps);
+  const scrubbed = nullBothIds.length + nullAgentOnlyIds.length + nullRecruiterOnlyIds.length;
 
   await logGdprAction("scrub_contact", "contact", identifier, requestedBy, { scrubbed });
   return { scrubbed };

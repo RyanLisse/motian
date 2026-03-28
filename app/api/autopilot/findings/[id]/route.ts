@@ -30,7 +30,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Bevinding niet gevonden" }, { status: 404 });
     }
 
-    return NextResponse.json({ finding: updated });
+    return NextResponse.json(
+      { finding: updated },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (_err) {
     return NextResponse.json({ error: "Interne serverfout" }, { status: 500 });
   }

@@ -17,7 +17,13 @@ export const POST = withApiHandler(async (request: Request) => {
     const body = await request.json();
     const input = createSchema.parse(body);
     const call = await createScreeningCall(input);
-    return Response.json({ data: call }, { status: 201 });
+    return Response.json(
+      { data: call },
+      {
+        status: 201,
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return Response.json({ error: "Ongeldige invoer", details: error.errors }, { status: 400 });
@@ -33,5 +39,10 @@ export const GET = withApiHandler(async (request: Request) => {
     return Response.json({ error: "candidateId is required" }, { status: 400 });
   }
   const calls = await listScreeningCalls(candidateId);
-  return Response.json({ data: calls });
+  return Response.json(
+    { data: calls },
+    {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    },
+  );
 });

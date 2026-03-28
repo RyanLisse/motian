@@ -29,7 +29,12 @@ export const GET = withApiHandler(
     if (!candidate) {
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
-    return Response.json({ data: await withCandidateCanonicalSkills(candidate) });
+    return Response.json(
+      { data: await withCandidateCanonicalSkills(candidate) },
+      {
+        headers: { "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30" },
+      },
+    );
   },
   { logPrefix: "GET /api/kandidaten/[id] error" },
 );
@@ -50,7 +55,12 @@ export const PATCH = withApiHandler(
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
     revalidatePath("/kandidaten");
-    return Response.json({ data: await withCandidateCanonicalSkills(candidate) });
+    return Response.json(
+      { data: await withCandidateCanonicalSkills(candidate) },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "PATCH /api/kandidaten/[id] error" },
 );
@@ -63,7 +73,12 @@ export const DELETE = withApiHandler(
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
     revalidatePath("/kandidaten");
-    return Response.json({ data: { id, deleted: true } });
+    return Response.json(
+      { data: { id, deleted: true } },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   },
   { logPrefix: "DELETE /api/kandidaten/[id] error" },
 );

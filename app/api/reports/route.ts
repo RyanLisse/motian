@@ -99,7 +99,12 @@ export async function POST(request: NextRequest) {
       reportId = result.id;
     }
 
-    return Response.json({ markdown, url, reportId });
+    return Response.json(
+      { markdown, url, reportId },
+      {
+        headers: { "Cache-Control": "private, no-cache, no-store" },
+      },
+    );
   } catch (_err) {
     console.error("[Report API POST]", _err);
     return Response.json({ error: "Interne serverfout" }, { status: 500 });
@@ -181,7 +186,10 @@ export async function GET(request: NextRequest) {
     });
 
     return new Response(markdown, {
-      headers: { "Content-Type": "text/markdown; charset=utf-8" },
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "private, s-maxage=15, stale-while-revalidate=30",
+      },
     });
   } catch (_err) {
     console.error("[Report API GET]", _err);

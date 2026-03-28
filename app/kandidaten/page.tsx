@@ -1,5 +1,6 @@
 import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { AddCandidateWizard } from "@/components/add-candidate-wizard";
 import { DraggableCandidate } from "@/components/draggable-candidate";
 import { PageHeader } from "@/components/page-header";
@@ -7,6 +8,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { and, db, desc, eq, isNull, like, sql } from "@/src/db";
 import { candidateSkills, candidates } from "@/src/db/schema";
 import { escapeLike } from "@/src/lib/helpers";
@@ -37,7 +39,30 @@ const availabilityLabels: Record<string, string> = {
   "3_maanden": "Binnen 3 maanden",
 };
 
-export default async function KandidatenPage({ searchParams }: Props) {
+function KandidatenSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+            <Skeleton key={`kpi-${i}`} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-9 w-full rounded-lg" />
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+            <Skeleton key={`card-${i}`} className="h-40 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function KandidatenContent({ searchParams }: Props) {
   const params = await searchParams;
   const query = params.q ?? "";
   const availability = params.beschikbaarheid ?? "";
@@ -359,5 +384,13 @@ export default async function KandidatenPage({ searchParams }: Props) {
         <div className="h-8" />
       </div>
     </div>
+  );
+}
+
+export default function KandidatenPage(props: Props) {
+  return (
+    <Suspense fallback={<KandidatenSkeleton />}>
+      <KandidatenContent {...props} />
+    </Suspense>
   );
 }
