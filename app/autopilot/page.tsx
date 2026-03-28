@@ -1,7 +1,9 @@
 import { Activity, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -68,15 +70,21 @@ async function AutopilotContent() {
   const { runs } = await getAutopilotDashboardData();
 
   return (
-    <div className="flex-1 flex flex-col bg-background p-6">
-      <div className="max-w-7xl w-full mx-auto space-y-6">
-        {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-foreground">Autopilot Runs</h1>
-          <p className="text-sm text-muted-foreground">
-            Nachtelijke audit resultaten van product surfaces
-          </p>
-        </div>
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-6 lg:px-8">
+        <PageHeader
+          title="Autopilot"
+          description="Nachtelijke audit resultaten van product surfaces"
+          breadcrumbs={[
+            { label: "Overzicht", href: "/overzicht" },
+            { label: "Automatisering", href: "/automatisering" },
+            { label: "Autopilot", href: "/autopilot" },
+          ]}
+        >
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link href="/automatisering">Terug naar Automatisering</Link>
+          </Button>
+        </PageHeader>
 
         {/* Run History Table */}
         {runs.length === 0 ? (

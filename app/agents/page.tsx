@@ -1,9 +1,11 @@
 import { Activity, AlertTriangle, Bot, CheckCircle2, Clock, TrendingUp, Zap } from "lucide-react";
+import Link from "next/link";
 import { Suspense } from "react";
 import { AgentActivityFeed } from "@/components/agents/activity-feed";
 import { PipelineVisualization } from "@/components/agents/pipeline-visualization";
 import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/shared/kpi-card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAgentDashboardData } from "./data";
 
@@ -119,9 +121,18 @@ export default function AgentsPage() {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <PageHeader
-          title="Agent Dashboard"
+          title="Agents"
           description="Overzicht van alle autonome agents en hun activiteit"
-        />
+          breadcrumbs={[
+            { label: "Overzicht", href: "/overzicht" },
+            { label: "Automatisering", href: "/automatisering" },
+            { label: "Agents", href: "/agents" },
+          ]}
+        >
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link href="/automatisering">Terug naar Automatisering</Link>
+          </Button>
+        </PageHeader>
 
         <Suspense fallback={<AgentDashboardSkeleton />}>
           <AgentDashboardContent />

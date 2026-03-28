@@ -1,602 +1,429 @@
 ---
-title: "feat: Unified UI/UX Flow"
+title: "feat: Simplify recruiter information architecture"
 type: feat
 date: 2026-03-28
+status: draft
 ---
 
-# Unified UI/UX Flow — Motian Recruitment Platform
+# Simplify Recruiter Information Architecture
 
 ## Overview
 
-Consolidate the Motian recruitment platform's UI/UX into a cohesive, recruiter-optimized experience. This plan addresses 9 identified UX problems: dead sidebar code, missing navigation items, inconsistent page headers, no breadcrumbs, no command palette, confusing chat entry points, and poor navigation grouping. The result is a unified flow where every page is discoverable, navigation is logically grouped, and power users have keyboard shortcuts for everything.
+Reduce the visible product surface area so Motian feels like a focused recruiter workspace instead of a collection of loosely related tools. This milestone keeps all existing capabilities, but collapses redundant top-level destinations into a clearer primary navigation model and adds a single automation hub for operational tooling.
 
-## Problem Statement
+## Problem Frame
 
-The platform has grown organically with 19 pages, but the navigation only exposes 7. Four pages (Messages, Agents, Matching, Autopilot) are hidden — users can't reach them without knowing the URL. Page headers use inconsistent sizing (text-lg/xl/2xl). Deep routes have no breadcrumbs. A `cmdk` command palette exists as a UI primitive but isn't wired up. Legacy dead code (`sidebar.tsx`) adds confusion for developers.
+The current app exposes too many peer destinations in the main sidebar, even when some of them are:
 
-**Impact:** Recruiters miss features they're paying for. Developers waste time navigating competing sidebar implementations. The lack of breadcrumbs creates disorientation on detail pages.
+- not true primary workflows for recruiters
+- already accessible from contextual flows
+- operational/admin surfaces rather than day-to-day workspaces
+- redundant with global overlays such as chat and command palette
 
-## Proposed Solution
+Today, the primary sidebar in [components/app-sidebar.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/app-sidebar.tsx) lists:
 
-A four-phase approach that progressively improves the UX without breaking existing functionality:
+- Overzicht
+- Vacatures
+- Kandidaten
+- Pipeline
+- Interviews
+- Berichten
+- Matching
+- Agents
+- Autopilot
+- Databronnen
+- AI Assistent
 
-1. **Phase 1 — Navigation Cleanup**: Remove dead code, restructure sidebar with grouped nav items, add all missing pages
-2. **Phase 2 — Unified Page Headers + Breadcrumbs**: Create a `PageShell` component that provides consistent headers and breadcrumbs for every page
-3. **Phase 3 — Command Palette (⌘K)**: Wire the existing `cmdk` primitive into a global command palette with page navigation, entity search, and AI actions
-4. **Phase 4 — Polish & Mobile**: Responsive refinements, keyboard navigation testing, chat widget clarity
-
-## Technical Approach
-
-### Architecture
-
-All changes are within the existing Next.js 16 App Router + shadcn/ui stack. No new dependencies required — `cmdk` is already installed.
-
-**Key constraint from learnings:** Any component that syncs state with URL params MUST use the `selfPushRef` + `startTransition` pattern (documented fix from commit 88101ad1) to prevent input resets during typing.
-
-**Performance constraint:** Use `React.cache()` for any server-side data used in navigation metadata. Use dynamic imports for the command palette to keep initial bundle size flat.
-
----
-
-### Implementation Phases
-
-#### Phase 1: Navigation Cleanup & Restructuring
-
-**Goal:** Every page is reachable from the sidebar. Dead code is removed. Navigation is grouped logically.
-
-##### 1.1 Remove legacy sidebar
-
-**File:** `components/sidebar.tsx` — DELETE entirely
-
-This file defines a legacy 4-item nav (Vacatures, Scraper, Kandidaten [disabled], Agents) with its own mobile Sheet. It's never imported by the active layout chain (`SidebarLayout` → `AppSidebar`). Removing it eliminates developer confusion.
-
-**Verification:** Grep for imports of `components/sidebar.tsx` or the `Sidebar` export name. Confirm zero active imports outside Storybook.
-
-##### 1.2 Restructure sidebar navigation groups
+That breadth creates three UX issues:
 
-**File:** `components/app-sidebar.tsx` — MODIFY
+1. Recruiters have to decide between too many destinations before they can act.
+2. Internal/operational tools compete visually with core recruiting work.
+3. The command palette and global AI widget duplicate navigation responsibilities instead of reducing them.
 
-Replace the flat `navMain` array with grouped navigation:
+## Scope Boundaries
 
-```typescript
-const data = {
-  teams: [{ name: "Motian", logo: GalleryVerticalEnd }],
-  navGroups: [
-    {
-      label: "Werving",
-      items: [
-        { title: "Overzicht", url: "/overzicht", icon: LayoutDashboard, isActive: true },
-        { title: "Vacatures", url: "/vacatures", icon: Briefcase },
-        { title: "Kandidaten", url: "/kandidaten", icon: Users },
-        { title: "Pipeline", url: "/pipeline", icon: Kanban, prefetch: false },
-        { title: "Interviews", url: "/interviews", icon: Calendar },
-        { title: "Berichten", url: "/messages", icon: MessageSquare },
-      ],
-    },
-    {
-      label: "Automatisering",
-      items: [
-        { title: "Matching", url: "/matching", icon: GitCompareArrows },
-        { title: "Agents", url: "/agents", icon: Bot },
-        { title: "Autopilot", url: "/autopilot", icon: Sparkles },
-        { title: "Databronnen", url: "/scraper", icon: Activity },
-      ],
-    },
-    {
-      label: "Hulpmiddelen",
-      items: [
-        {
-          title: "AI Assistent",
-          url: "/chat",
-          icon: Zap,
-          badge: { text: "⌘J", variant: "outline" },
-          tooltip: "AI Assistent openen (⌘/Ctrl+J)",
-        },
-      ],
-    },
-  ],
-};
-```
-
-##### 1.3 Update NavMain for grouped rendering
-
-**File:** `components/nav-main.tsx` — MODIFY
-
-Change the component to accept `groups` instead of flat `items`. Each group gets its own `SidebarGroup` + `SidebarGroupLabel`:
-
-```typescript
-export function NavMain({
-  groups,
-}: {
-  groups: {
-    label: string;
-    items: NavItem[];
-  }[];
-}) {
-  const pathname = usePathname();
-
-  return (
-    <>
-      {groups.map((group) => (
-        <SidebarGroup key={group.label}>
-          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-          <SidebarMenu>
-            {group.items.map((item) => {
-              const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
-              // ... existing render logic per item
-            })}
-          </SidebarMenu>
-        </SidebarGroup>
-      ))}
-    </>
-  );
-}
-```
-
-##### 1.4 Files changed in Phase 1
-
-| File | Action | Risk |
-|------|--------|------|
-| `components/sidebar.tsx` | DELETE | Low — unused |
-| `components/app-sidebar.tsx` | MODIFY | Medium — nav structure |
-| `components/nav-main.tsx` | MODIFY | Medium — rendering logic |
-| `stories/sidebar.stories.tsx` (if exists) | DELETE/UPDATE | Low |
-
----
-
-#### Phase 2: Unified Page Headers + Breadcrumbs
-
-**Goal:** Every page has a consistent header with breadcrumbs. Detail pages show navigation context.
-
-##### 2.1 Create breadcrumb utility
-
-**File:** `src/lib/breadcrumbs.ts` — CREATE
-
-A utility that generates breadcrumb segments from the current pathname:
-
-```typescript
-export interface BreadcrumbSegment {
-  label: string;
-  href: string;
-}
-
-const ROUTE_LABELS: Record<string, string> = {
-  overzicht: "Overzicht",
-  vacatures: "Vacatures",
-  kandidaten: "Kandidaten",
-  pipeline: "Pipeline",
-  interviews: "Interviews",
-  messages: "Berichten",
-  matching: "Matching",
-  agents: "Agents",
-  autopilot: "Autopilot",
-  scraper: "Databronnen",
-  chat: "AI Assistent",
-  settings: "Instellingen",
-  runs: "Runs",
-};
-
-export function buildBreadcrumbs(
-  pathname: string,
-  dynamicLabels?: Record<string, string>,
-): BreadcrumbSegment[] {
-  const segments = pathname.split("/").filter(Boolean);
-  const crumbs: BreadcrumbSegment[] = [];
-
-  let currentPath = "";
-  for (const segment of segments) {
-    currentPath += `/${segment}`;
-    const label =
-      dynamicLabels?.[segment] ?? ROUTE_LABELS[segment] ?? segment;
-    crumbs.push({ label, href: currentPath });
-  }
-
-  return crumbs;
-}
-```
-
-##### 2.2 Extend PageHeader into PageShell
-
-**File:** `components/page-header.tsx` — MODIFY (extend, don't replace)
-
-Add optional breadcrumb support to the existing `PageHeader`:
-
-```typescript
-import { buildBreadcrumbs, type BreadcrumbSegment } from "@/src/lib/breadcrumbs";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-
-interface PageHeaderProps {
-  title: string;
-  description?: string;
-  breadcrumbs?: BreadcrumbSegment[];
-  children?: React.ReactNode;
-}
-
-export function PageHeader({
-  title,
-  description,
-  breadcrumbs,
-  children,
-}: PageHeaderProps) {
-  return (
-    <div className="space-y-2">
-      {breadcrumbs && breadcrumbs.length > 1 && (
-        <Breadcrumb>
-          <BreadcrumbList>
-            {breadcrumbs.map((crumb, i) => (
-              <Fragment key={crumb.href}>
-                {i > 0 && <BreadcrumbSeparator />}
-                <BreadcrumbItem>
-                  {i === breadcrumbs.length - 1 ? (
-                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink href={crumb.href}>
-                      {crumb.label}
-                    </BreadcrumbLink>
-                  )}
-                </BreadcrumbItem>
-              </Fragment>
-            ))}
-          </BreadcrumbList>
-        </Breadcrumb>
-      )}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{title}</h1>
-          {description && (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          )}
-        </div>
-        {children && <div className="flex flex-wrap gap-2">{children}</div>}
-      </div>
-    </div>
-  );
-}
-```
-
-**Key decision:** Standardize ALL page headings to `text-xl font-bold` (the most common pattern, used by 7/19 pages). The outlier `text-2xl` pages (overzicht, kandidaten detail) should be harmonized.
-
-##### 2.3 Verify breadcrumb UI primitives exist
-
-**Check:** `components/ui/breadcrumb.tsx` — shadcn/ui breadcrumb component. If not installed, add via:
-```bash
-pnpm dlx shadcn@latest add breadcrumb
-```
-
-##### 2.4 Migrate all pages to PageHeader
-
-Replace inline headers across all pages. Priority order (by traffic):
-
-| Page | Current Pattern | Action |
-|------|----------------|--------|
-| `app/overzicht/page.tsx:505-511` | Inline `text-2xl` + shortcut pills | Use `PageHeader` with children slot |
-| `app/vacatures/[id]/page.tsx:658-662` | Inline `text-lg font-bold sm:text-xl` | Use `PageHeader` + breadcrumbs |
-| `app/kandidaten/page.tsx:164-170` | Inline `text-lg sm:text-xl` | Use `PageHeader` |
-| `app/kandidaten/[id]/page.tsx:400-405` | Inline `text-2xl` | Use `PageHeader` + breadcrumbs with candidate name |
-| `app/pipeline/page.tsx:297-307` | Inline `text-xl` + view toggle | Use `PageHeader` with children |
-| `app/interviews/page.tsx:137-139` | Inline `text-xl` | Use `PageHeader` |
-| `app/messages/page.tsx:121-123` | Inline `text-xl` | Use `PageHeader` |
-| `app/agents/page.tsx:120-123` | Inline `text-xl` | Use `PageHeader` |
-| `app/scraper/page.tsx:658-664` | Already uses `PageHeader` | Add breadcrumbs prop |
-| `app/scraper/runs/[id]/page.tsx` | Already uses `PageHeader` | Add breadcrumbs with run ID |
-| `app/settings/page.tsx:12-14` | Inline | Use `PageHeader` |
-| `app/matching/page.tsx` | Unknown | Audit and migrate |
-| `app/autopilot/page.tsx` | Unknown | Audit and migrate |
-
-##### 2.5 Files changed in Phase 2
-
-| File | Action | Risk |
-|------|--------|------|
-| `src/lib/breadcrumbs.ts` | CREATE | Low — pure utility |
-| `components/page-header.tsx` | MODIFY | Medium — extend props |
-| `components/ui/breadcrumb.tsx` | CREATE (if missing) | Low — shadcn primitive |
-| 13 page files | MODIFY | Low — header replacement |
-
----
-
-#### Phase 3: Command Palette (⌘K)
-
-**Goal:** A global command palette that lets power users navigate pages, search entities, and trigger AI actions — all from the keyboard.
-
-##### 3.1 Create command palette component
-
-**File:** `components/command-palette.tsx` — CREATE
-
-Uses the existing `cmdk` primitives from `components/ui/command.tsx`:
-
-```typescript
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command";
-
-// Static page routes for instant navigation
-const PAGES = [
-  { label: "Overzicht", href: "/overzicht", group: "Navigatie", keywords: ["dashboard", "home"] },
-  { label: "Vacatures", href: "/vacatures", group: "Navigatie", keywords: ["jobs", "opdrachten"] },
-  { label: "Kandidaten", href: "/kandidaten", group: "Navigatie", keywords: ["talent", "cv"] },
-  { label: "Pipeline", href: "/pipeline", group: "Navigatie", keywords: ["kanban", "status"] },
-  { label: "Interviews", href: "/interviews", group: "Navigatie", keywords: ["gesprekken", "agenda"] },
-  { label: "Berichten", href: "/messages", group: "Navigatie", keywords: ["communicatie", "email"] },
-  { label: "Matching", href: "/matching", group: "Automatisering" },
-  { label: "Agents", href: "/agents", group: "Automatisering", keywords: ["bot", "automatisch"] },
-  { label: "Autopilot", href: "/autopilot", group: "Automatisering" },
-  { label: "Databronnen", href: "/scraper", group: "Automatisering", keywords: ["scraper", "bron"] },
-  { label: "AI Assistent", href: "/chat", group: "Hulpmiddelen", keywords: ["chat", "ai", "vraag"] },
-  { label: "Instellingen", href: "/settings", group: "Hulpmiddelen" },
-];
-
-export function CommandPalette() {
-  const [open, setOpen] = useState(false);
-  const router = useRouter();
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  function navigate(href: string) {
-    setOpen(false);
-    router.push(href);
-  }
-
-  const grouped = PAGES.reduce(
-    (acc, page) => {
-      (acc[page.group] ??= []).push(page);
-      return acc;
-    },
-    {} as Record<string, typeof PAGES>,
-  );
-
-  return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Zoek pagina's, kandidaten, vacatures..." />
-      <CommandList>
-        <CommandEmpty>Geen resultaten gevonden.</CommandEmpty>
-        {Object.entries(grouped).map(([group, pages]) => (
-          <CommandGroup key={group} heading={group}>
-            {pages.map((page) => (
-              <CommandItem
-                key={page.href}
-                value={[page.label, ...(page.keywords ?? [])].join(" ")}
-                onSelect={() => navigate(page.href)}
-              >
-                {page.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        ))}
-        <CommandSeparator />
-        <CommandGroup heading="Acties">
-          <CommandItem
-            onSelect={() => {
-              setOpen(false);
-              document.dispatchEvent(new CustomEvent("motian-chat-open"));
-            }}
-          >
-            AI Assistent openen (⌘J)
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
-  );
-}
-```
-
-##### 3.2 Wire into root layout
-
-**File:** `app/layout.tsx` — MODIFY
-
-Add `CommandPalette` as a sibling to `ChatWidget` (both are global overlays):
-
-```typescript
-import { CommandPalette } from "@/components/command-palette";
-
-// Inside body:
-<Providers>
-  <ChatContextProvider>
-    <SidebarLayout>{children}</SidebarLayout>
-    <ChatWidget currentOrigin={currentOrigin} />
-    <CommandPalette />
-  </ChatContextProvider>
-</Providers>
-```
-
-**Performance note:** Use `dynamic(() => import("@/components/command-palette"), { ssr: false })` to lazy-load the palette since it's only needed on keyboard shortcut activation.
-
-##### 3.3 Add ⌘K hint to sidebar
-
-**File:** `components/app-sidebar.tsx` — MODIFY
-
-Add a keyboard hint in the sidebar header or footer:
-
-```typescript
-<SidebarFooter>
-  <button
-    onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
-    className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-  >
-    <Search className="h-3.5 w-3.5" />
-    <span>Zoeken</span>
-    <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono">
-      ⌘K
-    </kbd>
-  </button>
-  <NavUser />
-</SidebarFooter>
-```
-
-##### 3.4 Files changed in Phase 3
-
-| File | Action | Risk |
-|------|--------|------|
-| `components/command-palette.tsx` | CREATE | Low — isolated component |
-| `app/layout.tsx` | MODIFY | Low — add one component |
-| `components/app-sidebar.tsx` | MODIFY | Low — add search hint |
-
----
-
-#### Phase 4: Polish & Mobile
-
-**Goal:** Ensure mobile responsiveness, consistent keyboard navigation, and clear chat entry points.
-
-##### 4.1 Chat widget clarity
-
-**File:** `components/chat/chat-widget.tsx` — MODIFY
-
-The widget currently hides on `/chat`, `/vacatures`, and `/scraper`. This is correct for `/chat` (full page replaces it) but confusing for other pages. Change behavior:
-
-- Always show the FAB except on `/chat` (where the full page is active)
-- Remove the `/vacatures` and `/scraper` hide rules — recruiters should always have AI access
-
-##### 4.2 Mobile sidebar improvements
-
-**File:** `components/sidebar-layout.tsx` — MODIFY
-
-The mobile trigger bar (h-10, sticky top) is minimal. Enhance with:
-- Page title in the mobile top bar (read from current route)
-- ⌘K search button next to the sidebar trigger
-
-##### 4.3 Keyboard navigation audit
-
-Verify these shortcuts work correctly:
-- `⌘K` — Command palette (new)
-- `⌘J` — Chat widget toggle (existing)
-- `⌘B` — Sidebar collapse (existing)
-- `Escape` — Close any open overlay
-
-Ensure no conflicts between shortcuts.
-
-##### 4.4 Files changed in Phase 4
-
-| File | Action | Risk |
-|------|--------|------|
-| `components/chat/chat-widget.tsx` | MODIFY | Low — hide logic |
-| `components/sidebar-layout.tsx` | MODIFY | Medium — mobile header |
-
----
-
-## Alternative Approaches Considered
-
-1. **Full app rewrite with new routing** — Rejected. The existing App Router structure is sound. The problems are UI-layer, not architectural.
-
-2. **Adding a top navigation bar instead of fixing sidebar** — Rejected. The sidebar pattern is established and works well for data-heavy recruitment workflows. Adding a top bar would waste vertical space.
-
-3. **Building a custom command palette from scratch** — Rejected. `cmdk` is already installed and the `components/ui/command.tsx` primitives are ready. No reason to reinvent.
-
-4. **Mega-menu in sidebar** — Rejected. The sidebar already supports collapsible sub-items. Grouping with `SidebarGroupLabel` is cleaner and doesn't require new UI primitives.
-
-## Acceptance Criteria
-
-### Functional Requirements
-
-- [ ] All 19 pages are reachable from the sidebar navigation
-- [ ] Sidebar groups: "Werving" (6 items), "Automatisering" (4 items), "Hulpmiddelen" (1 item)
-- [ ] Legacy `components/sidebar.tsx` is deleted with zero import breakage
-- [ ] Every page uses the `PageHeader` component with consistent `text-xl` heading
-- [ ] Detail pages (`/vacatures/[id]`, `/kandidaten/[id]`, `/scraper/runs/[id]`) show breadcrumbs
-- [ ] Breadcrumbs show dynamic entity names (vacancy title, candidate name)
-- [ ] `⌘K` opens command palette with all page routes searchable
-- [ ] Command palette supports Dutch keywords and synonyms
-- [ ] Chat widget FAB is visible on all pages except `/chat`
-- [ ] Mobile top bar shows page title and sidebar trigger
-
-### Non-Functional Requirements
-
-- [ ] No increase in initial JavaScript bundle size (command palette lazy-loaded)
-- [ ] Lighthouse performance score stays above 90
-- [ ] All keyboard shortcuts work without conflicts
-- [ ] Dark theme renders correctly for all new components
-- [ ] Breadcrumb links are accessible (proper ARIA labels)
-
-### Quality Gates
-
-- [ ] `pnpm lint` passes (Biome)
-- [ ] `pnpm test` passes (existing tests)
-- [ ] Visual verification on mobile (375px) and desktop (1440px)
-- [ ] Storybook stories updated for modified shared components
-
-## Success Metrics
-
-| Metric | Before | Target |
-|--------|--------|--------|
-| Pages reachable from nav | 7/19 (37%) | 19/19 (100%) |
-| Pages with consistent headers | 2/19 (11%) | 19/19 (100%) |
-| Pages with breadcrumbs (where needed) | 0/5 | 5/5 |
-| Keyboard shortcuts for navigation | 2 (⌘J, ⌘B) | 3 (+ ⌘K) |
-| Dead sidebar code | 112 lines | 0 lines |
-
-## Dependencies & Prerequisites
-
-- **No external dependencies** — all required packages (`cmdk`, `@radix-ui/react-*`, `lucide-react`) are already installed
-- **shadcn/ui breadcrumb** — may need `pnpm dlx shadcn@latest add breadcrumb` if not yet installed
-- **No database changes** — this is purely a UI/UX refactor
-- **No API changes** — all data fetching patterns remain the same
-
-## Risk Analysis & Mitigation
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Sidebar restructure breaks active state detection | Medium | High | NavMain already uses `pathname.startsWith()` — new groups don't change this logic |
-| Command palette conflicts with chat ⌘J shortcut | Low | Medium | ⌘K and ⌘J are different keys; test explicitly |
-| Breadcrumb on dynamic routes shows raw UUID | Medium | Medium | Pass `dynamicLabels` from page's server component with entity name |
-| Mobile layout shift from new top bar content | Medium | Low | Use fixed height (h-10 already set), test on 375px |
-| PageHeader migration breaks page-specific layouts | Low | Medium | Phase 2 migrates one page at a time with visual verification |
-
-## Future Considerations
-
-- **Entity search in command palette** — Phase 3 only includes page navigation. A follow-up could add real-time entity search (candidates, vacancies) via API endpoint
-- **Recent items in palette** — Track recently visited pages in localStorage and show as "Recent" group
-- **Favorites/pinned pages** — Let recruiters pin frequently used pages to sidebar top
-- **Notification badges** — Show unread message count on "Berichten" nav item
-- **Sidebar analytics** — Track which nav items are clicked to inform future UX decisions
-
-## References
-
-### Internal References
-
-- Sidebar layout chain: `components/sidebar-layout.tsx:7-24`
-- Active sidebar: `components/app-sidebar.tsx:27-78`
-- Legacy sidebar (to delete): `components/sidebar.tsx:1-111`
-- PageHeader component: `components/page-header.tsx:1-21`
-- Command primitives: `components/ui/command.tsx`
-- Chat widget hide logic: `components/chat/chat-widget.tsx:286`
-- Search reset fix pattern: commit `88101ad1`
-- Performance best practices: commit `3b798331`
-- Instant search plan: `docs/plans/2026-03-26-001-feat-instant-vacatures-search-plan.md`
-
-### Existing Shared Components (preserve patterns)
-
-- `components/shared/empty-state.tsx` — EmptyState
-- `components/shared/filter-tabs.tsx` — FilterTabs (URL-based)
-- `components/shared/kpi-card.tsx` — KPICard
-- `components/shared/pagination.tsx` — Pagination (Dutch labels)
-- `components/shared/list-page-skeleton.tsx` — ListPageSkeleton
-
-### Conventions (from CLAUDE.md)
-
-- Dutch UI strings, English code variables
-- Biome for linting/formatting (NOT eslint/prettier)
-- API routes use Dutch naming
-- `pnpm` as package manager
+This milestone is intentionally bounded. It will:
+
+- simplify the primary navigation
+- add a consolidated automation landing page
+- improve discoverability for demoted tools via secondary entry points
+- unify page chrome where the simplification work touches it
+- keep all existing routes working
+
+This milestone will not:
+
+- redesign the full candidates or vacatures data models
+- merge interviews or messages into new database-backed subviews
+- remove existing routes from the application
+- rewrite detail pages into a brand-new tabbed architecture
+
+## Requirements Trace
+
+Source request: improve the UX/UI and simplify/minimize pages.
+
+Interpreted product requirements for this milestone:
+
+- The app should feel smaller and easier to scan.
+- Top-level navigation should reflect recruiter priorities, not system internals.
+- Secondary/admin tools must remain available, but should not dominate the main workspace.
+- Chat should feel like an assistive overlay, not a competing destination.
+- Existing routes and functionality must remain reachable.
+
+## Existing Patterns To Follow
+
+- Shared page wrapper and mobile shell in [components/sidebar-layout.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/sidebar-layout.tsx)
+- Primary navigation rendering in [components/nav-main.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/nav-main.tsx)
+- Global command/search overlay in [components/command-palette.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/command-palette.tsx)
+- Page heading structure in [components/page-header.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/page-header.tsx)
+- Shared cards and empty states in [components/shared/kpi-card.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/shared/kpi-card.tsx) and [components/shared/empty-state.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/shared/empty-state.tsx)
+- Global chat surface in [app/layout.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/layout.tsx) and [components/chat/chat-page-content.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/chat/chat-page-content.tsx)
+
+## Key Technical Decisions
+
+### Decision 1: Reduce primary nav to recruiter-first workspaces
+
+Primary navigation should expose only the main recruiter jobs:
+
+- Overzicht
+- Vacatures
+- Kandidaten
+- Pipeline
+- Interviews
+- Berichten
+- Automatisering
+
+Rationale:
+
+- `Interviews` and `Berichten` still appear to be active standalone operational lists, so hiding them now would likely reduce discoverability before contextual replacements exist.
+- `Matching` already redirects and should not appear as a primary destination.
+- `Agents`, `Autopilot`, and `Databronnen` are operational surfaces that fit better under one parent hub.
+- `AI Assistent` is already available as a global overlay and command action.
+
+### Decision 2: Add a consolidated automation hub instead of multiple peer pages
+
+Create a new `/automatisering` page that acts as the entry point for:
+
+- Agents
+- Autopilot
+- Databronnen
+- AI-assisted operational tools
+
+Rationale:
+
+- It preserves access without crowding the primary nav.
+- It gives us a stable home for future system/admin capabilities.
+- It lets the command palette and overview page point to one destination instead of several.
+
+### Decision 3: Keep existing operational routes, but demote them
+
+Routes such as `/agents`, `/autopilot`, and `/scraper` will remain intact and linked from the automation hub and command palette.
+
+Rationale:
+
+- Zero migration risk for bookmarks and internal usage.
+- Minimal code churn versus route removal or renaming.
+
+Additional constraint:
+
+- Because `/agents`, `/autopilot`, and `/scraper` are not nested under `/automatisering`, the sidebar needs alias-based active matching so `Automatisering` still highlights when users are on those operational pages.
+
+### Decision 4: Treat chat as an overlay-first interaction
+
+Remove `AI Assistent` from the main sidebar and keep it discoverable through:
+
+- global chat widget
+- command palette action
+- automation hub shortcut
+
+Rationale:
+
+- The current app already has two chat entry points; a third top-level nav item adds noise.
+- Chat is an assistant layer, not a primary object workspace.
+
+### Decision 5: Use this milestone to standardize shared page chrome where touched
+
+When touching hub and operational pages, use the existing `PageHeader` component and a consistent card hierarchy rather than bespoke inline headers.
+
+Rationale:
+
+- This improves cohesion without turning the work into a broad page-by-page redesign.
+
+## High-Level Technical Design
+
+### Navigation Model
+
+Update [components/app-sidebar.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/app-sidebar.tsx) so the main nav becomes:
+
+- Werving
+  - Overzicht
+  - Vacatures
+  - Kandidaten
+  - Pipeline
+  - Interviews
+  - Berichten
+- Platform
+  - Automatisering
+- Utilities in footer/user/command surfaces
+
+`Matching` is removed from primary nav entirely.
+`AI Assistent` is removed from primary nav entirely.
+`Agents`, `Autopilot`, and `Databronnen` are removed from primary nav and rehomed under the new hub.
+
+To preserve orientation, the nav item for `Automatisering` should support `matchPaths` aliases for:
+
+- `/automatisering`
+- `/agents`
+- `/autopilot`
+- `/scraper`
+
+### Automation Hub
+
+Create [app/automatisering/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/automatisering/page.tsx) as a recruiter-friendly operational dashboard with:
+
+- a short explanation of what belongs here
+- 3-4 primary tiles linking to `Agents`, `Autopilot`, `Databronnen`, and chat-assisted operations
+- lightweight guidance copy focused on outcomes, not internals
+
+Use existing shared cards and `PageHeader`.
+
+### Command Palette
+
+Update [components/command-palette.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/command-palette.tsx):
+
+- add `Automatisering`
+- remove `Matching` from page navigation entries
+- keep operational destinations available under a secondary group
+- keep the explicit AI action
+
+This preserves power-user access to internal surfaces without keeping them always visible in the sidebar.
+
+### Reachability Matrix
+
+- `/automatisering`: sidebar, command palette
+- `/agents`: automation hub, command palette
+- `/autopilot`: automation hub, command palette
+- `/scraper`: automation hub, command palette
+- `/settings`: user menu, command palette
+- `/chat`: chat widget, command palette action, optional hub shortcut
+- `/matching`: compatibility redirect only; not presented as a visible destination
+
+### Operational Pages
+
+Update these pages to feel like children of the new hub:
+
+- [app/agents/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/agents/page.tsx)
+- [app/autopilot/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/autopilot/page.tsx)
+- [app/scraper/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/scraper/page.tsx)
+- [app/settings/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/settings/page.tsx)
+
+Apply:
+
+- `PageHeader`
+- breadcrumbs where useful
+- consistent back-links to `Automatisering` on demoted operational pages
+
+### Matching Route
+
+Keep [app/matching/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/matching/page.tsx) as a compatibility redirect, but remove it from all primary navigation structures.
+
+## Implementation Units
+
+### Unit 1: Simplify primary navigation
+
+Goal:
+Reduce sidebar noise and establish the new IA model.
+
+Files:
+
+- [components/app-sidebar.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/app-sidebar.tsx)
+- [components/nav-main.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/nav-main.tsx)
+
+Changes:
+
+- extend the nav item shape to support optional `matchPaths`
+- update active-route matching logic to honor `matchPaths`
+- replace the current three-group nav with a slimmer recruiter-first set
+- add `Automatisering`
+- remove `Matching`, `Agents`, `Autopilot`, `Databronnen`, and `AI Assistent` from primary nav
+- keep search/command palette affordances in the footer
+
+Patterns to follow:
+
+- existing grouped nav rendering in `NavMain`
+- existing sidebar icon and badge conventions
+
+Verification:
+
+- sidebar renders correctly in collapsed and expanded modes
+- active route highlighting still works for nested pages
+- `Automatisering` is active on `/agents`, `/autopilot`, and `/scraper`
+- no removed page becomes unreachable
+
+### Unit 2: Add the automation hub
+
+Goal:
+Create one operational landing page that consolidates demoted system/admin tools.
+
+Files:
+
+- [app/automatisering/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/automatisering/page.tsx)
+- [components/page-header.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/page-header.tsx) if breadcrumb/back-link support needs extension
+- [components/shared/kpi-card.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/shared/kpi-card.tsx) only if small reusable tweaks are needed
+
+Changes:
+
+- build a clean landing page with outcome-oriented sections
+- link to `Agents`, `Autopilot`, `Databronnen`, and AI-assisted operations
+- keep the design calm and scannable
+
+Execution note:
+
+- Preserve existing visual language; do not introduce a new design system.
+
+Verification:
+
+- `/automatisering` is usable as a standalone destination
+- all demoted surfaces are reachable from it in one click
+
+### Unit 3: Rewire command and secondary entry points
+
+Goal:
+Keep discoverability high after shrinking the sidebar.
+
+Files:
+
+- [components/command-palette.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/command-palette.tsx)
+- [app/layout.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/layout.tsx) only if import wiring changes
+
+Changes:
+
+- add `Automatisering` to primary searchable destinations
+- move internal tools to a secondary group in the palette
+- ensure the AI open action remains prominent
+
+Verification:
+
+- `⌘K` can still reach every operational destination
+- no duplicate or dead entries remain
+
+### Unit 4: Polish demoted operational pages
+
+Goal:
+Make the operational surfaces feel like part of one smaller system.
+
+Files:
+
+- [app/agents/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/agents/page.tsx)
+- [app/autopilot/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/autopilot/page.tsx)
+- [app/scraper/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/scraper/page.tsx)
+
+Changes:
+
+- standardize headers onto `PageHeader`
+- add lightweight breadcrumbs/back-links where they improve orientation
+- make naming and copy feel less like separate micro-products
+
+Verification:
+
+- operational pages present a consistent relationship to the automation hub
+- no page loses its existing core content
+
+### Unit 5: Keep settings secondary, but polished
+
+Goal:
+Preserve `Instellingen` as a utility page reachable through the user menu and command palette without making it a peer of operational tools.
+
+Files:
+
+- [app/settings/page.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/app/settings/page.tsx)
+- [components/nav-user.tsx](/Users/cortex-air/.codex/worktrees/9745/motian/components/nav-user.tsx) if a small discoverability tweak is needed
+
+Changes:
+
+- migrate the page to `PageHeader`
+- keep it reachable through `NavUser` and command palette
+- do not place it under the automation hub IA
+
+Verification:
+
+- `Instellingen` remains reachable from the user menu
+- `Instellingen` remains reachable from the command palette
+
+## Risks And Mitigations
+
+### Risk: users who rely on direct sidebar access may think tools disappeared
+
+Mitigation:
+
+- add the automation hub
+- preserve command palette entries
+- keep route URLs unchanged
+
+### Risk: navigation simplification hides too much too quickly
+
+Mitigation:
+
+- keep `Interviews` and `Berichten` visible in this milestone
+- only demote operational/admin surfaces
+
+### Risk: visual churn across too many pages
+
+Mitigation:
+
+- limit polish to touched operational pages and the new hub
+- do not broaden into a full-page redesign
+
+## Test Scenarios
+
+### Navigation
+
+- open the app and confirm the sidebar only shows the simplified primary destinations
+- verify `Automatisering` appears in the sidebar and opens `/automatisering`
+- navigate from the automation hub to `/agents`, `/autopilot`, and `/scraper`
+- confirm those routes are also reachable from the command palette
+- confirm `Instellingen` remains reachable from `NavUser` and the command palette
+- confirm the sidebar shows the correct active state for demoted operational pages
+- confirm `/matching` still resolves as expected even though it is no longer visible in nav
+
+### Command Palette
+
+- open the palette with `⌘K`
+- search for `automatisering`
+- search for `agents`, `autopilot`, and `databronnen`
+- trigger the AI assistant action
+
+### Visual/Responsiveness
+
+- verify sidebar and automation hub on desktop width
+- verify sidebar and navigation on mobile width
+- verify mobile top bar still exposes sidebar and search after nav simplification
+- confirm no obvious overflow or clipped cards on the new hub page
+
+## Verification
+
+- `pnpm lint`
+- targeted route smoke check via browser on `/overzicht`, `/automatisering`, `/agents`, `/autopilot`, `/scraper`, `/settings`
+
+## Plan Assessment
+
+Depth: Standard
+
+Why:
+
+- This is cross-cutting UI/IA work touching several routes and global navigation.
+- It does not touch high-risk domains such as auth, payments, migrations, or external API contracts.
+- Existing local patterns are strong enough that implementation should be grounded mostly in repo conventions.
+- The deepen pass tightened active-state behavior, reachability, sequencing, and verification, so the plan is now sufficiently grounded for implementation.
+
+## Open Questions
+
+- Should `Settings` also move into the user menu only in a later milestone? For now, leave routing intact and polish the page, but do not promote it into primary nav.
+- Should `Interviews` and `Berichten` eventually become contextual tabs within candidate/pipeline flows? Likely yes, but that belongs to a later workflow once replacement UX exists.
+
+## Execution Order
+
+1. Add `/automatisering`
+2. Update command palette and any secondary entry points
+3. Add alias-based parent active-state support in nav
+4. Remove/demote sidebar items
+5. Polish operational pages with back-links/breadcrumbs

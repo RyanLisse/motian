@@ -19,6 +19,7 @@ interface NavItem {
   badge?: { text: string; variant: string };
   prefetch?: boolean;
   tooltip?: string;
+  matchPaths?: string[];
 }
 
 interface NavGroup {
@@ -36,7 +37,13 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
           <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
           <SidebarMenu>
             {group.items.map((item) => {
-              const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
+              const isActive =
+                pathname === item.url ||
+                pathname.startsWith(`${item.url}/`) ||
+                item.matchPaths?.some(
+                  (matchPath) => pathname === matchPath || pathname.startsWith(`${matchPath}/`),
+                ) ||
+                false;
 
               return (
                 <SidebarMenuItem key={item.title}>

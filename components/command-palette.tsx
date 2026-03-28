@@ -13,6 +13,7 @@ import {
   Settings,
   Sparkles,
   Users,
+  Wrench,
   Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -79,32 +80,39 @@ const PAGES: PageEntry[] = [
     keywords: ["communicatie", "email", "sms"],
   },
   {
-    label: "Matching",
-    href: "/matching",
-    icon: GitCompareArrows,
-    group: "Automatisering",
-    keywords: ["koppelen", "score"],
+    label: "Automatisering",
+    href: "/automatisering",
+    icon: Wrench,
+    group: "Platform",
+    keywords: ["operaties", "tools", "automatisch"],
   },
   {
     label: "Agents",
     href: "/agents",
     icon: Bot,
-    group: "Automatisering",
+    group: "Operaties",
     keywords: ["bot", "automatisch", "ai"],
   },
   {
     label: "Autopilot",
     href: "/autopilot",
     icon: Sparkles,
-    group: "Automatisering",
+    group: "Operaties",
     keywords: ["auto", "zelfstandig"],
   },
   {
     label: "Databronnen",
     href: "/scraper",
     icon: Activity,
-    group: "Automatisering",
+    group: "Operaties",
     keywords: ["scraper", "bron", "import"],
+  },
+  {
+    label: "Matching",
+    href: "/matching",
+    icon: GitCompareArrows,
+    group: "Hulpmiddelen",
+    keywords: ["koppelen", "score"],
   },
   {
     label: "AI Assistent",
@@ -187,7 +195,7 @@ export function CommandPalette() {
             value="ai assistent openen chat"
             onSelect={() => {
               setOpen(false);
-              document.dispatchEvent(new CustomEvent("motian-chat-open"));
+              window.dispatchEvent(new Event("motian-chat-open"));
             }}
           >
             <Zap className="mr-2 h-4 w-4" />

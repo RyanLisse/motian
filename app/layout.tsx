@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
+import { CommandPalette } from "@/components/command-palette";
 import "./globals.css";
 import { ChatContextProvider } from "@/components/chat/chat-context-provider";
 import { ChatWidget } from "@/components/chat/chat-widget";
