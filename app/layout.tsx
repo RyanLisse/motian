@@ -39,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="nl" suppressHydrationWarning>
       <head>
+        <Script src="/suppress-vendor-noise.js" strategy="beforeInteractive" />
         <Script src="/theme-init.js" strategy="beforeInteractive" />
       </head>
       <body
