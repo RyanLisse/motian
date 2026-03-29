@@ -10,9 +10,9 @@ const RL_WINDOW_MS = 10_000;
 const RL_MAX_REQUESTS = 10;
 
 const BOT_SIGNATURES = [
-  "bot", "crawler", "spider", "scraper", "headlesschrome", "phantomjs",
-  "python-requests", "go-http-client", "curl/", "wget/", "httpclient",
-  "apache-httpclient", "node-fetch", "undici",
+  "crawler", "spider", "scraper", "phantomjs",
+  "python-requests", "go-http-client", "curl/", "wget/",
+  "apache-httpclient",
 ];
 
 interface RateBucket { timestamps: number[] }
