@@ -148,6 +148,20 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   maak_kandidaat_aan: async (raw) => {
     const data = maakKandidaatSchema.parse(raw);
+
+    // Check for existing candidate with same email
+    if (data.email) {
+      const existing = await searchCandidates({ query: data.email, limit: 1 });
+      if (existing.length > 0 && existing[0].email === data.email) {
+        return {
+          status: "duplicate_found",
+          existingCandidateId: existing[0].id,
+          existingName: existing[0].name,
+          message: `Kandidaat met email ${data.email} bestaat al`,
+        };
+      }
+    }
+
     const candidate = await createCandidate(data);
     revalidatePath("/kandidaten");
     revalidatePath("/overzicht");

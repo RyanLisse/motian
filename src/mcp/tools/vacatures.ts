@@ -52,6 +52,10 @@ const zoekVacaturesSchema = z.object({
     .optional()
     .describe("Maximum aantal resultaten (standaard 50)"),
   offset: z.number().int().min(0).optional().describe("Offset voor paginering"),
+  compact: z
+    .boolean()
+    .optional()
+    .describe("Compacte weergave: geen beschrijving (bespaart tokens)"),
 });
 
 const vacatureDetailSchema = z.object({
@@ -152,6 +156,9 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       offset: opts.offset,
     });
     const vacatures = await withJobsCanonicalSkills(result.data);
+    if (opts.compact) {
+      return { total: result.total, vacatures: vacatures.map(({ description, ...v }) => v) };
+    }
     return { total: result.total, vacatures };
   },
 
