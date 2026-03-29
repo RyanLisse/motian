@@ -175,8 +175,7 @@ export async function captureJourneyEvidence(
   config: CaptureConfig,
 ): Promise<CaptureResult> {
   const runId = randomUUID();
-  const gitSha =
-    process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "unknown";
+  const gitSha = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "unknown";
   const viewport = config.viewport ?? DEFAULT_VIEWPORT;
   const startedAt = new Date().toISOString();
 
@@ -188,12 +187,10 @@ export async function captureJourneyEvidence(
   const app = await modal.apps.fromName("motian-autopilot", {
     createIfMissing: true,
   });
-  const image = modal.images.fromRegistry(
-    "mcr.microsoft.com/playwright:v1.52.0-noble",
-  );
+  const image = modal.images.fromRegistry("mcr.microsoft.com/playwright:v1.52.0-noble");
   const sb = await modal.sandboxes.create(app, image, { timeoutMs: 600_000 });
 
-  let journeyOutputs: JourneyRunOutput[] = [];
+  const journeyOutputs: JourneyRunOutput[] = [];
 
   try {
     const runnerConfig = {
@@ -204,9 +201,7 @@ export async function captureJourneyEvidence(
       gitSha,
       viewport,
     };
-    const configB64 = Buffer.from(JSON.stringify(runnerConfig)).toString(
-      "base64",
-    );
+    const configB64 = Buffer.from(JSON.stringify(runnerConfig)).toString("base64");
     const runnerScript = buildSandboxRunnerScript();
 
     const proc = await sb.exec(["node", "-e", runnerScript, configB64], {
@@ -230,9 +225,7 @@ export async function captureJourneyEvidence(
       );
     }
 
-    const jsonStr = stdout
-      .slice(startIdx + MANIFEST_START.length, endIdx)
-      .trim();
+    const jsonStr = stdout.slice(startIdx + MANIFEST_START.length, endIdx).trim();
     const rawResults: Array<{
       result: JourneyRunOutput["result"];
       manifest: Omit<JourneyRunOutput["manifest"], "artifacts"> & {
@@ -291,11 +284,7 @@ export async function captureJourneyEvidence(
     journeyResults: journeyOutputs.map((o) => o.result),
     manifests: journeyOutputs.map((o) => o.manifest),
   };
-  await writeFile(
-    join(runDir, "run-manifest.json"),
-    JSON.stringify(runManifest, null, 2),
-    "utf-8",
-  );
+  await writeFile(join(runDir, "run-manifest.json"), JSON.stringify(runManifest, null, 2), "utf-8");
 
   return { runId, gitSha, startedAt, completedAt, journeyOutputs };
 }
