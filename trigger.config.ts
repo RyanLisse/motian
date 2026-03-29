@@ -44,6 +44,7 @@ export default defineConfig({
           "AUTOPILOT_EVIDENCE_DIR",
           "AUTOPILOT_RICH_EVIDENCE",
           "GITHUB_REPOSITORY",
+          "GITHUB_SHA",
           "VERCEL_GIT_COMMIT_SHA",
           "VERCEL_URL",
         ];
