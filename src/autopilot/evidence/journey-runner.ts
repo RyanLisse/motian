@@ -53,12 +53,17 @@ export async function runJourney(
   const start = Date.now();
 
   try {
-    await context.tracing.start({
-      screenshots: true,
-      snapshots: true,
-      sources: true,
-    });
-    traceStarted = true;
+    try {
+      await context.tracing.start({
+        screenshots: true,
+        snapshots: true,
+        sources: true,
+      });
+      traceStarted = true;
+    } catch {
+      // Tracing may not be available in all environments (e.g. remote browsers).
+      traceStarted = false;
+    }
 
     const url = `${config.baseUrl}${spec.surface}`;
 

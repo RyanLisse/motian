@@ -48,6 +48,7 @@
     "livekit-server-sdk": "^2.15.0",
     "lucide-react": "^0.575.0",
     "mammoth": "^1.11.0",
+    "modal": "^0.6.3",
     "motion": "^12.35.0",
     "nanoid": "^5.1.6",
     "next": "^16.1.6",

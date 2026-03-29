@@ -37,6 +37,15 @@ export default defineConfig({
           "FIRECRAWL_API_KEY",
           "BROWSERBASE_API_KEY",
           "BROWSERBASE_PROJECT_ID",
+          "MODAL_TOKEN_ID",
+          "MODAL_TOKEN_SECRET",
+          "AUTOPILOT_BASE_URL",
+          "AUTOPILOT_GITHUB_TOKEN",
+          "AUTOPILOT_EVIDENCE_DIR",
+          "AUTOPILOT_RICH_EVIDENCE",
+          "GITHUB_REPOSITORY",
+          "VERCEL_GIT_COMMIT_SHA",
+          "VERCEL_URL",
         ];
         return keys
           .filter((key) => process.env[key])
@@ -54,8 +63,6 @@ export default defineConfig({
       "pg",
       "pg-native", // Optional native bindings
       "drizzle-orm/pg-core",
-      "playwright",
-      "playwright-core",
       "puppeteer-core",
       "chromium-bidi",
     ],

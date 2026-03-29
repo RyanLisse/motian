@@ -3,7 +3,7 @@ import { refreshSidebarMetadata } from "../src/services/sidebar-metadata";
 
 export const sidebarMetadataRefresh = schedules.task({
   id: "sidebar-metadata-refresh",
-  cron: "*/5 * * * *",
+  cron: { pattern: "*/15 * * * *", timezone: "Europe/Amsterdam" },
   retry: {
     maxAttempts: 3,
     factor: 2,

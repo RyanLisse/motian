@@ -6,6 +6,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { captureJourneyEvidence } from "@/src/autopilot/evidence";
 import type { JourneySpec } from "@/src/autopilot/types/journey";
 
+const hasModalCredentials = !!(process.env.MODAL_TOKEN_ID && process.env.MODAL_TOKEN_SECRET);
+
 function renderHtml(body: string): string {
   return `<!doctype html>
 <html lang="nl">
@@ -88,7 +90,7 @@ afterAll(() => {
   }
 });
 
-describe("autopilot rich evidence capture", () => {
+describe.skipIf(!hasModalCredentials)("autopilot rich evidence capture", () => {
   it("records a video artifact for an interactive journey", async () => {
     const server = await startTestServer();
     const evidenceDir = createEvidenceDir();

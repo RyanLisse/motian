@@ -1,5 +1,6 @@
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import { emitAgentEvent } from "@/src/services/agent-events";
+import { getCandidateById } from "@/src/services/candidates";
 
 // ---------- Types ----------
 
@@ -143,7 +144,16 @@ export const agentCommunicatorTask = task({
       const template = EMAIL_TEMPLATES[payload.template];
       if (!template) throw new Error(`Onbekend e-mail template: ${payload.template}`);
 
-      const recipient = payload.recipient;
+      // Resolve recipient: use provided value, or look up candidate email
+      let recipient = payload.recipient;
+      if (!recipient) {
+        const candidate = await getCandidateById(payload.candidateId);
+        recipient = candidate?.email ?? undefined;
+        // Also inject candidateName into variables if not already set
+        if (candidate?.name && !variables.candidateName) {
+          variables.candidateName = candidate.name;
+        }
+      }
       if (!recipient) throw new Error("E-mail ontvanger ontbreekt");
 
       const subject = payload.subject ?? template.subject(variables);

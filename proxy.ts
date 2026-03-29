@@ -2,6 +2,63 @@ import { type NextRequest, NextResponse } from "next/server";
 import { buildCorsHeaders, getAllowedCorsOrigin, shouldRejectCorsPreflight } from "@/src/lib/api-cors";
 import { shouldAllowMissingApiSecret } from "@/src/lib/runtime-config";
 
+// ---------------------------------------------------------------------------
+// Rate limiting for /pipeline — in-memory, IP-based, Edge Runtime compatible
+// ---------------------------------------------------------------------------
+
+const RL_WINDOW_MS = 10_000;
+const RL_MAX_REQUESTS = 10;
+
+const BOT_SIGNATURES = [
+  "crawler", "spider", "scraper", "phantomjs",
+  "python-requests", "go-http-client", "curl/", "wget/",
+  "apache-httpclient",
+];
+
+interface RateBucket { timestamps: number[] }
+const ipBuckets = new Map<string, RateBucket>();
+let lastCleanup = Date.now();
+
+function rlCleanup(now: number) {
+  if (now - lastCleanup < 60_000) return;
+  lastCleanup = now;
+  const cutoff = now - RL_WINDOW_MS;
+  for (const [ip, bucket] of ipBuckets.entries()) {
+    bucket.timestamps = bucket.timestamps.filter((t) => t > cutoff);
+    if (bucket.timestamps.length === 0) ipBuckets.delete(ip);
+  }
+}
+
+function isRateLimited(ip: string, now: number): boolean {
+  const cutoff = now - RL_WINDOW_MS;
+  let bucket = ipBuckets.get(ip);
+  if (!bucket) { bucket = { timestamps: [] }; ipBuckets.set(ip, bucket); }
+  bucket.timestamps = bucket.timestamps.filter((t) => t > cutoff);
+  if (bucket.timestamps.length >= RL_MAX_REQUESTS) return true;
+  bucket.timestamps.push(now);
+  return false;
+}
+
+function isBotUA(ua: string | null): boolean {
+  if (!ua) return false;
+  const lower = ua.toLowerCase();
+  return BOT_SIGNATURES.some((sig) => lower.includes(sig));
+}
+
+function rateLimitPipeline(request: NextRequest): NextResponse | null {
+  if (isBotUA(request.headers.get("user-agent"))) {
+    return new NextResponse("Too Many Requests", { status: 429, headers: { "Retry-After": "60" } });
+  }
+  const now = Date.now();
+  rlCleanup(now);
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || request.headers.get("x-real-ip") || "unknown";
+  if (isRateLimited(ip, now)) {
+    return new NextResponse("Too Many Requests", { status: 429, headers: { "Retry-After": "10" } });
+  }
+  return null;
+}
+
 /** Routes that bypass bearer token authentication completely (health, cron, docs) */
 const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi", "/api/debug-error"];
 
@@ -91,6 +148,13 @@ function withCorsHeaders(response: NextResponse, request: NextRequest): NextResp
 }
 
 export function proxy(request: NextRequest) {
+  // Rate-limit /pipeline to block bot traffic (2+ req/s observed)
+  if (request.nextUrl.pathname.startsWith("/pipeline")) {
+    const blocked = rateLimitPipeline(request);
+    if (blocked) return blocked;
+    return NextResponse.next();
+  }
+
   // Handle CORS preflight
   if (request.method === "OPTIONS") {
     const origin = request.headers.get("origin");
@@ -142,5 +206,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/api/:path*",
+  matcher: ["/api/:path*", "/pipeline/:path*"],
 };

@@ -230,6 +230,7 @@ export const jobs = pgTable(
     statusDeletedAtIdx: index("idx_jobs_status_deleted_at").on(table.status, table.deletedAt),
     openActiveIdx: index("idx_jobs_open_active").on(table.status, table.scrapedAt).where(sql`deleted_at IS NULL AND status = 'open'`),
     platformActiveIdx: index("idx_jobs_platform_active").on(table.platform, table.scrapedAt).where(sql`deleted_at IS NULL`),
+    visibleEndClientIdx: index("idx_jobs_visible_end_client").on(table.status, table.endClient, table.company).where(sql`deleted_at IS NULL AND status <> 'archived'`),
     // GIN indexes managed via SQL (Drizzle lacks native GIN/tsvector support):
     // - idx_jobs_search_vector: GIN on search_vector tsvector column (full-text search)
     // - idx_jobs_title_trgm: GIN with gin_trgm_ops on title (fuzzy matching)

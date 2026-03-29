@@ -7,16 +7,18 @@ import { agentCommunicatorTask } from "./agent-communicator";
 import { agentMatcherTask } from "./agent-matcher";
 
 /**
- * Agent Orchestrator — polls pending agent_events and dispatches to downstream agents.
+ * Agent Event Cleanup — fallback safety net for the event-driven dispatch system.
  *
- * Runs every 2 minutes. For each pending event:
- *   - candidate.parsed / candidate.embedded → trigger Matcher agent
- *   - match.created → trigger Communicator (email notification)
- *   - screening.requested → trigger Communicator (screening invite)
- *   - screening.completed → trigger Communicator (result notification)
+ * Primary dispatch now happens inline in `emitAgentEvent()` (zero-delay,
+ * event-driven). This cron runs hourly to catch any events that slipped
+ * through — e.g. because the Trigger SDK was unavailable at emit time,
+ * or a dispatch call failed and was swallowed by the try/catch.
  *
- * This is the central coordination loop that makes the multi-agent
- * system work without direct task-to-task coupling.
+ * For each stale pending event it dispatches to the appropriate downstream agent:
+ *   - candidate.parsed → Matcher agent
+ *   - match.created → Communicator (email notification)
+ *   - screening.requested → Communicator (screening invite)
+ *   - screening.completed → Communicator (result notification)
  */
 
 // Event → handler mapping
@@ -149,7 +151,7 @@ const PROCESSABLE_EVENTS = Object.keys(EVENT_HANDLERS);
 export const agentOrchestratorTask = schedules.task({
   id: "agent-orchestrator",
   cron: {
-    pattern: "*/2 * * * *", // Every 2 minutes
+    pattern: "0 * * * *", // Every hour (fallback cleanup — primary dispatch is event-driven)
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 120, // 2 minutes max
