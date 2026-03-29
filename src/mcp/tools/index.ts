@@ -4,7 +4,9 @@ import {
 } from "./advanced-matching";
 import { handlers as analyticsHandlers, tools as analyticsTools } from "./analytics";
 import { handlers as chatSessionsHandlers, tools as chatSessionsTools } from "./chat-sessions";
+import { handlers as escoSkillsHandlers, tools as escoSkillsTools } from "./esco-skills";
 import { handlers as gdprOpsHandlers, tools as gdprOpsTools } from "./gdpr-ops";
+import { handlers as instellingenHandlers, tools as instellingenTools } from "./instellingen";
 import { handlers as kandidatenHandlers, tools as kandidatenTools } from "./kandidaten";
 import { handlers as matchHandlers, tools as matchTools } from "./matches";
 import { handlers as pipelineHandlers, tools as pipelineTools } from "./pipeline";
@@ -18,6 +20,7 @@ import {
   tools as screeningCallsTools,
 } from "./screening-calls";
 import { handlers as vacatureHandlers, tools as vacatureTools } from "./vacatures";
+import { handlers as workspaceHandlers, tools as workspaceTools } from "./workspace";
 
 export const allTools = [
   ...kandidatenTools,
@@ -31,6 +34,9 @@ export const allTools = [
   ...advancedMatchingTools,
   ...chatSessionsTools,
   ...screeningCallsTools,
+  ...instellingenTools,
+  ...workspaceTools,
+  ...escoSkillsTools,
 ];
 
 export const allHandlers: Record<string, (args: unknown) => Promise<unknown>> = {
@@ -45,4 +51,7 @@ export const allHandlers: Record<string, (args: unknown) => Promise<unknown>> = 
   ...advancedMatchingHandlers,
   ...chatSessionsHandlers,
   ...screeningCallsHandlers,
+  ...instellingenHandlers,
+  ...workspaceHandlers,
+  ...escoSkillsHandlers,
 };
