@@ -25,7 +25,7 @@ import { and, db, desc, eq, isNull, sql } from "@/src/db";
 import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 
-export const revalidate = 30;
+export const revalidate = 120;
 
 /** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {

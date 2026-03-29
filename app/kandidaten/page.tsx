@@ -16,7 +16,7 @@ import { escapeLike } from "@/src/lib/helpers";
 import { parsePagination } from "@/src/lib/pagination";
 import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco";
 
-export const revalidate = 30;
+export const revalidate = 120;
 
 /** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {

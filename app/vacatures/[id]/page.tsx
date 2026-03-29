@@ -12,6 +12,7 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import { unstable_cache } from "next/cache";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -46,7 +47,7 @@ const AIGrading = dynamic(
   { loading: () => <div className="animate-pulse h-64 rounded-xl bg-muted" /> },
 );
 
-export const revalidate = 30;
+export const revalidate = 120;
 export const maxDuration = 30;
 
 interface Props {
@@ -222,10 +223,24 @@ function OpdrachtDetailSkeleton() {
   );
 }
 
+/** Cached end-client list for sidebar filter — avoids GROUP BY full-table scan on every page load. */
+const getCachedEndClients = unstable_cache(
+  async () => {
+    const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
+    return db
+      .select({ endClient: persistedEndClient })
+      .from(jobs)
+      .where(getVisibleVacancyCondition())
+      .groupBy(persistedEndClient)
+      .orderBy(persistedEndClient);
+  },
+  ["end-client-filter-options"],
+  { revalidate: 300 }, // 5 minutes
+);
+
 async function OpdrachtDetailContent({ params, searchParams }: Props) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
-  const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
   // Fetch current job (respecting visibility rules)
   const rows = await db
@@ -287,12 +302,7 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
         .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
         .limit(4),
       getGradedCandidates({ jobId: job.id, limit: 12 }),
-      db
-        .select({ endClient: persistedEndClient })
-        .from(jobs)
-        .where(getVisibleVacancyCondition())
-        .groupBy(persistedEndClient)
-        .orderBy(persistedEndClient),
+      getCachedEndClients(),
     ]);
 
   const companyRelated = relatedJobRows
