@@ -203,7 +203,7 @@ export async function searchJobIdsByTitle(
 
   if (tsInput) {
     const searchQuery = sql`to_tsquery('dutch', ${tsInput})`;
-    const searchVector = sql`search_vector`;
+    const searchVector = sql`to_tsvector('dutch', coalesce(search_text, ''))`;
     const searchRank = sql`ts_rank(${searchVector}, ${searchQuery})`;
     const ftsIds = await fetchDedupedJobIds({
       whereClause: and(filterCondition, sql`${searchVector} @@ ${searchQuery}`) ?? filterCondition,
