@@ -27,12 +27,14 @@ async function dispatchEvent(event: typeof agentEvents.$inferSelect) {
   switch (event.eventType) {
     case "candidate.parsed": {
       if (!event.candidateId) break;
+      const claimed = await claimEvent(event.id, "matcher" as AgentName);
+      if (!claimed) break;
       await triggerTasks.trigger("agent-matcher", {
         mode: "candidate",
         candidateId: event.candidateId,
         topN: 5,
       });
-      await claimEvent(event.id, "matcher" as AgentName);
+      await completeEvent(event.id);
       break;
     }
 
@@ -43,6 +45,8 @@ async function dispatchEvent(event: typeof agentEvents.$inferSelect) {
         await completeEvent(event.id);
         break;
       }
+      const claimedMatch = await claimEvent(event.id, "communicator" as AgentName);
+      if (!claimedMatch) break;
       // Communicator task resolves candidate email + name from candidateId
       await triggerTasks.trigger("agent-communicator", {
         channel: "email",
@@ -56,12 +60,14 @@ async function dispatchEvent(event: typeof agentEvents.$inferSelect) {
           matchScore: String(Math.round(score)),
         },
       });
-      await claimEvent(event.id, "communicator" as AgentName);
+      await completeEvent(event.id);
       break;
     }
 
     case "screening.requested": {
       if (!event.candidateId) break;
+      const claimedScreening = await claimEvent(event.id, "communicator" as AgentName);
+      if (!claimedScreening) break;
       await triggerTasks.trigger("agent-communicator", {
         channel: "email",
         candidateId: event.candidateId,
@@ -74,7 +80,7 @@ async function dispatchEvent(event: typeof agentEvents.$inferSelect) {
           matchScore: String(Math.round((payload.score as number) ?? 0)),
         },
       });
-      await claimEvent(event.id, "communicator" as AgentName);
+      await completeEvent(event.id);
       break;
     }
 
@@ -82,6 +88,8 @@ async function dispatchEvent(event: typeof agentEvents.$inferSelect) {
       if (!event.candidateId) break;
       const nextStep = payload.recommendedNextStep as string;
       if (nextStep === "proceed") {
+        const claimedCompleted = await claimEvent(event.id, "communicator" as AgentName);
+        if (!claimedCompleted) break;
         await triggerTasks.trigger("agent-communicator", {
           channel: "email",
           candidateId: event.candidateId,
@@ -92,7 +100,7 @@ async function dispatchEvent(event: typeof agentEvents.$inferSelect) {
             jobTitle: (payload.jobTitle as string) ?? "",
           },
         });
-        await claimEvent(event.id, "communicator" as AgentName);
+        await completeEvent(event.id);
       } else {
         await completeEvent(event.id);
       }

@@ -49,99 +49,106 @@ const { journeys, baseUrl, evidenceDir, runId, gitSha, viewport } = config;
   const results = [];
 
   for (const spec of journeys) {
-    const consoleLogs = [];
-    const artifacts = [];
-    let success = true;
-    let errorMessage;
-    const start = Date.now();
-
-    const context = await browser.newContext({ viewport, ignoreHTTPSErrors: true });
-    const page = await context.newPage();
-    page.setDefaultTimeout(spec.timeoutMs);
-    page.on('console', (msg) => consoleLogs.push('[' + msg.type() + '] ' + msg.text()));
-
     try {
-      const url = baseUrl + spec.surface;
+      const consoleLogs = [];
+      const artifacts = [];
+      let success = true;
+      let errorMessage;
+      const start = Date.now();
 
-      if (spec.kind === 'page-load') {
-        await page.goto(url, { waitUntil: 'networkidle', timeout: spec.timeoutMs });
-      } else if (spec.kind === 'interactive') {
-        await page.goto(url, { waitUntil: 'networkidle', timeout: spec.timeoutMs });
-        if (spec.interactions) {
-          for (const step of spec.interactions) {
-            const t = step.timeoutMs ?? spec.timeoutMs;
-            if (step.action === 'click' && step.selector) await page.click(step.selector, { timeout: t });
-            else if (step.action === 'type' && step.selector && step.text) await page.fill(step.selector, step.text, { timeout: t });
-            else if (step.action === 'wait-for-selector' && step.selector) await page.waitForSelector(step.selector, { timeout: t });
-            else if (step.action === 'wait-for-text' && step.waitForText) await page.waitForSelector('text=' + step.waitForText, { timeout: t });
+      const context = await browser.newContext({ viewport, ignoreHTTPSErrors: true });
+      const page = await context.newPage();
+      page.setDefaultTimeout(spec.timeoutMs);
+      page.on('console', (msg) => consoleLogs.push('[' + msg.type() + '] ' + msg.text()));
+
+      try {
+        const url = baseUrl + spec.surface;
+
+        if (spec.kind === 'page-load') {
+          await page.goto(url, { waitUntil: 'networkidle', timeout: spec.timeoutMs });
+        } else if (spec.kind === 'interactive') {
+          await page.goto(url, { waitUntil: 'networkidle', timeout: spec.timeoutMs });
+          if (spec.interactions) {
+            for (const step of spec.interactions) {
+              const t = step.timeoutMs ?? spec.timeoutMs;
+              if (step.action === 'click' && step.selector) await page.click(step.selector, { timeout: t });
+              else if (step.action === 'type' && step.selector && step.text) await page.fill(step.selector, step.text, { timeout: t });
+              else if (step.action === 'wait-for-selector' && step.selector) await page.waitForSelector(step.selector, { timeout: t });
+              else if (step.action === 'wait-for-text' && step.waitForText) await page.waitForSelector('text=' + step.waitForText, { timeout: t });
+            }
+          }
+        } else if (spec.kind === 'redirect') {
+          await page.goto(url, { waitUntil: 'commit', timeout: spec.timeoutMs });
+          if (spec.expectedRedirectTarget) {
+            await page.waitForURL((u) => u.pathname.startsWith(spec.expectedRedirectTarget), { timeout: spec.timeoutMs });
+          }
+          await page.waitForLoadState('networkidle');
+        }
+
+        // Validate expected selectors
+        if (spec.expectedSelectors) {
+          for (const sel of spec.expectedSelectors) {
+            try { await page.waitForSelector(sel, { timeout: 5000 }); }
+            catch { success = false; errorMessage = 'Expected selector not found: ' + sel; }
           }
         }
-      } else if (spec.kind === 'redirect') {
-        await page.goto(url, { waitUntil: 'commit', timeout: spec.timeoutMs });
-        if (spec.expectedRedirectTarget) {
-          await page.waitForURL((u) => u.pathname.startsWith(spec.expectedRedirectTarget), { timeout: spec.timeoutMs });
-        }
-        await page.waitForLoadState('networkidle');
+
+        // Screenshot -> base64
+        const ssPath = path.join(evidenceDir, spec.id + '-screenshot.png');
+        await page.screenshot({ path: ssPath, fullPage: true });
+        const ssB64 = (await fs.promises.readFile(ssPath)).toString('base64');
+        artifacts.push({
+          id: spec.id + '-screenshot',
+          kind: 'screenshot',
+          fileName: spec.id + '-screenshot.png',
+          dataBase64: ssB64,
+          capturedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        success = false;
+        errorMessage = err.message || String(err);
+      } finally {
+        await page.close();
+        await context.close();
       }
 
-      // Validate expected selectors
-      if (spec.expectedSelectors) {
-        for (const sel of spec.expectedSelectors) {
-          try { await page.waitForSelector(sel, { timeout: 5000 }); }
-          catch { success = false; errorMessage = 'Expected selector not found: ' + sel; }
-        }
-      }
-
-      // Screenshot -> base64
-      const ssPath = path.join(evidenceDir, spec.id + '-screenshot.png');
-      await page.screenshot({ path: ssPath, fullPage: true });
-      const ssB64 = (await fs.promises.readFile(ssPath)).toString('base64');
+      // Console logs -> base64
+      const logContent = consoleLogs.join('\\n');
+      const logB64 = Buffer.from(logContent).toString('base64');
       artifacts.push({
-        id: spec.id + '-screenshot',
-        kind: 'screenshot',
-        fileName: spec.id + '-screenshot.png',
-        dataBase64: ssB64,
+        id: spec.id + '-console-log',
+        kind: 'console-log',
+        fileName: spec.id + '-console.log',
+        dataBase64: logB64,
         capturedAt: new Date().toISOString(),
       });
-    } catch (err) {
-      success = false;
-      errorMessage = err.message || String(err);
-    } finally {
-      await page.close();
-      await context.close();
+
+      results.push({
+        result: {
+          journeyId: spec.id,
+          surface: spec.surface,
+          success,
+          durationMs: Date.now() - start,
+          errorMessage,
+          evidenceManifestId: runId + '/' + spec.id,
+        },
+        manifest: {
+          runId,
+          journeyId: spec.id,
+          surface: spec.surface,
+          capturedAt: new Date().toISOString(),
+          gitSha,
+          artifacts,
+          success,
+          failureReason: errorMessage,
+        },
+      });
+    } catch (journeyErr) {
+      results.push({
+        result: { journeyId: spec.id, surface: spec.surface, success: false, durationMs: 0, errorMessage: journeyErr.message || String(journeyErr) },
+        manifest: { runId, journeyId: spec.id, surface: spec.surface, capturedAt: new Date().toISOString(), gitSha, artifacts: [], success: false, failureReason: journeyErr.message || String(journeyErr) },
+      });
     }
-
-    // Console logs -> base64
-    const logContent = consoleLogs.join('\\n');
-    const logB64 = Buffer.from(logContent).toString('base64');
-    artifacts.push({
-      id: spec.id + '-console-log',
-      kind: 'console-log',
-      fileName: spec.id + '-console.log',
-      dataBase64: logB64,
-      capturedAt: new Date().toISOString(),
-    });
-
-    results.push({
-      result: {
-        journeyId: spec.id,
-        surface: spec.surface,
-        success,
-        durationMs: Date.now() - start,
-        errorMessage,
-        evidenceManifestId: runId + '/' + spec.id,
-      },
-      manifest: {
-        runId,
-        journeyId: spec.id,
-        surface: spec.surface,
-        capturedAt: new Date().toISOString(),
-        gitSha,
-        artifacts,
-        success,
-        failureReason: errorMessage,
-      },
-    });
   }
 
   await browser.close();
@@ -187,7 +194,7 @@ export async function captureJourneyEvidence(
   const app = await modal.apps.fromName("motian-autopilot", {
     createIfMissing: true,
   });
-  const image = modal.images.fromRegistry("mcr.microsoft.com/playwright:v1.52.0-noble");
+  const image = modal.images.fromRegistry("mcr.microsoft.com/playwright:v1.58.0-noble");
   const sb = await modal.sandboxes.create(app, image, { timeoutMs: 600_000 });
 
   const journeyOutputs: JourneyRunOutput[] = [];
