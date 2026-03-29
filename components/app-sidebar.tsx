@@ -7,6 +7,7 @@ import {
   GalleryVerticalEnd,
   Kanban,
   LayoutDashboard,
+  MessageCircle,
   MessageSquare,
   Search,
   Users,
@@ -68,6 +69,11 @@ const data = {
           title: "Interviews",
           url: "/interviews",
           icon: Calendar,
+        },
+        {
+          title: "Chat",
+          url: "/chat",
+          icon: MessageCircle,
         },
         {
           title: "Berichten",
