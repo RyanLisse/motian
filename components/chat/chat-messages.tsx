@@ -236,6 +236,18 @@ function extractMessageText(message: UIMessage): string {
     .join("\n\n");
 }
 
+async function submitFeedback(messageId: string, score: "positive" | "negative") {
+  try {
+    await fetch("/api/chat/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId, score }),
+    });
+  } catch {
+    // Fire-and-forget — feedback failure should never block the UI
+  }
+}
+
 function AssistantMessageActions({
   message,
   onRetry,
@@ -254,9 +266,16 @@ function AssistantMessageActions({
     setTimeout(() => setCopied(false), 2000);
   }, [message]);
 
-  const handleFeedback = useCallback((vote: "up" | "down") => {
-    setFeedback((prev) => (prev === vote ? null : vote));
-  }, []);
+  const handleFeedback = useCallback(
+    (vote: "up" | "down") => {
+      const newVote = feedback === vote ? null : vote;
+      setFeedback(newVote);
+      if (newVote) {
+        submitFeedback(message.id, newVote === "up" ? "positive" : "negative");
+      }
+    },
+    [feedback, message.id],
+  );
 
   return (
     <MessageActions className="opacity-0 transition-opacity group-hover:opacity-100">
