@@ -4,18 +4,22 @@ import { type ChatStatus, getToolName, isToolUIPart, type UIMessage } from "ai";
 import {
   Brain,
   Briefcase,
+  Check,
   ChevronUp,
+  Copy,
   ExternalLink,
   FileText,
   Loader2,
   type LucideIcon,
   Search,
   Sparkles,
+  ThumbsDown,
+  ThumbsUp,
   TrendingUp,
   Upload,
   Users,
 } from "lucide-react";
-import { Suspense, useId, useState } from "react";
+import { Suspense, useCallback, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -23,7 +27,13 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/src/components/ai-elements/conversation";
-import { Message, MessageContent, MessageResponse } from "@/src/components/ai-elements/message";
+import {
+  Message,
+  MessageAction,
+  MessageActions,
+  MessageContent,
+  MessageResponse,
+} from "@/src/components/ai-elements/message";
 import { isA2UIEnvelope } from "@/src/schemas/a2ui";
 import {
   CHAT_MESSAGE_ALLOWED_TAGS,
@@ -248,6 +258,54 @@ function FollowUpPromptButton({
   );
 }
 
+// ─── Message Action Bar (Copy + Thumbs) ──────────────────
+
+function extractMessageText(message: UIMessage): string {
+  return message.parts
+    .filter((p) => p.type === "text")
+    .map((p) => (p as { type: "text"; text: string }).text)
+    .join("\n\n");
+}
+
+function AssistantMessageActions({ message }: { message: UIMessage }) {
+  const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+
+  const handleCopy = useCallback(async () => {
+    const text = extractMessageText(message);
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [message]);
+
+  const handleFeedback = useCallback((vote: "up" | "down") => {
+    setFeedback((prev) => (prev === vote ? null : vote));
+  }, []);
+
+  return (
+    <MessageActions className="opacity-0 transition-opacity group-hover:opacity-100">
+      <MessageAction tooltip="Kopiëren" onClick={handleCopy}>
+        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      </MessageAction>
+      <MessageAction
+        tooltip="Goed antwoord"
+        onClick={() => handleFeedback("up")}
+        className={feedback === "up" ? "text-green-600" : ""}
+      >
+        <ThumbsUp className="h-3.5 w-3.5" />
+      </MessageAction>
+      <MessageAction
+        tooltip="Slecht antwoord"
+        onClick={() => handleFeedback("down")}
+        className={feedback === "down" ? "text-red-600" : ""}
+      >
+        <ThumbsDown className="h-3.5 w-3.5" />
+      </MessageAction>
+    </MessageActions>
+  );
+}
+
 export function ChatMessages({
   messages,
   status,
@@ -468,6 +526,7 @@ export function ChatMessages({
                 return null;
               })}
             </MessageContent>
+            {message.role === "assistant" && <AssistantMessageActions message={message} />}
           </Message>
         ))}
 

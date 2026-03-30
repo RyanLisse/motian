@@ -69,13 +69,8 @@ export const platformAutoSetup = tool({
       .string()
       .url()
       .describe("De URL van het job platform (bijv. de vacature-overzichtspagina)"),
-    activate: z
-      .boolean()
-      .optional()
-      .default(true)
-      .describe("Automatisch activeren na succesvolle test-import (standaard: ja)"),
   }),
-  execute: async ({ url, activate }) => {
+  execute: async ({ url }) => {
     // Step 0a: SSRF validation
     try {
       await validateExternalUrl(url);
