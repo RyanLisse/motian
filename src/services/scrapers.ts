@@ -33,6 +33,42 @@ import {
  * Validate that a URL does not resolve to a private/internal IP address.
  * Prevents Server-Side Request Forgery (SSRF) attacks.
  */
+function isPrivateAddress(addr: string): boolean {
+  // Normalize IPv6-mapped IPv4 (::ffff:127.0.0.1 → 127.0.0.1)
+  const normalized = addr.startsWith("::ffff:") ? addr.slice(7) : addr;
+
+  // IPv4 private/reserved ranges
+  if (
+    normalized.startsWith("10.") ||
+    normalized.startsWith("127.") ||
+    normalized.startsWith("0.") ||
+    normalized.startsWith("192.168.") ||
+    normalized.startsWith("169.254.")
+  ) {
+    return true;
+  }
+
+  // 172.16.0.0 – 172.31.255.255
+  if (normalized.startsWith("172.")) {
+    const secondOctet = Number.parseInt(normalized.split(".")[1], 10);
+    if (secondOctet >= 16 && secondOctet <= 31) return true;
+  }
+
+  // IPv6 loopback, unspecified, link-local, multicast, ULA
+  if (
+    normalized === "::1" ||
+    normalized === "::" ||
+    normalized.startsWith("fe80") ||
+    normalized.startsWith("ff") ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function validateExternalUrl(url: string): Promise<void> {
   const parsed = new URL(url);
 
@@ -41,37 +77,14 @@ export async function validateExternalUrl(url: string): Promise<void> {
     throw new Error("Alleen HTTP(S) URLs zijn toegestaan");
   }
 
-  const { address } = await dns.promises.lookup(parsed.hostname);
+  // Resolve ALL addresses for the hostname to prevent DNS rebinding via multiple records
+  const addresses = await dns.promises.lookup(parsed.hostname, { all: true });
 
-  // Normalize IPv6-mapped IPv4 (::ffff:127.0.0.1 → 127.0.0.1)
-  const normalizedAddress = address.startsWith("::ffff:") ? address.slice(7) : address;
-
-  // IPv4 private ranges
-  if (
-    normalizedAddress.startsWith("10.") ||
-    normalizedAddress.startsWith("127.") ||
-    normalizedAddress.startsWith("0.") ||
-    normalizedAddress.startsWith("192.168.") ||
-    normalizedAddress.startsWith("169.254.")
-  ) {
-    throw new Error(`URL verwijst naar een privé netwerk adres: ${normalizedAddress}`);
-  }
-
-  // 172.16.0.0 – 172.31.255.255
-  if (normalizedAddress.startsWith("172.")) {
-    const secondOctet = Number.parseInt(normalizedAddress.split(".")[1], 10);
-    if (secondOctet >= 16 && secondOctet <= 31) {
-      throw new Error(`URL verwijst naar een privé netwerk adres: ${normalizedAddress}`);
+  for (const { address } of addresses) {
+    if (isPrivateAddress(address)) {
+      const display = address.startsWith("::ffff:") ? address.slice(7) : address;
+      throw new Error(`URL verwijst naar een privé netwerk adres: ${display}`);
     }
-  }
-
-  // IPv6 loopback and private
-  if (
-    normalizedAddress === "::1" ||
-    normalizedAddress.startsWith("fc") ||
-    normalizedAddress.startsWith("fd")
-  ) {
-    throw new Error(`URL verwijst naar een privé netwerk adres: ${normalizedAddress}`);
   }
 }
 
