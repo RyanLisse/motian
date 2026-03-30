@@ -11,6 +11,7 @@ export type PlatformOnboardingStep =
   | "implement_adapter"
   | "run_targeted_tests"
   | "validate_access"
+  | "verify_strategy"
   | "run_smoke_import"
   | "activate"
   | "verify_schedule"
@@ -61,6 +62,13 @@ export type PlatformOnboardingEvent =
       blockerKind: PlatformBlockerKind;
       evidence?: Record<string, unknown>;
     }
+  | {
+      type: "strategy_verified";
+      confidence: "high" | "medium" | "low";
+      score: number;
+      evidence?: Record<string, unknown>;
+    }
+  | { type: "strategy_verification_failed"; evidence?: Record<string, unknown> }
   | { type: "smoke_import_succeeded"; evidence?: Record<string, unknown> }
   | {
       type: "smoke_import_failed";
@@ -144,6 +152,9 @@ function canApplyEvent(
     case "validated":
     case "validation_failed":
       return current.supported && ["config_saved", "validated", "failed"].includes(current.status);
+    case "strategy_verified":
+    case "strategy_verification_failed":
+      return current.supported && current.status === "validated";
     case "smoke_import_succeeded":
     case "smoke_import_failed":
       return current.supported && ["validated", "tested", "failed"].includes(current.status);
@@ -308,6 +319,37 @@ export function reducePlatformOnboardingRun(
         currentStep: "validate_access",
         nextActions: nextActionsFor("failed"),
         blockerKind: event.blockerKind,
+        evidence: mergedEvidence,
+      };
+    case "strategy_verified":
+      if (event.confidence === "low") {
+        return {
+          ...current,
+          status: "failed",
+          currentStep: "verify_strategy",
+          nextActions: nextActionsFor("failed"),
+          blockerKind: "selector_drift",
+          evidence: mergedEvidence,
+        };
+      }
+      return {
+        ...current,
+        status: "validated",
+        currentStep: "run_smoke_import",
+        nextActions: nextActionsFor("validated"),
+        blockerKind: null,
+        evidence: {
+          ...mergedEvidence,
+          ...(event.confidence === "medium" ? { needsMonitoring: true } : {}),
+        },
+      };
+    case "strategy_verification_failed":
+      return {
+        ...current,
+        status: "failed",
+        currentStep: "verify_strategy",
+        nextActions: nextActionsFor("failed"),
+        blockerKind: "selector_drift",
         evidence: mergedEvidence,
       };
     case "smoke_import_succeeded":
