@@ -117,6 +117,10 @@ export const GENUI_REGISTRY: Record<string, GenUIEntry> = {
     component: lazy(() => import("./platform-card").then((m) => ({ default: m.PlatformCard }))),
     label: "Platformen",
   },
+  platformReanalyze: {
+    component: lazy(() => import("./platform-card").then((m) => ({ default: m.PlatformCard }))),
+    label: "Platform heranalyse",
+  },
   platformCompleteOnboarding: {
     component: lazy(() => import("./platform-card").then((m) => ({ default: m.PlatformCard }))),
     label: "Platform voltooid",

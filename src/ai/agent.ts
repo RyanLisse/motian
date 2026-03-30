@@ -38,6 +38,7 @@ const platformTools = {
   platformActivate: tools.platformActivate,
   platformOnboardingStatus: tools.platformOnboardingStatus,
   platformCompleteOnboarding: tools.platformCompleteOnboarding,
+  platformReanalyze: tools.platformReanalyze,
 };
 
 const kandidaatTools = {
@@ -136,6 +137,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
       "Scrapers en scoring-batches starten voor opdrachten",
       "Platform onboarding beheren: catalogus, credentials, config, validatie, implementatie, monitoring en smoke imports",
       "Nieuwe platformen automatisch toevoegen: URL analyseren → scraping strategie bepalen → volledig inrichten (platformAutoSetup)",
+      "Bestaande platformen heranalyseren en herstellen als selectors niet meer werken of status 'needs_implementation' is (platformReanalyze)",
     ];
   }
 
@@ -209,6 +211,7 @@ const MUTATION_NAMES = new Set([
   "platformAnalyze",
   "platformTestImport",
   "platformCompleteOnboarding",
+  "platformReanalyze",
   "renderCanvas",
   "voerStructuredMatchUit",
   "cvIntakeResultaat",

@@ -7,8 +7,11 @@ import {
   completeOnboarding,
   createConfig,
   createPlatformCatalogEntry,
+  getConfigByPlatform,
   getPlatformByBaseUrl,
+  getPlatformCatalogEntry,
   getPlatformOnboardingStatus,
+  updateConfigParameters,
   validateExternalUrl,
 } from "@/src/services/scrapers";
 import type { platformOnboardTask } from "@/trigger/platform-onboard";
@@ -87,6 +90,10 @@ export const platformAutoSetup = tool({
     // Step 0b: Dedup check — bail early if platform already exists
     const existing = await getPlatformByBaseUrl(url);
     if (existing) {
+      // If platform is stuck on needs_implementation, suggest re-analyze
+      const status = await getPlatformOnboardingStatus(existing.slug);
+      const latestStatus = status.latestRun?.status;
+
       return {
         status: "exists" as const,
         platform: existing.slug,
@@ -94,7 +101,9 @@ export const platformAutoSetup = tool({
         isActive: existing.isEnabled ?? false,
         message: existing.isEnabled
           ? `Platform "${existing.displayName}" is al actief. Gebruik platformConfigUpdate om de configuratie aan te passen.`
-          : `Platform "${existing.displayName}" bestaat al maar is niet actief. Gebruik platformActivate om te activeren.`,
+          : latestStatus === "needs_implementation" || latestStatus === "failed"
+            ? `Platform "${existing.displayName}" bestaat maar is vastgelopen (${latestStatus}). Gebruik platformReanalyze om de configuratie te herstellen.`
+            : `Platform "${existing.displayName}" bestaat al maar is niet actief. Gebruik platformActivate om te activeren.`,
       };
     }
 
@@ -225,5 +234,101 @@ export const platformCompleteOnboarding = tool({
     await completeOnboarding(platform);
     revalidateTag("scrapers", "default");
     return { success: true, platform, status: "completed" };
+  },
+});
+
+export const platformReanalyze = tool({
+  description:
+    "Heranalyseer een bestaand platform dat vastzit op 'needs_implementation' of waarvan de selectors niet meer werken. Voert een nieuwe AI-analyse uit, updatet de configuratie, en start de onboarding opnieuw op de achtergrond.",
+  inputSchema: z.object({
+    platform: z.string().min(1).describe("Platform slug (bijv. starapple-nl)"),
+  }),
+  execute: async ({ platform }) => {
+    // Step 1: Verify platform exists
+    const catalog = await getPlatformCatalogEntry(platform);
+    if (!catalog) {
+      return {
+        success: false,
+        error: `Platform "${platform}" niet gevonden in de catalogus.`,
+      };
+    }
+
+    // Step 2: Get the config to find the baseUrl
+    const config = await getConfigByPlatform(platform);
+    const baseUrl = config?.baseUrl ?? catalog.defaultBaseUrl;
+
+    if (!baseUrl) {
+      return {
+        success: false,
+        error: `Geen base URL gevonden voor "${platform}". Gebruik platformAutoSetup met een URL.`,
+      };
+    }
+
+    // Step 3: Re-run AI analysis on the live page
+    let analysis: Awaited<ReturnType<typeof analyzePlatform>>;
+    try {
+      analysis = await analyzePlatform(baseUrl);
+    } catch (err) {
+      return {
+        success: false,
+        step: "reanalyze",
+        error: `Heranalyse mislukt: ${err instanceof Error ? err.message : String(err)}`,
+        suggestion: "Controleer of de URL nog toegankelijk is.",
+      };
+    }
+
+    // Step 4: Update config with new strategy
+    try {
+      if (config) {
+        await updateConfigParameters(platform, {
+          scrapingStrategy: analysis.scrapingStrategy,
+          maxPages: analysis.scrapingStrategy.maxPages,
+        });
+      } else {
+        await createConfig({
+          platform,
+          baseUrl,
+          parameters: {
+            scrapingStrategy: analysis.scrapingStrategy,
+            maxPages: analysis.scrapingStrategy.maxPages,
+          },
+          source: "agent",
+        });
+      }
+    } catch (err) {
+      return {
+        success: false,
+        step: "update_config",
+        error: `Config update mislukt: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+
+    // Step 5: Trigger background onboarding
+    try {
+      const handle = await tasks.trigger<typeof platformOnboardTask>("platform-onboard", {
+        platform,
+        source: "agent",
+      });
+
+      revalidateTag("scrapers", "default");
+
+      return {
+        status: "onboarding_triggered" as const,
+        platform,
+        displayName: catalog.displayName ?? analysis.displayName,
+        runId: handle.id,
+        scrapingStrategy: analysis.scrapingStrategy,
+        message: `Heranalyse voltooid — nieuwe selectors gevonden. Onboarding voor "${catalog.displayName ?? platform}" is opnieuw gestart. Gebruik platformOnboardingStatus om de voortgang te volgen.`,
+      };
+    } catch (err) {
+      revalidateTag("scrapers", "default");
+
+      return {
+        success: false,
+        step: "trigger",
+        error: `Onboarding task starten mislukt: ${err instanceof Error ? err.message : String(err)}`,
+        analysis,
+      };
+    }
   },
 });
