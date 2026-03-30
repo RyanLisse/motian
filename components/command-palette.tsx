@@ -2,7 +2,6 @@
 
 import {
   Activity,
-  Bot,
   Briefcase,
   Calendar,
   Code,
@@ -15,7 +14,6 @@ import {
   Plug,
   Rss,
   Settings,
-  Sparkles,
   Users,
   Wrench,
   Zap,
@@ -89,20 +87,6 @@ const PAGES: PageEntry[] = [
     icon: Wrench,
     group: "Platform",
     keywords: ["operaties", "tools", "automatisch"],
-  },
-  {
-    label: "Agents",
-    href: "/agents",
-    icon: Bot,
-    group: "Operaties",
-    keywords: ["bot", "automatisch", "ai"],
-  },
-  {
-    label: "Autopilot",
-    href: "/autopilot",
-    icon: Sparkles,
-    group: "Operaties",
-    keywords: ["auto", "zelfstandig"],
   },
   {
     label: "Databronnen",

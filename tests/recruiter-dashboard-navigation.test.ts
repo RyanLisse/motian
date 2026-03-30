@@ -47,6 +47,7 @@ describe("Recruiter-first navigation", () => {
   it("keeps recruiter workflow routes prominent in the sidebar", () => {
     const source = readFile("components", "app-sidebar.tsx");
     const commandPaletteSource = readFile("components", "command-palette.tsx");
+    const automationHubSource = readFile("app", "automatisering", "page.tsx");
 
     expect(source).toContain('title: "Overzicht"');
     expect(source).toContain('title: "Vacatures"');
@@ -74,8 +75,6 @@ describe("Recruiter-first navigation", () => {
     expect(source).not.toContain('title: "Databronnen"');
 
     expect(commandPaletteSource).toContain('label: "Automatisering"');
-    expect(commandPaletteSource).toContain('label: "Agents"');
-    expect(commandPaletteSource).toContain('label: "Autopilot"');
     expect(commandPaletteSource).toContain('label: "Databronnen"');
     expect(commandPaletteSource).toContain('label: "Matching"');
     expect(commandPaletteSource).toContain('label: "AI Assistent"');
@@ -83,6 +82,14 @@ describe("Recruiter-first navigation", () => {
     expect(commandPaletteSource).toContain('label: "XML Feed"');
     expect(commandPaletteSource).toContain('label: "MCP Server"');
     expect(commandPaletteSource).toContain('label: "OpenAPI Spec"');
+
+    expect(commandPaletteSource).not.toContain('label: "Agents"');
+    expect(commandPaletteSource).not.toContain('label: "Autopilot"');
+
+    expect(automationHubSource).not.toContain('title: "Agents"');
+    expect(automationHubSource).not.toContain('title: "Autopilot"');
+    expect(automationHubSource).not.toContain('href: "/agents"');
+    expect(automationHubSource).not.toContain('href: "/autopilot"');
   });
 
   it("keeps heavy pipeline visuals out of eager sidebar prefetches", () => {

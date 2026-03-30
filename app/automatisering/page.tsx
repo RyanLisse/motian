@@ -1,4 +1,4 @@
-import { Activity, Bot, ChevronRight, Database, Sparkles } from "lucide-react";
+import { ChevronRight, Database, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -6,20 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const SURFACES = [
-  {
-    title: "Agents",
-    href: "/agents",
-    icon: Bot,
-    description: "Bekijk autonome runs, activiteit en operationele gezondheid.",
-    tone: "text-blue-600 dark:text-blue-400",
-  },
-  {
-    title: "Autopilot",
-    href: "/autopilot",
-    icon: Activity,
-    description: "Volg nachtelijke checks en zie welke journeys aandacht vragen.",
-    tone: "text-amber-600 dark:text-amber-400",
-  },
   {
     title: "Databronnen",
     href: "/scraper",
@@ -113,7 +99,7 @@ export default function AutomatiseringPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                Agents, Autopilot en Databronnen zijn bewust samengebracht in één zone.
+                Databronnen en AI Assistent blijven hier zichtbaar als ondersteunende tooling.
               </div>
               <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
                 Instellingen blijft een utility-pagina en hoort niet in deze hub.
@@ -121,6 +107,10 @@ export default function AutomatiseringPage() {
               <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
                 Matching blijft als compatibiliteitsroute bestaan, maar wordt niet meer
                 gepresenteerd als primaire bestemming.
+              </div>
+              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                Operationele admin-pagina&apos;s blijven bereikbaar via directe route, maar worden
+                niet actief gepromoot in de recruiter-UI.
               </div>
             </CardContent>
           </Card>
