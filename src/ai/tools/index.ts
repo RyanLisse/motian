@@ -48,7 +48,7 @@ export {
   reviewGdprRetentie,
   runKandidaatScoringBatch,
 } from "./operations-console";
-export { platformAnalyze, platformAutoSetup } from "./platform-dynamic";
+export { platformAnalyze, platformAutoSetup, platformCompleteOnboarding } from "./platform-dynamic";
 export {
   platformActivate,
   platformCatalogCreate,

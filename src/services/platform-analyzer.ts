@@ -1,6 +1,8 @@
 import type { PlatformAnalysisResult } from "@motian/scrapers";
+import { Output } from "ai";
 import { z } from "zod";
-import { geminiFlash, tracedGenerateObject as generateObject } from "../lib/ai-models";
+import { geminiFlash, tracedGenerateText as generateText } from "../lib/ai-models";
+import { normalizeUrl, validateExternalUrl } from "./scrapers";
 
 const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1/scrape";
 
@@ -60,6 +62,7 @@ async function fetchPageDirect(url: string): Promise<{ html: string; markdown: s
     throw new Error(`Direct fetch mislukt voor ${url}: HTTP ${response.status}`);
   }
 
+  await validateExternalUrl(response.url);
   const html = await response.text();
   return { html, markdown: "" };
 }
@@ -69,7 +72,7 @@ const analysisResultSchema = z.object({
   displayName: z.string().min(1).describe("Human-readable platform name"),
   description: z.string().describe("Brief Dutch description of the platform and its content"),
   adapterKind: z
-    .enum(["http_html_list_detail", "api_json", "browser_bootstrap_http_harvest", "ai_dynamic"])
+    .enum(["http_html_list_detail", "api_json", "ai_dynamic"])
     .describe("Recommended adapter kind based on page analysis"),
   authMode: z
     .enum(["none", "api_key", "oauth", "session", "username_password"])
@@ -111,6 +114,14 @@ const analysisResultSchema = z.object({
   }),
 });
 
+/** Strip script/style tags and inline event handlers before sending HTML to the LLM. */
+function sanitizeHtmlForLlm(html: string): string {
+  return html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/\s+on\w+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gi, "");
+}
+
 /**
  * Analyze a job platform URL using Firecrawl + AI to determine the optimal
  * scraping strategy and generate a complete platform configuration.
@@ -124,13 +135,16 @@ export async function analyzePlatform(url: string): Promise<PlatformAnalysisResu
     pageContent = await fetchPageDirect(url);
   }
 
+  // Sanitize HTML before sending to LLM — strip scripts, styles, and inline event handlers
+  const sanitizedHtml = sanitizeHtmlForLlm(pageContent.html);
+
   // Truncate HTML to avoid token limits (keep first 30k chars which covers most listing pages)
-  const truncatedHtml = pageContent.html.slice(0, 30_000);
+  const truncatedHtml = sanitizedHtml.slice(0, 30_000);
   const truncatedMarkdown = pageContent.markdown.slice(0, 15_000);
 
-  const { object } = await generateObject({
+  const { output } = await generateText({
     model: geminiFlash,
-    schema: analysisResultSchema,
+    output: Output.object({ schema: analysisResultSchema }),
     prompt: `You are an expert web scraper analyst. Analyze this job platform page and determine the optimal scraping strategy.
 
 SOURCE URL: ${url}
@@ -158,8 +172,7 @@ TASK:
 6. Recommend the best adapter kind:
    - "api_json" if a clean JSON API is available
    - "http_html_list_detail" if standard HTML with simple HTTP requests works
-   - "browser_bootstrap_http_harvest" if browser rendering is needed for initial load but data can then be harvested via HTTP
-   - "ai_dynamic" if the structure is complex/non-standard and AI extraction would be most reliable
+   - "ai_dynamic" if the structure is complex/non-standard, requires browser rendering for initial load, or AI extraction would be most reliable
 
 IMPORTANT:
 - CSS selectors should be specific enough to target job data reliably
@@ -170,9 +183,15 @@ IMPORTANT:
 - Be conservative with maxPages — start with 3-5 for unknown platforms`,
   });
 
+  if (!output) {
+    throw new Error("Platform analyse retourneerde geen gestructureerd resultaat");
+  }
+
+  const object = output;
+
   return {
     ...object,
-    defaultBaseUrl: new URL(url).origin,
+    defaultBaseUrl: normalizeUrl(url),
     capabilities: object.capabilities as PlatformAnalysisResult["capabilities"],
     scrapingStrategy: {
       ...object.scrapingStrategy,

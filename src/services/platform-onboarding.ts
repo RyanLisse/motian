@@ -31,6 +31,7 @@ export type PlatformOnboardingStatus =
   | "monitoring"
   | "completed"
   | "failed"
+  | "cancelled"
   | "needs_implementation";
 
 export type PlatformOnboardingRunState = {
@@ -69,6 +70,7 @@ export type PlatformOnboardingEvent =
   | { type: "activated"; evidence?: Record<string, unknown> }
   | { type: "schedule_verified"; evidence?: Record<string, unknown> }
   | { type: "first_run_verified"; evidence?: Record<string, unknown> }
+  | { type: "cancelled"; evidence?: Record<string, unknown> }
   | {
       type: "unsupported_source_detected";
       blockerKind: "needs_implementation";
@@ -101,6 +103,8 @@ function nextActionsFor(status: PlatformOnboardingStatus): string[] {
       return ["verify_first_successful_scrape"];
     case "completed":
       return [];
+    case "cancelled":
+      return ["restart_onboarding"];
     case "needs_implementation":
       return ["collect_live_evidence", "implement_adapter"];
     case "failed":
@@ -149,6 +153,8 @@ function canApplyEvent(
       return current.status === "active";
     case "first_run_verified":
       return ["active", "monitoring"].includes(current.status);
+    case "cancelled":
+      return current.status !== "completed" && current.status !== "cancelled";
     case "unsupported_source_detected":
       return true;
     default:
@@ -346,6 +352,15 @@ export function reducePlatformOnboardingRun(
         status: "completed",
         currentStep: "complete",
         nextActions: nextActionsFor("completed"),
+        blockerKind: null,
+        evidence: mergedEvidence,
+      };
+    case "cancelled":
+      return {
+        ...current,
+        status: "cancelled",
+        currentStep: current.currentStep,
+        nextActions: nextActionsFor("cancelled"),
         blockerKind: null,
         evidence: mergedEvidence,
       };

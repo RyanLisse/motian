@@ -37,6 +37,14 @@ describe("API auth via proxy", () => {
     },
   ] as const;
 
+  const platformCredentialsEndpoints = [
+    {
+      description: "the platform credentials route",
+      method: "POST",
+      url: "http://localhost/api/platforms/example-platform/credentials",
+    },
+  ] as const;
+
   afterEach(() => {
     if (originalApiSecret === undefined) {
       delete process.env.API_SECRET;
@@ -227,6 +235,38 @@ describe("API auth via proxy", () => {
     );
 
     expect(response.status).toBe(200);
+  });
+
+  it.each(
+    platformCredentialsEndpoints,
+  )("allows same-origin $description without a bearer token when API_SECRET is configured", ({
+    method,
+    url,
+  }) => {
+    process.env.API_SECRET = "test-secret";
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+
+    const response = proxy(new NextRequest(url, { method }));
+
+    expect(response.status).toBe(200);
+  });
+
+  it.each(
+    platformCredentialsEndpoints,
+  )("blocks cross-origin $description without a bearer token", ({ method, url }) => {
+    process.env.API_SECRET = "test-secret";
+    process.env.NODE_ENV = "production";
+    process.env.VERCEL_ENV = "production";
+
+    const response = proxy(
+      new NextRequest(url, {
+        method,
+        headers: { Origin: "https://evil.example.com" },
+      }),
+    );
+
+    expect(response.status).toBe(401);
   });
 
   it("fails closed in production for cross-origin salesforce-feed when API_SECRET is missing", async () => {

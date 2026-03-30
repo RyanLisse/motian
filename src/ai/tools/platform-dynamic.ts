@@ -2,7 +2,14 @@ import { tool } from "ai";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { analyzePlatform } from "@/src/services/platform-analyzer";
-import { createPlatformCatalogEntry, runPlatformOnboardingWorkflow } from "@/src/services/scrapers";
+import {
+  completeOnboarding,
+  createPlatformCatalogEntry,
+  getPlatformByBaseUrl,
+  getPlatformOnboardingStatus,
+  runPlatformOnboardingWorkflow,
+  validateExternalUrl,
+} from "@/src/services/scrapers";
 
 export const platformAnalyze = tool({
   description:
@@ -33,6 +40,22 @@ export const platformAnalyze = tool({
   },
 });
 
+function getCredentialFields(authMode: "oauth" | "session" | "username_password") {
+  switch (authMode) {
+    case "session":
+    case "username_password":
+      return [
+        { name: "username", label: "Gebruikersnaam", type: "text" as const },
+        { name: "password", label: "Wachtwoord", type: "password" as const },
+      ];
+    case "oauth":
+      return [
+        { name: "accessToken", label: "Access-token", type: "password" as const },
+        { name: "refreshToken", label: "Refresh-token", type: "password" as const },
+      ];
+  }
+}
+
 export const platformAutoSetup = tool({
   description:
     "Richt een nieuw platform volledig automatisch in op basis van een URL. Voert analyse, catalogus-aanmaak, configuratie, validatie, test-import en activatie uit in één stap. De agent hoeft alleen een URL te geven.",
@@ -46,8 +69,39 @@ export const platformAutoSetup = tool({
       .optional()
       .default(true)
       .describe("Automatisch activeren na succesvolle test-import (standaard: ja)"),
+    credentials: z
+      .record(z.string())
+      .optional()
+      .describe(
+        "Login-gegevens voor platforms die authenticatie vereisen (bijv. { username: '...', password: '...' })",
+      ),
   }),
-  execute: async ({ url, activate }) => {
+  execute: async ({ url, activate, credentials }) => {
+    // Step 0a: SSRF validation
+    try {
+      await validateExternalUrl(url);
+    } catch (err) {
+      return {
+        success: false,
+        step: "ssrf_check",
+        error: err instanceof Error ? err.message : "URL validatie mislukt",
+      };
+    }
+
+    // Step 0b: Dedup check — bail early if platform already exists
+    const existing = await getPlatformByBaseUrl(url);
+    if (existing) {
+      return {
+        status: "exists" as const,
+        platform: existing.slug,
+        displayName: existing.displayName,
+        isActive: existing.isEnabled ?? false,
+        message: existing.isEnabled
+          ? `Platform "${existing.displayName}" is al actief. Gebruik platformConfigUpdate om de configuratie aan te passen.`
+          : `Platform "${existing.displayName}" bestaat al maar is niet actief. Gebruik platformActivate om te activeren.`,
+      };
+    }
+
     // Step 1: Analyze the platform
     let analysis: Awaited<ReturnType<typeof analyzePlatform>>;
     try {
@@ -83,6 +137,19 @@ export const platformAutoSetup = tool({
       };
     }
 
+    // Step 2b: Credential gate — if auth required but no credentials provided, pause
+    if (analysis.authMode !== "none" && analysis.authMode !== "api_key" && !credentials) {
+      revalidateTag("scrapers", "default");
+
+      return {
+        status: "credentials_needed" as const,
+        platform: analysis.slug,
+        displayName: analysis.displayName,
+        authMode: analysis.authMode,
+        fields: getCredentialFields(analysis.authMode),
+      };
+    }
+
     // Step 3: Run the full onboarding workflow (config + validate + test + activate)
     try {
       const result = await runPlatformOnboardingWorkflow({
@@ -94,6 +161,7 @@ export const platformAutoSetup = tool({
             scrapingStrategy: analysis.scrapingStrategy,
             maxPages: analysis.scrapingStrategy.maxPages,
           },
+          ...(credentials ? { authConfig: credentials } : {}),
           source: "agent",
         },
         activate,
@@ -148,5 +216,27 @@ export const platformAutoSetup = tool({
           "Het platform is aangemaakt in de catalogus. Probeer handmatig: platformConfigCreate → platformConfigValidate → platformTestImport → platformActivate.",
       };
     }
+  },
+});
+
+export const platformCompleteOnboarding = tool({
+  description:
+    "Markeer een platform onboarding als voltooid nadat de eerste scrape succesvol is uitgevoerd. Verplaatst de status naar 'completed'.",
+  inputSchema: z.object({
+    platform: z.string().min(1).describe("Platform slug"),
+  }),
+  execute: async ({ platform }) => {
+    const status = await getPlatformOnboardingStatus(platform);
+    const latestRunStatus = status.latestRun?.status ?? "unknown";
+
+    if (latestRunStatus !== "active") {
+      throw new Error(
+        `Platform ${platform} kan onboarding niet voltooien vanuit status "${latestRunStatus}".`,
+      );
+    }
+
+    await completeOnboarding(platform);
+    revalidateTag("scrapers", "default");
+    return { success: true, platform, status: "completed" };
   },
 });
