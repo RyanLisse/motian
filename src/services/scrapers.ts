@@ -44,9 +44,7 @@ export async function validateExternalUrl(url: string): Promise<void> {
   const { address } = await dns.promises.lookup(parsed.hostname);
 
   // Normalize IPv6-mapped IPv4 (::ffff:127.0.0.1 → 127.0.0.1)
-  const normalizedAddress = address.startsWith("::ffff:")
-    ? address.slice(7)
-    : address;
+  const normalizedAddress = address.startsWith("::ffff:") ? address.slice(7) : address;
 
   // IPv4 private ranges
   if (
@@ -68,7 +66,11 @@ export async function validateExternalUrl(url: string): Promise<void> {
   }
 
   // IPv6 loopback and private
-  if (normalizedAddress === "::1" || normalizedAddress.startsWith("fc") || normalizedAddress.startsWith("fd")) {
+  if (
+    normalizedAddress === "::1" ||
+    normalizedAddress.startsWith("fc") ||
+    normalizedAddress.startsWith("fd")
+  ) {
     throw new Error(`URL verwijst naar een privé netwerk adres: ${normalizedAddress}`);
   }
 }

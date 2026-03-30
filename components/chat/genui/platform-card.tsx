@@ -67,28 +67,28 @@ type PlatformListOutput = Array<{
   latestRun?: { status: string };
 }>;
 
+function isRecord(o: unknown): o is Record<string, unknown> {
+  return typeof o === "object" && o !== null;
+}
+
 function isCredentialsNeeded(o: unknown): o is CredentialsNeededOutput {
-  return typeof o === "object" && o !== null && (o as any).status === "credentials_needed";
+  return isRecord(o) && o.status === "credentials_needed";
 }
 
 function isExists(o: unknown): o is ExistsOutput {
-  return typeof o === "object" && o !== null && (o as any).status === "exists";
+  return isRecord(o) && o.status === "exists";
 }
 
 function isOnboardSuccess(o: unknown): o is OnboardStartedOutput {
-  return (
-    typeof o === "object" && o !== null && (o as any).success === true && "platform" in (o as any)
-  );
+  return isRecord(o) && o.success === true && "platform" in o;
 }
 
 function isError(o: unknown): o is ErrorOutput {
-  return (
-    typeof o === "object" && o !== null && (o as any).success === false && "error" in (o as any)
-  );
+  return isRecord(o) && o.success === false && "error" in o;
 }
 
 function isOnboardingStatus(o: unknown): o is OnboardingStatusOutput {
-  return typeof o === "object" && o !== null && "catalog" in (o as any);
+  return isRecord(o) && "catalog" in o;
 }
 
 function isPlatformList(o: unknown): o is PlatformListOutput {
@@ -135,21 +135,28 @@ function CredentialForm({ platform, fields }: { platform: string; fields: Creden
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError(null);
     try {
-      await fetch(`/api/platforms/${platform}/credentials`, {
+      const res = await fetch(`/api/platforms/${platform}/credentials`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error ?? `Fout bij opslaan (${res.status})`);
+        return;
+      }
       setDone(true);
       // Clear credentials from memory
       setValues({});
     } catch {
-      // Error handled silently — user can retry
+      setError("Netwerkfout — controleer je verbinding en probeer opnieuw.");
     } finally {
       setSubmitting(false);
     }
@@ -165,6 +172,11 @@ function CredentialForm({ platform, fields }: { platform: string; fields: Creden
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {error && (
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      )}
       {fields.map((field) => (
         <div key={field.name}>
           <label htmlFor={field.name} className="text-sm font-medium">

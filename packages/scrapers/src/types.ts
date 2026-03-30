@@ -8,7 +8,7 @@ export type RawScrapedListing = Record<string, unknown>;
  *
  * - `http_html_list_detail` — pure HTTP fetch + HTML parse (list page → detail pages).
  * - `browser_bootstrap_http_harvest` — browser renders initial page, then HTTP harvests
- *    detail pages. NOTE: no dedicated runtime adapter exists; the service layer remaps
+ *    detail pages. No dedicated runtime adapter exists; the service layer remaps
  *    this to `ai_dynamic` at runtime (see `src/services/scrapers.ts`).
  * - `api_json` — structured JSON API.
  * - `ai_dynamic` — AI-driven dynamic scraper (fallback for unimplemented adapters).

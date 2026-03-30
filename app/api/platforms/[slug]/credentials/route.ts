@@ -5,11 +5,14 @@ import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
 import { encrypt } from "@/src/lib/crypto";
 
-const slugSchema = z.string().min(1).max(100).regex(/^[a-z0-9-]+$/);
-const credentialsSchema = z.record(z.string().min(1).max(1000)).refine(
-  (obj) => JSON.stringify(obj).length <= 4096,
-  { message: "Payload te groot (max 4KB)" },
-);
+const slugSchema = z
+  .string()
+  .min(1)
+  .max(100)
+  .regex(/^[a-z0-9-]+$/);
+const credentialsSchema = z
+  .record(z.string().min(1).max(1000))
+  .refine((obj) => JSON.stringify(obj).length <= 4096, { message: "Payload te groot (max 4KB)" });
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug: rawSlug } = await params;
