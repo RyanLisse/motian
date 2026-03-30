@@ -58,7 +58,7 @@ The simplicity reviewer, architecture strategist, and pattern recognition specia
 
 ### Architecture
 
-```
+```text
 User message: "Voeg platform toe: https://example.com/jobs"
   │
   ▼
@@ -175,7 +175,7 @@ The credential research agent and security sentinel both mandate: **credentials 
 
 9. **`components/chat/genui/platform-card.tsx`** (NEW) — Single GenUI component
    - Renders based on output shape:
-     - **Onboarding mode** (`status: "started"`): stepper showing Analyse → Configureren → Valideren → Testen → Activeren → Voltooien. Subscribes to Trigger.dev realtime for progress.
+     - **Onboarding mode** (`status: "started"`): stepper showing Analyseren → Configureren → Valideren → Testen → Activeren → Voltooien. Subscribes to Trigger.dev realtime for progress.
      - **Credentials mode** (`status: "credentials_needed"`): secure form with `<input type="password">`, POSTs to `/api/platforms/[slug]/credentials`
      - **Status mode** (from `platformOnboardingStatus`): stepper + health indicators + quick actions
      - **List mode** (from `platformsList`): grid of compact platform cards with status dots
@@ -357,6 +357,7 @@ erDiagram
 - Industry consensus: all major AI platforms (ChatGPT, Claude MCP, Copilot) use separate UI for credentials, never chat text
 
 ### Dutch String Inventory (GenUI)
+
 | Key | Dutch Label |
 |-----|------------|
 | step.analyze | Analyseren |

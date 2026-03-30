@@ -55,4 +55,22 @@ describe("platform credentials route", () => {
       runId: "run-123",
     });
   });
+
+  it("rejects an empty credentials payload", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/platforms/example-platform/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }),
+      { params: Promise.resolve({ slug: "example-platform" }) },
+    );
+
+    expect(createConfig).not.toHaveBeenCalled();
+    expect(trigger).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Ongeldige inloggegevens",
+    });
+  });
 });

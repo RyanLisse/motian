@@ -6,6 +6,7 @@ import {
   completeOnboarding,
   createPlatformCatalogEntry,
   getPlatformByBaseUrl,
+  getPlatformOnboardingStatus,
   runPlatformOnboardingWorkflow,
   validateExternalUrl,
 } from "@/src/services/scrapers";
@@ -38,6 +39,22 @@ export const platformAnalyze = tool({
     };
   },
 });
+
+function getCredentialFields(authMode: "oauth" | "session" | "username_password") {
+  switch (authMode) {
+    case "session":
+    case "username_password":
+      return [
+        { name: "username", label: "Gebruikersnaam", type: "text" as const },
+        { name: "password", label: "Wachtwoord", type: "password" as const },
+      ];
+    case "oauth":
+      return [
+        { name: "accessToken", label: "Access-token", type: "password" as const },
+        { name: "refreshToken", label: "Refresh-token", type: "password" as const },
+      ];
+  }
+}
 
 export const platformAutoSetup = tool({
   description:
@@ -129,13 +146,7 @@ export const platformAutoSetup = tool({
         platform: analysis.slug,
         displayName: analysis.displayName,
         authMode: analysis.authMode,
-        fields:
-          analysis.authMode === "session" || analysis.authMode === "username_password"
-            ? [
-                { name: "username", label: "Gebruikersnaam", type: "text" as const },
-                { name: "password", label: "Wachtwoord", type: "password" as const },
-              ]
-            : [{ name: "apiKey", label: "API-sleutel", type: "password" as const }],
+        fields: getCredentialFields(analysis.authMode),
       };
     }
 
@@ -215,6 +226,15 @@ export const platformCompleteOnboarding = tool({
     platform: z.string().min(1).describe("Platform slug"),
   }),
   execute: async ({ platform }) => {
+    const status = await getPlatformOnboardingStatus(platform);
+    const latestRunStatus = status.latestRun?.status ?? "unknown";
+
+    if (latestRunStatus !== "active") {
+      throw new Error(
+        `Platform ${platform} kan onboarding niet voltooien vanuit status "${latestRunStatus}".`,
+      );
+    }
+
     await completeOnboarding(platform);
     revalidateTag("scrapers", "default");
     return { success: true, platform, status: "completed" };

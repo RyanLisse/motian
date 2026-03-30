@@ -93,7 +93,7 @@ function isOnboardingStatus(o: unknown): o is OnboardingStatusOutput {
 }
 
 function isPlatformList(o: unknown): o is PlatformListOutput {
-  return Array.isArray(o) && o.length > 0 && "slug" in o[0];
+  return Array.isArray(o) && (o.length === 0 || (o[0] !== undefined && "slug" in o[0]));
 }
 
 // ─── Sub-Components ──────────────────────────────────────────
@@ -332,6 +332,21 @@ export function PlatformCard({ output }: { output: unknown }) {
 
   // Platform list
   if (isPlatformList(output)) {
+    if (output.length === 0) {
+      return (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Geen platformen gevonden</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              Er zijn nog geen platformen ingericht voor deze omgeving.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+
     return (
       <div className="grid grid-cols-2 gap-2">
         {output.slice(0, 8).map((p) => (

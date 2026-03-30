@@ -192,7 +192,9 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       },
       activate: data.activate ?? true,
     });
-    publish("platform:activated", { platform: analysis.slug });
+    if (result.activated) {
+      publish("platform:activated", { platform: analysis.slug });
+    }
     return { success: true, platform: analysis.slug, ...result };
   },
   platform_config_update: async (raw) => {
@@ -207,6 +209,15 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   },
   platform_complete_onboarding: async (raw) => {
     const { platform } = platformSchema.parse(raw);
+    const status = await getPlatformOnboardingStatus(platform);
+    const latestRunStatus = status.latestRun?.status ?? "unknown";
+
+    if (latestRunStatus !== "active") {
+      throw new Error(
+        `Platform ${platform} kan onboarding niet voltooien vanuit status "${latestRunStatus}".`,
+      );
+    }
+
     await completeOnboarding(platform);
     return { success: true, platform, status: "completed" };
   },

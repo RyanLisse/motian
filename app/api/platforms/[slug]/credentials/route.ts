@@ -11,6 +11,7 @@ const slugSchema = z
   .regex(/^[a-z0-9-]+$/);
 const credentialsSchema = z
   .record(z.string().min(1).max(1000))
+  .refine((obj) => Object.keys(obj).length > 0, { message: "Minstens één veld is verplicht" })
   .refine((obj) => JSON.stringify(obj).length <= 4096, { message: "Payload te groot (max 4KB)" });
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {

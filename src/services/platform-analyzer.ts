@@ -2,7 +2,7 @@ import type { PlatformAnalysisResult } from "@motian/scrapers";
 import { Output } from "ai";
 import { z } from "zod";
 import { geminiFlash, tracedGenerateText as generateText } from "../lib/ai-models";
-import { normalizeUrl } from "./scrapers";
+import { normalizeUrl, validateExternalUrl } from "./scrapers";
 
 const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1/scrape";
 
@@ -62,6 +62,7 @@ async function fetchPageDirect(url: string): Promise<{ html: string; markdown: s
     throw new Error(`Direct fetch mislukt voor ${url}: HTTP ${response.status}`);
   }
 
+  await validateExternalUrl(response.url);
   const html = await response.text();
   return { html, markdown: "" };
 }
@@ -118,7 +119,7 @@ function sanitizeHtmlForLlm(html: string): string {
   return html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/\s+on\w+="[^"]*"/gi, "");
+    .replace(/\s+on\w+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gi, "");
 }
 
 /**

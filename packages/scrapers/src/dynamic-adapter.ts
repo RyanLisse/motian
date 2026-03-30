@@ -8,6 +8,7 @@ import type {
 } from "./types";
 
 const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1/scrape";
+const DEFAULT_DETAIL_FETCH_CONCURRENCY = 4;
 
 type DynamicScrapingStrategy = {
   listSelector: string;
@@ -195,6 +196,21 @@ function buildPageUrl(
   return baseUrl;
 }
 
+async function fetchHtmlSettledInBatches(
+  urls: string[],
+  concurrencyLimit = DEFAULT_DETAIL_FETCH_CONCURRENCY,
+): Promise<PromiseSettledResult<string>[]> {
+  const results: PromiseSettledResult<string>[] = [];
+
+  for (let index = 0; index < urls.length; index += concurrencyLimit) {
+    const batch = urls.slice(index, index + concurrencyLimit);
+    const batchResults = await Promise.allSettled(batch.map((url) => fetchHtml(url)));
+    results.push(...batchResults);
+  }
+
+  return results;
+}
+
 async function scrapeListings(
   config: PlatformRuntimeConfig,
   options?: { limit?: number },
@@ -234,10 +250,10 @@ async function scrapeListings(
             return { element, detailUrl: links[0] };
           })
           .filter((plan) => plan.detailUrl);
+        const processedElements = new Set(detailFetchPlan.map((plan) => plan.element));
 
-        // Fetch ALL detail pages in parallel
-        const detailResults = await Promise.allSettled(
-          detailFetchPlan.map((plan) => fetchHtml(plan.detailUrl!)),
+        const detailResults = await fetchHtmlSettledInBatches(
+          detailFetchPlan.map((plan) => plan.detailUrl!),
         );
 
         // Map results back to listings
@@ -282,8 +298,7 @@ async function scrapeListings(
 
         // Handle elements without a detail URL (no link found)
         for (const element of elementsToProcess) {
-          const links = extractLinks(element, config.baseUrl);
-          if (links[0]) continue; // Already processed in parallel batch above
+          if (processedElements.has(element)) continue;
 
           const listing: RawScrapedListing = {
             externalUrl: "",

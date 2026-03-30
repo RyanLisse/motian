@@ -1,4 +1,4 @@
-import { metadata, task } from "@trigger.dev/sdk";
+import { logger, metadata, task } from "@trigger.dev/sdk";
 import type { PlatformOnboardingSource } from "../src/services/platform-onboarding";
 import type { PlatformTestImportResponse } from "../src/services/scrapers";
 
@@ -61,7 +61,9 @@ export const platformOnboardTask = task({
       await completeOnboarding(platform);
     } catch (err) {
       // Non-fatal — platform is already activated
-      console.error(`[platform-onboard] completeOnboarding failed for ${platform}:`, err);
+      logger.error(`[platform-onboard] completeOnboarding failed for ${platform}:`, {
+        error: err,
+      });
     }
 
     metadata.set("step", "done");
