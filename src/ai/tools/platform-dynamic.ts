@@ -4,6 +4,7 @@ import { z } from "zod";
 import { analyzePlatform } from "@/src/services/platform-analyzer";
 import {
   completeOnboarding,
+  createConfig,
   createPlatformCatalogEntry,
   getPlatformByBaseUrl,
   getPlatformOnboardingStatus,
@@ -69,14 +70,8 @@ export const platformAutoSetup = tool({
       .optional()
       .default(true)
       .describe("Automatisch activeren na succesvolle test-import (standaard: ja)"),
-    credentials: z
-      .record(z.string())
-      .optional()
-      .describe(
-        "Login-gegevens voor platforms die authenticatie vereisen (bijv. { username: '...', password: '...' })",
-      ),
   }),
-  execute: async ({ url, activate, credentials }) => {
+  execute: async ({ url, activate }) => {
     // Step 0a: SSRF validation
     try {
       await validateExternalUrl(url);
@@ -137,8 +132,20 @@ export const platformAutoSetup = tool({
       };
     }
 
-    // Step 2b: Credential gate — if auth required but no credentials provided, pause
-    if (analysis.authMode !== "none" && analysis.authMode !== "api_key" && !credentials) {
+    // Step 2b: Credential gate — if auth required, always pause for secure credential collection
+    //          Credentials flow through the GenUI form → POST /api/platforms/[slug]/credentials
+    if (analysis.authMode !== "none" && analysis.authMode !== "api_key") {
+      // Create a stub config so POST /api/platforms/[slug]/credentials has a row to update
+      try {
+        await createConfig({
+          platform: analysis.slug,
+          baseUrl: analysis.defaultBaseUrl,
+          parameters: { scrapingStrategy: analysis.scrapingStrategy },
+          source: "agent",
+        });
+      } catch {
+        // Config may already exist from a prior attempt — non-fatal
+      }
       revalidateTag("scrapers", "default");
 
       return {
@@ -161,7 +168,7 @@ export const platformAutoSetup = tool({
             scrapingStrategy: analysis.scrapingStrategy,
             maxPages: analysis.scrapingStrategy.maxPages,
           },
-          ...(credentials ? { authConfig: credentials } : {}),
+          // Credentials are injected via /api/platforms/[slug]/credentials, not via tool params
           source: "agent",
         },
         activate,

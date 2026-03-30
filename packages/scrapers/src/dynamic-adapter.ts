@@ -264,8 +264,8 @@ async function scrapeListings(
           const listing: RawScrapedListing = {
             externalUrl: detailUrl ?? "",
             externalId: detailUrl
-              ? detailUrl.split("/").filter(Boolean).pop() ?? crypto.randomUUID()
-              : crypto.randomUUID(),
+              ? (detailUrl.split("/").filter(Boolean).pop() ?? detailUrl)
+              : "",
           };
 
           if (detailResult.status === "fulfilled") {
@@ -300,9 +300,13 @@ async function scrapeListings(
         for (const element of elementsToProcess) {
           if (processedElements.has(element)) continue;
 
+          // Derive a deterministic ID from element content to prevent duplicate drift
+          const elementText = extractText(element).slice(0, 100);
           const listing: RawScrapedListing = {
             externalUrl: "",
-            externalId: crypto.randomUUID(),
+            externalId:
+              elementText.replace(/\s+/g, "-").toLowerCase().slice(0, 80) ||
+              `no-id-${allListings.length}`,
           };
           for (const [field, selector] of Object.entries(strategy.fieldMapping)) {
             const value = extractFieldValue(element, selector);
@@ -326,8 +330,8 @@ async function scrapeListings(
           const listing: RawScrapedListing = {
             externalUrl: detailUrl ?? "",
             externalId: detailUrl
-              ? detailUrl.split("/").filter(Boolean).pop() ?? crypto.randomUUID()
-              : crypto.randomUUID(),
+              ? (detailUrl.split("/").filter(Boolean).pop() ?? detailUrl)
+              : "",
           };
 
           for (const [field, selector] of Object.entries(strategy.fieldMapping)) {

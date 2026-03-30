@@ -171,12 +171,43 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       .parse(raw);
 
     const { analyzePlatform } = await import("../../services/platform-analyzer");
-    const { validateExternalUrl } = await import("../../services/scrapers");
+    const { validateExternalUrl, getPlatformByBaseUrl } = await import("../../services/scrapers");
 
     // SSRF protection — validate URL before any external fetch
-    await validateExternalUrl(data.url);
+    try {
+      await validateExternalUrl(data.url);
+    } catch (err) {
+      return {
+        success: false,
+        step: "ssrf_check",
+        error: err instanceof Error ? err.message : "URL validatie mislukt",
+      };
+    }
+
+    // Dedup check — bail early if platform already exists
+    const existing = await getPlatformByBaseUrl(data.url);
+    if (existing) {
+      return {
+        status: "exists",
+        platform: existing.slug,
+        displayName: existing.displayName,
+        isActive: existing.isEnabled ?? false,
+      };
+    }
 
     const analysis = await analyzePlatform(data.url);
+
+    // Credential gate — if auth required but no credentials provided, pause
+    if (analysis.authMode !== "none" && analysis.authMode !== "api_key" && !data.credentials) {
+      await createPlatformCatalogEntry({ ...analysis, source: "mcp" });
+      return {
+        status: "credentials_needed",
+        platform: analysis.slug,
+        displayName: analysis.displayName,
+        authMode: analysis.authMode,
+      };
+    }
+
     await createPlatformCatalogEntry({ ...analysis, source: "mcp" });
     const result = await runPlatformOnboardingWorkflow({
       source: "mcp",

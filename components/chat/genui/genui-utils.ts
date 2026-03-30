@@ -48,6 +48,18 @@ export const stageLabels: Record<string, string> = {
 
 /** Shared Dutch labels for platform onboarding steps. */
 export const onboardingStepLabels: Record<string, string> = {
+  create_draft: "Aanmaken",
+  inspect_site: "Analyseren",
+  choose_adapter: "Adapter kiezen",
+  save_config: "Configureren",
+  request_credentials: "Inloggegevens",
+  implement_adapter: "Implementeren",
+  run_targeted_tests: "Testen",
+  validate_access: "Valideren",
+  run_smoke_import: "Testen",
+  verify_schedule: "Schema verifiëren",
+  monitor_first_runs: "Monitoren",
+  // Simplified aliases used by the trigger task
   analyze: "Analyseren",
   configure: "Configureren",
   validate: "Valideren",
@@ -62,6 +74,9 @@ export const platformStatusLabels: Record<string, string> = {
   researching: "Onderzoeken",
   config_saved: "Geconfigureerd",
   waiting_for_credentials: "Wacht op inloggegevens",
+  waiting_for_external_approval: "Wacht op goedkeuring",
+  implementing: "Implementeren",
+  implementation_failed: "Implementatie mislukt",
   validated: "Gevalideerd",
   tested: "Getest",
   active: "Actief",
