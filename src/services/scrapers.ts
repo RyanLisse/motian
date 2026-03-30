@@ -557,6 +557,16 @@ async function resolveAdapter(platform: string) {
     return getDynamicAdapter();
   }
 
+  // Fallback: use dynamic adapter if platform has a scrapingStrategy in its config,
+  // even if adapterKind is not "ai_dynamic" (e.g. http_html_list_detail with no hardcoded adapter)
+  if (catalogRow) {
+    const config = await getConfigByPlatform(platform);
+    const params = config?.parameters as Record<string, unknown> | null;
+    if (params?.scrapingStrategy) {
+      return getDynamicAdapter();
+    }
+  }
+
   return undefined;
 }
 
