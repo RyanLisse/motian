@@ -171,6 +171,10 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       .parse(raw);
 
     const { analyzePlatform } = await import("../../services/platform-analyzer");
+    const { validateExternalUrl } = await import("../../services/scrapers");
+
+    // SSRF protection — validate URL before any external fetch
+    await validateExternalUrl(data.url);
 
     const analysis = await analyzePlatform(data.url);
     await createPlatformCatalogEntry({ ...analysis, source: "mcp" });

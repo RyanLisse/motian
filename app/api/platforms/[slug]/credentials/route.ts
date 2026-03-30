@@ -5,10 +5,21 @@ import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
 import { encrypt } from "@/src/lib/crypto";
 
-const credentialsSchema = z.record(z.string().min(1));
+const slugSchema = z.string().min(1).max(100).regex(/^[a-z0-9-]+$/);
+const credentialsSchema = z.record(z.string().min(1).max(1000)).refine(
+  (obj) => JSON.stringify(obj).length <= 4096,
+  { message: "Payload te groot (max 4KB)" },
+);
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+
+  // Validate slug format
+  const slugResult = slugSchema.safeParse(rawSlug);
+  if (!slugResult.success) {
+    return NextResponse.json({ error: "Ongeldig platform slug" }, { status: 400 });
+  }
+  const slug = slugResult.data;
 
   let body: unknown;
   try {
