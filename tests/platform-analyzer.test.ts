@@ -44,6 +44,7 @@ describe("analyzePlatform", () => {
         success: true,
         data: { html: "<div class='job'>Vacature</div>", markdown: "" },
       }),
+      text: async () => "<div class='job'>Vacature</div>",
     });
 
     vi.stubGlobal("fetch", fetchMock);
