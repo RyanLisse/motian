@@ -67,6 +67,125 @@ describe("GET /api/salesforce-feed", () => {
     expect(body).toContain("<LastModifiedDate>2026-03-01T00:00:00.000Z</LastModifiedDate>");
   });
 
+  it("returns 304 when the generated XML matches the If-None-Match header", async () => {
+    mockGetSalesforceFeed.mockResolvedValue([
+      {
+        objectType: "Candidate__c",
+        fields: {
+          Id: "candidate-1",
+          Name: "Ada Lovelace",
+          LastModifiedDate: new Date("2026-03-03T08:00:00.000Z"),
+        },
+      },
+    ]);
+
+    const firstResponse = await GET(
+      new Request("http://localhost/api/salesforce-feed?entity=candidates"),
+    );
+    const etag = firstResponse.headers.get("ETag");
+
+    expect(etag).toBeTruthy();
+
+    const cachedResponse = await GET(
+      new Request("http://localhost/api/salesforce-feed?entity=candidates", {
+        headers: { "If-None-Match": etag ?? "" },
+      }),
+    );
+
+    expect(cachedResponse.status).toBe(304);
+    expect(cachedResponse.headers.get("ETag")).toBe(etag);
+    await expect(cachedResponse.text()).resolves.toBe("");
+  });
+
+  it("returns Last-Modified and honors If-Modified-Since for unchanged feed content", async () => {
+    const lastModifiedAt = new Date("2026-03-04T09:30:00.000Z");
+
+    mockGetSalesforceFeed.mockResolvedValue([
+      {
+        objectType: "Application__c",
+        fields: {
+          Id: "app-1",
+          Name: "Ada Lovelace / Platform Engineer",
+          LastModifiedDate: lastModifiedAt,
+        },
+      },
+    ]);
+
+    const firstResponse = await GET(
+      new Request("http://localhost/api/salesforce-feed?entity=applications"),
+    );
+    const lastModified = firstResponse.headers.get("Last-Modified");
+
+    expect(lastModified).toBe(lastModifiedAt.toUTCString());
+
+    const cachedResponse = await GET(
+      new Request("http://localhost/api/salesforce-feed?entity=applications", {
+        headers: { "If-Modified-Since": lastModified ?? "" },
+      }),
+    );
+
+    expect(cachedResponse.status).toBe(304);
+    expect(cachedResponse.headers.get("Last-Modified")).toBe(lastModifiedAt.toUTCString());
+    await expect(cachedResponse.text()).resolves.toBe("");
+  });
+
+  it("ignores If-Modified-Since when If-None-Match is present but does not match", async () => {
+    const lastModifiedAt = new Date("2026-03-04T09:30:00.000Z");
+
+    mockGetSalesforceFeed.mockResolvedValue([
+      {
+        objectType: "Job__c",
+        fields: {
+          Id: "job-2",
+          Name: "Platform Engineer",
+          LastModifiedDate: lastModifiedAt,
+        },
+      },
+    ]);
+
+    const response = await GET(
+      new Request("http://localhost/api/salesforce-feed?entity=jobs", {
+        headers: {
+          "If-Modified-Since": lastModifiedAt.toUTCString(),
+          "If-None-Match": '"stale-etag"',
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.toContain("<sObjects>");
+  });
+
+  it("treats a rounded Last-Modified header as unchanged for sub-second timestamps", async () => {
+    const lastModifiedAt = new Date("2026-03-04T09:30:00.987Z");
+
+    mockGetSalesforceFeed.mockResolvedValue([
+      {
+        objectType: "Candidate__c",
+        fields: {
+          Id: "candidate-2",
+          Name: "Grace Hopper",
+          LastModifiedDate: lastModifiedAt,
+        },
+      },
+    ]);
+
+    const firstResponse = await GET(
+      new Request("http://localhost/api/salesforce-feed?entity=candidates"),
+    );
+    const lastModified = firstResponse.headers.get("Last-Modified");
+
+    expect(lastModified).toBe(lastModifiedAt.toUTCString());
+
+    const cachedResponse = await GET(
+      new Request("http://localhost/api/salesforce-feed?entity=candidates", {
+        headers: { "If-Modified-Since": lastModified ?? "" },
+      }),
+    );
+
+    expect(cachedResponse.status).toBe(304);
+  });
+
   it("rejects unsupported entities", async () => {
     const response = await GET(new Request("http://localhost/api/salesforce-feed?entity=contacts"));
 
