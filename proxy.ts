@@ -83,6 +83,7 @@ const FIRST_PARTY_PATHS = [
   "/api/sollicitaties",
   "/api/berichten",
   "/api/instellingen",
+  "/api/platforms",
   "/api/salesforce-feed",
 ];
 

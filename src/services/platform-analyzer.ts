@@ -2,6 +2,7 @@ import type { PlatformAnalysisResult } from "@motian/scrapers";
 import { Output } from "ai";
 import { z } from "zod";
 import { geminiFlash, tracedGenerateText as generateText } from "../lib/ai-models";
+import { normalizeUrl } from "./scrapers";
 
 const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1/scrape";
 
@@ -189,7 +190,7 @@ IMPORTANT:
 
   return {
     ...object,
-    defaultBaseUrl: new URL(url).origin,
+    defaultBaseUrl: normalizeUrl(url),
     capabilities: object.capabilities as PlatformAnalysisResult["capabilities"],
     scrapingStrategy: {
       ...object.scrapingStrategy,

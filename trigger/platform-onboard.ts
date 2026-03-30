@@ -1,4 +1,6 @@
 import { metadata, task } from "@trigger.dev/sdk";
+import type { PlatformOnboardingSource } from "../src/services/platform-onboarding";
+import type { PlatformTestImportResponse } from "../src/services/scrapers";
 
 export const platformOnboardTask = task({
   id: "platform-onboard",
@@ -8,7 +10,7 @@ export const platformOnboardTask = task({
     minTimeoutInMs: 5000,
     maxTimeoutInMs: 30_000,
   },
-  run: async (payload: { platform: string; configId: number; source: string }) => {
+  run: async (payload: { platform: string; source: PlatformOnboardingSource }) => {
     // Import services dynamically to avoid circular deps (per institutional learning)
     const { validateConfig, triggerTestRun, activatePlatform, completeOnboarding } = await import(
       "../src/services/scrapers"
@@ -19,7 +21,7 @@ export const platformOnboardTask = task({
     // Step 1: Validate
     metadata.set("step", "validate");
     metadata.set("platform", platform);
-    const validation = await validateConfig(platform, source as any);
+    const validation = await validateConfig(platform, source);
     metadata.set("validationResult", validation.ok ? "passed" : "failed");
 
     if (!validation.ok) {
@@ -33,7 +35,7 @@ export const platformOnboardTask = task({
 
     // Step 2: Test import
     metadata.set("step", "test_import");
-    const testImport = await triggerTestRun(platform, source as any, 3);
+    const testImport = await triggerTestRun(platform, source, 3);
     metadata.set("testImportResult", testImport.status);
     metadata.set("jobsFound", testImport.jobsFound);
 
@@ -51,7 +53,7 @@ export const platformOnboardTask = task({
 
     // Step 3: Activate
     metadata.set("step", "activate");
-    await activatePlatform(platform, source as any);
+    await activatePlatform(platform, source);
 
     // Step 4: Complete onboarding (emits schedule_verified + first_run_verified)
     metadata.set("step", "complete");
@@ -70,11 +72,13 @@ export const platformOnboardTask = task({
       testImport: {
         status: testImport.status,
         jobsFound: testImport.jobsFound,
-        sampleListings: testImport.listings?.slice(0, 2).map((l: any) => ({
-          title: l.title,
-          company: l.company,
-          location: l.location,
-        })),
+        sampleListings: testImport.listings
+          ?.slice(0, 2)
+          .map((listing: PlatformTestImportResponse["listings"][number]) => ({
+            title: listing.title,
+            company: listing.company,
+            location: listing.location,
+          })),
       },
       activated: true,
       completed: true,

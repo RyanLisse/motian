@@ -1,15 +1,17 @@
-import { eq } from "drizzle-orm";
+import { tasks } from "@trigger.dev/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/src/db";
-import { scraperConfigs } from "@/src/db/schema";
-import { encrypt } from "@/src/lib/crypto";
+import { createConfig } from "@/src/services/scrapers";
+import type { platformOnboardTask } from "@/trigger/platform-onboard";
 
-const slugSchema = z.string().min(1).max(100).regex(/^[a-z0-9-]+$/);
-const credentialsSchema = z.record(z.string().min(1).max(1000)).refine(
-  (obj) => JSON.stringify(obj).length <= 4096,
-  { message: "Payload te groot (max 4KB)" },
-);
+const slugSchema = z
+  .string()
+  .min(1)
+  .max(100)
+  .regex(/^[a-z0-9-]+$/);
+const credentialsSchema = z
+  .record(z.string().min(1).max(1000))
+  .refine((obj) => JSON.stringify(obj).length <= 4096, { message: "Payload te groot (max 4KB)" });
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug: rawSlug } = await params;
@@ -33,25 +35,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     return NextResponse.json({ error: "Ongeldige inloggegevens" }, { status: 400 });
   }
 
-  // Encrypt credentials
-  const encrypted = encrypt(JSON.stringify(parsed.data));
+  const config = await createConfig({
+    platform: slug,
+    authConfig: parsed.data,
+    source: "ui",
+  });
 
-  // Update the scraper config
-  const [updated] = await db
-    .update(scraperConfigs)
-    .set({
-      authConfigEncrypted: encrypted,
-      updatedAt: new Date(),
-    })
-    .where(eq(scraperConfigs.platform, slug))
-    .returning({ id: scraperConfigs.id });
+  const handle = await tasks.trigger<typeof platformOnboardTask>("platform-onboard", {
+    platform: slug,
+    source: "ui",
+  });
 
-  if (!updated) {
-    return NextResponse.json(
-      { error: `Geen configuratie gevonden voor platform "${slug}"` },
-      { status: 404 },
-    );
-  }
-
-  return NextResponse.json({ credentialId: updated.id, platform: slug });
+  return NextResponse.json(
+    {
+      credentialId: config.id,
+      platform: slug,
+      resumed: true,
+      runId: handle.id,
+    },
+    { status: 202 },
+  );
 }

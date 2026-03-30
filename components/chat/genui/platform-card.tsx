@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { submitPlatformCredentials } from "./credential-submit";
 import { onboardingStepLabels, platformStatusLabels } from "./genui-utils";
 
 // ─── Type Guards ──────────────────────────────────────────────
@@ -67,28 +68,28 @@ type PlatformListOutput = Array<{
   latestRun?: { status: string };
 }>;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function isCredentialsNeeded(o: unknown): o is CredentialsNeededOutput {
-  return typeof o === "object" && o !== null && (o as any).status === "credentials_needed";
+  return isRecord(o) && o.status === "credentials_needed";
 }
 
 function isExists(o: unknown): o is ExistsOutput {
-  return typeof o === "object" && o !== null && (o as any).status === "exists";
+  return isRecord(o) && o.status === "exists";
 }
 
 function isOnboardSuccess(o: unknown): o is OnboardStartedOutput {
-  return (
-    typeof o === "object" && o !== null && (o as any).success === true && "platform" in (o as any)
-  );
+  return isRecord(o) && o.success === true && "platform" in o;
 }
 
 function isError(o: unknown): o is ErrorOutput {
-  return (
-    typeof o === "object" && o !== null && (o as any).success === false && "error" in (o as any)
-  );
+  return isRecord(o) && o.success === false && "error" in o;
 }
 
 function isOnboardingStatus(o: unknown): o is OnboardingStatusOutput {
-  return typeof o === "object" && o !== null && "catalog" in (o as any);
+  return isRecord(o) && "catalog" in o;
 }
 
 function isPlatformList(o: unknown): o is PlatformListOutput {
@@ -135,21 +136,26 @@ function CredentialForm({ platform, fields }: { platform: string; fields: Creden
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError(null);
     try {
-      await fetch(`/api/platforms/${platform}/credentials`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+      await submitPlatformCredentials({
+        platform,
+        values,
       });
       setDone(true);
       // Clear credentials from memory
       setValues({});
-    } catch {
-      // Error handled silently — user can retry
+    } catch (submissionError) {
+      setError(
+        submissionError instanceof Error
+          ? submissionError.message
+          : "Opslaan mislukt. Probeer opnieuw.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -183,6 +189,7 @@ function CredentialForm({ platform, fields }: { platform: string; fields: Creden
       <Button type="submit" size="sm" disabled={submitting}>
         {submitting ? "Verbinden..." : "Verbinden"}
       </Button>
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </form>
   );
 }
