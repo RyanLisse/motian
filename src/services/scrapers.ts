@@ -35,30 +35,41 @@ import {
  */
 export async function validateExternalUrl(url: string): Promise<void> {
   const parsed = new URL(url);
+
+  // Scheme validation — only HTTP(S) allowed
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("Alleen HTTP(S) URLs zijn toegestaan");
+  }
+
   const { address } = await dns.promises.lookup(parsed.hostname);
+
+  // Normalize IPv6-mapped IPv4 (::ffff:127.0.0.1 → 127.0.0.1)
+  const normalizedAddress = address.startsWith("::ffff:")
+    ? address.slice(7)
+    : address;
 
   // IPv4 private ranges
   if (
-    address.startsWith("10.") ||
-    address.startsWith("127.") ||
-    address.startsWith("0.") ||
-    address.startsWith("192.168.") ||
-    address.startsWith("169.254.")
+    normalizedAddress.startsWith("10.") ||
+    normalizedAddress.startsWith("127.") ||
+    normalizedAddress.startsWith("0.") ||
+    normalizedAddress.startsWith("192.168.") ||
+    normalizedAddress.startsWith("169.254.")
   ) {
-    throw new Error(`URL verwijst naar een privé netwerk adres: ${address}`);
+    throw new Error(`URL verwijst naar een privé netwerk adres: ${normalizedAddress}`);
   }
 
   // 172.16.0.0 – 172.31.255.255
-  if (address.startsWith("172.")) {
-    const secondOctet = Number.parseInt(address.split(".")[1], 10);
+  if (normalizedAddress.startsWith("172.")) {
+    const secondOctet = Number.parseInt(normalizedAddress.split(".")[1], 10);
     if (secondOctet >= 16 && secondOctet <= 31) {
-      throw new Error(`URL verwijst naar een privé netwerk adres: ${address}`);
+      throw new Error(`URL verwijst naar een privé netwerk adres: ${normalizedAddress}`);
     }
   }
 
   // IPv6 loopback and private
-  if (address === "::1" || address.startsWith("fc") || address.startsWith("fd")) {
-    throw new Error(`URL verwijst naar een privé netwerk adres: ${address}`);
+  if (normalizedAddress === "::1" || normalizedAddress.startsWith("fc") || normalizedAddress.startsWith("fd")) {
+    throw new Error(`URL verwijst naar een privé netwerk adres: ${normalizedAddress}`);
   }
 }
 
