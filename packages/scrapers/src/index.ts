@@ -6,7 +6,7 @@ export {
   mapTenderActiveToStatus,
   scrapeOpdrachtoverheid,
 } from "./opdrachtoverheid";
-export { dynamicAdapter } from "./dynamic-adapter";
+export { dynamicAdapter, extractBySelector, extractFieldValue, extractText } from "./dynamic-adapter";
 export {
   getDynamicAdapter,
   getImplementedPlatformDefinition,

@@ -56,6 +56,7 @@ export const onboardingStepLabels: Record<string, string> = {
   implement_adapter: "Implementeren",
   run_targeted_tests: "Testen",
   validate_access: "Valideren",
+  verify_strategy: "Strategie verificatie",
   run_smoke_import: "Testen",
   verify_schedule: "Schema verifiëren",
   monitor_first_runs: "Monitoren",

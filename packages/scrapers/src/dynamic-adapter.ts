@@ -88,7 +88,7 @@ async function fetchHtml(url: string): Promise<string> {
  * Minimal server-side HTML parser using regex for CSS selector-like extraction.
  * Works without DOM dependencies (no jsdom/cheerio needed in the scraper package).
  */
-function extractBySelector(html: string, selector: string): string[] {
+export function extractBySelector(html: string, selector: string): string[] {
   const results: string[] = [];
 
   // Handle simple tag selectors
@@ -139,7 +139,7 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function extractText(html: string): string {
+export function extractText(html: string): string {
   return html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
@@ -172,7 +172,7 @@ function extractLinks(html: string, baseUrl: string): string[] {
   return links;
 }
 
-function extractFieldValue(html: string, selector: string): string {
+export function extractFieldValue(html: string, selector: string): string {
   const elements = extractBySelector(html, selector);
   if (elements.length === 0) return "";
   return extractText(elements[0]);

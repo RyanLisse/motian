@@ -33,6 +33,65 @@ export const platformOnboardTask = task({
       };
     }
 
+    // Step 1.5: Verify strategy with multimodal check
+    metadata.set("step", "verify_strategy");
+    const { verifyPlatformStrategyMultimodal, gateDecision } = await import(
+      "../src/services/platform-strategy-verifier"
+    );
+    const { getConfigByPlatform } = await import("../src/services/scrapers");
+
+    const config = await getConfigByPlatform(platform);
+    const strategyParams = config?.parameters as Record<string, unknown> | null;
+    const strategy = strategyParams?.scrapingStrategy as Record<string, unknown> | undefined;
+
+    if (config?.baseUrl && strategy) {
+      try {
+        const verification = await verifyPlatformStrategyMultimodal({
+          url: config.baseUrl,
+          strategy: strategy as Parameters<typeof verifyPlatformStrategyMultimodal>[0]["strategy"],
+        });
+
+        metadata.set("verificationScore", verification.score);
+        metadata.set("verificationConfidence", verification.confidence);
+        metadata.set("verificationAttempts", verification.attempts);
+
+        const gate = gateDecision(verification);
+
+        if (gate === "block") {
+          return {
+            success: false,
+            step: "verify_strategy",
+            platform,
+            verification: {
+              confidence: verification.confidence,
+              score: verification.score,
+              issues: verification.issues,
+              suggestedFixes: verification.suggestedFixes,
+            },
+          };
+        }
+
+        // Persist corrected strategy if auto-correction improved selectors
+        if (verification.correctedStrategy) {
+          const { updateConfigParameters } = await import("../src/services/scrapers");
+          await updateConfigParameters(platform, {
+            scrapingStrategy: verification.correctedStrategy,
+          });
+          metadata.set("strategyCorrected", true);
+        }
+
+        if (gate === "continue_monitored") {
+          metadata.set("needsMonitoring", true);
+        }
+      } catch (err) {
+        // Non-fatal — strategy verification failure shouldn't block onboarding
+        logger.warn(`[platform-onboard] Strategy verification failed for ${platform}:`, {
+          error: err,
+        });
+        metadata.set("verificationSkipped", true);
+      }
+    }
+
     // Step 2: Test import
     metadata.set("step", "test_import");
     const testImport = await triggerTestRun(platform, source, 3);

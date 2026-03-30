@@ -784,6 +784,22 @@ export async function getConfigByPlatform(platform: string): Promise<ScraperConf
   return config ?? null;
 }
 
+export async function updateConfigParameters(
+  platform: string,
+  newParams: Record<string, unknown>,
+): Promise<void> {
+  const config = await getConfigByPlatform(platform);
+  if (!config) return;
+
+  const existingParams = (config.parameters as Record<string, unknown>) ?? {};
+  const mergedParams = { ...existingParams, ...newParams };
+
+  await db
+    .update(scraperConfigs)
+    .set({ parameters: mergedParams, updatedAt: new Date() })
+    .where(eq(scraperConfigs.id, config.id));
+}
+
 export async function createConfig(data: CreatePlatformConfigData): Promise<ScraperConfig> {
   await ensurePlatformCatalogExists(data.platform);
 
