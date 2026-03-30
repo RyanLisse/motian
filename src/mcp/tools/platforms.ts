@@ -1,6 +1,8 @@
+import { tasks } from "@trigger.dev/sdk";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import type { platformOnboardTask } from "@/trigger/platform-onboard";
 import { publish } from "../../lib/event-bus";
 import { jsonObjectSchema } from "../../lib/json-value-schema";
 import {
@@ -8,9 +10,9 @@ import {
   completeOnboarding,
   createConfig,
   createPlatformCatalogEntry,
+  getPlatformByBaseUrl,
   getPlatformOnboardingStatus,
   listPlatformCatalog,
-  runPlatformOnboardingWorkflow,
   triggerTestRun,
   validateConfig,
 } from "../../services/scrapers";
@@ -171,7 +173,7 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       .parse(raw);
 
     const { analyzePlatform } = await import("../../services/platform-analyzer");
-    const { validateExternalUrl, getPlatformByBaseUrl } = await import("../../services/scrapers");
+    const { validateExternalUrl } = await import("../../services/scrapers");
 
     // SSRF protection — validate URL before any external fetch
     try {
@@ -209,24 +211,32 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     }
 
     await createPlatformCatalogEntry({ ...analysis, source: "mcp" });
-    const result = await runPlatformOnboardingWorkflow({
-      source: "mcp",
-      config: {
-        platform: analysis.slug,
-        baseUrl: analysis.defaultBaseUrl,
-        parameters: {
-          scrapingStrategy: analysis.scrapingStrategy,
-          maxPages: analysis.scrapingStrategy.maxPages,
-        },
-        ...(data.credentials ? { authConfig: data.credentials } : {}),
-        source: "mcp",
+
+    // Create config (with credentials if provided via MCP)
+    await createConfig({
+      platform: analysis.slug,
+      baseUrl: analysis.defaultBaseUrl,
+      parameters: {
+        scrapingStrategy: analysis.scrapingStrategy,
+        maxPages: analysis.scrapingStrategy.maxPages,
       },
-      activate: data.activate ?? true,
+      ...(data.credentials ? { authConfig: data.credentials } : {}),
+      source: "mcp",
     });
-    if (result.activated) {
-      publish("platform:activated", { platform: analysis.slug });
-    }
-    return { success: true, platform: analysis.slug, ...result };
+
+    const handle = await tasks.trigger<typeof platformOnboardTask>("platform-onboard", {
+      platform: analysis.slug,
+      source: "mcp",
+    });
+
+    publish("platform:configured", { platform: analysis.slug });
+
+    return {
+      status: "onboarding_triggered",
+      platform: analysis.slug,
+      displayName: analysis.displayName,
+      runId: handle.id,
+    };
   },
   platform_config_update: async (raw) => {
     const data = platformConfigSchema

@@ -43,6 +43,15 @@ type ExistsOutput = {
   message: string;
 };
 
+type OnboardingTriggeredOutput = {
+  status: "onboarding_triggered";
+  platform: string;
+  displayName: string;
+  runId: string;
+  adapterKind?: string;
+  message?: string;
+};
+
 type ErrorOutput = {
   success: false;
   step: string;
@@ -74,6 +83,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isCredentialsNeeded(o: unknown): o is CredentialsNeededOutput {
   return isRecord(o) && o.status === "credentials_needed";
+}
+
+function isOnboardingTriggered(o: unknown): o is OnboardingTriggeredOutput {
+  return isRecord(o) && o.status === "onboarding_triggered";
 }
 
 function isExists(o: unknown): o is ExistsOutput {
@@ -248,6 +261,26 @@ export function PlatformCard({ output }: { output: unknown }) {
         </CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground">{output.message}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Onboarding triggered (running in background)
+  if (isOnboardingTriggered(output)) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">{output.displayName}</CardTitle>
+            <Badge variant="secondary">Bezig met onboarding</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <StepperBar currentStep="validate" />
+          <p className="text-xs text-muted-foreground">
+            {output.message ?? "Onboarding is gestart op de achtergrond."}
+          </p>
         </CardContent>
       </Card>
     );

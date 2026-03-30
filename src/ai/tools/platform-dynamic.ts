@@ -1,3 +1,4 @@
+import { tasks } from "@trigger.dev/sdk";
 import { tool } from "ai";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
@@ -8,9 +9,9 @@ import {
   createPlatformCatalogEntry,
   getPlatformByBaseUrl,
   getPlatformOnboardingStatus,
-  runPlatformOnboardingWorkflow,
   validateExternalUrl,
 } from "@/src/services/scrapers";
+import type { platformOnboardTask } from "@/trigger/platform-onboard";
 
 export const platformAnalyze = tool({
   description:
@@ -157,66 +158,45 @@ export const platformAutoSetup = tool({
       };
     }
 
-    // Step 3: Run the full onboarding workflow (config + validate + test + activate)
+    // Step 3: Create config and trigger background onboarding via Trigger.dev
     try {
-      const result = await runPlatformOnboardingWorkflow({
-        source: "agent",
-        config: {
-          platform: analysis.slug,
-          baseUrl: analysis.defaultBaseUrl,
-          parameters: {
-            scrapingStrategy: analysis.scrapingStrategy,
-            maxPages: analysis.scrapingStrategy.maxPages,
-          },
-          // Credentials are injected via /api/platforms/[slug]/credentials, not via tool params
-          source: "agent",
+      await createConfig({
+        platform: analysis.slug,
+        baseUrl: analysis.defaultBaseUrl,
+        parameters: {
+          scrapingStrategy: analysis.scrapingStrategy,
+          maxPages: analysis.scrapingStrategy.maxPages,
         },
-        activate,
+        source: "agent",
+      });
+    } catch {
+      // Config may already exist from a prior attempt — non-fatal
+    }
+
+    try {
+      const handle = await tasks.trigger<typeof platformOnboardTask>("platform-onboard", {
+        platform: analysis.slug,
+        source: "agent",
       });
 
       revalidateTag("scrapers", "default");
-      revalidateTag("jobs", "default");
 
       return {
-        success: true,
+        status: "onboarding_triggered" as const,
         platform: analysis.slug,
         displayName: analysis.displayName,
         adapterKind: analysis.adapterKind,
-        validation: {
-          ok: result.validation.ok,
-          message: result.validation.message,
-        },
-        testImport: {
-          status: result.testImport.status,
-          jobsFound: result.testImport.jobsFound,
-          sampleListings: result.testImport.listings.slice(0, 2).map((l) => ({
-            title: l.title,
-            company: l.company,
-            location: l.location,
-            externalUrl: l.externalUrl,
-          })),
-        },
-        activated: result.activated,
+        runId: handle.id,
         scrapingStrategy: analysis.scrapingStrategy,
-        nextSteps: result.activated
-          ? [
-              "Platform is actief en wordt automatisch gescrapet volgens het cron-schema.",
-              "Gebruik triggerScraper om direct een scrape te starten.",
-              "Monitor via platformOnboardingStatus of het scraper-dashboard.",
-            ]
-          : [
-              "Validatie of test-import is niet volledig geslaagd.",
-              "Controleer platformOnboardingStatus voor details.",
-              "Pas de configuratie aan met platformConfigUpdate indien nodig.",
-            ],
+        message: `Onboarding voor "${analysis.displayName}" is gestart op de achtergrond. Gebruik platformOnboardingStatus om de voortgang te volgen.`,
       };
     } catch (err) {
       revalidateTag("scrapers", "default");
 
       return {
         success: false,
-        step: "onboarding_workflow",
-        error: `Onboarding workflow mislukt: ${err instanceof Error ? err.message : String(err)}`,
+        step: "trigger",
+        error: `Onboarding task starten mislukt: ${err instanceof Error ? err.message : String(err)}`,
         platform: analysis.slug,
         analysis,
         suggestion:

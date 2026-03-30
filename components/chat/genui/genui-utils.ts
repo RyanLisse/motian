@@ -60,6 +60,7 @@ export const onboardingStepLabels: Record<string, string> = {
   verify_schedule: "Schema verifiëren",
   monitor_first_runs: "Monitoren",
   // Simplified aliases used by the trigger task
+  trigger: "Gestart",
   analyze: "Analyseren",
   configure: "Configureren",
   validate: "Valideren",
