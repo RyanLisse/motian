@@ -83,11 +83,12 @@ export function normalizeUrl(url: string): string {
 
 /** Find a platform catalog entry by matching its default_base_url. */
 export async function getPlatformByBaseUrl(url: string): Promise<PlatformCatalogRow | null> {
-  const normalized = normalizeUrl(url);
+  // DB stores origin-only (via analyzePlatform); normalize to origin for matching
+  const origin = new URL(url).origin;
   const [row] = await db
     .select()
     .from(platformCatalog)
-    .where(eq(platformCatalog.defaultBaseUrl, normalized))
+    .where(eq(platformCatalog.defaultBaseUrl, origin))
     .limit(1);
   return row ?? null;
 }
@@ -651,7 +652,7 @@ export async function getPlatformCatalogEntry(
     .select()
     .from(platformOnboardingRuns)
     .where(eq(platformOnboardingRuns.platformSlug, slug))
-    .orderBy(desc(platformOnboardingRuns.updatedAt))
+    .orderBy(desc(platformOnboardingRuns.updatedAt), desc(platformOnboardingRuns.id))
     .limit(1);
 
   return {
@@ -1198,26 +1199,38 @@ export async function completeOnboarding(
   }
 
   const config = await getConfigByPlatform(platform);
+  const configId = config?.id ?? latestRun.configId;
 
-  await recordOnboardingSnapshot({
-    platform,
-    source,
-    configId: config?.id ?? latestRun.configId,
-    event: {
-      type: "schedule_verified",
-      evidence: { completedVia: "completeOnboarding" },
-    },
-  });
+  // Only emit events the state machine allows from the current state
+  const currentStatus = latestRun.status as string;
+  if (currentStatus === "active") {
+    await recordOnboardingSnapshot({
+      platform,
+      source,
+      configId,
+      event: {
+        type: "schedule_verified",
+        evidence: { completedVia: "completeOnboarding" },
+      },
+    });
+  }
 
-  await recordOnboardingSnapshot({
-    platform,
-    source,
-    configId: config?.id ?? latestRun.configId,
-    event: {
-      type: "first_run_verified",
-      evidence: { completedVia: "completeOnboarding" },
-    },
-  });
+  // Re-read state after potential first transition
+  const updatedRun =
+    currentStatus === "active" ? await getLatestOnboardingRun(platform) : latestRun;
+  const updatedStatus = (updatedRun?.status ?? currentStatus) as string;
+
+  if (updatedStatus === "active" || updatedStatus === "monitoring") {
+    await recordOnboardingSnapshot({
+      platform,
+      source,
+      configId,
+      event: {
+        type: "first_run_verified",
+        evidence: { completedVia: "completeOnboarding" },
+      },
+    });
+  }
 }
 
 export async function getPlatformOnboardingStatus(

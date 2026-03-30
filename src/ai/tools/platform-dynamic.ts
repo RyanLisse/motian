@@ -4,6 +4,7 @@ import { z } from "zod";
 import { analyzePlatform } from "@/src/services/platform-analyzer";
 import {
   completeOnboarding,
+  createConfig,
   createPlatformCatalogEntry,
   getPlatformByBaseUrl,
   runPlatformOnboardingWorkflow,
@@ -122,6 +123,17 @@ export const platformAutoSetup = tool({
 
     // Step 2b: Credential gate — if auth required but no credentials provided, pause
     if (analysis.authMode !== "none" && analysis.authMode !== "api_key" && !credentials) {
+      // Create a stub config so POST /api/platforms/[slug]/credentials has a row to update
+      try {
+        await createConfig({
+          platform: analysis.slug,
+          baseUrl: analysis.defaultBaseUrl,
+          parameters: { scrapingStrategy: analysis.scrapingStrategy },
+          source: "agent",
+        });
+      } catch {
+        // Config may already exist from a prior attempt — non-fatal
+      }
       revalidateTag("scrapers", "default");
 
       return {

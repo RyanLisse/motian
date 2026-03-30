@@ -174,7 +174,15 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { validateExternalUrl, getPlatformByBaseUrl } = await import("../../services/scrapers");
 
     // SSRF protection — validate URL before any external fetch
-    await validateExternalUrl(data.url);
+    try {
+      await validateExternalUrl(data.url);
+    } catch (err) {
+      return {
+        success: false,
+        step: "ssrf_check",
+        error: err instanceof Error ? err.message : "URL validatie mislukt",
+      };
+    }
 
     // Dedup check — bail early if platform already exists
     const existing = await getPlatformByBaseUrl(data.url);

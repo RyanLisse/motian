@@ -125,6 +125,10 @@ function sanitizeHtmlForLlm(html: string): string {
  * scraping strategy and generate a complete platform configuration.
  */
 export async function analyzePlatform(url: string): Promise<PlatformAnalysisResult> {
+  // SSRF validation at service boundary — callers may skip their own check
+  const { validateExternalUrl } = await import("./scrapers");
+  await validateExternalUrl(url);
+
   // Try Firecrawl first, fall back to direct fetch
   let pageContent: { html: string; markdown: string };
   try {

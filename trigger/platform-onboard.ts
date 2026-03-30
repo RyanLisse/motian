@@ -60,10 +60,12 @@ export const platformOnboardTask = task({
 
     // Step 4: Complete onboarding (emits schedule_verified + first_run_verified)
     metadata.set("step", "complete");
+    let completed = true;
     try {
       await completeOnboarding(platform);
     } catch (err) {
-      // Non-fatal — platform is already activated
+      // Non-fatal — platform is already activated, but track the failure
+      completed = false;
       console.error(`[platform-onboard] completeOnboarding failed for ${platform}:`, err);
     }
 
@@ -83,7 +85,7 @@ export const platformOnboardTask = task({
         })),
       },
       activated: true,
-      completed: true,
+      completed,
     };
   },
 });

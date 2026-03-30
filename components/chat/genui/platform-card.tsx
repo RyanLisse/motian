@@ -313,14 +313,27 @@ export function PlatformCard({ output }: { output: unknown }) {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm">{output.catalog.displayName}</CardTitle>
-            <Badge variant={output.config?.isActive ? "default" : "secondary"}>
+            <Badge
+              variant={
+                output.config?.isActive
+                  ? "default"
+                  : status === "failed" || status === "implementation_failed"
+                    ? "destructive"
+                    : status === "cancelled"
+                      ? "outline"
+                      : "secondary"
+              }
+            >
               {platformStatusLabels[status] ?? status}
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
           {output.latestRun && (
-            <StepperBar currentStep={output.latestRun.currentStep} failed={status === "failed"} />
+            <StepperBar
+              currentStep={output.latestRun.currentStep}
+              failed={status === "failed" || status === "implementation_failed"}
+            />
           )}
           {output.config?.lastRunAt && (
             <p className="text-xs text-muted-foreground">
