@@ -104,4 +104,21 @@ export const GENUI_REGISTRY: Record<string, GenUIEntry> = {
     ),
     label: "Vergelijking",
   },
+  // Platform onboarding
+  platformAutoSetup: {
+    component: lazy(() => import("./platform-card").then((m) => ({ default: m.PlatformCard }))),
+    label: "Platform onboarding",
+  },
+  platformOnboardingStatus: {
+    component: lazy(() => import("./platform-card").then((m) => ({ default: m.PlatformCard }))),
+    label: "Platformstatus",
+  },
+  platformsList: {
+    component: lazy(() => import("./platform-card").then((m) => ({ default: m.PlatformCard }))),
+    label: "Platformen",
+  },
+  platformCompleteOnboarding: {
+    component: lazy(() => import("./platform-card").then((m) => ({ default: m.PlatformCard }))),
+    label: "Platform voltooid",
+  },
 };

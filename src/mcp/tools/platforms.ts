@@ -5,10 +5,12 @@ import { publish } from "../../lib/event-bus";
 import { jsonObjectSchema } from "../../lib/json-value-schema";
 import {
   activatePlatform,
+  completeOnboarding,
   createConfig,
   createPlatformCatalogEntry,
   getPlatformOnboardingStatus,
   listPlatformCatalog,
+  runPlatformOnboardingWorkflow,
   triggerTestRun,
   validateConfig,
 } from "../../services/scrapers";
@@ -78,6 +80,34 @@ export const tools = [
     description: "Toon config, catalogus en laatste onboarding status voor een platform.",
     inputSchema: zodToJsonSchema(platformSchema, { $refStrategy: "none" }),
   },
+  {
+    name: "platform_auto_setup",
+    description:
+      "Richt een nieuw platform volledig automatisch in op basis van een URL. Voert analyse, catalogus-aanmaak, configuratie, validatie, test-import en activatie uit.",
+    inputSchema: zodToJsonSchema(
+      z.object({
+        url: z.string().url().describe("Platform URL"),
+        activate: z.boolean().optional().describe("Automatisch activeren (standaard: ja)"),
+        credentials: z.record(z.string()).optional().describe("Login-gegevens indien nodig"),
+      }),
+      { $refStrategy: "none" },
+    ),
+  },
+  {
+    name: "platform_config_update",
+    description: "Werk een bestaande platform runtime config bij.",
+    inputSchema: zodToJsonSchema(
+      platformConfigSchema.extend({
+        id: z.number().optional().describe("Config ID (optioneel, anders lookup op platform slug)"),
+      }),
+      { $refStrategy: "none" },
+    ),
+  },
+  {
+    name: "platform_complete_onboarding",
+    description: "Markeer een platform onboarding als voltooid.",
+    inputSchema: zodToJsonSchema(platformSchema, { $refStrategy: "none" }),
+  },
 ];
 
 export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
@@ -130,5 +160,50 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   platform_onboarding_status: async (raw) => {
     const { platform } = platformSchema.parse(raw);
     return getPlatformOnboardingStatus(platform);
+  },
+  platform_auto_setup: async (raw) => {
+    const data = z
+      .object({
+        url: z.string().url(),
+        activate: z.boolean().optional(),
+        credentials: z.record(z.string()).optional(),
+      })
+      .parse(raw);
+
+    const { analyzePlatform } = await import("../../services/platform-analyzer");
+
+    const analysis = await analyzePlatform(data.url);
+    await createPlatformCatalogEntry({ ...analysis, source: "mcp" });
+    const result = await runPlatformOnboardingWorkflow({
+      source: "mcp",
+      config: {
+        platform: analysis.slug,
+        baseUrl: analysis.defaultBaseUrl,
+        parameters: {
+          scrapingStrategy: analysis.scrapingStrategy,
+          maxPages: analysis.scrapingStrategy.maxPages,
+        },
+        ...(data.credentials ? { authConfig: data.credentials } : {}),
+        source: "mcp",
+      },
+      activate: data.activate ?? true,
+    });
+    publish("platform:activated", { platform: analysis.slug });
+    return { success: true, platform: analysis.slug, ...result };
+  },
+  platform_config_update: async (raw) => {
+    const data = platformConfigSchema
+      .extend({
+        id: z.number().optional(),
+      })
+      .parse(raw);
+    const result = await createConfig({ ...data, source: "mcp" });
+    publish("platform:configured", { platform: data.platform });
+    return result;
+  },
+  platform_complete_onboarding: async (raw) => {
+    const { platform } = platformSchema.parse(raw);
+    await completeOnboarding(platform);
+    return { success: true, platform, status: "completed" };
   },
 };

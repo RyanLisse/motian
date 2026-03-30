@@ -8,7 +8,10 @@ const TAG_LENGTH = 16;
 function getKey(): Buffer {
   const secret = process.env.ENCRYPTION_SECRET;
   if (!secret) throw new Error("ENCRYPTION_SECRET env var is required");
-  // Deterministic key derivation — salt includes secret length to reduce rainbow table risk
+  // Deterministic salt — required for backwards compatibility with existing encrypted configs.
+  // Known weakness: low-entropy salt derived from secret length only.
+  // Future: rotate to random salt per-record using the key_version pattern when credential
+  // rotation is implemented (see platform onboarding plan 2026-03-30).
   const salt = Buffer.from(`motian-v1-${secret.length}`);
   return scryptSync(secret, salt, KEY_LENGTH);
 }

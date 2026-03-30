@@ -1,3 +1,4 @@
+import dns from "node:dns";
 import {
   getDynamicAdapter,
   getPlatformAdapter,
@@ -25,6 +26,58 @@ import {
   type PlatformOnboardingSource,
   reducePlatformOnboardingRun,
 } from "./platform-onboarding";
+
+// ========== SSRF & URL Helpers ==========
+
+/**
+ * Validate that a URL does not resolve to a private/internal IP address.
+ * Prevents Server-Side Request Forgery (SSRF) attacks.
+ */
+export async function validateExternalUrl(url: string): Promise<void> {
+  const parsed = new URL(url);
+  const { address } = await dns.promises.lookup(parsed.hostname);
+
+  // IPv4 private ranges
+  if (
+    address.startsWith("10.") ||
+    address.startsWith("127.") ||
+    address.startsWith("0.") ||
+    address.startsWith("192.168.") ||
+    address.startsWith("169.254.")
+  ) {
+    throw new Error(`URL verwijst naar een privé netwerk adres: ${address}`);
+  }
+
+  // 172.16.0.0 – 172.31.255.255
+  if (address.startsWith("172.")) {
+    const secondOctet = Number.parseInt(address.split(".")[1], 10);
+    if (secondOctet >= 16 && secondOctet <= 31) {
+      throw new Error(`URL verwijst naar een privé netwerk adres: ${address}`);
+    }
+  }
+
+  // IPv6 loopback and private
+  if (address === "::1" || address.startsWith("fc") || address.startsWith("fd")) {
+    throw new Error(`URL verwijst naar een privé netwerk adres: ${address}`);
+  }
+}
+
+/** Normalize a URL to origin + pathname (without trailing slash). */
+export function normalizeUrl(url: string): string {
+  const u = new URL(url);
+  return u.origin + u.pathname.replace(/\/$/, "");
+}
+
+/** Find a platform catalog entry by matching its default_base_url. */
+export async function getPlatformByBaseUrl(url: string): Promise<PlatformCatalogRow | null> {
+  const normalized = normalizeUrl(url);
+  const [row] = await db
+    .select()
+    .from(platformCatalog)
+    .where(eq(platformCatalog.defaultBaseUrl, normalized))
+    .limit(1);
+  return row ?? null;
+}
 
 // ========== Types ==========
 
@@ -542,8 +595,78 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
 export async function getPlatformCatalogEntry(
   slug: string,
 ): Promise<PlatformCatalogEntryView | null> {
-  const entries = await listPlatformCatalog();
-  return entries.find((entry) => entry.slug === slug) ?? null;
+  const [row] = await db
+    .select()
+    .from(platformCatalog)
+    .where(eq(platformCatalog.slug, slug))
+    .limit(1);
+
+  if (!row) {
+    // Fall back to hardcoded definition (platform may exist in code but not in DB)
+    const definition = getPlatformDefinition(slug);
+    if (!definition) return null;
+
+    return {
+      slug,
+      displayName: definition.displayName ?? fallbackDisplayName(slug),
+      adapterKind: definition.adapterKind ?? "http_html_list_detail",
+      authMode: definition.authMode ?? "none",
+      attributionLabel: definition.attributionLabel ?? fallbackDisplayName(slug),
+      description: definition.description ?? "",
+      capabilities: definition.capabilities ?? [],
+      docsUrl: definition.docsUrl ?? null,
+      defaultBaseUrl: definition.defaultBaseUrl ?? null,
+      configSchema: definition ? serializeZodSchema(definition.configSchema) : {},
+      authSchema: definition ? serializeZodSchema(definition.authSchema) : {},
+      isEnabled: true,
+      isSelfServe: true,
+      implemented: Boolean(getPlatformAdapter(slug)),
+      config: null,
+      latestRun: null,
+    };
+  }
+
+  const definition = getPlatformDefinition(slug);
+
+  const [config] = await db
+    .select()
+    .from(scraperConfigs)
+    .where(eq(scraperConfigs.platform, slug))
+    .limit(1);
+
+  const [latestRun] = await db
+    .select()
+    .from(platformOnboardingRuns)
+    .where(eq(platformOnboardingRuns.platformSlug, slug))
+    .orderBy(desc(platformOnboardingRuns.updatedAt))
+    .limit(1);
+
+  return {
+    slug,
+    displayName: row.displayName ?? definition?.displayName ?? fallbackDisplayName(slug),
+    adapterKind: row.adapterKind ?? definition?.adapterKind ?? "http_html_list_detail",
+    authMode: row.authMode ?? definition?.authMode ?? "none",
+    attributionLabel:
+      row.attributionLabel ?? definition?.attributionLabel ?? fallbackDisplayName(slug),
+    description: definition?.description ?? row.description ?? "",
+    capabilities:
+      (Array.isArray(row.capabilities) ? (row.capabilities as string[]) : undefined) ??
+      definition?.capabilities ??
+      [],
+    docsUrl: definition?.docsUrl ?? row.docsUrl ?? null,
+    defaultBaseUrl: row.defaultBaseUrl ?? definition?.defaultBaseUrl ?? null,
+    configSchema:
+      (row.configSchema as Record<string, unknown> | undefined) ??
+      (definition ? serializeZodSchema(definition.configSchema) : {}),
+    authSchema:
+      (row.authSchema as Record<string, unknown> | undefined) ??
+      (definition ? serializeZodSchema(definition.authSchema) : {}),
+    isEnabled: row.isEnabled ?? true,
+    isSelfServe: row.isSelfServe ?? Boolean(definition),
+    implemented: Boolean(getPlatformAdapter(slug)) || row.adapterKind === "ai_dynamic",
+    config: toPublicScraperConfig(config ?? null),
+    latestRun: sanitizeOnboardingRunRecord(latestRun ?? null),
+  };
 }
 
 export async function createPlatformCatalogEntry(
@@ -1050,6 +1173,38 @@ export async function activatePlatform(
   });
 
   return updated;
+}
+
+export async function completeOnboarding(
+  platform: string,
+  source: PlatformOnboardingSource = "system",
+): Promise<void> {
+  const latestRun = await getLatestOnboardingRun(platform);
+  if (!latestRun) {
+    throw new Error(`Geen onboarding run gevonden voor ${platform}`);
+  }
+
+  const config = await getConfigByPlatform(platform);
+
+  await recordOnboardingSnapshot({
+    platform,
+    source,
+    configId: config?.id ?? latestRun.configId,
+    event: {
+      type: "schedule_verified",
+      evidence: { completedVia: "completeOnboarding" },
+    },
+  });
+
+  await recordOnboardingSnapshot({
+    platform,
+    source,
+    configId: config?.id ?? latestRun.configId,
+    event: {
+      type: "first_run_verified",
+      evidence: { completedVia: "completeOnboarding" },
+    },
+  });
 }
 
 export async function getPlatformOnboardingStatus(

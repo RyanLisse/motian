@@ -45,3 +45,29 @@ export const stageLabels: Record<string, string> = {
   hired: "Aangenomen",
   rejected: "Afgewezen",
 };
+
+/** Shared Dutch labels for platform onboarding steps. */
+export const onboardingStepLabels: Record<string, string> = {
+  analyze: "Analyseren",
+  configure: "Configureren",
+  validate: "Valideren",
+  test_import: "Testen",
+  activate: "Activeren",
+  complete: "Voltooien",
+};
+
+/** Shared Dutch labels for platform statuses. */
+export const platformStatusLabels: Record<string, string> = {
+  draft: "Concept",
+  researching: "Onderzoeken",
+  config_saved: "Geconfigureerd",
+  waiting_for_credentials: "Wacht op inloggegevens",
+  validated: "Gevalideerd",
+  tested: "Getest",
+  active: "Actief",
+  monitoring: "Monitoren",
+  completed: "Voltooid",
+  failed: "Mislukt",
+  needs_implementation: "Implementatie nodig",
+  cancelled: "Geannuleerd",
+};

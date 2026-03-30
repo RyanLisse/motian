@@ -222,35 +222,48 @@ async function scrapeListings(
 
       if (listElements.length === 0) break; // No more pages
 
-      for (const element of listElements) {
-        if (limit && allListings.length >= limit) break;
+      // Apply limit to elements we process from this page
+      const remaining = limit ? limit - allListings.length : listElements.length;
+      const elementsToProcess = listElements.slice(0, remaining);
 
-        // Extract links from listing element
-        const links = extractLinks(element, config.baseUrl);
-        const detailUrl = links[0]; // First link is typically the job detail link
+      if (strategy.needsDetailPage) {
+        // Build fetch plan: extract detail URLs from all elements first
+        const detailFetchPlan = elementsToProcess
+          .map((element) => {
+            const links = extractLinks(element, config.baseUrl);
+            return { element, detailUrl: links[0] };
+          })
+          .filter((plan) => plan.detailUrl);
 
-        const listing: RawScrapedListing = {
-          externalUrl: detailUrl ?? "",
-          externalId: detailUrl
-            ? detailUrl.split("/").filter(Boolean).pop() ?? crypto.randomUUID()
-            : crypto.randomUUID(),
-        };
+        // Fetch ALL detail pages in parallel
+        const detailResults = await Promise.allSettled(
+          detailFetchPlan.map((plan) => fetchHtml(plan.detailUrl!)),
+        );
 
-        if (strategy.needsDetailPage && detailUrl) {
-          // Fetch detail page for complete data
-          try {
-            const detailHtml = await fetchHtml(detailUrl);
+        // Map results back to listings
+        for (let i = 0; i < detailFetchPlan.length; i++) {
+          const { element, detailUrl } = detailFetchPlan[i];
+          const detailResult = detailResults[i];
+
+          const listing: RawScrapedListing = {
+            externalUrl: detailUrl ?? "",
+            externalId: detailUrl
+              ? detailUrl.split("/").filter(Boolean).pop() ?? crypto.randomUUID()
+              : crypto.randomUUID(),
+          };
+
+          if (detailResult.status === "fulfilled") {
             for (const [field, selector] of Object.entries(strategy.fieldMapping)) {
-              const value = extractFieldValue(detailHtml, selector);
+              const value = extractFieldValue(detailResult.value, selector);
               if (value) {
                 listing[field] = value;
               }
             }
-          } catch (err) {
+          } else {
+            // Fallback to list page data
             errors.push(
-              `Detail fetch mislukt voor ${detailUrl}: ${err instanceof Error ? err.message : String(err)}`,
+              `Detail fetch mislukt voor ${detailUrl}: ${detailResult.reason instanceof Error ? detailResult.reason.message : String(detailResult.reason)}`,
             );
-            // Still use data from list page
             for (const [field, selector] of Object.entries(strategy.fieldMapping)) {
               const value = extractFieldValue(element, selector);
               if (value) {
@@ -258,22 +271,63 @@ async function scrapeListings(
               }
             }
           }
-        } else {
-          // Extract data from list element directly
+
+          if (listing.title || listing.externalUrl) {
+            if (!listing.title) {
+              listing.title = extractText(element).slice(0, 200);
+            }
+            allListings.push(listing);
+          }
+        }
+
+        // Handle elements without a detail URL (no link found)
+        for (const element of elementsToProcess) {
+          const links = extractLinks(element, config.baseUrl);
+          if (links[0]) continue; // Already processed in parallel batch above
+
+          const listing: RawScrapedListing = {
+            externalUrl: "",
+            externalId: crypto.randomUUID(),
+          };
           for (const [field, selector] of Object.entries(strategy.fieldMapping)) {
             const value = extractFieldValue(element, selector);
             if (value) {
               listing[field] = value;
             }
           }
-        }
-
-        // Ensure minimum required fields
-        if (listing.title || listing.externalUrl) {
-          if (!listing.title) {
-            listing.title = extractText(element).slice(0, 200);
+          if (listing.title || listing.externalUrl) {
+            if (!listing.title) {
+              listing.title = extractText(element).slice(0, 200);
+            }
+            allListings.push(listing);
           }
-          allListings.push(listing);
+        }
+      } else {
+        // No detail page needed — extract from list elements directly
+        for (const element of elementsToProcess) {
+          const links = extractLinks(element, config.baseUrl);
+          const detailUrl = links[0];
+
+          const listing: RawScrapedListing = {
+            externalUrl: detailUrl ?? "",
+            externalId: detailUrl
+              ? detailUrl.split("/").filter(Boolean).pop() ?? crypto.randomUUID()
+              : crypto.randomUUID(),
+          };
+
+          for (const [field, selector] of Object.entries(strategy.fieldMapping)) {
+            const value = extractFieldValue(element, selector);
+            if (value) {
+              listing[field] = value;
+            }
+          }
+
+          if (listing.title || listing.externalUrl) {
+            if (!listing.title) {
+              listing.title = extractText(element).slice(0, 200);
+            }
+            allListings.push(listing);
+          }
         }
       }
     } catch (err) {

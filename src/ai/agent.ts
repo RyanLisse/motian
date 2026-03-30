@@ -37,6 +37,7 @@ const platformTools = {
   platformTestImport: tools.platformTestImport,
   platformActivate: tools.platformActivate,
   platformOnboardingStatus: tools.platformOnboardingStatus,
+  platformCompleteOnboarding: tools.platformCompleteOnboarding,
 };
 
 const kandidaatTools = {
@@ -207,6 +208,7 @@ const MUTATION_NAMES = new Set([
   "platformAutoSetup",
   "platformAnalyze",
   "platformTestImport",
+  "platformCompleteOnboarding",
   "renderCanvas",
   "voerStructuredMatchUit",
   "cvIntakeResultaat",
