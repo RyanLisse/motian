@@ -11,6 +11,7 @@ import {
   FileText,
   Loader2,
   type LucideIcon,
+  RefreshCw,
   Search,
   Sparkles,
   ThumbsDown,
@@ -34,6 +35,7 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/src/components/ai-elements/message";
+import { Suggestion, Suggestions } from "@/src/components/ai-elements/suggestion";
 import { isA2UIEnvelope } from "@/src/schemas/a2ui";
 import {
   CHAT_MESSAGE_ALLOWED_TAGS,
@@ -63,6 +65,7 @@ type Props = {
   status: ChatMessagesStatus;
   currentOrigin?: string | null;
   onSuggestion?: (text: string) => void;
+  onRetry?: (messageId: string) => void;
   layout?: "page" | "widget";
   hasOlderMessages?: boolean;
   loadingOlder?: boolean;
@@ -224,41 +227,7 @@ function SuggestedPromptCard({
   );
 }
 
-function FollowUpPromptButton({
-  suggestion,
-  onSelect,
-}: {
-  suggestion: ChatSuggestion;
-  onSelect?: (prompt: string) => void;
-}) {
-  const Icon = suggestion.icon;
-  const isInteractive = hasSuggestionHandler(onSelect);
-
-  return (
-    <button
-      type="button"
-      onClick={isInteractive ? () => onSelect(suggestion.prompt) : undefined}
-      disabled={!isInteractive}
-      aria-disabled={!isInteractive}
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        isInteractive ? "hover:border-primary/40 hover:bg-accent" : "cursor-not-allowed opacity-60",
-      )}
-    >
-      <span
-        className={cn(
-          "flex h-6 w-6 items-center justify-center rounded-full",
-          suggestion.toneClassName,
-        )}
-      >
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <span>{suggestion.label}</span>
-    </button>
-  );
-}
-
-// ─── Message Action Bar (Copy + Thumbs) ──────────────────
+// ─── Message Action Bar (Retry + Thumbs + Copy) ─────────
 
 function extractMessageText(message: UIMessage): string {
   return message.parts
@@ -267,7 +236,13 @@ function extractMessageText(message: UIMessage): string {
     .join("\n\n");
 }
 
-function AssistantMessageActions({ message }: { message: UIMessage }) {
+function AssistantMessageActions({
+  message,
+  onRetry,
+}: {
+  message: UIMessage;
+  onRetry?: (messageId: string) => void;
+}) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
 
@@ -285,9 +260,11 @@ function AssistantMessageActions({ message }: { message: UIMessage }) {
 
   return (
     <MessageActions className="opacity-0 transition-opacity group-hover:opacity-100">
-      <MessageAction tooltip="Kopiëren" onClick={handleCopy}>
-        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-      </MessageAction>
+      {onRetry && (
+        <MessageAction tooltip="Opnieuw genereren" onClick={() => onRetry(message.id)}>
+          <RefreshCw className="h-3.5 w-3.5" />
+        </MessageAction>
+      )}
       <MessageAction
         tooltip="Goed antwoord"
         onClick={() => handleFeedback("up")}
@@ -302,6 +279,9 @@ function AssistantMessageActions({ message }: { message: UIMessage }) {
       >
         <ThumbsDown className="h-3.5 w-3.5" />
       </MessageAction>
+      <MessageAction tooltip="Kopiëren" onClick={handleCopy}>
+        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      </MessageAction>
     </MessageActions>
   );
 }
@@ -311,6 +291,7 @@ export function ChatMessages({
   status,
   currentOrigin,
   onSuggestion,
+  onRetry,
   layout = "page",
   hasOlderMessages = false,
   loadingOlder = false,
@@ -526,7 +507,9 @@ export function ChatMessages({
                 return null;
               })}
             </MessageContent>
-            {message.role === "assistant" && <AssistantMessageActions message={message} />}
+            {message.role === "assistant" && (
+              <AssistantMessageActions message={message} onRetry={onRetry} />
+            )}
           </Message>
         ))}
 
@@ -536,15 +519,21 @@ export function ChatMessages({
               <Sparkles className="h-3.5 w-3.5" />
               Vervolgideeën
             </div>
-            <div className="flex flex-wrap gap-2">
-              {followUpPrompts.map((suggestion) => (
-                <FollowUpPromptButton
-                  key={suggestion.label}
-                  suggestion={suggestion}
-                  onSelect={onSuggestion}
-                />
+            <Suggestions>
+              {followUpPrompts.map((s) => (
+                <Suggestion key={s.label} suggestion={s.prompt} onClick={onSuggestion}>
+                  <span
+                    className={cn(
+                      "mr-1 inline-flex h-5 w-5 items-center justify-center rounded-full",
+                      s.toneClassName,
+                    )}
+                  >
+                    <s.icon className="h-3 w-3" />
+                  </span>
+                  {s.label}
+                </Suggestion>
               ))}
-            </div>
+            </Suggestions>
           </section>
         ) : null}
 
