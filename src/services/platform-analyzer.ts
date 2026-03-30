@@ -129,7 +129,11 @@ export async function analyzePlatform(url: string): Promise<PlatformAnalysisResu
   let pageContent: { html: string; markdown: string };
   try {
     pageContent = await fetchPageViaFirecrawl(url);
-  } catch {
+  } catch (firecrawlErr) {
+    console.warn(
+      `[platform-analyzer] Firecrawl mislukt voor ${url}, val terug op directe fetch:`,
+      firecrawlErr instanceof Error ? firecrawlErr.message : String(firecrawlErr),
+    );
     pageContent = await fetchPageDirect(url);
   }
 

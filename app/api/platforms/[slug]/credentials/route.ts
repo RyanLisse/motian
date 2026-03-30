@@ -37,7 +37,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   }
 
   // Encrypt credentials
-  const encrypted = encrypt(JSON.stringify(parsed.data));
+  let encrypted: string;
+  try {
+    encrypted = encrypt(JSON.stringify(parsed.data));
+  } catch {
+    return NextResponse.json(
+      { error: "Versleuteling mislukt — controleer ENCRYPTION_SECRET" },
+      { status: 500 },
+    );
+  }
 
   // Update the scraper config
   const [updated] = await db
