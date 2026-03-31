@@ -151,9 +151,13 @@ export async function POST(req: Request) {
     },
   });
 
-  // Track token usage after stream completes
+  // Track token usage after stream completes (result.usage is a Promise-like
+  // that resolves only when the stream finishes — must be awaited before reading)
   if (sessionId) {
-    trackTokenUsage(Promise.resolve(result), sessionId);
+    trackTokenUsage(
+      Promise.resolve(result.usage).then((usage) => ({ usage })),
+      sessionId,
+    );
   }
 
   return result.toUIMessageStreamResponse({
