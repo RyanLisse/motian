@@ -424,6 +424,7 @@ function ChatSessionSurface({
   messages,
   modelId,
   onLoadOlder,
+  onRetry,
   onSuggestion,
   onToggleVoice,
   sendMessage,
@@ -440,6 +441,7 @@ function ChatSessionSurface({
   messages: Parameters<typeof ChatMessages>[0]["messages"];
   modelId: string;
   onLoadOlder: () => void;
+  onRetry: (messageId: string) => void;
   onSuggestion: (text: string) => void;
   onToggleVoice: () => void;
   sendMessage: (message: { text: string }) => void;
@@ -462,6 +464,7 @@ function ChatSessionSurface({
           status={status}
           currentOrigin={currentOrigin}
           onSuggestion={onSuggestion}
+          onRetry={onRetry}
           hasOlderMessages={hasMoreHistory}
           loadingOlder={loadingOlder}
           onLoadOlder={onLoadOlder}
@@ -512,20 +515,58 @@ function ChatSession({
 }) {
   const [speedMode, setSpeedMode] = useState<SpeedMode>("gemiddeld");
 
-  const { messages, sendMessage, status, stop, hasMoreHistory, loadingOlder, loadOlder } =
-    useChatThread({
-      sessionId,
-      context: ctx,
-      modelId,
-      speedMode,
-      onSessionActivity,
-    });
+  const {
+    messages,
+    sendMessage,
+    setMessages,
+    status,
+    stop,
+    hasMoreHistory,
+    loadingOlder,
+    loadOlder,
+  } = useChatThread({
+    sessionId,
+    context: ctx,
+    modelId,
+    speedMode,
+    onSessionActivity,
+  });
 
   const handleSuggestion = useCallback(
     (text: string) => {
       sendMessage({ text });
     },
     [sendMessage],
+  );
+
+  const handleRetry = useCallback(
+    (messageId: string) => {
+      // Find the assistant message and the user message before it
+      const msgIndex = messages.findIndex((m) => m.id === messageId);
+      if (msgIndex < 0) return;
+
+      // Find the preceding user message
+      let userMsg: (typeof messages)[number] | undefined;
+      for (let i = msgIndex - 1; i >= 0; i--) {
+        if (messages[i].role === "user") {
+          userMsg = messages[i];
+          break;
+        }
+      }
+      if (!userMsg) return;
+
+      // Extract the user's text
+      const userText = userMsg.parts
+        .filter((p) => p.type === "text")
+        .map((p) => (p as { type: "text"; text: string }).text)
+        .join("\n");
+      if (!userText) return;
+
+      // Remove the assistant message and re-send
+      setMessages(messages.filter((m) => m.id !== messageId));
+      sendMessage({ text: userText });
+    },
+    [messages, sendMessage, setMessages],
   );
 
   const handleLoadOlder = useCallback(() => {
@@ -541,6 +582,7 @@ function ChatSession({
         messages={messages}
         modelId={modelId}
         onLoadOlder={handleLoadOlder}
+        onRetry={handleRetry}
         onSuggestion={handleSuggestion}
         onToggleVoice={onToggleVoice}
         sendMessage={sendMessage}

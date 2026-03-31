@@ -141,6 +141,14 @@ export async function POST(req: Request) {
     messages: await convertToModelMessages(modelMessages),
     tools: getRecruitmentTools(ctx),
     stopWhen: stepCountIs(5),
+    experimental_telemetry: {
+      isEnabled: true,
+      metadata: {
+        sessionId: sessionId ?? "anonymous",
+        ...(ctx?.entityType ? { entityType: ctx.entityType } : {}),
+        ...(ctx?.entityId ? { entityId: ctx.entityId } : {}),
+      },
+    },
   });
 
   // Track token usage after stream completes

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import { type FormEvent, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ type OnboardingTriggeredOutput = {
   platform: string;
   displayName: string;
   runId: string;
+  publicAccessToken?: string;
   adapterKind?: string;
   message?: string;
 };
@@ -228,6 +230,54 @@ function SampleListings({
 
 // ─── Main Component ──────────────────────────────────────────
 
+function OnboardingRealtimeCard({ output }: { output: OnboardingTriggeredOutput }) {
+  // Always call the hook (React rules) — pass empty token to disable when unavailable
+  const { run } = useRealtimeRun(output.runId, {
+    accessToken: output.publicAccessToken ?? "",
+    enabled: !!output.publicAccessToken,
+  });
+
+  const step = (run?.metadata as Record<string, unknown>)?.step as string | undefined;
+  const status = run?.status;
+  const isDone = status === "COMPLETED";
+  const isFailed = status === "FAILED" || status === "CRASHED";
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm">{output.displayName}</CardTitle>
+          <Badge variant={isDone ? "default" : isFailed ? "destructive" : "secondary"}>
+            {isDone
+              ? "Voltooid"
+              : isFailed
+                ? "Mislukt"
+                : step
+                  ? (onboardingStepLabels[step] ?? step)
+                  : "Bezig met onboarding"}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <StepperBar currentStep={step ?? "validate"} failed={isFailed} />
+        {isFailed && (
+          <p className="text-xs text-red-600">
+            Onboarding is mislukt. Gebruik platformOnboardingStatus voor details.
+          </p>
+        )}
+        {isDone && (
+          <p className="text-xs text-green-600">Platform is succesvol ingericht en geactiveerd.</p>
+        )}
+        {!isDone && !isFailed && (
+          <p className="text-xs text-muted-foreground">
+            {output.message ?? "Onboarding is gestart op de achtergrond."}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function PlatformCard({ output }: { output: unknown }) {
   // Credentials needed
   if (isCredentialsNeeded(output)) {
@@ -268,22 +318,7 @@ export function PlatformCard({ output }: { output: unknown }) {
 
   // Onboarding triggered (running in background)
   if (isOnboardingTriggered(output)) {
-    return (
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">{output.displayName}</CardTitle>
-            <Badge variant="secondary">Bezig met onboarding</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <StepperBar currentStep="validate" />
-          <p className="text-xs text-muted-foreground">
-            {output.message ?? "Onboarding is gestart op de achtergrond."}
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return <OnboardingRealtimeCard output={output} />;
   }
 
   // Successful onboarding

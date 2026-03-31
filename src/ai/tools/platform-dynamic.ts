@@ -1,4 +1,4 @@
-import { tasks } from "@trigger.dev/sdk";
+import { auth, tasks } from "@trigger.dev/sdk";
 import { tool } from "ai";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
@@ -183,6 +183,17 @@ export const platformAutoSetup = tool({
         source: "agent",
       });
 
+      // Create a public access token so the frontend can subscribe to realtime updates
+      let publicAccessToken: string | undefined;
+      try {
+        publicAccessToken = await auth.createPublicToken({
+          scopes: { read: { runs: [handle.id] } },
+          expirationTime: "1h",
+        });
+      } catch {
+        // Token creation is best-effort — card falls back to static display
+      }
+
       revalidateTag("scrapers", "default");
 
       return {
@@ -191,6 +202,7 @@ export const platformAutoSetup = tool({
         displayName: analysis.displayName,
         adapterKind: analysis.adapterKind,
         runId: handle.id,
+        publicAccessToken,
         scrapingStrategy: analysis.scrapingStrategy,
         message: `Onboarding voor "${analysis.displayName}" is gestart op de achtergrond. Gebruik platformOnboardingStatus om de voortgang te volgen.`,
       };
@@ -305,6 +317,16 @@ export const platformReanalyze = tool({
         source: "agent",
       });
 
+      let publicAccessToken: string | undefined;
+      try {
+        publicAccessToken = await auth.createPublicToken({
+          scopes: { read: { runs: [handle.id] } },
+          expirationTime: "1h",
+        });
+      } catch {
+        // Best-effort
+      }
+
       revalidateTag("scrapers", "default");
 
       return {
@@ -312,6 +334,7 @@ export const platformReanalyze = tool({
         platform,
         displayName: catalog.displayName ?? analysis.displayName,
         runId: handle.id,
+        publicAccessToken,
         scrapingStrategy: analysis.scrapingStrategy,
         message: `Heranalyse voltooid — nieuwe selectors gevonden. Onboarding voor "${catalog.displayName ?? platform}" is opnieuw gestart. Gebruik platformOnboardingStatus om de voortgang te volgen.`,
       };
