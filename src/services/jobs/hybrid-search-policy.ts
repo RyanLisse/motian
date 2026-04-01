@@ -1,14 +1,13 @@
 type EnvMap = Record<string, string | undefined>;
 
 export const HYBRID_SEARCH_POLICY_VERSION = 2;
-export const HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY_ENV = "HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY";
 export const HYBRID_SEARCH_FULL_CANDIDATE_HYDRATION_ENV = "HYBRID_SEARCH_FULL_CANDIDATE_HYDRATION";
 
 const HYBRID_SEARCH_RRF_K = 60;
 const HYBRID_SEARCH_VECTOR_MIN_SCORE = 0.3;
 const HYBRID_SEARCH_FETCH_MULTIPLIER = 3;
 const HYBRID_SEARCH_FETCH_CAP = 100;
-const HYBRID_SEARCH_SHORT_QUERY_MIN_CHARS = 4;
+const HYBRID_SEARCH_SHORT_QUERY_MAX_WORDS = 2;
 
 function parseBooleanEnv(value: string | undefined): boolean {
   if (!value) return false;
@@ -58,10 +57,12 @@ export function getHybridSearchPolicy(
     HYBRID_SEARCH_FETCH_CAP,
   );
   const normalizedQuery = normalizeQueryForPolicy(opts.query);
-  const shortQuery =
-    normalizedQuery.length > 0 && normalizedQuery.length < HYBRID_SEARCH_SHORT_QUERY_MIN_CHARS;
-  const textOnlyShortQueries = parseBooleanEnv(env[HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY_ENV]);
-  const shouldRunVectorSearch = !(shortQuery && textOnlyShortQueries);
+  const wordCount = normalizedQuery.length > 0 ? normalizedQuery.split(" ").length : 0;
+  const shortQuery = wordCount > 0 && wordCount <= HYBRID_SEARCH_SHORT_QUERY_MAX_WORDS;
+  // Skip vector search for short queries (≤2 words) — keyword search handles
+  // "java", "python developer" etc. perfectly. Vector search adds ~960ms latency
+  // from the OpenAI embedding API call without meaningful result improvement.
+  const shouldRunVectorSearch = !shortQuery;
   const hydrationMode = parseBooleanEnv(env[HYBRID_SEARCH_FULL_CANDIDATE_HYDRATION_ENV])
     ? "full-candidates"
     : "deduped-vacancy-candidates";

@@ -2,26 +2,34 @@ import { describe, expect, it } from "vitest";
 import {
   getHybridSearchPolicy,
   HYBRID_SEARCH_FULL_CANDIDATE_HYDRATION_ENV,
-  HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY_ENV,
 } from "../src/services/jobs/hybrid-search-policy";
 
 describe("hybrid search short-query policy", () => {
-  it("keeps short queries eligible for vector retrieval by default", () => {
-    const policy = getHybridSearchPolicy({ query: "in", limit: 20, offset: 0 }, {});
+  it("skips vector search for single-word queries", () => {
+    const policy = getHybridSearchPolicy({ query: "java", limit: 20, offset: 0 }, {});
 
-    expect(policy.shouldRunVectorSearch).toBe(true);
-    expect(policy.vectorSearchSkippedReason).toBeNull();
-    expect(policy.hydrationMode).toBe("deduped-vacancy-candidates");
+    expect(policy.shouldRunVectorSearch).toBe(false);
+    expect(policy.vectorSearchSkippedReason).toBe("short-query-text-only");
   });
 
-  it("supports opting short queries into text-only retrieval via env flag", () => {
+  it("skips vector search for two-word queries", () => {
     const policy = getHybridSearchPolicy(
-      { query: "in", limit: 20, offset: 0 },
-      { [HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY_ENV]: "true" },
+      { query: "python developer", limit: 20, offset: 0 },
+      {},
     );
 
     expect(policy.shouldRunVectorSearch).toBe(false);
     expect(policy.vectorSearchSkippedReason).toBe("short-query-text-only");
+  });
+
+  it("enables vector search for three-or-more-word queries", () => {
+    const policy = getHybridSearchPolicy(
+      { query: "ervaren data engineer financiële sector", limit: 20, offset: 0 },
+      {},
+    );
+
+    expect(policy.shouldRunVectorSearch).toBe(true);
+    expect(policy.vectorSearchSkippedReason).toBeNull();
   });
 
   it("keeps deduped vacancy hydration and the current fetch-size branch", () => {
@@ -40,10 +48,10 @@ describe("hybrid search short-query policy", () => {
     expect(policy.hydrationMode).toBe("full-candidates");
   });
 
-  it("re-enables vector retrieval once the normalized query reaches the minimum length", () => {
-    const policy = getHybridSearchPolicy({ query: "xxxx", limit: 5, offset: 0 }, {});
+  it("skips vector search for empty queries", () => {
+    const policy = getHybridSearchPolicy({ query: "", limit: 20, offset: 0 }, {});
 
+    // Empty query = no words = not short, vector search is fine (it's a list)
     expect(policy.shouldRunVectorSearch).toBe(true);
-    expect(policy.vectorSearchSkippedReason).toBeNull();
   });
 });
