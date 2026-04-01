@@ -76,6 +76,7 @@ describe("typesense documents", () => {
       searchText: "Business Analyst",
       status: "open",
       categories: [],
+      scrapedAtTs: 0,
     });
   });
 
@@ -132,6 +133,7 @@ describe("typesense documents", () => {
       searchText: "John Doe",
       matchingStatus: "open",
       skills: [],
+      createdAtTs: 0,
     });
   });
 });

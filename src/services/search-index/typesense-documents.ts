@@ -69,7 +69,8 @@ export function toTypesenseJobDocument(input: TypesenseJobDocumentInput) {
     applicationDeadlineTs: toUnixTimestamp(input.applicationDeadline),
     startDateTs: toUnixTimestamp(input.startDate),
     postedAtTs: toUnixTimestamp(input.postedAt),
-    scrapedAtTs: toUnixTimestamp(input.scrapedAt),
+    // scrapedAtTs is the default_sorting_field — must always be present
+    scrapedAtTs: input.scrapedAt instanceof Date ? input.scrapedAt.getTime() : 0,
   });
 }
 
@@ -92,7 +93,8 @@ export function toTypesenseCandidateDocument(input: TypesenseCandidateDocumentIn
     skills,
     searchText,
     matchingStatus: normalizeString(input.matchingStatus),
-    createdAtTs: toUnixTimestamp(input.createdAt),
+    // createdAtTs is the default_sorting_field — must always be present
+    createdAtTs: input.createdAt instanceof Date ? input.createdAt.getTime() : 0,
     updatedAtTs: toUnixTimestamp(input.updatedAt),
   });
 }

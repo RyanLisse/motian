@@ -20,7 +20,7 @@ export const TYPESENSE_JOBS_SCHEMA = {
     { name: "applicationDeadlineTs", type: "int64", optional: true, sort: true },
     { name: "postedAtTs", type: "int64", optional: true, sort: true },
     { name: "startDateTs", type: "int64", optional: true, sort: true },
-    { name: "scrapedAtTs", type: "int64", optional: true, sort: true },
+    { name: "scrapedAtTs", type: "int64", sort: true },
   ],
   default_sorting_field: "scrapedAtTs",
 } as const;
@@ -36,7 +36,7 @@ export const TYPESENSE_CANDIDATES_SCHEMA = {
     { name: "skills", type: "string[]", optional: true },
     { name: "searchText", type: "string" },
     { name: "matchingStatus", type: "string", facet: true, optional: true },
-    { name: "createdAtTs", type: "int64", optional: true, sort: true },
+    { name: "createdAtTs", type: "int64", sort: true },
     { name: "updatedAtTs", type: "int64", optional: true, sort: true },
   ],
   default_sorting_field: "createdAtTs",

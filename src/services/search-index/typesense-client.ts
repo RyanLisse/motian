@@ -54,7 +54,17 @@ export async function typesenseRequest<T>(
     return null;
   }
 
-  return (await response.json()) as T;
+  // Typesense /documents/import returns NDJSON (one JSON per line),
+  // which can't be parsed with response.json(). Detect and handle it.
+  const contentType = response.headers.get("content-type") ?? "";
+  const text = await response.text();
+  if (contentType.includes("text/plain") || text.includes("\n{")) {
+    // NDJSON response — parse each line and return as array
+    const lines = text.trim().split("\n").filter(Boolean);
+    return lines.map((line) => JSON.parse(line)) as T;
+  }
+
+  return JSON.parse(text) as T;
 }
 
 function getCollectionSchema(collection: "jobs" | "candidates", name: string) {
