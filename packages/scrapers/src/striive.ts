@@ -362,11 +362,12 @@ async function scrapeViaModal(username: string, password: string): Promise<RawSc
 
     console.log("[striive] Modal sandbox created, executing scrape script...");
 
-    // Write the scraping script into the sandbox
-    await sandbox.exec(
+    // Write the scraping script into the sandbox and wait for the write to complete
+    const writeProc = await sandbox.exec(
       ["bash", "-c", `cat > /root/scrape.js << 'SCRIPT_EOF'\n${MODAL_SCRAPE_SCRIPT}\nSCRIPT_EOF`],
       { timeoutMs: 10_000 },
     );
+    await writeProc.wait();
 
     // Execute the script
     const proc = await sandbox.exec(["node", "/root/scrape.js"], {
