@@ -77,8 +77,6 @@ async function captureJourneyEvidenceLocally(
           gitSha,
         );
 
-        await context.close();
-
         try {
           await access(harPath);
           output.manifest.artifacts.push({
