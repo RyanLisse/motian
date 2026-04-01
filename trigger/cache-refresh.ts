@@ -50,10 +50,16 @@ export const cacheRefreshTask = schedules.task({
 
     return {
       dedupeRanks: dedupeResult
-        ? { rowsUpserted: dedupeResult.rowsUpserted, computedAt: dedupeResult.computedAt.toISOString() }
+        ? {
+            rowsUpserted: dedupeResult.rowsUpserted,
+            computedAt: dedupeResult.computedAt.toISOString(),
+          }
         : null,
       sidebarMetadata: sidebarResult
-        ? { computedAt: sidebarResult.computedAt.toISOString(), totalCount: sidebarResult.totalCount }
+        ? {
+            computedAt: sidebarResult.computedAt.toISOString(),
+            totalCount: sidebarResult.totalCount,
+          }
         : null,
     };
   },
