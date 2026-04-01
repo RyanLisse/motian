@@ -51,8 +51,8 @@ export const env = createEnv({
     // Observability
     OTEL_ENABLED: z.string().optional(),
 
-    // LiveKit (server)
-    LIVEKIT_URL: z.string().optional(),
+    // LiveKit (server) — wss:// URL for WebSocket connection
+    LIVEKIT_URL: z.string().url().optional(),
     LIVEKIT_API_KEY: z.string().optional(),
     LIVEKIT_API_SECRET: z.string().optional(),
 
@@ -88,14 +88,14 @@ export const env = createEnv({
     ALLOWED_ORIGINS: z.string().optional(),
     API_SECRET: z.string().min(1).optional(),
     CRON_SECRET: z.string().optional(),
-    ENCRYPTION_SECRET: z.string().optional(),
+    ENCRYPTION_SECRET: z.string().min(32).optional(),
     PORT: z.coerce.number().optional(),
     HOSTNAME: z.string().optional(),
     RATE_CAP_EUR: z.coerce.number().optional(),
     CHAT_MAX_TOKENS_PER_SESSION: z.coerce.number().optional(),
 
-    // Typesense
-    TYPESENSE_URL: z.string().optional(),
+    // Typesense — http(s):// URL for search index
+    TYPESENSE_URL: z.string().url().optional(),
     TYPESENSE_API_KEY: z.string().optional(),
     TYPESENSE_JOBS_COLLECTION: z.string().optional(),
     TYPESENSE_CANDIDATES_COLLECTION: z.string().optional(),
