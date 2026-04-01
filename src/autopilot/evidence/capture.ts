@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ModalClient } from "modal";
 import type { JourneySpec } from "../types/journey";
@@ -20,6 +20,85 @@ export interface CaptureResult {
 }
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 720 };
+const MODAL_PLAYWRIGHT_IMAGE = "mcr.microsoft.com/playwright:v1.58.0-noble";
+const MODAL_WORKDIR = "/root/autopilot";
+
+function shouldUseLocalPlaywright(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl);
+    return url.hostname === "127.0.0.1" || url.hostname === "localhost" || url.hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+async function captureJourneyEvidenceLocally(
+  journeys: JourneySpec[],
+  config: CaptureConfig,
+  runId: string,
+  gitSha: string,
+  viewport: { width: number; height: number },
+): Promise<JourneyRunOutput[]> {
+  const [{ chromium }, { runJourney }] = await Promise.all([
+    import("playwright"),
+    import("./journey-runner"),
+  ]);
+  const browser = await chromium.launch();
+  const journeyOutputs: JourneyRunOutput[] = [];
+
+  try {
+    for (const journey of journeys) {
+      const tsFile = new Date().toISOString().replace(/[:.]/g, "-");
+      const harPath = join(config.evidenceDir, runId, `${journey.id}-${tsFile}.har`);
+      const context = await browser.newContext({
+        viewport,
+        ignoreHTTPSErrors: true,
+        recordVideo: {
+          dir: join(config.evidenceDir, runId),
+          size: viewport,
+        },
+        recordHar: {
+          path: harPath,
+          mode: "full",
+          content: "embed",
+        },
+      });
+
+      try {
+        const output = await runJourney(
+          journey,
+          {
+            baseUrl: config.baseUrl,
+            evidenceDir: config.evidenceDir,
+            viewport,
+          },
+          context,
+          runId,
+          gitSha,
+        );
+
+        await context.close();
+
+        try {
+          await access(harPath);
+          output.manifest.artifacts.push({
+            id: `${journey.id}-har`,
+            kind: "har",
+            path: harPath,
+            capturedAt: new Date().toISOString(),
+          });
+        } catch {}
+        journeyOutputs.push(output);
+      } finally {
+        await context.close().catch(() => {});
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+
+  return journeyOutputs;
+}
 
 /** Marker tokens used to delimit the JSON manifest in sandbox stdout. */
 const MANIFEST_START = "__MANIFEST_START__";
@@ -40,6 +119,23 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
+function toHarHeaders(headers) {
+  return Object.entries(headers || {}).map(([name, value]) => ({
+    name,
+    value: String(value),
+  }));
+}
+
+function buildFallbackHar(entries) {
+  return {
+    log: {
+      version: '1.2',
+      creator: { name: 'motian-modal-runner', version: '1.0.0' },
+      entries,
+    },
+  };
+}
+
 const config = JSON.parse(Buffer.from(process.argv[1], 'base64').toString());
 const { journeys, baseUrl, evidenceDir, runId, gitSha, viewport } = config;
 
@@ -50,18 +146,83 @@ const { journeys, baseUrl, evidenceDir, runId, gitSha, viewport } = config;
 
   for (const spec of journeys) {
     try {
+      const ts = new Date().toISOString();
+      const tsFile = ts.replace(/[:.]/g, '-');
       const consoleLogs = [];
+      const networkEntries = [];
+      const responseCaptureTasks = [];
       const artifacts = [];
       let success = true;
       let errorMessage;
+      let traceStarted = false;
       const start = Date.now();
+      const tracePath = path.join(evidenceDir, spec.id + '-' + tsFile + '.trace.zip');
+      const harPath = path.join(evidenceDir, spec.id + '-' + tsFile + '.har');
 
-      const context = await browser.newContext({ viewport, ignoreHTTPSErrors: true });
+      const context = await browser.newContext({
+        viewport,
+        ignoreHTTPSErrors: true,
+        recordVideo: { dir: evidenceDir, size: viewport },
+        recordHar: { path: harPath, mode: 'full', content: 'embed' },
+      });
       const page = await context.newPage();
+      const video = page.video();
       page.setDefaultTimeout(spec.timeoutMs);
       page.on('console', (msg) => consoleLogs.push('[' + msg.type() + '] ' + msg.text()));
+      page.on('response', (response) => {
+        responseCaptureTasks.push((async () => {
+          try {
+            const request = response.request();
+            const requestHeaders = toHarHeaders(request.headers());
+            const responseHeaders = toHarHeaders(await response.allHeaders());
+            if (requestHeaders.length === 0) {
+              requestHeaders.push({ name: 'x-playwright-method', value: request.method() });
+            }
+            if (responseHeaders.length === 0) {
+              responseHeaders.push({ name: 'x-playwright-status', value: String(response.status()) });
+            }
+            networkEntries.push({
+              startedDateTime: new Date().toISOString(),
+              time: 0,
+              request: {
+                method: request.method(),
+                url: request.url(),
+                httpVersion: 'HTTP/1.1',
+                headers: requestHeaders,
+                queryString: [],
+                cookies: [],
+                headersSize: -1,
+                bodySize: -1,
+              },
+              response: {
+                status: response.status(),
+                statusText: response.statusText(),
+                httpVersion: 'HTTP/1.1',
+                headers: responseHeaders,
+                cookies: [],
+                content: {
+                  size: Number(response.headers()['content-length'] || 0),
+                  mimeType: response.headers()['content-type'] || 'application/octet-stream',
+                },
+                redirectURL: '',
+                headersSize: -1,
+                bodySize: -1,
+              },
+              cache: {},
+              timings: { send: 0, wait: 0, receive: 0 },
+            });
+          } catch {}
+        })());
+      });
 
       try {
+        try {
+          await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+          traceStarted = true;
+        } catch {
+          traceStarted = false;
+        }
+
         const url = baseUrl + spec.surface;
 
         if (spec.kind === 'page-load') {
@@ -108,8 +269,75 @@ const { journeys, baseUrl, evidenceDir, runId, gitSha, viewport } = config;
         success = false;
         errorMessage = err.message || String(err);
       } finally {
+        await Promise.allSettled(responseCaptureTasks);
         await page.close();
+
+        if (traceStarted) {
+          await context.tracing.stop({ path: tracePath });
+          const traceB64 = (await fs.promises.readFile(tracePath)).toString('base64');
+          artifacts.push({
+            id: spec.id + '-trace',
+            kind: 'trace',
+            fileName: path.basename(tracePath),
+            dataBase64: traceB64,
+            capturedAt: new Date().toISOString(),
+            metadata: success ? undefined : { capturedOnError: true },
+          });
+        }
+
         await context.close();
+
+        const videoPath = await video?.path();
+        if (videoPath) {
+          const videoB64 = (await fs.promises.readFile(videoPath)).toString('base64');
+          artifacts.push({
+            id: spec.id + '-video',
+            kind: 'video',
+            fileName: path.basename(videoPath),
+            dataBase64: videoB64,
+            capturedAt: new Date().toISOString(),
+          });
+        }
+
+        if (fs.existsSync(harPath)) {
+          try {
+            const harJson = JSON.parse(await fs.promises.readFile(harPath, 'utf8'));
+            const entries = Array.isArray(harJson?.log?.entries) ? harJson.log.entries : [];
+            const filteredEntries = entries.filter((entry) => {
+              const requestHeaders = Array.isArray(entry?.request?.headers) ? entry.request.headers : [];
+              const responseHeaders = Array.isArray(entry?.response?.headers)
+                ? entry.response.headers
+                : [];
+              return requestHeaders.length > 0 && responseHeaders.length > 0;
+            });
+
+            if (filteredEntries.length > 0 && harJson?.log) {
+              harJson.log.entries = filteredEntries;
+              await fs.promises.writeFile(harPath, JSON.stringify(harJson));
+            } else if (networkEntries.length > 0) {
+              await fs.promises.writeFile(harPath, JSON.stringify(buildFallbackHar(networkEntries)));
+            }
+          } catch {}
+
+          const harB64 = (await fs.promises.readFile(harPath)).toString('base64');
+          artifacts.push({
+            id: spec.id + '-har',
+            kind: 'har',
+            fileName: path.basename(harPath),
+            dataBase64: harB64,
+            capturedAt: new Date().toISOString(),
+          });
+        } else if (networkEntries.length > 0) {
+          await fs.promises.writeFile(harPath, JSON.stringify(buildFallbackHar(networkEntries)));
+          const harB64 = (await fs.promises.readFile(harPath)).toString('base64');
+          artifacts.push({
+            id: spec.id + '-har',
+            kind: 'har',
+            fileName: path.basename(harPath),
+            dataBase64: harB64,
+            capturedAt: new Date().toISOString(),
+          });
+        }
       }
 
       // Console logs -> base64
@@ -168,6 +396,7 @@ interface SandboxArtifact {
   fileName: string;
   dataBase64: string;
   capturedAt: string;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -189,95 +418,104 @@ export async function captureJourneyEvidence(
   const runDir = join(config.evidenceDir, runId);
   await mkdir(runDir, { recursive: true });
 
-  // --- Modal Sandbox setup ---
-  const modal = new ModalClient();
-  const app = await modal.apps.fromName("motian-autopilot", {
-    createIfMissing: true,
-  });
-  const image = modal.images.fromRegistry("mcr.microsoft.com/playwright:v1.58.0-noble");
-  const sb = await modal.sandboxes.create(app, image, { timeoutMs: 600_000 });
+  let journeyOutputs: JourneyRunOutput[] = [];
 
-  const journeyOutputs: JourneyRunOutput[] = [];
-
-  try {
-    const runnerConfig = {
-      journeys,
-      baseUrl: config.baseUrl,
-      evidenceDir: "/tmp/evidence",
-      runId,
-      gitSha,
-      viewport,
-    };
-    const configB64 = Buffer.from(JSON.stringify(runnerConfig)).toString("base64");
-    const runnerScript = buildSandboxRunnerScript();
-
-    const proc = await sb.exec(["node", "-e", runnerScript, configB64], {
-      stdout: "pipe",
-      stderr: "pipe",
+  if (shouldUseLocalPlaywright(config.baseUrl)) {
+    journeyOutputs = await captureJourneyEvidenceLocally(journeys, config, runId, gitSha, viewport);
+  } else {
+    // --- Modal Sandbox setup ---
+    const modal = new ModalClient();
+    const app = await modal.apps.fromName("motian-autopilot", {
+      createIfMissing: true,
     });
-    const stdout = await proc.stdout.readText();
-    const stderr = await proc.stderr.readText();
-    await proc.wait();
+    const image = modal.images
+      .fromRegistry(MODAL_PLAYWRIGHT_IMAGE)
+      .dockerfileCommands([
+        `RUN mkdir -p ${MODAL_WORKDIR}`,
+        `RUN cd ${MODAL_WORKDIR} && npm init -y`,
+        `RUN cd ${MODAL_WORKDIR} && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.58.0`,
+      ]);
+    const sb = await modal.sandboxes.create(app, image, {
+      timeoutMs: 600_000,
+      workdir: MODAL_WORKDIR,
+    });
 
-    if (stderr) {
-      console.warn("[modal-sandbox] stderr:", stderr);
-    }
-
-    // Extract the JSON manifest from between delimiter tokens
-    const startIdx = stdout.indexOf(MANIFEST_START);
-    const endIdx = stdout.indexOf(MANIFEST_END);
-    if (startIdx === -1 || endIdx === -1) {
-      throw new Error(
-        `Sandbox runner produceerde geen geldig manifest. stdout: ${stdout.slice(0, 500)}`,
-      );
-    }
-
-    const jsonStr = stdout.slice(startIdx + MANIFEST_START.length, endIdx).trim();
-    const rawResults: Array<{
-      result: JourneyRunOutput["result"];
-      manifest: Omit<JourneyRunOutput["manifest"], "artifacts"> & {
-        artifacts: SandboxArtifact[];
+    try {
+      const runnerConfig = {
+        journeys,
+        baseUrl: config.baseUrl,
+        evidenceDir: "/tmp/evidence",
+        runId,
+        gitSha,
+        viewport,
       };
-    }> = JSON.parse(jsonStr);
+      const configB64 = Buffer.from(JSON.stringify(runnerConfig)).toString("base64");
+      const runnerScript = buildSandboxRunnerScript();
 
-    // Materialise artifacts from base64 to local files
-    for (const entry of rawResults) {
-      const localArtifacts = [];
-      for (const art of entry.manifest.artifacts) {
-        const localPath = join(runDir, art.fileName);
-        await writeFile(localPath, Buffer.from(art.dataBase64, "base64"));
-        localArtifacts.push({
-          id: art.id,
-          kind: art.kind as "screenshot" | "console-log",
-          path: localPath,
-          capturedAt: art.capturedAt,
-        });
+      const proc = await sb.exec(["node", "-e", runnerScript, configB64], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const stdout = await proc.stdout.readText();
+      const stderr = await proc.stderr.readText();
+      await proc.wait();
+
+      if (stderr) {
+        console.warn("[modal-sandbox] stderr:", stderr);
       }
 
-      journeyOutputs.push({
-        result: entry.result,
-        manifest: {
-          runId: entry.manifest.runId,
-          journeyId: entry.manifest.journeyId,
-          surface: entry.manifest.surface,
-          capturedAt: entry.manifest.capturedAt,
-          gitSha: entry.manifest.gitSha,
-          artifacts: localArtifacts,
-          success: entry.manifest.success,
-          failureReason: entry.manifest.failureReason,
-        },
-      });
+      const startIdx = stdout.indexOf(MANIFEST_START);
+      const endIdx = stdout.indexOf(MANIFEST_END);
+      if (startIdx === -1 || endIdx === -1) {
+        throw new Error(
+          `Sandbox runner produceerde geen geldig manifest. stdout: ${stdout.slice(0, 500)}`,
+        );
+      }
 
-      // Write per-journey manifest
-      const manifestPath = join(runDir, `${entry.manifest.journeyId}-manifest.json`);
-      await writeFile(
-        manifestPath,
-        JSON.stringify(journeyOutputs[journeyOutputs.length - 1].manifest, null, 2),
-        "utf-8",
-      );
+      const jsonStr = stdout.slice(startIdx + MANIFEST_START.length, endIdx).trim();
+      const rawResults: Array<{
+        result: JourneyRunOutput["result"];
+        manifest: Omit<JourneyRunOutput["manifest"], "artifacts"> & {
+          artifacts: SandboxArtifact[];
+        };
+      }> = JSON.parse(jsonStr);
+
+      for (const entry of rawResults) {
+        const localArtifacts = [];
+        for (const art of entry.manifest.artifacts) {
+          const localPath = join(runDir, art.fileName);
+          await writeFile(localPath, Buffer.from(art.dataBase64, "base64"));
+          localArtifacts.push({
+            id: art.id,
+            kind: art.kind as "screenshot" | "console-log" | "video" | "trace" | "har",
+            path: localPath,
+            capturedAt: art.capturedAt,
+            metadata: art.metadata,
+          });
+        }
+
+        journeyOutputs.push({
+          result: entry.result,
+          manifest: {
+            runId: entry.manifest.runId,
+            journeyId: entry.manifest.journeyId,
+            surface: entry.manifest.surface,
+            capturedAt: entry.manifest.capturedAt,
+            gitSha: entry.manifest.gitSha,
+            artifacts: localArtifacts,
+            success: entry.manifest.success,
+            failureReason: entry.manifest.failureReason,
+          },
+        });
+      }
+    } finally {
+      await sb.terminate();
     }
-  } finally {
-    await sb.terminate();
+  }
+
+  for (const entry of journeyOutputs) {
+    const manifestPath = join(runDir, `${entry.manifest.journeyId}-manifest.json`);
+    await writeFile(manifestPath, JSON.stringify(entry.manifest, null, 2), "utf-8");
   }
 
   const completedAt = new Date().toISOString();
