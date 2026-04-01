@@ -377,25 +377,37 @@ export async function fetchDedupedJobsPageFast({
   sortBy?: ListJobsSortBy;
 }): Promise<{ ids: string[]; total: number }> {
   const sortOrder = getListSortOrderSql(sortBy);
+  const rankFilter = eq(jobDedupeRanks.dedupeRank, 1);
 
-  const result = await (
-    db as unknown as { execute(sql: SQL): Promise<{ rows: DedupedJobPageRow[] }> }
-  ).execute(sql`
-    SELECT ${jobs.id} AS id, CAST(COUNT(*) OVER() AS integer) AS total
-    FROM ${jobs}
-    INNER JOIN ${jobDedupeRanks} ON ${jobDedupeRanks.jobId} = ${jobs.id}
-    WHERE ${whereClause}
-      AND ${eq(jobDedupeRanks.dedupeRank, 1)}
-    ORDER BY ${sortOrder.resultOrderBy}
-    LIMIT ${limit}
-    OFFSET ${offset}
-  `);
-  const rows = result.rows;
-  const total = rows[0]?.total == null ? 0 : Number(rows[0].total);
+  // Run page query and count in parallel — avoids COUNT(*) OVER() which
+  // forces Postgres to scan all matching rows before returning any.
+  const [pageResult, countResult] = await Promise.all([
+    (
+      db as unknown as { execute(sql: SQL): Promise<{ rows: { id: string }[] }> }
+    ).execute(sql`
+      SELECT ${jobs.id} AS id
+      FROM ${jobs}
+      INNER JOIN ${jobDedupeRanks} ON ${jobDedupeRanks.jobId} = ${jobs.id}
+      WHERE ${whereClause}
+        AND ${rankFilter}
+      ORDER BY ${sortOrder.resultOrderBy}
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `),
+    (
+      db as unknown as { execute(sql: SQL): Promise<{ rows: { total: number }[] }> }
+    ).execute(sql`
+      SELECT CAST(COUNT(*) AS integer) AS total
+      FROM ${jobs}
+      INNER JOIN ${jobDedupeRanks} ON ${jobDedupeRanks.jobId} = ${jobs.id}
+      WHERE ${whereClause}
+        AND ${rankFilter}
+    `),
+  ]);
 
   return {
-    ids: rows.flatMap((row) => (row.id ? [row.id] : [])),
-    total,
+    ids: pageResult.rows.map((row) => row.id),
+    total: countResult.rows[0]?.total ?? 0,
   };
 }
 
