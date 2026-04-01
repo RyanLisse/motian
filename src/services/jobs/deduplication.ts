@@ -382,9 +382,7 @@ export async function fetchDedupedJobsPageFast({
   // Run page query and count in parallel — avoids COUNT(*) OVER() which
   // forces Postgres to scan all matching rows before returning any.
   const [pageResult, countResult] = await Promise.all([
-    (
-      db as unknown as { execute(sql: SQL): Promise<{ rows: { id: string }[] }> }
-    ).execute(sql`
+    (db as unknown as { execute(sql: SQL): Promise<{ rows: { id: string }[] }> }).execute(sql`
       SELECT ${jobs.id} AS id
       FROM ${jobs}
       INNER JOIN ${jobDedupeRanks} ON ${jobDedupeRanks.jobId} = ${jobs.id}
@@ -394,9 +392,7 @@ export async function fetchDedupedJobsPageFast({
       LIMIT ${limit}
       OFFSET ${offset}
     `),
-    (
-      db as unknown as { execute(sql: SQL): Promise<{ rows: { total: number }[] }> }
-    ).execute(sql`
+    (db as unknown as { execute(sql: SQL): Promise<{ rows: { total: number }[] }> }).execute(sql`
       SELECT CAST(COUNT(*) AS integer) AS total
       FROM ${jobs}
       INNER JOIN ${jobDedupeRanks} ON ${jobDedupeRanks.jobId} = ${jobs.id}

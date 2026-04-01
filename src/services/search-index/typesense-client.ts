@@ -1,5 +1,5 @@
 import { getTypesenseConfig } from "../../lib/typesense";
-import { TYPESENSE_CANDIDATES_SCHEMA, TYPESENSE_JOBS_SCHEMA } from "./typesense-schema";
+import { buildTypesenseJobsSchema, TYPESENSE_CANDIDATES_SCHEMA } from "./typesense-schema";
 
 type TypesenseMethod = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -69,7 +69,8 @@ export async function typesenseRequest<T>(
 
 function getCollectionSchema(collection: "jobs" | "candidates", name: string) {
   if (collection === "jobs") {
-    return { ...TYPESENSE_JOBS_SCHEMA, name };
+    const schema = buildTypesenseJobsSchema(process.env.OPENAI_API_KEY);
+    return { ...schema, name };
   }
 
   return { ...TYPESENSE_CANDIDATES_SCHEMA, name };
