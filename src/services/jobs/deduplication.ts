@@ -370,40 +370,50 @@ export async function fetchDedupedJobsPageFast({
   limit,
   offset = 0,
   sortBy,
+  knownTotal,
 }: {
   whereClause: SQL;
   limit: number;
   offset?: number;
   sortBy?: ListJobsSortBy;
+  /** When provided, skip the COUNT(*) query entirely. */
+  knownTotal?: number;
 }): Promise<{ ids: string[]; total: number }> {
   const sortOrder = getListSortOrderSql(sortBy);
   const rankFilter = eq(jobDedupeRanks.dedupeRank, 1);
 
-  // Run page query and count in parallel — avoids COUNT(*) OVER() which
-  // forces Postgres to scan all matching rows before returning any.
-  const [pageResult, countResult] = await Promise.all([
-    (db as unknown as { execute(sql: SQL): Promise<{ rows: { id: string }[] }> }).execute(sql`
-      SELECT ${jobs.id} AS id
-      FROM ${jobs}
-      INNER JOIN ${jobDedupeRanks} ON ${jobDedupeRanks.jobId} = ${jobs.id}
-      WHERE ${whereClause}
-        AND ${rankFilter}
-      ORDER BY ${sortOrder.resultOrderBy}
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `),
-    (db as unknown as { execute(sql: SQL): Promise<{ rows: { total: number }[] }> }).execute(sql`
+  const pageResult = await (
+    db as unknown as { execute(sql: SQL): Promise<{ rows: { id: string }[] }> }
+  ).execute(sql`
+    SELECT ${jobs.id} AS id
+    FROM ${jobs}
+    INNER JOIN ${jobDedupeRanks} ON ${jobDedupeRanks.jobId} = ${jobs.id}
+    WHERE ${whereClause}
+      AND ${rankFilter}
+    ORDER BY ${sortOrder.resultOrderBy}
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `);
+
+  // Skip the count query when the caller already knows the total
+  // (e.g., from precomputed sidebar metadata).
+  let total = knownTotal ?? 0;
+  if (knownTotal == null) {
+    const countResult = await (
+      db as unknown as { execute(sql: SQL): Promise<{ rows: { total: number }[] }> }
+    ).execute(sql`
       SELECT CAST(COUNT(*) AS integer) AS total
       FROM ${jobs}
       INNER JOIN ${jobDedupeRanks} ON ${jobDedupeRanks.jobId} = ${jobs.id}
       WHERE ${whereClause}
         AND ${rankFilter}
-    `),
-  ]);
+    `);
+    total = countResult.rows[0]?.total ?? 0;
+  }
 
   return {
     ids: pageResult.rows.map((row) => row.id),
-    total: countResult.rows[0]?.total ?? 0,
+    total,
   };
 }
 
@@ -412,17 +422,20 @@ export async function fetchDedupedJobsPage({
   limit,
   offset = 0,
   sortBy,
+  knownTotal,
 }: {
   whereClause: SQL;
   limit: number;
   offset?: number;
   sortBy?: ListJobsSortBy;
+  /** Skip the COUNT query when total is already known. */
+  knownTotal?: number;
 }): Promise<{ ids: string[]; total: number }> {
   // Try fast path with precomputed ranks
   try {
     const { isFresh } = await getDedupeRanksFreshness();
     if (isFresh) {
-      return fetchDedupedJobsPageFast({ whereClause, limit, offset, sortBy });
+      return fetchDedupedJobsPageFast({ whereClause, limit, offset, sortBy, knownTotal });
     }
   } catch {
     // Ranks table may not exist yet or db is mocked — fall through to CTE

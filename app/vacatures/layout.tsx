@@ -31,10 +31,19 @@ function SidebarSkeleton() {
 }
 
 async function SidebarContent() {
-  const [metadata, { data: sidebarJobs }] = await Promise.all([
-    getSidebarMetadata().then((cached) => cached ?? refreshSidebarMetadata()),
-    listJobsPage({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" }),
-  ]);
+  // Load only 20 jobs for the initial sidebar render (user sees ~8 at once).
+  // The client fetches more on scroll/filter via the /api/vacatures/zoeken endpoint.
+  const SIDEBAR_INITIAL_LIMIT = 20;
+
+  const metadata = await getSidebarMetadata().then(
+    (cached) => cached ?? refreshSidebarMetadata(),
+  );
+  // Pass knownTotal from precomputed metadata to skip the COUNT(*) query
+  const { data: sidebarJobs } = await listJobsPage({
+    limit: SIDEBAR_INITIAL_LIMIT,
+    status: "open",
+    knownTotal: metadata.totalCount,
+  });
 
   return (
     <OpdrachtenSidebar

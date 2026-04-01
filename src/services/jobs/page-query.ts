@@ -60,7 +60,9 @@ export type JobPageResult = {
   total: number;
 };
 
-export async function listJobsPage(opts: ListJobsPageOptions = {}): Promise<JobPageResult> {
+export async function listJobsPage(
+  opts: ListJobsPageOptions & { knownTotal?: number } = {},
+): Promise<JobPageResult> {
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = opts.offset ?? 0;
@@ -95,6 +97,7 @@ export async function listJobsPage(opts: ListJobsPageOptions = {}): Promise<JobP
     limit,
     offset,
     sortBy: opts.sortBy ?? "nieuwste",
+    knownTotal: opts.knownTotal,
   });
   const dedupePageMs = Date.now() - dedupePageStartedAt;
 

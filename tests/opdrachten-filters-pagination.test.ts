@@ -324,7 +324,7 @@ describe("Opdrachten UI/API contracts", () => {
     const sidebarMetadataService = readFile("src", "services", "sidebar-metadata.ts");
 
     // Layout delegates to precomputed sidebar metadata service + live job list
-    expect(layout).toContain('listJobsPage({ limit: DEFAULT_OPDRACHTEN_LIMIT, status: "open" })');
+    expect(layout).toContain("listJobsPage(");
     expect(layout).toContain('import { listJobsPage } from "@/src/services/jobs/page-query"');
     expect(layout).toContain("getSidebarMetadata");
     expect(layout).toContain("refreshSidebarMetadata");
