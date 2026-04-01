@@ -35,8 +35,9 @@ export const env = createEnv({
     OPENAI_API_KEY: z.string().min(1).optional(),
     X_AI_API_KEY: z.string().min(1).optional(),
 
-    // Sentry (server)
-    SENTRY_DSN: z.string().url().optional(),
+    // Sentry (server) — accepts any non-empty string because DSN format
+    // includes protocol+host but may use non-standard schemes
+    SENTRY_DSN: z.string().min(1).optional(),
     SENTRY_ORG: z.string().optional(),
     SENTRY_PROJECT: z.string().optional(),
     SENTRY_AUTH_TOKEN: z.string().optional(),
@@ -133,7 +134,7 @@ export const env = createEnv({
 
   // ── Client-side environment variables (NEXT_PUBLIC_) ──
   client: {
-    NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+    NEXT_PUBLIC_SENTRY_DSN: z.string().min(1).optional(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
     NEXT_PUBLIC_LIVEKIT_URL: z.string().optional(),

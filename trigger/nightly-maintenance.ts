@@ -2,9 +2,9 @@ import { logger, schedules } from "@trigger.dev/sdk";
 import { and, eq, lt } from "drizzle-orm";
 import { db, isNotNull, sql } from "@/src/db";
 import { jobs } from "@/src/db/schema";
-import { eraseCandidateData, findExpiredRetentionCandidates } from "@/src/services/gdpr";
 import { emitAgentEvent } from "@/src/services/agent-events";
 import { autoMatchJobToCandidates } from "@/src/services/auto-matching";
+import { eraseCandidateData, findExpiredRetentionCandidates } from "@/src/services/gdpr";
 import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 
 /**
@@ -69,12 +69,7 @@ export const nightlyMaintenanceTask = schedules.task({
         ) as integer)`,
       })
       .from(jobs)
-      .where(
-        and(
-          getVisibleVacancyCondition(),
-          isNotNull(jobs.embedding),
-        ),
-      )
+      .where(and(getVisibleVacancyCondition(), isNotNull(jobs.embedding)))
       .having(
         sql`coalesce(
           (select count(*) from job_matches jm
@@ -96,7 +91,11 @@ export const nightlyMaintenanceTask = schedules.task({
         );
 
         totalCandidatesFound += qualified.length;
-        sourcingResults.push({ jobId: job.id, jobTitle: job.title, candidatesFound: qualified.length });
+        sourcingResults.push({
+          jobId: job.id,
+          jobTitle: job.title,
+          candidatesFound: qualified.length,
+        });
 
         for (const match of qualified) {
           await emitAgentEvent({
