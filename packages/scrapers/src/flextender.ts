@@ -193,7 +193,14 @@ async function enrichListings(
             ];
           }
           // Don't let a short detail description override a valid listing description
-          if (detail.description && detail.description.length < 10 && listing.description.length >= 10) {
+          const detailDesc = detail.description;
+          const listingDesc = listing.description;
+          if (
+            typeof detailDesc === "string" &&
+            detailDesc.length < 10 &&
+            typeof listingDesc === "string" &&
+            listingDesc.length >= 10
+          ) {
             delete detail.description;
           }
           const { _rawHours, ...listingClean } = listing;
