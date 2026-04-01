@@ -1,14 +1,17 @@
 type EnvMap = Record<string, string | undefined>;
 
-export const HYBRID_SEARCH_POLICY_VERSION = 2;
-export const HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY_ENV = "HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY";
+export const HYBRID_SEARCH_POLICY_VERSION = 3;
 export const HYBRID_SEARCH_FULL_CANDIDATE_HYDRATION_ENV = "HYBRID_SEARCH_FULL_CANDIDATE_HYDRATION";
+export const HYBRID_SEARCH_FORCE_VECTOR_ENV = "HYBRID_SEARCH_FORCE_VECTOR";
 
 const HYBRID_SEARCH_RRF_K = 60;
 const HYBRID_SEARCH_VECTOR_MIN_SCORE = 0.3;
 const HYBRID_SEARCH_FETCH_MULTIPLIER = 3;
 const HYBRID_SEARCH_FETCH_CAP = 100;
-const HYBRID_SEARCH_SHORT_QUERY_MIN_CHARS = 4;
+// Single-word queries only — "project manager" (2 words) benefits from
+// semantic matching because Dutch equivalents like "projectleider" wouldn't
+// be found by keyword search alone.
+const HYBRID_SEARCH_SHORT_QUERY_MAX_WORDS = 1;
 
 function parseBooleanEnv(value: string | undefined): boolean {
   if (!value) return false;
@@ -39,10 +42,11 @@ function normalizeQueryForPolicy(query: string): string {
 }
 
 /**
- * Phase 2 policy:
- * - keep Phase 1 branch fetch sizing unless explicitly changed,
- * - allow an opt-in short-query text-only rollout,
- * - hydrate one representative row per deduped vacancy candidate after RRF.
+ * Phase 3 policy:
+ * - Skip vector search for single-word queries to avoid ~960ms OpenAI call.
+ * - Multi-word queries (≥2 words) use hybrid keyword + vector for Dutch synonym matching.
+ * - HYBRID_SEARCH_FORCE_VECTOR=true overrides the skip as a kill switch.
+ * - Hydrate one representative row per deduped vacancy candidate after RRF.
  */
 export function getHybridSearchPolicy(
   opts: { query: string; limit?: number; offset?: number },
@@ -58,10 +62,14 @@ export function getHybridSearchPolicy(
     HYBRID_SEARCH_FETCH_CAP,
   );
   const normalizedQuery = normalizeQueryForPolicy(opts.query);
-  const shortQuery =
-    normalizedQuery.length > 0 && normalizedQuery.length < HYBRID_SEARCH_SHORT_QUERY_MIN_CHARS;
-  const textOnlyShortQueries = parseBooleanEnv(env[HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY_ENV]);
-  const shouldRunVectorSearch = !(shortQuery && textOnlyShortQueries);
+  const wordCount = normalizedQuery.length > 0 ? normalizedQuery.split(" ").length : 0;
+  const shortQuery = wordCount > 0 && wordCount <= HYBRID_SEARCH_SHORT_QUERY_MAX_WORDS;
+  // Skip vector search for single-word queries — keyword search handles "java",
+  // "python", "DevOps" etc. well. Multi-word queries like "project manager"
+  // benefit from semantic search (finds Dutch "projectleider").
+  // HYBRID_SEARCH_FORCE_VECTOR=true overrides this as a kill switch.
+  const forceVector = parseBooleanEnv(env[HYBRID_SEARCH_FORCE_VECTOR_ENV]);
+  const shouldRunVectorSearch = forceVector || !shortQuery;
   const hydrationMode = parseBooleanEnv(env[HYBRID_SEARCH_FULL_CANDIDATE_HYDRATION_ENV])
     ? "full-candidates"
     : "deduped-vacancy-candidates";
