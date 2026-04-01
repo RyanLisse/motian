@@ -1,7 +1,7 @@
+import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@motian/esco";
 import { cache } from "react";
 import { db, eq, sql } from "@/src/db";
 import { jobs, sidebarMetadata } from "@/src/db/schema";
-import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
 
 const DEFAULT_SKILL_EMPTY_TEXT = "Geen vaardigheden gevonden.";
@@ -29,7 +29,12 @@ function resolveSkillEmptyText(issue: string | null | undefined): string {
 
 /**
  * Reads precomputed sidebar metadata from the database.
- * Returns null if no row exists or the data is stale (older than 10 minutes).
+ * Returns null only if no row exists at all.
+ *
+ * Note: we intentionally serve stale data here rather than falling through
+ * to refreshSidebarMetadata() which runs 5 heavy aggregate queries and adds
+ * 5-8s to the first page load. The cache-refresh Trigger.dev task updates
+ * this every 15 minutes, so staleness is bounded.
  */
 export const getSidebarMetadata = cache(
   async function getSidebarMetadata(): Promise<SidebarMetadataRow | null> {
@@ -42,8 +47,6 @@ export const getSidebarMetadata = cache(
     if (rows.length === 0) return null;
 
     const row = rows[0];
-    const age = Date.now() - row.computedAt.getTime();
-    if (age > STALE_THRESHOLD_MS) return null;
 
     return {
       totalCount: row.totalCount,

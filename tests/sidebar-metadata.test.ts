@@ -36,7 +36,7 @@ vi.mock("@/src/db/schema", () => ({
   },
 }));
 
-vi.mock("@/src/services/esco", () => ({
+vi.mock("@motian/esco", () => ({
   getEscoCatalogStatus: vi.fn().mockResolvedValue({
     available: true,
     issue: null,
@@ -95,7 +95,7 @@ describe("sidebar-metadata", () => {
       expect(result).toBeNull();
     });
 
-    it("should return null when data is stale (older than 10 minutes)", async () => {
+    it("should return stale data instead of null to avoid expensive refresh", async () => {
       const { db } = await import("@/src/db");
       const staleDate = new Date(Date.now() - 11 * 60 * 1000); // 11 minutes ago
       const selectMock = vi.fn().mockReturnValue({
@@ -120,7 +120,9 @@ describe("sidebar-metadata", () => {
 
       const { getSidebarMetadata } = await import("@/src/services/sidebar-metadata");
       const result = await getSidebarMetadata();
-      expect(result).toBeNull();
+      // Stale data is served intentionally — the cache-refresh task updates it every 15 min
+      expect(result).not.toBeNull();
+      expect(result?.totalCount).toBe(100);
     });
 
     it("should return metadata when data is fresh", async () => {
