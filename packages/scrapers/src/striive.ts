@@ -1,10 +1,11 @@
 /**
  * Striive scraper — uses Playwright for login, then the Striive supplier API.
  *
- * Local mode:   runs Playwright directly (for dev/testing)
- * Webhook mode: calls a remote endpoint that runs Playwright (for production/Vercel)
+ * Runtime mode: launches Playwright inside a Modal sandbox and then calls the
+ * Striive supplier API with the authenticated session cookies from that sandbox.
  *
- * Set STRIIVE_USE_MODAL=true + STRIIVE_WEBHOOK_URL to use remote webhook.
+ * This keeps Chromium out of the Trigger.dev worker image while preserving the
+ * same login + API flow in production and local task runs.
  */
 
 import type { RawScrapedListing } from "./types";
