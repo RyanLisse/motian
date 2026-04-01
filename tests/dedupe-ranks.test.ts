@@ -63,10 +63,10 @@ describe("migration file 0022_job_dedupe_ranks.sql", () => {
   });
 });
 
-describe("trigger task dedupe-ranks-refresh", () => {
-  it("exports dedupeRanksRefresh task", async () => {
-    const mod = await import("../trigger/dedupe-ranks-refresh");
-    expect(mod.dedupeRanksRefresh).toBeDefined();
-    expect(mod.dedupeRanksRefresh.id).toBe("dedupe-ranks-refresh");
+describe("trigger task cache-refresh (consolidated)", () => {
+  it("exports cacheRefreshTask that covers dedupe ranks", async () => {
+    const mod = await import("../trigger/cache-refresh");
+    expect(mod.cacheRefreshTask).toBeDefined();
+    expect(mod.cacheRefreshTask.id).toBe("cache-refresh");
   });
 });
