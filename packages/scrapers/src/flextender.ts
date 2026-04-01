@@ -192,6 +192,10 @@ async function enrichListings(
               `Uren per week: ${listing._rawHours}`,
             ];
           }
+          // Don't let a short detail description override a valid listing description
+          if (detail.description && detail.description.length < 10 && listing.description.length >= 10) {
+            delete detail.description;
+          }
           const { _rawHours, ...listingClean } = listing;
           const merged = { ...listingClean, ...detail };
           return merged;

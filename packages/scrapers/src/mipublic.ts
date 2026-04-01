@@ -167,6 +167,7 @@ async function scrapeMipublicListings(
         return {
           error: `MiPublic detailpagina bevat geen JobPosting-data: ${detailUrl}`,
           listings: [] as RawScrapedListing[],
+          isNoData: true,
         };
       }
 
@@ -180,11 +181,18 @@ async function scrapeMipublicListings(
   });
 
   const listings = results.flatMap((entry) => entry.listings);
-  const errors = results.flatMap((entry) => (entry.error ? [entry.error] : []));
+  const noDataCount = results.filter((entry) => "isNoData" in entry && entry.isNoData).length;
+  const realErrors = results.flatMap((entry) =>
+    entry.error && !("isNoData" in entry && entry.isNoData) ? [entry.error] : [],
+  );
+  // Summarise missing-data pages into a single line instead of one per URL
+  if (noDataCount > 0) {
+    realErrors.push(`${noDataCount} MiPublic detailpagina's bevatten geen JobPosting-data`);
+  }
 
   return {
     listings,
-    errors: errors.length > 0 ? errors : undefined,
+    errors: realErrors.length > 0 ? realErrors : undefined,
   };
 }
 
