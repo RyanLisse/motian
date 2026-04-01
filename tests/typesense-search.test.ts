@@ -84,9 +84,7 @@ describe("typesense search", () => {
 
     const params = mockTypesenseRequest.mock.calls[0]?.[1]?.searchParams as URLSearchParams;
     expect(params.get("q")).toBe("java developer");
-    // When OPENAI_API_KEY is available, hybrid search adds the embedding field
-    const queryBy = params.get("query_by")!;
-    expect(queryBy).toContain("title,searchText,company,endClient,province,categories");
+    expect(params.get("query_by")).toBe("title,searchText,company,endClient,province,categories");
     expect(params.get("sort_by")).toBe("applicationDeadlineTs:asc");
     expect(params.get("filter_by")).toContain("platform:=`opdrachtoverheid`");
     expect(params.get("filter_by")).toContain("categories:=[`ICT`]");

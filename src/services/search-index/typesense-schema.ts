@@ -1,10 +1,7 @@
-/**
- * Build the jobs schema dynamically so the OpenAI embedding field is only
- * included when an API key is available. Without the key, Typesense would
- * reject every document import because it can't call OpenAI.
- */
-export function buildTypesenseJobsSchema(openaiApiKey?: string) {
-  const fields: Record<string, unknown>[] = [
+export const TYPESENSE_JOBS_SCHEMA = {
+  name: "jobs",
+  enable_nested_fields: false,
+  fields: [
     { name: "id", type: "string" },
     { name: "title", type: "string" },
     { name: "searchText", type: "string" },
@@ -24,35 +21,9 @@ export function buildTypesenseJobsSchema(openaiApiKey?: string) {
     { name: "postedAtTs", type: "int64", optional: true, sort: true },
     { name: "startDateTs", type: "int64", optional: true, sort: true },
     { name: "scrapedAtTs", type: "int64", sort: true },
-  ];
-
-  // Auto-embedding via OpenAI — enables hybrid (keyword + semantic) search
-  // in a single Typesense query, eliminating the separate pgvector leg.
-  if (openaiApiKey) {
-    fields.push({
-      name: "embedding",
-      type: "float[]",
-      embed: {
-        from: ["title", "searchText"],
-        model_config: {
-          model_name: "openai/text-embedding-3-small",
-          api_key: openaiApiKey,
-          dimensions: 512,
-        },
-      },
-    });
-  }
-
-  return {
-    name: "jobs",
-    enable_nested_fields: false,
-    fields,
-    default_sorting_field: "scrapedAtTs",
-  };
-}
-
-/** Static schema for backwards compatibility (no embedding). */
-export const TYPESENSE_JOBS_SCHEMA = buildTypesenseJobsSchema();
+  ],
+  default_sorting_field: "scrapedAtTs",
+} as const;
 
 export const TYPESENSE_CANDIDATES_SCHEMA = {
   name: "candidates",

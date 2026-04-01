@@ -152,25 +152,12 @@ export async function searchJobIdsByTypesense(
   const perPage = Math.min(opts.limit ?? 50, 100);
   const page = Math.floor(Math.max(opts.offset ?? 0, 0) / perPage) + 1;
 
-  // Use hybrid search (keyword + semantic) when the embedding field exists,
-  // otherwise fall back to keyword-only search.
-  const hasEmbedding = !!process.env.OPENAI_API_KEY;
-  const queryBy = hasEmbedding
-    ? "title,searchText,company,endClient,province,categories,embedding"
-    : "title,searchText,company,endClient,province,categories";
-
   const params = new URLSearchParams({
     q: query.trim() || "*",
-    query_by: queryBy,
+    query_by: "title,searchText,company,endClient,province,categories",
     per_page: String(perPage),
     page: String(page),
   });
-
-  // Exclude the embedding vector from response to save bandwidth
-  if (hasEmbedding) {
-    params.set("exclude_fields", "embedding");
-    params.set("prefix", "false");
-  }
 
   const filterBy = buildJobFilterBy(opts);
   if (filterBy) params.set("filter_by", filterBy);
