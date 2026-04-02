@@ -303,27 +303,28 @@ describe("Matching linking flow — structural assertions", () => {
     expect(source).toContain("linkCandidateToJob");
   });
 
-  it("matching page reads jobId from searchParams", () => {
+  it("matching page reads jobId from searchParams and redirects", () => {
     const source = readFile("app/matching/page.tsx");
     expect(source).toContain("jobId");
-    expect(source).toContain("params.jobId");
+    expect(source).toContain("searchParams");
+    expect(source).toContain("redirect");
   });
 
-  it("matching page includes CandidateLinker import", () => {
+  it("matching page redirects to vacatures detail with jobId", () => {
     const source = readFile("app/matching/page.tsx");
-    expect(source).toContain('import { CandidateLinker } from "./candidate-linker"');
+    expect(source).toContain("/vacatures/");
+    expect(source).toContain("#recruiter-cockpit");
+    expect(source).toContain("#ai-grading");
   });
 
-  it("matching page surfaces when a recommendation is already in pipeline", () => {
+  it("matching page redirects to kandidaten without jobId", () => {
     const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("applications");
-    expect(source).toContain("alreadyInPipeline");
-    expect(source).toContain("stageLabels");
+    expect(source).toContain('redirect("/kandidaten")');
   });
 
-  it("matching page preserves jobId in filter hrefs via buildQs", () => {
+  it("matching page supports grading tab redirect", () => {
     const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("buildQs");
+    expect(source).toContain('tab === "grading"');
     expect(source).toContain("jobId");
   });
 
@@ -338,22 +339,17 @@ describe("Matching linking flow — structural assertions", () => {
     expect(source).toContain("Al in pipeline");
   });
 
-  it("matching page is candidate-centric with inbox status tabs", () => {
+  it("matching page is a redirect-only route documenting where matching UI lives", () => {
     const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("matchingStatus");
-    expect(source).toContain("Open");
-    expect(source).toContain("In behandeling");
-    expect(source).toContain("Gekoppeld");
-    expect(source).toContain("Geen match");
-    expect(source).toContain("AddCandidateWizard");
+    expect(source).toContain("redirect");
+    expect(source).toContain("kandidaten");
+    expect(source).toContain("recruiter-cockpit");
   });
 
-  it("matching page keeps report and detail surfaces on candidate cards", () => {
+  it("matching page documents the redirect intent for legacy URL support", () => {
     const source = readFile("app/matching/page.tsx");
-    expect(source).toContain("ReportButton");
-    expect(source).toContain("MatchDetail");
-    expect(source).toContain("marienne-v1");
-    expect(source).toContain("criteriaBreakdown");
+    expect(source).toContain("redirect page");
+    expect(source).toContain("recruiter-flow");
   });
 
   it("wizard linking supports explicit no-match persistence", () => {
