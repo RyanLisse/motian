@@ -16,6 +16,8 @@ overrides:
   express-rate-limit: 8.2.2
   dompurify: 3.3.2
 
+packageExtensionsChecksum: 442567935274d0e891d89571d0fe579f
+
 importers:
 
   .:
@@ -104,9 +106,9 @@ importers:
       '@vercel/blob':
         specifier: ^2.3.0
         version: 2.3.0
-      '@vercel/mcp-adapter':
-        specifier: 1.0.0
-        version: 1.0.0(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@vercel/speed-insights':
+        specifier: ^2.0.0
+        version: 2.0.0(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       '@visual-json/core':
         specifier: ^0.1.1
         version: 0.1.1
@@ -155,6 +157,9 @@ importers:
       mammoth:
         specifier: ^1.11.0
         version: 1.11.0
+      mcp-handler:
+        specifier: ^1.1.0
+        version: 1.1.0(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       modal:
         specifier: ^0.6.3
         version: 0.6.3
@@ -3678,19 +3683,35 @@ packages:
     resolution: {integrity: sha512-oYWiJbWRQ7gz9Mj0X/NHFJ3OcLMOBzq/2b3j6zeNrQmtFo6dHwU8FAwNpxVIYddVMd+g8eqEi7iRueYx8FtM0Q==}
     engines: {node: '>=20.0.0'}
 
-  '@vercel/mcp-adapter@1.0.0':
-    resolution: {integrity: sha512-o/QA4LhYCJvuL7/i8CfKPpOm29u25/L4m1LWH44EQZ8cfYJlc4B7Bu+YzDHl23m8A3hDxCJQmlgZEGmsPAQ0vQ==}
-    hasBin: true
-    peerDependencies:
-      '@modelcontextprotocol/sdk': ^1.12.0
-      next: '>=13.0.0'
-    peerDependenciesMeta:
-      next:
-        optional: true
-
   '@vercel/oidc@3.1.0':
     resolution: {integrity: sha512-Fw28YZpRnA3cAHHDlkt7xQHiJ0fcL+NRcIqsocZQUSmbzeIKRpwttJjik5ZGanXP+vlA4SbTg+AbA3bP363l+w==}
     engines: {node: '>= 20'}
+
+  '@vercel/speed-insights@2.0.0':
+    resolution: {integrity: sha512-jwkNcrTeafWxjmWq4AHBaptSqZiJkYU5adLC9QBSqeim0GcqDMgN5Ievh8OG1rJ6W3A4l1oiP7qr9CWxGuzu3w==}
+    peerDependencies:
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      nuxt: '>= 3'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      nuxt:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
 
   '@visual-json/core@0.1.1':
     resolution: {integrity: sha512-VLARpQnjJU1SnnYk1NiXScGfp2FyAwyZS2kA8hIJV5OzkaH2oS1dTHsaB8vOiyi14/L7jsbpA4g/EwzRWbxQmg==}
@@ -12148,14 +12169,12 @@ snapshots:
       throttleit: 2.1.0
       undici: 6.23.0
 
-  '@vercel/mcp-adapter@1.0.0(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
-    dependencies:
-      '@modelcontextprotocol/sdk': 1.27.0(zod@3.25.76)
-      mcp-handler: 1.1.0(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+  '@vercel/oidc@3.1.0': {}
+
+  '@vercel/speed-insights@2.0.0(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
     optionalDependencies:
       next: 16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-
-  '@vercel/oidc@3.1.0': {}
+      react: 19.2.4
 
   '@visual-json/core@0.1.1': {}
 

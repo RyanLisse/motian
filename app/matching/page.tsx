@@ -1,27 +1,20 @@
 import { redirect } from "next/navigation";
 
 /*
-Legacy structural compatibility for the deprecated /matching route during recruiter-flow merge:
-import { CandidateLinker } from "./candidate-linker";
-params.jobId
-applications
-alreadyInPipeline
-stageLabels
-buildQs
-matchingStatus
-Open
-In behandeling
-Gekoppeld
-Geen match
-AddCandidateWizard
-ReportButton
-MatchDetail
-marienne-v1
-criteriaBreakdown
-
-Historical redirect behaviour (kept for structural tests):
-redirect("/kandidaten")
-*/
+ * Intentional redirect page — introduced during the recruiter-flow merge.
+ *
+ * Routing behaviour:
+ *   - Without jobId  → /kandidaten          (candidate management / drag-drop matching UI)
+ *   - With jobId     → /vacatures/{id}#recruiter-cockpit   (default tab)
+ *   - With jobId + tab=grading → /vacatures/{id}#ai-grading
+ *
+ * The matching UI itself lives on:
+ *   - /kandidaten          — drag-drop kanban board
+ *   - /vacatures/{id}      — recruiter cockpit & AI grading tabs
+ *
+ * /matching is kept as a permanent redirect so that any bookmarked or
+ * externally linked URLs continue to resolve correctly.
+ */
 
 export const revalidate = 60;
 

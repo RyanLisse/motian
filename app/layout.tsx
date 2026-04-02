@@ -1,3 +1,4 @@
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import { headers } from "next/headers";
@@ -52,6 +53,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <CommandPalette />
           </ChatContextProvider>
         </Providers>
+        <SpeedInsights />
       </body>
     </html>
   );

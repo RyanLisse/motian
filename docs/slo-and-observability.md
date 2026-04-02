@@ -30,6 +30,21 @@ Overschrijding error budget → prioriteit op stabiliteit i.p.v. nieuwe features
 - **Search/ranking:** Golden set of snapshot-tests voor hybridSearch/listJobs zodat refactors geen stille gedragsregressie veroorzaken.
 - In CI: regressietests voor search en matching draaien.
 
+## 5. Client-side Web Vitals (Vercel Speed Insights)
+
+Client-side Core Web Vitals monitoring is active via the `@vercel/speed-insights` package. The `<SpeedInsights />` component is rendered in `app/layout.tsx` (after `{children}`, inside `<body>`). It automatically reports the following metrics to the Vercel dashboard with zero configuration:
+
+| Metric | Description |
+|--------|-------------|
+| **LCP** | Largest Contentful Paint — perceived load speed |
+| **FID** | First Input Delay — interactivity responsiveness |
+| **CLS** | Cumulative Layout Shift — visual stability |
+| **INP** | Interaction to Next Paint — responsiveness (replaces FID in CWV 2024) |
+| **FCP** | First Contentful Paint — time to first visible content |
+| **TTFB** | Time to First Byte — server response time |
+
+No extra configuration is required. Data is visible in the Vercel project dashboard under the **Speed Insights** tab after deploying.
+
 ## Definition of done Fase 4
 
 - [x] SLO's en error budget gedocumenteerd (dit document)

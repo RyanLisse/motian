@@ -77,6 +77,10 @@ async function captureJourneyEvidenceLocally(
           gitSha,
         );
 
+        // Close context before checking for HAR — Playwright flushes the HAR
+        // file only on context.close(), so the access() check must come after.
+        await context.close().catch(() => {});
+
         try {
           await access(harPath);
           output.manifest.artifacts.push({
@@ -87,8 +91,9 @@ async function captureJourneyEvidenceLocally(
           });
         } catch {}
         journeyOutputs.push(output);
-      } finally {
+      } catch (err) {
         await context.close().catch(() => {});
+        throw err;
       }
     }
   } finally {
