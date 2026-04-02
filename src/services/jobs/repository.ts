@@ -1,6 +1,7 @@
 import { and, db, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { deleteJobsByIds, upsertJobsByIds } from "../search-index/typesense-sync";
+import { refreshDedupeRanks } from "./dedupe-ranks";
 
 export type Job = typeof jobs.$inferSelect;
 
@@ -38,6 +39,46 @@ export function getJobReadSelection() {
 }
 
 export const jobReadSelection = getJobReadSelection();
+
+async function runJobDerivedSync(jobId: string): Promise<void> {
+  try {
+    await upsertJobsByIds([jobId]);
+  } catch (err) {
+    console.error(`[Jobs] Typesense sync error for ${jobId}:`, err);
+  }
+
+  try {
+    await refreshDedupeRanks();
+  } catch (err) {
+    console.error(`[Jobs] Dedupe rank refresh error after ${jobId}:`, err);
+  }
+}
+
+function scheduleJobDerivedSync(jobId: string): void {
+  setTimeout(() => {
+    void runJobDerivedSync(jobId);
+  }, 0);
+}
+
+function scheduleJobDeleteSync(jobIds: string[]): void {
+  if (jobIds.length === 0) return;
+
+  setTimeout(() => {
+    void (async () => {
+      try {
+        await deleteJobsByIds(jobIds);
+      } catch (err) {
+        console.error(`[Jobs] Typesense delete error for ${jobIds.join(",")}:`, err);
+      }
+
+      try {
+        await refreshDedupeRanks();
+      } catch (err) {
+        console.error(`[Jobs] Dedupe rank refresh error after delete ${jobIds.join(",")}:`, err);
+      }
+    })();
+  }, 0);
+}
 
 /** Enkele opdracht ophalen op ID, inclusief gesloten/gearchiveerde retained vacatures. */
 export async function getJobById(id: string): Promise<Job | null> {
@@ -105,11 +146,7 @@ export async function updateJob(
     .returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    try {
-      await upsertJobsByIds([rows[0].id]);
-    } catch (err) {
-      console.error(`[Jobs] Typesense sync error for ${rows[0].id}:`, err);
-    }
+    scheduleJobDerivedSync(rows[0].id);
   }
 
   return rows[0] ?? null;
@@ -139,11 +176,7 @@ export async function updateJobEnrichment(
     .returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    try {
-      await upsertJobsByIds([rows[0].id]);
-    } catch (err) {
-      console.error(`[Jobs] Typesense sync error for ${rows[0].id}:`, err);
-    }
+    scheduleJobDerivedSync(rows[0].id);
   }
 
   return rows[0] ?? null;
@@ -172,11 +205,7 @@ export async function createJob(
   const rows = await db.insert(jobs).values(data).returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    try {
-      await upsertJobsByIds([rows[0].id]);
-    } catch (err) {
-      console.error(`[Jobs] Typesense sync error for ${rows[0].id}:`, err);
-    }
+    scheduleJobDerivedSync(rows[0].id);
   }
 
   return rows[0];
@@ -194,11 +223,7 @@ export async function deleteJob(id: string): Promise<boolean> {
     .returning({ id: jobs.id });
 
   if (rows.length > 0) {
-    try {
-      await deleteJobsByIds(rows.map((row) => row.id));
-    } catch (err) {
-      console.error(`[Jobs] Typesense delete error for ${id}:`, err);
-    }
+    scheduleJobDeleteSync(rows.map((row) => row.id));
   }
 
   return rows.length > 0;

@@ -1,9 +1,15 @@
 import { notifySlack } from "../lib/notify-slack";
 import type { StructuredMatchOutput } from "../schemas/matching";
-import { type Candidate, getCandidateById, listActiveCandidates } from "./candidates";
+import {
+  type Candidate,
+  getCandidateById,
+  getCandidatesByIds,
+  listActiveCandidates,
+} from "./candidates";
 import {
   buildCandidateEmbeddingText,
-  embedCandidate,
+  buildJobEmbeddingText,
+  findSimilarCandidatesByEmbedding,
   findSimilarJobsByEmbedding,
   generateQueryEmbedding,
 } from "./embedding";
@@ -26,6 +32,13 @@ import { runStructuredMatch } from "./structured-matching";
 
 const MIN_SCORE = Number(process.env.AUTO_MATCH_MIN_SCORE) || 25;
 const DEFAULT_TOP_N = Number(process.env.AUTO_MATCH_TOP_N) || 3;
+const DEFAULT_AUTO_MATCH_FALLBACK_LIMIT = 200;
+
+function getAutoMatchFallbackLimit(env: NodeJS.ProcessEnv = process.env): number {
+  const parsed = Number.parseInt(env.AUTO_MATCH_FALLBACK_LIMIT ?? "", 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_AUTO_MATCH_FALLBACK_LIMIT;
+  return Math.min(Math.max(parsed, 25), 500);
+}
 
 // ========== Types ==========
 
@@ -198,23 +211,15 @@ export async function autoMatchCandidateToJobs(
 ): Promise<AutoMatchResult[]> {
   const candidate = await getCandidateById(candidateId);
   if (!candidate) throw new Error("Kandidaat niet gevonden");
-
-  try {
-    await embedCandidate(candidateId);
-  } catch (err) {
-    console.warn("[Auto-Match] Embedding failed, falling back to rule-based:", err);
-  }
-
-  const freshCandidate = await getCandidateById(candidateId);
-  if (!freshCandidate) throw new Error("Kandidaat niet gevonden na embedding");
+  const freshCandidate = candidate;
 
   // Phase 1: Semantic pre-filter using HNSW vector search.
   // Find the most semantically similar jobs (~3ms with HNSW index).
   // Use cosine similarity as the primary score for semantically relevant jobs,
   // since rule-based scoring fails when candidate lacks province/rate data.
-  if (freshCandidate.embedding) {
+  const candidateText = buildCandidateEmbeddingText(freshCandidate);
+  if (candidateText.length >= 5) {
     try {
-      const candidateText = buildCandidateEmbeddingText(freshCandidate);
       const queryEmbedding = await generateQueryEmbedding(candidateText);
       const similar = await findSimilarJobsByEmbedding(queryEmbedding, {
         limit: 30,
@@ -247,7 +252,7 @@ export async function autoMatchCandidateToJobs(
   }
 
   // Fallback: rule-based scoring against recent jobs
-  const activeJobs = await listActiveJobs(500);
+  const activeJobs = await listActiveJobs(getAutoMatchFallbackLimit());
   if (activeJobs.length === 0) return [];
 
   const useEscoScoring =
@@ -292,7 +297,47 @@ export async function autoMatchJobToCandidates(
   const job = await getJobById(jobId);
   if (!job) throw new Error("Opdracht niet gevonden");
 
-  const activeCandidates = await listActiveCandidates(500);
+  try {
+    const jobEmbeddingText = buildJobEmbeddingText({
+      title: job.title,
+      descriptionSummary: job.descriptionSummary,
+      description: job.description,
+      categories: job.categories,
+      requirements: job.requirements,
+    });
+    const queryEmbedding = await generateQueryEmbedding(jobEmbeddingText);
+    const similarCandidates = await findSimilarCandidatesByEmbedding(queryEmbedding, {
+      limit: 30,
+      minScore: 0.45,
+    });
+
+    if (similarCandidates.length > 0) {
+      const candidateIds = similarCandidates.map((candidate) => candidate.id);
+      const similarityMap = new Map(
+        similarCandidates.map((candidate) => [candidate.id, candidate]),
+      );
+      const semanticCandidates = await getCandidatesByIds(candidateIds);
+      const pairs = semanticCandidates.map((candidate) => {
+        const similarity = similarityMap.get(candidate.id)?.similarity ?? 0;
+        return {
+          job,
+          candidate,
+          score: Math.round(similarity * 100),
+          reasoning: `Semantische overeenkomst: ${Math.round(similarity * 100)}% op basis van functiebeschrijving en kandidaatprofiel`,
+          model: "embedding-cosine-v1",
+        };
+      });
+
+      return runAutoMatchPipeline(pairs, topN);
+    }
+  } catch (err) {
+    console.warn(
+      "[Auto-Match] Candidate semantic pre-filter failed, falling back to rule-based:",
+      err,
+    );
+  }
+
+  const activeCandidates = await listActiveCandidates(getAutoMatchFallbackLimit());
   if (activeCandidates.length === 0) return [];
 
   const useEscoScoringJob =

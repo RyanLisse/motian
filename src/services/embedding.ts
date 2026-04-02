@@ -442,6 +442,40 @@ export async function findSimilarJobsByEmbedding(
   }));
 }
 
+export async function findSimilarCandidatesByEmbedding(
+  queryEmbedding: number[],
+  opts: { limit?: number; minScore?: number; filterCondition?: SQL } = {},
+): Promise<Array<{ id: string; name: string; similarity: number }>> {
+  const limit = opts.limit ?? 10;
+  const minScore = opts.minScore ?? 0.5;
+  const filterCondition = opts.filterCondition ?? sql`true`;
+  const vectorStr = `[${queryEmbedding.join(",")}]`;
+
+  const result = await (
+    db as unknown as {
+      execute(sql: SQL): Promise<{ rows: Array<{ id: string; name: string; similarity: number }> }>;
+    }
+  ).execute(sql`
+    SELECT
+      id,
+      name,
+      1 - (embedding <=> ${vectorStr}::vector) AS similarity
+    FROM candidates
+    WHERE embedding IS NOT NULL
+      AND deleted_at IS NULL
+      AND ${filterCondition}
+      AND 1 - (embedding <=> ${vectorStr}::vector) >= ${minScore}
+    ORDER BY embedding <=> ${vectorStr}::vector
+    LIMIT ${limit}
+  `);
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    similarity: Number(row.similarity),
+  }));
+}
+
 // ========== Backfill Job Embeddings ==========
 
 export async function embedJobsBatch(opts: {

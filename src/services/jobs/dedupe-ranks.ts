@@ -2,6 +2,17 @@ import { db, sql } from "../../db";
 import { jobDedupeRanks, jobs } from "../../db/schema";
 import { getVisibleVacancyCondition } from "./filters";
 
+const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+const FRESHNESS_CACHE_TTL_MS = 5_000;
+const DEDUPE_REFRESH_DEBOUNCE_MS = 5_000;
+
+let cachedFreshness: {
+  value: { computedAt: Date | null; isFresh: boolean };
+  expiresAt: number;
+} | null = null;
+let inflightRefresh: Promise<void> | null = null;
+let scheduledRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
 /**
  * Recomputes dedupe ranks for all open jobs and upserts into `job_dedupe_ranks`.
  *
@@ -48,13 +59,45 @@ export async function refreshDedupeRanks(): Promise<{
       computed_at = EXCLUDED.computed_at
   `);
 
+  cachedFreshness = {
+    value: { computedAt, isFresh: true },
+    expiresAt: Date.now() + FRESHNESS_CACHE_TTL_MS,
+  };
+
   return {
     rowsUpserted: result.rowCount ?? 0,
     computedAt,
   };
 }
 
-const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+async function refreshDedupeRanksInBackground(): Promise<void> {
+  if (inflightRefresh) {
+    await inflightRefresh;
+    return;
+  }
+
+  inflightRefresh = refreshDedupeRanks()
+    .then(() => undefined)
+    .catch((error) => {
+      console.error("[DedupeRanks] refresh failed:", error);
+    })
+    .finally(() => {
+      inflightRefresh = null;
+    });
+
+  await inflightRefresh;
+}
+
+export function scheduleDedupeRanksRefresh(delayMs: number = DEDUPE_REFRESH_DEBOUNCE_MS): void {
+  if (scheduledRefreshTimer) {
+    clearTimeout(scheduledRefreshTimer);
+  }
+
+  scheduledRefreshTimer = setTimeout(() => {
+    scheduledRefreshTimer = null;
+    void refreshDedupeRanksInBackground();
+  }, delayMs);
+}
 
 /**
  * Returns the latest `computed_at` timestamp and whether the ranks are fresh.
@@ -63,6 +106,10 @@ export async function getDedupeRanksFreshness(): Promise<{
   computedAt: Date | null;
   isFresh: boolean;
 }> {
+  if (cachedFreshness && cachedFreshness.expiresAt > Date.now()) {
+    return cachedFreshness.value;
+  }
+
   const rows = await db
     .select({ computedAt: jobDedupeRanks.computedAt })
     .from(jobDedupeRanks)
@@ -75,5 +122,11 @@ export async function getDedupeRanksFreshness(): Promise<{
   }
 
   const ageMs = Date.now() - computedAt.getTime();
-  return { computedAt, isFresh: ageMs < STALE_THRESHOLD_MS };
+  const value = { computedAt, isFresh: ageMs < STALE_THRESHOLD_MS };
+  cachedFreshness = {
+    value,
+    expiresAt: Date.now() + FRESHNESS_CACHE_TTL_MS,
+  };
+
+  return value;
 }

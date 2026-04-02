@@ -3,7 +3,7 @@ import { getTypesenseConfig, isTypesenseEnabled } from "../../lib/typesense";
 import type { SearchCandidatesOptions } from "../candidates";
 import type { ListJobsSortBy } from "../jobs/filters";
 import type { HybridSearchOptions } from "../jobs/search";
-import { ensureTypesenseCollection, typesenseRequest } from "./typesense-client";
+import { typesenseRequest } from "./typesense-client";
 
 type TypesenseSearchResponse<TDocument> = {
   found?: number;
@@ -98,6 +98,7 @@ function buildCandidateFilterBy(opts: SearchCandidatesOptions) {
   if (opts.location) filters.push(`location:=${escapeFilterValue(opts.location)}`);
   if (opts.role) filters.push(`role:=${escapeFilterValue(opts.role)}`);
   if (opts.skills) filters.push(`skills:=[${escapeFilterValue(opts.skills)}]`);
+  if (opts.availability) filters.push(`availability:=${escapeFilterValue(opts.availability)}`);
   return filters.join(" && ");
 }
 
@@ -112,14 +113,13 @@ export function canUseTypesenseForJobs(opts: HybridSearchOptions = {}) {
 export function canUseTypesenseForCandidates(opts: SearchCandidatesOptions = {}) {
   if (!isTypesenseEnabled()) return false;
   if (opts.escoUri) return false;
-  return Boolean(opts.query || opts.location || opts.role || opts.skills);
+  return Boolean(opts.query || opts.location || opts.role || opts.skills || opts.availability);
 }
 
 async function searchCollectionByIds<TDocument extends { id: string }>(
   collection: "jobs" | "candidates",
   params: URLSearchParams,
 ): Promise<SearchIdsResult | null> {
-  await ensureTypesenseCollection(collection);
   const config = getTypesenseConfig();
   if (!config) return null;
 

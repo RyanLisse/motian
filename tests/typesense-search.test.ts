@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockEnsureTypesenseCollection,
-  mockGetTypesenseConfig,
-  mockIsTypesenseEnabled,
-  mockTypesenseRequest,
-} = vi.hoisted(() => ({
-  mockEnsureTypesenseCollection: vi.fn(),
+const { mockGetTypesenseConfig, mockIsTypesenseEnabled, mockTypesenseRequest } = vi.hoisted(() => ({
   mockGetTypesenseConfig: vi.fn(),
   mockIsTypesenseEnabled: vi.fn(),
   mockTypesenseRequest: vi.fn(),
@@ -18,7 +12,6 @@ vi.mock("../src/lib/typesense", () => ({
 }));
 
 vi.mock("../src/services/search-index/typesense-client", () => ({
-  ensureTypesenseCollection: mockEnsureTypesenseCollection,
   typesenseRequest: mockTypesenseRequest,
 }));
 
@@ -54,6 +47,7 @@ describe("typesense search", () => {
   it("rejects kandidaat typesense search when only esco filtering is requested", () => {
     expect(canUseTypesenseForCandidates({ escoUri: "esco:java" })).toBe(false);
     expect(canUseTypesenseForCandidates({ query: "recruiter" })).toBe(true);
+    expect(canUseTypesenseForCandidates({ availability: "direct" })).toBe(true);
   });
 
   it("builds vacature search params and returns ids plus total", async () => {
@@ -74,7 +68,6 @@ describe("typesense search", () => {
     });
 
     expect(result).toEqual({ ids: ["job-1", "job-2"], total: 2 });
-    expect(mockEnsureTypesenseCollection).toHaveBeenCalledWith("jobs");
     expect(mockTypesenseRequest).toHaveBeenCalledWith(
       "/collections/motian_jobs_preview/documents/search",
       expect.objectContaining({
@@ -103,12 +96,12 @@ describe("typesense search", () => {
       role: "Recruiter",
       location: "Amsterdam",
       skills: "sourcing",
+      availability: "direct",
       limit: 10,
       offset: 0,
     });
 
     expect(result).toEqual({ ids: ["candidate-1"], total: 1 });
-    expect(mockEnsureTypesenseCollection).toHaveBeenCalledWith("candidates");
 
     const params = mockTypesenseRequest.mock.calls[0]?.[1]?.searchParams as URLSearchParams;
     expect(params.get("q")).toBe("recruiter Recruiter Amsterdam sourcing");
@@ -117,5 +110,6 @@ describe("typesense search", () => {
     expect(params.get("filter_by")).toContain("location:=`Amsterdam`");
     expect(params.get("filter_by")).toContain("role:=`Recruiter`");
     expect(params.get("filter_by")).toContain("skills:=[`sourcing`]");
+    expect(params.get("filter_by")).toContain("availability:=`direct`");
   });
 });

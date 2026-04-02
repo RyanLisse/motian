@@ -34,6 +34,7 @@ export const TYPESENSE_CANDIDATES_SCHEMA = {
     { name: "role", type: "string", optional: true },
     { name: "location", type: "string", optional: true },
     { name: "skills", type: "string[]", optional: true },
+    { name: "availability", type: "string", facet: true, optional: true },
     { name: "searchText", type: "string" },
     { name: "matchingStatus", type: "string", facet: true, optional: true },
     { name: "createdAtTs", type: "int64", sort: true },

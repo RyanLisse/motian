@@ -27,6 +27,7 @@ type TypesenseCandidateDocumentInput = {
   role?: string | null;
   location?: string | null;
   skills?: string[] | null;
+  availability?: string | null;
   matchingStatus?: string | null;
   createdAt?: Date | null;
   updatedAt?: Date | null;
@@ -91,6 +92,7 @@ export function toTypesenseCandidateDocument(input: TypesenseCandidateDocumentIn
     role: normalizeString(input.role),
     location: normalizeString(input.location),
     skills,
+    availability: normalizeString(input.availability),
     searchText,
     matchingStatus: normalizeString(input.matchingStatus),
     // createdAtTs is the default_sorting_field — must always be present
