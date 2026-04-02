@@ -1,8 +1,8 @@
+import { isEscoCatalogAvailable, syncJobEscoSkills } from "@motian/esco";
 import type { z } from "zod";
 import { stripHtml } from "../../packages/scrapers/src/strip-html";
 import { db, jobs, sql } from "../db";
 import { unifiedJobSchema } from "../schemas/job";
-import { isEscoCatalogAvailable, syncJobEscoSkills } from "./esco";
 import { upsertJobsByIds } from "./search-index/typesense-sync";
 
 /** Permissive type for scraped data — Zod validates at runtime via safeParse */
@@ -173,6 +173,20 @@ export async function normalizeAndSaveJobs(
       if (Number.isFinite(n)) {
         preProcessed.minHoursPerWeek = Math.min(HOURS_MAX, Math.max(1, Math.round(n)));
       }
+    }
+
+    // Null out rates that are clearly not hourly (monthly/annual salaries).
+    // Platforms like NVB mix hourly and monthly/annual in the same salary field
+    // without indicating the period. Hourly rates for Dutch freelance/interim are
+    // typically €30-300/hour. Values >500 are almost certainly monthly (€3,500) or
+    // annual (€80,000). The raw value is preserved in rawPayload for reference.
+    const MAX_HOURLY_RATE = 500;
+    if (typeof preProcessed.rateMax === "number" && preProcessed.rateMax > MAX_HOURLY_RATE) {
+      preProcessed.rateMin = undefined;
+      preProcessed.rateMax = undefined;
+    }
+    if (typeof preProcessed.rateMin === "number" && preProcessed.rateMin > MAX_HOURLY_RATE) {
+      preProcessed.rateMin = undefined;
     }
 
     const parsed = unifiedJobSchema.safeParse(preProcessed);
