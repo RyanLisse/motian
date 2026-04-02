@@ -12,6 +12,7 @@ let cachedFreshness: {
 } | null = null;
 let inflightRefresh: Promise<void> | null = null;
 let scheduledRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+let refreshDirty = false;
 
 /**
  * Recomputes dedupe ranks for all open jobs and upserts into `job_dedupe_ranks`.
@@ -86,9 +87,19 @@ async function refreshDedupeRanksInBackground(): Promise<void> {
     });
 
   await inflightRefresh;
+
+  if (refreshDirty) {
+    refreshDirty = false;
+    await refreshDedupeRanksInBackground();
+  }
 }
 
 export function scheduleDedupeRanksRefresh(delayMs: number = DEDUPE_REFRESH_DEBOUNCE_MS): void {
+  if (inflightRefresh) {
+    refreshDirty = true;
+    return;
+  }
+
   if (scheduledRefreshTimer) {
     clearTimeout(scheduledRefreshTimer);
   }

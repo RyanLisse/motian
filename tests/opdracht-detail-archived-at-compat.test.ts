@@ -25,9 +25,13 @@ describe("opdracht detail archivedAt compatibility", () => {
     const source = readFile("app", "vacatures", "[id]", "page.tsx");
     const detailSource = readFile("src", "services", "jobs", "detail-page.ts");
 
-    expect(source).toContain('import { getJobDetailPageData } from "@/src/services/jobs/detail-page"');
+    expect(source).toContain(
+      'import { getJobDetailPageData } from "@/src/services/jobs/detail-page"',
+    );
     expect(source).toContain("const detailData = await getJobDetailPageData(id);");
-    expect(detailSource).toContain('import { jobReadSelection } from "@/src/services/jobs/repository"');
+    expect(detailSource).toContain(
+      'import { jobReadSelection } from "@/src/services/jobs/repository"',
+    );
     expect(detailSource).toContain("companyMatchRank");
     expect(detailSource).toContain("...jobReadSelection");
     expect(detailSource).toContain(".orderBy(companyMatchRank, desc(jobs.scrapedAt))");

@@ -54,30 +54,20 @@ async function runJobDerivedSync(jobId: string): Promise<void> {
   }
 }
 
-function scheduleJobDerivedSync(jobId: string): void {
-  setTimeout(() => {
-    void runJobDerivedSync(jobId);
-  }, 0);
-}
-
-function scheduleJobDeleteSync(jobIds: string[]): void {
+async function runJobDeleteSync(jobIds: string[]): Promise<void> {
   if (jobIds.length === 0) return;
 
-  setTimeout(() => {
-    void (async () => {
-      try {
-        await deleteJobsByIds(jobIds);
-      } catch (err) {
-        console.error(`[Jobs] Typesense delete error for ${jobIds.join(",")}:`, err);
-      }
+  try {
+    await deleteJobsByIds(jobIds);
+  } catch (err) {
+    console.error(`[Jobs] Typesense delete error for ${jobIds.join(",")}:`, err);
+  }
 
-      try {
-        await refreshDedupeRanks();
-      } catch (err) {
-        console.error(`[Jobs] Dedupe rank refresh error after delete ${jobIds.join(",")}:`, err);
-      }
-    })();
-  }, 0);
+  try {
+    await refreshDedupeRanks();
+  } catch (err) {
+    console.error(`[Jobs] Dedupe rank refresh error after delete ${jobIds.join(",")}:`, err);
+  }
 }
 
 /** Enkele opdracht ophalen op ID, inclusief gesloten/gearchiveerde retained vacatures. */
@@ -146,7 +136,7 @@ export async function updateJob(
     .returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    scheduleJobDerivedSync(rows[0].id);
+    await runJobDerivedSync(rows[0].id);
   }
 
   return rows[0] ?? null;
@@ -176,7 +166,7 @@ export async function updateJobEnrichment(
     .returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    scheduleJobDerivedSync(rows[0].id);
+    await runJobDerivedSync(rows[0].id);
   }
 
   return rows[0] ?? null;
@@ -205,7 +195,7 @@ export async function createJob(
   const rows = await db.insert(jobs).values(data).returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    scheduleJobDerivedSync(rows[0].id);
+    await runJobDerivedSync(rows[0].id);
   }
 
   return rows[0];
@@ -223,7 +213,7 @@ export async function deleteJob(id: string): Promise<boolean> {
     .returning({ id: jobs.id });
 
   if (rows.length > 0) {
-    scheduleJobDeleteSync(rows.map((row) => row.id));
+    await runJobDeleteSync(rows.map((row) => row.id));
   }
 
   return rows.length > 0;

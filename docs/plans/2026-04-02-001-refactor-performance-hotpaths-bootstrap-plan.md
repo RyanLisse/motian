@@ -55,10 +55,10 @@ The highest-value issues are:
 
 ## Relevant Context and Existing Patterns
 
-- Shared vacature search contract already exists in [src/services/jobs.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs.ts) and related `jobs/*` service modules.
-- Candidate shared search/count logic already exists in [src/services/candidates.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/candidates.ts).
-- Search/dedupe observability already exists in [src/lib/query-observability.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/lib/query-observability.ts), plus benchmark/explain scripts under [scripts](/Users/cortex-air/.codex/worktrees/760d/motian/scripts).
-- Sidebar metadata precomputation is an accepted pattern in [src/services/sidebar-metadata.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/sidebar-metadata.ts).
+- Shared vacature search contract already exists in [src/services/jobs.ts](src/services/jobs.ts) and related `jobs/*` service modules.
+- Candidate shared search/count logic already exists in [src/services/candidates.ts](src/services/candidates.ts).
+- Search/dedupe observability already exists in [src/lib/query-observability.ts](src/lib/query-observability.ts), plus benchmark/explain scripts under [scripts](scripts).
+- Sidebar metadata precomputation is an accepted pattern in [src/services/sidebar-metadata.ts](src/services/sidebar-metadata.ts).
 - Prior learning indicates performance work should prefer precomputed metadata / event-driven refresh over repeated heavy polling and synchronous long-lived work (`docs/solutions/workflow-issues/orchestrator-polling-to-event-driven-AgentSystem-20260329.md`, `docs/solutions/performance-issues/vercel-fluid-compute-spike-Pipeline-20260329.md`).
 - Existing analysis flags embedding completion and concurrent embedding/matching as a known fragility for candidate workflows (`docs/analysis/2026-03-05-arch-review-action-items.md`).
 
@@ -104,9 +104,9 @@ flowchart LR
 
 Files:
 
-- [package.json](/Users/cortex-air/.codex/worktrees/760d/motian/package.json)
-- [.env.example](/Users/cortex-air/.codex/worktrees/760d/motian/.env.example)
-- [.env.local](/Users/cortex-air/.codex/worktrees/760d/motian/.env.local)
+- [package.json](package.json)
+- [.env.example](.env.example)
+- [.env.local](.env.local)
 
 Execution note:
 
@@ -126,9 +126,9 @@ Verification:
 
 Files:
 
-- [app/kandidaten/page.tsx](/Users/cortex-air/.codex/worktrees/760d/motian/app/kandidaten/page.tsx)
-- [src/services/candidates.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/candidates.ts)
-- [tests](/Users/cortex-air/.codex/worktrees/760d/motian/tests)
+- [app/kandidaten/page.tsx](app/kandidaten/page.tsx)
+- [src/services/candidates.ts](src/services/candidates.ts)
+- [tests](tests)
 
 Technical design:
 
@@ -150,11 +150,11 @@ Verification:
 
 Files:
 
-- [src/services/jobs/deduplication.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs/deduplication.ts)
-- [src/services/jobs/repository.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs/repository.ts)
-- [src/services/jobs/page-query.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs/page-query.ts)
-- [src/services/jobs/list.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs/list.ts)
-- [tests](/Users/cortex-air/.codex/worktrees/760d/motian/tests)
+- [src/services/jobs/deduplication.ts](src/services/jobs/deduplication.ts)
+- [src/services/jobs/repository.ts](src/services/jobs/repository.ts)
+- [src/services/jobs/page-query.ts](src/services/jobs/page-query.ts)
+- [src/services/jobs/list.ts](src/services/jobs/list.ts)
+- [tests](tests)
 
 Technical design:
 
@@ -175,11 +175,11 @@ Verification:
 
 Files:
 
-- [src/services/candidates.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/candidates.ts)
-- [src/services/jobs/repository.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs/repository.ts)
-- [src/services/embedding.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/embedding.ts)
-- [src/lib/event-bus.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/lib/event-bus.ts)
-- [tests](/Users/cortex-air/.codex/worktrees/760d/motian/tests)
+- [src/services/candidates.ts](src/services/candidates.ts)
+- [src/services/jobs/repository.ts](src/services/jobs/repository.ts)
+- [src/services/embedding.ts](src/services/embedding.ts)
+- [src/lib/event-bus.ts](src/lib/event-bus.ts)
+- [tests](tests)
 
 Technical design:
 
@@ -201,10 +201,10 @@ Verification:
 
 Files:
 
-- [app/vacatures/[id]/page.tsx](/Users/cortex-air/.codex/worktrees/760d/motian/app/vacatures/[id]/page.tsx)
-- [src/services/jobs/repository.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs/repository.ts)
-- [src/services/jobs](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs)
-- [tests](/Users/cortex-air/.codex/worktrees/760d/motian/tests)
+- [app/vacatures/[id]/page.tsx](app/vacatures/[id]/page.tsx)
+- [src/services/jobs/repository.ts](src/services/jobs/repository.ts)
+- [src/services/jobs](src/services/jobs)
+- [tests](tests)
 
 Technical design:
 
@@ -224,11 +224,11 @@ Verification:
 
 Files:
 
-- [src/services/auto-matching.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/auto-matching.ts)
-- [src/services/embedding.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/embedding.ts)
-- [src/services/candidates.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/candidates.ts)
-- [src/services/jobs/list.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs/list.ts)
-- [tests](/Users/cortex-air/.codex/worktrees/760d/motian/tests)
+- [src/services/auto-matching.ts](src/services/auto-matching.ts)
+- [src/services/embedding.ts](src/services/embedding.ts)
+- [src/services/candidates.ts](src/services/candidates.ts)
+- [src/services/jobs/list.ts](src/services/jobs/list.ts)
+- [tests](tests)
 
 Technical design:
 
@@ -249,12 +249,12 @@ Verification:
 
 Files:
 
-- [components/data-refresh-listener.tsx](/Users/cortex-air/.codex/worktrees/760d/motian/components/data-refresh-listener.tsx)
-- [src/hooks/use-event-source.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/hooks/use-event-source.ts)
-- [src/services/search-index/typesense-client.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/search-index/typesense-client.ts)
-- [src/services/search-index/typesense-search.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/search-index/typesense-search.ts)
-- [scripts/reindex-typesense.ts](/Users/cortex-air/.codex/worktrees/760d/motian/scripts/reindex-typesense.ts)
-- [tests](/Users/cortex-air/.codex/worktrees/760d/motian/tests)
+- [components/data-refresh-listener.tsx](components/data-refresh-listener.tsx)
+- [src/hooks/use-event-source.ts](src/hooks/use-event-source.ts)
+- [src/services/search-index/typesense-client.ts](src/services/search-index/typesense-client.ts)
+- [src/services/search-index/typesense-search.ts](src/services/search-index/typesense-search.ts)
+- [scripts/reindex-typesense.ts](scripts/reindex-typesense.ts)
+- [tests](tests)
 
 Technical design:
 
@@ -281,7 +281,7 @@ Verification:
   - `pnpm install`
   - `pnpm lint`
   - `pnpm exec tsc --noEmit`
-- Targeted tests for touched services/pages under [tests](/Users/cortex-air/.codex/worktrees/760d/motian/tests)
+- Targeted tests for touched services/pages under [tests](tests)
 - If the environment can run:
   - `pnpm dev`
   - Browser verification of kandidaten search, vacatures detail, and mutation/live-refresh flows
@@ -291,15 +291,15 @@ Verification:
 
 ## Sources and References
 
-- **Origin document:** [docs/brainstorms/2026-03-06-motian-optimalisatie-baseline-en-backlog-brainstorm.md](/Users/cortex-air/.codex/worktrees/760d/motian/docs/brainstorms/2026-03-06-motian-optimalisatie-baseline-en-backlog-brainstorm.md)
-- Related prior plan: [docs/plans/2026-03-26-performance-optimization-and-refactoring-plan.md](/Users/cortex-air/.codex/worktrees/760d/motian/docs/plans/2026-03-26-performance-optimization-and-refactoring-plan.md)
-- Related prior plan: [docs/plans/2026-03-06-refactor-unified-vacature-search-parity-plan.md](/Users/cortex-air/.codex/worktrees/760d/motian/docs/plans/2026-03-06-refactor-unified-vacature-search-parity-plan.md)
+- **Origin document:** [docs/brainstorms/2026-03-06-motian-optimalisatie-baseline-en-backlog-brainstorm.md](docs/brainstorms/2026-03-06-motian-optimalisatie-baseline-en-backlog-brainstorm.md)
+- Related prior plan: [docs/plans/2026-03-26-performance-optimization-and-refactoring-plan.md](docs/plans/2026-03-26-performance-optimization-and-refactoring-plan.md)
+- Related prior plan: [docs/plans/2026-03-06-refactor-unified-vacature-search-parity-plan.md](docs/plans/2026-03-06-refactor-unified-vacature-search-parity-plan.md)
 - Key code:
-  - [app/kandidaten/page.tsx](/Users/cortex-air/.codex/worktrees/760d/motian/app/kandidaten/page.tsx)
-  - [src/services/candidates.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/candidates.ts)
-  - [src/services/jobs/deduplication.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs/deduplication.ts)
-  - [src/services/jobs/repository.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/jobs/repository.ts)
-  - [app/vacatures/[id]/page.tsx](/Users/cortex-air/.codex/worktrees/760d/motian/app/vacatures/[id]/page.tsx)
-  - [src/services/auto-matching.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/auto-matching.ts)
-  - [components/data-refresh-listener.tsx](/Users/cortex-air/.codex/worktrees/760d/motian/components/data-refresh-listener.tsx)
-  - [src/services/search-index/typesense-client.ts](/Users/cortex-air/.codex/worktrees/760d/motian/src/services/search-index/typesense-client.ts)
+  - [app/kandidaten/page.tsx](app/kandidaten/page.tsx)
+  - [src/services/candidates.ts](src/services/candidates.ts)
+  - [src/services/jobs/deduplication.ts](src/services/jobs/deduplication.ts)
+  - [src/services/jobs/repository.ts](src/services/jobs/repository.ts)
+  - [app/vacatures/[id]/page.tsx](app/vacatures/[id]/page.tsx)
+  - [src/services/auto-matching.ts](src/services/auto-matching.ts)
+  - [components/data-refresh-listener.tsx](components/data-refresh-listener.tsx)
+  - [src/services/search-index/typesense-client.ts](src/services/search-index/typesense-client.ts)

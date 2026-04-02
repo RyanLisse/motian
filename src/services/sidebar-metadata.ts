@@ -5,7 +5,7 @@ import { jobs, sidebarMetadata } from "@/src/db/schema";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
 
 const DEFAULT_SKILL_EMPTY_TEXT = "Geen vaardigheden gevonden.";
-const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+const _STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
 
 export type SidebarMetadataRow = {
   totalCount: number;

@@ -132,7 +132,10 @@ function buildCandidateSearchConditions(
   return conditions;
 }
 
-async function runCandidateDerivedSync(candidate: Candidate): Promise<void> {
+async function runCandidateDerivedSync(candidateId: string): Promise<void> {
+  const candidate = await getCandidateById(candidateId);
+  if (!candidate) return;
+
   try {
     await syncCandidateEscoSkills({
       candidateId: candidate.id,
@@ -155,14 +158,6 @@ async function runCandidateDerivedSync(candidate: Candidate): Promise<void> {
   } catch (err) {
     console.error(`[Candidates] Typesense sync error for ${candidate.id}:`, err);
   }
-}
-
-function scheduleCandidateDerivedSync(candidate: Candidate): void {
-  setTimeout(() => {
-    void runCandidateDerivedSync(candidate).catch((error) => {
-      console.error(`[Candidates] Deferred sync error for ${candidate.id}:`, error);
-    });
-  }, 0);
 }
 
 /** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
@@ -242,7 +237,7 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     .returning();
 
   const candidate = rows[0];
-  scheduleCandidateDerivedSync(candidate);
+  await runCandidateDerivedSync(candidate.id);
 
   return candidate;
 }
@@ -263,7 +258,7 @@ export async function updateCandidate(
 
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
-  scheduleCandidateDerivedSync(candidate);
+  await runCandidateDerivedSync(candidate.id);
 
   return candidate;
 }

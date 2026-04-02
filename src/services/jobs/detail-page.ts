@@ -113,7 +113,7 @@ export async function getJobDetailPageData(
         .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
         .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
         .orderBy(pipelineStageRank, desc(applications.updatedAt), desc(applications.createdAt))
-        .limit(relatedLimit),
+        .limit(4),
       getGradedCandidates({ jobId: job.id, limit: gradedLimit }),
       getCachedEndClients(),
     ]);

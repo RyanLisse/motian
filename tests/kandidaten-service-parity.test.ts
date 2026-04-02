@@ -22,12 +22,12 @@ describe("kandidaten shared service wiring", () => {
     expect(source).toContain("countCandidates({");
   });
 
-  it("defers candidate embedding and search-index sync work off the mutation response path", () => {
+  it("awaits candidate derived sync inline (no setTimeout — safe for serverless)", () => {
     const source = readFile("src", "services", "candidates.ts");
 
-    expect(source).toContain("function scheduleCandidateDerivedSync(candidate: Candidate): void");
-    expect(source).toContain("setTimeout(() => {");
-    expect(source).toContain("void runCandidateDerivedSync(candidate).catch((error) => {");
-    expect(source).toContain("scheduleCandidateDerivedSync(candidate);");
+    expect(source).not.toContain("setTimeout");
+    expect(source).not.toContain("scheduleCandidateDerivedSync");
+    expect(source).toContain("async function runCandidateDerivedSync(candidateId: string)");
+    expect(source).toContain("await runCandidateDerivedSync(candidate.id)");
   });
 });

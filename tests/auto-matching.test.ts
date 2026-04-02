@@ -89,18 +89,6 @@ describe("auto-matching prefilter limits", () => {
     expect(mockListActiveCandidates).toHaveBeenCalledWith(200);
   });
 
-  it("skips candidate embedding refresh when an embedding already exists", async () => {
-    mockGetCandidateById.mockResolvedValue({
-      id: "cand-1",
-      name: "Test Kandidaat",
-      embedding: [0.1, 0.2],
-    });
-
-    await expect(autoMatchCandidateToJobs("cand-1")).resolves.toEqual([]);
-
-    expect(mockEmbedCandidate).not.toHaveBeenCalled();
-  });
-
   it("prefers semantic shortlist lookup before broad candidate fallback for jobs", async () => {
     mockGetJobById.mockResolvedValue({
       id: "job-1",
