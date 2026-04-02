@@ -37,7 +37,7 @@ vi.mock("../src/db", async (importOriginal) => ({
   ...(await importOriginal()),
   db: mockDb,
 }));
-vi.mock("../src/services/esco", () => ({
+vi.mock("@motian/esco", () => ({
   isEscoCatalogAvailable: mockIsEscoCatalogAvailable,
   syncJobEscoSkills: mockSyncJobEscoSkills,
 }));

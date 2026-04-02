@@ -291,11 +291,13 @@ describe("Opdrachten UI/API contracts", () => {
 
   it("detail page wires a shared end-client combobox into the existing context-aware navigation", () => {
     const detailPage = readFile("app", "vacatures", "[id]", "page.tsx");
+    const detailService = readFile("src", "services", "jobs", "detail-page.ts");
     const detailFilter = readFile("components", "opdracht-detail-end-client-filter.tsx");
 
     expect(detailPage).toContain("OpdrachtDetailEndClientFilter");
-    expect(detailPage).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
-    expect(detailPage).toContain("groupBy(persistedEndClient)");
+    expect(detailPage).toContain("getJobDetailPageData(id)");
+    expect(detailService).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
+    expect(detailService).toContain("groupBy(persistedEndClient)");
     expect(detailFilter).toContain("SearchableCombobox");
     expect(detailFilter).toContain('searchPlaceholder="Zoek eindopdrachtgever..."');
     expect(detailFilter).toContain("Open gefilterde lijst");

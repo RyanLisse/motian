@@ -23,13 +23,14 @@ describe("opdracht detail archivedAt compatibility", () => {
 
   it("uses one prioritized related-jobs read on the detail page while preserving compat selection", () => {
     const source = readFile("app", "vacatures", "[id]", "page.tsx");
+    const detailSource = readFile("src", "services", "jobs", "detail-page.ts");
 
-    expect(source).toContain('import { jobReadSelection } from "@/src/services/jobs/repository"');
-    expect(source).toContain("companyMatchRank");
-    expect(source).toContain("...jobReadSelection");
-    expect(source).toContain(".orderBy(companyMatchRank, desc(jobs.scrapedAt))");
-    expect(source).toContain(
-      "const related = [...companyRelated, ...genericRelated].slice(0, relatedLimit);",
-    );
+    expect(source).toContain('import { getJobDetailPageData } from "@/src/services/jobs/detail-page"');
+    expect(source).toContain("const detailData = await getJobDetailPageData(id);");
+    expect(detailSource).toContain('import { jobReadSelection } from "@/src/services/jobs/repository"');
+    expect(detailSource).toContain("companyMatchRank");
+    expect(detailSource).toContain("...jobReadSelection");
+    expect(detailSource).toContain(".orderBy(companyMatchRank, desc(jobs.scrapedAt))");
+    expect(detailSource).toContain("const relatedJobs = relatedJobRows.map");
   });
 });
