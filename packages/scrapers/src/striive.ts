@@ -35,6 +35,24 @@ function mapWorkArrangement(remote) {
   }
 }
 
+function mapStriiveStatus(apiStatus) {
+  // Striive API statuses: OPEN, IN_PROGRESS, CLOSED, EXPIRED, DRAFT, etc.
+  // Map to Motian's open/closed model
+  switch (apiStatus) {
+    case "OPEN":
+    case "IN_PROGRESS":
+    case "PENDING":
+      return "open";
+    case "CLOSED":
+    case "EXPIRED":
+    case "CANCELLED":
+    case "FILLED":
+      return "closed";
+    default:
+      return "open"; // treat unknown statuses as open
+  }
+}
+
 function mapBasicListing(job) {
   const loc = job.locationName ?? "";
   const province = loc.includes(" - ") ? loc.split(" - ")[1]?.trim() : undefined;
@@ -47,6 +65,7 @@ function mapBasicListing(job) {
     description: job.description ?? job.shortDescription ?? "",
     externalId: job.referenceCode ?? String(job.id ?? ""),
     externalUrl: \`https://supplier.striive.com/jobrequests/\${job.id ?? ""}\`,
+    status: mapStriiveStatus(job.status),
     rateMax: undefined,
     startDate: job.startDate ?? undefined,
     endDate: job.endDate ?? undefined,
@@ -243,7 +262,9 @@ async function run() {
     const PAGE_SIZE = 50;
 
     while (true) {
-      const res = await fetch(API_LIST + "?page=" + pageNum + "&size=" + PAGE_SIZE + "&status=OPEN", {
+      // Fetch all statuses — the web UI shows OPEN, IN_PROGRESS, etc.
+      // Status mapping to Motian open/closed happens in mapBasicListing.
+      const res = await fetch(API_LIST + "?page=" + pageNum + "&size=" + PAGE_SIZE, {
         headers: { Cookie: cookie, Accept: "application/json" },
       });
 
