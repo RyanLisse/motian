@@ -31,15 +31,19 @@ const getCachedEndClients = unstable_cache(
   { revalidate: 300 },
 );
 
+const DEFAULT_COCKPIT_LIMIT = 4;
+
 export async function getJobDetailPageData(
   id: string,
   opts: {
     gradedLimit?: number;
     relatedLimit?: number;
+    cockpitLimit?: number;
   } = {},
 ) {
   const relatedLimit = Math.max(1, Math.min(opts.relatedLimit ?? RELATED_JOB_LIMIT, 12));
   const gradedLimit = Math.max(1, Math.min(opts.gradedLimit ?? DEFAULT_GRADED_CANDIDATE_LIMIT, 24));
+  const cockpitLimit = Math.max(1, Math.min(opts.cockpitLimit ?? DEFAULT_COCKPIT_LIMIT, 50));
   const rows = await db
     .select(jobReadSelection)
     .from(jobs)
@@ -113,7 +117,7 @@ export async function getJobDetailPageData(
         .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
         .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
         .orderBy(pipelineStageRank, desc(applications.updatedAt), desc(applications.createdAt))
-        .limit(4),
+        .limit(cockpitLimit),
       getGradedCandidates({ jobId: job.id, limit: gradedLimit }),
       getCachedEndClients(),
     ]);

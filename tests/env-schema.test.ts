@@ -29,6 +29,7 @@ describe("t3-env schema coverage", () => {
       "Could not find syncEnvVars keys array in trigger.config.ts",
     ).toBeTruthy();
     const keysBlock = syncBlockMatch?.[1];
+    if (!keysBlock) throw new Error("Expected syncEnvVars keys capture group");
     const syncedVars = [...keysBlock.matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]);
     const triggerEnvVars = syncedVars.filter((v) => v !== "DATABASE_URL" && v.length > 3);
 

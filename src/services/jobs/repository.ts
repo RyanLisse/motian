@@ -1,7 +1,7 @@
 import { and, db, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { deleteJobsByIds, upsertJobsByIds } from "../search-index/typesense-sync";
-import { refreshDedupeRanks } from "./dedupe-ranks";
+import { scheduleDedupeRanksRefresh } from "./dedupe-ranks";
 
 export type Job = typeof jobs.$inferSelect;
 
@@ -47,11 +47,7 @@ async function runJobDerivedSync(jobId: string): Promise<void> {
     console.error(`[Jobs] Typesense sync error for ${jobId}:`, err);
   }
 
-  try {
-    await refreshDedupeRanks();
-  } catch (err) {
-    console.error(`[Jobs] Dedupe rank refresh error after ${jobId}:`, err);
-  }
+  scheduleDedupeRanksRefresh();
 }
 
 async function runJobDeleteSync(jobIds: string[]): Promise<void> {
@@ -63,11 +59,7 @@ async function runJobDeleteSync(jobIds: string[]): Promise<void> {
     console.error(`[Jobs] Typesense delete error for ${jobIds.join(",")}:`, err);
   }
 
-  try {
-    await refreshDedupeRanks();
-  } catch (err) {
-    console.error(`[Jobs] Dedupe rank refresh error after delete ${jobIds.join(",")}:`, err);
-  }
+  scheduleDedupeRanksRefresh();
 }
 
 /** Enkele opdracht ophalen op ID, inclusief gesloten/gearchiveerde retained vacatures. */

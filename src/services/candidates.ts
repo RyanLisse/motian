@@ -452,13 +452,8 @@ export async function enrichCandidateFromCV(
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
 
-  await syncCandidateEscoSkills({
-    candidateId: candidate.id,
-    skills: candidate.skills,
-    skillsStructured: candidate.skillsStructured,
-  });
-
-  await upsertCandidatesByIds([candidate.id]);
+  // Reuse full derived sync (ESCO + embedding + Typesense) for consistency
+  await runCandidateDerivedSync(candidate.id);
 
   return candidate;
 }
