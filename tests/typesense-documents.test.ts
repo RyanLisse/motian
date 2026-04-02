@@ -107,6 +107,7 @@ describe("typesense documents", () => {
       role: "Recruiter",
       location: "Amsterdam",
       skills: ["sourcing", "boolean search"],
+      availability: "direct",
       searchText: "Jane Doe Recruiter Amsterdam sourcing boolean search",
       matchingStatus: "open",
       createdAtTs: new Date("2026-03-01T09:00:00.000Z").getTime(),

@@ -20,7 +20,7 @@ vi.mock("../src/db", async (importOriginal) => ({
   },
 }));
 
-vi.mock("../src/services/esco", () => ({
+vi.mock("@motian/esco", () => ({
   isEscoCatalogAvailable: mockIsEscoCatalogAvailable,
   syncJobEscoSkills: mockSyncJobEscoSkills,
 }));

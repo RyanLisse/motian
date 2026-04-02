@@ -10,10 +10,10 @@ import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { and, db, desc, eq, isNull, like, sql } from "@/src/db";
-import { candidateSkills, candidates } from "@/src/db/schema";
-import { escapeLike } from "@/src/lib/helpers";
+import { db, isNull, sql } from "@/src/db";
+import { candidates } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
+import { countCandidates, listCandidates, searchCandidates } from "@/src/services/candidates";
 import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco";
 
 export const revalidate = 120;
@@ -100,85 +100,37 @@ async function KandidatenContent({ searchParams }: Props) {
     maxLimit: MAX_PER_PAGE,
   });
 
-  // Build conditions
-  const conditions = [isNull(candidates.deletedAt)];
-
-  if (query) {
-    conditions.push(like(candidates.name, `%${escapeLike(query)}%`));
-  }
-  if (availability) {
-    conditions.push(eq(candidates.availability, availability));
-  }
-  // Only apply ESCO filter when skills loaded successfully (avoids query failure if candidate_skills missing)
-  if (escoUri && escoCatalogAvailable) {
-    conditions.push(
-      sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${escoUri})`,
-    );
-  }
-
-  const whereClause = and(...conditions);
-
   // Fetch candidates + consolidated counts in parallel (reduces DB connections)
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-  // Extra filter conditions beyond isNull(deletedAt) for the filtered count
-  const extraFilters = conditions.length > 1 ? and(...conditions.slice(1)) : null;
-
-  const candidateSelect = {
-    id: candidates.id,
-    name: candidates.name,
-    email: candidates.email,
-    phone: candidates.phone,
-    role: candidates.role,
-    location: candidates.location,
-    province: candidates.province,
-    skills: candidates.skills,
-    experience: candidates.experience,
-    preferences: candidates.preferences,
-    resumeUrl: candidates.resumeUrl,
-    linkedinUrl: candidates.linkedinUrl,
-    headline: candidates.headline,
-    source: candidates.source,
-    notes: candidates.notes,
-    hourlyRate: candidates.hourlyRate,
-    availability: candidates.availability,
-    embedding: candidates.embedding,
-    resumeRaw: candidates.resumeRaw,
-    resumeParsedAt: candidates.resumeParsedAt,
-    skillsStructured: candidates.skillsStructured,
-    education: candidates.education,
-    certifications: candidates.certifications,
-    languageSkills: candidates.languageSkills,
-    consentGranted: candidates.consentGranted,
-    dataRetentionUntil: candidates.dataRetentionUntil,
-    createdAt: candidates.createdAt,
-    updatedAt: candidates.updatedAt,
-    deletedAt: candidates.deletedAt,
+  const useSearch = Boolean(query || availability || (escoUri && escoCatalogAvailable));
+  const searchOptions = {
+    query: query || undefined,
+    availability: availability || undefined,
+    escoUri: escoCatalogAvailable ? escoUri || undefined : undefined,
+    limit,
+    offset,
   };
 
-  const [candidateRows, statsResult] = await Promise.all([
-    db
-      .select(candidateSelect)
-      .from(candidates)
-      .where(whereClause)
-      .orderBy(desc(candidates.createdAt))
-      .limit(limit)
-      .offset(offset),
+  const [candidateRows, statsResult, totalCount] = await Promise.all([
+    useSearch ? searchCandidates(searchOptions) : listCandidates({ limit, offset }),
     // All 3 counts in a single query using FILTER clauses
     db
       .select({
-        totalFiltered: extraFilters
-          ? sql<number>`cast(count(*) filter (where ${extraFilters}) as integer)`
-          : sql<number>`cast(count(*) as integer)`,
         directCount: sql<number>`cast(count(*) filter (where ${candidates.availability} = 'direct') as integer)`,
         weekCount: sql<number>`cast(count(*) filter (where ${candidates.createdAt} >= ${oneWeekAgo}) as integer)`,
       })
       .from(candidates)
       .where(isNull(candidates.deletedAt)),
+    useSearch
+      ? countCandidates({
+          query: searchOptions.query,
+          availability: searchOptions.availability,
+          escoUri: searchOptions.escoUri,
+        })
+      : countCandidates(),
   ]);
 
-  const totalCount = statsResult[0]?.totalFiltered ?? 0;
   const totalPages = Math.ceil(totalCount / limit) || 1;
   const directCount = statsResult[0]?.directCount ?? 0;
   const weekCount = statsResult[0]?.weekCount ?? 0;

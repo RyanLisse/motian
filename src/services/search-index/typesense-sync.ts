@@ -119,6 +119,7 @@ export async function upsertCandidatesByIds(ids: string[]) {
       role: candidates.role,
       location: candidates.location,
       skills: candidates.skills,
+      availability: candidates.availability,
       matchingStatus: candidates.matchingStatus,
       createdAt: candidates.createdAt,
       updatedAt: candidates.updatedAt,

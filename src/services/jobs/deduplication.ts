@@ -12,6 +12,22 @@ type DedupableJob = Pick<
 type DedupedJobIdRow = { id: string };
 type DedupedJobPageRow = { id: string | null; total: number | string | null };
 type ResolvedJobsDeduplicationMode = "normalized";
+let inflightDedupeRefresh: Promise<unknown> | null = null;
+
+function scheduleDedupeRankRefresh(): void {
+  if (inflightDedupeRefresh) return;
+
+  inflightDedupeRefresh = import("./dedupe-ranks")
+    .then(async ({ refreshDedupeRanks }) => {
+      await refreshDedupeRanks();
+    })
+    .catch((error) => {
+      console.warn("[jobs/deduplication] background dedupe refresh failed", error);
+    })
+    .finally(() => {
+      inflightDedupeRefresh = null;
+    });
+}
 
 function normalizeDeduplicationPart(value: string | null | undefined) {
   return (value ?? "")
@@ -437,6 +453,7 @@ export async function fetchDedupedJobsPage({
     if (isFresh) {
       return fetchDedupedJobsPageFast({ whereClause, limit, offset, sortBy, knownTotal });
     }
+    scheduleDedupeRankRefresh();
   } catch {
     // Ranks table may not exist yet or db is mocked — fall through to CTE
   }

@@ -19,6 +19,7 @@ export type SearchCandidatesOptions = {
   location?: string;
   skills?: string;
   role?: string;
+  availability?: string;
   /** Filter by canonical ESCO skill URI (candidate must have this skill in candidate_skills). */
   escoUri?: string;
   limit?: number;
@@ -96,25 +97,9 @@ function candidateSkillsCondition(skillsQuery: string) {
   return sql`EXISTS (SELECT 1 FROM jsonb_array_elements_text(${candidates.skills}::jsonb) AS t(value) WHERE lower(t.value) LIKE ${pattern} ESCAPE '\\')`;
 }
 
-/** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
-export async function searchCandidates(opts: SearchCandidatesOptions = {}): Promise<Candidate[]> {
-  const limit = Math.min(opts.limit ?? 50, 100);
-  const offset = Math.max(0, opts.offset ?? 0);
-
-  try {
-    const externalResult = await searchCandidateIdsByTypesense({ ...opts, limit, offset });
-    if (externalResult && externalResult.ids.length > 0) {
-      const hydrated = await getCandidatesByIds(externalResult.ids);
-      const candidatesById = new Map(hydrated.map((candidate) => [candidate.id, candidate]));
-      return externalResult.ids
-        .map((id) => candidatesById.get(id))
-        .filter((candidate): candidate is Candidate => Boolean(candidate));
-    }
-    // Zero hits from Typesense: fall through to PostgreSQL (cold index).
-  } catch {
-    // Fall back to PostgreSQL search when Typesense is unavailable.
-  }
-
+function buildCandidateSearchConditions(
+  opts: Omit<SearchCandidatesOptions, "limit" | "offset"> = {},
+) {
   const conditions = [isNull(candidates.deletedAt)];
 
   if (opts.query) {
@@ -134,11 +119,67 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
     conditions.push(candidateSkillsCondition(opts.skills));
   }
 
+  if (opts.availability) {
+    conditions.push(eq(candidates.availability, opts.availability));
+  }
+
   if (opts.escoUri) {
     conditions.push(
       sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${opts.escoUri})`,
     );
   }
+
+  return conditions;
+}
+
+async function runCandidateDerivedSync(candidateId: string): Promise<void> {
+  const candidate = await getCandidateById(candidateId);
+  if (!candidate) return;
+
+  try {
+    await syncCandidateEscoSkills({
+      candidateId: candidate.id,
+      skills: candidate.skills,
+      skillsStructured: candidate.skillsStructured,
+    });
+  } catch (err) {
+    console.error(`[Candidates] ESCO sync error for ${candidate.id}:`, err);
+  }
+
+  try {
+    const { embedCandidate } = await import("./embedding");
+    await embedCandidate(candidate.id);
+  } catch (err) {
+    console.error(`[Candidates] Embedding error for ${candidate.id}:`, err);
+  }
+
+  try {
+    await upsertCandidatesByIds([candidate.id]);
+  } catch (err) {
+    console.error(`[Candidates] Typesense sync error for ${candidate.id}:`, err);
+  }
+}
+
+/** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
+export async function searchCandidates(opts: SearchCandidatesOptions = {}): Promise<Candidate[]> {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
+
+  try {
+    const externalResult = await searchCandidateIdsByTypesense({ ...opts, limit, offset });
+    if (externalResult && externalResult.ids.length > 0) {
+      const hydrated = await getCandidatesByIds(externalResult.ids);
+      const candidatesById = new Map(hydrated.map((candidate) => [candidate.id, candidate]));
+      return externalResult.ids
+        .map((id) => candidatesById.get(id))
+        .filter((candidate): candidate is Candidate => Boolean(candidate));
+    }
+    // Zero hits from Typesense: fall through to PostgreSQL (cold index).
+  } catch {
+    // Fall back to PostgreSQL search when Typesense is unavailable.
+  }
+
+  const conditions = buildCandidateSearchConditions(opts);
 
   return db
     .select()
@@ -162,30 +203,7 @@ export async function countCandidates(
     // Fall back to PostgreSQL counting when Typesense is unavailable.
   }
 
-  const conditions = [isNull(candidates.deletedAt)];
-
-  if (opts.query) {
-    conditions.push(candidateNameCondition(opts.query));
-  }
-
-  if (opts.location) {
-    conditions.push(caseInsensitiveContains(candidates.location, opts.location));
-  }
-
-  if (opts.role) {
-    conditions.push(caseInsensitiveContains(candidates.role, opts.role));
-  }
-
-  if (opts.skills) {
-    // Search within the JSON skills array for a case-insensitive match
-    conditions.push(candidateSkillsCondition(opts.skills));
-  }
-
-  if (opts.escoUri) {
-    conditions.push(
-      sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${opts.escoUri})`,
-    );
-  }
+  const conditions = buildCandidateSearchConditions(opts);
 
   const [{ count }] = await db
     .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
@@ -219,26 +237,7 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     .returning();
 
   const candidate = rows[0];
-
-  // Generate embedding (non-fatal, fire-and-forget)
-  try {
-    const { embedCandidate } = await import("./embedding");
-    await embedCandidate(candidate.id);
-  } catch (err) {
-    console.error(`[Candidates] Embedding error for ${candidate.id}:`, err);
-  }
-
-  await syncCandidateEscoSkills({
-    candidateId: candidate.id,
-    skills: candidate.skills,
-  });
-
-  // Typesense sync is non-fatal — don't fail the mutation on index errors.
-  try {
-    await upsertCandidatesByIds([candidate.id]);
-  } catch (err) {
-    console.error(`[Candidates] Typesense sync error for ${candidate.id}:`, err);
-  }
+  await runCandidateDerivedSync(candidate.id);
 
   return candidate;
 }
@@ -259,26 +258,7 @@ export async function updateCandidate(
 
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
-
-  await syncCandidateEscoSkills({
-    candidateId: candidate.id,
-    skills: candidate.skills,
-    skillsStructured: candidate.skillsStructured,
-  });
-
-  try {
-    const { embedCandidate } = await import("./embedding");
-    await embedCandidate(candidate.id);
-  } catch (err) {
-    console.error(`[Candidates] Embedding refresh error for ${candidate.id}:`, err);
-  }
-
-  // Typesense sync is non-fatal — don't fail the mutation on index errors.
-  try {
-    await upsertCandidatesByIds([candidate.id]);
-  } catch (err) {
-    console.error(`[Candidates] Typesense sync error for ${candidate.id}:`, err);
-  }
+  await runCandidateDerivedSync(candidate.id);
 
   return candidate;
 }
@@ -472,13 +452,8 @@ export async function enrichCandidateFromCV(
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
 
-  await syncCandidateEscoSkills({
-    candidateId: candidate.id,
-    skills: candidate.skills,
-    skillsStructured: candidate.skillsStructured,
-  });
-
-  await upsertCandidatesByIds([candidate.id]);
+  // Reuse full derived sync (ESCO + embedding + Typesense) for consistency
+  await runCandidateDerivedSync(candidate.id);
 
   return candidate;
 }

@@ -41,15 +41,13 @@ afterEach(() => {
 describe("Detail surfaces recruiter workflow context", () => {
   it("job detail page preserves filters while surfacing recruiter cockpit and grading", () => {
     const source = readFile("app/vacatures/[id]/page.tsx");
+    const detailSource = readFile("src/services/jobs/detail-page.ts");
 
-    expect(source).toContain("currentListParams.append(key, entry)");
-    expect(source).toContain("const relatedLimit = 4");
     expect(source).toContain(
-      "const related = [...companyRelated, ...genericRelated].slice(0, relatedLimit)",
+      'import { getJobDetailPageData } from "@/src/services/jobs/detail-page";',
     );
-    expect(source).not.toContain(
-      "const related = companyRelated.length > 0 ? companyRelated : genericRelated;",
-    );
+    expect(source).toContain("getJobDetailPageData(id");
+    expect(source).toContain("currentListParams.append(key, entry)");
     expect(source).toContain('id="koppel-kandidaten"');
     expect(source).toContain('href="#koppel-kandidaten"');
     expect(source).toContain('id="recruiter-cockpit"');
@@ -59,9 +57,29 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(source).toContain("Gekoppelde kandidaten");
     expect(source).toContain("Bekijk AI aanbevelingen");
     expect(source).toContain("AI Grading");
-    expect(source).toContain("source: applications.source");
+    expect(detailSource).toContain(
+      `source: sql<string>\`coalesce(\${applications.source}, 'manual')\``,
+    );
+    expect(source).toContain("const detailData = await getJobDetailPageData(id);");
     // biome-ignore lint/suspicious/noTemplateCurlyInString: asserting source contains a template literal
     expect(source).toContain("/kandidaten/${row.candidateId}");
+  });
+
+  it("job detail read model centralizes related jobs, recruiter cockpit data, and sidebar metadata", () => {
+    const source = readFile("src", "services", "jobs", "detail-page.ts");
+
+    expect(source).toContain("const RELATED_JOB_LIMIT = 4");
+    expect(source).toContain("const DEFAULT_GRADED_CANDIDATE_LIMIT = 12");
+    expect(source).toContain("export async function getJobDetailPageData(");
+    expect(source).toContain("const relatedScopeConditions = [eq(jobs.platform, job.platform)];");
+    expect(source).toContain("const relatedScopeCondition = or(...relatedScopeConditions);");
+    expect(source).toContain(
+      "const [relatedJobRows, pipelineCounts, recruiterCockpitRows, gradedCandidates, endClientRows] =",
+    );
+    expect(source).toContain("getCachedEndClients()");
+    expect(source).toContain("const relatedJobs = relatedJobRows.map");
+    expect(source).toContain("getGradedCandidates({ jobId: job.id, limit: gradedLimit");
+    expect(source).toContain("endClientOptions");
   });
 
   it("OpdrachtenDetailSheet returns to the filtered list when the mobile sheet closes", async () => {

@@ -12,7 +12,6 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { unstable_cache } from "next/cache";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -33,12 +32,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { and, db, desc, eq, isNull, ne, sql } from "@/src/db";
-import { applications, candidates, jobMatches, jobs } from "@/src/db/schema";
 import { stripHtml } from "@/src/lib/html";
-import { getGradedCandidates } from "@/src/services/grading";
-import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
-import { jobReadSelection } from "@/src/services/jobs/repository";
+import { getJobDetailPageData } from "@/src/services/jobs/detail-page";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -106,15 +101,6 @@ const APPLICATION_SOURCE_LABELS: Record<string, string> = {
 };
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-
-const PIPELINE_STAGE_PRIORITY: Record<string, number> = {
-  new: 0,
-  screening: 1,
-  interview: 2,
-  offer: 3,
-  hired: 4,
-  rejected: 5,
-};
 
 const PIPELINE_NEXT_STEP_HINTS: Record<string, string> = {
   new: "Kies wie door mag naar screening",
@@ -223,94 +209,17 @@ function OpdrachtDetailSkeleton() {
   );
 }
 
-/** Cached end-client list for sidebar filter — avoids GROUP BY full-table scan on every page load. */
-const getCachedEndClients = unstable_cache(
-  async () => {
-    const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
-    return db
-      .select({ endClient: persistedEndClient })
-      .from(jobs)
-      .where(getVisibleVacancyCondition())
-      .groupBy(persistedEndClient)
-      .orderBy(persistedEndClient);
-  },
-  ["end-client-filter-options"],
-  { revalidate: 300 }, // 5 minutes
-);
-
 async function OpdrachtDetailContent({ params, searchParams }: Props) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
-
-  // Fetch current job (respecting visibility rules)
-  const rows = await db
-    .select(jobReadSelection)
-    .from(jobs)
-    .where(and(eq(jobs.id, id), getVisibleVacancyCondition()))
-    .limit(1);
-
-  const job = rows[0];
+  const detailData = await getJobDetailPageData(id);
+  const job = detailData?.job;
 
   if (!job) {
     notFound();
   }
-
-  const companyMatchRank = job.company
-    ? sql<number>`case when ${jobs.company} = ${job.company} then 0 else 1 end`
-    : sql<number>`1`;
-  const relatedLimit = 4;
-
-  // Fetch related jobs, pipeline data, grading, and sidebar filter metadata in parallel.
-  const [relatedJobRows, pipelineCounts, recentPipelineRows, gradedCandidates, endClientRows] =
-    await Promise.all([
-      db
-        .select({
-          ...jobReadSelection,
-          companyMatchRank,
-        })
-        .from(jobs)
-        .where(and(getVisibleVacancyCondition(), eq(jobs.status, "open"), ne(jobs.id, id)))
-        .orderBy(companyMatchRank, desc(jobs.scrapedAt))
-        .limit(relatedLimit),
-      // Pipeline counts per stage for this job
-      db
-        .select({
-          stage: applications.stage,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(applications)
-        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-        .groupBy(applications.stage),
-      // Recent linked candidates for this job
-      db
-        .select({
-          id: applications.id,
-          stage: applications.stage,
-          source: applications.source,
-          candidateId: candidates.id,
-          candidateName: candidates.name,
-          candidateRole: candidates.role,
-          candidateLocation: candidates.location,
-          matchScore: jobMatches.matchScore,
-          matchStatus: jobMatches.status,
-          createdAt: applications.createdAt,
-        })
-        .from(applications)
-        .leftJoin(candidates, eq(applications.candidateId, candidates.id))
-        .leftJoin(jobMatches, eq(applications.matchId, jobMatches.id))
-        .where(and(eq(applications.jobId, id), isNull(applications.deletedAt)))
-        .orderBy(desc(applications.updatedAt), desc(applications.createdAt))
-        .limit(4),
-      getGradedCandidates({ jobId: job.id, limit: 12 }),
-      getCachedEndClients(),
-    ]);
-
-  const companyRelated = relatedJobRows
-    .filter((row) => row.companyMatchRank === 0)
-    .map(({ companyMatchRank: _companyMatchRank, ...relatedJob }) => relatedJob);
-  const genericRelated = relatedJobRows
-    .filter((row) => row.companyMatchRank !== 0)
-    .map(({ companyMatchRank: _companyMatchRank, ...relatedJob }) => relatedJob);
+  const { relatedJobs, pipelineCounts, recruiterCockpitRows, gradedCandidates, endClientOptions } =
+    detailData;
 
   // Build pipeline summary
   // Pipeline stages: only active stages count toward totalPipeline.
@@ -322,13 +231,6 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
   // Active pipeline total excludes rejected — "pipeline" = candidates still in process
   const totalPipeline = PIPELINE_STAGES.reduce((s, st) => s + (stageCountMap[st.key] ?? 0), 0);
   const rejectedCount = stageCountMap.rejected ?? 0;
-  const recruiterCockpitRows = [...recentPipelineRows].sort((a, b) => {
-    const stageDelta =
-      (PIPELINE_STAGE_PRIORITY[a.stage] ?? Number.MAX_SAFE_INTEGER) -
-      (PIPELINE_STAGE_PRIORITY[b.stage] ?? Number.MAX_SAFE_INTEGER);
-    if (stageDelta !== 0) return stageDelta;
-    return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
-  });
   const gradingHref = `/vacatures/${job.id}#ai-grading`;
   const pipelineHref = `/pipeline?vacature=${job.id}`;
   const nextPipelineAction =
@@ -355,15 +257,7 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
             : null;
   const deadlineState = getDeadlineState(job.applicationDeadline);
 
-  const related = [...companyRelated, ...genericRelated].slice(0, relatedLimit);
   const currentEndClient = job.endClient?.trim() || job.company?.trim() || null;
-  const endClientOptions = [
-    ...new Set(
-      endClientRows
-        .map((row) => row.endClient?.trim())
-        .filter((value): value is string => Boolean(value)),
-    ),
-  ];
   const currentListParams = new URLSearchParams();
 
   for (const [key, value] of Object.entries(resolvedSearchParams)) {
@@ -1145,13 +1039,13 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
               <SectionBlock title="Competenties" items={competencesList} />
               <SectionBlock title="Wat bieden we" items={plainConditions} />
 
-              {related.length > 0 ? (
+              {relatedJobs.length > 0 ? (
                 <section>
                   <h2 className="mb-4 text-base font-semibold text-foreground">
                     Vergelijkbare vacatures
                   </h2>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {related.map((rJob) => (
+                    {relatedJobs.map((rJob) => (
                       <Link key={rJob.id} href={buildDetailHref(rJob.id)}>
                         <div className="cursor-pointer rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/30 hover:bg-accent">
                           <h3 className="mb-1 line-clamp-2 text-sm font-semibold text-foreground">
