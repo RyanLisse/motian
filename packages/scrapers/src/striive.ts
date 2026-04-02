@@ -49,7 +49,7 @@ function mapStriiveStatus(apiStatus) {
     case "FILLED":
       return "closed";
     default:
-      return "open"; // treat unknown statuses as open
+      return undefined; // skip unknown statuses — let normalize decide
   }
 }
 
