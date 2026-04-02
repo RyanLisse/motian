@@ -105,17 +105,23 @@ describe("hybridSearch stage timings", () => {
     vi.clearAllMocks();
     mockSelect.mockReturnValue({
       from: vi.fn(() => ({
-        where: vi.fn().mockResolvedValue([
-          {
-            id: "job-1",
-            title: "Informatiebeheer specialist",
-            company: "Motian",
-            endClient: "Gemeente Utrecht",
-            location: "Utrecht",
-            province: "Utrecht",
-            platform: "opdrachtoverheid",
-          },
-        ]),
+        where: vi.fn(() => {
+          const data = [
+            {
+              id: "job-1",
+              title: "Informatiebeheer specialist",
+              company: "Motian",
+              endClient: "Gemeente Utrecht",
+              location: "Utrecht",
+              province: "Utrecht",
+              platform: "opdrachtoverheid",
+            },
+          ];
+          const p = Promise.resolve(data);
+          // biome-ignore lint/suspicious/noExplicitAny: test mock needs thenable+limit chain
+          (p as any).limit = vi.fn(() => Promise.resolve(data));
+          return p;
+        }),
       })),
     });
     mockFetchDedupedJobIds.mockResolvedValue(["job-1"]);

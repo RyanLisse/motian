@@ -75,7 +75,7 @@ async function getRecentJobs(database: typeof db): Promise<RecentJob[]> {
     .from(jobs)
     .where(and(ne(jobs.status, "archived"), isNull(jobs.deletedAt)))
     .orderBy(desc(jobs.scrapedAt), desc(jobs.id))
-    .limit(200);
+    .limit(50);
 
   const seen = new Set<string>();
   const deduped: RecentJob[] = [];
@@ -121,7 +121,7 @@ async function getRecentScrapes(database: typeof db): Promise<RecentScrape[]> {
     })
     .from(scrapeResults)
     .orderBy(desc(scrapeResults.runAt), desc(scrapeResults.id))
-    .limit(200);
+    .limit(30);
 
   return dedupeRecentScrapes(
     rows.map((row) => ({
@@ -186,8 +186,6 @@ export const getOverviewData = cache(async function getOverviewData(database: ty
     recentJobs,
     activeScrapers,
     recentScrapes,
-    topCompanies,
-    locationCounts,
     pipelineStageCounts,
     upcomingInterviewCountResult,
     upcomingInterviews,
@@ -222,32 +220,6 @@ export const getOverviewData = cache(async function getOverviewData(database: ty
       .where(eq(scraperConfigs.isActive, true)),
 
     getRecentScrapes(database),
-
-    database
-      .select({
-        company: jobs.company,
-        count: sql<number>`cast(count(*) as integer)`,
-      })
-      .from(jobs)
-      .where(
-        and(sql`${jobs.company} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
-      )
-      .groupBy(jobs.company)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
-
-    database
-      .select({
-        province: jobs.province,
-        count: sql<number>`cast(count(*) as integer)`,
-      })
-      .from(jobs)
-      .where(
-        and(sql`${jobs.province} is not null`, ne(jobs.status, "archived"), isNull(jobs.deletedAt)),
-      )
-      .groupBy(jobs.province)
-      .orderBy(sql`count(*) desc`)
-      .limit(5),
 
     database
       .select({
@@ -296,12 +268,10 @@ export const getOverviewData = cache(async function getOverviewData(database: ty
   return {
     activeScrapers,
     dedupedTotal,
-    locationCounts,
     pipelineStageCounts,
     platformCounts,
     recentJobs,
     recentScrapes,
-    topCompanies,
     upcomingInterviewCountResult,
     upcomingInterviews,
   };

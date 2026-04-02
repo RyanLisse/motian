@@ -13,6 +13,9 @@ export default function OpdrachtenPage() {
         <p className="text-sm text-muted-foreground leading-relaxed">
           Selecteer een vacature uit de lijst om de details te bekijken
         </p>
+        <p className="text-xs text-muted-foreground/60 mt-3">
+          Tip: Gebruik filters om je zoekopdracht te verfijnen
+        </p>
       </div>
     </div>
   );
