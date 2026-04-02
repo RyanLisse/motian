@@ -74,7 +74,7 @@ async function importListJobsPageWithMocks() {
 async function importHybridJobsPageWithMocks() {
   vi.resetModules();
 
-  const mockWhere = vi.fn().mockResolvedValue([
+  const mockWhereData = [
     {
       id: "job-2",
       title: "Tweede vacature",
@@ -103,7 +103,13 @@ async function importHybridJobsPageWithMocks() {
       postedAt: null,
       startDate: null,
     },
-  ]);
+  ];
+  const mockWhere = vi.fn(() => {
+    const p = Promise.resolve(mockWhereData);
+    // biome-ignore lint/suspicious/noExplicitAny: test mock needs thenable+limit chain
+    (p as any).limit = vi.fn(() => Promise.resolve(mockWhereData));
+    return p;
+  });
   const mockSelect = vi.fn(() => ({ from: vi.fn(() => ({ where: mockWhere })) }));
   const loadJobPageRowsByIds = vi.fn().mockResolvedValue([
     {

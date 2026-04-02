@@ -167,10 +167,11 @@ async function DashboardContent() {
             }
           >
             {pipelineTotal === 0 ? (
-              <p className="py-4 text-sm text-muted-foreground">
+              <div className="py-4 text-center text-sm text-muted-foreground">
+                <Users className="mx-auto mb-2 h-5 w-5" />
                 Nog geen kandidaten in de pipeline. Start vanuit vacatures of open het
                 kandidatenoverzicht.
-              </p>
+              </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <KPICard
@@ -291,9 +292,10 @@ async function DashboardContent() {
             }
           >
             {upcomingInterviews.length === 0 ? (
-              <p className="py-4 text-sm text-muted-foreground">
+              <div className="py-4 text-center text-sm text-muted-foreground">
+                <Calendar className="mx-auto mb-2 h-5 w-5" />
                 Geen interviews gepland. Plan gesprekken vanuit de pipeline.
-              </p>
+              </div>
             ) : (
               <div className="space-y-2">
                 {upcomingInterviews.map((interview) => (
@@ -358,9 +360,10 @@ async function DashboardContent() {
           </div>
           <div className="mt-4 space-y-1">
             {recentScrapes.length === 0 ? (
-              <p className="py-2 text-sm text-muted-foreground">
+              <div className="py-2 text-center text-sm text-muted-foreground">
+                <RefreshCw className="mx-auto mb-2 h-5 w-5" />
                 Nog geen bronactiviteit beschikbaar.
-              </p>
+              </div>
             ) : (
               recentScrapes.map((scrape) => {
                 const skipped =

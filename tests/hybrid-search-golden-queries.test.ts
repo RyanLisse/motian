@@ -51,7 +51,12 @@ async function importHybridSearchGoldenHarness({
   vi.resetModules();
   resetGoldenHarnessModules();
 
-  const mockWhere = vi.fn().mockResolvedValue(hydratedJobs);
+  const mockWhere = vi.fn(() => {
+    const p = Promise.resolve(hydratedJobs);
+    // biome-ignore lint/suspicious/noExplicitAny: test mock needs thenable+limit chain
+    (p as any).limit = vi.fn(() => Promise.resolve(hydratedJobs));
+    return p;
+  });
   const mockSelect = vi.fn(() => ({ from: vi.fn(() => ({ where: mockWhere })) }));
   const mockLoadJobsByIds = vi.fn().mockImplementation(async (ids: string[]) => {
     const jobById = new Map(hydratedJobs.map((job) => [job.id, job]));

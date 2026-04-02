@@ -148,7 +148,12 @@ describe("hybridSearchWithTotal runtime regression", () => {
     mockLoadJobsByIds.mockResolvedValue([job]);
     mockGenerateQueryEmbedding.mockResolvedValue([0.1, 0.2, 0.3]);
     mockFindSimilarJobsByEmbedding.mockResolvedValue([]);
-    mockWhere.mockResolvedValue([job]);
+    mockWhere.mockImplementation(() => {
+      const p = Promise.resolve([job]);
+      // biome-ignore lint/suspicious/noExplicitAny: test mock needs thenable+limit chain
+      (p as any).limit = vi.fn(() => Promise.resolve([job]));
+      return p;
+    });
   });
 
   it("handles incremental non-empty queries without throwing and returns the compat-selected job", async () => {

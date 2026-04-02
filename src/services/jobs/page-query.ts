@@ -226,7 +226,8 @@ export async function hybridSearchPageWithTotal(
   const rankedJobs = await db
     .select(hybridSearchRankSelection)
     .from(jobs)
-    .where(and(inArray(jobs.id, candidateIds), ...filterConditions));
+    .where(and(inArray(jobs.id, candidateIds), ...filterConditions))
+    .limit(candidateIds.length);
   hydrateMs = Date.now() - rankHydrateStartedAt;
 
   const rankJobMap = new Map(rankedJobs.map((job) => [job.id, job]));

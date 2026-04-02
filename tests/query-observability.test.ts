@@ -73,7 +73,7 @@ async function importHybridSearchWithTelemetryMocks() {
   const mockExecute = vi.fn().mockResolvedValue({
     rows: [{ id: "job-2", title: "Vector vacature", similarity: 0.74 }],
   });
-  const mockWhere = vi.fn().mockResolvedValue([
+  const mockWhereData = [
     {
       id: "job-1",
       title: "Tekst vacature",
@@ -92,7 +92,13 @@ async function importHybridSearchWithTelemetryMocks() {
       province: "Utrecht",
       platform: "opdrachtoverheid",
     },
-  ]);
+  ];
+  const mockWhere = vi.fn(() => {
+    const p = Promise.resolve(mockWhereData);
+    // biome-ignore lint/suspicious/noExplicitAny: test mock needs thenable+limit chain
+    (p as any).limit = vi.fn(() => Promise.resolve(mockWhereData));
+    return p;
+  });
   const mockSelect = vi.fn(() => ({ from: vi.fn(() => ({ where: mockWhere })) }));
 
   vi.doMock("../src/db", async () => ({

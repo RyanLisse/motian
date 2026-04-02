@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DEFAULT_OPDRACHTEN_LIMIT } from "@/src/lib/opdrachten-filters";
 import { listJobsPage } from "@/src/services/jobs/page-query";
 import { getSidebarMetadata, refreshSidebarMetadata } from "@/src/services/sidebar-metadata";
 
@@ -21,7 +20,7 @@ function SidebarSkeleton() {
       </div>
       <Skeleton className="h-4 w-32 bg-muted" />
       <div className="flex-1 space-y-2">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {Array.from({ length: 5 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
           <Skeleton key={`job-${i}`} className="h-20 rounded-lg bg-card" />
         ))}

@@ -30,11 +30,9 @@ describe("getOverviewData", () => {
   // 2. getRecentJobs (internal select)
   // 3. activeScrapers
   // 4. getRecentScrapes (internal select)
-  // 5. topCompanies
-  // 6. locationCounts
-  // 7. pipelineStageCounts
-  // 8. upcomingInterviewCountResult
-  // 9. upcomingInterviews
+  // 5. pipelineStageCounts
+  // 6. upcomingInterviewCountResult
+  // 7. upcomingInterviews
 
   it("executes dashboard reads through one transaction-backed connection", async () => {
     const select = vi
@@ -60,15 +58,13 @@ describe("getOverviewData", () => {
           { id: "run-1", config_id: "cfg-1", platform: "linkedin", status: "success" },
         ]),
       )
-      .mockReturnValueOnce(createAwaitableQuery([{ company: "Motian", count: 2 }]))
-      .mockReturnValueOnce(createAwaitableQuery([{ province: "Utrecht", count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ stage: "new", count: 4 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]));
 
     const result = await getOverviewData({ select } as unknown as typeof db);
 
-    expect(select).toHaveBeenCalledTimes(9);
+    expect(select).toHaveBeenCalledTimes(7);
     expect(result.platformCounts).toEqual([{ platform: "linkedin", count: 3, weeklyNew: 1 }]);
     expect(result.recentJobs).toEqual([
       {
@@ -145,8 +141,6 @@ describe("getOverviewData", () => {
           },
         ]),
       )
-      .mockReturnValueOnce(createAwaitableQuery([{ company: "Motian", count: 2 }]))
-      .mockReturnValueOnce(createAwaitableQuery([{ province: "Utrecht", count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ stage: "new", count: 4 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]));
@@ -250,8 +244,6 @@ describe("getOverviewData", () => {
           },
         ]),
       )
-      .mockReturnValueOnce(createAwaitableQuery([{ company: "Motian", count: 2 }]))
-      .mockReturnValueOnce(createAwaitableQuery([{ province: "Utrecht", count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ stage: "new", count: 4 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ count: 2 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]));

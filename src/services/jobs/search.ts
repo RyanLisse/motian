@@ -385,7 +385,8 @@ export async function hybridSearchWithTotal(
     const fetchedJobs = await db
       .select(jobReadSelection)
       .from(jobs)
-      .where(and(inArray(jobs.id, candidateIds), ...filterConditions));
+      .where(and(inArray(jobs.id, candidateIds), ...filterConditions))
+      .limit(candidateIds.length);
     hydrateMs = Date.now() - hydrateStartedAt;
     hydratedCandidates = fetchedJobs.length;
 
@@ -411,7 +412,8 @@ export async function hybridSearchWithTotal(
     const rankedJobs = (await db
       .select(hybridSearchRankSelection)
       .from(jobs)
-      .where(and(inArray(jobs.id, candidateIds), ...filterConditions))) as HybridSearchRankJob[];
+      .where(and(inArray(jobs.id, candidateIds), ...filterConditions))
+      .limit(candidateIds.length)) as HybridSearchRankJob[];
     hydrateMs = Date.now() - hydrateStartedAt;
 
     const rankJobMap = new Map(rankedJobs.map((job) => [job.id, job]));
