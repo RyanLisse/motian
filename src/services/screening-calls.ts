@@ -245,6 +245,15 @@ export async function listScreeningCalls(candidateId: string) {
     .orderBy(desc(screeningCalls.createdAt));
 }
 
+export async function deleteScreeningCall(id: string): Promise<boolean> {
+  const [updated] = await db
+    .update(screeningCalls)
+    .set({ status: "cancelled", updatedAt: new Date() })
+    .where(eq(screeningCalls.id, id))
+    .returning({ id: screeningCalls.id });
+  return !!updated;
+}
+
 export async function updateScreeningCall(
   id: string,
   data: Partial<{

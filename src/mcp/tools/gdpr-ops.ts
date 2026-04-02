@@ -148,11 +148,19 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   importeer_vacatures_batch: async (raw) => {
     const { platform } = importeerVacaturesBatchSchema.parse(raw);
-    return importJobsFromActiveScrapers(platform);
+    const result = await importJobsFromActiveScrapers(platform);
+    if (result.jobsNew > 0) {
+      publish("job:batch_imported", { jobsNew: result.jobsNew, platform: platform ?? "all" });
+    }
+    return result;
   },
 
   run_scoring_batch: async () => {
-    return runCandidateScoringBatch();
+    const result = await runCandidateScoringBatch();
+    if (result.matchesCreated > 0) {
+      publish("match:batch_scored", { matchesCreated: result.matchesCreated });
+    }
+    return result;
   },
 
   review_gdpr_retentie: async () => {

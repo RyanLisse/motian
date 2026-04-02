@@ -22,6 +22,7 @@ import {
   deleteMessage,
   getMessageById,
   listMessages,
+  updateMessage,
 } from "../../services/messages";
 
 // ========== Schemas ==========
@@ -106,6 +107,12 @@ const berichtDetailSchema = z.object({
 
 const verwijderBerichtSchema = z.object({
   id: z.string().uuid().describe("UUID van het bericht"),
+});
+
+const updateBerichtSchema = z.object({
+  id: z.string().uuid().describe("UUID van het bericht"),
+  subject: z.string().optional().describe("Nieuw onderwerp (voor e-mail)"),
+  body: z.string().min(1).optional().describe("Nieuwe inhoud van het bericht"),
 });
 
 const stuurBerichtSchema = z.object({
@@ -193,6 +200,11 @@ export const tools = [
     name: "verwijder_bericht",
     description: "Verwijder een bericht permanent.",
     inputSchema: zodToJsonSchema(verwijderBerichtSchema, { $refStrategy: "none" }),
+  },
+  {
+    name: "update_bericht",
+    description: "Werk de inhoud (body) of het onderwerp (subject) van een bericht bij.",
+    inputSchema: zodToJsonSchema(updateBerichtSchema, { $refStrategy: "none" }),
   },
 ];
 
@@ -312,5 +324,15 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     revalidatePath("/berichten");
     publish("message:deleted", { id });
     return { success: true, message: "Bericht verwijderd" };
+  },
+
+  update_bericht: async (raw) => {
+    const { id, ...data } = updateBerichtSchema.parse(raw);
+    if (!data.subject && !data.body) return { error: "Geen velden opgegeven om bij te werken" };
+    const result = await updateMessage(id, data);
+    if (!result) return { error: "Bericht niet gevonden" };
+    revalidatePath("/berichten");
+    publish("message:updated", { id });
+    return result;
   },
 };

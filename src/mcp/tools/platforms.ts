@@ -10,10 +10,12 @@ import {
   completeOnboarding,
   createConfig,
   createPlatformCatalogEntry,
+  getConfigByPlatform,
   getPlatformByBaseUrl,
   getPlatformOnboardingStatus,
   listPlatformCatalog,
   triggerTestRun,
+  updateConfig,
   validateConfig,
 } from "../../services/scrapers";
 
@@ -108,6 +110,11 @@ export const tools = [
   {
     name: "platform_complete_onboarding",
     description: "Markeer een platform onboarding als voltooid.",
+    inputSchema: zodToJsonSchema(platformSchema, { $refStrategy: "none" }),
+  },
+  {
+    name: "verwijder_scraper_config",
+    description: "Deactiveer een platform scraper configuratie (zet isActive op false).",
     inputSchema: zodToJsonSchema(platformSchema, { $refStrategy: "none" }),
   },
 ];
@@ -248,6 +255,20 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     publish("platform:configured", { platform: data.platform });
     return result;
   },
+  verwijder_scraper_config: async (raw) => {
+    const { platform } = platformSchema.parse(raw);
+    const existing = await getConfigByPlatform(platform);
+    if (!existing) return { error: `Geen configuratie gevonden voor platform "${platform}"` };
+    const result = await updateConfig(existing.id, { isActive: false });
+    try {
+      revalidatePath("/databronnen");
+    } catch {
+      /* MCP runs outside request context */
+    }
+    publish("platform:configured", { platform });
+    return { success: true, platform, isActive: result?.isActive ?? false };
+  },
+
   platform_complete_onboarding: async (raw) => {
     const { platform } = platformSchema.parse(raw);
     const status = await getPlatformOnboardingStatus(platform);

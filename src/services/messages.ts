@@ -63,6 +63,19 @@ export async function deleteMessage(id: string): Promise<boolean> {
   return (result.rowCount ?? 0) > 0;
 }
 
+export async function updateMessage(
+  id: string,
+  data: { subject?: string; body?: string },
+): Promise<Message | null> {
+  if (Object.keys(data).length === 0) return null;
+  const [updated] = await db
+    .update(messages)
+    .set(data)
+    .where(and(eq(messages.id, id), isNull(messages.deletedAt)))
+    .returning();
+  return updated ?? null;
+}
+
 export async function createMessage(data: {
   applicationId: string;
   direction: string;

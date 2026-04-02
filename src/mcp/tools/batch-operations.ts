@@ -131,6 +131,9 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       try {
         const matches = await autoMatchCandidateToJobs(candidateId, effectiveTopN);
         const jobMatches = matches.filter((m) => m.jobId === jobId);
+        for (const m of jobMatches) {
+          publish("match:created", { id: m.matchId, candidateId: m.candidateId, jobId: m.jobId });
+        }
         results.push({
           candidateId,
           matchCount: jobMatches.length,
@@ -177,7 +180,7 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
         const result = await updateApplicationStage(applicationId, stage, notes);
         if (result) {
           updated++;
-          publish("application:updated", { id: applicationId, stage });
+          publish("application:stage_changed", { id: applicationId, stage });
         } else {
           failed++;
           errors.push({

@@ -1,10 +1,7 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { getCandidateById } from "../../services/candidates";
 import { findSimilarJobs } from "../../services/embedding";
-import { getJobById } from "../../services/jobs";
-import { extractRequirements } from "../../services/requirement-extraction";
-import { runStructuredMatch } from "../../services/structured-matching";
+import { runStructuredMatchForIds } from "../../services/structured-matching";
 
 // ========== Schemas ==========
 
@@ -65,44 +62,6 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   gestructureerde_match: async (raw) => {
     const { jobId, candidateId } = gestructureerdeMatchSchema.parse(raw);
-
-    const [job, candidate] = await Promise.all([getJobById(jobId), getCandidateById(candidateId)]);
-
-    if (!job) return { error: `Vacature niet gevonden (id: ${jobId})` };
-    if (!candidate) return { error: `Kandidaat niet gevonden (id: ${candidateId})` };
-
-    if (!job.description || job.description.length < 50) {
-      return {
-        error:
-          "Vacatureomschrijving is te kort of ontbreekt. Minimaal 50 tekens vereist voor een gestructureerde matching.",
-      };
-    }
-
-    if (!candidate.resumeRaw) {
-      return {
-        error: `Kandidaat "${candidate.name}" heeft geen CV-tekst. Upload eerst een CV.`,
-      };
-    }
-
-    const requirements = await extractRequirements({
-      title: job.title,
-      description: job.description,
-      requirements: job.requirements as unknown[] | undefined,
-      wishes: job.wishes as unknown[] | undefined,
-      competences: job.competences as unknown[] | undefined,
-    });
-
-    if (requirements.length === 0) {
-      return {
-        error:
-          "Kon geen eisen extraheren uit de vacatureomschrijving. Controleer of de omschrijving voldoende detail bevat.",
-      };
-    }
-
-    return runStructuredMatch({
-      requirements,
-      candidateName: candidate.name,
-      cvText: candidate.resumeRaw,
-    });
+    return runStructuredMatchForIds(jobId, candidateId);
   },
 };

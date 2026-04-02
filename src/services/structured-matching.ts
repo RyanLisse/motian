@@ -6,6 +6,9 @@ import {
   type StructuredMatchOutput,
   structuredMatchOutputSchema,
 } from "../schemas/matching";
+import { getCandidateById } from "./candidates";
+import { getJobById } from "./jobs";
+import { extractRequirements } from "./requirement-extraction";
 
 const SYSTEM_PROMPT = `Je bent een recruitment matching specialist die werkt volgens de Mariënne-methodologie.
 Je evalueert een kandidaat tegen ELKE eis afzonderlijk op basis van het CV.
@@ -43,6 +46,54 @@ Je evalueert een kandidaat tegen ELKE eis afzonderlijk op basis van het CV.
 - enrichmentSuggestions: concrete acties om de match te versterken (bijscholing, certificering, etc.)
 
 Wees eerlijk, specifiek, en consistent. Beoordeel alleen op basis van wat in het CV staat.`;
+
+/**
+ * High-level orchestration: fetch job + candidate, validate, extract requirements, run match.
+ * Both the MCP tool and the AI tool delegate here — neither should contain this logic directly.
+ */
+export async function runStructuredMatchForIds(
+  jobId: string,
+  candidateId: string,
+): Promise<StructuredMatchOutput | { error: string }> {
+  const [job, candidate] = await Promise.all([getJobById(jobId), getCandidateById(candidateId)]);
+
+  if (!job) return { error: `Vacature niet gevonden (id: ${jobId})` };
+  if (!candidate) return { error: `Kandidaat niet gevonden (id: ${candidateId})` };
+
+  if (!job.description || job.description.length < 50) {
+    return {
+      error:
+        "Vacatureomschrijving is te kort of ontbreekt. Minimaal 50 tekens vereist voor een gestructureerde matching.",
+    };
+  }
+
+  if (!candidate.resumeRaw) {
+    return {
+      error: `Kandidaat "${candidate.name}" heeft geen CV-tekst. Upload eerst een CV voordat je een gestructureerde matching uitvoert.`,
+    };
+  }
+
+  const requirements = await extractRequirements({
+    title: job.title,
+    description: job.description,
+    requirements: job.requirements as unknown[] | undefined,
+    wishes: job.wishes as unknown[] | undefined,
+    competences: job.competences as unknown[] | undefined,
+  });
+
+  if (requirements.length === 0) {
+    return {
+      error:
+        "Kon geen eisen extraheren uit de vacatureomschrijving. Controleer of de omschrijving voldoende detail bevat.",
+    };
+  }
+
+  return runStructuredMatch({
+    requirements,
+    candidateName: candidate.name,
+    cvText: candidate.resumeRaw,
+  });
+}
 
 export async function runStructuredMatch(input: {
   requirements: ClassifiedRequirement[];

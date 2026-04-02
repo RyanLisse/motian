@@ -4,6 +4,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { publish } from "../../lib/event-bus";
 import {
   createScreeningCall,
+  deleteScreeningCall,
   getScreeningCall,
   listScreeningCalls,
   updateScreeningCall,
@@ -48,6 +49,10 @@ const updateScreeningCallSchema = z.object({
   endedAt: z.string().optional().describe("Eindtijd van het gesprek (ISO 8601)"),
 });
 
+const verwijderScreeningCallSchema = z.object({
+  id: z.string().uuid().describe("UUID van de screening call"),
+});
+
 // ========== Tool Definitions ==========
 
 export const tools = [
@@ -74,6 +79,11 @@ export const tools = [
       "Werk een screening call bij met status, samenvatting, notities of andere gegevens.",
     inputSchema: zodToJsonSchema(updateScreeningCallSchema, { $refStrategy: "none" }),
   },
+  {
+    name: "verwijder_screening_call",
+    description: "Deactiveer een screening call (zet status op 'cancelled').",
+    inputSchema: zodToJsonSchema(verwijderScreeningCallSchema, { $refStrategy: "none" }),
+  },
 ];
 
 // ========== Handlers ==========
@@ -97,6 +107,15 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     revalidatePath("/screening");
     publish("screening-call:created", { id: (call as { id: string }).id });
     return call;
+  },
+
+  verwijder_screening_call: async (raw) => {
+    const { id } = verwijderScreeningCallSchema.parse(raw);
+    const deleted = await deleteScreeningCall(id);
+    if (!deleted) return { error: "Screening call niet gevonden" };
+    revalidatePath("/screening");
+    publish("screening-call:deleted", { id });
+    return { success: true, message: "Screening call geannuleerd" };
   },
 
   update_screening_call: async (raw) => {

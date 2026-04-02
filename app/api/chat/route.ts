@@ -1,4 +1,10 @@
-import { convertToModelMessages, stepCountIs, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  stepCountIs,
+  type UIMessage,
+} from "ai";
 import { nanoid } from "nanoid";
 import { after } from "next/server";
 import { buildSystemPrompt, getRecruitmentTools } from "@/src/ai/agent";
@@ -84,6 +90,39 @@ export async function POST(req: Request) {
   const parsed = await parseRequestBody(req);
   if (parsed instanceof Response) return parsed;
   const { messages: requestMessages, context: contextData, model: requestModel } = parsed;
+
+  // 2b. Slash command: /help or /hulp
+  const firstMessage = requestMessages.at(-1);
+  const firstMessageText = firstMessage?.role === "user" ? getMessageText(firstMessage) : "";
+  if (/^\/(?:help|hulp)\b/i.test(firstMessageText)) {
+    const helpText = `## Motian AI – Overzicht van mogelijkheden
+
+**Vacatures**
+Zoek vacatures voor Java developer · Analyseer tarief trends · Maak of bewerk een vacature
+
+**Kandidaten**
+Voeg kandidaat toe · Upload CV en match automatisch · Bekijk skills en beschikbaarheid
+
+**Pipeline**
+Toon pipeline overzicht · Plan interview · Werk sollicitatiefases bij
+
+**Data & beheer**
+Start scraper · Toon GDPR retentie status · Exporteer kandidaat- of contactdata
+
+---
+Typ een concrete vraag of kies een suggestie hieronder om te starten.`;
+
+    const textId = nanoid();
+    const stream = createUIMessageStream({
+      execute: ({ writer }) => {
+        writer.write({ type: "text-start", id: textId });
+        writer.write({ type: "text-delta", id: textId, delta: helpText });
+        writer.write({ type: "text-end", id: textId });
+      },
+      generateId: nanoid,
+    });
+    return createUIMessageStreamResponse({ stream });
+  }
 
   // 3. Session context extraction
   const ctx = (contextData ?? undefined) as ChatSessionContext | undefined;
