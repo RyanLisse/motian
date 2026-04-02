@@ -141,6 +141,11 @@ function parseFlextenderHtml(html: string): FlextenderListing[] {
     // Duration from "Duur" field: "6 maanden" → 6
     const durationMonths = parseDurationMonths(fields.Duur);
 
+    const applicationDeadline = parseDutchDate(fields["Einde inschrijfdatum"]);
+    // Mark listings with past deadlines as closed
+    const status =
+      applicationDeadline && applicationDeadline < new Date() ? "closed" : "open";
+
     listings.push({
       title,
       company,
@@ -149,8 +154,9 @@ function parseFlextenderHtml(html: string): FlextenderListing[] {
       description: `${title} — ${company ?? "Flextender"} opdracht`,
       externalId,
       externalUrl,
+      status,
       startDate: parseDutchDate(fields.Start),
-      applicationDeadline: parseDutchDate(fields["Einde inschrijfdatum"]),
+      applicationDeadline,
       contractType: "opdracht" as const,
       countryCode: "NL",
       hoursPerWeek,

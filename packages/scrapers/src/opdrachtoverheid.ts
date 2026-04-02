@@ -9,7 +9,8 @@ import {
 } from "./lib/utils";
 
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
-const MAX_RESULTS = 1000;
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 10;
 
 type OpdrachtoverheidCategory = {
   tender_category_obj?: {
@@ -93,35 +94,44 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
 
   while (attempt <= MAX_RETRIES) {
     try {
-      const res = await fetch(`${API_BASE}/search`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0 (compatible; MotianBot/1.0)",
-        },
-        body: JSON.stringify({
-          single: false,
-          limit: MAX_RESULTS,
-          offset: 0,
-          disjunction: 0,
-          user_coordinates: {},
-          // Fetch both open and closed tenders so tender_active can be persisted.
-          filters: {
-            and_filters: [],
-            or_filters: [],
-            or_disjunction: 0,
+      // Paginate through the API to avoid the 1000-result hard cap
+      const allTenders: OpdrachtoverheidTender[] = [];
+
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const res = await fetch(`${API_BASE}/search`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; MotianBot/1.0)",
           },
-          order_by: [{ field: "tender_first_seen", direction: "desc" }],
-        }),
-      });
+          body: JSON.stringify({
+            single: false,
+            limit: PAGE_SIZE,
+            offset: page * PAGE_SIZE,
+            disjunction: 0,
+            user_coordinates: {},
+            filters: {
+              and_filters: [],
+              or_filters: [],
+              or_disjunction: 0,
+            },
+            order_by: [{ field: "tender_first_seen", direction: "desc" }],
+          }),
+        });
 
-      if (!res.ok) {
-        const errorBody = await res.text().catch(() => "");
-        throw new Error(`API ${res.status}: ${res.statusText} — ${errorBody.slice(0, 500)}`);
+        if (!res.ok) {
+          const errorBody = await res.text().catch(() => "");
+          throw new Error(`API ${res.status}: ${res.statusText} — ${errorBody.slice(0, 500)}`);
+        }
+
+        const data = (await res.json()) as OpdrachtoverheidApiResponse;
+        const tenders = data.negometrix_tenders ?? [];
+        allTenders.push(...tenders);
+
+        console.log(`Opdrachtoverheid page ${page}: ${tenders.length} (total: ${allTenders.length})`);
+
+        if (tenders.length < PAGE_SIZE) break;
       }
-
-      const data = (await res.json()) as OpdrachtoverheidApiResponse;
-      const allTenders = data.negometrix_tenders ?? [];
 
       console.log(`Opdrachtoverheid API: ${allTenders.length} opdrachten opgehaald`);
 
