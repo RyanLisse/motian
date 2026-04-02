@@ -63,12 +63,28 @@ function resolveMipublicOptions(config: PlatformRuntimeConfig): MipublicOptions 
   };
 }
 
+const SITEMAP_MAX_AGE_DAYS = 90;
+
 function extractSitemapUrls(xml: string): string[] {
   const urls = new Set<string>();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - SITEMAP_MAX_AGE_DAYS);
 
-  for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/gi)) {
-    const value = match[1]?.trim();
+  // Parse <url> blocks to check <lastmod> dates when available
+  const urlBlocks = xml.match(/<url>[\s\S]*?<\/url>/gi) ?? [];
+  for (const block of urlBlocks) {
+    const locMatch = block.match(/<loc>([^<]+)<\/loc>/i);
+    if (!locMatch) continue;
+
+    const value = locMatch[1]?.trim();
     if (!value) continue;
+
+    // Skip stale entries based on <lastmod>
+    const lastmodMatch = block.match(/<lastmod>([^<]+)<\/lastmod>/i);
+    if (lastmodMatch) {
+      const lastmod = new Date(lastmodMatch[1].trim());
+      if (!Number.isNaN(lastmod.getTime()) && lastmod < cutoff) continue;
+    }
 
     try {
       const parsed = new URL(value);
@@ -77,6 +93,22 @@ function extractSitemapUrls(xml: string): string[] {
       }
     } catch {
       continue;
+    }
+  }
+
+  // Fallback: if no <url> blocks found, parse bare <loc> tags (simpler sitemaps)
+  if (urls.size === 0) {
+    for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/gi)) {
+      const value = match[1]?.trim();
+      if (!value) continue;
+      try {
+        const parsed = new URL(value);
+        if (parsed.hostname === "mipublic.nl" && /^\/vacature\/[^/]+\/?$/.test(parsed.pathname)) {
+          urls.add(parsed.toString());
+        }
+      } catch {
+        continue;
+      }
     }
   }
 
@@ -115,7 +147,27 @@ async function mapWithConcurrency<TInput, TOutput>(
  * Extracts a minimal listing from <title> or <h1> tags so the vacancy is not
  * silently dropped.
  */
+/** Signals in the HTML that indicate the vacancy page is expired/archived. */
+const EXPIRED_PAGE_SIGNALS = [
+  "niet meer beschikbaar",
+  "niet meer actief",
+  "vacature is verlopen",
+  "vacature is gesloten",
+  "pagina niet gevonden",
+  "page not found",
+  "deze vacature bestaat niet",
+  "404",
+];
+
+function isExpiredMipublicPage(html: string): boolean {
+  const lower = html.toLowerCase();
+  return EXPIRED_PAGE_SIGNALS.some((signal) => lower.includes(signal));
+}
+
 function parseMipublicHtmlFallback(html: string, canonicalUrl: string): RawScrapedListing | null {
+  // Don't create listings from expired/archived pages
+  if (isExpiredMipublicPage(html)) return null;
+
   const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
 

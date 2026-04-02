@@ -35,9 +35,7 @@ async function SidebarContent() {
   // The client fetches more on scroll/filter via the /api/vacatures/zoeken endpoint.
   const SIDEBAR_INITIAL_LIMIT = 20;
 
-  const metadata = await getSidebarMetadata().then(
-    (cached) => cached ?? refreshSidebarMetadata(),
-  );
+  const metadata = await getSidebarMetadata().then((cached) => cached ?? refreshSidebarMetadata());
   // Pass knownTotal from precomputed metadata to skip the COUNT(*) query
   const { data: sidebarJobs } = await listJobsPage({
     limit: SIDEBAR_INITIAL_LIMIT,

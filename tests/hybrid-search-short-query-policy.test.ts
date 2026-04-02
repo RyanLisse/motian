@@ -19,10 +19,7 @@ describe("hybrid search short-query policy", () => {
   });
 
   it("enables vector search for two-word queries (Dutch synonym matching)", () => {
-    const policy = getHybridSearchPolicy(
-      { query: "project manager", limit: 20, offset: 0 },
-      {},
-    );
+    const policy = getHybridSearchPolicy({ query: "project manager", limit: 20, offset: 0 }, {});
 
     expect(policy.shouldRunVectorSearch).toBe(true);
     expect(policy.vectorSearchSkippedReason).toBeNull();
@@ -49,25 +46,16 @@ describe("hybrid search short-query policy", () => {
   });
 
   it("normalizes multi-space and tab queries correctly", () => {
-    const policy = getHybridSearchPolicy(
-      { query: "  java  ", limit: 20, offset: 0 },
-      {},
-    );
+    const policy = getHybridSearchPolicy({ query: "  java  ", limit: 20, offset: 0 }, {});
     expect(policy.shouldRunVectorSearch).toBe(false);
 
-    const tabPolicy = getHybridSearchPolicy(
-      { query: "java\tdeveloper", limit: 20, offset: 0 },
-      {},
-    );
+    const tabPolicy = getHybridSearchPolicy({ query: "java\tdeveloper", limit: 20, offset: 0 }, {});
     expect(tabPolicy.shouldRunVectorSearch).toBe(true); // 2 words after normalization
   });
 
   it("handles hyphenated terms as single words", () => {
     // "ICT-beheerder" is 1 word → keyword only
-    const policy = getHybridSearchPolicy(
-      { query: "ICT-beheerder", limit: 20, offset: 0 },
-      {},
-    );
+    const policy = getHybridSearchPolicy({ query: "ICT-beheerder", limit: 20, offset: 0 }, {});
     expect(policy.shouldRunVectorSearch).toBe(false);
 
     // "full-stack developer" is 2 words → hybrid
