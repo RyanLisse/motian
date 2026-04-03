@@ -1,15 +1,15 @@
 import { tool } from "ai";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { publish } from "@/src/lib/event-bus";
 import {
-  createApplication,
-  deleteApplication,
   getApplicationById,
   getApplicationStats,
   listApplications,
-  updateApplicationStage,
 } from "@/src/services/applications";
+import {
+  createApplicationWithEffects,
+  deleteApplicationWithEffects,
+  updateApplicationStageWithEffects,
+} from "@/src/services/pipeline-effects";
 
 const VALID_STAGES = ["new", "screening", "interview", "offer", "hired", "rejected"] as const;
 
@@ -63,20 +63,13 @@ export const maakSollicitatieAan = tool({
     notes: z.string().optional().describe("Notities bij de sollicitatie"),
   }),
   execute: async (params) => {
-    const application = await createApplication({
+    return createApplicationWithEffects({
       jobId: params.jobId,
       candidateId: params.candidateId,
       matchId: params.matchId,
       source: params.source,
       notes: params.notes,
     });
-    revalidatePath("/pipeline");
-    publish("application:created", {
-      id: application.id,
-      jobId: params.jobId,
-      candidateId: params.candidateId,
-    });
-    return application;
   },
 });
 
@@ -91,10 +84,8 @@ export const updateSollicitatieFase = tool({
     notes: z.string().optional().describe("Notities bij de fase-wijziging"),
   }),
   execute: async ({ id, stage, notes }) => {
-    const application = await updateApplicationStage(id, stage, notes);
+    const application = await updateApplicationStageWithEffects(id, stage, notes);
     if (!application) return { error: "Sollicitatie niet gevonden" };
-    revalidatePath("/pipeline");
-    publish("application:stage_changed", { id, stage });
     return application;
   },
 });
@@ -106,10 +97,8 @@ export const verwijderSollicitatie = tool({
     id: z.string().uuid().describe("UUID van de sollicitatie"),
   }),
   execute: async ({ id }) => {
-    const success = await deleteApplication(id);
+    const success = await deleteApplicationWithEffects(id);
     if (!success) return { error: "Sollicitatie niet gevonden of kon niet verwijderd worden" };
-    revalidatePath("/pipeline");
-    publish("application:deleted", { id });
     return { success: true, message: "Sollicitatie succesvol verwijderd" };
   },
 });

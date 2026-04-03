@@ -1,13 +1,10 @@
 import { tool } from "ai";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { publish } from "@/src/lib/event-bus";
+import { getMessageById, listMessages } from "@/src/services/messages";
 import {
-  createMessage,
-  deleteMessage,
-  getMessageById,
-  listMessages,
-} from "@/src/services/messages";
+  createMessageWithEffects,
+  deleteMessageWithEffects,
+} from "@/src/services/pipeline-effects";
 
 export const zoekBerichten = tool({
   description:
@@ -71,7 +68,7 @@ export const stuurBericht = tool({
     body: z.string().describe("Inhoud van het bericht"),
   }),
   execute: async (params) => {
-    const message = await createMessage({
+    const message = await createMessageWithEffects({
       applicationId: params.applicationId,
       direction: params.direction,
       channel: params.channel,
@@ -79,12 +76,6 @@ export const stuurBericht = tool({
       body: params.body,
     });
     if (!message) return { error: "Bericht kon niet worden aangemaakt" };
-    revalidatePath("/messages");
-    publish("message:created", {
-      id: message.id,
-      applicationId: params.applicationId,
-      direction: params.direction,
-    });
     return message;
   },
 });
@@ -96,10 +87,8 @@ export const verwijderBericht = tool({
     id: z.string().uuid().describe("UUID van het bericht dat verwijderd moet worden"),
   }),
   execute: async ({ id }) => {
-    const success = await deleteMessage(id);
+    const success = await deleteMessageWithEffects(id);
     if (!success) return { error: "Bericht niet gevonden of kon niet worden verwijderd" };
-    revalidatePath("/messages");
-    publish("message:deleted", { id });
     return { success: true, message: "Bericht succesvol verwijderd" };
   },
 });

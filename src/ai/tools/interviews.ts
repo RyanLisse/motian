@@ -1,15 +1,11 @@
 import { tool } from "ai";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { publish } from "@/src/lib/event-bus";
+import { getInterviewById, getUpcomingInterviews, listInterviews } from "@/src/services/interviews";
 import {
-  createInterview,
-  deleteInterview,
-  getInterviewById,
-  getUpcomingInterviews,
-  listInterviews,
-  updateInterview,
-} from "@/src/services/interviews";
+  createInterviewWithEffects,
+  deleteInterviewWithEffects,
+  updateInterviewWithEffects,
+} from "@/src/services/pipeline-effects";
 
 const VALID_STATUSES = ["scheduled", "completed", "cancelled"] as const;
 const VALID_TYPES = ["phone", "video", "onsite", "technical"] as const;
@@ -73,7 +69,7 @@ export const planInterview = tool({
     location: z.string().optional().describe("Locatie of videolink voor het gesprek"),
   }),
   execute: async ({ applicationId, scheduledAt, type, interviewer, duration, location }) => {
-    const interview = await createInterview({
+    return createInterviewWithEffects({
       applicationId,
       scheduledAt: new Date(scheduledAt),
       type,
@@ -81,10 +77,6 @@ export const planInterview = tool({
       duration,
       location,
     });
-    revalidatePath("/interviews");
-    revalidatePath("/pipeline");
-    publish("interview:scheduled", { id: interview.id, applicationId, type });
-    return interview;
   },
 });
 
@@ -100,11 +92,8 @@ export const updateInterviewTool = tool({
     rating: z.number().min(1).max(5).optional().describe("Beoordeling van de kandidaat (1-5)"),
   }),
   execute: async ({ id, status, feedback, rating }) => {
-    const result = await updateInterview(id, { status, feedback, rating });
-    if (result.emptyUpdate) return { error: "Geen velden opgegeven om bij te werken" };
-    if (!result.interview) return { error: "Interview niet gevonden of ongeldige waarden" };
-    revalidatePath("/interviews");
-    publish("interview:updated", { id, status });
+    const result = await updateInterviewWithEffects(id, { status, feedback, rating });
+    if ("error" in result) return { error: result.error };
     return result.interview;
   },
 });
@@ -115,10 +104,8 @@ export const verwijderInterview = tool({
     id: z.string().uuid().describe("UUID van het interview om te verwijderen"),
   }),
   execute: async ({ id }) => {
-    const deleted = await deleteInterview(id);
+    const deleted = await deleteInterviewWithEffects(id);
     if (!deleted) return { error: "Interview niet gevonden of kon niet verwijderd worden" };
-    revalidatePath("/interviews");
-    publish("interview:deleted", { id });
     return { success: true, message: "Interview succesvol verwijderd" };
   },
 });

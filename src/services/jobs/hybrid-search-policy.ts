@@ -5,7 +5,7 @@ export const HYBRID_SEARCH_FULL_CANDIDATE_HYDRATION_ENV = "HYBRID_SEARCH_FULL_CA
 export const HYBRID_SEARCH_FORCE_VECTOR_ENV = "HYBRID_SEARCH_FORCE_VECTOR";
 
 const HYBRID_SEARCH_RRF_K = 60;
-const HYBRID_SEARCH_VECTOR_MIN_SCORE = 0.3;
+export const HYBRID_SEARCH_VECTOR_MIN_SCORE_DEFAULT = 0.3;
 const HYBRID_SEARCH_FETCH_MULTIPLIER = 3;
 const HYBRID_SEARCH_FETCH_CAP = 100;
 // Single-word queries only — "project manager" (2 words) benefits from
@@ -49,7 +49,7 @@ function normalizeQueryForPolicy(query: string): string {
  * - Hydrate one representative row per deduped vacancy candidate after RRF.
  */
 export function getHybridSearchPolicy(
-  opts: { query: string; limit?: number; offset?: number },
+  opts: { query: string; limit?: number; offset?: number; vectorMinScore?: number },
   env: EnvMap = process.env,
 ): HybridSearchPolicy {
   const limit = Math.min(opts.limit ?? 20, 100);
@@ -78,7 +78,7 @@ export function getHybridSearchPolicy(
     version: HYBRID_SEARCH_POLICY_VERSION,
     fetchSize,
     k: HYBRID_SEARCH_RRF_K,
-    vectorMinScore: HYBRID_SEARCH_VECTOR_MIN_SCORE,
+    vectorMinScore: opts.vectorMinScore ?? HYBRID_SEARCH_VECTOR_MIN_SCORE_DEFAULT,
     hydrationMode,
     shouldRunVectorSearch,
     vectorSearchSkippedReason: shouldRunVectorSearch ? null : "short-query-text-only",

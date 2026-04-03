@@ -1,31 +1,12 @@
 import { tool } from "ai";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { publish } from "@/src/lib/event-bus";
 import {
-  createMatch,
-  deleteMatch,
-  getMatchById,
-  listMatches,
-  updateMatchStatus,
-} from "@/src/services/matches";
-
-function revalidateMatchViews(
-  match: { jobId?: string | null; candidateId?: string | null } | null,
-) {
-  revalidatePath("/kandidaten");
-  revalidatePath("/vacatures");
-  revalidatePath("/pipeline");
-  revalidatePath("/overzicht");
-
-  if (match?.candidateId) {
-    revalidatePath(`/kandidaten/${match.candidateId}`);
-  }
-
-  if (match?.jobId) {
-    revalidatePath(`/vacatures/${match.jobId}`);
-  }
-}
+  approveMatchWithEffects,
+  createMatchWithEffects,
+  deleteMatchWithEffects,
+  rejectMatchWithEffects,
+} from "@/src/services/match-effects";
+import { getMatchById, listMatches } from "@/src/services/matches";
 
 export const zoekMatches = tool({
   description:
@@ -68,10 +49,8 @@ export const keurMatchGoed = tool({
     reviewedBy: z.string().optional().describe("Naam of ID van de beoordelaar"),
   }),
   execute: async ({ id, reviewedBy }) => {
-    const match = await updateMatchStatus(id, "approved", reviewedBy);
+    const match = await approveMatchWithEffects(id, reviewedBy);
     if (!match) return { error: "Match niet gevonden" };
-    revalidateMatchViews(match);
-    publish("match:updated", { id, status: "approved" });
     return match;
   },
 });
@@ -84,10 +63,8 @@ export const wijsMatchAf = tool({
     reviewedBy: z.string().optional().describe("Naam of ID van de beoordelaar"),
   }),
   execute: async ({ id, reviewedBy }) => {
-    const match = await updateMatchStatus(id, "rejected", reviewedBy);
+    const match = await rejectMatchWithEffects(id, reviewedBy);
     if (!match) return { error: "Match niet gevonden" };
-    revalidateMatchViews(match);
-    publish("match:updated", { id, status: "rejected" });
     return match;
   },
 });
@@ -107,7 +84,7 @@ export const maakMatchAan = tool({
   }),
   execute: async ({ jobId, candidateId, matchScore, reasoning, recommendation }) => {
     try {
-      const match = await createMatch({
+      const match = await createMatchWithEffects({
         jobId,
         candidateId,
         matchScore,
@@ -115,8 +92,6 @@ export const maakMatchAan = tool({
         recommendation,
         model: "manual-agent",
       });
-      revalidateMatchViews(match);
-      publish("match:created", { id: match.id, jobId, candidateId, matchScore });
       return match;
     } catch (err) {
       const msg = String(err);
@@ -137,10 +112,8 @@ export const verwijderMatch = tool({
   execute: async ({ id }) => {
     const existing = await getMatchById(id);
     if (!existing) return { error: "Match niet gevonden of kon niet worden verwijderd" };
-    const success = await deleteMatch(id);
-    if (!success) return { error: "Match niet gevonden of kon niet worden verwijderd" };
-    revalidateMatchViews(existing);
-    publish("match:deleted", { id });
+    const deleted = await deleteMatchWithEffects(id, existing);
+    if (!deleted) return { error: "Match niet gevonden of kon niet worden verwijderd" };
     return { success: true, message: "Match succesvol verwijderd" };
   },
 });

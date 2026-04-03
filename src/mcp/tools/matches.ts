@@ -1,14 +1,12 @@
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { publish } from "../../lib/event-bus";
 import {
-  createMatch,
-  deleteMatch,
-  getMatchById,
-  listMatches,
-  updateMatchStatus,
-} from "../../services/matches";
+  approveMatchWithEffects,
+  createMatchWithEffects,
+  deleteMatchWithEffects,
+  rejectMatchWithEffects,
+} from "../../services/match-effects";
+import { getMatchById, listMatches } from "../../services/matches";
 
 // ========== Schemas ==========
 
@@ -110,48 +108,28 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   maak_match_aan: async (raw) => {
     const data = maakMatchSchema.parse(raw);
-    const match = await createMatch(data);
-    revalidatePath("/kandidaten");
-    revalidatePath("/vacatures");
-    revalidatePath("/pipeline");
-    revalidatePath("/overzicht");
-    publish("match:created", { id: (match as { id: string }).id });
-    return match;
+    return createMatchWithEffects(data);
   },
 
   keur_match_goed: async (raw) => {
     const { id, reviewedBy } = keurMatchGoedSchema.parse(raw);
-    const result = await updateMatchStatus(id, "approved", reviewedBy);
+    const result = await approveMatchWithEffects(id, reviewedBy);
     if (!result) return { error: "Match niet gevonden" };
-    revalidatePath("/kandidaten");
-    revalidatePath("/vacatures");
-    revalidatePath("/pipeline");
-    revalidatePath("/overzicht");
-    publish("match:updated", { id, status: "approved" });
     return result;
   },
 
   wijs_match_af: async (raw) => {
     const { id, reviewedBy } = wijsMatchAfSchema.parse(raw);
-    const result = await updateMatchStatus(id, "rejected", reviewedBy);
+    const result = await rejectMatchWithEffects(id, reviewedBy);
     if (!result) return { error: "Match niet gevonden" };
-    revalidatePath("/kandidaten");
-    revalidatePath("/vacatures");
-    revalidatePath("/pipeline");
-    revalidatePath("/overzicht");
-    publish("match:updated", { id, status: "rejected" });
     return result;
   },
 
   verwijder_match: async (raw) => {
     const { id } = verwijderMatchSchema.parse(raw);
-    const deleted = await deleteMatch(id);
+    const existing = await getMatchById(id);
+    const deleted = await deleteMatchWithEffects(id, existing);
     if (!deleted) return { error: "Match niet gevonden" };
-    revalidatePath("/kandidaten");
-    revalidatePath("/vacatures");
-    revalidatePath("/pipeline");
-    revalidatePath("/overzicht");
-    publish("match:deleted", { id });
     return { success: true, message: "Match verwijderd" };
   },
 };

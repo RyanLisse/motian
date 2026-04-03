@@ -1,17 +1,14 @@
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { publish } from "../../lib/event-bus";
-import { autoMatchJobToCandidates } from "../../services/auto-matching";
 import { withJobCanonicalSkills, withJobsCanonicalSkills } from "../../services/esco";
-import type { ListJobsSortBy } from "../../services/jobs";
 import {
-  createJob,
-  deleteJob,
-  getJobById,
-  searchJobsUnified,
-  updateJob,
-} from "../../services/jobs";
+  autoMatchJobWithEffects,
+  createJobWithEffects,
+  deleteJobWithEffects,
+  updateJobWithEffects,
+} from "../../services/job-effects";
+import type { ListJobsSortBy } from "../../services/jobs";
+import { getJobById, searchJobsUnified } from "../../services/jobs";
 
 // ========== Schemas ==========
 
@@ -164,13 +161,7 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   maak_vacature_aan: async (raw) => {
     const data = maakVacatureAanSchema.parse(raw);
-    const result = await createJob({
-      ...data,
-      externalId: data.externalId || `handmatig-${crypto.randomUUID()}`,
-    });
-    revalidatePath("/vacatures");
-    revalidatePath("/overzicht");
-    publish("job:created", { id: result.id });
+    const result = await createJobWithEffects(data);
     return withJobCanonicalSkills(result);
   },
 
@@ -183,26 +174,20 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
 
   update_vacature: async (raw) => {
     const { id, ...data } = updateVacatureSchema.parse(raw);
-    const result = await updateJob(id, data);
+    const result = await updateJobWithEffects(id, data);
     if (!result) return { error: "Vacature niet gevonden" };
-    revalidatePath("/vacatures");
-    revalidatePath(`/vacatures/${id}`);
-    publish("job:updated", { id });
     return withJobCanonicalSkills(result);
   },
 
   verwijder_vacature: async (raw) => {
     const { id } = verwijderVacatureSchema.parse(raw);
-    const deleted = await deleteJob(id);
+    const deleted = await deleteJobWithEffects(id);
     if (!deleted) return { error: "Vacature niet gevonden of al gearchiveerd" };
-    revalidatePath("/vacatures");
-    revalidatePath("/overzicht");
-    publish("job:deleted", { id });
     return { success: true, message: "Vacature gearchiveerd" };
   },
 
   auto_match_vacature: async (raw) => {
     const { jobId } = autoMatchVacatureSchema.parse(raw);
-    return autoMatchJobToCandidates(jobId);
+    return autoMatchJobWithEffects(jobId);
   },
 };

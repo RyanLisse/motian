@@ -1,5 +1,7 @@
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { publish } from "../../lib/event-bus";
 import { deleteSession, getSession, listSessions } from "../../services/chat-sessions";
 
 // ========== Schemas ==========
@@ -72,6 +74,8 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const { sessionId } = verwijderChatSessieSchema.parse(raw);
     const deleted = await deleteSession(sessionId);
     if (!deleted) return { error: "Chat sessie niet gevonden of al verwijderd" };
+    revalidatePath("/chat");
+    publish("chat_session:deleted", { id: sessionId });
     return { success: true, message: "Chat sessie verwijderd" };
   },
 };

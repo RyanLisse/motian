@@ -26,6 +26,7 @@ import { type JudgeVerdict, judgeMatch } from "./match-judge";
 import { createMatch, getMatchByJobAndCandidate } from "./matches";
 import { extractRequirements } from "./requirement-extraction";
 import { computeMatchScore } from "./scoring";
+import { getAllSettings } from "./settings";
 import { runStructuredMatch } from "./structured-matching";
 
 // ========== Config ==========
@@ -124,10 +125,11 @@ async function upsertMatch(
 async function runAutoMatchPipeline(
   pairs: Array<{ job: Job; candidate: Candidate; score: number; reasoning: string; model: string }>,
   topN: number = DEFAULT_TOP_N,
+  minScore: number = MIN_SCORE,
 ): Promise<AutoMatchResult[]> {
   const top = pairs
     .sort((a, b) => b.score - a.score)
-    .filter((p) => p.score >= MIN_SCORE)
+    .filter((p) => p.score >= minScore)
     .slice(0, topN);
 
   if (top.length === 0) return [];
@@ -207,8 +209,11 @@ async function runAutoMatchPipeline(
  */
 export async function autoMatchCandidateToJobs(
   candidateId: string,
-  topN: number = DEFAULT_TOP_N,
+  topN?: number,
 ): Promise<AutoMatchResult[]> {
+  const settings = await getAllSettings();
+  const resolvedTopN = topN ?? settings.autoMatchTopN ?? DEFAULT_TOP_N;
+  const resolvedMinScore = settings.autoMatchMinScore ?? MIN_SCORE;
   const candidate = await getCandidateById(candidateId);
   if (!candidate) throw new Error("Kandidaat niet gevonden");
   const freshCandidate = candidate;
@@ -244,7 +249,7 @@ export async function autoMatchCandidateToJobs(
           };
         });
 
-        return runAutoMatchPipeline(pairs, topN);
+        return runAutoMatchPipeline(pairs, resolvedTopN, resolvedMinScore);
       }
     } catch (err) {
       console.warn("[Auto-Match] Semantic pre-filter failed, falling back to rule-based:", err);
@@ -282,7 +287,7 @@ export async function autoMatchCandidateToJobs(
     }),
   }));
 
-  return runAutoMatchPipeline(pairs, topN);
+  return runAutoMatchPipeline(pairs, resolvedTopN, resolvedMinScore);
 }
 
 // ========== Job → Candidates ==========
@@ -292,8 +297,11 @@ export async function autoMatchCandidateToJobs(
  */
 export async function autoMatchJobToCandidates(
   jobId: string,
-  topN: number = DEFAULT_TOP_N,
+  topN?: number,
 ): Promise<AutoMatchResult[]> {
+  const settings = await getAllSettings();
+  const resolvedTopN = topN ?? settings.autoMatchTopN ?? DEFAULT_TOP_N;
+  const resolvedMinScore = settings.autoMatchMinScore ?? MIN_SCORE;
   const job = await getJobById(jobId);
   if (!job) throw new Error("Opdracht niet gevonden");
 
@@ -328,7 +336,7 @@ export async function autoMatchJobToCandidates(
         };
       });
 
-      return runAutoMatchPipeline(pairs, topN);
+      return runAutoMatchPipeline(pairs, resolvedTopN, resolvedMinScore);
     }
   } catch (err) {
     console.warn(
@@ -367,5 +375,5 @@ export async function autoMatchJobToCandidates(
     }),
   }));
 
-  return runAutoMatchPipeline(pairs, topN);
+  return runAutoMatchPipeline(pairs, resolvedTopN, resolvedMinScore);
 }
