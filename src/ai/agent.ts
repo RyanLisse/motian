@@ -1,5 +1,5 @@
-import { applications, db, isNull, sql } from "@/src/db";
 import type { ToolResultCache } from "@/src/lib/tool-result-cache";
+import { getApplicationStats } from "@/src/services/applications";
 import { HYBRID_BLEND, SCORING_WEIGHTS } from "@/src/services/scoring";
 import { getAllSettings } from "@/src/services/settings";
 import { getWorkspaceSummary } from "@/src/services/workspace";
@@ -95,6 +95,10 @@ const canvasTools = {
   readCanvasState: tools.readCanvasState,
 };
 
+const interviewPrepTools = {
+  genereerInterviewPrep: tools.genereerInterviewPrep,
+};
+
 const gdprTools = {
   exporteerKandidaatData: tools.exporteerKandidaatData,
   wisKandidaatData: tools.wisKandidaatData,
@@ -112,6 +116,7 @@ export const recruitmentTools = {
   ...berichtTools,
   ...gdprTools,
   ...canvasTools,
+  ...interviewPrepTools,
 };
 
 function isOpdrachtContext(context?: AgentContext) {
@@ -138,6 +143,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
       "Sollicitaties bekijken en pipeline-fases bijwerken",
       "Data analyseren (tarieven, platforms, deadlines)",
       "Semantisch zoeken naar vacatures op basis van beschrijving of profiel (vector embeddings)",
+      "Interviewvoorbereiding opstellen met screeningvragen, scorecriteria en recruiter-notes (genereerInterviewPrep)",
       "Scrapers en scoring-batches starten voor opdrachten",
       "Platform onboarding beheren: catalogus, credentials, config, validatie, implementatie, monitoring en smoke imports",
       "Nieuwe platformen automatisch toevoegen: URL analyseren → scraping strategie bepalen → volledig inrichten (platformAutoSetup)",
@@ -151,6 +157,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
       "Notities toevoegen aan kandidaatprofielen",
       "Kandidaten zoeken op vaardigheden, rol, naam of locatie",
       "Kandidaten en opdrachten matchen, inclusief structured matching",
+      "Interviewvoorbereiding opstellen met screeningvragen, scorecriteria en recruiter-notes (genereerInterviewPrep)",
       "Sollicitaties, interviews en berichten rondom kandidaten beheren",
       "GDPR-acties uitvoeren voor kandidaten en contactgegevens",
     ];
@@ -168,6 +175,7 @@ function getCapabilityLines(context?: AgentContext): string[] {
     "Sollicitaties aanmaken en door de pipeline verplaatsen",
     "Interviews plannen en bijwerken",
     "Berichten versturen en bekijken",
+    "Interviewvoorbereiding opstellen met screeningvragen, scorecriteria en recruiter-notes (genereerInterviewPrep)",
     "Data analyseren (tarieven, platforms, deadlines)",
     "Scrapers starten voor nieuwe opdrachten",
     "Batch import draaien over actieve scrapers (importeerOpdrachtenBatch)",
@@ -275,6 +283,7 @@ export function getRecruitmentTools(context?: AgentContext, cache?: ToolResultCa
       ...platformTools,
       ...matchTools,
       ...sollicitatieTools,
+      ...interviewPrepTools,
     } as typeof recruitmentTools;
   } else if (isKandidaatContext(context)) {
     selected = {
@@ -284,6 +293,7 @@ export function getRecruitmentTools(context?: AgentContext, cache?: ToolResultCa
       ...interviewTools,
       ...berichtTools,
       ...gdprTools,
+      ...interviewPrepTools,
     } as typeof recruitmentTools;
   } else {
     selected = recruitmentTools;
@@ -349,14 +359,7 @@ async function getWorkspaceContext(): Promise<{
   // Fetch settings and pipeline state in parallel, independent of the main summary
   const [settingsResult, pipelineResult] = await Promise.allSettled([
     getAllSettings(),
-    db
-      .select({
-        stage: applications.stage,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(applications)
-      .where(isNull(applications.deletedAt))
-      .groupBy(applications.stage),
+    getApplicationStats(),
   ]);
 
   let settingsText = "";
@@ -367,10 +370,7 @@ async function getWorkspaceContext(): Promise<{
 
   let pipelineText = "";
   if (pipelineResult.status === "fulfilled") {
-    const byStage: Record<string, number> = {};
-    for (const row of pipelineResult.value) {
-      byStage[row.stage] = row.count;
-    }
+    const byStage = pipelineResult.value.byStage;
     const stageLabels: [string, string][] = [
       ["new", "nieuw"],
       ["screening", "screening"],
@@ -467,6 +467,13 @@ Matching configuratie: top ${workspace.settings?.autoMatchTopN ?? process.env.AU
 Zoektips: queryOpdrachten zoekt op losse woorden in de titel. Gebruik korte termen (bijv. "jurist" i.p.v. "juridische functies"). Voor semantisch zoeken gebruik semantischZoeken met een beschrijving of profiel, of matchKandidaten voor kandidaat-vacature matching.
 
 Tarief-vragen: Voor "hoogste tarief" of "duurste vacature" gebruik queryOpdrachten met sortBy="tarief_hoog" en limit=5 (ZONDER q). Voor tarief-statistieken gebruik analyseData met analysis="top_tarieven" of "avg_rates". Gebruik NOOIT rateMin/rateMax filters als de gebruiker alleen wil weten wat het hoogste/laagste tarief is.
+
+Voor requests om screeningvragen, interviewscorecards, intakebriefings of interviewvoorbereiding te maken:
+- stel eerst 3-5 verduidelijkende vragen voordat je een prep pakket genereert
+- gebruik pas daarna genereerInterviewPrep
+- als de tool status "needs_clarification" teruggeeft, stel precies die open punten eerst aan de gebruiker
+- gebruik AI alleen voor voorbereiding, vraagontwerp, samenvatting en aanbevelingen
+- laat AI nooit de definitieve hiring-beslissing of eindbeoordeling nemen
 ${workspace.text}`;
 
   // User context (entity references extracted from recent messages)

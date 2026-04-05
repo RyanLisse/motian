@@ -12,6 +12,7 @@ export {
   wisKandidaatData,
 } from "./gdpr";
 export { getOpdrachtDetail } from "./get-opdracht-detail";
+export { genereerInterviewPrep } from "./interview-prep";
 // Interview tools
 export {
   getInterviewDetail,
