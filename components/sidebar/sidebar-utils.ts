@@ -124,6 +124,7 @@ export async function searchJobs({
   sort,
   page,
   limit,
+  onlyShortlist,
   signal,
 }: SearchJobsParams & { signal?: AbortSignal }): Promise<SearchResponse> {
   const params = new URLSearchParams();
@@ -151,6 +152,7 @@ export async function searchJobs({
   if (sort && sort !== "nieuwste") params.set("sort", sort);
   if (page > 1) params.set("pagina", String(page));
   if (limit !== DEFAULT_OPDRACHTEN_LIMIT) params.set("limit", String(limit));
+  if (onlyShortlist) params.set("alleenShortlist", "1");
 
   const res = await fetch(`/api/vacatures/zoeken?${params.toString()}`, {
     signal,

@@ -1,5 +1,5 @@
 import { and, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from "../../db";
-import { jobSkills, jobs } from "../../db/schema";
+import { applications, jobSkills, jobs } from "../../db/schema";
 import {
   getHoursRangeForBucket,
   getProvinceAnchor,
@@ -36,6 +36,8 @@ export type SharedJobFilterOptions = {
   minHoursPerWeek?: number;
   maxHoursPerWeek?: number;
   radiusKm?: number;
+  /** Vacatures with at least one non-rejected sollicitatie (active pipeline). */
+  onlyWithActivePipeline?: boolean;
 };
 
 export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
@@ -132,6 +134,17 @@ export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
       if (hoursRange.min != null) conditions.push(sql`${rangeEnd} >= ${hoursRange.min}`);
       if (hoursRange.max != null) conditions.push(sql`${rangeStart} <= ${hoursRange.max}`);
     }
+  }
+
+  if (opts.onlyWithActivePipeline) {
+    conditions.push(sql`
+      exists (
+        select 1 from ${applications}
+        where ${applications.jobId} = ${jobs.id}
+          and ${applications.deletedAt} is null
+          and ${applications.stage} <> 'rejected'
+      )
+    `);
   }
 
   if (opts.radiusKm != null && opts.radiusKm > 0 && opts.province) {

@@ -62,6 +62,7 @@ export type SearchQueryKeyPayload = {
   sort: string;
   page: number;
   limit: number;
+  onlyShortlist: boolean;
 };
 
 export type FilterOption = {
@@ -108,6 +109,7 @@ export type SearchJobsParams = {
   sort: string;
   page: number;
   limit: number;
+  onlyShortlist: boolean;
 };
 
 export type ProvinceAnchor = ReturnType<typeof getProvinceAnchor>;

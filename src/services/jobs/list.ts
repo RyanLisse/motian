@@ -39,6 +39,7 @@ export type ListJobsOptions = {
   deadlineBefore?: Date | string;
   startDateAfter?: Date | string;
   startDateBefore?: Date | string;
+  onlyWithActivePipeline?: boolean;
 };
 
 /** Alle opdrachten ophalen met paginering. */
@@ -75,6 +76,7 @@ export async function listJobs(
     minHoursPerWeek: opts.minHoursPerWeek,
     maxHoursPerWeek: opts.maxHoursPerWeek,
     radiusKm: opts.radiusKm,
+    onlyWithActivePipeline: opts.onlyWithActivePipeline,
   });
 
   let queryPath: QueryPath = "list";

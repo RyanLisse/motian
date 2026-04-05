@@ -3,6 +3,8 @@
 /**
  * Compact filter grid used in the detail-page (dark themed) sidebar view.
  */
+import { useId } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { SearchableCombobox } from "@/components/ui/searchable-combobox";
 import {
@@ -54,6 +56,8 @@ interface CompactSidebarFiltersProps {
   onToggleVakgebied: (value: string) => void;
   onHoursRangeChange: (field: "urenPerWeekMin" | "urenPerWeekMax", value: string) => void;
   onRadiusChange: (value: string) => void;
+  onlyShortlist: boolean;
+  onOnlyShortlistChange: (value: boolean) => void;
 }
 
 export function CompactSidebarFilters({
@@ -83,9 +87,24 @@ export function CompactSidebarFilters({
   onToggleVakgebied,
   onHoursRangeChange,
   onRadiusChange,
+  onlyShortlist,
+  onOnlyShortlistChange,
 }: CompactSidebarFiltersProps) {
+  const shortlistCheckboxId = useId();
   return (
     <>
+      <label
+        htmlFor={shortlistCheckboxId}
+        className="mx-3 mb-1 flex cursor-pointer items-center gap-2 text-xs text-white/80"
+      >
+        <Checkbox
+          id={shortlistCheckboxId}
+          checked={onlyShortlist}
+          onCheckedChange={(v) => onOnlyShortlistChange(v === true)}
+          className="border-white/30 data-[state=checked]:bg-primary"
+        />
+        <span>Alleen shortlist</span>
+      </label>
       <div className="grid shrink-0 gap-2 px-3">
         <div className="grid grid-cols-2 gap-2">
           <CompactMultiSelectFilter

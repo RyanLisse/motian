@@ -80,6 +80,7 @@ export async function runJobSearch(
     sortBy,
     limit,
     offset,
+    onlyWithActivePipeline: filters.onlyShortlist ? true : undefined,
   });
 
   return { ok: true, data: { result, page, limit, offset } };
@@ -133,6 +134,7 @@ export async function runJobPageSearch(
     sortBy,
     limit,
     offset,
+    onlyWithActivePipeline: filters.onlyShortlist ? true : undefined,
   });
 
   return { ok: true, data: { result, page, limit, offset } };

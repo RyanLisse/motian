@@ -25,6 +25,7 @@ import { SidebarSearchBar } from "./sidebar-search-bar";
 import type { FilterOption, ProvinceAnchor } from "./sidebar-types";
 import { CONTRACT_TYPES } from "./sidebar-types";
 import { summarizeHoursRange } from "./sidebar-utils";
+import { VacatureFilterExtras } from "./vacature-filter-extras";
 
 interface OverviewFilterPanelProps {
   inputValue: string;
@@ -64,6 +65,8 @@ interface OverviewFilterPanelProps {
   onRateMinChange: (value: string) => void;
   onRateMaxChange: (value: string) => void;
   onResetFilters: () => void;
+  onlyShortlist: boolean;
+  onOnlyShortlistChange: (value: boolean) => void;
 }
 
 export function OverviewFilterPanel({
@@ -104,6 +107,8 @@ export function OverviewFilterPanel({
   onRateMinChange,
   onRateMaxChange,
   onResetFilters,
+  onlyShortlist,
+  onOnlyShortlistChange,
 }: OverviewFilterPanelProps) {
   return (
     <div className="flex min-h-0 flex-col border-b border-border/70 px-3 py-2 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
@@ -128,6 +133,11 @@ export function OverviewFilterPanel({
           onChange={onInputChange}
           isFetching={isFetching}
           variant="overview"
+        />
+
+        <VacatureFilterExtras
+          onlyShortlist={onlyShortlist}
+          onOnlyShortlistChange={onOnlyShortlistChange}
         />
 
         <button
