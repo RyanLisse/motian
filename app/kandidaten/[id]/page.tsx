@@ -14,6 +14,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { CandidateNotes } from "@/components/candidate-notes";
+import { CandidateOfferActions } from "@/components/candidate-offer-actions";
 import { EmploymentCard } from "@/components/candidate-profile/employment-card";
 import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
 import { OpenToOffersRing } from "@/components/candidate-profile/open-to-offers-ring";
@@ -477,6 +478,10 @@ async function KandidaatDetailContent({ params }: Props) {
                     {primaryWorkflowAction.label}
                   </Link>
                 </Button>
+                <CandidateOfferActions
+                  candidateId={candidate.id}
+                  defaultJobId={primaryActiveApplication?.job?.id ?? undefined}
+                />
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <Bookmark className="h-4 w-4" />
                   Kandidaat opslaan
