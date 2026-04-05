@@ -13,6 +13,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { DataRefreshListener } from "@/components/data-refresh-listener";
 import { PageHeader } from "@/components/page-header";
+import { ApplicationFeedbackEditor } from "@/components/pipeline/application-feedback-editor";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import type { KanbanCardData } from "@/components/pipeline/kanban-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -142,6 +143,7 @@ async function PipelineContent({ searchParams }: Props) {
             jobCompany: jobs.company,
             candidateName: candidates.name,
             candidateEmail: candidates.email,
+            applicationNotes: applications.notes,
           })
           .from(applications)
           .leftJoin(jobs, eq(applications.jobId, jobs.id))
@@ -179,6 +181,7 @@ async function PipelineContent({ searchParams }: Props) {
             createdAt: applications.createdAt,
             matchId: applications.matchId,
             matchScore: jobMatches.matchScore,
+            notes: applications.notes,
           })
           .from(applications)
           .leftJoin(jobs, eq(applications.jobId, jobs.id))
@@ -228,6 +231,7 @@ async function PipelineContent({ searchParams }: Props) {
       source: row.source,
       createdAt: row.createdAt?.toISOString() ?? null,
       matchScore: row.matchScore,
+      notes: row.notes,
     });
   }
 
@@ -496,6 +500,12 @@ async function PipelineContent({ searchParams }: Props) {
                               </span>
                             )}
                           </div>
+
+                          {row.applicationNotes ? (
+                            <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">
+                              {row.applicationNotes}
+                            </p>
+                          ) : null}
                         </div>
 
                         {/* Right: stage badge */}
@@ -508,6 +518,13 @@ async function PipelineContent({ searchParams }: Props) {
                             {stageLabels[stage] ?? stage}
                           </Badge>
                         </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <ApplicationFeedbackEditor
+                          applicationId={row.application.id}
+                          initialNotes={row.applicationNotes}
+                        />
                       </div>
                     </div>
                   );
