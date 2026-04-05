@@ -74,7 +74,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EXPECT_BASE_URL: ${{ steps.expect_target.outputs.base_url }}
-        run: npx expect-cli@latest --ci
+        run: |
+          if ! command -v claude >/dev/null 2>&1; then
+            echo "Claude CLI not installed on this runner; skipping Expect browser tests."
+            exit 0
+          fi
+
+          npx expect-cli@latest --ci
 
       - name: Upload test artifacts
         if: always()
