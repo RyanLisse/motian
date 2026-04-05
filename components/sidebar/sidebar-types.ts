@@ -45,7 +45,7 @@ export interface OpdrachtenSidebarProps {
 
 export type SearchQueryKeyPayload = {
   q: string;
-  platform: string;
+  platforms: string[];
   endClient: string;
   vaardigheid: string;
   status: string;
@@ -91,7 +91,7 @@ export const DARK_FILTER_SECTION_VALUE_CLASS = "text-sm text-white/55";
 
 export type SearchJobsParams = {
   q: string;
-  platform: string;
+  platforms: string[];
   endClient: string;
   vaardigheid: string;
   status: string;

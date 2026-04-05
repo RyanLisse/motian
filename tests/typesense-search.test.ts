@@ -85,6 +85,22 @@ describe("typesense search", () => {
     expect(params.get("filter_by")).toContain("rateMin:<=120");
   });
 
+  it("encodes multiple platform filters for vacature search", async () => {
+    mockTypesenseRequest.mockResolvedValue({
+      found: 1,
+      hits: [{ document: { id: "job-1" } }],
+    });
+
+    await searchJobIdsByTypesense("java developer", {
+      platforms: ["opdrachtoverheid", "indeed"],
+      limit: 20,
+      offset: 0,
+    });
+
+    const params = mockTypesenseRequest.mock.calls[0]?.[1]?.searchParams as URLSearchParams;
+    expect(params.get("filter_by")).toContain("platform:=[`opdrachtoverheid`, `indeed`]");
+  });
+
   it("builds kandidaat search params and returns ids plus total", async () => {
     mockTypesenseRequest.mockResolvedValue({
       found: 1,

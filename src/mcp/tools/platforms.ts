@@ -207,7 +207,7 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     const analysis = await analyzePlatform(data.url);
 
     // Credential gate — if auth required but no credentials provided, pause
-    if (analysis.authMode !== "none" && analysis.authMode !== "api_key" && !data.credentials) {
+    if (analysis.authMode !== "none" && !data.credentials) {
       await createPlatformCatalogEntry({ ...analysis, source: "mcp" });
       return {
         status: "credentials_needed",
