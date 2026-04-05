@@ -33,6 +33,7 @@ import { getActivePipelineCount, getJobStats } from "./jobs/stats";
 
 export type UnifiedJobSearchOptions = {
   q?: string;
+  platforms?: string[];
   platform?: string;
   company?: string;
   endClient?: string;
@@ -99,6 +100,7 @@ export async function searchJobsUnified(
     const listOpts: ListJobsOptions = {
       limit: opts.limit,
       offset: opts.offset,
+      platforms: opts.platforms,
       platform: opts.platform,
       company: opts.company,
       endClient: opts.endClient,
@@ -129,6 +131,7 @@ export async function searchJobsUnified(
   const hybridOpts: HybridSearchOptions = {
     limit: opts.limit,
     offset: opts.offset,
+    platforms: opts.platforms,
     platform: opts.platform,
     company: opts.company,
     endClient: opts.endClient,
@@ -165,6 +168,7 @@ export async function searchJobsPageUnified(
     return listJobsPageImpl({
       limit: opts.limit,
       offset: opts.offset,
+      platforms: opts.platforms,
       platform: opts.platform,
       company: opts.company,
       endClient: opts.endClient,
@@ -193,6 +197,7 @@ export async function searchJobsPageUnified(
   return hybridSearchPageWithTotalImpl(query, {
     limit: opts.limit,
     offset: opts.offset,
+    platforms: opts.platforms,
     platform: opts.platform,
     company: opts.company,
     endClient: opts.endClient,

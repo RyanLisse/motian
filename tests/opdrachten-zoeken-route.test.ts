@@ -45,7 +45,7 @@ describe("GET /api/opdrachten/zoeken", () => {
   it("delegates filters to the shared page runner and returns compact recruiter jobs", async () => {
     const request = {
       nextUrl: new URL(
-        "http://localhost/api/opdrachten/zoeken?q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad&regio=noord&vakgebied=ICT&vakgebied=Data&vaardigheid=skill:java&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&contractType=interim&tariefMin=80&tariefMax=120&sort=deadline_desc&pagina=2&perPage=25",
+        "http://localhost/api/opdrachten/zoeken?q=manager&platform=opdrachtoverheid&platform=indeed&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad&regio=noord&vakgebied=ICT&vakgebied=Data&vaardigheid=skill:java&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&contractType=interim&tariefMin=80&tariefMax=120&sort=deadline_desc&pagina=2&perPage=25",
       ),
     } as Parameters<typeof GET>[0];
 
@@ -56,6 +56,7 @@ describe("GET /api/opdrachten/zoeken", () => {
     const params = mockRunJobPageSearch.mock.calls[0][0] as URLSearchParams;
     expect(params.get("q")).toBe("manager");
     expect(params.get("platform")).toBe("opdrachtoverheid");
+    expect(params.getAll("platform")).toEqual(["opdrachtoverheid", "indeed"]);
     expect(params.get("vakgebied")).toBe("ICT");
     expect(params.getAll("vakgebied")).toEqual(["ICT", "Data"]);
     expect(params.get("pagina")).toBe("2");

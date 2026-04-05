@@ -1,4 +1,4 @@
-import { and, eq, gte, isNotNull, isNull, lte, or, sql } from "../../db";
+import { and, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from "../../db";
 import { jobSkills, jobs } from "../../db/schema";
 import {
   getHoursRangeForBucket,
@@ -10,6 +10,7 @@ import {
 import { getJobStatusCondition, type JobStatus } from "./filters";
 
 export type SharedJobFilterOptions = {
+  platforms?: string[];
   platform?: string;
   company?: string;
   endClient?: string;
@@ -39,6 +40,9 @@ export type SharedJobFilterOptions = {
 
 export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
   const conditions = [getJobStatusCondition(opts.status ?? "open")];
+  const selectedPlatforms = [
+    ...new Set([...(opts.platforms ?? []), ...(opts.platform ? [opts.platform] : [])]),
+  ];
   const categories = [
     ...new Set([...(opts.categories ?? []), ...(opts.category ? [opts.category] : [])]),
   ];
@@ -46,7 +50,12 @@ export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
     ...new Set([...(opts.regions ?? []), ...(opts.region ? [opts.region] : [])]),
   ];
 
-  if (opts.platform) conditions.push(eq(jobs.platform, opts.platform));
+  if (selectedPlatforms.length === 1) {
+    const onlyPlatform = selectedPlatforms[0];
+    if (onlyPlatform) conditions.push(eq(jobs.platform, onlyPlatform));
+  } else if (selectedPlatforms.length > 1) {
+    conditions.push(inArray(jobs.platform, selectedPlatforms));
+  }
   if (opts.company) conditions.push(eq(jobs.company, opts.company));
 
   if (opts.endClient) {

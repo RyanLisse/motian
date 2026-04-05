@@ -7,6 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useDebouncedValue } from "@/components/sidebar/use-debounced-value";
 import { getOpdrachtenBasePath } from "@/src/lib/opdrachten-filter-url";
 import {
   DEFAULT_OPDRACHTEN_LIMIT,
@@ -31,20 +32,6 @@ import {
   toggleFilterValue,
 } from "./sidebar-utils";
 
-function useDebouncedValue<T>(value: T, delayMs = 300): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delayMs);
-
-    return () => clearTimeout(timeout);
-  }, [value, delayMs]);
-
-  return debouncedValue;
-}
-
 export function useSidebarFilters({
   initialJobs,
   initialTotal,
@@ -68,7 +55,7 @@ export function useSidebarFilters({
   const parsedFilters = parseOpdrachtenFilters(new URLSearchParams(searchParams.toString()));
   const q = parsedFilters.q ?? "";
   const committedSearchQuery = normalizeOpdrachtenSearchQuery(q) ?? "";
-  const platform = parsedFilters.platform ?? "";
+  const selectedPlatforms = parsedFilters.platforms;
   const endClient = parsedFilters.endClient ?? "";
   const vaardigheid = parsedFilters.escoUri ?? "";
   const status = parsedFilters.status;
@@ -126,7 +113,7 @@ export function useSidebarFilters({
   // doesn't reflect changes in time for the query key to change.
   // URL push remains a side effect for bookmarking.
   const [localStatus, setLocalStatus] = useState(status);
-  const [localPlatform, setLocalPlatform] = useState(platform);
+  const [localPlatforms, setLocalPlatforms] = useState(selectedPlatforms);
   const [localEndClient, setLocalEndClient] = useState(endClient);
   const [localVaardigheid, setLocalVaardigheid] = useState(vaardigheid);
   const [localProvincie, setLocalProvincie] = useState(provincie);
@@ -172,7 +159,7 @@ export function useSidebarFilters({
     }
     setInputValue(q);
     setLocalStatus(status);
-    setLocalPlatform(platform);
+    setLocalPlatforms(selectedPlatforms);
     setLocalEndClient(endClient);
     setLocalVaardigheid(vaardigheid);
     setLocalProvincie(provincie);
@@ -216,7 +203,7 @@ export function useSidebarFilters({
   const searchQueryKey = useMemo<SearchQueryKeyPayload>(
     () => ({
       q: debouncedSearchQuery,
-      platform: localPlatform,
+      platforms: [...localPlatforms].sort((a, b) => a.localeCompare(b)),
       endClient: localEndClient,
       vaardigheid: localVaardigheid,
       status: localStatus,
@@ -236,7 +223,7 @@ export function useSidebarFilters({
     }),
     [
       debouncedSearchQuery,
-      localPlatform,
+      localPlatforms,
       localEndClient,
       localVaardigheid,
       localStatus,
@@ -309,7 +296,7 @@ export function useSidebarFilters({
     queryFn: ({ signal }) =>
       searchJobs({
         q: debouncedSearchQuery,
-        platform: localPlatform,
+        platforms: localPlatforms,
         endClient: localEndClient,
         vaardigheid: localVaardigheid,
         status: localStatus,
@@ -334,7 +321,7 @@ export function useSidebarFilters({
       localPage === 1 &&
       limitParam === DEFAULT_OPDRACHTEN_LIMIT &&
       !debouncedSearchQuery &&
-      !localPlatform &&
+      localPlatforms.length === 0 &&
       !localEndClient &&
       !localVaardigheid &&
       localStatus === "open" &&
@@ -369,7 +356,7 @@ export function useSidebarFilters({
     hasUrgentDeadline(job.applicationDeadline),
   ).length;
   const activeFilterCount =
-    Number(Boolean(platform)) +
+    Number(localPlatforms.length > 0) +
     Number(Boolean(endClient)) +
     Number(Boolean(vaardigheid)) +
     Number(status !== "open") +
@@ -406,7 +393,6 @@ export function useSidebarFilters({
       // Update local state immediately so TanStack Query key changes now
       if (paramKey === "status")
         setLocalStatus(value === "" ? "open" : (value as typeof localStatus));
-      else if (paramKey === "platform") setLocalPlatform(value);
       else if (paramKey === "endClient") setLocalEndClient(value);
       else if (paramKey === "vaardigheid") setLocalVaardigheid(value);
       else if (paramKey === "contractType") setLocalContractType(value);
@@ -415,6 +401,16 @@ export function useSidebarFilters({
       pushParams({ [paramKey]: value, pagina: "1" });
     },
     [pushParams],
+  );
+
+  const handleTogglePlatform = useCallback(
+    (value: string) => {
+      const next = toggleFilterValue(localPlatforms, value);
+      setLocalPlatforms(next);
+      setLocalPage(1);
+      pushParams({ platform: next, pagina: "1" });
+    },
+    [localPlatforms, pushParams],
   );
 
   const handleToggleRegio = useCallback(
@@ -471,7 +467,7 @@ export function useSidebarFilters({
 
   const resetFilters = useCallback(() => {
     setLocalStatus("open");
-    setLocalPlatform("");
+    setLocalPlatforms([]);
     setLocalEndClient("");
     setLocalVaardigheid("");
     setLocalProvincie("");
@@ -495,7 +491,7 @@ export function useSidebarFilters({
     activeId,
 
     // Filter values
-    platform,
+    selectedPlatforms: localPlatforms,
     endClient,
     vaardigheid,
     status,
@@ -539,6 +535,7 @@ export function useSidebarFilters({
     buildDetailHref,
     pushParams,
     handleFilterChange,
+    handleTogglePlatform,
     handleToggleRegio,
     handleToggleVakgebied,
     handleHoursRangeChange,

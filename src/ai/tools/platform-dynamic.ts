@@ -45,8 +45,10 @@ export const platformAnalyze = tool({
   },
 });
 
-function getCredentialFields(authMode: "oauth" | "session" | "username_password") {
+function getCredentialFields(authMode: "api_key" | "oauth" | "session" | "username_password") {
   switch (authMode) {
+    case "api_key":
+      return [{ name: "apiKey", label: "API-sleutel", type: "password" as const }];
     case "session":
     case "username_password":
       return [
@@ -139,7 +141,7 @@ export const platformAutoSetup = tool({
 
     // Step 2b: Credential gate — if auth required, always pause for secure credential collection
     //          Credentials flow through the GenUI form → POST /api/platforms/[slug]/credentials
-    if (analysis.authMode !== "none" && analysis.authMode !== "api_key") {
+    if (analysis.authMode !== "none") {
       // Create a stub config so POST /api/platforms/[slug]/credentials has a row to update
       try {
         await createConfig({

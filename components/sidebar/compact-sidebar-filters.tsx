@@ -28,7 +28,7 @@ import {
 import { summarizeHoursRange } from "./sidebar-utils";
 
 interface CompactSidebarFiltersProps {
-  platform: string;
+  selectedPlatforms: string[];
   platforms: string[];
   endClient: string;
   endClients: string[];
@@ -48,6 +48,7 @@ interface CompactSidebarFiltersProps {
   sort: string;
   sortOptions: readonly { readonly value: string; readonly label: string }[];
   onFilterChange: (paramKey: string, value: string) => void;
+  onTogglePlatform: (value: string) => void;
   onProvinceChange: (value: string) => void;
   onToggleRegio: (value: string) => void;
   onToggleVakgebied: (value: string) => void;
@@ -56,7 +57,7 @@ interface CompactSidebarFiltersProps {
 }
 
 export function CompactSidebarFilters({
-  platform,
+  selectedPlatforms,
   platforms,
   endClient,
   endClients,
@@ -76,6 +77,7 @@ export function CompactSidebarFilters({
   sort,
   sortOptions,
   onFilterChange,
+  onTogglePlatform,
   onProvinceChange,
   onToggleRegio,
   onToggleVakgebied,
@@ -86,24 +88,17 @@ export function CompactSidebarFilters({
     <>
       <div className="grid shrink-0 gap-2 px-3">
         <div className="grid grid-cols-2 gap-2">
-          <Select
-            value={platform || undefined}
-            onValueChange={(v) => onFilterChange("platform", v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}>
-              <SelectValue placeholder="Platform" />
-            </SelectTrigger>
-            <SelectContent className={DARK_FILTER_MENU_CLASS}>
-              <SelectItem value="__all__" className="text-white">
-                Alle platforms
-              </SelectItem>
-              {platforms.map((p) => (
-                <SelectItem key={p} value={p} className="capitalize text-white">
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CompactMultiSelectFilter
+            label="Platform"
+            options={platforms.map((platform) => ({
+              value: platform,
+              label: platform,
+            }))}
+            selectedValues={selectedPlatforms}
+            onToggle={onTogglePlatform}
+            buttonClassName={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}
+            contentClassName={DARK_FILTER_MENU_CLASS}
+          />
 
           <SearchableCombobox
             value={endClient || undefined}

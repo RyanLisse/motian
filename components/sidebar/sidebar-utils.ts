@@ -107,7 +107,7 @@ async function getSearchErrorMessage(response: Response) {
 
 export async function searchJobs({
   q,
-  platform,
+  platforms,
   endClient,
   vaardigheid,
   status,
@@ -128,7 +128,9 @@ export async function searchJobs({
 }: SearchJobsParams & { signal?: AbortSignal }): Promise<SearchResponse> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
-  if (platform) params.set("platform", platform);
+  platforms.forEach((platform) => {
+    params.append("platform", platform);
+  });
   if (endClient) params.set("endClient", endClient);
   if (vaardigheid) params.set("vaardigheid", vaardigheid);
   if (status !== "open") params.set("status", status);

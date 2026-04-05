@@ -16,7 +16,11 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { OPDRACHTEN_PROVINCES } from "@/src/lib/opdrachten-filters";
-import { FilterChecklist, RadiusSliderField } from "./sidebar-filter-controls";
+import {
+  CompactMultiSelectFilter,
+  FilterChecklist,
+  RadiusSliderField,
+} from "./sidebar-filter-controls";
 import { SidebarSearchBar } from "./sidebar-search-bar";
 import type { FilterOption, ProvinceAnchor } from "./sidebar-types";
 import { CONTRACT_TYPES } from "./sidebar-types";
@@ -30,7 +34,7 @@ interface OverviewFilterPanelProps {
   onToggleMobileFilters: () => void;
   activeFilterCount: number;
   displayTotal: number;
-  platform: string;
+  selectedPlatforms: string[];
   platforms: string[];
   endClient: string;
   endClients: string[];
@@ -51,6 +55,7 @@ interface OverviewFilterPanelProps {
   provinceAnchor: ProvinceAnchor;
   contractType: string;
   onFilterChange: (paramKey: string, value: string) => void;
+  onTogglePlatform: (value: string) => void;
   onProvinceChange: (value: string) => void;
   onToggleRegio: (value: string) => void;
   onToggleVakgebied: (value: string) => void;
@@ -69,7 +74,7 @@ export function OverviewFilterPanel({
   onToggleMobileFilters,
   activeFilterCount,
   displayTotal,
-  platform,
+  selectedPlatforms,
   platforms,
   endClient,
   endClients,
@@ -90,6 +95,7 @@ export function OverviewFilterPanel({
   provinceAnchor,
   contractType,
   onFilterChange,
+  onTogglePlatform,
   onProvinceChange,
   onToggleRegio,
   onToggleVakgebied,
@@ -170,27 +176,17 @@ export function OverviewFilterPanel({
               >
                 Platform
               </label>
-              <Select
-                value={platform || "__all__"}
-                onValueChange={(v) => onFilterChange("platform", v === "__all__" ? "" : v)}
-              >
-                <SelectTrigger
-                  id="opdrachten-opdrachtgever"
-                  className="data-[size=default]:h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:data-[size=default]:h-11 sm:text-sm"
-                >
-                  <SelectValue placeholder="Alle platforms" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="__all__" className="text-foreground">
-                    Alle platforms
-                  </SelectItem>
-                  {platforms.map((p) => (
-                    <SelectItem key={p} value={p} className="capitalize text-foreground">
-                      {p}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CompactMultiSelectFilter
+                label="Alle platforms"
+                options={platforms.map((platform) => ({
+                  value: platform,
+                  label: platform,
+                }))}
+                selectedValues={selectedPlatforms}
+                onToggle={onTogglePlatform}
+                buttonClassName="h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:h-11 sm:text-sm"
+                contentClassName="bg-card border-border"
+              />
             </div>
 
             <div>

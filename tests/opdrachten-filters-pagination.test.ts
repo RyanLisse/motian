@@ -99,12 +99,13 @@ describe("Opdrachten shared filter parsing", () => {
   it("normalizes multi-select recruiter filters and numeric hours ranges from URL params", () => {
     const parsed = parseOpdrachtenFilters(
       new URLSearchParams(
-        "q=manager&platform=opdrachtoverheid&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad,noord&vakgebied=ICT&vakgebied=Data&vaardigheid=skill:java&urenPerWeek=24_32&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&tariefMin=80&tariefMax=120&contractType=interim&sort=deadline",
+        "q=manager&platform=opdrachtoverheid&platform=indeed&endClient=Gemeente%20Utrecht&status=closed&provincie=utrecht&regio=randstad,noord&vakgebied=ICT&vakgebied=Data&vaardigheid=skill:java&urenPerWeek=24_32&urenPerWeekMin=24&urenPerWeekMax=36&straalKm=25&tariefMin=80&tariefMax=120&contractType=interim&sort=deadline",
       ),
     );
 
     expect(parsed).toEqual({
       q: "manager",
+      platforms: ["opdrachtoverheid", "indeed"],
       platform: "opdrachtoverheid",
       endClient: "Gemeente Utrecht",
       escoUri: "skill:java",
@@ -179,6 +180,11 @@ describe("Opdrachten shared filter parsing", () => {
     expect(validateOpdrachtenQueryParams(new URLSearchParams("page=2&perPage=25")).success).toBe(
       true,
     );
+    expect(
+      validateOpdrachtenQueryParams(
+        new URLSearchParams("platform=opdrachtoverheid&platform=indeed"),
+      ).success,
+    ).toBe(true);
   });
 });
 
@@ -225,6 +231,17 @@ describe("Opdrachten filter URL helpers", () => {
     expect(nextParams.get("page")).toBeNull();
     expect(nextParams.get("region")).toBeNull();
   });
+
+  it("keeps repeated platform filters when building the next URL", () => {
+    const href = buildOpdrachtenFilterHref(
+      "/vacatures",
+      new URLSearchParams("platform=opdrachtoverheid"),
+      { platform: ["opdrachtoverheid", "indeed", "indeed"] },
+    );
+    const url = new URL(href, "http://localhost");
+
+    expect(url.searchParams.getAll("platform")).toEqual(["opdrachtoverheid", "indeed"]);
+  });
 });
 
 describe("Opdrachten UI/API contracts", () => {
@@ -236,7 +253,8 @@ describe("Opdrachten UI/API contracts", () => {
     const comboboxSource = readFile("components", "ui", "searchable-combobox.tsx");
     const toolbarFiltersSource = readFile("app", "vacatures", "filters.tsx");
 
-    expect(source).toContain('placeholder="Platform"');
+    expect(source).toContain("CompactMultiSelectFilter");
+    expect(source).toContain("selectedPlatforms");
     expect(source).toContain("SearchableCombobox");
     expect(source).toContain("normalizeOpdrachtenSearchQuery");
     expect(source).toContain("placeholderData: (prev) => prev");

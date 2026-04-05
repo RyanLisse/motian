@@ -62,8 +62,16 @@ function buildHoursFilter(
 
 function buildJobFilterBy(opts: HybridSearchOptions) {
   const filters: string[] = [];
+  const selectedPlatforms = [
+    ...new Set([...(opts.platforms ?? []), ...(opts.platform ? [opts.platform] : [])]),
+  ];
 
-  if (opts.platform) filters.push(`platform:=${escapeFilterValue(opts.platform)}`);
+  if (selectedPlatforms.length === 1) {
+    const onlyPlatform = selectedPlatforms[0];
+    if (onlyPlatform) filters.push(`platform:=${escapeFilterValue(onlyPlatform)}`);
+  } else if (selectedPlatforms.length > 1) {
+    filters.push(`platform:=[${selectedPlatforms.map(escapeFilterValue).join(", ")}]`);
+  }
   if (opts.company) filters.push(`company:=${escapeFilterValue(opts.company)}`);
   if (opts.endClient) filters.push(`endClient:=${escapeFilterValue(opts.endClient)}`);
   if (opts.status && opts.status !== "all")

@@ -7,7 +7,10 @@ const { mockGenerateText, mockWithRetry } = vi.hoisted(() => ({
 
 vi.mock("../src/lib/ai-models", () => ({
   geminiFlash: "mock-gemini-flash",
+  embeddingModel: "mock-embedding-model",
   tracedGenerateText: mockGenerateText,
+  tracedEmbed: vi.fn(),
+  tracedEmbedMany: vi.fn(),
 }));
 vi.mock("../src/lib/retry", () => ({
   withRetry: mockWithRetry,
