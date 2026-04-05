@@ -90,9 +90,7 @@ export async function listJobs(
       .filter(Boolean).length;
     if (tsInput && termCount > 1) {
       queryPath = "list-fts";
-      conditions.push(
-        sql`coalesce(search_vector::tsvector, ''::tsvector) @@ to_tsquery('dutch', ${tsInput})`,
-      );
+      conditions.push(sql`to_tsvector('dutch', search_text) @@ to_tsquery('dutch', ${tsInput})`);
     } else {
       queryPath = "list";
       conditions.push(caseInsensitiveContains(jobs.title, opts.q));
