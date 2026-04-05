@@ -49,3 +49,11 @@ GEMINI.md
 !.codex/skills/public-board-triage/SKILL.md
 storybook-static/
 .gstack/
+
+# Local orchestration/runtime state
+.beads/**
+.omx/**
+.omc/**
+.gemini/
+.kiro/
+Untitled
