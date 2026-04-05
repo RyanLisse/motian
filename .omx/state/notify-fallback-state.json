@@ -1,0 +1,67 @@
+{
+  "pid": 16016,
+  "parent_pid": 15977,
+  "started_at": "2026-04-04T14:57:50.548Z",
+  "cwd": "/Users/cortex-air/Developer/motian",
+  "notify_script": "/Users/cortex-air/.local/node/lib/node_modules/oh-my-codex/dist/scripts/notify-hook.js",
+  "poll_ms": 250,
+  "pid_file": "/Users/cortex-air/Developer/motian/.omx/state/notify-fallback.pid",
+  "max_lifetime_ms": 21600000,
+  "tracked_files": 1,
+  "seen_turns": 3,
+  "dispatch_drain": {
+    "enabled": true,
+    "max_per_tick": 5,
+    "run_count": 4558,
+    "leader_only": true,
+    "last_tick_at": "2026-04-04T19:04:47.329Z",
+    "last_result": {
+      "processed": 0,
+      "skipped": 0,
+      "failed": 0
+    },
+    "last_error": null
+  },
+  "leader_nudge": {
+    "enabled": true,
+    "leader_only": true,
+    "stale_threshold_ms": 180000,
+    "precomputed_leader_stale": true,
+    "last_tick_at": "2026-04-04T19:04:47.330Z",
+    "last_error": null,
+    "run_count": 4558
+  },
+  "ralph_continue_steer": {
+    "enabled": true,
+    "cadence_ms": 60000,
+    "message": "Ralph loop active continue",
+    "active": false,
+    "last_state_check_at": "2026-04-04T19:04:52.350Z",
+    "last_sent_at": "",
+    "cooldown_anchor_at": "",
+    "last_reason": "stale_current_session",
+    "last_error": null,
+    "state_path": "",
+    "pane_id": "",
+    "pane_current_command": "",
+    "current_phase": "",
+    "shared_timestamp_path": "/Users/cortex-air/Developer/motian/.omx/state/ralph-last-steer-at",
+    "shared_last_sent_at": "",
+    "singleton_lock_path": "/Users/cortex-air/Developer/motian/.omx/state/ralph-continue-steer.lock"
+  },
+  "fallback_auto_nudge": {
+    "enabled": true,
+    "stall_ms": 5000,
+    "last_tick_at": "2026-04-04T19:04:49.838Z",
+    "last_turn_at": "2026-04-04T15:23:21.728Z",
+    "last_turn_count": 4,
+    "last_message": "Top 5 prioritized remediation list:\n\n1. **Fix pagination**\n   - Gap: `motian-o5g`\n   - Why first: fu",
+    "last_reason": "eligible_but_not_sent",
+    "last_error": null,
+    "last_nudged_signature": "",
+    "last_nudged_at": ""
+  },
+  "stop_reason": "parent_gone",
+  "stop_signal": null,
+  "stopping": true
+}

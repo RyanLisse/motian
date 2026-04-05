@@ -1,0 +1,768 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1775288003176,
+  "projectRoot": "/Users/cortex-air/Developer/motian",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "next",
+        "version": "16.1.6",
+        "category": "fullstack"
+      },
+      {
+        "name": "react",
+        "version": "19.2.4",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.4",
+        "category": "frontend"
+      },
+      {
+        "name": "playwright",
+        "version": "1.58.2",
+        "category": "testing"
+      },
+      {
+        "name": "vitest",
+        "version": "3.2.4",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "pnpm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "pnpm build",
+    "testCommand": "pnpm test",
+    "lintCommand": "pnpm lint",
+    "devCommand": "pnpm dev",
+    "scripts": {
+      "dev": "next dev --hostname ${HOSTNAME:-0.0.0.0} --port ${PORT:-3002}",
+      "build": "next build",
+      "start": "next start --hostname ${HOSTNAME:-0.0.0.0} --port ${PORT:-3001}",
+      "test": "vitest run",
+      "test:watch": "vitest",
+      "db:generate": "drizzle-kit generate",
+      "db:push": "bash scripts/db-push-safe.sh",
+      "db:push:force": "drizzle-kit push",
+      "lint": "biome check .",
+      "lint:fix": "biome check --write .",
+      "test:coverage": "vitest run --coverage",
+      "test:cv": "tsx scripts/test-cv-upload.ts",
+      "test:cv:all": "tsx scripts/test-cv-upload.ts --all",
+      "test:cv:generate": "tsx scripts/generate-test-cv.ts",
+      "track:ai-costs": "npx ccusage",
+      "baseline:metrics": "tsx scripts/baseline-metrics.ts",
+      "benchmark:hybrid-search": "tsx scripts/benchmark-hybrid-search.ts",
+      "search:reindex": "tsx scripts/reindex-typesense.ts",
+      "metrics:esco-rollout": "tsx scripts/esco-rollout-snapshot.ts",
+      "metrics:esco-rollout:compare": "tsx scripts/esco-rollout-compare.ts",
+      "metrics:search-path-latency": "tsx scripts/measure-search-path-latencies.ts",
+      "metrics:search-explain": "tsx scripts/explain-search-plans.ts",
+      "harness:risk-tier": "tsx scripts/harness/risk-policy-gate.ts",
+      "harness:pre-pr": "pnpm lint && pnpm exec tsc --noEmit && pnpm test && tsx scripts/harness/risk-policy-gate.ts",
+      "harness:smoke": "vitest run tests/harness/",
+      "harness:browser-evidence": "tsx scripts/harness/capture-browser-evidence.ts",
+      "harness:verify-evidence": "tsx scripts/harness/verify-browser-evidence.ts",
+      "harness:entropy": "tsx scripts/harness/entropy-check.ts",
+      "harness:gap": "tsx scripts/harness/create-gap-issue.ts",
+      "harness:weekly-metrics": "tsx scripts/harness/entropy-check.ts --verbose",
+      "mcp": "tsx src/mcp/server.ts",
+      "cli": "tsx src/cli/index.ts",
+      "voice-agent:dev": "tsx src/voice-agent/main.ts dev",
+      "voice-agent:start": "tsx src/voice-agent/main.ts start"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": "ES modules",
+    "testPattern": "*.test.ts",
+    "fileOrganization": "type-based"
+  },
+  "structure": {
+    "isMonorepo": true,
+    "workspaces": [],
+    "mainDirectories": [
+      "app",
+      "components",
+      "docs",
+      "lib",
+      "public",
+      "scripts",
+      "src",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "FW_ Custom GPT Mariënne": {
+      "path": "FW_ Custom GPT Mariënne",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1775287999593,
+      "keyFiles": [
+        "CHAT GPT TEST (Kim).pdf",
+        "STAR CV Joey Voogd (19).pdf",
+        "T190645 Senior Projectmanager realisatie Opvanglocaties Utrecht (1) (1).pdf"
+      ]
+    },
+    "agent": {
+      "path": "agent",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1775287999640,
+      "keyFiles": [
+        "AGENTS.md",
+        "README.md",
+        "package.json",
+        "pnpm-lock.yaml",
+        "tsconfig.json"
+      ]
+    },
+    "app": {
+      "path": "app",
+      "purpose": "Application code",
+      "fileCount": 8,
+      "lastAccessed": 1775287999704,
+      "keyFiles": [
+        "AGENTS.md",
+        "error.tsx",
+        "globals.css",
+        "icon.svg",
+        "layout.tsx"
+      ]
+    },
+    "artifacts": {
+      "path": "artifacts",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1775287999705,
+      "keyFiles": []
+    },
+    "components": {
+      "path": "components",
+      "purpose": "UI components",
+      "fileCount": 37,
+      "lastAccessed": 1775287999706,
+      "keyFiles": [
+        "AGENTS.md",
+        "add-candidate-wizard.tsx",
+        "ai-grading.tsx",
+        "app-sidebar.tsx",
+        "auto-match-results.tsx"
+      ]
+    },
+    "coverage": {
+      "path": "coverage",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1775287999707,
+      "keyFiles": [
+        "coverage-summary.json"
+      ]
+    },
+    "data": {
+      "path": "data",
+      "purpose": "Data files",
+      "fileCount": 1,
+      "lastAccessed": 1775287999707,
+      "keyFiles": [
+        "esco-fetch.log"
+      ]
+    },
+    "dist": {
+      "path": "dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 2,
+      "lastAccessed": 1775287999707,
+      "keyFiles": [
+        "index-dev.js",
+        "index-dev.js.map"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 17,
+      "lastAccessed": 1775287999708,
+      "keyFiles": [
+        "AGENTS.md",
+        "architecture.md",
+        "autopilot-configuration.md",
+        "autopilot-phase4-roadmap.md",
+        "autopilot-usage.md"
+      ]
+    },
+    "dolt": {
+      "path": "dolt",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1775287999708,
+      "keyFiles": [
+        "config.yaml"
+      ]
+    },
+    "drizzle": {
+      "path": "drizzle",
+      "purpose": null,
+      "fileCount": 29,
+      "lastAccessed": 1775287999708,
+      "keyFiles": [
+        "0000_fat_tyrannus.sql",
+        "0001_messy_ironclad.sql",
+        "0002_harsh_mystique.sql",
+        "0003_add_pgvector.sql",
+        "0003_fuzzy_meteorite.sql"
+      ]
+    },
+    "extension": {
+      "path": "extension",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1775287999709,
+      "keyFiles": [
+        "AGENTS.md",
+        "README.md",
+        "package.json",
+        "tsconfig.json",
+        "wxt.config.ts"
+      ]
+    },
+    "harness-evidence": {
+      "path": "harness-evidence",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1775287999711,
+      "keyFiles": [
+        "manifest.json"
+      ]
+    },
+    "hooks": {
+      "path": "hooks",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1775287999711,
+      "keyFiles": [
+        "use-mobile.ts"
+      ]
+    },
+    "lib": {
+      "path": "lib",
+      "purpose": "Library code",
+      "fileCount": 1,
+      "lastAccessed": 1775287999711,
+      "keyFiles": [
+        "utils.ts"
+      ]
+    },
+    "packages": {
+      "path": "packages",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1775287999711,
+      "keyFiles": [
+        "AGENTS.md"
+      ]
+    },
+    "public": {
+      "path": "public",
+      "purpose": "Public files",
+      "fileCount": 2,
+      "lastAccessed": 1775287999712,
+      "keyFiles": [
+        "suppress-vendor-noise.js",
+        "theme-init.js"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 24,
+      "lastAccessed": 1775287999712,
+      "keyFiles": [
+        "backfill-embeddings.ts",
+        "backfill-job-search-fields.ts",
+        "backfill-legacy-job-archives.ts",
+        "baseline-metrics.ts",
+        "benchmark-hybrid-search.ts"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 2,
+      "lastAccessed": 1775287999713,
+      "keyFiles": [
+        "AGENTS.md",
+        "env.ts"
+      ]
+    },
+    "stories": {
+      "path": "stories",
+      "purpose": null,
+      "fileCount": 16,
+      "lastAccessed": 1775287999713,
+      "keyFiles": [
+        "badge.stories.tsx",
+        "button.stories.tsx",
+        "card.stories.tsx",
+        "dialog.stories.tsx",
+        "empty-state.stories.tsx"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 165,
+      "lastAccessed": 1775287999714,
+      "keyFiles": [
+        "AGENTS.md",
+        "agent-system-prompt-sanitization.test.ts",
+        "ai-enrichment.test.ts",
+        "ai-models-langsmith.test.ts",
+        "api-docs.test.ts"
+      ]
+    },
+    "tmp": {
+      "path": "tmp",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1775287999715,
+      "keyFiles": [
+        "test_output.txt"
+      ]
+    },
+    "trigger": {
+      "path": "trigger",
+      "purpose": null,
+      "fileCount": 20,
+      "lastAccessed": 1775287999715,
+      "keyFiles": [
+        "AGENTS.md",
+        "agent-communicator.ts",
+        "agent-intake.ts",
+        "agent-matcher.ts",
+        "agent-orchestrator.ts"
+      ]
+    },
+    "tui": {
+      "path": "tui",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1775287999715,
+      "keyFiles": [
+        "README.md",
+        "bun.lock",
+        "package.json",
+        "tsconfig.json"
+      ]
+    },
+    "agent/dist": {
+      "path": "agent/dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 2,
+      "lastAccessed": 1775287999717,
+      "keyFiles": [
+        "main.js",
+        "main.js.map"
+      ]
+    },
+    "agent/node_modules": {
+      "path": "agent/node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1775287999718,
+      "keyFiles": []
+    },
+    "agent/src": {
+      "path": "agent/src",
+      "purpose": "Source code",
+      "fileCount": 4,
+      "lastAccessed": 1775287999719,
+      "keyFiles": [
+        "AGENTS.md",
+        "agent.ts",
+        "main.ts"
+      ]
+    },
+    "app/api": {
+      "path": "app/api",
+      "purpose": "API routes",
+      "fileCount": 1,
+      "lastAccessed": 1775287999773,
+      "keyFiles": [
+        "AGENTS.md"
+      ]
+    },
+    "extension/assets": {
+      "path": "extension/assets",
+      "purpose": "Static assets",
+      "fileCount": 1,
+      "lastAccessed": 1775287999787,
+      "keyFiles": [
+        "react.svg"
+      ]
+    },
+    "extension/node_modules": {
+      "path": "extension/node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 0,
+      "lastAccessed": 1775287999789,
+      "keyFiles": []
+    },
+    "src/components": {
+      "path": "src/components",
+      "purpose": "UI components",
+      "fileCount": 1,
+      "lastAccessed": 1775287999792,
+      "keyFiles": [
+        "posthog-provider.tsx"
+      ]
+    },
+    "tui/node_modules": {
+      "path": "tui/node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 0,
+      "lastAccessed": 1775287999794,
+      "keyFiles": []
+    },
+    "tui/src": {
+      "path": "tui/src",
+      "purpose": "Source code",
+      "fileCount": 4,
+      "lastAccessed": 1775287999795,
+      "keyFiles": [
+        "actions.test.ts",
+        "actions.ts",
+        "index.tsx"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "",
+      "accessCount": 24,
+      "lastAccessed": 1775194417744,
+      "type": "directory"
+    },
+    {
+      "path": "app/overzicht/data.ts",
+      "accessCount": 21,
+      "lastAccessed": 1775135504571,
+      "type": "file"
+    },
+    {
+      "path": "tests/overzicht-data.test.ts",
+      "accessCount": 20,
+      "lastAccessed": 1775135520366,
+      "type": "file"
+    },
+    {
+      "path": "src/services/jobs/detail-page.ts",
+      "accessCount": 19,
+      "lastAccessed": 1775194935466,
+      "type": "file"
+    },
+    {
+      "path": "src/services/auto-matching.ts",
+      "accessCount": 17,
+      "lastAccessed": 1775195034385,
+      "type": "file"
+    },
+    {
+      "path": "src/services/jobs/search.ts",
+      "accessCount": 16,
+      "lastAccessed": 1775194565692,
+      "type": "file"
+    },
+    {
+      "path": "app/overzicht/page.tsx",
+      "accessCount": 15,
+      "lastAccessed": 1775144231858,
+      "type": "file"
+    },
+    {
+      "path": "tests/env-schema.test.ts",
+      "accessCount": 10,
+      "lastAccessed": 1775148589993,
+      "type": "file"
+    },
+    {
+      "path": "src/services/candidates.ts",
+      "accessCount": 10,
+      "lastAccessed": 1775194369920,
+      "type": "file"
+    },
+    {
+      "path": "app/vacatures/layout.tsx",
+      "accessCount": 9,
+      "lastAccessed": 1775144211439,
+      "type": "file"
+    },
+    {
+      "path": "src/services/sidebar-metadata.ts",
+      "accessCount": 9,
+      "lastAccessed": 1775148582433,
+      "type": "file"
+    },
+    {
+      "path": "src/services/jobs/page-query.ts",
+      "accessCount": 9,
+      "lastAccessed": 1775194606540,
+      "type": "file"
+    },
+    {
+      "path": "src/services/jobs/repository.ts",
+      "accessCount": 9,
+      "lastAccessed": 1775194930999,
+      "type": "file"
+    },
+    {
+      "path": "tests/query-observability.test.ts",
+      "accessCount": 8,
+      "lastAccessed": 1775144275872,
+      "type": "file"
+    },
+    {
+      "path": "tests/hybrid-search-golden-queries.test.ts",
+      "accessCount": 7,
+      "lastAccessed": 1775135585202,
+      "type": "file"
+    },
+    {
+      "path": "app/vacatures/page.tsx",
+      "accessCount": 7,
+      "lastAccessed": 1775144234427,
+      "type": "file"
+    },
+    {
+      "path": "tests/hybrid-search-stage-timings.test.ts",
+      "accessCount": 7,
+      "lastAccessed": 1775144278006,
+      "type": "file"
+    },
+    {
+      "path": "app/matching/page.tsx",
+      "accessCount": 6,
+      "lastAccessed": 1775161097992,
+      "type": "file"
+    },
+    {
+      "path": "tests/jobs-page-service.test.ts",
+      "accessCount": 5,
+      "lastAccessed": 1775135588549,
+      "type": "file"
+    },
+    {
+      "path": "tests/auto-matching.test.ts",
+      "accessCount": 5,
+      "lastAccessed": 1775145669804,
+      "type": "file"
+    },
+    {
+      "path": "app/chat/loading.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1775134882005,
+      "type": "file"
+    },
+    {
+      "path": "tests/hybrid-search-runtime-regression.test.ts",
+      "accessCount": 4,
+      "lastAccessed": 1775135586770,
+      "type": "file"
+    },
+    {
+      "path": "tests/autopilot-rich-evidence.test.ts",
+      "accessCount": 4,
+      "lastAccessed": 1775159425551,
+      "type": "file"
+    },
+    {
+      "path": "src/services/jobs/hybrid-search-policy.ts",
+      "accessCount": 4,
+      "lastAccessed": 1775194497631,
+      "type": "file"
+    },
+    {
+      "path": "src/services/jobs/dedupe-ranks.ts",
+      "accessCount": 3,
+      "lastAccessed": 1775145606586,
+      "type": "file"
+    },
+    {
+      "path": "docs/slo-and-observability.md",
+      "accessCount": 3,
+      "lastAccessed": 1775159450595,
+      "type": "file"
+    },
+    {
+      "path": "app/overzicht/loading.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1775134885255,
+      "type": "file"
+    },
+    {
+      "path": "app/scraper/loading.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1775134885309,
+      "type": "file"
+    },
+    {
+      "path": "docs/plans/2026-04-02-001-refactor-performance-hotpaths-bootstrap-plan.md",
+      "accessCount": 2,
+      "lastAccessed": 1775145605177,
+      "type": "file"
+    },
+    {
+      "path": "tests/kandidaten-service-parity.test.ts",
+      "accessCount": 2,
+      "lastAccessed": 1775145650619,
+      "type": "file"
+    },
+    {
+      "path": "tests/opdracht-detail-archived-at-compat.test.ts",
+      "accessCount": 2,
+      "lastAccessed": 1775145751686,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 2,
+      "lastAccessed": 1775149057314,
+      "type": "file"
+    },
+    {
+      "path": "instrumentation.ts",
+      "accessCount": 2,
+      "lastAccessed": 1775159378284,
+      "type": "file"
+    },
+    {
+      "path": "instrumentation-client.ts",
+      "accessCount": 2,
+      "lastAccessed": 1775159378873,
+      "type": "file"
+    },
+    {
+      "path": "components/opdrachten-sidebar.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775134676200,
+      "type": "file"
+    },
+    {
+      "path": "src/services/jobs/deduplication.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775134677221,
+      "type": "file"
+    },
+    {
+      "path": "app/chat/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775134810871,
+      "type": "file"
+    },
+    {
+      "path": "app/settings/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775134810926,
+      "type": "file"
+    },
+    {
+      "path": "app/ontwikkelaar/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775134812119,
+      "type": "file"
+    },
+    {
+      "path": "app/automatisering/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775134812171,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/opdrachten-filters.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775134820040,
+      "type": "directory"
+    },
+    {
+      "path": "app/matching/loading.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775134827184,
+      "type": "file"
+    },
+    {
+      "path": "app/settings/loading.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775134833760,
+      "type": "file"
+    },
+    {
+      "path": "app/automatisering/loading.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775134846780,
+      "type": "file"
+    },
+    {
+      "path": "app/ontwikkelaar/loading.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775134850065,
+      "type": "file"
+    },
+    {
+      "path": "next.config.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775159150231,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/query-observability.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775159150285,
+      "type": "file"
+    },
+    {
+      "path": "src/env.ts",
+      "accessCount": 1,
+      "lastAccessed": 1775159172242,
+      "type": "file"
+    },
+    {
+      "path": "app/kandidaten/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1775159196310,
+      "type": "file"
+    },
+    {
+      "path": "docs/plans/2026-04-02-002-fix-sentry-matching-perf-observability-plan.md",
+      "accessCount": 1,
+      "lastAccessed": 1775159330015,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

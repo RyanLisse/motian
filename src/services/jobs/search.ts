@@ -5,6 +5,7 @@ import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdracht
 import { logSlowQuery, type QueryPath, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
 import { searchJobIdsByTypesense } from "../search-index/typesense-search";
+import { getAllSettings } from "../settings";
 import { collapseScoredJobsByVacancy, fetchDedupedJobIds, loadJobsByIds } from "./deduplication";
 import {
   getJobStatusCondition,
@@ -274,7 +275,11 @@ export async function hybridSearchWithTotal(
   const offset = Math.max(opts.offset ?? 0, 0);
   const requestedStatus = opts.status ?? "open";
   const safeQuery = query.slice(0, 80);
-  const policy = getHybridSearchPolicy({ query, limit, offset }, process.env);
+  const settings = await getAllSettings();
+  const policy = getHybridSearchPolicy(
+    { query, limit, offset, vectorMinScore: settings.searchVectorMinScore },
+    process.env,
+  );
 
   let textSearchMs = 0;
   let embeddingMs = 0;

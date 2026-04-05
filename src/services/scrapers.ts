@@ -628,6 +628,19 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
     });
 }
 
+export async function listPlatformCatalogPage(
+  opts: { limit?: number; offset?: number } = {},
+): Promise<{ data: PlatformCatalogEntryView[]; total: number }> {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
+  const data = await listPlatformCatalog();
+
+  return {
+    data: data.slice(offset, offset + limit),
+    total: data.length,
+  };
+}
+
 export async function getPlatformCatalogEntry(
   slug: string,
 ): Promise<PlatformCatalogEntryView | null> {

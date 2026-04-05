@@ -91,7 +91,7 @@ export const tools = [
 export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   zoek_screening_calls: async (raw) => {
     const { candidateId } = zoekScreeningCallsSchema.parse(raw);
-    return listScreeningCalls(candidateId);
+    return listScreeningCalls({ candidateId });
   },
 
   screening_call_detail: async (raw) => {

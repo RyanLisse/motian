@@ -1,4 +1,4 @@
-import { db, desc, eq } from "../db";
+import { db, desc, eq, sql } from "../db";
 import { candidates, jobMatches, jobs, screeningCalls } from "../db/schema";
 
 // ---------- Types ----------
@@ -237,12 +237,29 @@ export async function getScreeningCallByRoom(roomName: string) {
   return call ?? null;
 }
 
-export async function listScreeningCalls(candidateId: string) {
+export async function listScreeningCalls(opts: {
+  candidateId: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
   return db
     .select()
     .from(screeningCalls)
-    .where(eq(screeningCalls.candidateId, candidateId))
-    .orderBy(desc(screeningCalls.createdAt));
+    .where(eq(screeningCalls.candidateId, opts.candidateId))
+    .orderBy(desc(screeningCalls.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function countScreeningCalls(candidateId: string): Promise<number> {
+  const [{ count }] = await db
+    .select({ count: sql<number>`cast(count(*) as integer)` })
+    .from(screeningCalls)
+    .where(eq(screeningCalls.candidateId, candidateId));
+
+  return count ?? 0;
 }
 
 export async function deleteScreeningCall(id: string): Promise<boolean> {

@@ -10,6 +10,7 @@ export type ScrapeResult = typeof scrapeResults.$inferSelect;
 export type GetHistoryOptions = {
   platform?: string;
   limit?: number;
+  offset?: number;
 };
 
 export type PlatformStats = {
@@ -134,13 +135,25 @@ export async function getJobsForRun(
 /** Scrape resultaten ophalen, optioneel gefilterd op platform en gelimiteerd */
 export async function getHistory(opts: GetHistoryOptions = {}): Promise<ScrapeResult[]> {
   const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
 
   const baseQuery = db.select(scrapeResultColumns).from(scrapeResults);
   const filtered = opts.platform
     ? baseQuery.where(eq(scrapeResults.platform, opts.platform))
     : baseQuery;
 
-  return filtered.orderBy(desc(scrapeResults.runAt)).limit(limit);
+  return filtered.orderBy(desc(scrapeResults.runAt)).limit(limit).offset(offset);
+}
+
+export async function countHistory(
+  opts: Omit<GetHistoryOptions, "limit" | "offset"> = {},
+): Promise<number> {
+  const [{ count }] = await db
+    .select({ count: sql<number>`cast(count(*) as integer)` })
+    .from(scrapeResults)
+    .where(opts.platform ? eq(scrapeResults.platform, opts.platform) : undefined);
+
+  return count ?? 0;
 }
 
 /** Bereken analytics per platform over alle scrape resultaten */

@@ -2,6 +2,7 @@ import { and, db, inArray, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
+import { getAllSettings } from "../settings";
 import { fetchDedupedJobsPage, loadJobPageRowsByIds } from "./deduplication";
 import type { JobStatus } from "./filters";
 import { getHybridSearchPolicy } from "./hybrid-search-policy";
@@ -125,7 +126,11 @@ export async function hybridSearchPageWithTotal(
   const offset = Math.max(opts.offset ?? 0, 0);
   const requestedStatus: JobStatus = opts.status ?? "open";
   const safeQuery = query.slice(0, 80);
-  const policy = getHybridSearchPolicy({ query, limit, offset }, process.env);
+  const settings = await getAllSettings();
+  const policy = getHybridSearchPolicy(
+    { query, limit, offset, vectorMinScore: settings.searchVectorMinScore },
+    process.env,
+  );
 
   let textSearchMs = 0;
   let embeddingMs = 0;
