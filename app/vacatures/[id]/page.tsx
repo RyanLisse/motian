@@ -833,12 +833,13 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                 </dl>
               </section>
 
-              <section className="rounded-lg border border-border bg-card p-4">
+              <section id="shortlist" className="rounded-lg border border-border bg-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-sm font-semibold text-foreground">Gekoppelde kandidaten</h2>
+                    <h2 className="text-sm font-semibold text-foreground">Shortlist</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Kandidaten die al aan deze vacature gekoppeld zijn.
+                      Kandidaten die actief aan deze vacature gekoppeld zijn en vanuit hier door de
+                      pipeline bewegen.
                     </p>
                   </div>
                   <Link
@@ -852,7 +853,8 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
 
                 {recruiterCockpitRows.length === 0 ? (
                   <p className="mt-4 text-sm text-muted-foreground">
-                    Nog geen kandidaten gekoppeld aan deze vacature.
+                    Nog geen kandidaten in de shortlist. Start hieronder met topmatches of voeg
+                    handmatig een kandidaat toe.
                   </p>
                 ) : (
                   <div className="mt-4 grid gap-3 xl:grid-cols-2">
