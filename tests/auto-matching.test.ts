@@ -56,6 +56,9 @@ vi.mock("../src/services/requirement-extraction", () => ({
   extractRequirements: vi.fn(),
 }));
 vi.mock("../src/services/scoring", () => ({ computeMatchScore: vi.fn() }));
+vi.mock("../src/services/settings", () => ({
+  getAllSettings: vi.fn().mockResolvedValue({}),
+}));
 vi.mock("../src/services/structured-matching", () => ({ runStructuredMatch: vi.fn() }));
 
 import {

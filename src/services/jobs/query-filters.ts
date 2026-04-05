@@ -51,7 +51,8 @@ export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
   ];
 
   if (selectedPlatforms.length === 1) {
-    conditions.push(eq(jobs.platform, selectedPlatforms[0]!));
+    const onlyPlatform = selectedPlatforms[0];
+    if (onlyPlatform) conditions.push(eq(jobs.platform, onlyPlatform));
   } else if (selectedPlatforms.length > 1) {
     conditions.push(inArray(jobs.platform, selectedPlatforms));
   }

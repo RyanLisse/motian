@@ -7,6 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useDebouncedValue } from "@/components/sidebar/use-debounced-value";
 import { getOpdrachtenBasePath } from "@/src/lib/opdrachten-filter-url";
 import {
   DEFAULT_OPDRACHTEN_LIMIT,
@@ -30,20 +31,6 @@ import {
   searchJobs,
   toggleFilterValue,
 } from "./sidebar-utils";
-
-function useDebouncedValue<T>(value: T, delayMs = 300): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delayMs);
-
-    return () => clearTimeout(timeout);
-  }, [value, delayMs]);
-
-  return debouncedValue;
-}
 
 export function useSidebarFilters({
   initialJobs,

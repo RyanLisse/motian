@@ -67,7 +67,8 @@ function buildJobFilterBy(opts: HybridSearchOptions) {
   ];
 
   if (selectedPlatforms.length === 1) {
-    filters.push(`platform:=${escapeFilterValue(selectedPlatforms[0]!)}`);
+    const onlyPlatform = selectedPlatforms[0];
+    if (onlyPlatform) filters.push(`platform:=${escapeFilterValue(onlyPlatform)}`);
   } else if (selectedPlatforms.length > 1) {
     filters.push(`platform:=[${selectedPlatforms.map(escapeFilterValue).join(", ")}]`);
   }
