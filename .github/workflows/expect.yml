@@ -60,8 +60,9 @@ jobs:
             --paginate \
             --jq '.[] | select(.user.login == "vercel[bot]") | .body' \
             | grep -Eo 'https://[^ )]+\.vercel\.app' \
+            | grep -v 'vercel.live/open-feedback' \
             | grep 'motian-git-' \
-            | tail -n 1 || true)
+            | head -n 1 || true)
 
           if [ -n "${preview_url}" ]; then
             echo "base_url=${preview_url}" >> "$GITHUB_OUTPUT"
