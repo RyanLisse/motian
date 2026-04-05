@@ -130,7 +130,10 @@ export async function hybridSearchPageWithTotal(
   const offset = Math.max(opts.offset ?? 0, 0);
   const requestedStatus: JobStatus = opts.status ?? "open";
   const safeQuery = query.slice(0, 80);
-  const policy = getHybridSearchPolicy({ query, limit, offset }, process.env);
+  const policy = getHybridSearchPolicy(
+    { query, limit, offset, vectorMinScore: settings.searchVectorMinScore },
+    process.env,
+  );
 
   let textSearchMs = 0;
   let embeddingMs = 0;
