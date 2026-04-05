@@ -32,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { VacatureShareButton } from "@/components/vacature-share-button";
 import { stripHtml } from "@/src/lib/html";
 import { getJobDetailPageData } from "@/src/services/jobs/detail-page";
 import { JobDetailFields } from "./job-detail-fields";
@@ -824,6 +825,7 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                       </a>
                     </Button>
                   ) : null}
+                  <VacatureShareButton title={job.title} path={`/vacatures/${job.id}`} />
                 </div>
 
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2">
