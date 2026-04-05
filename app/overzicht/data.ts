@@ -280,7 +280,7 @@ async function getOverviewDataUncached(database: typeof db = db) {
 
 const getCachedOverviewData = unstable_cache(
   async () => getOverviewDataUncached(db),
-  ["overview-data"],
+  ["overview-data", "v1"],
   { revalidate: 60 },
 );
 
