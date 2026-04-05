@@ -27,6 +27,15 @@ describe("runtime config hardening regressions", () => {
     expect(mcpSource).not.toContain(HARDCODED_SENTRY_DSN_FRAGMENT);
   });
 
+  it("enforces Sentry sourcemap auth when runtime Sentry is enabled for production builds", () => {
+    const nextConfigSource = readFile("next.config.ts");
+
+    expect(nextConfigSource).toContain("process.env.SENTRY_AUTH_TOKEN");
+    expect(nextConfigSource).toContain("NEXT_PUBLIC_SENTRY_DSN");
+    expect(nextConfigSource).toContain("SENTRY_DSN");
+    expect(nextConfigSource).toContain("sourcemaps upload successfully");
+  });
+
   it("documents the voice envs required by the current runtime", () => {
     const envExample = readFile(".env.example");
 

@@ -8,6 +8,15 @@ import { getSidebarMetadata, refreshSidebarMetadata } from "@/src/services/sideb
 export const revalidate = 60;
 export const maxDuration = 30;
 
+const EMPTY_SIDEBAR_METADATA = {
+  totalCount: 0,
+  platforms: [],
+  endClients: [],
+  categories: [],
+  skillOptions: [],
+  skillEmptyText: "Filters tijdelijk niet beschikbaar.",
+};
+
 function SidebarSkeleton() {
   return (
     <div className="flex h-full flex-col space-y-3 p-3">
@@ -34,12 +43,20 @@ async function SidebarContent() {
   // The client fetches more on scroll/filter via the /api/vacatures/zoeken endpoint.
   const SIDEBAR_INITIAL_LIMIT = 20;
 
-  const metadata = await getSidebarMetadata().then((cached) => cached ?? refreshSidebarMetadata());
+  const metadata = await getSidebarMetadata()
+    .then((cached) => cached ?? refreshSidebarMetadata())
+    .catch((error) => {
+      console.error("[VacaturesLayout] Sidebar metadata unavailable, using empty fallback:", error);
+      return EMPTY_SIDEBAR_METADATA;
+    });
   // Pass knownTotal from precomputed metadata to skip the COUNT(*) query
   const { data: sidebarJobs } = await listJobsPage({
     limit: SIDEBAR_INITIAL_LIMIT,
     status: "open",
     knownTotal: metadata.totalCount,
+  }).catch((error) => {
+    console.error("[VacaturesLayout] Sidebar jobs unavailable, using empty fallback:", error);
+    return { data: [], total: metadata.totalCount };
   });
 
   return (

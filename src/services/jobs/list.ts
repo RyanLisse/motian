@@ -83,9 +83,16 @@ export async function listJobs(
 
   if (opts.q) {
     const tsInput = toTsQueryInput(opts.q);
-    if (tsInput) {
+    const termCount = opts.q
+      .trim()
+      .split(/\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean).length;
+    if (tsInput && termCount > 1) {
       queryPath = "list-fts";
-      conditions.push(sql`to_tsvector('dutch', search_text) @@ to_tsquery('dutch', ${tsInput})`);
+      conditions.push(
+        sql`coalesce(search_vector::tsvector, ''::tsvector) @@ to_tsquery('dutch', ${tsInput})`,
+      );
     } else {
       queryPath = "list";
       conditions.push(caseInsensitiveContains(jobs.title, opts.q));

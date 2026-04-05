@@ -1,4 +1,4 @@
-import { chatSessionMessages, db, desc, eq } from "@/src/db";
+import { getRecentSessionMessages } from "@/src/services/chat-sessions";
 
 export type UserContext = {
   userId: string;
@@ -62,16 +62,7 @@ export async function getUserContext(sessionId: string): Promise<UserContext> {
   if (!sessionId) return fallback;
 
   try {
-    const rows = await db
-      .select({
-        role: chatSessionMessages.role,
-        message: chatSessionMessages.message,
-        orderIndex: chatSessionMessages.orderIndex,
-      })
-      .from(chatSessionMessages)
-      .where(eq(chatSessionMessages.sessionId, sessionId))
-      .orderBy(desc(chatSessionMessages.orderIndex))
-      .limit(MAX_MESSAGES);
+    const rows = await getRecentSessionMessages(sessionId, MAX_MESSAGES);
 
     if (rows.length === 0) return fallback;
 

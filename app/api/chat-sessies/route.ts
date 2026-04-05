@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
-import { listSessions } from "@/src/services/chat-sessions";
+import { isRetryableChatSessionDatabaseError, listSessions } from "@/src/services/chat-sessions";
 
 const querySchema = z.object({
   limit: z.preprocess((v) => {
@@ -23,7 +23,16 @@ export const GET = withApiHandler(
     }
     const params = result.data;
 
-    const page = await listSessions({ limit: params.limit, cursor: params.cursor ?? null });
+    const page = await listSessions({ limit: params.limit, cursor: params.cursor ?? null }).catch(
+      (error) => {
+        if (isRetryableChatSessionDatabaseError(error)) {
+          console.warn("[chat-sessies] degraded empty response after retryable database error");
+          return { sessions: [], nextCursor: null, hasMore: false };
+        }
+
+        throw error;
+      },
+    );
     return Response.json(page, {
       headers: { "Cache-Control": "private, no-store" },
     });

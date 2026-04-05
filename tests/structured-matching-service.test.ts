@@ -6,6 +6,7 @@ const { mockGenerateText, mockWithRetry } = vi.hoisted(() => ({
 }));
 
 vi.mock("../src/lib/ai-models", () => ({
+  embeddingModel: "mock-embedding-model",
   geminiFlash: "mock-gemini-flash",
   embeddingModel: "mock-embedding-model",
   tracedGenerateText: mockGenerateText,
