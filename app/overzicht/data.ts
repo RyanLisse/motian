@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { and, asc, db, desc, eq, gte, isNull, ne, sql } from "@/src/db";
 import {
@@ -141,7 +142,7 @@ async function getRecentScrapes(database: typeof db): Promise<RecentScrape[]> {
   );
 }
 
-export const getOverviewData = cache(async function getOverviewData(database: typeof db = db) {
+async function getOverviewDataUncached(database: typeof db = db) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const now = new Date();
@@ -275,4 +276,18 @@ export const getOverviewData = cache(async function getOverviewData(database: ty
     upcomingInterviewCountResult,
     upcomingInterviews,
   };
+}
+
+const getCachedOverviewData = unstable_cache(
+  async () => getOverviewDataUncached(db),
+  ["overview-data"],
+  { revalidate: 60 },
+);
+
+export const getOverviewData = cache(async function getOverviewData(database: typeof db = db) {
+  if (database === db) {
+    return getCachedOverviewData();
+  }
+
+  return getOverviewDataUncached(database);
 });

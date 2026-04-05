@@ -85,6 +85,12 @@ vi.mock("../src/services/embedding", async () => {
   };
 });
 
+vi.mock("../src/services/settings", () => ({
+  getAllSettings: vi.fn().mockResolvedValue({
+    searchVectorMinScore: 0.3,
+  }),
+}));
+
 vi.mock("../src/lib/query-observability", () => ({
   SEARCH_SLO_MS: 800,
   logSlowQuery: mockLogSlowQuery,

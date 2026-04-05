@@ -60,6 +60,13 @@ vi.mock("../src/services/settings", () => ({
   getAllSettings: vi.fn().mockResolvedValue({}),
 }));
 vi.mock("../src/services/structured-matching", () => ({ runStructuredMatch: vi.fn() }));
+vi.mock("../src/services/settings", () => ({
+  getAllSettings: vi.fn().mockResolvedValue({
+    autoMatchTopN: 3,
+    autoMatchMinScore: 25,
+    searchVectorMinScore: 0.3,
+  }),
+}));
 
 import {
   autoMatchCandidateToJobs,
