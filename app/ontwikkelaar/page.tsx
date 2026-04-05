@@ -24,7 +24,8 @@ const SURFACES = [
     title: "MCP Server",
     href: "#mcp",
     icon: Plug,
-    description: "Model Context Protocol server met 42 tools. Verbind via IDE, CLI of HTTP.",
+    description:
+      "Model Context Protocol server met 42 tools. Verbind via IDE, CLI, HTTP of WebMCP in de browser.",
     tone: "text-violet-600 dark:text-violet-400",
     external: false,
   },
@@ -42,6 +43,7 @@ const MCP_METHODS = [
   { label: "Stdio", command: "pnpm mcp" },
   { label: "HTTP", command: "POST /api/mcp" },
   { label: "CLI", command: "pnpm cli" },
+  { label: "WebMCP", command: "MCP-B extensie + ingebouwde browsertools" },
 ] as const;
 
 const FEED_EXAMPLES = [
@@ -187,8 +189,8 @@ export default function OntwikkelaarPage() {
             <CardHeader className="space-y-3">
               <CardTitle className="text-base">MCP Verbinden</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Drie manieren om het Model Context Protocol te gebruiken. Kies de methode die past
-                bij je workflow.
+                Vier manieren om het Model Context Protocol te gebruiken. Kies de methode die past
+                bij je workflow, inclusief browser-native WebMCP voor live pagina-interactie.
               </p>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
@@ -203,6 +205,15 @@ export default function OntwikkelaarPage() {
                   </code>
                 </div>
               ))}
+
+              <div className="rounded-lg border border-dashed border-border/70 bg-background/60 p-3 text-sm leading-6 text-muted-foreground">
+                <p className="font-medium text-foreground">WebMCP setup</p>
+                <p>
+                  Installeer de MCP-B browser extensie en open Motian in dezelfde browser. De app
+                  registreert browsertools zoals route-context, navigatie en refresh automatisch via
+                  WebMCP.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>

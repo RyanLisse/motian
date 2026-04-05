@@ -17,4 +17,13 @@ describe("app layout command palette wiring", () => {
     expect(source).not.toContain("next/dynamic");
     expect(source).not.toContain("ssr: false");
   });
+
+  it("wires the shared providers through the Motian WebMCP client provider", () => {
+    const source = readFile("app", "providers.tsx");
+
+    expect(source).toContain(
+      'import { MotianWebMcpProvider } from "@/components/webmcp/motian-webmcp-provider"',
+    );
+    expect(source).toContain("<MotianWebMcpProvider />");
+  });
 });

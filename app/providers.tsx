@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
+import { MotianWebMcpProvider } from "@/components/webmcp/motian-webmcp-provider";
 import { PostHogProvider } from "@/src/components/posthog-provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -22,7 +23,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <QueryClientProvider client={queryClient}>
-        <PostHogProvider>{children}</PostHogProvider>
+        <PostHogProvider>
+          <MotianWebMcpProvider />
+          {children}
+        </PostHogProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

@@ -701,9 +701,9 @@ Realtime spraak-AI agent via **LiveKit Agents**:
 
 Model Context Protocol server voor IDE en CLI integratie:
 
-- **Protocol**: stdio transport
+- **Protocol**: stdio + HTTP transport, plus browser-side WebMCP tools
 - **42 Tools**: kandidaten, vacatures, matches, sollicitaties, interviews, berichten, GDPR, operaties, analyse, scraping
-- **Integratie**: werkt met Claude Code, Cursor, Windsurf en andere MCP-compatibele clients
+- **Integratie**: werkt met Claude Code, Cursor, Windsurf en andere MCP-compatibele clients, plus browser-native WebMCP via MCP-B
 - **Starten**: `pnpm mcp`
 
 #### MCP Verbindingsmethoden
@@ -713,6 +713,7 @@ Model Context Protocol server voor IDE en CLI integratie:
 | Stdio | `pnpm mcp` | IDE-integratie (VS Code, Cursor) |
 | HTTP | `POST /api/mcp` | Externe applicaties |
 | CLI | `pnpm cli` | Interactieve terminal |
+| WebMCP | MCP-B extensie + Motian in de browser | Browser-native tools voor route-context, navigatie en refresh |
 
 #### Configuratie voor Claude Code
 
@@ -727,6 +728,17 @@ Model Context Protocol server voor IDE en CLI integratie:
   }
 }
 ```
+
+#### WebMCP in de browser
+
+Motian registreert ook browser-side WebMCP tools via [`@mcp-b/global`](https://github.com/WebMCP-org/npm-packages) en [`@mcp-b/react-webmcp`](https://github.com/WebMCP-org/npm-packages). Daardoor kan een WebMCP-capabele client live paginacontext lezen en veilig navigeren binnen de app zonder screen-scraping.
+
+**Setup:**
+1. Installeer de [MCP-B browser extensie](https://chromewebstore.google.com/detail/mcp-b/fkhbffeojcfadbkpldmbjlbfocgknjlj)
+2. Open Motian in dezelfde browser
+3. Laat je WebMCP client de ingebouwde tools ontdekken
+
+Beschikbare browsertools starten met `motian_` en vullen de bestaande stdio/HTTP MCP server aan in plaats van deze te vervangen.
 
 ---
 

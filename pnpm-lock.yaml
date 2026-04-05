@@ -42,7 +42,7 @@ importers:
         version: 1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/agents-plugin-google':
         specifier: ^1.0.48
-        version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))
+        version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(@modelcontextprotocol/sdk@1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))
       '@livekit/agents-plugin-silero':
         specifier: ^1.0.48
         version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
@@ -52,9 +52,15 @@ importers:
       '@livekit/protocol':
         specifier: ^1.45.0
         version: 1.45.0
+      '@mcp-b/global':
+        specifier: ^2.2.0
+        version: 2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+      '@mcp-b/react-webmcp':
+        specifier: ^2.2.0
+        version: 2.2.0(react@19.2.4)(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
       '@modelcontextprotocol/sdk':
         specifier: ^1.27.0
-        version: 1.27.0(zod@3.25.76)
+        version: 1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76)
       '@motian/db':
         specifier: workspace:*
         version: link:packages/db
@@ -159,7 +165,7 @@ importers:
         version: 1.11.0
       mcp-handler:
         specifier: ^1.1.0
-        version: 1.1.0(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+        version: 1.1.0(@modelcontextprotocol/sdk@1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       modal:
         specifier: ^0.6.3
         version: 0.6.3
@@ -277,7 +283,7 @@ importers:
         version: 1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/agents-plugin-google':
         specifier: ^1.0.0
-        version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))
+        version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(@modelcontextprotocol/sdk@1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))
       '@livekit/agents-plugin-silero':
         specifier: ^1.0.46
         version: 1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)
@@ -631,6 +637,9 @@ packages:
     resolution: {integrity: sha512-l2M+Z8DO2vbvADOBNLbbh9y5ST1RY5sqkWOg/58GkUPBYou/cuNZ68SGQ644f1CvZ8kcOxyZtw06+dxWHIoN/w==}
     cpu: [x64]
     os: [win32]
+
+  '@cfworker/json-schema@4.1.1':
+    resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
 
   '@chevrotain/cst-dts-gen@11.1.1':
     resolution: {integrity: sha512-fRHyv6/f542qQqiRGalrfJl/evD39mAvbJLCekPazhiextEatq1Jx1K/i9gSd5NNO0ds03ek0Cbo/4uVKmOBcw==}
@@ -1386,6 +1395,44 @@ packages:
 
   '@livekit/typed-emitter@3.0.0':
     resolution: {integrity: sha512-9bl0k4MgBPZu3Qu3R3xy12rmbW17e3bE9yf4YY85gJIQ3ezLEj/uzpKHWBsLaDoL5Mozz8QCgggwIBudYQWeQg==}
+
+  '@mcp-b/global@2.2.0':
+    resolution: {integrity: sha512-3+FNuVXPGyhzYsVPL5UItMkTF+GD6E3iHEmuJY0yydjjpWtlqrUw7b7PLhyuymKcc1+jTMunyrr3Zps0uPEfiw==}
+    engines: {node: '>=18'}
+
+  '@mcp-b/react-webmcp@2.2.0':
+    resolution: {integrity: sha512-D2k/ZMGWfEd2pt4yBp2CgdAahBXRwcafFikSO6aSa2gc1CiPEL0A2aGMm0qEGF3REC5lY0yvybWWZJcqfdiPSg==}
+    peerDependencies:
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+      zod: ^3.25 || ^4.0
+      zod-to-json-schema: ^3.25.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+      zod-to-json-schema:
+        optional: true
+
+  '@mcp-b/transports@2.2.0':
+    resolution: {integrity: sha512-zSqYekrmou72z67GF5jXaDnQdhT84Hlmi4meshm0zMn71GlaYmHhXfb3UsgW3xQ7Y5CexQ4U9L9IrdG6/+MTfA==}
+
+  '@mcp-b/webmcp-polyfill@2.2.0':
+    resolution: {integrity: sha512-as49JP4MHXVMMVNzD8938EsiU2tEzWNk7Un6c6C/xK5rstkIrQZQsVLbH7NFtmgMb6bbryzSqg9JWSFIxkU27Q==}
+    engines: {node: '>=18'}
+
+  '@mcp-b/webmcp-ts-sdk@2.2.0':
+    resolution: {integrity: sha512-IzjwqrpbbASbAJxpr5k5m1ryiELGdnohDXzpLuB7UK2VI1rsAwQ04j59uRkMvaqZ4iwvxHTzKk+AajRB57OcPw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25 || ^4.0
+      zod-to-json-schema: ^3.25.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+      zod-to-json-schema:
+        optional: true
+
+  '@mcp-b/webmcp-types@2.2.0':
+    resolution: {integrity: sha512-1/UYAwQKBkqRgK18GkbGR4m6Cn9vz6Qy6pTL5LIIinUOhR5dMLaNl/blH/tJT+nJleMmgDoFZWGAmmr+fAz2PQ==}
 
   '@mermaid-js/parser@1.0.0':
     resolution: {integrity: sha512-vvK0Hi/VWndxoh03Mmz6wa1KDriSPjS2XMZL/1l19HFwygiObEEoEwSDxOqyLzzAI6J2PU3261JjTMTO7x+BPw==}
@@ -8828,6 +8875,8 @@ snapshots:
   '@cbor-extract/cbor-extract-win32-x64@2.2.0':
     optional: true
 
+  '@cfworker/json-schema@4.1.1': {}
+
   '@chevrotain/cst-dts-gen@11.1.1':
     dependencies:
       '@chevrotain/gast': 11.1.1
@@ -9033,14 +9082,14 @@ snapshots:
 
   '@google-cloud/precise-date@4.0.0': {}
 
-  '@google/genai@1.44.0(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))':
+  '@google/genai@1.44.0(@modelcontextprotocol/sdk@1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))':
     dependencies:
       google-auth-library: 10.6.1
       p-retry: 4.6.2
       protobufjs: 7.5.4
       ws: 8.19.0
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.27.0(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -9487,9 +9536,9 @@ snapshots:
   '@libsql/win32-x64-msvc@0.4.7':
     optional: true
 
-  '@livekit/agents-plugin-google@1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))':
+  '@livekit/agents-plugin-google@1.0.48(@livekit/agents@1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76))(@livekit/rtc-node@0.13.24)(@modelcontextprotocol/sdk@1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))':
     dependencies:
-      '@google/genai': 1.44.0(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))
+      '@google/genai': 1.44.0(@modelcontextprotocol/sdk@1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))
       '@livekit/agents': 1.0.48(@livekit/rtc-node@0.13.24)(zod@3.25.76)
       '@livekit/mutex': 1.1.1
       '@livekit/rtc-node': 0.13.24
@@ -9613,13 +9662,58 @@ snapshots:
 
   '@livekit/typed-emitter@3.0.0': {}
 
+  '@mcp-b/global@2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      '@mcp-b/transports': 2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))
+      '@mcp-b/webmcp-polyfill': 2.2.0
+      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+      '@mcp-b/webmcp-types': 2.2.0
+    transitivePeerDependencies:
+      - zod
+      - zod-to-json-schema
+
+  '@mcp-b/react-webmcp@2.2.0(react@19.2.4)(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      '@mcp-b/global': 2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+      '@mcp-b/transports': 2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))
+      '@mcp-b/webmcp-polyfill': 2.2.0
+      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+      '@mcp-b/webmcp-types': 2.2.0
+      react: 19.2.4
+    optionalDependencies:
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
+
+  '@mcp-b/transports@2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))':
+    dependencies:
+      '@mcp-b/webmcp-ts-sdk': 2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - zod-to-json-schema
+
+  '@mcp-b/webmcp-polyfill@2.2.0':
+    dependencies:
+      '@cfworker/json-schema': 4.1.1
+      '@mcp-b/webmcp-types': 2.2.0
+      '@standard-schema/spec': 1.1.0
+
+  '@mcp-b/webmcp-ts-sdk@2.2.0(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      '@mcp-b/webmcp-polyfill': 2.2.0
+      '@mcp-b/webmcp-types': 2.2.0
+    optionalDependencies:
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
+
+  '@mcp-b/webmcp-types@2.2.0': {}
+
   '@mermaid-js/parser@1.0.0':
     dependencies:
       langium: 4.2.1
 
   '@microsoft/fetch-event-source@2.0.1': {}
 
-  '@modelcontextprotocol/sdk@1.27.0(zod@3.25.76)':
+  '@modelcontextprotocol/sdk@1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76)':
     dependencies:
       '@hono/node-server': 1.19.10(hono@4.12.4)
       ajv: 8.18.0
@@ -9638,6 +9732,8 @@ snapshots:
       raw-body: 3.0.2
       zod: 3.25.76
       zod-to-json-schema: 3.25.1(zod@3.25.76)
+    optionalDependencies:
+      '@cfworker/json-schema': 4.1.1
     transitivePeerDependencies:
       - supports-color
 
@@ -14760,9 +14856,9 @@ snapshots:
 
   math-intrinsics@1.1.0: {}
 
-  mcp-handler@1.1.0(@modelcontextprotocol/sdk@1.27.0(zod@3.25.76))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)):
+  mcp-handler@1.1.0(@modelcontextprotocol/sdk@1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)):
     dependencies:
-      '@modelcontextprotocol/sdk': 1.27.0(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.27.0(@cfworker/json-schema@4.1.1)(zod@3.25.76)
       chalk: 5.6.2
       commander: 11.1.0
       redis: 4.7.1
