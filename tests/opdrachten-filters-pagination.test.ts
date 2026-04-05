@@ -123,6 +123,7 @@ describe("Opdrachten shared filter parsing", () => {
       rateMax: 120,
       contractType: "interim",
       sort: "deadline",
+      onlyShortlist: false,
     });
   });
 

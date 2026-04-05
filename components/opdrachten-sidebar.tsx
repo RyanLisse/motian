@@ -85,6 +85,8 @@ export function OpdrachtenSidebar({
     handleRadiusChange,
     handleProvinceChange,
     resetFilters,
+    onlyShortlist,
+    handleOnlyShortlistChange,
   } = useSidebarFilters({ initialJobs, initialTotal, categories });
 
   if (!isOverviewPage) {
@@ -124,6 +126,8 @@ export function OpdrachtenSidebar({
           onToggleVakgebied={handleToggleVakgebied}
           onHoursRangeChange={handleHoursRangeChange}
           onRadiusChange={handleRadiusChange}
+          onlyShortlist={onlyShortlist}
+          onOnlyShortlistChange={handleOnlyShortlistChange}
         />
 
         <SidebarResultsHeader
@@ -200,6 +204,8 @@ export function OpdrachtenSidebar({
           onRateMinChange={setRateMinInput}
           onRateMaxChange={setRateMaxInput}
           onResetFilters={resetFilters}
+          onlyShortlist={onlyShortlist}
+          onOnlyShortlistChange={handleOnlyShortlistChange}
         />
 
         <div className="flex h-full min-h-0 min-w-0 flex-col px-3 py-2 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-6 overflow-hidden">

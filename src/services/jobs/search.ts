@@ -69,6 +69,7 @@ export type HybridSearchOptions = {
   minHoursPerWeek?: number;
   maxHoursPerWeek?: number;
   radiusKm?: number;
+  onlyWithActivePipeline?: boolean;
 };
 
 export type HybridSearchResult = {
@@ -103,6 +104,7 @@ function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
     minHoursPerWeek: opts.minHoursPerWeek,
     maxHoursPerWeek: opts.maxHoursPerWeek,
     radiusKm: opts.radiusKm,
+    onlyWithActivePipeline: opts.onlyWithActivePipeline,
   });
 }
 

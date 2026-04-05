@@ -1,24 +1,34 @@
 "use client";
 
 import { Check, FileUp, Loader2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { validateCvUploadFile } from "@/src/lib/cv-upload";
 
 type UploadState = "idle" | "dragging" | "uploading" | "success" | "error";
 
+type ExtractedSkillsPreview = {
+  candidateId: string;
+  name: string;
+  hard: string[];
+  soft: string[];
+  updatedExisting: boolean;
+};
+
 export function SidebarCvDropZone({
   onUploadComplete,
 }: {
   onUploadComplete?: (candidateId: string) => void;
 } = {}) {
-  const router = useRouter();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [skillsPreview, setSkillsPreview] = useState<ExtractedSkillsPreview | null>(null);
   const dragDepthRef = useRef(0);
   const resetTimerRef = useRef<number | null>(null);
 
@@ -38,6 +48,7 @@ export function SidebarCvDropZone({
     resetTimerRef.current = window.setTimeout(() => {
       setUploadState("idle");
       setMessage(null);
+      setSkillsPreview(null);
       resetTimerRef.current = null;
     }, 4000);
   }, []);
@@ -135,16 +146,23 @@ export function SidebarCvDropZone({
         const action = duplicates?.exact ? "bijgewerkt" : "toegevoegd";
         setUploadState("success");
         setMessage(`${parsed.name} ${action}`);
-        scheduleReset();
         onUploadComplete?.(saveData.candidateId);
-        router.push(`/kandidaten/${saveData.candidateId}`);
+        const hard = (parsed.skills?.hard ?? []).map((s) => s.name).filter(Boolean);
+        const soft = (parsed.skills?.soft ?? []).map((s) => s.name).filter(Boolean);
+        setSkillsPreview({
+          candidateId: saveData.candidateId,
+          name: parsed.name,
+          hard,
+          soft,
+          updatedExisting: Boolean(duplicates?.exact),
+        });
       } catch (error) {
         setUploadState("error");
         setMessage(error instanceof Error ? error.message : "Upload mislukt");
         scheduleReset();
       }
     },
-    [onUploadComplete, router, scheduleReset],
+    [onUploadComplete, scheduleReset],
   );
 
   const handleDrop = useCallback(
@@ -219,6 +237,56 @@ export function SidebarCvDropZone({
           {message}
         </output>
       )}
+
+      {!collapsed && skillsPreview ? (
+        <div className="mt-2 w-full max-w-full space-y-2 rounded-md border border-border/60 bg-background/80 p-2 text-left">
+          <p className="text-xs font-medium text-foreground">Geëxtraheerde skills</p>
+          {skillsPreview.hard.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {skillsPreview.hard.slice(0, 16).map((name) => (
+                <Badge key={`h-${name}`} variant="secondary" className="text-[10px] font-normal">
+                  {name}
+                </Badge>
+              ))}
+              {skillsPreview.hard.length > 16 ? (
+                <span className="text-[10px] text-muted-foreground">
+                  +{skillsPreview.hard.length - 16} meer
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-[10px] text-muted-foreground">Geen harde skills gedetecteerd.</p>
+          )}
+          {skillsPreview.soft.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              <span className="w-full text-[10px] text-muted-foreground">Soft skills</span>
+              {skillsPreview.soft.slice(0, 8).map((name) => (
+                <Badge key={`s-${name}`} variant="outline" className="text-[10px] font-normal">
+                  {name}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button asChild size="sm" className="h-8 text-xs">
+              <Link href={`/kandidaten/${skillsPreview.candidateId}`}>Naar profiel</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                setSkillsPreview(null);
+                setUploadState("idle");
+                setMessage(null);
+              }}
+            >
+              Sluiten
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

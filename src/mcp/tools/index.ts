@@ -7,6 +7,7 @@ import {
   handlers as batchOperationsHandlers,
   tools as batchOperationsTools,
 } from "./batch-operations";
+import { handlers as channelOfferHandlers, tools as channelOfferTools } from "./channel-offer";
 import { handlers as chatSessionsHandlers, tools as chatSessionsTools } from "./chat-sessions";
 import { handlers as cvOpsHandlers, tools as cvOpsTools } from "./cv-operations";
 import { handlers as escoSkillsHandlers, tools as escoSkillsTools } from "./esco-skills";
@@ -44,6 +45,7 @@ export const allTools = [
   ...escoSkillsTools,
   ...batchOperationsTools,
   ...cvOpsTools,
+  ...channelOfferTools,
 ];
 
 export const allHandlers: Record<string, (args: unknown) => Promise<unknown>> = {
@@ -63,4 +65,5 @@ export const allHandlers: Record<string, (args: unknown) => Promise<unknown>> = 
   ...escoSkillsHandlers,
   ...batchOperationsHandlers,
   ...cvOpsHandlers,
+  ...channelOfferHandlers,
 };

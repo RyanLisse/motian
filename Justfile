@@ -1,5 +1,8 @@
 set shell := ["zsh", "-cu"]
 
+# Dev server bind address (avoid macOS HOSTNAME / LAN quirks). Use `just dev-lan` for 0.0.0.0.
+export LISTEN_HOST := env_var_or_default("LISTEN_HOST", "127.0.0.1")
+
 # List available commands
 default:
 	@just --list
@@ -8,11 +11,30 @@ default:
 
 # Clean up ports
 cleanup-ports:
-	-npx -y kill-port ${PORT:-3002}
+	-npx -y kill-port $${PORT:-3002}
 
-# Start the Next.js development server
-dev: cleanup-ports
-	pnpm next dev --hostname ${HOSTNAME:-0.0.0.0} --port ${PORT:-3002}
+# Fail fast if Next cannot load env (DATABASE_URL is required in src/env.ts)
+dev-check-env:
+	@test -f .env.local || ( \
+		echo ""; \
+		echo "Missing .env.local — Next.js exits before listening (DATABASE_URL required)."; \
+		echo "  Run:  just env-bootstrap"; \
+		echo "  Then set DATABASE_URL to your Neon URL (see .env.example line 1–2)."; \
+		echo ""; \
+		exit 1 \
+	)
+
+# Copy .env.example → .env.local once (does not overwrite)
+env-bootstrap:
+	@sh -c 'if [ -f .env.local ]; then echo ".env.local already exists — not overwriting"; exit 0; fi; cp .env.example .env.local && echo "Created .env.local — set DATABASE_URL to a real Neon connection string, then: just dev"'
+
+# Start the Next.js development server (http://127.0.0.1:$PORT)
+dev: cleanup-ports dev-check-env
+	pnpm next dev --hostname {{LISTEN_HOST}} --port $${PORT:-3002}
+
+# Same as dev but listen on all interfaces (phone / LAN)
+dev-lan: cleanup-ports dev-check-env
+	pnpm next dev --hostname 0.0.0.0 --port $${PORT:-3002}
 
 # ── Testing ──────────────────────────────────────
 
@@ -39,6 +61,29 @@ lint-fix:
 # Run high-impact quality checks before PR
 pre-pr:
 	pnpm run harness:pre-pr
+
+# ── Expect (browser QA) ─────────────────────────
+# https://github.com/millionco/expect — natural-language browser checks via Playwright + an agent.
+# Start the app first: `just dev` (other terminal), then e.g. `just expect -m "test the vacatures page" -y`
+# Override port: `PORT=3003 just expect -m "smoke homepage" -y`
+
+# Pass any expect-cli flags (e.g. -m "…" -y --ci --no-cookies --headed).
+# Bash shebang keeps quoted -m strings intact ({{args}} in zsh recipes does not).
+expect *ARGS:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	exec npx expect-cli@latest -u "http://127.0.0.1:$${PORT:-3002}" "$@"
+
+# Wait for local dev, then run Expect in CI mode (headless, auto-yes, ~30m cap)
+expect-ci:
+	npx -y wait-on http://127.0.0.1:$${PORT:-3002} --timeout 120000
+	npx expect-cli@latest -u http://127.0.0.1:$${PORT:-3002} --ci
+
+# Short smoke prompt for /vacatures (no cookie import)
+expect-vacatures:
+	npx expect-cli@latest -u http://127.0.0.1:$${PORT:-3002} \
+		-m "Open /vacatures, confirm the page loads and the vacature search sidebar or filters are visible. List any critical console errors." \
+		-y --no-cookies
 
 # ── Database ─────────────────────────────────────
 

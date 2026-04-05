@@ -53,6 +53,7 @@ const kandidaatTools = {
   voegNotitieToe: tools.voegNotitieToe,
   autoMatchKandidaat: tools.autoMatchKandidaat,
   cvIntakeResultaat: tools.cvIntakeResultaat,
+  voorbereidenKanaalAanbod: tools.voorbereidenKanaalAanbod,
 };
 
 const matchTools = {

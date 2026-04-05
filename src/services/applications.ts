@@ -264,6 +264,18 @@ export async function updateApplicationStage(
   return rows[0] ?? null;
 }
 
+export async function updateApplicationNotes(
+  id: string,
+  notes: string,
+): Promise<Application | null> {
+  const rows = await db
+    .update(applications)
+    .set({ notes, updatedAt: new Date() })
+    .where(and(eq(applications.id, id), isNull(applications.deletedAt)))
+    .returning();
+  return rows[0] ?? null;
+}
+
 export async function deleteApplication(id: string): Promise<boolean> {
   const result = await db
     .update(applications)
