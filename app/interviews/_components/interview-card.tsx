@@ -1,6 +1,7 @@
 import { Calendar, Clock, Code2, MapPin, Monitor, Phone, Star, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { interviews } from "@/src/db/schema";
+import { InterviewFeedbackEditor } from "./interview-feedback-editor";
 
 export const statusColors: Record<string, string> = {
   scheduled: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
@@ -97,6 +98,13 @@ export function InterviewCard({
       {interview.feedback && (
         <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{interview.feedback}</p>
       )}
+      <div className="mt-3">
+        <InterviewFeedbackEditor
+          interviewId={interview.id}
+          initialFeedback={interview.feedback}
+          initialRating={interview.rating}
+        />
+      </div>
     </div>
   );
 }
