@@ -22,7 +22,9 @@
       "@motian/esco": ["./packages/esco/src/index.ts"],
       "@motian/esco/*": ["./packages/esco/src/*"],
       "@motian/scrapers": ["./packages/scrapers/src/index.ts"],
-      "@motian/scrapers/*": ["./packages/scrapers/src/*"]
+      "@motian/scrapers/*": ["./packages/scrapers/src/*"],
+      "@motian/ai-platform": ["./packages/ai-platform/src/index.ts"],
+      "@motian/ai-platform/*": ["./packages/ai-platform/src/*"]
     }
   }
 }

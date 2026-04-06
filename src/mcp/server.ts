@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-import { config } from "dotenv";
-
-config({ path: ".env.local" });
-config();
-
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { loadAiPlatformRuntimeEnv } from "@motian/ai-platform";
 import { createMotianMCPServer } from "./create-server.js";
+
+loadAiPlatformRuntimeEnv(import.meta.url);
 
 const server = createMotianMCPServer();
 const transport = new StdioServerTransport();
