@@ -1033,6 +1033,8 @@ Motian gebruikt één levende API-documentatiesurface: **Scalar** op `/api-docs`
 - **Live API-documentatie**: `/api-docs`
 - **OpenAPI-bron**: `/api/openapi`
 - **Architectuur en platformuitleg**: [docs/architecture.md](docs/architecture.md)
+- **Ownership transfer guide**: [docs/runbooks/project-ownership-transfer-guide.md](docs/runbooks/project-ownership-transfer-guide.md) / [docs/runbooks/project-ownership-transfer-guide.nl.md](docs/runbooks/project-ownership-transfer-guide.nl.md)
+- **Ownership transfer checklist**: [docs/runbooks/project-ownership-transfer-checklist.md](docs/runbooks/project-ownership-transfer-checklist.md) / [docs/runbooks/project-ownership-transfer-checklist.nl.md](docs/runbooks/project-ownership-transfer-checklist.nl.md)
 - **Aanvullende repo-documentatie**: `docs/` met plannen, analyses, oplossingen en runbooks
 
 De oude Fumadocs-site is verwijderd; relevante inhoud is samengebracht in de hoofd-README, `docs/architecture.md` en de Scalar OpenAPI-documentatie.
