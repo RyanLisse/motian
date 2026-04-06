@@ -5,6 +5,7 @@ import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdracht
 import { logSlowQuery, type QueryPath, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
 import { searchJobIdsByTypesense } from "../search-index/typesense-search";
+import { getAllSettings } from "../settings";
 import { collapseScoredJobsByVacancy, fetchDedupedJobIds, loadJobsByIds } from "./deduplication";
 import {
   getJobStatusCondition,
@@ -76,6 +77,14 @@ export type HybridSearchResult = {
   data: Array<Job & { score: number }>;
   total: number;
 };
+
+function getQueryTermCount(query: string) {
+  return query
+    .trim()
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean).length;
+}
 
 function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
   return buildJobFilterConditions({
@@ -205,8 +214,9 @@ export async function searchJobIdsByTitle(
   }
 
   const tsInput = toTsQueryInput(query);
+  const useFullTextSearch = Boolean(tsInput) && getQueryTermCount(query) > 1;
 
-  if (tsInput) {
+  if (useFullTextSearch && tsInput) {
     const searchQuery = sql`to_tsquery('dutch', ${tsInput})`;
     const searchVector = sql`to_tsvector('dutch', search_text)`;
     const searchRank = sql`ts_rank(${searchVector}, ${searchQuery})`;
@@ -279,7 +289,11 @@ export async function hybridSearchWithTotal(
   const offset = Math.max(opts.offset ?? 0, 0);
   const requestedStatus = opts.status ?? "open";
   const safeQuery = query.slice(0, 80);
-  const policy = getHybridSearchPolicy({ query, limit, offset }, process.env);
+  const settings = await getAllSettings();
+  const policy = getHybridSearchPolicy(
+    { query, limit, offset, vectorMinScore: settings.searchVectorMinScore },
+    process.env,
+  );
 
   let textSearchMs = 0;
   let embeddingMs = 0;

@@ -139,6 +139,11 @@ async function importHybridSearchGoldenHarness({
     generateQueryEmbedding: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
     findSimilarJobsByEmbedding: vi.fn().mockResolvedValue(vectorResults),
   }));
+  vi.doMock("../src/services/settings", () => ({
+    getAllSettings: vi.fn().mockResolvedValue({
+      searchVectorMinScore: 0.3,
+    }),
+  }));
   vi.doMock("../src/lib/query-observability", () => ({
     SEARCH_SLO_MS: 800,
     logSlowQuery: vi.fn(),

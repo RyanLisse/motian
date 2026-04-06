@@ -17,6 +17,18 @@ type SearchIdsResult = {
   total: number;
 };
 
+function normalizeJobSearchQuery(query: string) {
+  return query.replace(/\s+/g, " ").trim().toLocaleLowerCase("nl-NL");
+}
+
+function isTypesenseJobQueryCandidate(query: string) {
+  const normalized = normalizeJobSearchQuery(query);
+  if (!normalized) return true;
+
+  const wordCount = normalized.split(" ").length;
+  return wordCount > 1;
+}
+
 function escapeFilterValue(value: string) {
   return `\`${value.replace(/`/g, "\\`")}\``;
 }
@@ -110,11 +122,12 @@ function buildCandidateFilterBy(opts: SearchCandidatesOptions) {
   return filters.join(" && ");
 }
 
-export function canUseTypesenseForJobs(opts: HybridSearchOptions = {}) {
+export function canUseTypesenseForJobs(opts: HybridSearchOptions = {}, query?: string) {
   if (!isTypesenseEnabled()) return false;
   if (opts.escoUri) return false;
   if (opts.region || (opts.regions?.length ?? 0) > 0) return false;
   if (opts.radiusKm != null) return false;
+  if (typeof query === "string" && !isTypesenseJobQueryCandidate(query)) return false;
   return true;
 }
 
@@ -156,7 +169,7 @@ export async function searchJobIdsByTypesense(
   query: string,
   opts: HybridSearchOptions = {},
 ): Promise<SearchIdsResult | null> {
-  if (!canUseTypesenseForJobs(opts)) return null;
+  if (!canUseTypesenseForJobs(opts, query)) return null;
   const perPage = Math.min(opts.limit ?? 50, 100);
   const page = Math.floor(Math.max(opts.offset ?? 0, 0) / perPage) + 1;
 

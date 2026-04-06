@@ -8,6 +8,7 @@ import "./globals.css";
 import { ChatContextProvider } from "@/components/chat/chat-context-provider";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { SidebarLayout } from "@/components/sidebar-layout";
+import { WebVitalsReporter } from "@/src/components/web-vitals-reporter";
 import { getRequestOrigin, getStableChatOrigin } from "@/src/lib/chat-origin";
 import { Providers } from "./providers";
 
@@ -47,6 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable} min-h-screen bg-background antialiased`}
       >
         <Providers>
+          <WebVitalsReporter />
           <ChatContextProvider>
             <SidebarLayout>{children}</SidebarLayout>
             <ChatWidget currentOrigin={currentOrigin} />

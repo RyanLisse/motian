@@ -7,6 +7,7 @@ import { jobReadSelection } from "@/src/services/jobs/repository";
 
 const RELATED_JOB_LIMIT = 4;
 const DEFAULT_GRADED_CANDIDATE_LIMIT = 12;
+const JOB_DETAIL_CACHE_VERSION = "v1";
 
 const PIPELINE_STAGE_PRIORITY: Record<string, number> = {
   new: 0,
@@ -33,7 +34,19 @@ const getCachedEndClients = unstable_cache(
 
 const DEFAULT_COCKPIT_LIMIT = 4;
 
-export async function getJobDetailPageData(
+function normalizeJobDetailLimits(opts: {
+  gradedLimit?: number;
+  relatedLimit?: number;
+  cockpitLimit?: number;
+}) {
+  return {
+    relatedLimit: Math.max(1, Math.min(opts.relatedLimit ?? RELATED_JOB_LIMIT, 12)),
+    gradedLimit: Math.max(1, Math.min(opts.gradedLimit ?? DEFAULT_GRADED_CANDIDATE_LIMIT, 24)),
+    cockpitLimit: Math.max(1, Math.min(opts.cockpitLimit ?? DEFAULT_COCKPIT_LIMIT, 50)),
+  };
+}
+
+async function getJobDetailPageDataUncached(
   id: string,
   opts: {
     gradedLimit?: number;
@@ -41,9 +54,7 @@ export async function getJobDetailPageData(
     cockpitLimit?: number;
   } = {},
 ) {
-  const relatedLimit = Math.max(1, Math.min(opts.relatedLimit ?? RELATED_JOB_LIMIT, 12));
-  const gradedLimit = Math.max(1, Math.min(opts.gradedLimit ?? DEFAULT_GRADED_CANDIDATE_LIMIT, 24));
-  const cockpitLimit = Math.max(1, Math.min(opts.cockpitLimit ?? DEFAULT_COCKPIT_LIMIT, 50));
+  const { relatedLimit, gradedLimit, cockpitLimit } = normalizeJobDetailLimits(opts);
   const rows = await db
     .select(jobReadSelection)
     .from(jobs)
@@ -139,4 +150,24 @@ export async function getJobDetailPageData(
     gradedCandidates,
     endClientOptions,
   };
+}
+
+const getCachedJobDetailPageData = unstable_cache(
+  async (id: string, gradedLimit: number, relatedLimit: number, cockpitLimit: number) =>
+    getJobDetailPageDataUncached(id, { gradedLimit, relatedLimit, cockpitLimit }),
+  ["job-detail-page-data", JOB_DETAIL_CACHE_VERSION],
+  { revalidate: 60 },
+);
+
+export async function getJobDetailPageData(
+  id: string,
+  opts: {
+    gradedLimit?: number;
+    relatedLimit?: number;
+    cockpitLimit?: number;
+  } = {},
+) {
+  const { relatedLimit, gradedLimit, cockpitLimit } = normalizeJobDetailLimits(opts);
+
+  return getCachedJobDetailPageData(id, gradedLimit, relatedLimit, cockpitLimit);
 }

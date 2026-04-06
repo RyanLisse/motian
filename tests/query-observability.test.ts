@@ -53,6 +53,11 @@ async function importListJobsWithTelemetryMocks() {
     fetchDedupedJobsPage,
     loadJobsByIds,
   }));
+  vi.doMock("../src/services/settings", () => ({
+    getAllSettings: vi.fn().mockResolvedValue({
+      searchVectorMinScore: 0.3,
+    }),
+  }));
   vi.doMock("../src/services/jobs/query-filters", () => ({
     buildJobFilterConditions: vi.fn(() => []),
   }));
@@ -186,6 +191,11 @@ async function importHybridSearchWithTelemetryMocks() {
       .fn()
       .mockResolvedValue([{ id: "job-2", title: "Vector vacature", similarity: 0.74 }]),
     findSimilarJobs: vi.fn(),
+  }));
+  vi.doMock("../src/services/settings", () => ({
+    getAllSettings: vi.fn().mockResolvedValue({
+      searchVectorMinScore: 0.3,
+    }),
   }));
 
   const mod = await import("../src/services/jobs/search");

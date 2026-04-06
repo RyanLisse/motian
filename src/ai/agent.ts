@@ -1,5 +1,5 @@
-import { applications, db, isNull, sql } from "@/src/db";
 import type { ToolResultCache } from "@/src/lib/tool-result-cache";
+import { getApplicationStats } from "@/src/services/applications";
 import { HYBRID_BLEND, SCORING_WEIGHTS } from "@/src/services/scoring";
 import { getAllSettings } from "@/src/services/settings";
 import { getWorkspaceSummary } from "@/src/services/workspace";
@@ -349,14 +349,7 @@ async function getWorkspaceContext(): Promise<{
   // Fetch settings and pipeline state in parallel, independent of the main summary
   const [settingsResult, pipelineResult] = await Promise.allSettled([
     getAllSettings(),
-    db
-      .select({
-        stage: applications.stage,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(applications)
-      .where(isNull(applications.deletedAt))
-      .groupBy(applications.stage),
+    getApplicationStats(),
   ]);
 
   let settingsText = "";
@@ -367,10 +360,7 @@ async function getWorkspaceContext(): Promise<{
 
   let pipelineText = "";
   if (pipelineResult.status === "fulfilled") {
-    const byStage: Record<string, number> = {};
-    for (const row of pipelineResult.value) {
-      byStage[row.stage] = row.count;
-    }
+    const byStage = pipelineResult.value.byStage;
     const stageLabels: [string, string][] = [
       ["new", "nieuw"],
       ["screening", "screening"],
