@@ -2,9 +2,12 @@
 
 import { AlertTriangle, CheckCircle2, Lightbulb, ShieldAlert, Star, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { RecruiterMatchBrief } from "@/components/matching/match-brief";
 import type { CriterionResult } from "@/src/schemas/matching";
+import type { MatchBrief as MatchBriefData } from "@/src/services/recruiter-insights";
 
 interface MatchDetailProps {
+  brief?: MatchBriefData;
   criteriaBreakdown: CriterionResult[];
   overallScore: number;
   knockoutsPassed: boolean;
@@ -28,6 +31,7 @@ const recLabels: Record<string, string> = {
 };
 
 export function MatchDetail({
+  brief,
   criteriaBreakdown,
   overallScore,
   knockoutsPassed,
@@ -43,6 +47,8 @@ export function MatchDetail({
 
   return (
     <div className="space-y-4">
+      {brief ? <RecruiterMatchBrief brief={brief} /> : null}
+
       <div className="flex items-center gap-3 flex-wrap">
         <Badge variant="outline" className={`text-xs ${recColors[recommendation] ?? ""}`}>
           {recLabels[recommendation] ?? recommendation}

@@ -45,7 +45,6 @@ function normalizeJobDetailLimits(opts: {
     cockpitLimit: Math.max(1, Math.min(opts.cockpitLimit ?? DEFAULT_COCKPIT_LIMIT, 50)),
   };
 }
-
 async function getJobDetailPageDataUncached(
   id: string,
   opts: {

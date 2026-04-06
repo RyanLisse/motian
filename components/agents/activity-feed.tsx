@@ -84,12 +84,17 @@ const STATUS_COLOR: Record<string, string> = {
   failed: "text-red-500",
 };
 
+const POLL_INTERVAL_MS = 60_000;
+
 // ---------- Component ----------
 
 export function AgentActivityFeed() {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | null>(null);
+  const [isPageVisible, setIsPageVisible] = useState(
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  );
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -102,37 +107,44 @@ export function AgentActivityFeed() {
         setEvents(json.data ?? []);
       }
     } catch {
-      // Silently fail — SSE will provide real-time updates
+      // Silently fail — the next poll will retry.
     } finally {
       setLoading(false);
     }
   }, [filter]);
 
-  // Initial fetch + polling every 10s
   useEffect(() => {
     fetchEvents();
-    const interval = setInterval(fetchEvents, 10_000);
-    return () => clearInterval(interval);
   }, [fetchEvents]);
 
-  // Also listen to SSE for instant updates
   useEffect(() => {
-    const es = new EventSource("/api/events");
+    function handleVisibilityChange() {
+      const visible = document.visibilityState === "visible";
+      setIsPageVisible(visible);
 
-    es.addEventListener("message", () => {
-      // Refetch on any event
-      fetchEvents();
-    });
-
-    // Listen for specific agent events
-    for (const eventType of Object.keys(EVENT_LABELS)) {
-      es.addEventListener(`agent:${eventType}`, () => {
-        fetchEvents();
-      });
+      if (visible) {
+        void fetchEvents();
+      }
     }
 
-    return () => es.close();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [fetchEvents]);
+
+  useEffect(() => {
+    if (!isPageVisible) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      void fetchEvents();
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [fetchEvents, isPageVisible]);
 
   const agents = ["intake", "matcher", "screener", "scheduler", "sourcing", "communicator"];
 

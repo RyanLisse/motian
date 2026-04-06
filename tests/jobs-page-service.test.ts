@@ -75,6 +75,11 @@ async function importListJobsPageWithMocks() {
     fetchDedupedJobsPage,
     loadJobPageRowsByIds,
   }));
+  vi.doMock("../src/services/settings", () => ({
+    getAllSettings: vi.fn().mockResolvedValue({
+      searchVectorMinScore: 0.3,
+    }),
+  }));
   vi.doMock("../src/services/jobs/query-filters", () => ({
     buildJobFilterConditions: vi.fn(() => []),
   }));
@@ -231,6 +236,11 @@ async function importHybridJobsPageWithMocks() {
     generateQueryEmbedding: vi.fn(),
     findSimilarJobsByEmbedding: vi.fn(),
     findSimilarJobs: vi.fn(),
+  }));
+  vi.doMock("../src/services/settings", () => ({
+    getAllSettings: vi.fn().mockResolvedValue({
+      searchVectorMinScore: 0.3,
+    }),
   }));
 
   const mod = await import("../src/services/jobs/page");

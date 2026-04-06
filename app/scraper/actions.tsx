@@ -2,33 +2,57 @@
 
 import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useEventSource } from "@/src/hooks/use-event-source";
+
+const SCRAPER_POLL_INTERVAL_MS = 15_000;
+const SCRAPER_POLL_TIMEOUT_MS = 2 * 60_000;
 
 export function ScraperActions() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const pollIntervalRef = useRef<number | null>(null);
+  const pollTimeoutRef = useRef<number | null>(null);
 
-  const handlers = useMemo(
-    () => ({
-      "scrape:start": (data: Record<string, unknown>) => {
-        setMessage(`Scrape ${data.platform} gestart...`);
-      },
-      "scrape:complete": (data: Record<string, unknown>) => {
-        setMessage(`${data.platform}: ${data.jobsNew} nieuw, ${data.duplicates} dubbel`);
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current !== null) {
+        window.clearInterval(pollIntervalRef.current);
+      }
+      if (pollTimeoutRef.current !== null) {
+        window.clearTimeout(pollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  function stopPolling() {
+    if (pollIntervalRef.current !== null) {
+      window.clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    if (pollTimeoutRef.current !== null) {
+      window.clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  }
+
+  function startPolling() {
+    stopPolling();
+
+    pollIntervalRef.current = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
         router.refresh();
-      },
-      "scrape:error": (data: Record<string, unknown>) => {
-        setMessage(`${data.platform}: fout — ${(data.errors as string[])?.[0] ?? "onbekend"}`);
-        setLoading(false);
-      },
-    }),
-    [router],
-  );
+      }
+    }, SCRAPER_POLL_INTERVAL_MS);
 
-  useEventSource(handlers);
+    pollTimeoutRef.current = window.setTimeout(() => {
+      stopPolling();
+      setLoading(false);
+      setMessage("Scrape gestart. Dashboard automatisch ververst, controleer de recente runs.");
+      router.refresh();
+    }, SCRAPER_POLL_TIMEOUT_MS);
+  }
 
   async function handleScrapeAll() {
     setLoading(true);
@@ -38,7 +62,9 @@ export function ScraperActions() {
         method: "POST",
       });
       if (res.ok) {
-        setMessage("Scrape gestart!");
+        setMessage("Scrape gestart. We verversen het dashboard tijdelijk automatisch.");
+        router.refresh();
+        startPolling();
       } else {
         setMessage("Fout bij starten scrape");
         setLoading(false);
@@ -61,7 +87,7 @@ export function ScraperActions() {
         disabled={loading}
         className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
       >
-        <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         {loading ? "Bezig..." : "Alles Scrapen"}
       </Button>
     </div>

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
+import { PipelineHealthCard } from "@/components/overview/pipeline-health-card";
 import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,7 @@ async function DashboardContent() {
     activeScrapers,
     recentScrapes,
     pipelineStageCounts,
+    pipelineHealth,
     upcomingInterviewCountResult,
     upcomingInterviews,
   } = await getOverviewData();
@@ -330,6 +332,10 @@ async function DashboardContent() {
       </div>
 
       <div className="grid gap-6">
+        <DashboardCard title="Pipeline health" icon={<Activity className="h-4 w-4" />}>
+          <PipelineHealthCard health={pipelineHealth} />
+        </DashboardCard>
+
         <DashboardCard
           title="Databronnen"
           icon={<RefreshCw className="h-4 w-4" />}

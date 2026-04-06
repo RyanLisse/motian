@@ -15,6 +15,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { CandidateNotes } from "@/components/candidate-notes";
 import { CandidateOfferActions } from "@/components/candidate-offer-actions";
+import { CandidateIntakeScorecard } from "@/components/candidate-profile/candidate-intake-scorecard";
 import { EmploymentCard } from "@/components/candidate-profile/employment-card";
 import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
 import { OpenToOffersRing } from "@/components/candidate-profile/open-to-offers-ring";
@@ -24,6 +25,7 @@ import { CvDocumentViewerLazy } from "@/components/cv-document-viewer-lazy";
 import { CvDropZone } from "@/components/cv-drop-zone";
 import { DeleteCandidateButton } from "@/components/delete-candidate-button";
 import { EditCandidateFields } from "@/components/edit-candidate-fields";
+import { RecruiterMatchBrief } from "@/components/matching/match-brief";
 import { ReportButton } from "@/components/matching/report-button";
 import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
 import { SkillsRadar } from "@/components/skills-radar";
@@ -45,6 +47,11 @@ import {
   structuredSkillsSchema,
 } from "@/src/schemas/candidate-intelligence";
 import type { CriterionResult } from "@/src/schemas/matching";
+import { getCandidateSkills, getJobSkillsForJobIds } from "@/src/services/esco";
+import {
+  buildCandidateIntakeScorecard,
+  buildMatchBrief,
+} from "@/src/services/recruiter-insights";
 
 export const dynamic = "force-dynamic";
 
@@ -287,6 +294,12 @@ async function KandidaatDetailContent({ params }: Props) {
           title: jobs.title,
           company: jobs.company,
           location: jobs.location,
+          province: jobs.province,
+          rateMin: jobs.rateMin,
+          rateMax: jobs.rateMax,
+          requirements: jobs.requirements,
+          wishes: jobs.wishes,
+          competences: jobs.competences,
         },
       })
       .from(jobMatches)
@@ -351,6 +364,19 @@ async function KandidaatDetailContent({ params }: Props) {
   const remainingMatchRows = activeApplications.length
     ? matchRows.filter((row) => !linkedMatchIds.has(row.match.id))
     : matchRows;
+  const remainingMatchJobIds = remainingMatchRows
+    .map((row) => row.job?.id)
+    .filter((jobId): jobId is string => Boolean(jobId));
+  const [candidateCanonicalSkills, jobCanonicalSkillsMap] = await Promise.all([
+    getCandidateSkills(candidate.id).catch(() => []),
+    remainingMatchJobIds.length > 0
+      ? getJobSkillsForJobIds(remainingMatchJobIds).catch(() => new Map())
+      : Promise.resolve(new Map()),
+  ]);
+  const candidateIntakeScorecard = buildCandidateIntakeScorecard({
+    candidate,
+    candidateCanonicalSkills,
+  });
   const matchChartData = remainingMatchRows.map((row) => ({
     jobTitle: row.job?.title ?? "Vacature",
     score: row.match.matchScore,
@@ -686,6 +712,8 @@ async function KandidaatDetailContent({ params }: Props) {
             </div>
           </section>
 
+          <CandidateIntakeScorecard scorecard={candidateIntakeScorecard} />
+
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             {/* Left column: About, Employments, Edit, CV, Notes, Matches */}
             <div className="space-y-6 lg:col-span-2">
@@ -810,6 +838,16 @@ async function KandidaatDetailContent({ params }: Props) {
                         const enrichmentSuggestions = Array.isArray(row.match.enrichmentSuggestions)
                           ? (row.match.enrichmentSuggestions as string[])
                           : [];
+                        const recruiterBrief =
+                          row.job != null
+                            ? buildMatchBrief({
+                                match: row.match,
+                                candidate,
+                                job: row.job,
+                                candidateCanonicalSkills,
+                                jobCanonicalSkills: jobCanonicalSkillsMap.get(row.job.id) ?? [],
+                              })
+                            : null;
                         const hasStructuredMatch = criteriaBreakdown.length > 0;
 
                         return (
@@ -908,6 +946,9 @@ async function KandidaatDetailContent({ params }: Props) {
                                   </p>
                                 </div>
                               )}
+                              {recruiterBrief ? (
+                                <RecruiterMatchBrief brief={recruiterBrief} />
+                              ) : null}
                               {hasStructuredMatch ? (
                                 <MatchDetail
                                   criteriaBreakdown={criteriaBreakdown}
@@ -953,6 +994,7 @@ async function KandidaatDetailContent({ params }: Props) {
 
             {/* Right column: Market value, Years exp, Social, Skills (radar + tags), Contacts */}
             <div className="space-y-4">
+              <CandidateIntakeScorecard scorecard={candidateIntakeScorecard} />
               <div className="rounded-xl border border-border bg-red-50 p-4 dark:bg-red-950/20">
                 <p className="text-xs font-medium text-muted-foreground">Marktwaarde</p>
                 <p className="mt-0.5 text-sm font-medium text-orange-600 dark:text-orange-400">

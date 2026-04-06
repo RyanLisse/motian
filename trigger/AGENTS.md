@@ -12,7 +12,6 @@ Trigger.dev task definitions for background processing, scheduled maintenance, s
 | `scrape-pipeline.ts` | Main background scrape orchestration task. |
 | `cv-analysis-pipeline.ts` | CV analysis workflow task. |
 | `embeddings-batch.ts` | Batch embedding generation. |
-| `autopilot-nightly.ts` | Nightly autopilot audit pipeline. |
 | `nightly-maintenance.ts` | General nightly maintenance task. |
 | `platform-onboard.ts` | Platform onboarding automation task. |
 | `scraper-health.ts` | Scraper monitoring and health checks. |
@@ -36,7 +35,6 @@ Trigger.dev task definitions for background processing, scheduled maintenance, s
 
 ### Internal
 - `src/services/` for real work execution.
-- `src/autopilot/` for nightly audit workflows.
 
 ### External
 - `@trigger.dev/sdk`.

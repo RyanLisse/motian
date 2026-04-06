@@ -34,7 +34,10 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VacatureShareButton } from "@/components/vacature-share-button";
 import { stripHtml } from "@/src/lib/html";
+import { getJobSkills } from "@/src/services/esco";
 import { getJobDetailPageData } from "@/src/services/jobs/detail-page";
+import { buildVacatureTriageScorecard } from "@/src/services/recruiter-insights";
+import { VacatureTriageScorecard } from "@/components/vacatures/vacature-triage-scorecard";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -219,8 +222,13 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
   if (!job) {
     notFound();
   }
+  const jobCanonicalSkills = await getJobSkills(job.id).catch(() => []);
   const { relatedJobs, pipelineCounts, recruiterCockpitRows, gradedCandidates, endClientOptions } =
     detailData;
+  const vacatureTriageScorecard = buildVacatureTriageScorecard({
+    job,
+    jobCanonicalSkills,
+  });
 
   // Build pipeline summary
   // Pipeline stages: only active stages count toward totalPipeline.
@@ -806,6 +814,8 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                   </>
                 )}
               </section>
+
+              <VacatureTriageScorecard scorecard={vacatureTriageScorecard} />
 
               <section className="rounded-lg border border-border bg-card p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">

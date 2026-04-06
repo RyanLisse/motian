@@ -2,7 +2,6 @@ import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AddCandidateWizard } from "@/components/add-candidate-wizard";
-import { DataRefreshListener } from "@/components/data-refresh-listener";
 import { DraggableCandidate } from "@/components/draggable-candidate";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -342,13 +341,8 @@ async function KandidatenContent({ searchParams }: Props) {
 
 export default function KandidatenPage(props: Props) {
   return (
-    <>
-      <DataRefreshListener
-        events={["candidate:created", "candidate:updated", "candidate:deleted"]}
-      />
-      <Suspense fallback={<KandidatenSkeleton />}>
-        <KandidatenContent {...props} />
-      </Suspense>
-    </>
+    <Suspense fallback={<KandidatenSkeleton />}>
+      <KandidatenContent {...props} />
+    </Suspense>
   );
 }

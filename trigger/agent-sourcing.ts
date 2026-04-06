@@ -23,7 +23,7 @@ export const agentSourcingTask = task({
     minTimeoutInMs: 2000,
     maxTimeoutInMs: 30_000,
   },
-  machine: { preset: "medium-1x" },
+  machine: { preset: "small-2x" },
   maxDuration: 300,
   run: async (
     payload: {

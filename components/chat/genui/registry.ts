@@ -52,6 +52,12 @@ export const GENUI_REGISTRY: Record<string, GenUIEntry> = {
     ),
     label: "Interviews",
   },
+  genereerInterviewPrep: {
+    component: lazy(() =>
+      import("./interview-prep-card").then((m) => ({ default: m.InterviewPrepCard })),
+    ),
+    label: "Interviewprep",
+  },
   // Analytics
   analyseData: {
     component: lazy(() => import("./insight-chart").then((m) => ({ default: m.InsightChart }))),
