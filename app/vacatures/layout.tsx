@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
+import type { OpdrachtenSidebarProps } from "@/components/sidebar/sidebar-types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listJobsPage } from "@/src/services/jobs/page-query";
 import { getSidebarMetadata, refreshSidebarMetadata } from "@/src/services/sidebar-metadata";
@@ -8,7 +9,7 @@ import { getSidebarMetadata, refreshSidebarMetadata } from "@/src/services/sideb
 export const revalidate = 60;
 export const maxDuration = 30;
 
-const EMPTY_SIDEBAR_METADATA = {
+const EMPTY_SIDEBAR_METADATA: Omit<OpdrachtenSidebarProps, "jobs"> = {
   totalCount: 0,
   platforms: [],
   endClients: [],

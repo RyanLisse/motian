@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { and, db, desc, eq, inArray, isNull, sql } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
 import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
@@ -49,6 +50,26 @@ export type CreateCandidateData = {
   experience?: { title: string; company: string; duration: string }[];
   education?: { school: string; degree: string; duration: string }[];
 };
+
+function getSearchTelemetryMeta(query: string | undefined) {
+  const trimmedQuery = query?.trim() ?? "";
+  const queryLength = trimmedQuery.length;
+  const queryTokenCount = trimmedQuery.length > 0 ? trimmedQuery.split(/\s+/).length : 0;
+
+  if (trimmedQuery.length === 0) {
+    return {
+      queryFingerprint: null,
+      queryLength,
+      queryTokenCount,
+    };
+  }
+
+  return {
+    queryFingerprint: createHash("sha256").update(trimmedQuery).digest("hex").slice(0, 16),
+    queryLength,
+    queryTokenCount,
+  };
+}
 
 export function isCandidateMatchingStatus(value: string): value is CandidateMatchingStatus {
   return CANDIDATE_MATCHING_STATUSES.includes(value as CandidateMatchingStatus);
@@ -176,7 +197,7 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = Math.max(0, opts.offset ?? 0);
-  const safeQuery = opts.query?.slice(0, 80);
+  const queryTelemetry = getSearchTelemetryMeta(opts.query);
   let typesenseSearchMs = 0;
   let hydrateMs = 0;
   let dbSearchMs = 0;
@@ -196,7 +217,6 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
         .filter((candidate): candidate is Candidate => Boolean(candidate));
 
       logSlowQuery("searchCandidates", Date.now() - start, SEARCH_SLO_MS, {
-        query: safeQuery,
         limit,
         offset,
         total: externalResult.total,
@@ -206,6 +226,7 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
         dbSearchMs,
         fallbackReason,
         queryPath: "candidate-search-typesense",
+        ...queryTelemetry,
       });
 
       return result;
@@ -229,7 +250,6 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   dbSearchMs = Date.now() - dbSearchStartedAt;
 
   logSlowQuery("searchCandidates", Date.now() - start, SEARCH_SLO_MS, {
-    query: safeQuery,
     limit,
     offset,
     total: result.length,
@@ -239,6 +259,7 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
     dbSearchMs,
     fallbackReason,
     queryPath: "candidate-search-db",
+    ...queryTelemetry,
   });
 
   return result;
@@ -249,7 +270,7 @@ export async function countCandidates(
   opts: Omit<SearchCandidatesOptions, "limit" | "offset"> = {},
 ): Promise<number> {
   const start = Date.now();
-  const safeQuery = opts.query?.slice(0, 80);
+  const queryTelemetry = getSearchTelemetryMeta(opts.query);
   let typesenseSearchMs = 0;
   let dbSearchMs = 0;
   let fallbackReason: "typesense-unavailable" | "typesense-zero-hits" | null = null;
@@ -258,15 +279,15 @@ export async function countCandidates(
     const typesenseSearchStartedAt = Date.now();
     const externalResult = await searchCandidateIdsByTypesense(opts);
     typesenseSearchMs = Date.now() - typesenseSearchStartedAt;
-    if (externalResult) {
+    if (externalResult && externalResult.total > 0) {
       logSlowQuery("countCandidates", Date.now() - start, LIST_SLO_MS, {
-        query: safeQuery,
         total: externalResult.total,
         results: externalResult.total,
         typesenseSearchMs,
         dbSearchMs,
         fallbackReason,
         queryPath: "candidate-count-typesense",
+        ...queryTelemetry,
       });
       return externalResult.total;
     }
@@ -286,13 +307,13 @@ export async function countCandidates(
   dbSearchMs = Date.now() - dbSearchStartedAt;
 
   logSlowQuery("countCandidates", Date.now() - start, LIST_SLO_MS, {
-    query: safeQuery,
     total: count ?? 0,
     results: count ?? 0,
     typesenseSearchMs,
     dbSearchMs,
     fallbackReason,
     queryPath: "candidate-count-db",
+    ...queryTelemetry,
   });
 
   return count ?? 0;
