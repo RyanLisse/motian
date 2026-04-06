@@ -3,15 +3,16 @@ import { refreshDedupeRanks } from "../src/services/jobs/dedupe-ranks";
 import { refreshSidebarMetadata } from "../src/services/sidebar-metadata";
 
 /**
- * Unified cache refresh — runs every 15 minutes.
+ * Unified cache refresh — runs shortly after each scrape window.
  *
  * Consolidates dedupe-ranks-refresh and sidebar-metadata-refresh into a
- * single scheduled task to stay within the Trigger.dev schedule limit.
+ * single scheduled task to stay within the Trigger.dev schedule limit while
+ * avoiding unnecessary wake-ups throughout the day.
  */
 export const cacheRefreshTask = schedules.task({
   id: "cache-refresh",
   cron: {
-    pattern: "*/15 * * * *",
+    pattern: "20 6,10,14,18 * * *",
     timezone: "Europe/Amsterdam",
   },
   retry: {

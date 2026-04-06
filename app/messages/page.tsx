@@ -1,6 +1,5 @@
 import { ArrowDownLeft, ArrowUpRight, Filter, MessageSquare } from "lucide-react";
 import { Suspense } from "react";
-import { DataRefreshListener } from "@/components/data-refresh-listener";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterTabs } from "@/components/shared/filter-tabs";
@@ -227,11 +226,8 @@ async function MessagesContent({ searchParams }: Props) {
 
 export default function MessagesPage({ searchParams }: Props) {
   return (
-    <>
-      <DataRefreshListener events={["message:sent", "message:deleted"]} />
-      <Suspense fallback={<MessagesSkeleton />}>
-        <MessagesContent searchParams={searchParams} />
-      </Suspense>
-    </>
+    <Suspense fallback={<MessagesSkeleton />}>
+      <MessagesContent searchParams={searchParams} />
+    </Suspense>
   );
 }
