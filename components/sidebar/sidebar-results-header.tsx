@@ -49,7 +49,7 @@ export function SidebarResultsHeader({
 
   if (variant === "compact") {
     return (
-      <div className="flex shrink-0 items-center justify-between gap-3 border-y border-white/10 bg-black/30 px-4 py-4">
+      <div className="flex shrink-0 flex-col gap-2 border-y border-white/10 bg-black/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
             {displayTotal} vacatures
