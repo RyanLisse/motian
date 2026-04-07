@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motian Weekly Performance Explainer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b1020;
+      --surface: #111831;
+      --surface-2: #172042;
+      --text: #e8ecff;
+      --muted: #a4afd6;
+      --line: rgba(133, 154, 255, 0.25);
+      --accent: #7c9bff;
+      --good: #40d39a;
+      --warn: #ffcf66;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 0%, #1a2350, var(--bg) 48%);
+      color: var(--text);
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      padding: 24px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 2rem; }
+    .sub { margin: 0 0 24px; color: var(--muted); font-size: 0.95rem; }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .kpi .v { font-family: "IBM Plex Mono", monospace; font-size: 1.35rem; color: var(--accent); }
+    .kpi .l { color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 980px) {
+      .grid { grid-template-columns: 1.05fr 1fr; }
+    }
+    .card {
+      background: linear-gradient(180deg, var(--surface), var(--surface-2));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    h2 { margin: 0 0 10px; font-size: 1.05rem; }
+    ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
+    li { margin-bottom: 8px; }
+    .timeline {
+      margin-top: 10px;
+      border-left: 2px solid var(--line);
+      padding-left: 12px;
+    }
+    .step { margin-bottom: 14px; }
+    .step .t { font-family: "IBM Plex Mono", monospace; color: var(--accent); font-size: 0.82rem; }
+    .step .d { color: var(--text); font-size: 0.95rem; margin: 2px 0; }
+    .step .w { color: var(--muted); font-size: 0.86rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .ok { color: var(--good); }
+    .warn { color: var(--warn); }
+    .foot {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-family: "IBM Plex Mono", monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Weekly Speed & Performance Explainer</h1>
+    <p class="sub">Motian progress recap (2026-04-01 to 2026-04-07): what changed, why it mattered, and how we protected performance.</p>
+
+    <section class="kpis">
+      <div class="kpi"><div class="v">5/5</div><div class="l">Shell route budgets passed</div></div>
+      <div class="kpi"><div class="v">14</div><div class="l">Shell/mobile perf files shipped</div></div>
+      <div class="kpi"><div class="v">&lt; 42KB</div><div class="l">Per-route shell bundle footprint</div></div>
+      <div class="kpi"><div class="v">3</div><div class="l">Main speed themes this week</div></div>
+    </section>
+
+    <div class="grid">
+      <article class="card">
+        <h2>What We Did (and Why)</h2>
+        <div class="timeline">
+          <div class="step">
+            <div class="t">Search path hardening</div>
+            <div class="d">Skipped unnecessary expensive search behavior on low-value paths (short queries, heavy counts, costly metadata refreshes).</div>
+            <div class="w">Why: improved first-result latency and reduced DB/search overhead during normal recruiter usage.</div>
+          </div>
+          <div class="step">
+            <div class="t">Mobile shell optimization</div>
+            <div class="d">Moved heavyweight overlays/providers out of the global critical path and virtualized long mobile lists.</div>
+            <div class="w">Why: faster shell hydration, less rendering pressure, and smoother list interaction on mobile devices.</div>
+          </div>
+          <div class="step">
+            <div class="t">Performance guardrails</div>
+            <div class="d">Added route-level bundle budgets + hydration timing checks + mobile QA command path.</div>
+            <div class="w">Why: avoid regressions by enforcing budgets and making slowness visible in telemetry/CI workflows.</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Speed and Performance Outcomes</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Outcome</th>
+              <th>Reason It Matters</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Shell bundles</td>
+              <td class="ok">All tracked routes pass budget</td>
+              <td>Keeps initial JS cost bounded on high-traffic screens.</td>
+            </tr>
+            <tr>
+              <td>Hydration telemetry</td>
+              <td class="ok">Route-specific instrumentation added</td>
+              <td>Turns perceived slowness into measurable alerts.</td>
+            </tr>
+            <tr>
+              <td>Mobile list rendering</td>
+              <td class="ok">Virtualization enabled for long lists</td>
+              <td>Reduces jank and dropped frames under scroll pressure.</td>
+            </tr>
+            <tr>
+              <td>Search stability</td>
+              <td class="ok">Hot-path logic simplified/hardened</td>
+              <td>Protects recruiter workflows from query regressions.</td>
+            </tr>
+            <tr>
+              <td>Expect QA run</td>
+              <td class="warn">Automation flaky in this environment</td>
+              <td>Validation path exists; runtime stability still needs follow-up.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="foot">Primary focus: speed-to-first-usable-screen and search responsiveness under real recruiter traffic patterns.</p>
+      </article>
+    </div>
+  </div>
+</body>
+</html>
