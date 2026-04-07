@@ -9,21 +9,18 @@ function readFile(...segments: string[]): string {
 }
 
 describe("app layout command palette wiring", () => {
-  it("imports the client command palette directly instead of using ssr:false dynamic in the server layout", () => {
+  it("wires route-level shell overlays from the server layout", () => {
     const source = readFile("app", "layout.tsx");
 
-    expect(source).toContain('import { CommandPalette } from "@/components/command-palette"');
-    expect(source).toContain("<CommandPalette />");
-    expect(source).not.toContain("next/dynamic");
-    expect(source).not.toContain("ssr: false");
+    expect(source).toContain(
+      'import { RouteShellOverlays } from "@/components/route-shell-overlays"',
+    );
+    expect(source).toContain("<RouteShellOverlays");
   });
 
-  it("wires the shared providers through the Motian WebMCP client provider", () => {
+  it("keeps shared providers lightweight without globally mounting the WebMCP client provider", () => {
     const source = readFile("app", "providers.tsx");
 
-    expect(source).toContain(
-      'import { MotianWebMcpProvider } from "@/components/webmcp/motian-webmcp-provider"',
-    );
-    expect(source).toContain("<MotianWebMcpProvider />");
+    expect(source).not.toContain("MotianWebMcpProvider");
   });
 });

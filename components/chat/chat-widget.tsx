@@ -162,7 +162,7 @@ function ChatWidgetInner({
         onLoadOlder={handleLoadOlder}
       />
 
-      <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-3 sm:pb-4">
+      <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4">
         <div className="flex flex-col gap-1.5 overflow-hidden rounded-xl border border-border bg-background shadow-lg">
           {uploadState !== "idle" && (
             <div
@@ -286,7 +286,7 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
           onClick={() => setOpen(true)}
           aria-label="Open chatwidget"
           aria-haspopup="dialog"
-          className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
+          className="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 sm:right-6 sm:bottom-6"
           title="Open chatwidget (⌘J)"
         >
           <MessageSquare className="h-5 w-5" />
@@ -306,11 +306,11 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
             role="dialog"
             aria-label="Motian AI chatwidget"
             className={cn(
-              "fixed inset-x-3 bottom-3 top-16 z-50 flex origin-bottom-right flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl transition-all duration-200 ease-out sm:inset-x-auto sm:right-6 sm:top-auto sm:h-[min(720px,calc(100vh-6rem))] sm:w-[420px]",
+              "fixed inset-0 z-50 flex origin-bottom-right flex-col overflow-hidden border border-border bg-background shadow-2xl transition-all duration-200 ease-out sm:inset-x-auto sm:right-6 sm:bottom-3 sm:top-auto sm:h-[min(720px,calc(100vh-6rem))] sm:w-[420px] sm:rounded-2xl",
               "pointer-events-auto translate-y-0 scale-100 opacity-100",
             )}
           >
-            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4 pt-[max(env(safe-area-inset-top),0px)]">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-foreground">Motian AI</span>

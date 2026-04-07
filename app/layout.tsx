@@ -3,12 +3,9 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
-import { CommandPalette } from "@/components/command-palette";
 import "./globals.css";
-import { ChatContextProvider } from "@/components/chat/chat-context-provider";
-import { ChatWidget } from "@/components/chat/chat-widget";
+import { RouteShellOverlays } from "@/components/route-shell-overlays";
 import { SidebarLayout } from "@/components/sidebar-layout";
-import { WebVitalsReporter } from "@/src/components/web-vitals-reporter";
 import { getRequestOrigin, getStableChatOrigin } from "@/src/lib/chat-origin";
 import { Providers } from "./providers";
 
@@ -48,12 +45,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable} min-h-screen bg-background antialiased`}
       >
         <Providers>
-          <WebVitalsReporter />
-          <ChatContextProvider>
-            <SidebarLayout>{children}</SidebarLayout>
-            <ChatWidget currentOrigin={currentOrigin} />
-            <CommandPalette />
-          </ChatContextProvider>
+          <SidebarLayout>{children}</SidebarLayout>
+          <RouteShellOverlays currentOrigin={currentOrigin} />
         </Providers>
         <SpeedInsights />
       </body>

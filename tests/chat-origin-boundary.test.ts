@@ -47,7 +47,7 @@ describe("chat render origin boundaries", () => {
 
     expect(layoutSource).toContain('import { headers } from "next/headers"');
     expect(layoutSource).toContain("getStableChatOrigin(getRequestOrigin(await headers()))");
-    expect(layoutSource).toContain("<ChatWidget currentOrigin={currentOrigin} />");
+    expect(layoutSource).toContain("<RouteShellOverlays currentOrigin={currentOrigin} />");
     expect(pageSource).toContain('import { headers } from "next/headers"');
     expect(pageSource).toContain("getStableChatOrigin(getRequestOrigin(await headers()))");
     expect(pageSource).toContain("<ChatPageContent currentOrigin={currentOrigin} />");
