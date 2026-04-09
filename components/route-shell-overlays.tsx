@@ -21,10 +21,11 @@ const MotianWebMcpProvider = dynamic(
   { ssr: false },
 );
 
-export function RouteShellOverlays({ currentOrigin }: { currentOrigin?: string | null }) {
+export function RouteShellOverlays() {
   const pathname = usePathname();
   const isDeveloperRoute = pathname.startsWith("/ontwikkelaar");
   const isChatRoute = pathname.startsWith("/chat");
+  const currentOrigin = typeof window !== "undefined" ? window.location.origin : null;
 
   return (
     <>

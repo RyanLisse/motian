@@ -24,7 +24,7 @@ export default defineConfig({
   project: "proj_nqihauooanbnqnbpoybp",
   dirs: ["./trigger"],
   runtime: "node-22",
-  maxDuration: 1800, // 30 min global default — scrape pipeline with Firecrawl needs headroom
+  maxDuration: 300, // 5 min global default — only scrape-pipeline overrides to 1800
   logLevel: "info",
   enableConsoleLogging: true,
   // Externalize pg and drizzle-orm to avoid bundling native modules

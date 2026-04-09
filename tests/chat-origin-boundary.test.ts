@@ -38,22 +38,23 @@ describe("chat render origin boundaries", () => {
     ).toBe("https://preview.motian.app");
   });
 
-  it("threads the stable origin from server boundaries without render-time window access", () => {
+  it("derives chat origin client-side to avoid forcing dynamic rendering via headers()", () => {
     const layoutSource = readFile("app", "layout.tsx");
-    const pageSource = readFile("app", "chat", "page.tsx");
+    const overlaysSource = readFile("components", "route-shell-overlays.tsx");
     const pageContentSource = readFile("components", "chat", "chat-page-content.tsx");
     const widgetSource = readFile("components", "chat", "chat-widget.tsx");
     const messagesSource = readFile("components", "chat", "chat-messages.tsx");
 
-    expect(layoutSource).toContain('import { headers } from "next/headers"');
-    expect(layoutSource).toContain("getStableChatOrigin(getRequestOrigin(await headers()))");
-    expect(layoutSource).toContain("<RouteShellOverlays currentOrigin={currentOrigin} />");
-    expect(pageSource).toContain('import { headers } from "next/headers"');
-    expect(pageSource).toContain("getStableChatOrigin(getRequestOrigin(await headers()))");
-    expect(pageSource).toContain("<ChatPageContent currentOrigin={currentOrigin} />");
-    expect(pageContentSource).toContain("currentOrigin={currentOrigin}");
+    // Root layout must NOT call headers() — it forces every page into dynamic rendering
+    expect(layoutSource).not.toContain('import { headers } from "next/headers"');
+    expect(layoutSource).toContain("<RouteShellOverlays />");
+
+    // Origin is now derived client-side
+    expect(overlaysSource).toContain("window.location.origin");
+    expect(pageContentSource).toContain("window.location.origin");
+
+    // Chat components still thread currentOrigin as a prop internally
     expect(widgetSource).toContain("currentOrigin={currentOrigin}");
     expect(messagesSource).toContain("currentOrigin?: string | null;");
-    expect(messagesSource).not.toContain("window.location.origin");
   });
 });
