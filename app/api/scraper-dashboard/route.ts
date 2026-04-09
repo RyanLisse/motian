@@ -9,7 +9,7 @@ const querySchema = z.object({
   includeTrigger: z.enum(["true", "false"]).optional(),
 });
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export const GET = withApiHandler(
   async (request: NextRequest) => {

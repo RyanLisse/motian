@@ -3,7 +3,7 @@ import { paginatedResponse } from "@/src/lib/pagination";
 import { runVacaturesSearch } from "@/src/lib/vacatures-search";
 import { withJobsCanonicalSkills } from "@/src/services/esco";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 /** List vacatures with search, filters, and pagination (pagina/page, limit/perPage). */
 export const GET = withApiHandler(async (request: Request) => {
