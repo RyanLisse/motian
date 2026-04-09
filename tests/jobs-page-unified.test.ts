@@ -109,7 +109,7 @@ describe("searchJobsPageUnified", () => {
     });
 
     expect(mockHybridSearchPageWithTotal).toHaveBeenCalledWith(
-      "architect",
+      ["architect"],
       expect.objectContaining({
         company: "Motian",
         endClient: "Gemeente Utrecht",
@@ -154,7 +154,7 @@ describe("searchJobsPageUnified", () => {
     });
 
     expect(mockHybridSearchPageWithTotal).toHaveBeenCalledWith(
-      "architect",
+      ["architect"],
       expect.objectContaining({
         platforms: ["opdrachtoverheid", "nationalevacaturebank"],
         limit: 5,

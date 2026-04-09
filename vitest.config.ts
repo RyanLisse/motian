@@ -16,7 +16,7 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     reporters: ["verbose"],
-    pool: "threads",
+    pool: "forks",
     testTimeout: 30_000,
     hookTimeout: 30_000,
     coverage: {
