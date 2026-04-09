@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
+import { KpiTrendChart } from "@/components/overview/kpi-trend-chart";
 import { PipelineHealthCard } from "@/components/overview/pipeline-health-card";
 import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -145,6 +146,10 @@ async function DashboardContent() {
           href="/interviews"
         />
       </div>
+
+      <DashboardCard title="Trend (30 dagen)" icon={<TrendingUp className="h-4 w-4" />}>
+        <KpiTrendChart data={[]} />
+      </DashboardCard>
 
       <DashboardCard title="Wat vraagt nu aandacht?" icon={<Clock className="h-4 w-4" />}>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

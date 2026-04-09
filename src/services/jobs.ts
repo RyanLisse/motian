@@ -26,6 +26,7 @@ import {
   type HybridSearchOptions,
   hybridSearch as hybridSearchImpl,
   hybridSearchWithTotal as hybridSearchWithTotalImpl,
+  type JobSearchQuery,
   type SearchJobsOptions,
   searchJobs,
   searchJobsByTitle,
@@ -33,7 +34,7 @@ import {
 import { getActivePipelineCount, getJobStats } from "./jobs/stats";
 
 export type UnifiedJobSearchOptions = {
-  q?: string;
+  q?: JobSearchQuery;
   platform?: string;
   platforms?: string[];
   company?: string;
@@ -93,14 +94,20 @@ export {
   updateJobEnrichment,
 };
 
+function normalizeUnifiedSearchTerms(query: JobSearchQuery | undefined) {
+  if (query == null) return [];
+  const terms = Array.isArray(query) ? query : [query];
+  return terms.map((term) => term.trim()).filter((term) => term.length >= 2);
+}
+
 export async function searchJobsUnified(
   opts: UnifiedJobSearchOptions = {},
 ): Promise<UnifiedJobSearchResult> {
-  const query = typeof opts.q === "string" ? opts.q.trim() : "";
+  const query = normalizeUnifiedSearchTerms(opts.q);
   const platforms = normalizeJobPlatforms(opts.platform, opts.platforms);
   const platformFilter = platforms.length > 0 ? platforms.join(",") : undefined;
 
-  if (!query) {
+  if (query.length === 0) {
     const listOpts: ListJobsOptions = {
       limit: opts.limit,
       offset: opts.offset,
@@ -168,11 +175,11 @@ export async function searchJobsUnified(
 export async function searchJobsPageUnified(
   opts: UnifiedJobSearchOptions = {},
 ): Promise<UnifiedJobPageSearchResult> {
-  const query = typeof opts.q === "string" ? opts.q.trim() : "";
+  const query = normalizeUnifiedSearchTerms(opts.q);
   const platforms = normalizeJobPlatforms(opts.platform, opts.platforms);
   const platformFilter = platforms.length > 0 ? platforms.join(",") : undefined;
 
-  if (!query) {
+  if (query.length === 0) {
     return listJobsPageImpl({
       limit: opts.limit,
       offset: opts.offset,
@@ -244,7 +251,7 @@ export async function listJobs(
 }
 
 export async function hybridSearch(
-  query: string,
+  query: JobSearchQuery,
   opts: HybridSearchOptions = {},
 ): Promise<Array<Job & { score: number }>> {
   return hybridSearchImpl(query, opts);

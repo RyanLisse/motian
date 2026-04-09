@@ -66,7 +66,7 @@ function getCredentialFields(authMode: "api_key" | "oauth" | "session" | "userna
 
 export const platformAutoSetup = tool({
   description:
-    "Richt een nieuw platform volledig automatisch in op basis van een URL. Voert analyse, catalogus-aanmaak, configuratie, validatie, test-import en activatie uit in één stap. De agent hoeft alleen een URL te geven.",
+    "VOORKEURSTOOL voor het aanmaken van een nieuwe scraper of platform. Richt een nieuw platform volledig automatisch in op basis van een URL. Voert analyse, catalogus-aanmaak, configuratie, validatie, test-import en activatie uit in één stap. Gebruik ALTIJD deze tool wanneer de gebruiker vraagt om een scraper/platform aan te maken, toe te voegen of in te richten. Gebruik de individuele stap-tools (platformCatalogCreate, platformConfigCreate, etc.) alleen voor handmatige controle of foutafhandeling.",
   inputSchema: z.object({
     url: z
       .string()
@@ -236,7 +236,7 @@ export const platformAutoSetup = tool({
         runId: handle.id,
         publicAccessToken,
         scrapingStrategy: analysis.scrapingStrategy,
-        message: `Onboarding voor "${analysis.displayName}" is gestart op de achtergrond. Gebruik platformOnboardingStatus om de voortgang te volgen.`,
+        message: `Onboarding voor "${analysis.displayName}" is gestart op de achtergrond (2-5 min). De achtergrond-taak regelt automatisch: validatie → strategie-verificatie → test-import (3 vacatures) → activatie. Gebruik platformOnboardingStatus om de voortgang te volgen. Roep triggerScraper NIET aan — het platform wordt automatisch actief.`,
       };
     } catch (err) {
       revalidateTag("scrapers", "default");
@@ -368,7 +368,7 @@ export const platformReanalyze = tool({
         runId: handle.id,
         publicAccessToken,
         scrapingStrategy: analysis.scrapingStrategy,
-        message: `Heranalyse voltooid — nieuwe selectors gevonden. Onboarding voor "${catalog.displayName ?? platform}" is opnieuw gestart. Gebruik platformOnboardingStatus om de voortgang te volgen.`,
+        message: `Heranalyse voltooid — nieuwe selectors gevonden. Onboarding voor "${catalog.displayName ?? platform}" is opnieuw gestart (2-5 min). De achtergrond-taak regelt automatisch: validatie → strategie-verificatie → test-import → activatie. Gebruik platformOnboardingStatus om de voortgang te volgen. Roep triggerScraper NIET aan — het platform wordt automatisch actief.`,
       };
     } catch (err) {
       revalidateTag("scrapers", "default");

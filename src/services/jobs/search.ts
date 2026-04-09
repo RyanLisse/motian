@@ -34,6 +34,8 @@ type VectorSearchResult = {
   queryPath: QueryPath;
 };
 
+export type JobSearchQuery = string | string[];
+
 export type SearchJobsOptions = {
   platform?: string;
   platforms?: string[];
@@ -84,6 +86,20 @@ function getQueryTermCount(query: string) {
     .split(/\s+/)
     .map((part) => part.trim())
     .filter(Boolean).length;
+}
+
+function normalizeSearchTerms(query: JobSearchQuery) {
+  const rawTerms = Array.isArray(query) ? query : [query];
+  return rawTerms.map((term) => term.trim()).filter((term) => term.length >= 2);
+}
+
+function getSearchQueryText(query: JobSearchQuery) {
+  return normalizeSearchTerms(query).join(" ");
+}
+
+function buildMultiTermSearchCondition(terms: string[]) {
+  if (terms.length < 2) return undefined;
+  return and(...terms.map((term) => caseInsensitiveContains(sql`search_text`, term)));
 }
 
 function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
@@ -172,7 +188,7 @@ export function rankHybridCandidates<TJob extends HybridSearchRankJob>(
 }
 
 export async function searchJobIdsByTitle(
-  query: string,
+  query: JobSearchQuery,
   opts: {
     limit?: number;
     filterCondition?: SQL;
@@ -181,11 +197,13 @@ export async function searchJobIdsByTitle(
 ): Promise<SearchTextResult> {
   const safeLimit = Math.min(opts.limit ?? 50, 100);
   const filterCondition = opts.filterCondition ?? sql`true`;
+  const terms = normalizeSearchTerms(query);
+  const queryText = terms.join(" ");
 
   if (opts.typesenseOptions) {
     try {
       // Request extra results so dedup still yields enough after collapsing.
-      const externalResult = await searchJobIdsByTypesense(query, {
+      const externalResult = await searchJobIdsByTypesense(queryText, {
         ...opts.typesenseOptions,
         limit: safeLimit * 2,
       });
@@ -213,8 +231,8 @@ export async function searchJobIdsByTitle(
     }
   }
 
-  const tsInput = toTsQueryInput(query);
-  const useFullTextSearch = Boolean(tsInput) && getQueryTermCount(query) > 1;
+  const tsInput = toTsQueryInput(queryText);
+  const useFullTextSearch = Boolean(tsInput) && getQueryTermCount(queryText) > 1;
 
   if (useFullTextSearch && tsInput) {
     const searchQuery = sql`to_tsquery('dutch', ${tsInput})`;
@@ -237,11 +255,13 @@ export async function searchJobIdsByTitle(
     }
   }
 
-  const words = query.trim().split(/\s+/).filter(Boolean);
+  const words = queryText.trim().split(/\s+/).filter(Boolean);
   const titleConditions =
-    words.length > 1
-      ? or(...words.map((w) => caseInsensitiveContains(jobs.title, w)))
-      : caseInsensitiveContains(jobs.title, query);
+    terms.length > 1
+      ? and(...terms.map((term) => caseInsensitiveContains(sql`search_text`, term)))
+      : words.length > 1
+        ? or(...words.map((w) => caseInsensitiveContains(jobs.title, w)))
+        : caseInsensitiveContains(jobs.title, queryText);
 
   return fetchDedupedJobIds({
     whereClause: and(filterCondition, titleConditions) ?? filterCondition,
@@ -255,7 +275,7 @@ export async function searchJobIdsByTitle(
 /** Opdrachten zoeken op titel/omschrijving met full-text search (tsvector/GIN).
  * Falls back to ILIKE if the FTS query produces no results. */
 export async function searchJobsByTitle(
-  query: string,
+  query: JobSearchQuery,
   limit?: number,
   status: JobStatus = "open",
 ): Promise<Job[]> {
@@ -282,17 +302,19 @@ export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
 
 /** Hybrid zoeken: combineert tekst (ILIKE) + vector (pgvector) met Reciprocal Rank Fusion. */
 export async function hybridSearchWithTotal(
-  query: string,
+  query: JobSearchQuery,
   opts: HybridSearchOptions = {},
 ): Promise<HybridSearchResult> {
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 20, 100);
   const offset = Math.max(opts.offset ?? 0, 0);
   const requestedStatus = opts.status ?? "open";
-  const safeQuery = query.slice(0, 80);
+  const queryTerms = normalizeSearchTerms(query);
+  const queryText = getSearchQueryText(query);
+  const safeQuery = queryText.slice(0, 80);
   const settings = await getAllSettings();
   const policy = getHybridSearchPolicy(
-    { query, limit, offset, vectorMinScore: settings.searchVectorMinScore },
+    { query: queryText, limit, offset, vectorMinScore: settings.searchVectorMinScore },
     process.env,
   );
 
@@ -308,6 +330,10 @@ export async function hybridSearchWithTotal(
     ...opts,
     status: requestedStatus,
   }).filter((condition): condition is SQL => Boolean(condition));
+  const multiTermSearchCondition = buildMultiTermSearchCondition(queryTerms);
+  if (multiTermSearchCondition) {
+    filterConditions.push(multiTermSearchCondition);
+  }
   const retrievalFilterCondition = buildSearchFilterCondition(filterConditions);
 
   const [textResult, vectorResult] = await Promise.all([
@@ -335,7 +361,7 @@ export async function hybridSearchWithTotal(
         }
 
         const embeddingStartedAt = Date.now();
-        const queryEmbedding = await embeddingService.generateQueryEmbedding(query);
+        const queryEmbedding = await embeddingService.generateQueryEmbedding(queryText);
         embeddingMs = Date.now() - embeddingStartedAt;
 
         const vectorSearchStartedAt = Date.now();
@@ -485,7 +511,7 @@ export async function hybridSearchWithTotal(
 }
 
 export async function hybridSearch(
-  query: string,
+  query: JobSearchQuery,
   opts: HybridSearchOptions = {},
 ): Promise<Array<Job & { score: number }>> {
   return (await hybridSearchWithTotal(query, opts)).data;

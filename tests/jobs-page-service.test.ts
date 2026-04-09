@@ -268,13 +268,16 @@ describe("jobs page service", () => {
       }),
     );
     expect(loadJobPageRowsByIds).toHaveBeenCalledWith(["job-2", "job-1"]);
-    expect(result).toEqual({
-      data: [
-        expect.objectContaining({ id: "job-2", pipelineCount: 3, hasPipeline: true }),
-        expect.objectContaining({ id: "job-1", pipelineCount: 0, hasPipeline: false }),
-      ],
-      total: 7,
-    });
+    expect(result).toEqual(
+      {
+        data: [
+          expect.objectContaining({ id: "job-2", pipelineCount: 3, hasPipeline: true }),
+          expect.objectContaining({ id: "job-1", pipelineCount: 0, hasPipeline: false }),
+        ],
+        total: 7,
+      },
+      60_000,
+    );
   }, 15_000);
 
   it("hybridSearchJobsPageWithTotal preserves ranked page order and pipeline counts", async () => {

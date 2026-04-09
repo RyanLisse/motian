@@ -4,6 +4,7 @@ import { candidateSkills, candidates } from "../db/schema";
 import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
 import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../lib/query-observability";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
+import { emitAgentEvent } from "./agent-events";
 import { syncCandidateEscoSkills } from "./esco";
 import { searchCandidateIdsByTypesense } from "./search-index/typesense-search";
 import { deleteCandidatesByIds, upsertCandidatesByIds } from "./search-index/typesense-sync";
@@ -162,6 +163,35 @@ function buildCandidateSearchConditions(
   }
 
   return conditions;
+}
+
+/** Check whether a candidate has enough data to trigger auto-matching. */
+function candidateHasMatchableData(candidate: Candidate): boolean {
+  const skills = candidate.skills as unknown;
+  return Array.isArray(skills) && skills.length > 0;
+}
+
+/**
+ * Emit a candidate.parsed event so the existing matcher pipeline picks up
+ * newly created or updated candidates — not only those from CV uploads.
+ * Only fires when the candidate has skills (guard against stub records).
+ */
+async function emitAutoMatchEventIfReady(candidate: Candidate): Promise<void> {
+  if (!candidateHasMatchableData(candidate)) return;
+
+  try {
+    await emitAgentEvent({
+      sourceAgent: "intake",
+      eventType: "candidate.parsed",
+      candidateId: candidate.id,
+      payload: {
+        trigger: "service",
+        skillCount: (candidate.skills as unknown[])?.length ?? 0,
+      },
+    });
+  } catch (err) {
+    console.error(`[Candidates] Auto-match event error for ${candidate.id}:`, err);
+  }
 }
 
 async function runCandidateDerivedSync(candidateId: string): Promise<void> {
@@ -344,6 +374,7 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
 
   const candidate = rows[0];
   await runCandidateDerivedSync(candidate.id);
+  await emitAutoMatchEventIfReady(candidate);
 
   return candidate;
 }
@@ -365,6 +396,7 @@ export async function updateCandidate(
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
   await runCandidateDerivedSync(candidate.id);
+  await emitAutoMatchEventIfReady(candidate);
 
   return candidate;
 }

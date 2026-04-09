@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
 import { buildCommercialCvDraft } from "@/src/services/commercial-cv-generation";
+import { renderCommercialCvHtml } from "@/src/services/commercial-cv-pdf";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,8 @@ const bodySchema = z.object({
 });
 
 /**
- * POST /api/commercieel-cv — recruiter commercial CV draft (markdown).
+ * POST /api/commercieel-cv/html — branded HTML version of the commercial CV.
+ * Open in a new tab and use the browser's print dialog for PDF export.
  */
 export const POST = withApiHandler(
   async (req: Request) => {
@@ -19,18 +21,20 @@ export const POST = withApiHandler(
     if (!parsed.success) {
       return Response.json(
         { error: "Ongeldige invoer", details: parsed.error.flatten() },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
     try {
       const draft = await buildCommercialCvDraft(parsed.data);
-      return Response.json(
-        { data: { ...draft, htmlUrl: "/api/commercieel-cv/html" } },
-        { headers: { "Cache-Control": "private, no-cache, no-store" } },
-      );
+      const html = renderCommercialCvHtml(draft);
+
+      return new Response(html, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "private, no-cache, no-store",
+        },
+      });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Onbekende fout";
       if (message.includes("niet gevonden")) {
@@ -39,5 +43,5 @@ export const POST = withApiHandler(
       throw e;
     }
   },
-  { logPrefix: "POST /api/commercieel-cv error" },
+  { logPrefix: "POST /api/commercieel-cv/html error" },
 );

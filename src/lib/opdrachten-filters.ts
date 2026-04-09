@@ -266,6 +266,27 @@ export function normalizeOpdrachtenSearchQuery(
   return normalized.length >= 2 ? normalized : undefined;
 }
 
+/**
+ * Parse a search query into individual terms separated by `,` or ` AND ` (case-insensitive).
+ * Returns a single-element array for simple queries and an empty array for blank input.
+ *
+ * Examples:
+ *  - `"Java, Amsterdam"` → `["Java", "Amsterdam"]`
+ *  - `"Java AND Amsterdam"` → `["Java", "Amsterdam"]`
+ *  - `"project manager"` → `["project manager"]`
+ */
+export function parseSearchTerms(query: string | null | undefined): string[] {
+  if (!query) return [];
+  const trimmed = query.trim();
+  if (trimmed.length === 0) return [];
+
+  // Split on comma or word-boundary ` AND ` (case-insensitive).
+  // The ` AND ` pattern requires surrounding whitespace so "ANDROID" stays intact.
+  const parts = trimmed.split(/\s+AND\s+|,/i);
+
+  return parts.map((part) => part.trim()).filter((part) => part.length >= 2);
+}
+
 export function normalizeOpdrachtenProvince(
   value: string | null | undefined,
 ): OpdrachtenProvince | undefined {
