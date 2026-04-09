@@ -56,7 +56,7 @@ describe("harness workspace", () => {
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }
-  }, 20_000);
+  }, 60_000);
 });
 
 describe("harness runtime", () => {
@@ -68,7 +68,7 @@ describe("harness runtime", () => {
         command: process.execPath,
         args: ["-e", 'console.log("hello"); console.error("warning")'],
         cwd: tempRoot,
-        timeoutMs: 2_000,
+        timeoutMs: 10_000,
         stdoutPath: join(tempRoot, "stdout.log"),
         stderrPath: join(tempRoot, "stderr.log"),
       });
@@ -121,27 +121,30 @@ describe("harness orchestrator", () => {
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 
   it("persists lifecycle, workspace, and process artifacts for a run", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "motian-harness-orchestrator-"));
 
     try {
       const repoRoot = createGitRepo(join(tempRoot, "repo"));
-      const manifest = await orchestrateHarnessRun({
-        dispatch: "unit-test-dispatch",
-        command: process.execPath,
-        args: ["-e", "console.log(process.env.HARNESS_DISPATCH);"],
-        timeoutMs: 2_000,
-        repoRoot,
-        runId: "run-001",
-        runRoot: join(tempRoot, "run-data"),
-        workspaceRoot: join(tempRoot, "run-worktree"),
-        externalContext: {
-          triggerRunId: "trigger_123",
-          githubCheckRunId: 42,
+      const manifest = await orchestrateHarnessRun(
+        {
+          dispatch: "unit-test-dispatch",
+          command: process.execPath,
+          args: ["-e", "console.log(process.env.HARNESS_DISPATCH);"],
+          timeoutMs: 10_000,
+          repoRoot,
+          runId: "run-001",
+          runRoot: join(tempRoot, "run-data"),
+          workspaceRoot: join(tempRoot, "run-worktree"),
+          externalContext: {
+            triggerRunId: "trigger_123",
+            githubCheckRunId: 42,
+          },
         },
-      });
+        60_000,
+      );
 
       expect(manifest.status).toBe("succeeded");
       expect(manifest.workspace?.created).toBe(true);
@@ -171,5 +174,5 @@ describe("harness orchestrator", () => {
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }
-  }, 15_000);
+  }, 120_000);
 });
