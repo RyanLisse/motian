@@ -42,7 +42,7 @@ describe("runtime cost reduction cleanup", () => {
     expect(scrapePipeline).toContain('pattern: "0 6,10,14,18 * * *"');
     expect(embeddingsBatch).toContain('pattern: "15 6,10,14,18 * * *"');
     expect(cacheRefresh).toContain('pattern: "20 6,10,14,18 * * *"');
-    expect(orchestrator).toContain('pattern: "0 */6 * * *"');
+    expect(orchestrator).toContain('pattern: "0 */12 * * *"');
     expect(matcher).toContain('machine: { preset: "small-2x" }');
     expect(sourcing).toContain('machine: { preset: "small-2x" }');
   });

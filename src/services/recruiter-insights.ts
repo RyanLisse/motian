@@ -204,7 +204,10 @@ function getYearsOfExperience(candidate: CandidateLike): number | null {
   return experienceEntries.length >= 6 ? 8 : experienceEntries.length >= 4 ? 5 : 2;
 }
 
-function inferSeniorityLabel(candidate: CandidateLike): { label: string; tone: RecruiterScoreTone } {
+function inferSeniorityLabel(candidate: CandidateLike): {
+  label: string;
+  tone: RecruiterScoreTone;
+} {
   const years = getYearsOfExperience(candidate);
   const role = normalizeText(candidate.role ?? "");
 
@@ -291,8 +294,7 @@ function getRawSkillOverlap(candidate: CandidateLike, job: JobLike) {
     (candidateSkill) =>
       candidateSkill.length > 1 &&
       jobSkills.some(
-        (jobSkill) =>
-          jobSkill.includes(candidateSkill) || candidateSkill.includes(jobSkill),
+        (jobSkill) => jobSkill.includes(candidateSkill) || candidateSkill.includes(jobSkill),
       ),
   );
 
@@ -454,7 +456,9 @@ export function buildCandidateIntakeScorecard(input: {
   const flatSkills = parseStringArray(candidate.skills);
   const experienceEntries = Array.isArray(candidate.experience) ? candidate.experience.length : 0;
   const educationEntries = Array.isArray(candidate.education) ? candidate.education.length : 0;
-  const languageEntries = Array.isArray(candidate.languageSkills) ? candidate.languageSkills.length : 0;
+  const languageEntries = Array.isArray(candidate.languageSkills)
+    ? candidate.languageSkills.length
+    : 0;
   const hasResume = Boolean(candidate.resumeUrl || candidate.resumeRaw);
 
   const completenessItems: ScorecardChip[] = [
@@ -475,7 +479,10 @@ export function buildCandidateIntakeScorecard(input: {
     },
     {
       label: "Skills",
-      value: hardSkills.length > 0 ? `${hardSkills.length} gestructureerd` : `${flatSkills.length} basis`,
+      value:
+        hardSkills.length > 0
+          ? `${hardSkills.length} gestructureerd`
+          : `${flatSkills.length} basis`,
       tone: hardSkills.length >= 3 ? "goed" : flatSkills.length > 0 ? "let-op" : "actie",
     },
     {
@@ -491,8 +498,7 @@ export function buildCandidateIntakeScorecard(input: {
   ];
 
   const completenessScore = Math.round(
-    (completenessItems.filter((item) => item.tone !== "actie").length /
-      completenessItems.length) *
+    (completenessItems.filter((item) => item.tone !== "actie").length / completenessItems.length) *
       100,
   );
   const completenessLabel =
@@ -558,13 +564,15 @@ export function buildCandidateIntakeScorecard(input: {
     nextAction = {
       key: "auto-match",
       label: "Auto-match klaar",
-      reason: "Het profiel heeft genoeg skill- en ESCO-signaal om matching direct te laten renderen.",
+      reason:
+        "Het profiel heeft genoeg skill- en ESCO-signaal om matching direct te laten renderen.",
     };
   } else {
     nextAction = {
       key: "bel",
       label: "Bel kandidaat",
-      reason: "Profiel is werkbaar, maar vraagt menselijke verificatie op context of beschikbaarheid.",
+      reason:
+        "Profiel is werkbaar, maar vraagt menselijke verificatie op context of beschikbaarheid.",
     };
   }
 

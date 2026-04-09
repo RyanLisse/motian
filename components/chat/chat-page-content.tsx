@@ -629,7 +629,11 @@ function ChatSession({
   );
 }
 
-export function ChatPageContent({ currentOrigin = null }: { currentOrigin?: string | null }) {
+export function ChatPageContent({
+  currentOrigin = typeof window !== "undefined" ? window.location.origin : null,
+}: {
+  currentOrigin?: string | null;
+} = {}) {
   const {
     activeContext,
     loadSession,

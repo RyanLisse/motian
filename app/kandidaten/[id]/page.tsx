@@ -48,10 +48,7 @@ import {
 } from "@/src/schemas/candidate-intelligence";
 import type { CriterionResult } from "@/src/schemas/matching";
 import { getCandidateSkills, getJobSkillsForJobIds } from "@/src/services/esco";
-import {
-  buildCandidateIntakeScorecard,
-  buildMatchBrief,
-} from "@/src/services/recruiter-insights";
+import { buildCandidateIntakeScorecard, buildMatchBrief } from "@/src/services/recruiter-insights";
 
 export const dynamic = "force-dynamic";
 

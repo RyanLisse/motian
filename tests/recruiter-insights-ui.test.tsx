@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { CandidateIntakeScorecard } from "../components/candidate-profile/candidate-intake-scorecard";
-import { RecruiterMatchBrief } from "../components/matching/match-brief";
+import type { CandidateIntakeScorecard } from "../components/candidate-profile/candidate-intake-scorecard";
+import type { RecruiterMatchBrief } from "../components/matching/match-brief";
 
 const ROOT = path.resolve(__dirname, "..");
 

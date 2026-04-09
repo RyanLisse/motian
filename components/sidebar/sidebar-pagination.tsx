@@ -29,11 +29,11 @@ export function SidebarPagination({
 
   if (variant === "compact") {
     return (
-      <div className="flex shrink-0 items-center justify-between border-t border-white/10 px-4 py-3">
+      <div className="flex shrink-0 flex-col gap-2 border-t border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <Button
           variant="ghost"
           size="sm"
-          className="h-10 rounded-[16px] px-4 text-sm text-white/55 hover:bg-white/5 hover:text-white"
+          className="h-10 w-full rounded-[16px] px-4 text-sm text-white/55 hover:bg-white/5 hover:text-white sm:w-auto"
           disabled={pageParam <= 1 || isFetching}
           onClick={goToPrev}
         >
@@ -43,7 +43,7 @@ export function SidebarPagination({
         <Button
           variant="ghost"
           size="sm"
-          className="h-10 rounded-[16px] px-4 text-sm text-white/55 hover:bg-white/5 hover:text-white"
+          className="h-10 w-full rounded-[16px] px-4 text-sm text-white/55 hover:bg-white/5 hover:text-white sm:w-auto"
           disabled={pageParam >= totalPages || isFetching}
           onClick={goToNext}
         >
@@ -55,7 +55,7 @@ export function SidebarPagination({
   }
 
   return (
-    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3 sm:mt-4 sm:pt-4">
+    <div className="mt-3 flex flex-col gap-2 border-t border-border/70 pt-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:pt-4">
       <Button
         variant="outline"
         size="sm"

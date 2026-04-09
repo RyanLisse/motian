@@ -2,7 +2,7 @@ import { db, eq, gte, sql } from "@/src/db";
 import { agentEvents } from "@/src/db/schema";
 import { withApiHandler } from "@/src/lib/api-handler";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 /** GET /api/agent-events/stats — aggregated agent metrics for the dashboard */
 export const GET = withApiHandler(async () => {

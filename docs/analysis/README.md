@@ -1,5 +1,10 @@
 # UX Flow Analysis — Kandidaat Profiel + Pipeline Koppeling
 
+## Latest Performance Recap
+
+- `2026-04-07-weekly-speed-performance-overview.md` — Weekly speed/performance summary (what shipped + why).
+- `2026-04-07-weekly-speed-performance-explainer.html` — Visual explainer for stakeholder review.
+
 **Analysis Completed:** 2026-03-05
 **Analyst:** UX Flow & Requirements Engineer
 **Status:** Ready for Implementation Clarification

@@ -106,7 +106,7 @@ export function CompactSidebarFilters({
         <span>Alleen shortlist</span>
       </label>
       <div className="grid shrink-0 gap-2 px-3">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <CompactMultiSelectFilter
             label="Platform"
             options={platforms.map((platform) => ({
@@ -189,7 +189,7 @@ export function CompactSidebarFilters({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <CompactMultiSelectFilter
             label="Regio"
             options={regionOptions}
@@ -215,13 +215,13 @@ export function CompactSidebarFilters({
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <span className={DARK_FILTER_SECTION_LABEL_CLASS}>Uren per week</span>
             <span className={DARK_FILTER_SECTION_VALUE_CLASS}>
               {summarizeHoursRange(hoursMinInput, hoursMaxInput)}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Input
               type="number"
               inputMode="numeric"

@@ -82,8 +82,9 @@ export function VacatureTriageScorecard({
             <h3 className="text-sm font-medium text-foreground">Matching readiness</h3>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            {scorecard.readiness.value}. Let extra op {scorecard.sourcingDifficulty.value.toLowerCase()} sourcingdruk
-            voordat je recruiters blind op de ranking laat vertrouwen.
+            {scorecard.readiness.value}. Let extra op{" "}
+            {scorecard.sourcingDifficulty.value.toLowerCase()} sourcingdruk voordat je recruiters
+            blind op de ranking laat vertrouwen.
           </p>
         </div>
       </div>
