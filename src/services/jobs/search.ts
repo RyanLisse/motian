@@ -35,7 +35,6 @@ type VectorSearchResult = {
 };
 
 export type SearchJobsOptions = {
-  platforms?: string[];
   platform?: string;
   platforms?: string[];
   limit?: number;
@@ -45,7 +44,6 @@ export type SearchJobsOptions = {
 export type HybridSearchOptions = {
   limit?: number;
   offset?: number;
-  platforms?: string[];
   platform?: string;
   platforms?: string[];
   company?: string;
@@ -90,7 +88,6 @@ function getQueryTermCount(query: string) {
 
 function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
   return buildJobFilterConditions({
-    platforms: opts.platforms,
     platform: opts.platform,
     platforms: opts.platforms,
     company: opts.company,

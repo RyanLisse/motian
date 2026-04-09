@@ -7,6 +7,7 @@ const {
   getPlatformOnboardingStatus,
   createPlatformCatalogEntry,
   createConfig,
+  recordPlatformOnboardingEvent,
   trigger,
   createPublicToken,
   revalidateTag,
@@ -17,6 +18,7 @@ const {
   getPlatformOnboardingStatus: vi.fn(),
   createPlatformCatalogEntry: vi.fn(),
   createConfig: vi.fn(),
+  recordPlatformOnboardingEvent: vi.fn(),
   trigger: vi.fn(),
   createPublicToken: vi.fn(),
   revalidateTag: vi.fn(),
@@ -34,6 +36,7 @@ vi.mock("@/src/services/scrapers", () => ({
   getPlatformByBaseUrl,
   getPlatformCatalogEntry: vi.fn(),
   getPlatformOnboardingStatus,
+  recordPlatformOnboardingEvent,
   updateConfigParameters: vi.fn(),
   validateExternalUrl,
 }));
@@ -60,6 +63,7 @@ describe("platformAutoSetup credential gate", () => {
     getPlatformByBaseUrl.mockResolvedValue(null);
     createPlatformCatalogEntry.mockResolvedValue(undefined);
     createConfig.mockResolvedValue({ id: "cfg-api-key" });
+    recordPlatformOnboardingEvent.mockResolvedValue(undefined);
     trigger.mockResolvedValue({ id: "run-123" });
     createPublicToken.mockResolvedValue("token-123");
     getPlatformOnboardingStatus.mockResolvedValue({ latestRun: null });
@@ -94,6 +98,12 @@ describe("platformAutoSetup credential gate", () => {
       displayName: "API Platform",
       authMode: "api_key",
       fields: [{ name: "apiKey", label: "API-sleutel", type: "password" }],
+      message: "De onboarding is gepauzeerd totdat de vereiste inloggegevens zijn opgeslagen.",
+      nextSteps: [
+        "Vul de gevraagde inloggegevens in",
+        "Sla de credentials op",
+        "Wacht tot de onboarding automatisch hervat",
+      ],
     });
     expect(createPlatformCatalogEntry).toHaveBeenCalledWith(
       expect.objectContaining({

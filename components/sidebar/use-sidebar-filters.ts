@@ -378,12 +378,13 @@ export function useSidebarFilters({
   const handleFilterChange = useCallback(
     (paramKey: string, value: FilterOverrideValue) => {
       // Update local state immediately so TanStack Query key changes now
+      const strValue = typeof value === "string" ? value : "";
       if (paramKey === "status")
-        setLocalStatus(value === "" ? "open" : (value as typeof localStatus));
-      else if (paramKey === "endClient") setLocalEndClient(value);
-      else if (paramKey === "vaardigheid") setLocalVaardigheid(value);
-      else if (paramKey === "contractType") setLocalContractType(value);
-      else if (paramKey === "sort") setLocalSort((value || "nieuwste") as typeof localSort);
+        setLocalStatus(strValue === "" ? "open" : (strValue as typeof localStatus));
+      else if (paramKey === "endClient") setLocalEndClient(strValue);
+      else if (paramKey === "vaardigheid") setLocalVaardigheid(strValue);
+      else if (paramKey === "contractType") setLocalContractType(strValue);
+      else if (paramKey === "sort") setLocalSort((strValue || "nieuwste") as typeof localSort);
       setLocalPage(1);
       pushParams({ [paramKey]: value, pagina: "1" });
     },

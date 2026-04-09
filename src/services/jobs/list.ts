@@ -11,7 +11,6 @@ import { type Job, jobReadSelection } from "./repository";
 export type ListJobsOptions = {
   limit?: number;
   offset?: number;
-  platforms?: string[];
   platform?: string;
   platforms?: string[];
   company?: string;
@@ -51,7 +50,6 @@ export async function listJobs(
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = Math.max(opts.offset ?? 0, 0);
   const conditions = buildJobFilterConditions({
-    platforms: opts.platforms,
     platform: opts.platform,
     platforms: opts.platforms,
     company: opts.company,

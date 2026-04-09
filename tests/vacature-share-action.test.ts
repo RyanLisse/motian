@@ -17,16 +17,8 @@ afterEach(() => {
 });
 
 describe("vacature share action", () => {
-  it("builds the canonical vacature detail URL without list filters", async () => {
-    const { buildVacatureShareUrl } = await import("../components/vacature-share-button");
-
-    expect(buildVacatureShareUrl("vac-123", "https://motian.example")).toBe(
-      "https://motian.example/vacatures/vac-123",
-    );
-  });
-
-  it("falls back to copying the canonical vacature URL when native share is unavailable", async () => {
-    const setShareState = vi.fn();
+  it("falls back to copying the vacature URL when native share is unavailable", async () => {
+    const setFeedback = vi.fn();
     const writeText = vi.fn().mockResolvedValue(undefined);
     const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(((
       callback: Parameters<typeof setTimeout>[0],
@@ -47,14 +39,14 @@ describe("vacature share action", () => {
       const actual = await vi.importActual<typeof import("react")>("react");
       return {
         ...actual,
-        useState: () => ["idle", setShareState] as const,
+        useState: () => [null, setFeedback] as const,
       };
     });
 
     const { VacatureShareButton } = await import("../components/vacature-share-button");
     const element = VacatureShareButton({
-      jobId: "vac-123",
-      jobTitle: "Senior Recruiter",
+      title: "Senior Recruiter",
+      path: "/vacatures/vac-123",
     });
     const button = Array.isArray(element.props.children)
       ? element.props.children[0]
@@ -63,21 +55,21 @@ describe("vacature share action", () => {
     await button.props.onClick();
 
     expect(writeText).toHaveBeenCalledWith("https://motian.example/vacatures/vac-123");
-    expect(setShareState).toHaveBeenNthCalledWith(1, "copied");
-    expect(setShareState).toHaveBeenNthCalledWith(2, "idle");
+    expect(setFeedback).toHaveBeenCalledWith("Link gekopieerd");
     expect(setTimeoutSpy).toHaveBeenCalled();
   });
 
-  it("wires the explicit share button into the vacature detail header", () => {
+  it("wires the share button into the vacature detail page", () => {
     const pageSource = readFile("app", "vacatures", "[id]", "page.tsx");
     const componentSource = readFile("components", "vacature-share-button.tsx");
 
     expect(pageSource).toContain(
       'import { VacatureShareButton } from "@/components/vacature-share-button";',
     );
-    expect(pageSource).toContain("<VacatureShareButton jobId={job.id} jobTitle={job.title} />");
-    expect(componentSource).toContain("buildVacatureShareUrl(jobId, window.location.origin)");
-    expect(componentSource).toContain("Deel vacature");
+    expect(pageSource).toContain("VacatureShareButton");
+    expect(pageSource).toContain('title={job.title}');
+    expect(pageSource).toContain('path={`/vacatures/${job.id}`}');
+    expect(componentSource).toContain("Vacature delen");
     expect(componentSource).toContain("Link gekopieerd");
   });
 });
