@@ -1,10 +1,30 @@
 "use client";
 
+import { BookmarkIcon, Trash2Icon } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 /**
  * Compact filter grid used in the detail-page (dark themed) sidebar view.
  */
-import { useId } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { SearchableCombobox } from "@/components/ui/searchable-combobox";
 import {
@@ -15,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { getOpdrachtenBasePath } from "@/src/lib/opdrachten-filter-url";
 import { OPDRACHTEN_PROVINCES } from "@/src/lib/opdrachten-filters";
 import { CompactMultiSelectFilter, RadiusSliderField } from "./sidebar-filter-controls";
 import { SidebarSortControls } from "./sidebar-sort-controls";
@@ -28,6 +49,65 @@ import {
   DARK_FILTER_TRIGGER_CLASS,
 } from "./sidebar-types";
 import { summarizeHoursRange } from "./sidebar-utils";
+
+/* ------------------------------------------------------------------ */
+/*  Saved search filter types & hooks                                 */
+/* ------------------------------------------------------------------ */
+
+interface SavedFilter {
+  id: string;
+  name: string;
+  filters: Record<string, unknown>;
+  createdAt: string;
+}
+
+type SavedFilterPayload = Record<string, string | string[]>;
+
+/** Fetch, create, and delete saved search filters via /api/zoekfilters. */
+function useSavedFilters() {
+  const [items, setItems] = useState<SavedFilter[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchFilters = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/zoekfilters");
+      if (res.ok) {
+        const json = (await res.json()) as { data: SavedFilter[] };
+        setItems(json.data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFilters();
+  }, [fetchFilters]);
+
+  const createFilter = useCallback(
+    async (name: string, filters: SavedFilterPayload) => {
+      const res = await fetch("/api/zoekfilters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, filters }),
+      });
+      if (res.ok) {
+        await fetchFilters();
+      }
+    },
+    [fetchFilters],
+  );
+
+  const deleteFilter = useCallback(async (id: string) => {
+    const res = await fetch(`/api/zoekfilters/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setItems((prev) => prev.filter((f) => f.id !== id));
+    }
+  }, []);
+
+  return { items, loading, createFilter, deleteFilter };
+}
 
 interface CompactSidebarFiltersProps {
   selectedPlatforms: string[];
@@ -91,8 +171,106 @@ export function CompactSidebarFilters({
   onOnlyShortlistChange,
 }: CompactSidebarFiltersProps) {
   const shortlistCheckboxId = useId();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { items: savedFilters, createFilter, deleteFilter } = useSavedFilters();
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [filterName, setFilterName] = useState("");
+
+  const handleSaveFilter = useCallback(async () => {
+    const name = filterName.trim();
+    if (!name) return;
+    const filters: SavedFilterPayload = {};
+    for (const [key, value] of searchParams.entries()) {
+      const existing = filters[key];
+      if (Array.isArray(existing)) {
+        existing.push(value);
+      } else if (typeof existing === "string") {
+        filters[key] = [existing, value];
+      } else {
+        filters[key] = value;
+      }
+    }
+    await createFilter(name, filters);
+    setFilterName("");
+    setSaveOpen(false);
+  }, [filterName, searchParams, createFilter]);
+
+  const handleApplyFilter = useCallback(
+    (filters: Record<string, unknown>) => {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(filters)) {
+        if (Array.isArray(value)) {
+          value.forEach((item) => {
+            if (typeof item === "string" && item.trim()) params.append(key, item);
+          });
+          continue;
+        }
+        if (typeof value === "string" && value) {
+          params.set(key, value);
+        }
+      }
+      const query = params.toString();
+      const basePath = getOpdrachtenBasePath(pathname);
+      router.push(query ? `${basePath}?${query}` : basePath);
+    },
+    [pathname, router],
+  );
+
   return (
     <>
+      <div className="mx-3 mb-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}
+            >
+              Opgeslagen filters
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className={cn("w-64", DARK_FILTER_MENU_CLASS)} align="start">
+            <DropdownMenuLabel className="text-white">Opgeslagen filters</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              {savedFilters.length === 0 ? (
+                <DropdownMenuItem disabled className="text-white/50">
+                  Geen opgeslagen filters
+                </DropdownMenuItem>
+              ) : (
+                savedFilters.map((savedFilter) => (
+                  <DropdownMenuItem
+                    key={savedFilter.id}
+                    onSelect={(event) => event.preventDefault()}
+                    className="flex items-center justify-between gap-2 text-white"
+                  >
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 truncate text-left"
+                      onClick={() => handleApplyFilter(savedFilter.filters)}
+                    >
+                      {savedFilter.name}
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white"
+                      onClick={() => deleteFilter(savedFilter.id)}
+                      aria-label={`Verwijder filter ${savedFilter.name}`}
+                    >
+                      <Trash2Icon data-icon="inline-start" />
+                      Verwijderen
+                    </button>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       <label
         htmlFor={shortlistCheckboxId}
         className="mx-3 mb-1 flex cursor-pointer items-center gap-2 text-xs text-white/80"
@@ -257,6 +435,44 @@ export function CompactSidebarFilters({
         onSortChange={(value) => onFilterChange("sort", value)}
         variant="compact"
       />
+
+      <div className="mx-3 mt-2">
+        <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 text-xs text-white/70 hover:bg-white/10 hover:text-white"
+            >
+              <BookmarkIcon data-icon="inline-start" />
+              Zoekfilter opslaan
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Zoekfilter opslaan</DialogTitle>
+            </DialogHeader>
+            <label htmlFor="compact-saved-filter-name" className="text-sm font-medium">
+              Naam
+            </label>
+            <Input
+              id="compact-saved-filter-name"
+              placeholder="Naam van het filter"
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveFilter();
+              }}
+            />
+            <DialogFooter>
+              <Button type="button" disabled={!filterName.trim()} onClick={handleSaveFilter}>
+                Opslaan
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </>
   );
 }
