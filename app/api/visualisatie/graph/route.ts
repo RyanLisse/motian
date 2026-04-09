@@ -22,7 +22,7 @@ import {
 } from "@/src/lib/graph-data";
 import type { GraphNodeType, GraphResponse } from "@/src/types/graph";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 const DEFAULT_LIMIT = 100;
 
