@@ -1,7 +1,7 @@
 import { tasks } from "@trigger.dev/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createConfig } from "@/src/services/scrapers";
+import { createConfig, recordPlatformOnboardingEvent } from "@/src/services/scrapers";
 import type { platformOnboardTask } from "@/trigger/platform-onboard";
 
 const slugSchema = z
@@ -36,16 +36,46 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     return NextResponse.json({ error: "Ongeldige inloggegevens" }, { status: 400 });
   }
 
-  const config = await createConfig({
-    platform: slug,
-    authConfig: parsed.data,
-    source: "ui",
-  });
+  let config: Awaited<ReturnType<typeof createConfig>>;
+  try {
+    await recordPlatformOnboardingEvent({
+      platform: slug,
+      source: "ui",
+      event: {
+        type: "credentials_received",
+        evidence: {
+          providedFields: Object.keys(parsed.data),
+        },
+      },
+    });
+    config = await createConfig({
+      platform: slug,
+      authConfig: parsed.data,
+      source: "ui",
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Opslaan van inloggegevens is mislukt",
+      },
+      { status: 500 },
+    );
+  }
 
-  const handle = await tasks.trigger<typeof platformOnboardTask>("platform-onboard", {
-    platform: slug,
-    source: "ui",
-  });
+  let handle: { id: string };
+  try {
+    handle = await tasks.trigger<typeof platformOnboardTask>("platform-onboard", {
+      platform: slug,
+      source: "ui",
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Onboarding hervatten is mislukt",
+      },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json(
     {

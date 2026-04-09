@@ -42,7 +42,9 @@ describe("GET /api/vacatures/zoeken", () => {
 
   it("delegates filters to the shared page runner and returns compact vacatures rows", async () => {
     const request = {
-      nextUrl: new URL("http://localhost/api/vacatures/zoeken?q=manager&pagina=2&perPage=25"),
+      nextUrl: new URL(
+        "http://localhost/api/vacatures/zoeken?q=manager&platform=opdrachtoverheid&platform=striive&pagina=2&perPage=25",
+      ),
     } as Parameters<typeof GET>[0];
 
     const response = await GET(request);
@@ -51,6 +53,7 @@ describe("GET /api/vacatures/zoeken", () => {
     expect(mockRunJobPageSearch).toHaveBeenCalledTimes(1);
     const params = mockRunJobPageSearch.mock.calls[0][0] as URLSearchParams;
     expect(params.get("q")).toBe("manager");
+    expect(params.getAll("platform")).toEqual(["opdrachtoverheid", "striive"]);
     expect(params.get("pagina")).toBe("2");
     expect(params.get("perPage")).toBe("25");
     expect(body).toEqual({

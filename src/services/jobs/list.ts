@@ -12,6 +12,7 @@ export type ListJobsOptions = {
   limit?: number;
   offset?: number;
   platform?: string;
+  platforms?: string[];
   company?: string;
   endClient?: string;
   escoUri?: string;
@@ -49,6 +50,7 @@ export async function listJobs(
   const offset = Math.max(opts.offset ?? 0, 0);
   const conditions = buildJobFilterConditions({
     platform: opts.platform,
+    platforms: opts.platforms,
     company: opts.company,
     endClient: opts.endClient,
     escoUri: opts.escoUri,

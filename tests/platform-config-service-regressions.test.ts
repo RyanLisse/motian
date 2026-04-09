@@ -216,6 +216,7 @@ import {
   didConnectionSettingsChange,
   encryptAuthConfig,
   listPlatformCatalog,
+  recordPlatformOnboardingEvent,
   triggerTestRun,
   validateConfig,
 } from "../src/services/scrapers";
@@ -323,6 +324,37 @@ describe("platform config service regressions", () => {
     expect(validation.status).toBe("needs_implementation");
     expect(validation.onboardingRun.completedAt).toBeNull();
     expect(validation.onboardingRun.status).toBe("needs_implementation");
+  });
+
+  it("records credentials pause and resume transitions for onboarding state", async () => {
+    getPlatformAdapter.mockReturnValue({ validate: vi.fn(), testImport: vi.fn() });
+
+    const waiting = await recordPlatformOnboardingEvent({
+      platform: "customboard",
+      source: "agent",
+      configId: "cfg-customboard",
+      event: {
+        type: "credentials_requested",
+        evidence: { authMode: "username_password" },
+      },
+    });
+
+    const resumed = await recordPlatformOnboardingEvent({
+      platform: "customboard",
+      source: "agent",
+      configId: "cfg-customboard",
+      event: {
+        type: "credentials_received",
+        evidence: { providedFields: ["username", "password"] },
+      },
+    });
+
+    expect(waiting.status).toBe("waiting_for_credentials");
+    expect(waiting.currentStep).toBe("request_credentials");
+    expect(waiting.completedAt).toBeNull();
+    expect(resumed.status).toBe("researching");
+    expect(resumed.currentStep).toBe("save_config");
+    expect(resumed.nextActions).toEqual(["save_config", "validate_access"]);
   });
 
   it("compares decrypted auth payloads instead of ciphertext blobs", () => {

@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createConfig, trigger } = vi.hoisted(() => ({
+const { createConfig, recordPlatformOnboardingEvent, trigger } = vi.hoisted(() => ({
   createConfig: vi.fn(),
+  recordPlatformOnboardingEvent: vi.fn(),
   trigger: vi.fn(),
 }));
 
 vi.mock("@/src/services/scrapers", () => ({
   createConfig,
+  recordPlatformOnboardingEvent,
 }));
 
 vi.mock("@trigger.dev/sdk", () => ({
@@ -43,6 +45,16 @@ describe("platform credentials route", () => {
       authConfig: { username: "user", password: "secret" },
       source: "ui",
     });
+    expect(recordPlatformOnboardingEvent).toHaveBeenCalledWith({
+      platform: "example-platform",
+      source: "ui",
+      event: {
+        type: "credentials_received",
+        evidence: {
+          providedFields: ["username", "password"],
+        },
+      },
+    });
     expect(trigger).toHaveBeenCalledWith("platform-onboard", {
       platform: "example-platform",
       source: "ui",
@@ -71,6 +83,37 @@ describe("platform credentials route", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       error: "Ongeldige inloggegevens",
+    });
+  });
+
+  it("returns a descriptive error when credential persistence fails", async () => {
+    createConfig.mockRejectedValue(
+      new Error("Geen baseUrl beschikbaar voor platform example-platform"),
+    );
+
+    const response = await POST(
+      new Request("http://localhost/api/platforms/example-platform/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "user", password: "secret" }),
+      }),
+      { params: Promise.resolve({ slug: "example-platform" }) },
+    );
+
+    expect(recordPlatformOnboardingEvent).toHaveBeenCalledWith({
+      platform: "example-platform",
+      source: "ui",
+      event: {
+        type: "credentials_received",
+        evidence: {
+          providedFields: ["username", "password"],
+        },
+      },
+    });
+    expect(trigger).not.toHaveBeenCalled();
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Geen baseUrl beschikbaar voor platform example-platform",
     });
   });
 });

@@ -69,6 +69,7 @@ export async function listJobsPage(
   const offset = opts.offset ?? 0;
   const conditions = buildJobFilterConditions({
     platform: opts.platform,
+    platforms: opts.platforms,
     company: opts.company,
     endClient: opts.endClient,
     escoUri: opts.escoUri,

@@ -42,4 +42,18 @@ describe("vacatures search threshold", () => {
       }),
     );
   });
+
+  it("serializes repeated platform params into the shared runner compatibility shape", async () => {
+    await runJobPageSearch(
+      new URLSearchParams(
+        "platform=opdrachtoverheid&platform=nationalevacaturebank,opdrachtoverheid",
+      ),
+    );
+
+    expect(mockSearchJobsPageUnified).toHaveBeenCalledWith(
+      expect.objectContaining({
+        platforms: ["opdrachtoverheid", "nationalevacaturebank"],
+      }),
+    );
+  });
 });

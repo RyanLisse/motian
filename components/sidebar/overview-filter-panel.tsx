@@ -30,7 +30,7 @@ interface OverviewFilterPanelProps {
   onToggleMobileFilters: () => void;
   activeFilterCount: number;
   displayTotal: number;
-  platform: string;
+  selectedPlatforms: string[];
   platforms: string[];
   endClient: string;
   endClients: string[];
@@ -51,6 +51,7 @@ interface OverviewFilterPanelProps {
   provinceAnchor: ProvinceAnchor;
   contractType: string;
   onFilterChange: (paramKey: string, value: string) => void;
+  onTogglePlatform: (value: string) => void;
   onProvinceChange: (value: string) => void;
   onToggleRegio: (value: string) => void;
   onToggleVakgebied: (value: string) => void;
@@ -69,7 +70,7 @@ export function OverviewFilterPanel({
   onToggleMobileFilters,
   activeFilterCount,
   displayTotal,
-  platform,
+  selectedPlatforms,
   platforms,
   endClient,
   endClients,
@@ -90,6 +91,7 @@ export function OverviewFilterPanel({
   provinceAnchor,
   contractType,
   onFilterChange,
+  onTogglePlatform,
   onProvinceChange,
   onToggleRegio,
   onToggleVakgebied,
@@ -164,33 +166,16 @@ export function OverviewFilterPanel({
         >
           <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:gap-0 lg:block">
             <div>
-              <label
-                htmlFor="opdrachten-opdrachtgever"
-                className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm"
-              >
+              <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
                 Platform
-              </label>
-              <Select
-                value={platform || "__all__"}
-                onValueChange={(v) => onFilterChange("platform", v === "__all__" ? "" : v)}
-              >
-                <SelectTrigger
-                  id="opdrachten-opdrachtgever"
-                  className="data-[size=default]:h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:data-[size=default]:h-11 sm:text-sm"
-                >
-                  <SelectValue placeholder="Alle platforms" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="__all__" className="text-foreground">
-                    Alle platforms
-                  </SelectItem>
-                  {platforms.map((p) => (
-                    <SelectItem key={p} value={p} className="capitalize text-foreground">
-                      {p}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              </p>
+              <FilterChecklist
+                idPrefix="opdrachten-platform"
+                options={platforms.map((platform) => ({ value: platform, label: platform }))}
+                selectedValues={selectedPlatforms}
+                onToggle={onTogglePlatform}
+                className="max-h-52 overflow-y-auto"
+              />
             </div>
 
             <div>

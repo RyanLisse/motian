@@ -32,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { VacatureShareButton } from "@/components/vacature-share-button";
 import { stripHtml } from "@/src/lib/html";
 import { getJobDetailPageData } from "@/src/services/jobs/detail-page";
 import { JobDetailFields } from "./job-detail-fields";
@@ -602,7 +603,8 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                     ? `${totalPipeline} actief in shortlist`
                     : "Nog geen shortlist"}
                 </Badge>
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-2">
+                  <VacatureShareButton jobId={job.id} jobTitle={job.title} />
                   <JsonViewer data={job as unknown as Record<string, unknown>} />
                 </div>
               </div>

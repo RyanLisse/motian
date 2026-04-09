@@ -56,6 +56,7 @@ export async function runVacaturesSearch(
   const result = await searchJobsUnified({
     q: q || undefined,
     platform: filters.platform,
+    platforms: filters.platforms,
     endClient: filters.endClient,
     categories: filters.categories,
     escoUri: filters.escoUri,

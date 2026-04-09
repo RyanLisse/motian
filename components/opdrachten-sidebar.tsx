@@ -41,7 +41,7 @@ export function OpdrachtenSidebar({
   const {
     isOverviewPage,
     activeId,
-    platform,
+    selectedPlatforms,
     endClient,
     vaardigheid,
     status,
@@ -78,6 +78,7 @@ export function OpdrachtenSidebar({
     buildDetailHref,
     pushParams,
     handleFilterChange,
+    handleTogglePlatform,
     handleToggleRegio,
     handleToggleVakgebied,
     handleHoursRangeChange,
@@ -97,7 +98,7 @@ export function OpdrachtenSidebar({
         />
 
         <CompactSidebarFilters
-          platform={platform}
+          selectedPlatforms={selectedPlatforms}
           platforms={platforms}
           endClient={endClient}
           endClients={endClients}
@@ -117,6 +118,7 @@ export function OpdrachtenSidebar({
           sort={sort}
           sortOptions={sortOptions}
           onFilterChange={handleFilterChange}
+          onTogglePlatform={handleTogglePlatform}
           onProvinceChange={handleProvinceChange}
           onToggleRegio={handleToggleRegio}
           onToggleVakgebied={handleToggleVakgebied}
@@ -168,7 +170,7 @@ export function OpdrachtenSidebar({
           onToggleMobileFilters={() => setMobileFiltersOpen((open) => !open)}
           activeFilterCount={activeFilterCount}
           displayTotal={displayTotal}
-          platform={platform}
+          selectedPlatforms={selectedPlatforms}
           platforms={platforms}
           endClient={endClient}
           endClients={endClients}
@@ -189,6 +191,7 @@ export function OpdrachtenSidebar({
           provinceAnchor={provinceAnchor}
           contractType={contractType}
           onFilterChange={handleFilterChange}
+          onTogglePlatform={handleTogglePlatform}
           onProvinceChange={handleProvinceChange}
           onToggleRegio={handleToggleRegio}
           onToggleVakgebied={handleToggleVakgebied}

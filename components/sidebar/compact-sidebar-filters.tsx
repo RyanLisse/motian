@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 /**
  * Compact filter grid used in the detail-page (dark themed) sidebar view.
  */
@@ -13,10 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { OPDRACHTEN_PROVINCES } from "@/src/lib/opdrachten-filters";
+import { OPDRACHTEN_PROVINCES, parseOpdrachtenFilters } from "@/src/lib/opdrachten-filters";
 import { CompactMultiSelectFilter, RadiusSliderField } from "./sidebar-filter-controls";
 import { SidebarSortControls } from "./sidebar-sort-controls";
-import type { FilterOption, ProvinceAnchor } from "./sidebar-types";
+import type { FilterOption, FilterOverrideValue, ProvinceAnchor } from "./sidebar-types";
 import {
   DARK_FILTER_CONTROL_CLASS,
   DARK_FILTER_MENU_CLASS,
@@ -25,10 +27,11 @@ import {
   DARK_FILTER_SECTION_VALUE_CLASS,
   DARK_FILTER_TRIGGER_CLASS,
 } from "./sidebar-types";
-import { summarizeHoursRange } from "./sidebar-utils";
+import { summarizeHoursRange, toggleFilterValue } from "./sidebar-utils";
 
 interface CompactSidebarFiltersProps {
-  platform: string;
+  platform?: string;
+  selectedPlatforms?: string[];
   platforms: string[];
   endClient: string;
   endClients: string[];
@@ -47,7 +50,8 @@ interface CompactSidebarFiltersProps {
   provinceAnchor: ProvinceAnchor;
   sort: string;
   sortOptions: readonly { readonly value: string; readonly label: string }[];
-  onFilterChange: (paramKey: string, value: string) => void;
+  onFilterChange: (paramKey: string, value: FilterOverrideValue) => void;
+  onTogglePlatform?: (value: string) => void;
   onProvinceChange: (value: string) => void;
   onToggleRegio: (value: string) => void;
   onToggleVakgebied: (value: string) => void;
@@ -57,6 +61,7 @@ interface CompactSidebarFiltersProps {
 
 export function CompactSidebarFilters({
   platform,
+  selectedPlatforms: selectedPlatformsProp,
   platforms,
   endClient,
   endClients,
@@ -76,34 +81,46 @@ export function CompactSidebarFilters({
   sort,
   sortOptions,
   onFilterChange,
+  onTogglePlatform,
   onProvinceChange,
   onToggleRegio,
   onToggleVakgebied,
   onHoursRangeChange,
   onRadiusChange,
 }: CompactSidebarFiltersProps) {
+  const searchParams = useSearchParams();
+  const selectedPlatforms = useMemo(() => {
+    if (selectedPlatformsProp) {
+      return selectedPlatformsProp;
+    }
+    const parsedPlatforms = parseOpdrachtenFilters(
+      new URLSearchParams(searchParams.toString()),
+    ).platforms;
+    return parsedPlatforms.length > 0 ? parsedPlatforms : platform ? [platform] : [];
+  }, [platform, searchParams, selectedPlatformsProp]);
+
   return (
     <>
       <div className="grid shrink-0 gap-2 px-3">
         <div className="grid grid-cols-2 gap-2">
-          <Select
-            value={platform || undefined}
-            onValueChange={(v) => onFilterChange("platform", v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}>
-              <SelectValue placeholder="Platform" />
-            </SelectTrigger>
-            <SelectContent className={DARK_FILTER_MENU_CLASS}>
-              <SelectItem value="__all__" className="text-white">
-                Alle platforms
-              </SelectItem>
-              {platforms.map((p) => (
-                <SelectItem key={p} value={p} className="capitalize text-white">
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CompactMultiSelectFilter
+            label="Platform"
+            options={platforms.map((platform) => ({ value: platform, label: platform }))}
+            selectedValues={selectedPlatforms}
+            onToggle={(value) => {
+              if (onTogglePlatform) {
+                onTogglePlatform(value);
+                return;
+              }
+
+              onFilterChange("platform", toggleFilterValue(selectedPlatforms, value));
+            }}
+            buttonClassName={cn(
+              "h-12 rounded-[20px] px-4 text-[15px] capitalize text-white",
+              DARK_FILTER_PANEL_CLASS,
+            )}
+            contentClassName={DARK_FILTER_MENU_CLASS}
+          />
 
           <SearchableCombobox
             value={endClient || undefined}

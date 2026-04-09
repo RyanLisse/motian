@@ -22,6 +22,7 @@ import { decrypt, encrypt } from "../lib/crypto";
 import {
   canActivatePlatformOnboarding,
   createPlatformOnboardingRunDraft,
+  type PlatformOnboardingEvent,
   type PlatformOnboardingRunState,
   type PlatformOnboardingSource,
   reducePlatformOnboardingRun,
@@ -402,13 +403,7 @@ async function recordOnboardingSnapshot(input: {
   platform: string;
   source: PlatformOnboardingSource;
   configId?: string | null;
-  event:
-    | Parameters<typeof reducePlatformOnboardingRun>[1]
-    | {
-        type: "unsupported_source_detected";
-        blockerKind: "needs_implementation";
-        evidence?: Record<string, unknown>;
-      };
+  event: PlatformOnboardingEvent;
 }): Promise<PlatformOnboardingRunRecord> {
   await ensurePlatformCatalogExists(input.platform);
 
@@ -441,6 +436,16 @@ async function recordOnboardingSnapshot(input: {
     .returning();
 
   return record;
+}
+
+export async function recordPlatformOnboardingEvent(input: {
+  platform: string;
+  source: PlatformOnboardingSource;
+  configId?: string | null;
+  event: PlatformOnboardingEvent;
+}): Promise<PlatformOnboardingRunView> {
+  const record = await recordOnboardingSnapshot(input);
+  return sanitizeOnboardingRunRecord(record) as PlatformOnboardingRunView;
 }
 
 async function ensureOnboardingDraft(

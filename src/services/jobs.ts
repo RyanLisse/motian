@@ -13,6 +13,7 @@ import {
   type JobPageRow,
   listJobsPage as listJobsPageImpl,
 } from "./jobs/page-query";
+import { normalizeJobPlatforms } from "./jobs/query-filters";
 import {
   createJob,
   deleteJob,
@@ -34,6 +35,7 @@ import { getActivePipelineCount, getJobStats } from "./jobs/stats";
 export type UnifiedJobSearchOptions = {
   q?: string;
   platform?: string;
+  platforms?: string[];
   company?: string;
   endClient?: string;
   escoUri?: string;
@@ -94,12 +96,15 @@ export async function searchJobsUnified(
   opts: UnifiedJobSearchOptions = {},
 ): Promise<UnifiedJobSearchResult> {
   const query = typeof opts.q === "string" ? opts.q.trim() : "";
+  const platforms = normalizeJobPlatforms(opts.platform, opts.platforms);
+  const platformFilter = platforms.length > 0 ? platforms.join(",") : undefined;
 
   if (!query) {
     const listOpts: ListJobsOptions = {
       limit: opts.limit,
       offset: opts.offset,
-      platform: opts.platform,
+      platform: platformFilter,
+      platforms: platforms.length > 0 ? platforms : undefined,
       company: opts.company,
       endClient: opts.endClient,
       escoUri: opts.escoUri,
@@ -129,7 +134,8 @@ export async function searchJobsUnified(
   const hybridOpts: HybridSearchOptions = {
     limit: opts.limit,
     offset: opts.offset,
-    platform: opts.platform,
+    platform: platformFilter,
+    platforms: platforms.length > 0 ? platforms : undefined,
     company: opts.company,
     endClient: opts.endClient,
     escoUri: opts.escoUri,
@@ -160,12 +166,15 @@ export async function searchJobsPageUnified(
   opts: UnifiedJobSearchOptions = {},
 ): Promise<UnifiedJobPageSearchResult> {
   const query = typeof opts.q === "string" ? opts.q.trim() : "";
+  const platforms = normalizeJobPlatforms(opts.platform, opts.platforms);
+  const platformFilter = platforms.length > 0 ? platforms.join(",") : undefined;
 
   if (!query) {
     return listJobsPageImpl({
       limit: opts.limit,
       offset: opts.offset,
-      platform: opts.platform,
+      platform: platformFilter,
+      platforms: platforms.length > 0 ? platforms : undefined,
       company: opts.company,
       endClient: opts.endClient,
       escoUri: opts.escoUri,
@@ -193,7 +202,8 @@ export async function searchJobsPageUnified(
   return hybridSearchPageWithTotalImpl(query, {
     limit: opts.limit,
     offset: opts.offset,
-    platform: opts.platform,
+    platform: platformFilter,
+    platforms: platforms.length > 0 ? platforms : undefined,
     company: opts.company,
     endClient: opts.endClient,
     escoUri: opts.escoUri,

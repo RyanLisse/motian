@@ -63,6 +63,7 @@ export async function runJobSearch(
   const result = await searchJobsUnified({
     q: q || undefined,
     platform: filters.platform,
+    platforms: filters.platforms,
     endClient: filters.endClient,
     categories: filters.categories,
     escoUri: filters.escoUri,
@@ -115,6 +116,7 @@ export async function runJobPageSearch(
   const result = await searchJobsPageUnified({
     q: q || undefined,
     platform: filters.platform,
+    platforms: filters.platforms,
     endClient: filters.endClient,
     categories: filters.categories,
     escoUri: filters.escoUri,

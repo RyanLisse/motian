@@ -68,7 +68,7 @@ export function useSidebarFilters({
   const parsedFilters = parseOpdrachtenFilters(new URLSearchParams(searchParams.toString()));
   const q = parsedFilters.q ?? "";
   const committedSearchQuery = normalizeOpdrachtenSearchQuery(q) ?? "";
-  const platform = parsedFilters.platform ?? "";
+  const selectedPlatformsFromUrl = parsedFilters.platforms;
   const endClient = parsedFilters.endClient ?? "";
   const vaardigheid = parsedFilters.escoUri ?? "";
   const status = parsedFilters.status;
@@ -126,7 +126,7 @@ export function useSidebarFilters({
   // doesn't reflect changes in time for the query key to change.
   // URL push remains a side effect for bookmarking.
   const [localStatus, setLocalStatus] = useState(status);
-  const [localPlatform, setLocalPlatform] = useState(platform);
+  const [localPlatforms, setLocalPlatforms] = useState(selectedPlatformsFromUrl);
   const [localEndClient, setLocalEndClient] = useState(endClient);
   const [localVaardigheid, setLocalVaardigheid] = useState(vaardigheid);
   const [localProvincie, setLocalProvincie] = useState(provincie);
@@ -172,7 +172,7 @@ export function useSidebarFilters({
     }
     setInputValue(q);
     setLocalStatus(status);
-    setLocalPlatform(platform);
+    setLocalPlatforms(selectedPlatformsFromUrl);
     setLocalEndClient(endClient);
     setLocalVaardigheid(vaardigheid);
     setLocalProvincie(provincie);
@@ -216,7 +216,7 @@ export function useSidebarFilters({
   const searchQueryKey = useMemo<SearchQueryKeyPayload>(
     () => ({
       q: debouncedSearchQuery,
-      platform: localPlatform,
+      platforms: [...localPlatforms].sort((a, b) => a.localeCompare(b)),
       endClient: localEndClient,
       vaardigheid: localVaardigheid,
       status: localStatus,
@@ -236,7 +236,7 @@ export function useSidebarFilters({
     }),
     [
       debouncedSearchQuery,
-      localPlatform,
+      localPlatforms,
       localEndClient,
       localVaardigheid,
       localStatus,
@@ -309,7 +309,7 @@ export function useSidebarFilters({
     queryFn: ({ signal }) =>
       searchJobs({
         q: debouncedSearchQuery,
-        platform: localPlatform,
+        platforms: localPlatforms,
         endClient: localEndClient,
         vaardigheid: localVaardigheid,
         status: localStatus,
@@ -334,7 +334,7 @@ export function useSidebarFilters({
       localPage === 1 &&
       limitParam === DEFAULT_OPDRACHTEN_LIMIT &&
       !debouncedSearchQuery &&
-      !localPlatform &&
+      localPlatforms.length === 0 &&
       !localEndClient &&
       !localVaardigheid &&
       localStatus === "open" &&
@@ -369,19 +369,19 @@ export function useSidebarFilters({
     hasUrgentDeadline(job.applicationDeadline),
   ).length;
   const activeFilterCount =
-    Number(Boolean(platform)) +
-    Number(Boolean(endClient)) +
-    Number(Boolean(vaardigheid)) +
-    Number(status !== "open") +
-    Number(Boolean(provincie)) +
-    Number(regios.length > 0) +
-    Number(vakgebieden.length > 0) +
-    Number(Boolean(urenPerWeek)) +
+    Number(localPlatforms.length > 0) +
+    Number(Boolean(localEndClient)) +
+    Number(Boolean(localVaardigheid)) +
+    Number(localStatus !== "open") +
+    Number(Boolean(localProvincie)) +
+    Number(localRegios.length > 0) +
+    Number(localVakgebieden.length > 0) +
+    Number(Boolean(effectiveHoursPerWeekBucket)) +
     Number(Boolean(hoursMinInput || hoursMaxInput)) +
     Number(Boolean(radiusKmInput)) +
-    Number(Boolean(contractType)) +
+    Number(Boolean(localContractType)) +
     Number(Boolean(rateMinInput || rateMaxInput)) +
-    Number(sort !== "nieuwste");
+    Number(localSort !== "nieuwste");
 
   const buildDetailHref = useCallback(
     (jobId: string) => {
@@ -402,19 +402,35 @@ export function useSidebarFilters({
   );
 
   const handleFilterChange = useCallback(
-    (paramKey: string, value: string) => {
+    (paramKey: string, value: FilterOverrideValue) => {
       // Update local state immediately so TanStack Query key changes now
       if (paramKey === "status")
-        setLocalStatus(value === "" ? "open" : (value as typeof localStatus));
-      else if (paramKey === "platform") setLocalPlatform(value);
-      else if (paramKey === "endClient") setLocalEndClient(value);
-      else if (paramKey === "vaardigheid") setLocalVaardigheid(value);
-      else if (paramKey === "contractType") setLocalContractType(value);
-      else if (paramKey === "sort") setLocalSort((value || "nieuwste") as typeof localSort);
+        setLocalStatus(
+          (typeof value === "string" ? value : "") === "" ? "open" : (value as typeof localStatus),
+        );
+      else if (paramKey === "platform") {
+        const nextPlatforms = Array.isArray(value) ? value : value ? [value] : [];
+        setLocalPlatforms(nextPlatforms);
+      } else if (paramKey === "endClient" && typeof value === "string") setLocalEndClient(value);
+      else if (paramKey === "vaardigheid" && typeof value === "string") setLocalVaardigheid(value);
+      else if (paramKey === "contractType" && typeof value === "string")
+        setLocalContractType(value);
+      else if (paramKey === "sort" && typeof value === "string")
+        setLocalSort((value || "nieuwste") as typeof localSort);
       setLocalPage(1);
       pushParams({ [paramKey]: value, pagina: "1" });
     },
     [pushParams],
+  );
+
+  const handleTogglePlatform = useCallback(
+    (value: string) => {
+      const nextPlatforms = toggleFilterValue(localPlatforms, value);
+      setLocalPlatforms(nextPlatforms);
+      setLocalPage(1);
+      pushParams({ platform: nextPlatforms, pagina: "1" });
+    },
+    [localPlatforms, pushParams],
   );
 
   const handleToggleRegio = useCallback(
@@ -471,7 +487,7 @@ export function useSidebarFilters({
 
   const resetFilters = useCallback(() => {
     setLocalStatus("open");
-    setLocalPlatform("");
+    setLocalPlatforms([]);
     setLocalEndClient("");
     setLocalVaardigheid("");
     setLocalProvincie("");
@@ -495,7 +511,8 @@ export function useSidebarFilters({
     activeId,
 
     // Filter values
-    platform,
+    platform: localPlatforms[0] ?? "",
+    selectedPlatforms: localPlatforms,
     endClient,
     vaardigheid,
     status,
@@ -539,6 +556,7 @@ export function useSidebarFilters({
     buildDetailHref,
     pushParams,
     handleFilterChange,
+    handleTogglePlatform,
     handleToggleRegio,
     handleToggleVakgebied,
     handleHoursRangeChange,

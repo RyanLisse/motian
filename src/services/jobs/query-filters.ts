@@ -1,4 +1,4 @@
-import { and, eq, gte, isNotNull, isNull, lte, or, sql } from "../../db";
+import { and, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from "../../db";
 import { jobSkills, jobs } from "../../db/schema";
 import {
   getHoursRangeForBucket,
@@ -11,6 +11,7 @@ import { getJobStatusCondition, type JobStatus } from "./filters";
 
 export type SharedJobFilterOptions = {
   platform?: string;
+  platforms?: string[];
   company?: string;
   endClient?: string;
   escoUri?: string;
@@ -37,8 +38,19 @@ export type SharedJobFilterOptions = {
   radiusKm?: number;
 };
 
+export function normalizeJobPlatforms(platform?: string, platforms?: string[]) {
+  return [
+    ...new Set(
+      [...(platforms ?? []), ...(platform ? platform.split(",") : [])]
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
 export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
   const conditions = [getJobStatusCondition(opts.status ?? "open")];
+  const selectedPlatforms = normalizeJobPlatforms(opts.platform, opts.platforms);
   const categories = [
     ...new Set([...(opts.categories ?? []), ...(opts.category ? [opts.category] : [])]),
   ];
@@ -46,7 +58,9 @@ export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
     ...new Set([...(opts.regions ?? []), ...(opts.region ? [opts.region] : [])]),
   ];
 
-  if (opts.platform) conditions.push(eq(jobs.platform, opts.platform));
+  if (selectedPlatforms.length > 0) {
+    conditions.push(inArray(jobs.platform, selectedPlatforms));
+  }
   if (opts.company) conditions.push(eq(jobs.company, opts.company));
 
   if (opts.endClient) {

@@ -141,7 +141,7 @@ function optionalPositiveIntegerQueryNumber() {
 
 export const opdrachtenQuerySchema = z.object({
   q: optionalQueryString(200),
-  platform: optionalQueryString(100),
+  platform: optionalQueryStringArray(100),
   endClient: optionalQueryString(200),
   vaardigheid: optionalQueryString(255),
   escoUri: optionalQueryString(255),
@@ -173,7 +173,7 @@ export const opdrachtenQuerySchema = z.object({
 export function validateOpdrachtenQueryParams(params: URLSearchParams) {
   return opdrachtenQuerySchema.safeParse({
     q: params.get("q") ?? undefined,
-    platform: params.get("platform") ?? undefined,
+    platform: params.getAll("platform"),
     endClient: params.get("endClient") ?? undefined,
     vaardigheid: params.get("vaardigheid") ?? undefined,
     escoUri: params.get("escoUri") ?? undefined,
@@ -346,6 +346,7 @@ export function getProvinceAnchor(province: string | null | undefined) {
 
 export type ParsedOpdrachtenFilters = {
   q?: string;
+  platforms: string[];
   platform?: string;
   endClient?: string;
   escoUri?: string;
@@ -366,12 +367,14 @@ export type ParsedOpdrachtenFilters = {
 };
 
 export function parseOpdrachtenFilters(params: URLSearchParams): ParsedOpdrachtenFilters {
+  const platforms = parseMultiValueTextFilters(params, "platform");
   const categories = parseMultiValueTextFilters(params, "vakgebied", "category");
   const regions = parseMultiValueRegions(params, "regio", "region");
 
   return {
     q: normalizeTextFilter(params.get("q")),
-    platform: normalizeTextFilter(params.get("platform")),
+    platforms,
+    platform: platforms[0],
     endClient: normalizeTextFilter(params.get("endClient")),
     escoUri: normalizeTextFilter(params.get("vaardigheid") ?? params.get("escoUri")),
     status: normalizeOpdrachtenStatus(params.get("status")),
