@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildWerkzoekenListPageUrl,
   parseWerkzoekenDetailPage,
@@ -74,7 +74,16 @@ const originalFetch = globalThis.fetch;
 describe("Werkzoeken scraper", () => {
   const savedFirecrawlKey = process.env.FIRECRAWL_API_KEY;
 
+  // Make all setTimeout callbacks fire immediately so retry delays don't slow tests
+  beforeEach(() => {
+    vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void) => {
+      fn();
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout);
+  });
+
   afterEach(() => {
+    vi.restoreAllMocks();
     globalThis.fetch = originalFetch;
     // Restore Firecrawl key — tests exercise direct-fetch retries without fallback
     if (savedFirecrawlKey) process.env.FIRECRAWL_API_KEY = savedFirecrawlKey;
