@@ -1,10 +1,22 @@
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { captureJourneyEvidence } from "@/src/autopilot/evidence";
 import type { JourneySpec } from "@/src/autopilot/types/journey";
+
+function playwrightBrowsersInstalled(): boolean {
+  try {
+    const pw = require("playwright");
+    const execPath = pw.chromium?.executablePath?.();
+    return !!execPath && existsSync(execPath);
+  } catch {
+    return false;
+  }
+}
+
+const hasPlaywright = playwrightBrowsersInstalled();
 
 function renderHtml(body: string): string {
   return `<!doctype html>
@@ -88,7 +100,7 @@ afterAll(() => {
   }
 });
 
-describe("autopilot rich evidence capture", () => {
+describe.skipIf(!hasPlaywright)("autopilot rich evidence capture", () => {
   it("records a video artifact for an interactive journey", async () => {
     const server = await startTestServer();
     const evidenceDir = createEvidenceDir();

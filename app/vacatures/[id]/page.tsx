@@ -33,11 +33,11 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VacatureShareButton } from "@/components/vacature-share-button";
+import { VacatureTriageScorecard } from "@/components/vacatures/vacature-triage-scorecard";
 import { stripHtml } from "@/src/lib/html";
 import { getJobSkills } from "@/src/services/esco";
 import { getJobDetailPageData } from "@/src/services/jobs/detail-page";
 import { buildVacatureTriageScorecard } from "@/src/services/recruiter-insights";
-import { VacatureTriageScorecard } from "@/components/vacatures/vacature-triage-scorecard";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 

@@ -25,14 +25,19 @@ function createAwaitableQuery<T>(result: T) {
 }
 
 describe("getOverviewData", () => {
-  // Call order for database.select():
-  // 1. platformCounts
-  // 2. getRecentJobs (internal select)
-  // 3. activeScrapers
-  // 4. getRecentScrapes (internal select)
-  // 5. pipelineStageCounts
-  // 6. upcomingInterviewCountResult
-  // 7. upcomingInterviews
+  // Call order for database.select() inside Promise.all:
+  // 1.  platformCounts
+  //     (dedupedTotalPromise uses database.execute, not select – caught by try/catch)
+  // 2.  getRecentJobs (internal select)
+  // 3.  activeScrapers
+  // 4.  getRecentScrapes (internal select)
+  // 5.  pipelineStageCounts
+  // 6.  upcomingInterviewCountResult
+  // 7.  upcomingInterviews
+  // 8.  jobsMissingSummaryResult
+  // 9.  jobsMissingEmbeddingResult
+  // 10. candidatesMissingEmbeddingResult
+  // 11. matchesMissingStructuredReviewResult
 
   it("executes dashboard reads through one transaction-backed connection", async () => {
     const select = vi
@@ -52,7 +57,20 @@ describe("getOverviewData", () => {
           },
         ]),
       )
-      .mockReturnValueOnce(createAwaitableQuery([{ id: "cfg-1", platform: "linkedin" }]))
+      .mockReturnValueOnce(
+        createAwaitableQuery([
+          {
+            id: "cfg-1",
+            platform: "linkedin",
+            isActive: true,
+            cronExpression: null,
+            consecutiveFailures: 0,
+            lastRunAt: null,
+            lastRunStatus: null,
+            updatedAt: null,
+          },
+        ]),
+      )
       .mockReturnValueOnce(
         createAwaitableQuery([
           { id: "run-1", config_id: "cfg-1", platform: "linkedin", status: "success" },
@@ -60,11 +78,15 @@ describe("getOverviewData", () => {
       )
       .mockReturnValueOnce(createAwaitableQuery([{ stage: "new", count: 4 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ count: 2 }]))
-      .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]));
+      .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]));
 
     const result = await getOverviewData({ select } as unknown as typeof db);
 
-    expect(select).toHaveBeenCalledTimes(7);
+    expect(select).toHaveBeenCalledTimes(11);
     expect(result.platformCounts).toEqual([{ platform: "linkedin", count: 3, weeklyNew: 1 }]);
     expect(result.recentJobs).toEqual([
       {
@@ -112,7 +134,20 @@ describe("getOverviewData", () => {
           },
         ]),
       )
-      .mockReturnValueOnce(createAwaitableQuery([{ id: "cfg-1", platform: "linkedin" }]))
+      .mockReturnValueOnce(
+        createAwaitableQuery([
+          {
+            id: "cfg-1",
+            platform: "linkedin",
+            isActive: true,
+            cronExpression: null,
+            consecutiveFailures: 0,
+            lastRunAt: null,
+            lastRunStatus: null,
+            updatedAt: null,
+          },
+        ]),
+      )
       .mockReturnValueOnce(
         createAwaitableQuery([
           {
@@ -143,7 +178,11 @@ describe("getOverviewData", () => {
       )
       .mockReturnValueOnce(createAwaitableQuery([{ stage: "new", count: 4 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ count: 2 }]))
-      .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]));
+      .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]));
 
     const result = await getOverviewData({ select } as unknown as typeof db);
 
@@ -203,7 +242,20 @@ describe("getOverviewData", () => {
           },
         ]),
       )
-      .mockReturnValueOnce(createAwaitableQuery([{ id: "cfg-1", platform: "linkedin" }]))
+      .mockReturnValueOnce(
+        createAwaitableQuery([
+          {
+            id: "cfg-1",
+            platform: "linkedin",
+            isActive: true,
+            cronExpression: null,
+            consecutiveFailures: 0,
+            lastRunAt: null,
+            lastRunStatus: null,
+            updatedAt: null,
+          },
+        ]),
+      )
       .mockReturnValueOnce(
         createAwaitableQuery([
           {
@@ -246,7 +298,11 @@ describe("getOverviewData", () => {
       )
       .mockReturnValueOnce(createAwaitableQuery([{ stage: "new", count: 4 }]))
       .mockReturnValueOnce(createAwaitableQuery([{ count: 2 }]))
-      .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]));
+      .mockReturnValueOnce(createAwaitableQuery([{ id: "interview-1", candidateName: "Jane" }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]))
+      .mockReturnValueOnce(createAwaitableQuery([{ count: 0 }]));
 
     const result = await getOverviewData({ select } as unknown as typeof db);
 

@@ -115,7 +115,7 @@ async function captureEvidence(): Promise<void> {
     try {
       const response = await page.goto(url, { waitUntil: "load" });
 
-      if (!response || !response.ok()) {
+      if (!response?.ok()) {
         console.warn(`  Warning: Non-OK response (${response?.status()}) for ${url}`);
       }
 

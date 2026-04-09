@@ -1,8 +1,8 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, Lightbulb, ShieldAlert, Star, XCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { RecruiterMatchBrief } from "@/components/matching/match-brief";
+import { Badge } from "@/components/ui/badge";
 import type { CriterionResult } from "@/src/schemas/matching";
 import type { MatchBrief as MatchBriefData } from "@/src/services/recruiter-insights";
 

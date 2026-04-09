@@ -21,7 +21,11 @@ export function PipelineHealthCard({ health }: { health: PipelineHealthSnapshot 
           <p className="mt-1 text-sm text-muted-foreground">{health.summary}</p>
         </div>
         <Badge variant="outline" className={toneClasses[health.status]}>
-          {health.status === "goed" ? "Gezond" : health.status === "let-op" ? "Let op" : "Actie nodig"}
+          {health.status === "goed"
+            ? "Gezond"
+            : health.status === "let-op"
+              ? "Let op"
+              : "Actie nodig"}
         </Badge>
       </div>
 
@@ -53,7 +57,10 @@ export function PipelineHealthCard({ health }: { health: PipelineHealthSnapshot 
       {health.items.some((item) => item.tone === "actie") ? (
         <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>Minstens één kernsignaal vraagt operationele opvolging voordat recruiters volledig op de ranking kunnen vertrouwen.</span>
+          <span>
+            Minstens één kernsignaal vraagt operationele opvolging voordat recruiters volledig op de
+            ranking kunnen vertrouwen.
+          </span>
         </div>
       ) : null}
     </div>

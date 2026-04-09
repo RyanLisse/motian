@@ -23,10 +23,7 @@ export function RecruiterMatchBrief({ brief }: Props) {
           </div>
           <p className="text-sm text-foreground">{brief.summary}</p>
         </div>
-        <Badge
-          variant="outline"
-          className={recommendationStyles[brief.recommendation.label]}
-        >
+        <Badge variant="outline" className={recommendationStyles[brief.recommendation.label]}>
           {brief.recommendation.label}
           {brief.recommendation.confidence != null
             ? ` · ${Math.round(brief.recommendation.confidence)}%`
@@ -83,7 +80,9 @@ export function RecruiterMatchBrief({ brief }: Props) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Geen expliciete knock-out gaten gevonden.</p>
+            <p className="text-sm text-muted-foreground">
+              Geen expliciete knock-out gaten gevonden.
+            </p>
           )}
         </div>
       </div>
@@ -132,7 +131,9 @@ export function RecruiterMatchBrief({ brief }: Props) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Geen directe commerciële blockers gedetecteerd.</p>
+          <p className="text-sm text-muted-foreground">
+            Geen directe commerciële blockers gedetecteerd.
+          </p>
         )}
       </div>
 
