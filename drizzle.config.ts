@@ -9,6 +9,7 @@ export default {
     "./packages/db/src/schema.ts",
     "./src/db/saved-searches-schema.ts",
     "./src/db/kpi-snapshots-schema.ts",
+    "./src/db/platform-status-schema.ts",
   ],
   out: "./drizzle",
   dialect: "postgresql",
