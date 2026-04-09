@@ -10,6 +10,7 @@ import {
   MessageCircle,
   MessageSquare,
   Search,
+  Tags,
   Users,
   Wrench,
 } from "lucide-react";
@@ -64,6 +65,11 @@ const data = {
           url: "/pipeline",
           icon: Kanban,
           prefetch: false,
+        },
+        {
+          title: "Vaardigheden",
+          url: "/vaardigheden",
+          icon: Tags,
         },
         {
           title: "Interviews",
