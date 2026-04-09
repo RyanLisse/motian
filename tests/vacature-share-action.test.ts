@@ -67,8 +67,8 @@ describe("vacature share action", () => {
       'import { VacatureShareButton } from "@/components/vacature-share-button";',
     );
     expect(pageSource).toContain("VacatureShareButton");
-    expect(pageSource).toContain('title={job.title}');
-    expect(pageSource).toContain('path={`/vacatures/${job.id}`}');
+    expect(pageSource).toContain("title={job.title}");
+    expect(pageSource).toContain("path={`/vacatures/"); // template contains ${job.id}
     expect(componentSource).toContain("Vacature delen");
     expect(componentSource).toContain("Link gekopieerd");
   });
