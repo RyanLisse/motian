@@ -60,7 +60,7 @@ function rateLimitPipeline(request: NextRequest): NextResponse | null {
 }
 
 /** Routes that bypass bearer token authentication completely (health, cron, docs) */
-const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi", "/api/debug-error"];
+const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi", "/api/debug-error", "/api/feed"];
 
 /**
  * First-party browser routes: accessible without bearer token ONLY for
@@ -83,6 +83,8 @@ const FIRST_PARTY_PATHS = [
   "/api/instellingen",
   "/api/platforms",
   "/api/salesforce-feed",
+  "/api/commercieel-cv",
+  "/api/zoekfilters",
 ];
 
 const PUBLIC_GET_PATHS = ["/api/vacatures/zoeken", "/api/opdrachten/zoeken"];
