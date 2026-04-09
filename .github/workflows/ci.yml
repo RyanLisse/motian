@@ -336,6 +336,7 @@ jobs:
         run: pnpm build
         env:
           SKIP_ENV_VALIDATION: "1"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # ────────────────────────────────────────────────────────────
   # Job 7: Symphony Gate
