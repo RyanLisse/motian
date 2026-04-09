@@ -1,9 +1,12 @@
 "use client";
 
 import { Check, Loader2, Upload, X } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AutoMatchResults } from "./auto-match-results";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 
 interface CvDropZoneProps {
   candidateId: string;
@@ -18,6 +21,11 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
   );
   const [message, setMessage] = useState<string | null>(null);
   const [matchCandidateId, setMatchCandidateId] = useState<string | null>(null);
+  const [skillsPreview, setSkillsPreview] = useState<{
+    candidateId: string;
+    hard: string[];
+    soft: string[];
+  } | null>(null);
 
   // Auto-dismiss success/error messages (but not matching)
   useEffect(() => {
@@ -26,6 +34,7 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
         setStatus("idle");
         setMessage(null);
         setMatchCandidateId(null);
+        setSkillsPreview(null);
       }, 30000);
       return () => clearTimeout(timer);
     }
@@ -79,6 +88,15 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
 
         // Phase 3: Auto-matching
         const resolvedCandidateId = saveData.candidateId ?? candidateId;
+        setSkillsPreview({
+          candidateId: resolvedCandidateId,
+          hard: (parsed.skills?.hard ?? [])
+            .map((skill: { name: string }) => skill.name)
+            .filter(Boolean),
+          soft: (parsed.skills?.soft ?? [])
+            .map((skill: { name: string }) => skill.name)
+            .filter(Boolean),
+        });
         setStatus("matching");
         setMessage("Vacatures worden gescand...");
         setMatchCandidateId(resolvedCandidateId);
@@ -139,6 +157,48 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
       {status === "matching" && matchCandidateId && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg animate-in fade-in slide-in-from-bottom-4">
           <div className="rounded-xl border bg-card p-4 shadow-xl">
+            {skillsPreview && (
+              <div className="mb-4 space-y-3 rounded-xl border border-border/60 bg-background/80 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    Geëxtraheerde vaardigheden
+                  </p>
+                  <Button asChild size="sm" variant="ghost" className="h-8 text-xs">
+                    <Link href={`/kandidaten/${skillsPreview.candidateId}#vaardigheden`}>
+                      Naar profielskills
+                    </Link>
+                  </Button>
+                </div>
+                {skillsPreview.hard.length > 0 ? (
+                  <div className="space-y-1">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Hard skills
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {skillsPreview.hard.slice(0, 12).map((skill) => (
+                        <Badge key={`hard-${skill}`} variant="secondary" className="text-[10px]">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {skillsPreview.soft.length > 0 ? (
+                  <div className="space-y-1">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Soft skills
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {skillsPreview.soft.slice(0, 8).map((skill) => (
+                        <Badge key={`soft-${skill}`} variant="outline" className="text-[10px]">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
             <AutoMatchResults candidateId={matchCandidateId} />
             <button
               type="button"
@@ -146,6 +206,7 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
                 setStatus("idle");
                 setMessage(null);
                 setMatchCandidateId(null);
+                setSkillsPreview(null);
               }}
               className="mt-3 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
             >

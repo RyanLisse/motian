@@ -38,4 +38,9 @@ describe("Skills section on kandidaat detail page", () => {
     expect(source).toContain("activeSkill");
     expect(source).toContain("Filter wissen");
   });
+
+  it("anchors the full skills section for post-upload deep links", () => {
+    const source = readFile("components/candidate-profile/skills-experience-section.tsx");
+    expect(source).toContain('id="vaardigheden"');
+  });
 });

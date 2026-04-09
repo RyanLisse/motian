@@ -104,6 +104,20 @@ export function buildOpenApiDocument(request: Request): Record<string, unknown> 
           responses: { "201": { description: "Aangemaakte kandidaat" } },
         },
       },
+      "/api/kandidaten/{id}/vacature-scores": {
+        post: {
+          tags: ["Candidates", "Matching"],
+          summary: "Matchscores t.o.v. opgegeven vacature-ID's",
+          responses: { "200": { description: "Scores per vacature" } },
+        },
+      },
+      "/api/commercieel-cv": {
+        post: {
+          tags: ["Candidates"],
+          summary: "Concept commercieel CV (markdown)",
+          responses: { "200": { description: "Titel en markdown-body" } },
+        },
+      },
       "/api/candidates/{id}/matches": {
         get: {
           tags: ["Candidates"],

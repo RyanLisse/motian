@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import { and, db, desc, eq, inArray, isNull, sql } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
 import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
+import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../lib/query-observability";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
 import { syncCandidateEscoSkills } from "./esco";
 import { searchCandidateIdsByTypesense } from "./search-index/typesense-search";
@@ -49,6 +51,26 @@ export type CreateCandidateData = {
   education?: { school: string; degree: string; duration: string }[];
 };
 
+function getSearchTelemetryMeta(query: string | undefined) {
+  const trimmedQuery = query?.trim() ?? "";
+  const queryLength = trimmedQuery.length;
+  const queryTokenCount = trimmedQuery.length > 0 ? trimmedQuery.split(/\s+/).length : 0;
+
+  if (trimmedQuery.length === 0) {
+    return {
+      queryFingerprint: null,
+      queryLength,
+      queryTokenCount,
+    };
+  }
+
+  return {
+    queryFingerprint: createHash("sha256").update(trimmedQuery).digest("hex").slice(0, 16),
+    queryLength,
+    queryTokenCount,
+  };
+}
+
 export function isCandidateMatchingStatus(value: string): value is CandidateMatchingStatus {
   return CANDIDATE_MATCHING_STATUSES.includes(value as CandidateMatchingStatus);
 }
@@ -59,17 +81,27 @@ export function isCandidateMatchingStatus(value: string): value is CandidateMatc
 export async function listCandidates(
   limitOrOpts?: number | ListCandidatesOptions,
 ): Promise<Candidate[]> {
+  const start = Date.now();
   const opts = typeof limitOrOpts === "number" ? { limit: limitOrOpts } : (limitOrOpts ?? {});
   const safeLimit = Math.min(opts.limit ?? 50, 100);
   const safeOffset = Math.max(0, opts.offset ?? 0);
 
-  return db
+  const rows = await db
     .select()
     .from(candidates)
     .where(isNull(candidates.deletedAt))
     .orderBy(desc(candidates.createdAt))
     .limit(safeLimit)
     .offset(safeOffset);
+
+  logSlowQuery("listCandidates", Date.now() - start, LIST_SLO_MS, {
+    limit: safeLimit,
+    offset: safeOffset,
+    total: rows.length,
+    queryPath: "candidate-list",
+  });
+
+  return rows;
 }
 
 /** Enkele kandidaat ophalen op ID, of null als niet gevonden. */
@@ -162,53 +194,127 @@ async function runCandidateDerivedSync(candidateId: string): Promise<void> {
 
 /** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
 export async function searchCandidates(opts: SearchCandidatesOptions = {}): Promise<Candidate[]> {
+  const start = Date.now();
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = Math.max(0, opts.offset ?? 0);
+  const queryTelemetry = getSearchTelemetryMeta(opts.query);
+  let typesenseSearchMs = 0;
+  let hydrateMs = 0;
+  let dbSearchMs = 0;
+  let fallbackReason: "typesense-unavailable" | "typesense-zero-hits" | null = null;
 
   try {
+    const typesenseSearchStartedAt = Date.now();
     const externalResult = await searchCandidateIdsByTypesense({ ...opts, limit, offset });
+    typesenseSearchMs = Date.now() - typesenseSearchStartedAt;
     if (externalResult && externalResult.ids.length > 0) {
+      const hydrateStartedAt = Date.now();
       const hydrated = await getCandidatesByIds(externalResult.ids);
+      hydrateMs = Date.now() - hydrateStartedAt;
       const candidatesById = new Map(hydrated.map((candidate) => [candidate.id, candidate]));
-      return externalResult.ids
+      const result = externalResult.ids
         .map((id) => candidatesById.get(id))
         .filter((candidate): candidate is Candidate => Boolean(candidate));
+
+      logSlowQuery("searchCandidates", Date.now() - start, SEARCH_SLO_MS, {
+        limit,
+        offset,
+        total: externalResult.total,
+        results: result.length,
+        typesenseSearchMs,
+        hydrateMs,
+        dbSearchMs,
+        fallbackReason,
+        queryPath: "candidate-search-typesense",
+        ...queryTelemetry,
+      });
+
+      return result;
     }
     // Zero hits from Typesense: fall through to PostgreSQL (cold index).
+    fallbackReason = "typesense-zero-hits";
   } catch {
     // Fall back to PostgreSQL search when Typesense is unavailable.
+    fallbackReason = "typesense-unavailable";
   }
 
   const conditions = buildCandidateSearchConditions(opts);
-
-  return db
+  const dbSearchStartedAt = Date.now();
+  const result = await db
     .select()
     .from(candidates)
     .where(and(...conditions))
     .orderBy(desc(candidates.createdAt))
     .limit(limit)
     .offset(offset);
+  dbSearchMs = Date.now() - dbSearchStartedAt;
+
+  logSlowQuery("searchCandidates", Date.now() - start, SEARCH_SLO_MS, {
+    limit,
+    offset,
+    total: result.length,
+    results: result.length,
+    typesenseSearchMs,
+    hydrateMs,
+    dbSearchMs,
+    fallbackReason,
+    queryPath: "candidate-search-db",
+    ...queryTelemetry,
+  });
+
+  return result;
 }
 
 /** Aantal actieve kandidaten met optionele filters. */
 export async function countCandidates(
   opts: Omit<SearchCandidatesOptions, "limit" | "offset"> = {},
 ): Promise<number> {
+  const start = Date.now();
+  const queryTelemetry = getSearchTelemetryMeta(opts.query);
+  let typesenseSearchMs = 0;
+  let dbSearchMs = 0;
+  let fallbackReason: "typesense-unavailable" | "typesense-zero-hits" | null = null;
+
   try {
+    const typesenseSearchStartedAt = Date.now();
     const externalResult = await searchCandidateIdsByTypesense(opts);
-    if (externalResult) {
+    typesenseSearchMs = Date.now() - typesenseSearchStartedAt;
+    if (externalResult && externalResult.total > 0) {
+      logSlowQuery("countCandidates", Date.now() - start, LIST_SLO_MS, {
+        total: externalResult.total,
+        results: externalResult.total,
+        typesenseSearchMs,
+        dbSearchMs,
+        fallbackReason,
+        queryPath: "candidate-count-typesense",
+        ...queryTelemetry,
+      });
       return externalResult.total;
     }
+    fallbackReason = "typesense-zero-hits";
   } catch {
     // Fall back to PostgreSQL counting when Typesense is unavailable.
+    fallbackReason = "typesense-unavailable";
   }
 
   const conditions = buildCandidateSearchConditions(opts);
+  const dbSearchStartedAt = Date.now();
 
   const [{ count }] = await db
     .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(candidates)
     .where(and(...conditions));
+  dbSearchMs = Date.now() - dbSearchStartedAt;
+
+  logSlowQuery("countCandidates", Date.now() - start, LIST_SLO_MS, {
+    total: count ?? 0,
+    results: count ?? 0,
+    typesenseSearchMs,
+    dbSearchMs,
+    fallbackReason,
+    queryPath: "candidate-count-db",
+    ...queryTelemetry,
+  });
 
   return count ?? 0;
 }
@@ -305,14 +411,23 @@ export async function updateCandidateMatchingStatus(
 
 /** Alle actieve (niet-verwijderde) kandidaten ophalen. Hogere limiet voor batch matching. */
 export async function listActiveCandidates(limit?: number): Promise<Candidate[]> {
+  const start = Date.now();
   const safeLimit = Math.min(limit ?? 200, 500);
 
-  return db
+  const rows = await db
     .select()
     .from(candidates)
     .where(isNull(candidates.deletedAt))
     .orderBy(desc(candidates.createdAt))
     .limit(safeLimit);
+
+  logSlowQuery("listActiveCandidates", Date.now() - start, LIST_SLO_MS, {
+    limit: safeLimit,
+    total: rows.length,
+    queryPath: "candidate-active-list",
+  });
+
+  return rows;
 }
 
 /** Meerdere kandidaten ophalen op ID. Soft-deleted rijen worden uitgesloten. */

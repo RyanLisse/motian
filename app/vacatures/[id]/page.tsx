@@ -33,8 +33,11 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VacatureShareButton } from "@/components/vacature-share-button";
+import { VacatureTriageScorecard } from "@/components/vacatures/vacature-triage-scorecard";
 import { stripHtml } from "@/src/lib/html";
+import { getJobSkills } from "@/src/services/esco";
 import { getJobDetailPageData } from "@/src/services/jobs/detail-page";
+import { buildVacatureTriageScorecard } from "@/src/services/recruiter-insights";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
 
@@ -219,8 +222,13 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
   if (!job) {
     notFound();
   }
+  const jobCanonicalSkills = await getJobSkills(job.id).catch(() => []);
   const { relatedJobs, pipelineCounts, recruiterCockpitRows, gradedCandidates, endClientOptions } =
     detailData;
+  const vacatureTriageScorecard = buildVacatureTriageScorecard({
+    job,
+    jobCanonicalSkills,
+  });
 
   // Build pipeline summary
   // Pipeline stages: only active stages count toward totalPipeline.
@@ -604,7 +612,7 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                     : "Nog geen shortlist"}
                 </Badge>
                 <div className="ml-auto flex items-center gap-2">
-                  <VacatureShareButton jobId={job.id} jobTitle={job.title} />
+                  <VacatureShareButton title={job.title} path={`/vacatures/${job.id}`} />
                   <JsonViewer data={job as unknown as Record<string, unknown>} />
                 </div>
               </div>
@@ -808,6 +816,8 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                 )}
               </section>
 
+              <VacatureTriageScorecard scorecard={vacatureTriageScorecard} />
+
               <section className="rounded-lg border border-border bg-card p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -826,6 +836,7 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                       </a>
                     </Button>
                   ) : null}
+                  <VacatureShareButton title={job.title} path={`/vacatures/${job.id}`} />
                 </div>
 
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -833,12 +844,13 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                 </dl>
               </section>
 
-              <section className="rounded-lg border border-border bg-card p-4">
+              <section id="shortlist" className="rounded-lg border border-border bg-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-sm font-semibold text-foreground">Gekoppelde kandidaten</h2>
+                    <h2 className="text-sm font-semibold text-foreground">Shortlist</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Kandidaten die al aan deze vacature gekoppeld zijn.
+                      Kandidaten die actief aan deze vacature gekoppeld zijn en vanuit hier door de
+                      pipeline bewegen.
                     </p>
                   </div>
                   <Link
@@ -852,7 +864,8 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
 
                 {recruiterCockpitRows.length === 0 ? (
                   <p className="mt-4 text-sm text-muted-foreground">
-                    Nog geen kandidaten gekoppeld aan deze vacature.
+                    Nog geen kandidaten in de shortlist. Start hieronder met topmatches of voeg
+                    handmatig een kandidaat toe.
                   </p>
                 ) : (
                   <div className="mt-4 grid gap-3 xl:grid-cols-2">

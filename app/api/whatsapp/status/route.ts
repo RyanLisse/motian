@@ -1,51 +1,37 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
+export const revalidate = 300;
 
-export async function GET(_request: NextRequest) {
-  const enabled = process.env.WHATSAPP_ENABLED === "true";
+export async function GET() {
+  const start = Date.now();
+  console.log(
+    JSON.stringify({
+      level: "info",
+      msg: "start",
+      route: "/api/whatsapp/status",
+    }),
+  );
 
-  if (!enabled) {
-    return NextResponse.json(
-      {
-        enabled: false,
-        status: "disabled",
-        message: "WhatsApp integratie is uitgeschakeld",
-      },
-      {
-        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
-      },
-    );
-  }
+  const response = NextResponse.json(
+    {
+      enabled: false,
+      status: "disabled",
+      message: "WhatsApp integratie is uitgeschakeld",
+    },
+    {
+      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+    },
+  );
 
-  try {
-    const { getWhatsAppGateway } = await import("@/src/services/whatsapp");
-    const gateway = getWhatsAppGateway();
-    const status = gateway.getStatus();
+  console.log(
+    JSON.stringify({
+      level: "info",
+      msg: "done",
+      route: "/api/whatsapp/status",
+      ms: Date.now() - start,
+    }),
+  );
 
-    return NextResponse.json(
-      {
-        enabled: true,
-        status,
-        message:
-          status === "connected"
-            ? "WhatsApp verbonden"
-            : status === "connecting"
-              ? "Bezig met verbinden..."
-              : "Niet verbonden",
-      },
-      {
-        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
-      },
-    );
-  } catch (_err) {
-    return NextResponse.json(
-      {
-        enabled: true,
-        status: "error",
-        message: "Kon WhatsApp status niet ophalen",
-      },
-      { status: 500 },
-    );
-  }
+  return response;
 }

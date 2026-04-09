@@ -16,11 +16,16 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { OPDRACHTEN_PROVINCES } from "@/src/lib/opdrachten-filters";
-import { FilterChecklist, RadiusSliderField } from "./sidebar-filter-controls";
+import {
+  CompactMultiSelectFilter,
+  FilterChecklist,
+  RadiusSliderField,
+} from "./sidebar-filter-controls";
 import { SidebarSearchBar } from "./sidebar-search-bar";
 import type { FilterOption, ProvinceAnchor } from "./sidebar-types";
 import { CONTRACT_TYPES } from "./sidebar-types";
 import { summarizeHoursRange } from "./sidebar-utils";
+import { VacatureFilterExtras } from "./vacature-filter-extras";
 
 interface OverviewFilterPanelProps {
   inputValue: string;
@@ -60,6 +65,8 @@ interface OverviewFilterPanelProps {
   onRateMinChange: (value: string) => void;
   onRateMaxChange: (value: string) => void;
   onResetFilters: () => void;
+  onlyShortlist: boolean;
+  onOnlyShortlistChange: (value: boolean) => void;
 }
 
 export function OverviewFilterPanel({
@@ -100,6 +107,8 @@ export function OverviewFilterPanel({
   onRateMinChange,
   onRateMaxChange,
   onResetFilters,
+  onlyShortlist,
+  onOnlyShortlistChange,
 }: OverviewFilterPanelProps) {
   return (
     <div className="flex min-h-0 flex-col border-b border-border/70 px-3 py-2 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
@@ -124,6 +133,11 @@ export function OverviewFilterPanel({
           onChange={onInputChange}
           isFetching={isFetching}
           variant="overview"
+        />
+
+        <VacatureFilterExtras
+          onlyShortlist={onlyShortlist}
+          onOnlyShortlistChange={onOnlyShortlistChange}
         />
 
         <button
@@ -169,12 +183,16 @@ export function OverviewFilterPanel({
               <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
                 Platform
               </p>
-              <FilterChecklist
-                idPrefix="opdrachten-platform"
-                options={platforms.map((platform) => ({ value: platform, label: platform }))}
+              <CompactMultiSelectFilter
+                label="Alle platforms"
+                options={platforms.map((platform) => ({
+                  value: platform,
+                  label: platform,
+                }))}
                 selectedValues={selectedPlatforms}
                 onToggle={onTogglePlatform}
-                className="max-h-52 overflow-y-auto"
+                buttonClassName="h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:h-11 sm:text-sm"
+                contentClassName="bg-card border-border"
               />
             </div>
 

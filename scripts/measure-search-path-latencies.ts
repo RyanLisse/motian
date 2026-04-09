@@ -13,7 +13,7 @@ import { config as dotenvConfig } from "dotenv";
 import type { QueryPath } from "../src/lib/query-observability";
 import { computePercentile } from "../src/services/esco-rollout-metrics";
 import { searchJobsUnified } from "../src/services/jobs";
-import { HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY_ENV } from "../src/services/jobs/hybrid-search-policy";
+import { HYBRID_SEARCH_FORCE_VECTOR_ENV } from "../src/services/jobs/hybrid-search-policy";
 
 type ScenarioDefinition = {
   name: string;
@@ -174,7 +174,7 @@ function buildScenarios(): ScenarioDefinition[] {
       required: true,
       runs: BASELINE_MEASURED_RUNS,
       action: () =>
-        withHybridSearchEnv({ [HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY_ENV]: "true" }, () =>
+        withHybridSearchEnv({ [HYBRID_SEARCH_FORCE_VECTOR_ENV]: "false" }, () =>
           searchJobsUnified({ q: "in", limit: 20, offset: 0 }),
         ),
     },
@@ -184,7 +184,7 @@ function buildScenarios(): ScenarioDefinition[] {
       required: false,
       runs: BASELINE_MEASURED_RUNS,
       action: () =>
-        withHybridSearchEnv({ [HYBRID_SEARCH_SHORT_QUERY_TEXT_ONLY_ENV]: "false" }, () =>
+        withHybridSearchEnv({ [HYBRID_SEARCH_FORCE_VECTOR_ENV]: "true" }, () =>
           searchJobsUnified({ q: "frontend developer", limit: 20, offset: 0 }),
         ),
     },

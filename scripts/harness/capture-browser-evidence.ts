@@ -73,6 +73,7 @@ interface Manifest {
   gitSha: string;
   generatedAt: string;
   baseUrl: string;
+  expectedSlugs: string[];
   entries: EvidenceEntry[];
 }
 
@@ -112,11 +113,26 @@ async function captureEvidence(): Promise<void> {
     console.log(`Capturing: ${url}`);
 
     try {
-      const response = await page.goto(url, { waitUntil: "networkidle" });
+      const response = await page.goto(url, { waitUntil: "load" });
 
-      if (!response || !response.ok()) {
+      if (!response?.ok()) {
         console.warn(`  Warning: Non-OK response (${response?.status()}) for ${url}`);
       }
+
+      await page.locator("body").waitFor({ state: "visible", timeout: TIMEOUT_MS });
+      await page
+        .waitForFunction(() => document.readyState === "complete", undefined, {
+          timeout: Math.min(TIMEOUT_MS, 10_000),
+        })
+        .catch(() => undefined);
+      await page
+        .evaluate(async () => {
+          if ("fonts" in document) {
+            await document.fonts.ready;
+          }
+        })
+        .catch(() => undefined);
+      await page.waitForTimeout(750);
 
       const pageTitle = await page.title();
 
@@ -153,6 +169,7 @@ async function captureEvidence(): Promise<void> {
     gitSha,
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL,
+    expectedSlugs: PAGE_TARGETS.map((target) => target.slug),
     entries,
   };
 

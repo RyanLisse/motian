@@ -44,7 +44,10 @@ export type ListJobsPageOptions = SearchJobsOptions &
     | "maxHoursPerWeek"
     | "minHoursPerWeek"
     | "offset"
+    | "onlyWithActivePipeline"
     | "postedAfter"
+    | "platform"
+    | "platforms"
     | "province"
     | "radiusKm"
     | "rateMax"
@@ -68,6 +71,7 @@ export async function listJobsPage(
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = opts.offset ?? 0;
   const conditions = buildJobFilterConditions({
+    platforms: opts.platforms,
     platform: opts.platform,
     platforms: opts.platforms,
     company: opts.company,
@@ -90,6 +94,7 @@ export async function listJobsPage(
     minHoursPerWeek: opts.minHoursPerWeek,
     maxHoursPerWeek: opts.maxHoursPerWeek,
     radiusKm: opts.radiusKm,
+    onlyWithActivePipeline: opts.onlyWithActivePipeline,
   });
   const whereClause = and(...conditions) ?? sql`true`;
 

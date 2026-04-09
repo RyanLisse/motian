@@ -115,6 +115,7 @@ export function buildCvSummaryMessage({
   const candidateUrl = `/kandidaten/${candidateId}`;
 
   const hasMatches = matches && matches.length > 0;
+  const profileSkillsUrl = `${candidateUrl}#vaardigheden`;
 
   let text = `Ik heb zojuist een CV geüpload voor ${parsed.name} (${parsed.role}). Het profiel is automatisch ${action}. Vaardigheden: ${skillsList}. Kandidaat ID: ${candidateId}.`;
 
@@ -131,9 +132,9 @@ export function buildCvSummaryMessage({
       return `- ${m.jobTitle}${company} \u2014 Score: ${m.quickScore}, Advies: ${badge}`;
     });
 
-    text += ` Gevonden matches:\n${matchLines.join("\n")}\n\nToon een samenvatting met de gevonden matches.`;
+    text += ` Gevonden matches:\n${matchLines.join("\n")}\n\nBekijk alle geëxtraheerde vaardigheden op ${profileSkillsUrl}. Toon daarna een samenvatting met de gevonden matches.`;
   } else {
-    text += " Geef een samenvatting van dit profiel en zoek passende vacatures.";
+    text += ` Bekijk alle geëxtraheerde vaardigheden op ${profileSkillsUrl}. Geef daarna een samenvatting van dit profiel en zoek passende vacatures.`;
   }
 
   return { action, text, candidateUrl };

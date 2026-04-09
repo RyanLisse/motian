@@ -59,6 +59,7 @@ export type UnifiedJobSearchOptions = {
   sortBy?: ListJobsSortBy;
   limit?: number;
   offset?: number;
+  onlyWithActivePipeline?: boolean;
 };
 
 export type UnifiedJobSearchResult = {
@@ -126,6 +127,7 @@ export async function searchJobsUnified(
       deadlineBefore: opts.deadlineBefore,
       startDateAfter: opts.startDateAfter,
       sortBy: opts.sortBy,
+      onlyWithActivePipeline: opts.onlyWithActivePipeline,
     };
     const { data, total } = await listJobsImpl(listOpts);
     return { data: data as Array<Job & { score?: number }>, total };
@@ -157,6 +159,7 @@ export async function searchJobsUnified(
     deadlineBefore: opts.deadlineBefore,
     startDateAfter: opts.startDateAfter,
     sortBy: opts.sortBy,
+    onlyWithActivePipeline: opts.onlyWithActivePipeline,
   };
   const result = await hybridSearchWithTotalImpl(query, hybridOpts);
   return { data: result.data, total: result.total };
@@ -196,6 +199,7 @@ export async function searchJobsPageUnified(
       deadlineBefore: opts.deadlineBefore,
       startDateAfter: opts.startDateAfter,
       sortBy: opts.sortBy,
+      onlyWithActivePipeline: opts.onlyWithActivePipeline,
     });
   }
 
@@ -225,6 +229,7 @@ export async function searchJobsPageUnified(
     deadlineBefore: opts.deadlineBefore,
     startDateAfter: opts.startDateAfter,
     sortBy: opts.sortBy,
+    onlyWithActivePipeline: opts.onlyWithActivePipeline,
   });
 }
 

@@ -79,6 +79,8 @@ describe("chat prompt composer preset", () => {
     expect(summary.text).toContain("Jane Doe");
     expect(summary.text).toContain("Kandidaat ID: cand_123");
     expect(summary.text).toContain("Boolean search, ATS, Stakeholdermanagement");
+    expect(summary.text).toContain("/kandidaten/cand_123#vaardigheden");
+    expect(summary.text).toContain("Bekijk alle geëxtraheerde vaardigheden");
   });
 
   it("accepts docx by extension before legacy Word mime fallback and keeps .doc unsupported", () => {

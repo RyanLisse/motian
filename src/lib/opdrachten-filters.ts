@@ -313,6 +313,12 @@ export function getOpdrachtenServiceSort(
   return sort;
 }
 
+export function parseVacatureShortlistFlag(value: string | null | undefined): boolean {
+  if (value == null) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "ja";
+}
+
 export function normalizeOpdrachtenRadiusKm(value: string | null | undefined): number | undefined {
   if (!value) return undefined;
   const parsed = Number.parseInt(value, 10);
@@ -364,6 +370,8 @@ export type ParsedOpdrachtenFilters = {
   rateMax?: number;
   contractType?: string;
   sort: OpdrachtenSort;
+  /** Filter op vacatures met actieve sollicitatie (shortlist / pipeline). */
+  onlyShortlist: boolean;
 };
 
 export function parseOpdrachtenFilters(params: URLSearchParams): ParsedOpdrachtenFilters {
@@ -395,5 +403,8 @@ export function parseOpdrachtenFilters(params: URLSearchParams): ParsedOpdrachte
     rateMax: parseNumericFilter(params.get("tariefMax")),
     contractType: normalizeTextFilter(params.get("contractType")),
     sort: normalizeOpdrachtenSort(params.get("sort")),
+    onlyShortlist: parseVacatureShortlistFlag(
+      params.get("alleenShortlist") ?? params.get("shortlist"),
+    ),
   };
 }

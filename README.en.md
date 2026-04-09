@@ -669,10 +669,30 @@ Realtime voice AI agent via **LiveKit Agents**:
 
 Model Context Protocol server for IDE and CLI integration:
 
-- **Protocol**: stdio transport
+- **Protocol**: stdio + HTTP transport, plus browser-side WebMCP tools
 - **42 Tools**: candidates, jobs, matches, applications, interviews, messages, GDPR, operations, analytics, scraping
-- **Integration**: works with Claude Code, Cursor, Windsurf, and other MCP-compatible clients
+- **Integration**: works with Claude Code, Cursor, Windsurf, and other MCP-compatible clients, plus browser-native WebMCP via MCP-B
 - **Start**: `pnpm mcp`
+
+#### MCP Connection Methods
+
+| Method | Command / URL | Use case |
+|--------|---------------|----------|
+| Stdio | `pnpm mcp` | IDE integrations (VS Code, Cursor) |
+| HTTP | `POST /api/mcp` | External applications |
+| CLI | `pnpm cli` | Interactive terminal access |
+| WebMCP | MCP-B extension + Motian in the browser | Browser-native tools for route context, navigation, and refresh |
+
+#### WebMCP in the Browser
+
+Motian also registers browser-side WebMCP tools via [`@mcp-b/global`](https://github.com/WebMCP-org/npm-packages) and [`@mcp-b/react-webmcp`](https://github.com/WebMCP-org/npm-packages). This lets WebMCP-capable clients inspect live page context and navigate safely inside the app without screen scraping.
+
+**Setup:**
+1. Install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b/fkhbffeojcfadbkpldmbjlbfocgknjlj)
+2. Open Motian in the same browser
+3. Let your WebMCP client discover the built-in tools
+
+Browser tools are prefixed with `motian_` and complement the existing stdio/HTTP MCP server instead of replacing it.
 
 ---
 
@@ -981,6 +1001,16 @@ pnpm cli salesforce:feed --entity jobs --status open --updated-since 2026-03-01T
 - **CLI output**: JSON containing `entity`, `count`, and the raw `xml` string
 - **MCP output**: JSON containing `entity`, `count`, and the same `xml` string
 - **Parity**: API, CLI, and MCP all reuse `src/services/salesforce-feed.ts`
+
+---
+
+## Documentation
+
+- **Live API documentation**: `/api-docs`
+- **OpenAPI source**: `/api/openapi`
+- **Architecture and platform guide**: [docs/architecture.md](docs/architecture.md)
+- **Ownership transfer guide**: [docs/runbooks/project-ownership-transfer-guide.md](docs/runbooks/project-ownership-transfer-guide.md) / [docs/runbooks/project-ownership-transfer-guide.nl.md](docs/runbooks/project-ownership-transfer-guide.nl.md)
+- **Ownership transfer checklist**: [docs/runbooks/project-ownership-transfer-checklist.md](docs/runbooks/project-ownership-transfer-checklist.md) / [docs/runbooks/project-ownership-transfer-checklist.nl.md](docs/runbooks/project-ownership-transfer-checklist.nl.md)
 
 ---
 

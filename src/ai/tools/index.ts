@@ -3,6 +3,7 @@ export { analyseData } from "./analyse-data";
 export { getBerichtDetail, stuurBericht, verwijderBericht, zoekBerichten } from "./berichten";
 // Canvas tools
 export { renderCanvas } from "./canvas";
+export { voorbereidenKanaalAanbod } from "./channel-offer";
 // GDPR tools
 export {
   exporteerContactData,
@@ -11,6 +12,7 @@ export {
   wisKandidaatData,
 } from "./gdpr";
 export { getOpdrachtDetail } from "./get-opdracht-detail";
+export { genereerInterviewPrep } from "./interview-prep";
 // Interview tools
 export {
   getInterviewDetail,

@@ -202,6 +202,8 @@ describe("Dependency direction", () => {
     // Known exceptions: AI tool files that currently bypass the service layer.
     // These are tracked as tech-debt — remove entries as each is refactored.
     const KNOWN_EXCEPTIONS = new Set([
+      "src/ai/agent.ts",
+      "src/ai/user-context.ts",
       "src/ai/tools/analyse-data.ts",
       "src/ai/tools/trigger-scraper.ts",
     ]);

@@ -35,6 +35,7 @@ type VectorSearchResult = {
 };
 
 export type SearchJobsOptions = {
+  platforms?: string[];
   platform?: string;
   platforms?: string[];
   limit?: number;
@@ -44,6 +45,7 @@ export type SearchJobsOptions = {
 export type HybridSearchOptions = {
   limit?: number;
   offset?: number;
+  platforms?: string[];
   platform?: string;
   platforms?: string[];
   company?: string;
@@ -70,6 +72,7 @@ export type HybridSearchOptions = {
   minHoursPerWeek?: number;
   maxHoursPerWeek?: number;
   radiusKm?: number;
+  onlyWithActivePipeline?: boolean;
 };
 
 export type HybridSearchResult = {
@@ -77,8 +80,17 @@ export type HybridSearchResult = {
   total: number;
 };
 
+function getQueryTermCount(query: string) {
+  return query
+    .trim()
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean).length;
+}
+
 function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
   return buildJobFilterConditions({
+    platforms: opts.platforms,
     platform: opts.platform,
     platforms: opts.platforms,
     company: opts.company,
@@ -104,6 +116,7 @@ function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
     minHoursPerWeek: opts.minHoursPerWeek,
     maxHoursPerWeek: opts.maxHoursPerWeek,
     radiusKm: opts.radiusKm,
+    onlyWithActivePipeline: opts.onlyWithActivePipeline,
   });
 }
 
@@ -204,8 +217,9 @@ export async function searchJobIdsByTitle(
   }
 
   const tsInput = toTsQueryInput(query);
+  const useFullTextSearch = Boolean(tsInput) && getQueryTermCount(query) > 1;
 
-  if (tsInput) {
+  if (useFullTextSearch && tsInput) {
     const searchQuery = sql`to_tsquery('dutch', ${tsInput})`;
     const searchVector = sql`to_tsvector('dutch', search_text)`;
     const searchRank = sql`ts_rank(${searchVector}, ${searchQuery})`;

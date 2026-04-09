@@ -1,10 +1,10 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
 /**
  * Compact filter grid used in the detail-page (dark themed) sidebar view.
  */
+import { useId } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { SearchableCombobox } from "@/components/ui/searchable-combobox";
 import {
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { OPDRACHTEN_PROVINCES, parseOpdrachtenFilters } from "@/src/lib/opdrachten-filters";
+import { OPDRACHTEN_PROVINCES } from "@/src/lib/opdrachten-filters";
 import { CompactMultiSelectFilter, RadiusSliderField } from "./sidebar-filter-controls";
 import { SidebarSortControls } from "./sidebar-sort-controls";
 import type { FilterOption, FilterOverrideValue, ProvinceAnchor } from "./sidebar-types";
@@ -27,11 +27,10 @@ import {
   DARK_FILTER_SECTION_VALUE_CLASS,
   DARK_FILTER_TRIGGER_CLASS,
 } from "./sidebar-types";
-import { summarizeHoursRange, toggleFilterValue } from "./sidebar-utils";
+import { summarizeHoursRange } from "./sidebar-utils";
 
 interface CompactSidebarFiltersProps {
-  platform?: string;
-  selectedPlatforms?: string[];
+  selectedPlatforms: string[];
   platforms: string[];
   endClient: string;
   endClients: string[];
@@ -51,17 +50,18 @@ interface CompactSidebarFiltersProps {
   sort: string;
   sortOptions: readonly { readonly value: string; readonly label: string }[];
   onFilterChange: (paramKey: string, value: FilterOverrideValue) => void;
-  onTogglePlatform?: (value: string) => void;
+  onTogglePlatform: (value: string) => void;
   onProvinceChange: (value: string) => void;
   onToggleRegio: (value: string) => void;
   onToggleVakgebied: (value: string) => void;
   onHoursRangeChange: (field: "urenPerWeekMin" | "urenPerWeekMax", value: string) => void;
   onRadiusChange: (value: string) => void;
+  onlyShortlist: boolean;
+  onOnlyShortlistChange: (value: boolean) => void;
 }
 
 export function CompactSidebarFilters({
-  platform,
-  selectedPlatforms: selectedPlatformsProp,
+  selectedPlatforms,
   platforms,
   endClient,
   endClients,
@@ -87,38 +87,35 @@ export function CompactSidebarFilters({
   onToggleVakgebied,
   onHoursRangeChange,
   onRadiusChange,
+  onlyShortlist,
+  onOnlyShortlistChange,
 }: CompactSidebarFiltersProps) {
-  const searchParams = useSearchParams();
-  const selectedPlatforms = useMemo(() => {
-    if (selectedPlatformsProp) {
-      return selectedPlatformsProp;
-    }
-    const parsedPlatforms = parseOpdrachtenFilters(
-      new URLSearchParams(searchParams.toString()),
-    ).platforms;
-    return parsedPlatforms.length > 0 ? parsedPlatforms : platform ? [platform] : [];
-  }, [platform, searchParams, selectedPlatformsProp]);
-
+  const shortlistCheckboxId = useId();
   return (
     <>
+      <label
+        htmlFor={shortlistCheckboxId}
+        className="mx-3 mb-1 flex cursor-pointer items-center gap-2 text-xs text-white/80"
+      >
+        <Checkbox
+          id={shortlistCheckboxId}
+          checked={onlyShortlist}
+          onCheckedChange={(v) => onOnlyShortlistChange(v === true)}
+          className="border-white/30 data-[state=checked]:bg-primary"
+        />
+        <span>Alleen shortlist</span>
+      </label>
       <div className="grid shrink-0 gap-2 px-3">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <CompactMultiSelectFilter
             label="Platform"
-            options={platforms.map((platform) => ({ value: platform, label: platform }))}
+            options={platforms.map((platform) => ({
+              value: platform,
+              label: platform,
+            }))}
             selectedValues={selectedPlatforms}
-            onToggle={(value) => {
-              if (onTogglePlatform) {
-                onTogglePlatform(value);
-                return;
-              }
-
-              onFilterChange("platform", toggleFilterValue(selectedPlatforms, value));
-            }}
-            buttonClassName={cn(
-              "h-12 rounded-[20px] px-4 text-[15px] capitalize text-white",
-              DARK_FILTER_PANEL_CLASS,
-            )}
+            onToggle={onTogglePlatform}
+            buttonClassName={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}
             contentClassName={DARK_FILTER_MENU_CLASS}
           />
 
@@ -192,7 +189,7 @@ export function CompactSidebarFilters({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <CompactMultiSelectFilter
             label="Regio"
             options={regionOptions}
@@ -218,13 +215,13 @@ export function CompactSidebarFilters({
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <span className={DARK_FILTER_SECTION_LABEL_CLASS}>Uren per week</span>
             <span className={DARK_FILTER_SECTION_VALUE_CLASS}>
               {summarizeHoursRange(hoursMinInput, hoursMaxInput)}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Input
               type="number"
               inputMode="numeric"

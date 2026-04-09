@@ -103,6 +103,12 @@ vi.mock("../src/services/embedding", () => ({
   generateQueryEmbedding: mockGenerateQueryEmbedding,
 }));
 
+vi.mock("../src/services/settings", () => ({
+  getAllSettings: vi.fn().mockResolvedValue({
+    searchVectorMinScore: 0.3,
+  }),
+}));
+
 vi.mock("../src/lib/query-observability", () => ({
   SEARCH_SLO_MS: 800,
   logSlowQuery: vi.fn(),
@@ -174,7 +180,7 @@ describe("hybridSearchWithTotal runtime regression", () => {
     expect(mockFindSimilarJobsByEmbedding).toHaveBeenCalledTimes(queries.length);
     expect(mockGetHybridSearchPolicy).toHaveBeenNthCalledWith(
       1,
-      { query: "in", limit: 5, offset: 0 },
+      { query: "in", limit: 5, offset: 0, vectorMinScore: 0.3 },
       process.env,
     );
   });

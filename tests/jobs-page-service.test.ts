@@ -1,7 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const { mockGetAllSettings } = vi.hoisted(() => ({
+  mockGetAllSettings: vi.fn(),
+}));
+
+vi.mock("../src/services/settings", () => ({
+  getAllSettings: mockGetAllSettings,
+}));
+
 async function importListJobsPageWithMocks() {
   vi.resetModules();
+
+  mockGetAllSettings.mockResolvedValue({
+    searchVectorMinScore: 0.3,
+  });
 
   const fetchDedupedJobsPage = vi.fn().mockResolvedValue({ ids: ["job-2", "job-1"], total: 7 });
   const loadJobPageRowsByIds = vi.fn().mockResolvedValue([
@@ -63,6 +75,11 @@ async function importListJobsPageWithMocks() {
     fetchDedupedJobsPage,
     loadJobPageRowsByIds,
   }));
+  vi.doMock("../src/services/settings", () => ({
+    getAllSettings: vi.fn().mockResolvedValue({
+      searchVectorMinScore: 0.3,
+    }),
+  }));
   vi.doMock("../src/services/jobs/query-filters", () => ({
     buildJobFilterConditions: vi.fn(() => []),
   }));
@@ -73,6 +90,10 @@ async function importListJobsPageWithMocks() {
 
 async function importHybridJobsPageWithMocks() {
   vi.resetModules();
+
+  mockGetAllSettings.mockResolvedValue({
+    searchVectorMinScore: 0.3,
+  });
 
   const mockWhereData = [
     {
@@ -215,6 +236,11 @@ async function importHybridJobsPageWithMocks() {
     generateQueryEmbedding: vi.fn(),
     findSimilarJobsByEmbedding: vi.fn(),
     findSimilarJobs: vi.fn(),
+  }));
+  vi.doMock("../src/services/settings", () => ({
+    getAllSettings: vi.fn().mockResolvedValue({
+      searchVectorMinScore: 0.3,
+    }),
   }));
 
   const mod = await import("../src/services/jobs/page");

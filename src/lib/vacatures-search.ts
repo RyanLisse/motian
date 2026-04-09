@@ -55,6 +55,7 @@ export async function runVacaturesSearch(
 
   const result = await searchJobsUnified({
     q: q || undefined,
+    platforms: filters.platforms,
     platform: filters.platform,
     platforms: filters.platforms,
     endClient: filters.endClient,
@@ -73,6 +74,7 @@ export async function runVacaturesSearch(
     sortBy,
     limit,
     offset,
+    onlyWithActivePipeline: filters.onlyShortlist ? true : undefined,
   });
 
   return { ok: true, data: { result, page, limit, offset } };

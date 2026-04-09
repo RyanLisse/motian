@@ -1,79 +1,49 @@
 "use client";
 
-import { Check, Share2 } from "lucide-react";
+import { Link2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-const RESET_DELAY_MS = 2_000;
+export function VacatureShareButton({ title, path }: { title: string; path: string }) {
+  const [feedback, setFeedback] = useState<string | null>(null);
 
-type ShareState = "idle" | "copied" | "error";
-
-export function buildVacatureShareUrl(jobId: string, origin: string) {
-  return new URL(`/vacatures/${jobId}`, origin).toString();
-}
-
-function isAbortedShare(error: unknown) {
-  return (
-    typeof error === "object" && error !== null && "name" in error && error.name === "AbortError"
-  );
-}
-
-export function VacatureShareButton({ jobId, jobTitle }: { jobId: string; jobTitle: string }) {
-  const [shareState, setShareState] = useState<ShareState>("idle");
-
-  const resetShareState = () => {
-    window.setTimeout(() => setShareState("idle"), RESET_DELAY_MS);
-  };
+  const shareUrl =
+    typeof window === "undefined"
+      ? path
+      : `${window.location.origin}${path.startsWith("/") ? path : `/${path}`}`;
 
   const handleShare = async () => {
-    const shareUrl = buildVacatureShareUrl(jobId, window.location.origin);
-
-    if (typeof navigator.share === "function") {
-      try {
+    try {
+      if (navigator.share) {
         await navigator.share({
-          title: jobTitle,
-          text: `Bekijk vacature: ${jobTitle}`,
+          title,
           url: shareUrl,
         });
-        return;
-      } catch (error) {
-        if (isAbortedShare(error)) {
-          return;
-        }
+        setFeedback("Vacature gedeeld");
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setFeedback("Link gekopieerd");
       }
-    }
-
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareState("copied");
     } catch {
-      setShareState("error");
+      setFeedback("Delen mislukt");
+    } finally {
+      window.setTimeout(() => setFeedback(null), 2000);
     }
-
-    resetShareState();
   };
 
-  const isCopied = shareState === "copied";
-
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col items-end gap-1">
       <Button
         type="button"
         variant="outline"
         size="sm"
-        className="border-border"
-        onClick={handleShare}
+        className="gap-1.5"
+        onClick={() => void handleShare()}
       >
-        {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Share2 className="mr-2 h-4 w-4" />}
-        {isCopied ? "Link gekopieerd" : "Deel vacature"}
+        <Link2 className="h-4 w-4" />
+        Vacature delen
       </Button>
-      <span className="sr-only" aria-live="polite">
-        {shareState === "copied"
-          ? "Vacaturelink gekopieerd"
-          : shareState === "error"
-            ? "Vacaturelink kopiëren mislukt"
-            : ""}
-      </span>
+      {feedback ? <span className="text-xs text-muted-foreground">{feedback}</span> : null}
     </div>
   );
 }

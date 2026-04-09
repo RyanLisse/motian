@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type DragEvent, useCallback, useRef, useState } from "react";
 import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
 import { Badge } from "@/components/ui/badge";
+import { ApplicationFeedbackEditor } from "./application-feedback-editor";
 
 export interface KanbanCardData {
   id: string;
@@ -17,6 +18,7 @@ export interface KanbanCardData {
   source: string | null;
   createdAt: string | null;
   matchScore: number | null;
+  notes?: string | null;
 }
 
 interface KanbanCardProps {
@@ -135,6 +137,14 @@ export function KanbanCard({ card }: KanbanCardProps) {
                 })}
               </span>
             )}
+          </div>
+
+          {card.notes ? (
+            <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{card.notes}</p>
+          ) : null}
+
+          <div className="mt-2">
+            <ApplicationFeedbackEditor applicationId={card.id} initialNotes={card.notes} />
           </div>
         </div>
       </div>

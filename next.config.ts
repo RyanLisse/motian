@@ -2,6 +2,16 @@ import "./src/env";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
+const hasSentryRuntimeConfig = Boolean(
+  process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN,
+);
+
+if (process.env.NODE_ENV === "production" && hasSentryRuntimeConfig && !process.env.SENTRY_AUTH_TOKEN) {
+  throw new Error(
+    "SENTRY_AUTH_TOKEN is required for production builds when SENTRY_DSN or NEXT_PUBLIC_SENTRY_DSN is configured, so sourcemaps upload successfully.",
+  );
+}
+
 // CORS for /api is handled per-request in proxy.ts (all ALLOWED_ORIGINS supported)
 const nextConfig: NextConfig = {
   // Server components can import DB directly

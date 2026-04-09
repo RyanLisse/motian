@@ -12,7 +12,7 @@ import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 export const embeddingsBatchTask = schedules.task({
   id: "embeddings-batch",
   cron: {
-    pattern: "15 * * * *", // Every hour at :15
+    pattern: "15 6,10,14,18 * * *", // After each scrape window
     timezone: "Europe/Amsterdam",
   },
   run: async () => {

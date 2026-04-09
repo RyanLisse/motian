@@ -44,6 +44,12 @@ describe("typesense search", () => {
     expect(canUseTypesenseForJobs({ platform: "opdrachtoverheid" })).toBe(true);
   });
 
+  it("rejects short single-word vacature queries for typesense but keeps multi-word queries enabled", () => {
+    expect(canUseTypesenseForJobs({}, "developer")).toBe(false);
+    expect(canUseTypesenseForJobs({}, " in ")).toBe(false);
+    expect(canUseTypesenseForJobs({}, "frontend developer")).toBe(true);
+  });
+
   it("rejects kandidaat typesense search when only esco filtering is requested", () => {
     expect(canUseTypesenseForCandidates({ escoUri: "esco:java" })).toBe(false);
     expect(canUseTypesenseForCandidates({ query: "recruiter" })).toBe(true);
@@ -83,6 +89,33 @@ describe("typesense search", () => {
     expect(params.get("filter_by")).toContain("categories:=[`ICT`]");
     expect(params.get("filter_by")).toContain("rateMax:>=90");
     expect(params.get("filter_by")).toContain("rateMin:<=120");
+  });
+
+  it("encodes multiple platform filters for vacature search", async () => {
+    mockTypesenseRequest.mockResolvedValue({
+      found: 1,
+      hits: [{ document: { id: "job-1" } }],
+    });
+
+    await searchJobIdsByTypesense("java developer", {
+      platforms: ["opdrachtoverheid", "indeed"],
+      limit: 20,
+      offset: 0,
+    });
+
+    const params = mockTypesenseRequest.mock.calls[0]?.[1]?.searchParams as URLSearchParams;
+    expect(params.get("filter_by")).toContain("platform:=[`opdrachtoverheid`, `indeed`]");
+  });
+
+  it("bypasses vacature typesense search entirely for short single-word queries", async () => {
+    const result = await searchJobIdsByTypesense("developer", {
+      platform: "opdrachtoverheid",
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toBeNull();
+    expect(mockTypesenseRequest).not.toHaveBeenCalled();
   });
 
   it("builds kandidaat search params and returns ids plus total", async () => {

@@ -1,14 +1,10 @@
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
-import { headers } from "next/headers";
 import Script from "next/script";
-import { CommandPalette } from "@/components/command-palette";
 import "./globals.css";
-import { ChatContextProvider } from "@/components/chat/chat-context-provider";
-import { ChatWidget } from "@/components/chat/chat-widget";
+import { RouteShellOverlays } from "@/components/route-shell-overlays";
 import { SidebarLayout } from "@/components/sidebar-layout";
-import { getRequestOrigin, getStableChatOrigin } from "@/src/lib/chat-origin";
 import { Providers } from "./providers";
 
 const inter = Inter({
@@ -34,9 +30,7 @@ export const metadata: Metadata = {
   description: "AI-Assisted Recruitment Operations Platform",
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const currentOrigin = getStableChatOrigin(getRequestOrigin(await headers()));
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="nl" suppressHydrationWarning>
       <head>
@@ -47,11 +41,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable} min-h-screen bg-background antialiased`}
       >
         <Providers>
-          <ChatContextProvider>
-            <SidebarLayout>{children}</SidebarLayout>
-            <ChatWidget currentOrigin={currentOrigin} />
-            <CommandPalette />
-          </ChatContextProvider>
+          <SidebarLayout>{children}</SidebarLayout>
+          <RouteShellOverlays />
         </Providers>
         <SpeedInsights />
       </body>

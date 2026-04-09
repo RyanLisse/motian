@@ -91,6 +91,12 @@ export type ChatSessionListPage = {
   hasMore: boolean;
 };
 
+export type RecentSessionMessage = {
+  role: "user" | "assistant";
+  message: unknown;
+  orderIndex: number;
+};
+
 type PersistMessagesInput = {
   sessionId: string;
   context?: ChatSessionContext | null;
@@ -812,6 +818,54 @@ export async function getSession(
           },
           ...page,
         };
+      },
+    );
+  });
+}
+
+export async function getRecentSessionMessages(
+  sessionId: string,
+  limit = 10,
+): Promise<RecentSessionMessage[]> {
+  return withChatSessionDatabaseRetry("getRecentSessionMessages", async () => {
+    return withChatSessionMessageCompatibility(
+      async () => {
+        await migrateLegacySessionMessagesToNormalizedStore(sessionId);
+
+        const rows = await db
+          .select({
+            role: chatSessionMessages.role,
+            message: chatSessionMessages.message,
+            orderIndex: chatSessionMessages.orderIndex,
+          })
+          .from(chatSessionMessages)
+          .where(eq(chatSessionMessages.sessionId, sessionId))
+          .orderBy(desc(chatSessionMessages.orderIndex))
+          .limit(limit);
+
+        return rows.map((row) => ({
+          ...row,
+          role: row.role as RecentSessionMessage["role"],
+        }));
+      },
+      async () => {
+        const [session] = await db
+          .select({ messages: chatSessions.messages })
+          .from(chatSessions)
+          .where(eq(chatSessions.sessionId, sessionId))
+          .limit(1);
+
+        const legacyMessages = getLegacySessionMessages(session?.messages, sessionId);
+        const startIndex = Math.max(legacyMessages.length - limit, 0);
+
+        return legacyMessages
+          .slice(startIndex)
+          .map((message, index) => ({
+            role: message.role as RecentSessionMessage["role"],
+            message,
+            orderIndex: startIndex + index + 1,
+          }))
+          .reverse();
       },
     );
   });

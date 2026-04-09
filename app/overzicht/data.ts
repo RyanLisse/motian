@@ -1,13 +1,16 @@
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { and, asc, db, desc, eq, gte, isNull, ne, sql } from "@/src/db";
 import {
   applications,
   candidates,
   interviews,
+  jobMatches,
   jobs,
   scrapeResults,
   scraperConfigs,
 } from "@/src/db/schema";
+import { buildPipelineHealthSnapshot } from "@/src/services/recruiter-insights";
 
 type RecentScrapeRow = {
   id: string;
@@ -141,7 +144,7 @@ async function getRecentScrapes(database: typeof db): Promise<RecentScrape[]> {
   );
 }
 
-export const getOverviewData = cache(async function getOverviewData(database: typeof db = db) {
+async function getOverviewDataUncached(database: typeof db = db) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const now = new Date();
@@ -189,6 +192,10 @@ export const getOverviewData = cache(async function getOverviewData(database: ty
     pipelineStageCounts,
     upcomingInterviewCountResult,
     upcomingInterviews,
+    jobsMissingSummaryResult,
+    jobsMissingEmbeddingResult,
+    candidatesMissingEmbeddingResult,
+    matchesMissingStructuredReviewResult,
   ] = await Promise.all([
     database
       .select({
@@ -263,11 +270,37 @@ export const getOverviewData = cache(async function getOverviewData(database: ty
       )
       .orderBy(asc(interviews.scheduledAt))
       .limit(4),
+    database
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(jobs)
+      .where(and(visibleCondition, sql`${jobs.descriptionSummary} is null`)),
+    database
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(jobs)
+      .where(and(visibleCondition, sql`${jobs.embedding} is null`)),
+    database
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(candidates)
+      .where(and(isNull(candidates.deletedAt), sql`${candidates.embedding} is null`)),
+    database
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(jobMatches)
+      .where(sql`${jobMatches.criteriaBreakdown} is null`),
   ]);
+
+  const pipelineHealth = buildPipelineHealthSnapshot({
+    activeScrapers,
+    recentScrapes,
+    jobsMissingSummary: jobsMissingSummaryResult[0]?.count ?? 0,
+    jobsMissingEmbedding: jobsMissingEmbeddingResult[0]?.count ?? 0,
+    candidatesMissingEmbedding: candidatesMissingEmbeddingResult[0]?.count ?? 0,
+    matchesMissingStructuredReview: matchesMissingStructuredReviewResult[0]?.count ?? 0,
+  });
 
   return {
     activeScrapers,
     dedupedTotal,
+    pipelineHealth,
     pipelineStageCounts,
     platformCounts,
     recentJobs,
@@ -275,4 +308,18 @@ export const getOverviewData = cache(async function getOverviewData(database: ty
     upcomingInterviewCountResult,
     upcomingInterviews,
   };
+}
+
+const getCachedOverviewData = unstable_cache(
+  async () => getOverviewDataUncached(db),
+  ["overview-data", "v1"],
+  { revalidate: 60 },
+);
+
+export const getOverviewData = cache(async function getOverviewData(database: typeof db = db) {
+  if (database === db) {
+    return getCachedOverviewData();
+  }
+
+  return getOverviewDataUncached(database);
 });

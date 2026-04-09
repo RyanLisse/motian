@@ -151,7 +151,7 @@ const PROCESSABLE_EVENTS = Object.keys(EVENT_HANDLERS);
 export const agentOrchestratorTask = schedules.task({
   id: "agent-orchestrator",
   cron: {
-    pattern: "0 * * * *", // Every hour (fallback cleanup — primary dispatch is event-driven)
+    pattern: "0 */12 * * *", // Every 12 hours (fallback cleanup — primary dispatch is event-driven)
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 120, // 2 minutes max

@@ -2,7 +2,6 @@ import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AddCandidateWizard } from "@/components/add-candidate-wizard";
-import { DataRefreshListener } from "@/components/data-refresh-listener";
 import { DraggableCandidate } from "@/components/draggable-candidate";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -10,11 +9,9 @@ import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db, isNull, sql } from "@/src/db";
-import { candidates } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 import { countCandidates, listCandidates, searchCandidates } from "@/src/services/candidates";
-import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco";
+import { getEscoFilterData, getKandidatenStats } from "./data";
 
 export const revalidate = 120;
 
@@ -69,25 +66,17 @@ async function KandidatenContent({ searchParams }: Props) {
   const availability = params.beschikbaarheid ?? "";
   const escoUri = params.vaardigheid ?? "";
 
-  let skillOptions: { uri: string; labelNl: string | null; labelEn: string }[] = [];
-  let escoCatalogAvailable = false;
-  let escoCatalogMessage = "ESCO-filter is tijdelijk niet beschikbaar.";
+  let escoData = {
+    skillOptions: [] as { uri: string; labelNl: string | null; labelEn: string }[],
+    escoCatalogAvailable: false,
+    escoCatalogMessage: "ESCO-filter is tijdelijk niet beschikbaar.",
+  };
   try {
-    const [catalogStatus, nextSkillOptions] = await Promise.all([
-      getEscoCatalogStatus(),
-      listEscoSkillsForFilter(),
-    ]);
-    skillOptions = nextSkillOptions;
-    escoCatalogAvailable = catalogStatus.available;
-    if (catalogStatus.issue === "missing_catalog" || catalogStatus.issue === "missing_skills") {
-      escoCatalogMessage = "ESCO-catalogus ontbreekt; importeer eerst de dataset.";
-    } else if (catalogStatus.issue === "missing_aliases") {
-      escoCatalogMessage =
-        "ESCO-aliases ontbreken; exacte labels werken nog wel, maar mapping is beperkt.";
-    }
+    escoData = await getEscoFilterData();
   } catch (err) {
-    console.error("[Kandidaten] listEscoSkillsForFilter failed:", err);
+    console.error("[Kandidaten] getEscoFilterData failed:", err);
   }
+  const { skillOptions, escoCatalogAvailable, escoCatalogMessage } = escoData;
 
   const urlParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -100,9 +89,7 @@ async function KandidatenContent({ searchParams }: Props) {
     maxLimit: MAX_PER_PAGE,
   });
 
-  // Fetch candidates + consolidated counts in parallel (reduces DB connections)
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  // Fetch candidates, cached stats, and total count in parallel
   const useSearch = Boolean(query || availability || (escoUri && escoCatalogAvailable));
   const searchOptions = {
     query: query || undefined,
@@ -112,16 +99,9 @@ async function KandidatenContent({ searchParams }: Props) {
     offset,
   };
 
-  const [candidateRows, statsResult, totalCount] = await Promise.all([
+  const [candidateRows, stats, totalCount] = await Promise.all([
     useSearch ? searchCandidates(searchOptions) : listCandidates({ limit, offset }),
-    // All 3 counts in a single query using FILTER clauses
-    db
-      .select({
-        directCount: sql<number>`cast(count(*) filter (where ${candidates.availability} = 'direct') as integer)`,
-        weekCount: sql<number>`cast(count(*) filter (where ${candidates.createdAt} >= ${oneWeekAgo}) as integer)`,
-      })
-      .from(candidates)
-      .where(isNull(candidates.deletedAt)),
+    getKandidatenStats(),
     useSearch
       ? countCandidates({
           query: searchOptions.query,
@@ -132,8 +112,7 @@ async function KandidatenContent({ searchParams }: Props) {
   ]);
 
   const totalPages = Math.ceil(totalCount / limit) || 1;
-  const directCount = statsResult[0]?.directCount ?? 0;
-  const weekCount = statsResult[0]?.weekCount ?? 0;
+  const { directCount, weekCount } = stats;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -342,13 +321,8 @@ async function KandidatenContent({ searchParams }: Props) {
 
 export default function KandidatenPage(props: Props) {
   return (
-    <>
-      <DataRefreshListener
-        events={["candidate:created", "candidate:updated", "candidate:deleted"]}
-      />
-      <Suspense fallback={<KandidatenSkeleton />}>
-        <KandidatenContent {...props} />
-      </Suspense>
-    </>
+    <Suspense fallback={<KandidatenSkeleton />}>
+      <KandidatenContent {...props} />
+    </Suspense>
   );
 }

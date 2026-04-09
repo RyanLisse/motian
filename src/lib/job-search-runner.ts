@@ -62,6 +62,7 @@ export async function runJobSearch(
 
   const result = await searchJobsUnified({
     q: q || undefined,
+    platforms: filters.platforms,
     platform: filters.platform,
     platforms: filters.platforms,
     endClient: filters.endClient,
@@ -80,6 +81,7 @@ export async function runJobSearch(
     sortBy,
     limit,
     offset,
+    onlyWithActivePipeline: filters.onlyShortlist ? true : undefined,
   });
 
   return { ok: true, data: { result, page, limit, offset } };
@@ -115,6 +117,7 @@ export async function runJobPageSearch(
 
   const result = await searchJobsPageUnified({
     q: q || undefined,
+    platforms: filters.platforms,
     platform: filters.platform,
     platforms: filters.platforms,
     endClient: filters.endClient,
@@ -133,6 +136,7 @@ export async function runJobPageSearch(
     sortBy,
     limit,
     offset,
+    onlyWithActivePipeline: filters.onlyShortlist ? true : undefined,
   });
 
   return { ok: true, data: { result, page, limit, offset } };

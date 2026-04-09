@@ -6,15 +6,20 @@ import { publish } from "@/src/lib/event-bus";
 import {
   deleteApplication,
   getApplicationById,
+  updateApplicationNotes,
   updateApplicationStage,
 } from "@/src/services/applications";
 
 export const dynamic = "force-dynamic";
 
-const updateApplicationSchema = z.object({
-  stage: z.enum(["new", "screening", "interview", "offer", "hired", "rejected"]),
-  notes: z.string().optional(),
-});
+const updateApplicationSchema = z
+  .object({
+    stage: z.enum(["new", "screening", "interview", "offer", "hired", "rejected"]).optional(),
+    notes: z.string().optional(),
+  })
+  .refine((body) => body.stage !== undefined || body.notes !== undefined, {
+    message: "Minstens één van stage of notes is verplicht",
+  });
 
 export const GET = withApiHandler(
   async (_request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
@@ -44,7 +49,13 @@ export const PATCH = withApiHandler(
         { status: 400 },
       );
     }
-    const application = await updateApplicationStage(id, parsed.data.stage, parsed.data.notes);
+    const { stage, notes } = parsed.data;
+    const application =
+      stage !== undefined
+        ? await updateApplicationStage(id, stage, notes)
+        : notes !== undefined
+          ? await updateApplicationNotes(id, notes)
+          : null;
     if (!application) {
       return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }

@@ -33,7 +33,7 @@ export function SkillsExperienceSection({
   return (
     <div className="space-y-6">
       {/* Skills panel */}
-      <section>
+      <section id="vaardigheden">
         <h2 className="text-lg font-semibold text-foreground mb-3">Vaardigheden</h2>
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <SkillsTags

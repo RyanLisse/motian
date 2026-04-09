@@ -43,6 +43,7 @@ interface Manifest {
   gitSha: string;
   generatedAt: string;
   baseUrl: string;
+  expectedSlugs?: string[];
   entries: EvidenceEntry[];
 }
 
@@ -129,7 +130,23 @@ function verifyEvidence(): void {
     ),
   );
 
-  // 5. Per-screenshot checks
+  // 5. Expected screenshot coverage
+  const expectedSlugs = manifest.expectedSlugs ?? [];
+  if (expectedSlugs.length > 0) {
+    const capturedSlugs = new Set(manifest.entries.map((entry) => entry.slug));
+    const missingSlugs = expectedSlugs.filter((slug) => !capturedSlugs.has(slug));
+    results.push(
+      check(
+        "All expected screenshots captured",
+        missingSlugs.length === 0,
+        missingSlugs.length === 0
+          ? `${capturedSlugs.size}/${expectedSlugs.length} screenshots present`
+          : `Missing slugs: ${missingSlugs.join(", ")}`,
+      ),
+    );
+  }
+
+  // 6. Per-screenshot checks
   for (const entry of manifest.entries) {
     const screenshotPath = join(EVIDENCE_DIR, entry.screenshotFile);
 
