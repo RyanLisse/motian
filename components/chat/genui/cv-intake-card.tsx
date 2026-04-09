@@ -1,7 +1,8 @@
 "use client";
 
-import { Target, User } from "lucide-react";
+import { Download, Target, User } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { getToolErrorMessage, isToolError } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
@@ -68,13 +69,43 @@ const recommendationConfig: Record<string, { label: string; icon: string; classe
 };
 
 export function CvIntakeCard({ output }: { output: unknown }) {
+  const [downloading, setDownloading] = useState(false);
+
   if (isToolError(output))
     return <ToolErrorBlock message={getToolErrorMessage(output, "CV intake mislukt")} />;
   if (!isCvIntakeOutput(output)) return null;
 
+  const { candidateId } = output;
+
+  async function handleDownloadCv(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDownloading(true);
+    try {
+      const res = await fetch("/api/commercieel-cv/html", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateId }),
+      });
+      if (!res.ok) throw new Error(`Fout ${res.status}`);
+      const html = await res.text();
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      URL.revokeObjectURL(url);
+    } catch {
+      // Silently fail — the user can retry
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
-    <Link href={`/kandidaten/${output.candidateId}`}>
-      <div className="my-1.5 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer space-y-3">
+    <div className="my-1.5 rounded-lg border border-border bg-card p-4 space-y-3">
+      <Link
+        href={`/kandidaten/${candidateId}`}
+        className="block transition-colors hover:opacity-80"
+      >
         {/* Header */}
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
@@ -92,7 +123,7 @@ export function CvIntakeCard({ output }: { output: unknown }) {
 
         {/* Skills badges */}
         {output.topSkills.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 mt-3">
             {output.topSkills.map((skill) => (
               <span
                 key={skill}
@@ -106,7 +137,7 @@ export function CvIntakeCard({ output }: { output: unknown }) {
 
         {/* Match list */}
         {output.matches.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 mt-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Target className="h-3.5 w-3.5" />
               <span>
@@ -156,7 +187,20 @@ export function CvIntakeCard({ output }: { output: unknown }) {
             })}
           </div>
         )}
+      </Link>
+
+      {/* Download CV action */}
+      <div className="flex items-center pt-1 border-t border-border">
+        <button
+          type="button"
+          onClick={handleDownloadCv}
+          disabled={downloading}
+          className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors border border-border text-foreground hover:bg-accent disabled:opacity-50"
+        >
+          <Download className="h-3.5 w-3.5" />
+          {downloading ? "Laden..." : "Download CV"}
+        </button>
       </div>
-    </Link>
+    </div>
   );
 }
