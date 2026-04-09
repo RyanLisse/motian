@@ -10,8 +10,8 @@ import {
 import { getJobStatusCondition, type JobStatus } from "./filters";
 
 export type SharedJobFilterOptions = {
-  platforms?: string[];
   platform?: string;
+  platforms?: string[];
   company?: string;
   endClient?: string;
   escoUri?: string;
@@ -40,11 +40,19 @@ export type SharedJobFilterOptions = {
   onlyWithActivePipeline?: boolean;
 };
 
+export function normalizeJobPlatforms(platform?: string, platforms?: string[]) {
+  return [
+    ...new Set(
+      [...(platforms ?? []), ...(platform ? platform.split(",") : [])]
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
 export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
   const conditions = [getJobStatusCondition(opts.status ?? "open")];
-  const selectedPlatforms = [
-    ...new Set([...(opts.platforms ?? []), ...(opts.platform ? [opts.platform] : [])]),
-  ];
+  const selectedPlatforms = normalizeJobPlatforms(opts.platform, opts.platforms);
   const categories = [
     ...new Set([...(opts.categories ?? []), ...(opts.category ? [opts.category] : [])]),
   ];

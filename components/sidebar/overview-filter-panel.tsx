@@ -180,12 +180,9 @@ export function OverviewFilterPanel({
         >
           <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:gap-0 lg:block">
             <div>
-              <label
-                htmlFor="opdrachten-opdrachtgever"
-                className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm"
-              >
+              <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
                 Platform
-              </label>
+              </p>
               <CompactMultiSelectFilter
                 label="Alle platforms"
                 options={platforms.map((platform) => ({

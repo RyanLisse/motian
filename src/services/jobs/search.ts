@@ -35,8 +35,8 @@ type VectorSearchResult = {
 };
 
 export type SearchJobsOptions = {
-  platforms?: string[];
   platform?: string;
+  platforms?: string[];
   limit?: number;
   status?: JobStatus;
 };
@@ -44,8 +44,8 @@ export type SearchJobsOptions = {
 export type HybridSearchOptions = {
   limit?: number;
   offset?: number;
-  platforms?: string[];
   platform?: string;
+  platforms?: string[];
   company?: string;
   endClient?: string;
   escoUri?: string;
@@ -88,8 +88,8 @@ function getQueryTermCount(query: string) {
 
 function buildHybridSearchFilterConditions(opts: HybridSearchOptions) {
   return buildJobFilterConditions({
-    platforms: opts.platforms,
     platform: opts.platform,
+    platforms: opts.platforms,
     company: opts.company,
     endClient: opts.endClient,
     escoUri: opts.escoUri,
@@ -273,6 +273,7 @@ export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
   const { data } = await listJobs({
     limit: Math.min(opts.limit ?? 50, 100),
     platform: opts.platform,
+    platforms: opts.platforms,
     status: opts.status ?? "open",
   });
 

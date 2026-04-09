@@ -611,7 +611,8 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                     ? `${totalPipeline} actief in shortlist`
                     : "Nog geen shortlist"}
                 </Badge>
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-2">
+                  <VacatureShareButton title={job.title} path={`/vacatures/${job.id}`} />
                   <JsonViewer data={job as unknown as Record<string, unknown>} />
                 </div>
               </div>

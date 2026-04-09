@@ -244,22 +244,44 @@ export async function failEvent(eventId: string, errorMessage: string) {
 /** Fetch recent agent events for the activity feed. */
 export async function getRecentEvents(options: {
   limit?: number;
+  offset?: number;
   sourceAgent?: AgentName;
   eventType?: AgentEventType;
 }) {
-  const { limit = 50, sourceAgent, eventType } = options;
+  const { limit = 50, offset = 0, sourceAgent, eventType } = options;
 
   const conditions = [];
   if (sourceAgent) conditions.push(eq(agentEvents.sourceAgent, sourceAgent));
   if (eventType) conditions.push(eq(agentEvents.eventType, eventType));
 
-  const query = db.select().from(agentEvents).orderBy(desc(agentEvents.createdAt)).limit(limit);
+  const query = db
+    .select()
+    .from(agentEvents)
+    .orderBy(desc(agentEvents.createdAt))
+    .limit(limit)
+    .offset(Math.max(0, offset));
 
   if (conditions.length > 0) {
     return query.where(and(...conditions));
   }
 
   return query;
+}
+
+export async function countRecentEvents(options: {
+  sourceAgent?: AgentName;
+  eventType?: AgentEventType;
+}): Promise<number> {
+  const conditions = [];
+  if (options.sourceAgent) conditions.push(eq(agentEvents.sourceAgent, options.sourceAgent));
+  if (options.eventType) conditions.push(eq(agentEvents.eventType, options.eventType));
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`cast(count(*) as integer)` })
+    .from(agentEvents)
+    .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+  return count ?? 0;
 }
 
 /** Count pending events by type — useful for monitoring. */

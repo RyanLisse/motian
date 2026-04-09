@@ -130,4 +130,36 @@ describe("searchJobsPageUnified", () => {
     });
     expect(mockListJobsPage).not.toHaveBeenCalled();
   });
+
+  it("forwards multi-platform filters on both page paths", async () => {
+    await searchJobsPageUnified({
+      platforms: ["opdrachtoverheid", "nationalevacaturebank"],
+      limit: 25,
+      offset: 0,
+    });
+
+    expect(mockListJobsPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        platforms: ["opdrachtoverheid", "nationalevacaturebank"],
+        limit: 25,
+        offset: 0,
+      }),
+    );
+
+    await searchJobsPageUnified({
+      q: "architect",
+      platforms: ["opdrachtoverheid", "nationalevacaturebank"],
+      limit: 5,
+      offset: 10,
+    });
+
+    expect(mockHybridSearchPageWithTotal).toHaveBeenCalledWith(
+      "architect",
+      expect.objectContaining({
+        platforms: ["opdrachtoverheid", "nationalevacaturebank"],
+        limit: 5,
+        offset: 10,
+      }),
+    );
+  });
 });

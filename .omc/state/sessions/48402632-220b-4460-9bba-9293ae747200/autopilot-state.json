@@ -1,0 +1,10 @@
+{
+  "active": true,
+  "started_at": "2026-04-02T19:44:19.619Z",
+  "original_prompt": "/slfg   - The Sentry DSN console warnings from the browser tests (step-04 found 2 Sentry config errors)\n  - The 4 skipped autopilot-rich-evidence tests (require live browser environment)\n  - The /matching page rendering /kandidaten fallback instead of a dedicated page\n  - Performance profiling of specific pages (search latency, dashboard load time)",
+  "session_id": "48402632-220b-4460-9bba-9293ae747200",
+  "project_path": "/Users/cortex-air/Developer/motian",
+  "reinforcement_count": 0,
+  "awaiting_confirmation": true,
+  "last_checked_at": "2026-04-02T19:44:19.620Z"
+}

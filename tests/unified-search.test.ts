@@ -153,6 +153,34 @@ describe("searchJobsUnified", () => {
     }
   });
 
+  it("forwards multi-platform filters on both list and hybrid paths", async () => {
+    await searchJobsUnified({
+      platforms: ["opdrachtoverheid", "nationalevacaturebank"],
+      limit: 5,
+    });
+
+    expect(mockListJobs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        platforms: ["opdrachtoverheid", "nationalevacaturebank"],
+        limit: 5,
+      }),
+    );
+
+    await searchJobsUnified({
+      q: "manager",
+      platforms: ["opdrachtoverheid", "nationalevacaturebank"],
+      limit: 5,
+    });
+
+    expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
+      "manager",
+      expect.objectContaining({
+        platforms: ["opdrachtoverheid", "nationalevacaturebank"],
+        limit: 5,
+      }),
+    );
+  });
+
   it("forwards enhanced recruiter filters on both list and hybrid paths", async () => {
     await searchJobsUnified({
       endClient: "Gemeente Utrecht",

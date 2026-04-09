@@ -12,9 +12,15 @@ export const platformOnboardTask = task({
   },
   run: async (payload: { platform: string; source: PlatformOnboardingSource }) => {
     // Import services dynamically to avoid circular deps (per institutional learning)
-    const { validateConfig, triggerTestRun, activatePlatform, completeOnboarding } = await import(
-      "../src/services/scrapers"
-    );
+    const {
+      activatePlatform,
+      completeOnboarding,
+      getConfigByPlatform,
+      recordPlatformOnboardingEvent,
+      triggerTestRun,
+      updateConfigParameters,
+      validateConfig,
+    } = await import("../src/services/scrapers");
 
     const { platform, source } = payload;
 
@@ -38,7 +44,6 @@ export const platformOnboardTask = task({
     const { verifyPlatformStrategyMultimodal, gateDecision } = await import(
       "../src/services/platform-strategy-verifier"
     );
-    const { getConfigByPlatform } = await import("../src/services/scrapers");
 
     const config = await getConfigByPlatform(platform);
     const strategyParams = config?.parameters as Record<string, unknown> | null;
@@ -58,6 +63,20 @@ export const platformOnboardTask = task({
         const gate = gateDecision(verification);
 
         if (gate === "block") {
+          await recordPlatformOnboardingEvent({
+            platform,
+            source,
+            configId: config.id,
+            event: {
+              type: "strategy_verification_failed",
+              evidence: {
+                confidence: verification.confidence,
+                score: verification.score,
+                issues: verification.issues,
+                suggestedFixes: verification.suggestedFixes,
+              },
+            },
+          });
           return {
             success: false,
             step: "verify_strategy",
@@ -73,12 +92,28 @@ export const platformOnboardTask = task({
 
         // Persist corrected strategy if auto-correction improved selectors
         if (verification.correctedStrategy) {
-          const { updateConfigParameters } = await import("../src/services/scrapers");
           await updateConfigParameters(platform, {
             scrapingStrategy: verification.correctedStrategy,
           });
           metadata.set("strategyCorrected", true);
         }
+
+        await recordPlatformOnboardingEvent({
+          platform,
+          source,
+          configId: config.id,
+          event: {
+            type: "strategy_verified",
+            confidence: verification.confidence,
+            score: verification.score,
+            evidence: {
+              attempts: verification.attempts,
+              issues: verification.issues,
+              suggestedFixes: verification.suggestedFixes,
+              corrected: Boolean(verification.correctedStrategy),
+            },
+          },
+        });
 
         if (gate === "continue_monitored") {
           metadata.set("needsMonitoring", true);

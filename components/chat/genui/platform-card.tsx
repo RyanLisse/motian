@@ -34,6 +34,8 @@ type CredentialsNeededOutput = {
   displayName: string;
   authMode: string;
   fields: CredentialField[];
+  message?: string;
+  nextSteps?: string[];
 };
 
 type ExistsOutput = {
@@ -288,9 +290,16 @@ export function PlatformCard({ output }: { output: unknown }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Dit platform vereist authenticatie ({output.authMode}). Vul je gegevens in via het
-            formulier hieronder.
+            {output.message ??
+              `Dit platform vereist authenticatie (${output.authMode}). Vul je gegevens in via het formulier hieronder.`}
           </p>
+          {output.nextSteps && output.nextSteps.length > 0 ? (
+            <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
+              {output.nextSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ul>
+          ) : null}
           <CredentialForm platform={output.platform} fields={output.fields} />
         </CardContent>
       </Card>

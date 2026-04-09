@@ -71,8 +71,8 @@ export async function listJobsPage(
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = opts.offset ?? 0;
   const conditions = buildJobFilterConditions({
-    platforms: opts.platforms,
     platform: opts.platform,
+    platforms: opts.platforms,
     company: opts.company,
     endClient: opts.endClient,
     escoUri: opts.escoUri,

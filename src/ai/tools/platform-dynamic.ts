@@ -11,6 +11,7 @@ import {
   getPlatformByBaseUrl,
   getPlatformCatalogEntry,
   getPlatformOnboardingStatus,
+  recordPlatformOnboardingEvent,
   updateConfigParameters,
   validateExternalUrl,
 } from "@/src/services/scrapers";
@@ -142,16 +143,39 @@ export const platformAutoSetup = tool({
     // Step 2b: Credential gate — if auth required, always pause for secure credential collection
     //          Credentials flow through the GenUI form → POST /api/platforms/[slug]/credentials
     if (analysis.authMode !== "none") {
+      const fields = getCredentialFields(analysis.authMode);
+      let configId: string | undefined;
+
       // Create a stub config so POST /api/platforms/[slug]/credentials has a row to update
       try {
-        await createConfig({
+        const config = await createConfig({
           platform: analysis.slug,
           baseUrl: analysis.defaultBaseUrl,
           parameters: { scrapingStrategy: analysis.scrapingStrategy },
           source: "agent",
         });
-      } catch {
-        // Config may already exist from a prior attempt — non-fatal
+        configId = config.id;
+        await recordPlatformOnboardingEvent({
+          platform: analysis.slug,
+          source: "agent",
+          configId,
+          event: {
+            type: "credentials_requested",
+            evidence: {
+              authMode: analysis.authMode,
+              fields: fields.map((field) => field.name),
+            },
+          },
+        });
+      } catch (err) {
+        return {
+          success: false,
+          step: "prepare_credentials",
+          error: `Voorbereiden van de credential-stap mislukt: ${err instanceof Error ? err.message : String(err)}`,
+          platform: analysis.slug,
+          suggestion:
+            "Controleer of de basisconfiguratie voor dit platform geldig is en probeer de onboarding daarna opnieuw.",
+        };
       }
       revalidateTag("scrapers", "default");
 
@@ -160,7 +184,13 @@ export const platformAutoSetup = tool({
         platform: analysis.slug,
         displayName: analysis.displayName,
         authMode: analysis.authMode,
-        fields: getCredentialFields(analysis.authMode),
+        fields,
+        message: "De onboarding is gepauzeerd totdat de vereiste inloggegevens zijn opgeslagen.",
+        nextSteps: [
+          "Vul de gevraagde inloggegevens in",
+          "Sla de credentials op",
+          "Wacht tot de onboarding automatisch hervat",
+        ],
       };
     }
 

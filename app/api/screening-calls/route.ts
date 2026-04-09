@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
-import { createScreeningCall, listScreeningCalls } from "@/src/services/screening-calls";
+import { paginatedResponse, parsePagination } from "@/src/lib/pagination";
+import {
+  countScreeningCalls,
+  createScreeningCall,
+  listScreeningCalls,
+} from "@/src/services/screening-calls";
 
 export const dynamic = "force-dynamic";
 
@@ -34,15 +39,17 @@ export const POST = withApiHandler(async (request: Request) => {
 });
 
 export const GET = withApiHandler(async (request: Request) => {
-  const candidateId = new URL(request.url).searchParams.get("candidateId");
+  const searchParams = new URL(request.url).searchParams;
+  const candidateId = searchParams.get("candidateId");
   if (!candidateId) {
     return Response.json({ error: "candidateId is required" }, { status: 400 });
   }
-  const calls = await listScreeningCalls(candidateId);
-  return Response.json(
-    { data: calls },
-    {
-      headers: { "Cache-Control": "no-store" },
-    },
-  );
+  const { page, limit, offset } = parsePagination(searchParams);
+  const [calls, total] = await Promise.all([
+    listScreeningCalls({ candidateId, limit, offset }),
+    countScreeningCalls(candidateId),
+  ]);
+  return Response.json(paginatedResponse(calls, total, { page, limit, offset }), {
+    headers: { "Cache-Control": "no-store" },
+  });
 });

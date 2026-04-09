@@ -19,6 +19,7 @@ import {
   validateOpdrachtenQueryParams,
 } from "../src/lib/opdrachten-filters";
 import { parsePagination } from "../src/lib/pagination";
+import { normalizeJobPlatforms } from "../src/services/jobs/query-filters";
 
 function readFile(...segments: string[]) {
   return readFileSync(path.join(process.cwd(), ...segments), "utf8");
@@ -141,6 +142,24 @@ describe("Opdrachten shared filter parsing", () => {
     );
   });
 
+  it("normalizes multi-platform filters from repeated params and comma-separated values", () => {
+    const parsed = parseOpdrachtenFilters(
+      new URLSearchParams(
+        "platform=opdrachtoverheid&platform=nationalevacaturebank,opdrachtoverheid",
+      ),
+    );
+
+    expect(parsed.platforms).toEqual(["opdrachtoverheid", "nationalevacaturebank"]);
+    expect(parsed.platform).toBe("opdrachtoverheid");
+    expect(
+      validateOpdrachtenQueryParams(
+        new URLSearchParams(
+          "platform=opdrachtoverheid&platform=nationalevacaturebank,opdrachtoverheid",
+        ),
+      ).success,
+    ).toBe(true);
+  });
+
   it("falls back safely for invalid province, radius, and sort params", () => {
     const parsed = parseOpdrachtenFilters(
       new URLSearchParams("provincie=unknown&straalKm=999&sort=onbekend"),
@@ -186,6 +205,20 @@ describe("Opdrachten shared filter parsing", () => {
         new URLSearchParams("platform=opdrachtoverheid&platform=indeed"),
       ).success,
     ).toBe(true);
+  });
+});
+
+describe("Vacature platform filter compatibility", () => {
+  it("normalizes single, repeated, and comma-joined platform filters for query building", () => {
+    expect(normalizeJobPlatforms(undefined, undefined)).toEqual([]);
+    expect(normalizeJobPlatforms("opdrachtoverheid", undefined)).toEqual(["opdrachtoverheid"]);
+    expect(normalizeJobPlatforms("opdrachtoverheid,nationalevacaturebank", undefined)).toEqual([
+      "opdrachtoverheid",
+      "nationalevacaturebank",
+    ]);
+    expect(
+      normalizeJobPlatforms("opdrachtoverheid", ["nationalevacaturebank", "opdrachtoverheid"]),
+    ).toEqual(["nationalevacaturebank", "opdrachtoverheid"]);
   });
 });
 
@@ -275,6 +308,7 @@ describe("Opdrachten UI/API contracts", () => {
     expect(source).toContain('value="archived"');
     expect(source).toContain("Gearchiveerd");
     expect(source).toContain("handleToggleRegio");
+    expect(source).toContain("handleTogglePlatform");
     expect(source).toContain("handleToggleVakgebied");
     expect(source).toContain("handleHoursRangeChange");
     expect(source).toContain("handleRadiusChange");

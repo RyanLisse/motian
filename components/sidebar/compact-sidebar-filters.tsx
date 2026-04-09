@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { OPDRACHTEN_PROVINCES } from "@/src/lib/opdrachten-filters";
 import { CompactMultiSelectFilter, RadiusSliderField } from "./sidebar-filter-controls";
 import { SidebarSortControls } from "./sidebar-sort-controls";
-import type { FilterOption, ProvinceAnchor } from "./sidebar-types";
+import type { FilterOption, FilterOverrideValue, ProvinceAnchor } from "./sidebar-types";
 import {
   DARK_FILTER_CONTROL_CLASS,
   DARK_FILTER_MENU_CLASS,
@@ -49,7 +49,7 @@ interface CompactSidebarFiltersProps {
   provinceAnchor: ProvinceAnchor;
   sort: string;
   sortOptions: readonly { readonly value: string; readonly label: string }[];
-  onFilterChange: (paramKey: string, value: string) => void;
+  onFilterChange: (paramKey: string, value: FilterOverrideValue) => void;
   onTogglePlatform: (value: string) => void;
   onProvinceChange: (value: string) => void;
   onToggleRegio: (value: string) => void;

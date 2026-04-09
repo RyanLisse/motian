@@ -22,6 +22,7 @@ import { decrypt, encrypt } from "../lib/crypto";
 import {
   canActivatePlatformOnboarding,
   createPlatformOnboardingRunDraft,
+  type PlatformOnboardingEvent,
   type PlatformOnboardingRunState,
   type PlatformOnboardingSource,
   reducePlatformOnboardingRun,
@@ -402,13 +403,7 @@ async function recordOnboardingSnapshot(input: {
   platform: string;
   source: PlatformOnboardingSource;
   configId?: string | null;
-  event:
-    | Parameters<typeof reducePlatformOnboardingRun>[1]
-    | {
-        type: "unsupported_source_detected";
-        blockerKind: "needs_implementation";
-        evidence?: Record<string, unknown>;
-      };
+  event: PlatformOnboardingEvent;
 }): Promise<PlatformOnboardingRunRecord> {
   await ensurePlatformCatalogExists(input.platform);
 
@@ -441,6 +436,16 @@ async function recordOnboardingSnapshot(input: {
     .returning();
 
   return record;
+}
+
+export async function recordPlatformOnboardingEvent(input: {
+  platform: string;
+  source: PlatformOnboardingSource;
+  configId?: string | null;
+  event: PlatformOnboardingEvent;
+}): Promise<PlatformOnboardingRunView> {
+  const record = await recordOnboardingSnapshot(input);
+  return sanitizeOnboardingRunRecord(record) as PlatformOnboardingRunView;
 }
 
 async function ensureOnboardingDraft(
@@ -626,6 +631,19 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
         latestRun: sanitizeOnboardingRunRecord(latestRunMap.get(slug) ?? null),
       };
     });
+}
+
+export async function listPlatformCatalogPage(
+  opts: { limit?: number; offset?: number } = {},
+): Promise<{ data: PlatformCatalogEntryView[]; total: number }> {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = Math.max(0, opts.offset ?? 0);
+  const data = await listPlatformCatalog();
+
+  return {
+    data: data.slice(offset, offset + limit),
+    total: data.length,
+  };
 }
 
 export async function getPlatformCatalogEntry(
