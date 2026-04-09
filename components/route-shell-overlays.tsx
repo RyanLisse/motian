@@ -2,19 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { ChatContextProvider } from "@/components/chat/chat-context-provider";
+import { ChatWidgetLoader } from "@/components/chat/chat-widget-loader";
+import { CommandPaletteLoader } from "@/components/command-palette-loader";
 import { WebVitalsReporter } from "@/src/components/web-vitals-reporter";
 
-const ChatWidget = dynamic(
-  () => import("@/components/chat/chat-widget").then((mod) => mod.ChatWidget),
-  {
-    ssr: false,
-  },
-);
-const CommandPalette = dynamic(
-  () => import("@/components/command-palette").then((mod) => mod.CommandPalette),
-  { ssr: false },
-);
 const MotianWebMcpProvider = dynamic(
   () =>
     import("@/components/webmcp/motian-webmcp-provider").then((mod) => mod.MotianWebMcpProvider),
@@ -30,13 +21,9 @@ export function RouteShellOverlays() {
   return (
     <>
       <WebVitalsReporter />
-      <CommandPalette />
+      <CommandPaletteLoader />
       {isDeveloperRoute ? <MotianWebMcpProvider /> : null}
-      {!isChatRoute ? (
-        <ChatContextProvider>
-          <ChatWidget currentOrigin={currentOrigin} />
-        </ChatContextProvider>
-      ) : null}
+      {!isChatRoute ? <ChatWidgetLoader currentOrigin={currentOrigin} /> : null}
     </>
   );
 }

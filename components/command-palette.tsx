@@ -146,9 +146,15 @@ const PAGES: PageEntry[] = [
   },
 ];
 
-export function CommandPalette() {
-  const [open, setOpen] = useState(false);
+export function CommandPalette({ initialOpen = false }: { initialOpen?: boolean }) {
+  const [open, setOpen] = useState(initialOpen);
   const router = useRouter();
+
+  useEffect(() => {
+    if (initialOpen) {
+      setOpen(true);
+    }
+  }, [initialOpen]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

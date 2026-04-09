@@ -223,11 +223,17 @@ function ChatWidgetInner({
   );
 }
 
-export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | null }) {
+export function ChatWidget({
+  currentOrigin = null,
+  defaultOpen = false,
+}: {
+  currentOrigin?: string | null;
+  defaultOpen?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const { activeContext, prepareFullPageHandoff } = useChatContext();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [sessionId, setSessionId] = useState("");
 
   useEffect(() => {
@@ -237,6 +243,12 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
 
     return () => window.clearTimeout(timeout);
   }, []);
+
+  useEffect(() => {
+    if (defaultOpen) {
+      setOpen(true);
+    }
+  }, [defaultOpen]);
 
   const handleNewSession = useCallback(() => {
     const id = nanoid();

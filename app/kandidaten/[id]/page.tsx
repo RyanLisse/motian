@@ -17,7 +17,6 @@ import { CandidateNotes } from "@/components/candidate-notes";
 import { CandidateOfferActions } from "@/components/candidate-offer-actions";
 import { CandidateIntakeScorecard } from "@/components/candidate-profile/candidate-intake-scorecard";
 import { EmploymentCard } from "@/components/candidate-profile/employment-card";
-import { MatchScoresChart } from "@/components/candidate-profile/match-scores-chart";
 import { OpenToOffersRing } from "@/components/candidate-profile/open-to-offers-ring";
 import { SkillsExperienceSection } from "@/components/candidate-profile/skills-experience-section";
 import type { MatchSuggestionItem } from "@/components/candidate-wizard/types";
@@ -28,7 +27,6 @@ import { EditCandidateFields } from "@/components/edit-candidate-fields";
 import { RecruiterMatchBrief } from "@/components/matching/match-brief";
 import { ReportButton } from "@/components/matching/report-button";
 import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
-import { SkillsRadar } from "@/components/skills-radar";
 import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
@@ -66,6 +64,22 @@ const MatchDetail = nextDynamic(
       default: mod.MatchDetail,
     })),
   { loading: () => <div className="animate-pulse h-32 rounded-xl bg-muted" /> },
+);
+
+const MatchScoresChart = nextDynamic(
+  () =>
+    import("@/components/candidate-profile/match-scores-chart").then((mod) => ({
+      default: mod.MatchScoresChart,
+    })),
+  { loading: () => <div className="h-[140px] w-full animate-pulse rounded-xl bg-muted/60" /> },
+);
+
+const SkillsRadar = nextDynamic(
+  () =>
+    import("@/components/skills-radar").then((mod) => ({
+      default: mod.SkillsRadar,
+    })),
+  { loading: () => <div className="h-[300px] w-full animate-pulse rounded-xl bg-muted/60" /> },
 );
 
 interface Props {

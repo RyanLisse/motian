@@ -14,9 +14,9 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
-import { KpiTrendChart } from "@/components/overview/kpi-trend-chart";
 import { PipelineHealthCard } from "@/components/overview/pipeline-health-card";
 import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/shared/kpi-card";
@@ -26,6 +26,14 @@ import { formatDateTime } from "@/src/lib/helpers";
 import { getOverviewData } from "./data";
 
 export const revalidate = 60;
+
+const KpiTrendChart = dynamic(
+  () => import("@/components/overview/kpi-trend-chart").then((mod) => mod.KpiTrendChart),
+  {
+    loading: () => <div className="h-[200px] w-full animate-pulse rounded-xl bg-muted/60" />,
+    ssr: false,
+  },
+);
 
 const PRIORITY_TONE_STYLES = {
   amber: {
