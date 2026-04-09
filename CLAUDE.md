@@ -69,6 +69,7 @@ src/lib/rate-limit.ts         In-memory sliding window
 packages/                     pnpm workspaces: @motian/db, @motian/esco, @motian/scrapers
 trigger/                      Trigger.dev v4 background tasks
 tests/                        Vitest tests (.test.ts only)
+docs/solutions/               Documented solutions (bugs, best practices), YAML frontmatter for search
 drizzle/                      Generated migrations (HIGH risk — review before edit)
 proxy.ts                      Next.js 16 proxy layer (replaces legacy middleware.ts)
 ```
