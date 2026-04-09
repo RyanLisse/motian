@@ -1004,6 +1004,16 @@ pnpm cli salesforce:feed --entity jobs --status open --updated-since 2026-03-01T
 
 ---
 
+## Documentation
+
+- **Live API documentation**: `/api-docs`
+- **OpenAPI source**: `/api/openapi`
+- **Architecture and platform guide**: [docs/architecture.md](docs/architecture.md)
+- **Ownership transfer guide**: [docs/runbooks/project-ownership-transfer-guide.md](docs/runbooks/project-ownership-transfer-guide.md) / [docs/runbooks/project-ownership-transfer-guide.nl.md](docs/runbooks/project-ownership-transfer-guide.nl.md)
+- **Ownership transfer checklist**: [docs/runbooks/project-ownership-transfer-checklist.md](docs/runbooks/project-ownership-transfer-checklist.md) / [docs/runbooks/project-ownership-transfer-checklist.nl.md](docs/runbooks/project-ownership-transfer-checklist.nl.md)
+
+---
+
 ## Deployment
 
 ### Vercel
