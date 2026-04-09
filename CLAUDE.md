@@ -148,3 +148,4 @@ Tasks live under `trigger/` and use `@trigger.dev/sdk` v4 exclusively — **neve
 - `README.md` / `README.en.md` — end-user feature overview
 - `src/db/schema.ts` — ground truth for data model
 - `src/ai/agent.ts` and `src/ai/tools/` — how the chat agent is wired
+
