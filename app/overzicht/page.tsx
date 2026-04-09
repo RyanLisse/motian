@@ -31,7 +31,6 @@ const KpiTrendChart = dynamic(
   () => import("@/components/overview/kpi-trend-chart").then((mod) => mod.KpiTrendChart),
   {
     loading: () => <div className="h-[200px] w-full animate-pulse rounded-xl bg-muted/60" />,
-    ssr: false,
   },
 );
 
