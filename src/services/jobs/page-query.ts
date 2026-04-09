@@ -1,5 +1,6 @@
 import { and, db, inArray, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
+import { caseInsensitiveContains } from "../../lib/helpers";
 import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
 import { getAllSettings } from "../settings";
@@ -11,6 +12,7 @@ import {
   type HybridSearchOptions,
   type HybridSearchRankJob,
   hybridSearchRankSelection,
+  type JobSearchQuery,
   rankHybridCandidates,
   type SearchJobsOptions,
   searchJobIdsByTitle,
@@ -123,17 +125,21 @@ export async function listJobsPage(
 }
 
 export async function hybridSearchPageWithTotal(
-  query: string,
+  query: JobSearchQuery,
   opts: HybridSearchOptions = {},
 ): Promise<JobPageResult> {
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 20, 100);
   const offset = Math.max(opts.offset ?? 0, 0);
   const requestedStatus: JobStatus = opts.status ?? "open";
-  const safeQuery = query.slice(0, 80);
+  const queryTerms = (Array.isArray(query) ? query : [query])
+    .map((term) => term.trim())
+    .filter((term) => term.length >= 2);
+  const queryText = queryTerms.join(" ");
+  const safeQuery = queryText.slice(0, 80);
   const settings = await getAllSettings();
   const policy = getHybridSearchPolicy(
-    { query, limit, offset, vectorMinScore: settings.searchVectorMinScore },
+    { query: queryText, limit, offset, vectorMinScore: settings.searchVectorMinScore },
     process.env,
   );
 
@@ -148,6 +154,12 @@ export async function hybridSearchPageWithTotal(
     ...opts,
     status: requestedStatus,
   }).filter((condition): condition is SQL => Boolean(condition));
+  if (queryTerms.length > 1) {
+    const multiTermCondition = and(
+      ...queryTerms.map((term) => caseInsensitiveContains(sql`search_text`, term)),
+    );
+    if (multiTermCondition) filterConditions.push(multiTermCondition);
+  }
   const retrievalFilterCondition = filterConditions.length
     ? (and(...filterConditions) ?? sql`true`)
     : sql`true`;
@@ -177,7 +189,7 @@ export async function hybridSearchPageWithTotal(
         }
 
         const embeddingStartedAt = Date.now();
-        const queryEmbedding = await embeddingService.generateQueryEmbedding(query);
+        const queryEmbedding = await embeddingService.generateQueryEmbedding(queryText);
         embeddingMs = Date.now() - embeddingStartedAt;
 
         const vectorSearchStartedAt = Date.now();

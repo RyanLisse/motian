@@ -3,8 +3,8 @@ import {
   getOpdrachtenServiceSort,
   hasExplicitOpdrachtenSort,
   MAX_OPDRACHTEN_LIMIT,
-  normalizeOpdrachtenSearchQuery,
   parseOpdrachtenFilters,
+  parseSearchTerms,
   validateOpdrachtenQueryParams,
 } from "@/src/lib/opdrachten-filters";
 import { parsePagination } from "@/src/lib/pagination";
@@ -49,19 +49,20 @@ export async function runJobSearch(
   }
 
   const filters = parseOpdrachtenFilters(params);
-  const q = normalizeOpdrachtenSearchQuery(filters.q);
+  const q = parseSearchTerms(filters.q);
+  const hasQuery = q.length > 0;
   const { page, limit, offset } = parsePagination(params, {
     limit: DEFAULT_OPDRACHTEN_LIMIT,
     maxLimit: MAX_OPDRACHTEN_LIMIT,
   });
   const sortBy = getOpdrachtenServiceSort(
     filters.sort,
-    Boolean(q),
+    hasQuery,
     hasExplicitOpdrachtenSort(params),
   );
 
   const result = await searchJobsUnified({
-    q: q || undefined,
+    q: hasQuery ? q : undefined,
     platform: filters.platform,
     platforms: filters.platforms,
     endClient: filters.endClient,
@@ -103,19 +104,20 @@ export async function runJobPageSearch(
   }
 
   const filters = parseOpdrachtenFilters(params);
-  const q = normalizeOpdrachtenSearchQuery(filters.q);
+  const q = parseSearchTerms(filters.q);
+  const hasQuery = q.length > 0;
   const { page, limit, offset } = parsePagination(params, {
     limit: DEFAULT_OPDRACHTEN_LIMIT,
     maxLimit: MAX_OPDRACHTEN_LIMIT,
   });
   const sortBy = getOpdrachtenServiceSort(
     filters.sort,
-    Boolean(q),
+    hasQuery,
     hasExplicitOpdrachtenSort(params),
   );
 
   const result = await searchJobsPageUnified({
-    q: q || undefined,
+    q: hasQuery ? q : undefined,
     platform: filters.platform,
     platforms: filters.platforms,
     endClient: filters.endClient,

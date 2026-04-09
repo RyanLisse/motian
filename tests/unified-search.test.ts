@@ -91,7 +91,7 @@ describe("searchJobsUnified", () => {
   it("with q: hybrid search shape (items have score)", async () => {
     const result = await searchJobsUnified({ q: "test", limit: 2 });
     expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
-      "test",
+      ["test"],
       expect.objectContaining({
         limit: 2,
         offset: undefined,
@@ -173,7 +173,7 @@ describe("searchJobsUnified", () => {
     });
 
     expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
-      "manager",
+      ["manager"],
       expect.objectContaining({
         platforms: ["opdrachtoverheid", "nationalevacaturebank"],
         limit: 5,
@@ -225,7 +225,7 @@ describe("searchJobsUnified", () => {
     });
 
     expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
-      "manager",
+      ["manager"],
       expect.objectContaining({
         endClient: "Gemeente Utrecht",
         category: "ICT",
@@ -251,7 +251,7 @@ describe("searchJobsUnified", () => {
     });
 
     expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
-      "manager",
+      ["manager"],
       expect.objectContaining({
         company: "Motian",
         endClient: "Gemeente Utrecht",
@@ -266,7 +266,7 @@ describe("searchJobsUnified", () => {
     const result = await searchJobsUnified({ q: "in", limit: 2, offset: 4 });
 
     expect(mockHybridSearchWithTotal).toHaveBeenCalledWith(
-      "in",
+      ["in"],
       expect.objectContaining({ limit: 2, offset: 4 }),
     );
     expect(result).toMatchObject({ total: 7 });
