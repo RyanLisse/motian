@@ -3,10 +3,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   COMMAND_PALETTE_PAGES,
-  MEER_NAV_ITEMS,
-  PRIMARY_NAV_ITEMS,
   isAnyNavItemActive,
   isNavItemActive,
+  MEER_NAV_ITEMS,
+  PRIMARY_NAV_ITEMS,
 } from "../components/navigation-config";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -55,12 +55,14 @@ describe("Recruiter-first navigation", () => {
     const vacaturesItem = PRIMARY_NAV_ITEMS.find((item) => item.title === "Vacatures");
     const kandidatenItem = PRIMARY_NAV_ITEMS.find((item) => item.title === "Kandidaten");
 
-    expect(vacaturesItem).toBeDefined();
-    expect(kandidatenItem).toBeDefined();
-    expect(isNavItemActive("/vacatures", vacaturesItem!)).toBe(true);
-    expect(isNavItemActive("/vacatures/123", vacaturesItem!)).toBe(true);
-    expect(isNavItemActive("/opdrachten/123", vacaturesItem!)).toBe(true);
-    expect(isNavItemActive("/agents", kandidatenItem!)).toBe(false);
+    if (!vacaturesItem || !kandidatenItem) {
+      throw new Error("Expected primary navigation items to include Vacatures and Kandidaten");
+    }
+
+    expect(isNavItemActive("/vacatures", vacaturesItem)).toBe(true);
+    expect(isNavItemActive("/vacatures/123", vacaturesItem)).toBe(true);
+    expect(isNavItemActive("/opdrachten/123", vacaturesItem)).toBe(true);
+    expect(isNavItemActive("/agents", kandidatenItem)).toBe(false);
   });
 
   it("marks overflow routes active through the shared helper", () => {
