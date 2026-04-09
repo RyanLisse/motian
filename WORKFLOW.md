@@ -34,7 +34,7 @@ agent:
   max_concurrent_agents: 10
   max_turns: 20
 codex:
-  command: env PATH="$HOME/.bun/bin:$HOME/.local/node/bin:$HOME/.local/bin:$HOME/.nvm/versions/node/v22.22.0/bin:$HOME/.npm-packages/bin:/usr/local/bin:$PATH" codex --config shell_environment_policy.inherit=all --config model_reasoning_effort=xhigh --model gpt-5.3-codex app-server
+  command: /Users/cortex-air/.bun/bin/codex --config shell_environment_policy.inherit=all --config model_reasoning_effort=xhigh --model gpt-5.3-codex app-server
   approval_policy: never
   thread_sandbox: danger-full-access
   turn_sandbox_policy:
