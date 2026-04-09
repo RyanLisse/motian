@@ -30,7 +30,8 @@ FW_\ Custom\ GPT\ Mariënne/
 tmp/
 
 # AI coding tool config directories (machine-local, not shared)
-.agents/
+.agents/*
+!.agents/skills/
 .claude/
 .codex/
 .cursor/
