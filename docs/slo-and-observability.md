@@ -45,6 +45,8 @@ Client-side Core Web Vitals monitoring is active via the `@vercel/speed-insights
 
 No extra configuration is required. Data is visible in the Vercel project dashboard under the **Speed Insights** tab after deploying.
 
+Voor route-context buiten het Vercel-dashboard draait aanvullend `src/components/web-vitals-reporter.tsx` via `components/route-shell-overlays.tsx`. Die reporter combineert `useReportWebVitals` met `usePathname()` zodat dezelfde CWV-gebeurtenissen (zoals LCP, CLS en INP) ook routebewust gespiegeld kunnen worden naar PostHog/Sentry tijdens regressie-onderzoek.
+
 ## Definition of done Fase 4
 
 - [x] SLO's en error budget gedocumenteerd (dit document)

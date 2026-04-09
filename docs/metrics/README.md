@@ -73,6 +73,29 @@ Sla de JSON-bestanden op als baseline-versies tijdens meetmomenten, bijvoorbeeld
 - `docs/metrics/search-path-explain-2026-03-25.json`
 - `docs/metrics/search-path-latency-2026-03-25.json`
 
+## Bundle-analyse baseline
+
+Voor Next.js 16/Turbopack gebruikt dit repo de ingebouwde analyzer in plaats van de oudere webpack-plugin.
+
+```bash
+pnpm analyze
+```
+
+Dit schrijft een interactieve bundle-analyse naar:
+
+- `.next/diagnostics/analyze/index.html`
+- `.next/diagnostics/analyze/data/routes.json`
+
+Leg een meetmoment vast in een baseline-document onder `docs/metrics/`, bijvoorbeeld:
+
+- `docs/metrics/baseline-2026-04-10.md`
+
+Gebruik daarbij minimaal:
+
+- de analyzer-artifactlocatie (`.next/diagnostics/analyze/`)
+- de belangrijkste route-baselines voor `/`, `/kandidaten`, `/vacatures`, `/kandidaten/[id]`, en `/chat`
+- de commandovariant en omgevingscontext waarmee de meting is verzameld
+
 ## Wat vastleggen
 
 | Metric | Hoe |
