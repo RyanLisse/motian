@@ -100,12 +100,10 @@ describe("triggerScraper tool", () => {
     const result = await tool.execute({ platform: "striive" });
 
     expect(result).toMatchObject({
-      error: "Scraper voor striive is niet actief",
+      error: `Platform "striive" is nog bezig met onboarding (status: tested). De achtergrond-taak regelt validatie, test-import en activatie automatisch.`,
       onboardingStatus: "tested",
-      validationStatus: "validated",
-      lastTestImportStatus: "success",
-      recommendedTools: ["platformActivate", "platformOnboardingStatus"],
-      nextActions: ["activate"],
+      recommendedTools: ["platformOnboardingStatus"],
+      nextActions: ["wait_for_onboarding", "check_status"],
     });
     expect(mockRunScrapePipeline).not.toHaveBeenCalled();
   });

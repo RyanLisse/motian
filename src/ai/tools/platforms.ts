@@ -38,7 +38,8 @@ export const platformsList = tool({
 });
 
 export const platformCatalogCreate = tool({
-  description: "Maak of seed een platform catalogus entry voor onboarding.",
+  description:
+    "Maak of seed een platform catalogus entry voor onboarding. Dit is een handmatige stap — gebruik platformAutoSetup als je een compleet nieuw platform wilt inrichten.",
   inputSchema: z.object({
     slug: z.string().min(1),
     displayName: z.string().optional(),
@@ -76,7 +77,8 @@ export const platformCatalogUpdate = tool({
 });
 
 export const platformConfigCreate = tool({
-  description: "Maak of overschrijf de runtime config voor een platform onboarding flow.",
+  description:
+    "Maak of overschrijf de runtime config voor een platform onboarding flow. Dit is een handmatige stap — gebruik platformAutoSetup voor volledige automatische inrichting van een nieuw platform.",
   inputSchema: z.object({
     platform: z.string().min(1),
     baseUrl: z.string().url().optional(),
@@ -112,7 +114,8 @@ export const platformConfigUpdate = tool({
 });
 
 export const platformConfigValidate = tool({
-  description: "Valideer de opgeslagen toegang/configuratie voor een platform.",
+  description:
+    "Valideer de opgeslagen toegang/configuratie voor een platform. Dit is een handmatige stap — platformAutoSetup voert validatie automatisch uit als onderdeel van de volledige flow.",
   inputSchema: z.object({
     platform: z.string().min(1),
   }),
@@ -124,7 +127,8 @@ export const platformConfigValidate = tool({
 });
 
 export const platformTestImport = tool({
-  description: "Draai een smoke import voor een platform en retourneer blocker/evidence details.",
+  description:
+    "Draai een smoke import voor een platform en retourneer blocker/evidence details. Dit is een handmatige stap — platformAutoSetup voert test-imports automatisch uit op de achtergrond.",
   inputSchema: z.object({
     platform: z.string().min(1),
     limit: z.number().int().min(1).max(10).optional(),
@@ -139,7 +143,8 @@ export const platformTestImport = tool({
 });
 
 export const platformActivate = tool({
-  description: "Activeer een platform na succesvolle validatie en smoke import.",
+  description:
+    "Activeer een platform na succesvolle validatie en smoke import. Dit is een handmatige stap — platformAutoSetup activeert het platform automatisch na succesvolle onboarding.",
   inputSchema: z.object({
     platform: z.string().min(1),
   }),

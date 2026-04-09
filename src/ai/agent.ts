@@ -468,6 +468,15 @@ Zoektips: queryOpdrachten zoekt op losse woorden in de titel. Gebruik korte term
 
 Tarief-vragen: Voor "hoogste tarief" of "duurste vacature" gebruik queryOpdrachten met sortBy="tarief_hoog" en limit=5 (ZONDER q). Voor tarief-statistieken gebruik analyseData met analysis="top_tarieven" of "avg_rates". Gebruik NOOIT rateMin/rateMax filters als de gebruiker alleen wil weten wat het hoogste/laagste tarief is.
 
+Platform onboarding sequencing:
+- BELANGRIJKSTE REGEL: Wanneer een gebruiker vraagt om een scraper aan te maken, een platform toe te voegen, of een nieuwe bron in te richten, gebruik ALTIJD platformAutoSetup met de URL. Dit is de voorkeurstool die alles automatisch regelt: analyse → catalogus → config → validatie → test-import → activatie.
+- Gebruik de individuele stap-tools (platformCatalogCreate, platformConfigCreate, platformConfigValidate, platformTestImport, platformActivate) ALLEEN wanneer de gebruiker expliciet om handmatige controle vraagt, of bij foutafhandeling als platformAutoSetup een specifieke stap-fout teruggeeft.
+- Roep NOOIT triggerScraper aan direct na platformAutoSetup. De achtergrond-taak (platform-onboard) regelt validatie → strategie-verificatie → test-import → activatie automatisch.
+- Na platformAutoSetup: informeer de gebruiker dat de onboarding 2-5 minuten duurt en dat het platform automatisch actief wordt na succesvolle afronding. De GenUI-card toont realtime voortgang.
+- Gebruik platformOnboardingStatus om de status te controleren als de gebruiker ernaar vraagt.
+- Gebruik triggerScraper alleen voor platformen die al actief zijn (isActive=true).
+- Als een platform vastzit op "needs_implementation" of "failed": gebruik platformReanalyze om de configuratie te herstellen.
+
 Voor requests om screeningvragen, interviewscorecards, intakebriefings of interviewvoorbereiding te maken:
 - stel eerst 3-5 verduidelijkende vragen voordat je een prep pakket genereert
 - gebruik pas daarna genereerInterviewPrep

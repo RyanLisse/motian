@@ -95,9 +95,24 @@ function getTriggerRecoveryGuidance(platform: string, status: TriggerRecoverySta
   };
 }
 
+/**
+ * Onboarding statuses that indicate the platform-onboard Trigger.dev task is
+ * still running or hasn't finished yet. When the scraper is triggered during
+ * these states the recruiter should be told to wait rather than getting a
+ * confusing "niet actief" error.
+ */
+const IN_PROGRESS_ONBOARDING_STATUSES = new Set([
+  "draft",
+  "researching",
+  "config_saved",
+  "implementing",
+  "validated",
+  "tested",
+]);
+
 export const triggerScraper = tool({
   description:
-    "Start een scraper voor een specifiek platform uit de dynamische platformcatalogus. Gebruik platformsList om de actuele platformslugs op te halen. Dit kan even duren (30s-2min).",
+    "Start een scraper voor een specifiek platform uit de dynamische platformcatalogus. Gebruik platformsList om de actuele platformslugs op te halen. Dit kan even duren (30s-2min). BELANGRIJK: roep deze tool NIET aan direct na platformAutoSetup — de achtergrond-onboarding regelt validatie, test-import en activatie automatisch. Gebruik platformOnboardingStatus om te controleren of het platform al actief is voordat je deze tool aanroept.",
   inputSchema: z.object({
     platform: z.string().describe("Het platform om te scrapen"),
   }),
@@ -117,21 +132,37 @@ export const triggerScraper = tool({
 
     const status = await getPlatformOnboardingStatus(platform);
     const config = status.config;
+    const onboardingStatus = status.latestRun?.status ?? null;
 
     if (!config) {
       return {
         error: `Geen scraper configuratie gevonden voor ${platform}`,
         platform,
-        onboardingStatus: status.latestRun?.status ?? null,
+        onboardingStatus,
         ...getTriggerRecoveryGuidance(platform, status),
       };
     }
 
     if (!config.isActive) {
+      // Detect in-progress onboarding and give a clear "please wait" message
+      // instead of a confusing "niet actief" error.
+      if (onboardingStatus && IN_PROGRESS_ONBOARDING_STATUSES.has(onboardingStatus)) {
+        return {
+          error: `Platform "${platform}" is nog bezig met onboarding (status: ${onboardingStatus}). De achtergrond-taak regelt validatie, test-import en activatie automatisch.`,
+          platform,
+          onboardingStatus,
+          currentStep: status.latestRun?.currentStep ?? null,
+          suggestion:
+            "Wacht tot de onboarding is afgerond. Gebruik platformOnboardingStatus om de voortgang te controleren. Het platform wordt automatisch actief na succesvolle onboarding.",
+          recommendedTools: ["platformOnboardingStatus"],
+          nextActions: ["wait_for_onboarding", "check_status"],
+        };
+      }
+
       return {
         error: `Scraper voor ${platform} is niet actief`,
         platform,
-        onboardingStatus: status.latestRun?.status ?? null,
+        onboardingStatus,
         validationStatus: config.validationStatus ?? null,
         lastTestImportStatus: config.lastTestImportStatus ?? null,
         ...getTriggerRecoveryGuidance(platform, status),
