@@ -5,6 +5,8 @@ import {
   COMMAND_PALETTE_PAGES,
   MEER_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
+  isAnyNavItemActive,
+  isNavItemActive,
 } from "../components/navigation-config";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -49,6 +51,24 @@ function collectRepositoryFiles(directory: string, files: string[] = []) {
 }
 
 describe("Recruiter-first navigation", () => {
+  it("covers direct helper matching for exact, nested, and alias paths", () => {
+    const vacaturesItem = PRIMARY_NAV_ITEMS.find((item) => item.title === "Vacatures");
+    const kandidatenItem = PRIMARY_NAV_ITEMS.find((item) => item.title === "Kandidaten");
+
+    expect(vacaturesItem).toBeDefined();
+    expect(kandidatenItem).toBeDefined();
+    expect(isNavItemActive("/vacatures", vacaturesItem!)).toBe(true);
+    expect(isNavItemActive("/vacatures/123", vacaturesItem!)).toBe(true);
+    expect(isNavItemActive("/opdrachten/123", vacaturesItem!)).toBe(true);
+    expect(isNavItemActive("/agents", kandidatenItem!)).toBe(false);
+  });
+
+  it("marks overflow routes active through the shared helper", () => {
+    expect(isAnyNavItemActive("/messages", MEER_NAV_ITEMS)).toBe(true);
+    expect(isAnyNavItemActive("/messages/thread-1", MEER_NAV_ITEMS)).toBe(true);
+    expect(isAnyNavItemActive("/settings", MEER_NAV_ITEMS)).toBe(false);
+  });
+
   it("defines a 5-item primary nav plus a 6-item Meer overflow", () => {
     expect(PRIMARY_NAV_ITEMS.map((item) => item.title)).toEqual([
       "Overzicht",
