@@ -1,5 +1,5 @@
-import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { Pool } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
 
 const MISSING_DATABASE_ENV_ERROR = "DATABASE_URL is not set";
 
@@ -88,38 +88,35 @@ export function getPoolMetrics(): PoolMetrics {
   };
 }
 
-function createNeonDatabaseClient(url: string): DatabaseClient {
+function createNeonDatabaseClient(): DatabaseClient {
+  assertNoPublicDatabaseUrl();
+
+  const url = getNeonUrl();
+  if (!url) throw new Error(MISSING_DATABASE_ENV_ERROR);
+
+  // max: 1 is correct for Vercel serverless — each invocation gets its own
+  // process. Higher values multiply connections across concurrent invocations
+  // and exhaust Neon's per-project connection limit under load. Use Neon's
+  // connection pooler endpoint (hostname contains "-pooler.") for multiplexing.
+  // Node.js 22 has native WebSocket — no ws package or neonConfig needed.
   const pool = new Pool({
     connectionString: url,
-    max: 10,
-    idleTimeoutMillis: 60_000,
+    max: 1,
     connectionTimeoutMillis: 5_000,
   });
 
   poolRef = pool;
   attachPoolListeners(pool);
 
-  return drizzlePg(pool);
+  return drizzle(pool);
 }
 
-function createDatabaseClient(): DatabaseClient {
-  assertNoPublicDatabaseUrl();
-
-  const neonUrl = getNeonUrl();
-
-  if (!neonUrl) {
-    throw new Error(MISSING_DATABASE_ENV_ERROR);
-  }
-
-  return createNeonDatabaseClient(neonUrl);
-}
-
-type DatabaseClient = ReturnType<typeof drizzlePg>;
+type DatabaseClient = ReturnType<typeof drizzle>;
 
 let databaseClient: DatabaseClient | undefined;
 
 function getDatabaseClient(): DatabaseClient {
-  databaseClient ??= createDatabaseClient();
+  databaseClient ??= createNeonDatabaseClient();
   return databaseClient;
 }
 

@@ -14,7 +14,12 @@ export default {
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
+    // Migrations must use the DIRECT (unpooled) Neon endpoint.
+    // PgBouncer transaction mode blocks DDL: SET, CREATE INDEX CONCURRENTLY, etc.
+    // Set DATABASE_URL_UNPOOLED to the direct endpoint in .env.local;
+    // DATABASE_URL (pooler endpoint) is used at runtime by the app.
     url:
+      process.env.DATABASE_URL_UNPOOLED ??
       process.env.DATABASE_URL ??
       (() => {
         throw new Error("DATABASE_URL is not set in .env.local");

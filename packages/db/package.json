@@ -7,14 +7,10 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema.ts",
-    "./pool-config": "./src/pool-config.ts"
+    "./schema": "./src/schema.ts"
   },
   "dependencies": {
-    "drizzle-orm": "^0.38.4",
-    "pg": "^8.20.0"
-  },
-  "devDependencies": {
-    "@types/pg": "^8.20.0"
+    "@neondatabase/serverless": "^0.10.4",
+    "drizzle-orm": "^0.38.4"
   }
 }

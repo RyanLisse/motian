@@ -1,9 +1,13 @@
-import { Pool } from "pg";
+import { Pool } from "@neondatabase/serverless";
 import { config } from "dotenv";
 
 config({ path: "../../.env.local" });
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Use the direct (unpooled) endpoint for DDL scripts — PgBouncer blocks
+// CREATE INDEX CONCURRENTLY, SET, and trigger creation.
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL,
+});
 
 const statements = [
   {
