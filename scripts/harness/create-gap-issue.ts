@@ -12,7 +12,7 @@
  *     --severity high
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 // ── Config ─────────────────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ function parseArgs(): Args {
 
 function buildBody(args: Args): string {
   const deadline = new Date(Date.now() + SLA_HOURS * 60 * 60 * 1000);
-  const deadlineStr = deadline.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  const deadlineStr = `${deadline.toISOString().replace("T", " ").slice(0, 19)} UTC`;
 
   const lines: string[] = [
     "## Harness Gap",
@@ -105,7 +105,7 @@ function buildBody(args: Args): string {
 function ensureLabels(labels: string[]): void {
   for (const label of labels) {
     try {
-      execSync(`gh label create "${label}" --color "d93f0b" --force`, {
+      execFileSync("gh", ["label", "create", label, "--color", "d93f0b", "--force"], {
         stdio: ["ignore", "ignore", "ignore"],
       });
     } catch {
@@ -146,7 +146,7 @@ function createGapIssue(args: Args): void {
 
   let output: string;
   try {
-    output = execSync(`gh ${ghArgs.map((a) => JSON.stringify(a)).join(" ")}`, {
+    output = execFileSync("gh", ghArgs, {
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "pipe"],
     }).trim();

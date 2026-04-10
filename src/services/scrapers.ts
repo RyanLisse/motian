@@ -1446,7 +1446,8 @@ export function decryptAuthConfig(encoded: string): Record<string, unknown> {
 
 /**
  * Detecteer of een waarde al versleuteld is.
- * Encrypted waarden zijn base64 en minimaal 32 bytes (IV + tag).
+ * Encrypted waarden zijn base64; legacy blobs zijn minimaal 32 bytes (IV + tag),
+ * nieuwe blobs bevatten ook een 32-byte salt prefix.
  * Plaintext JSON begint altijd met '{'.
  */
 export function isEncrypted(value: string | null | undefined): boolean {

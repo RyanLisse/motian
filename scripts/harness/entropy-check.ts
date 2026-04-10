@@ -9,11 +9,10 @@
  *   3. Stale active plans in docs/plans/ (> 60 days, status: active)
  *   4. Orphaned DB tables (no service-layer consumer)
  *
- * Exit 0 if score < 10, exit 1 if >= 10.
+ * Exit 0 if score < 15, exit 1 if >= 15.
  * Pass --verbose to see all findings.
  */
 
-import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 
@@ -64,7 +63,7 @@ function listTsFilesRecursive(dir: string): string[] {
  * Build a corpus string from all searchable source files.
  * Used for import-presence checks (grep-style).
  */
-function buildCorpus(): string {
+function _buildCorpus(): string {
   const dirs = ["src", "app", "components", "tests", "trigger"].map((d) => join(ROOT, d));
   const files = dirs.flatMap(listTsFilesRecursive);
   return files.map(readText).join("\n");
@@ -87,8 +86,8 @@ function checkUnusedExports(): UnusedExport[] {
   ];
 
   // Build a broad corpus: everything except the file under test itself
-  const corpusDirs = ["src", "app", "components", "tests", "trigger", "packages"].map(
-    (d) => join(ROOT, d),
+  const corpusDirs = ["src", "app", "components", "tests", "trigger", "packages"].map((d) =>
+    join(ROOT, d),
   );
   const allCorpusFiles = corpusDirs.flatMap(listTsFilesRecursive);
   const corpusText = allCorpusFiles.map(readText).join("\n");
@@ -170,7 +169,10 @@ function parseFrontmatter(content: string): Record<string, string> {
     const colonIdx = line.indexOf(":");
     if (colonIdx === -1) continue;
     const key = line.slice(0, colonIdx).trim();
-    const value = line.slice(colonIdx + 1).trim().replace(/^["']|["']$/g, "");
+    const value = line
+      .slice(colonIdx + 1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
     result[key] = value;
   }
   return result;
@@ -193,7 +195,10 @@ function checkStalePlans(): StalePlan[] {
     // Try date from frontmatter first, fall back to file mtime
     let ageMs: number;
     if (fm.date) {
-      ageMs = NOW_MS - new Date(fm.date).getTime();
+      const parsedDateMs = new Date(fm.date).getTime();
+      ageMs = Number.isNaN(parsedDateMs)
+        ? NOW_MS - statSync(fullPath).mtimeMs
+        : NOW_MS - parsedDateMs;
     } else {
       ageMs = NOW_MS - statSync(fullPath).mtimeMs;
     }
@@ -288,9 +293,7 @@ function run(): void {
     }
   }
 
-  console.log(
-    `Stale plans: ${stalePlans.length === 0 ? "0 found" : `${stalePlans.length} found`}`,
-  );
+  console.log(`Stale plans: ${stalePlans.length === 0 ? "0 found" : `${stalePlans.length} found`}`);
   if (VERBOSE || stalePlans.length > 0) {
     for (const p of stalePlans) {
       console.log(`  - ${p.file} (active, ${p.daysOld} days old)`);
