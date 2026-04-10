@@ -36,6 +36,7 @@ jobs:
       - name: Build
         run: pnpm build
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # Minimal env for build (no DB needed for static analysis)
           SKIP_ENV_VALIDATION: "1"
 
@@ -45,6 +46,7 @@ jobs:
           # Wait for server to be ready
           npx wait-on http://localhost:3002 --timeout 60000
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PORT: "3002"
           SKIP_ENV_VALIDATION: "1"
 
