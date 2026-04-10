@@ -558,3 +558,231 @@ describe("Dutch naming in API routes", () => {
     expect(missing, `Expected Dutch API routes to exist: ${missing.join(", ")}`).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 8. No direct @ai-sdk/ imports outside src/lib/ai-models.ts
+// ---------------------------------------------------------------------------
+
+describe("AI SDK import discipline", () => {
+  /**
+   * All AI calls must go through src/lib/ai-models.ts — direct @ai-sdk/* imports
+   * outside that file bypass tracing and model aliasing.
+   *
+   * Allowed exceptions:
+   *   - src/lib/ai-models.ts itself (the wrapper)
+   *   - Type-only imports (import type { ... } from '@ai-sdk/...')
+   *   - Test files
+   *   - The voice agent (uses @livekit/agents-plugin-google, not raw @ai-sdk)
+   */
+  const AI_SDK_IMPORT_PATTERN = /from\s+['"]@ai-sdk\/[^'"]+['"]/;
+  const TYPE_ONLY_IMPORT_PATTERN = /import\s+type\s+.*from\s+['"]@ai-sdk\/[^'"]+['"]/;
+
+  const ALLOWED_FILES = new Set([
+    "src/lib/ai-models.ts",
+  ]);
+
+  it("no direct @ai-sdk/ imports outside src/lib/ai-models.ts", () => {
+    const srcDir = resolveFromRoot("src");
+    const appDir = resolveFromRoot("app");
+    const allFiles = [
+      ...collectFiles(srcDir, [".ts", ".tsx"]),
+      ...collectFiles(appDir, [".ts", ".tsx"]),
+    ];
+
+    const violations: string[] = [];
+
+    for (const file of allFiles) {
+      const relativePath = path.relative(ROOT, file);
+
+      // Skip allowed files
+      if (ALLOWED_FILES.has(relativePath)) continue;
+
+      // Skip test files
+      if (relativePath.includes(".test.") || relativePath.includes("__test__")) continue;
+
+      const source = readFile(file);
+      const lines = source.split("\n");
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Check for @ai-sdk/ import
+        if (AI_SDK_IMPORT_PATTERN.test(line)) {
+          // Allow type-only imports (they don't affect runtime behaviour)
+          if (TYPE_ONLY_IMPORT_PATTERN.test(line)) continue;
+
+          violations.push(`${relativePath}:${i + 1}: ${line.trim()}`);
+        }
+      }
+    }
+
+    expect(
+      violations,
+      `Direct @ai-sdk/ imports found outside src/lib/ai-models.ts.\n` +
+        `All AI calls must go through src/lib/ai-models.ts for tracing and model aliasing.\n` +
+        `Violations:\n${violations.join("\n")}`,
+    ).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9. Soft-delete pattern — no hard deletes
+// ---------------------------------------------------------------------------
+
+describe("Soft-delete pattern enforcement", () => {
+  /**
+   * The codebase uses soft-delete everywhere: records get a deletedAt timestamp
+   * instead of being removed from the database. Direct `.delete()` calls on
+   * Drizzle tables are forbidden unless they set deletedAt.
+   *
+   * We look for patterns like `db.delete(tableName)` or `.delete(tableName)`
+   * and flag them as potential hard-delete violations. GDPR erase functions
+   * are the only legitimate exception (they perform permanent data removal
+   * by legal requirement).
+   */
+  it("no hard db.delete() calls in services (except known exceptions)", () => {
+    const servicesDir = resolveFromRoot("src", "services");
+    const serviceFiles = collectFiles(servicesDir, [".ts"]);
+
+    // Legitimate hard-delete exceptions:
+    //   - gdpr.ts: legally required permanent data erasure (GDPR Art. 17)
+    //   - api-keys.ts: credential rotation (no soft-delete needed for ephemeral keys)
+    //   - chat-sessions.ts: session cleanup (messages are transient, not business data)
+    //   - matches.ts: match removal (business decision to fully retract)
+    const EXCEPTIONS = new Set([
+      "src/services/gdpr.ts",
+      "src/services/api-keys.ts",
+      "src/services/chat-sessions.ts",
+      "src/services/matches.ts",
+    ]);
+
+    const violations: string[] = [];
+
+    // Pattern: specifically `db.delete(tableName)` or `tx.delete(tableName)` —
+    // Drizzle ORM hard-delete calls. This avoids false positives from in-memory
+    // Map/Set/Cache .delete() calls.
+    const hardDeletePattern = /\b(?:db|tx)\.delete\s*\(/;
+
+    for (const file of serviceFiles) {
+      const relativePath = path.relative(ROOT, file);
+      if (EXCEPTIONS.has(relativePath)) continue;
+
+      const source = readFile(file);
+      const lines = source.split("\n");
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Skip comments
+        if (line.trimStart().startsWith("//") || line.trimStart().startsWith("*")) continue;
+
+        if (hardDeletePattern.test(line)) {
+          // Check surrounding context for deletedAt usage (soft-delete is OK)
+          const context = lines.slice(Math.max(0, i - 3), i + 4).join("\n");
+          if (context.includes("deletedAt")) continue;
+
+          violations.push(`${relativePath}:${i + 1}: ${line.trim()}`);
+        }
+      }
+    }
+
+    expect(
+      violations,
+      `Hard db.delete() calls found in services (use soft-delete with deletedAt instead).\n` +
+        `Known exceptions: ${[...EXCEPTIONS].join(", ")}.\n` +
+        `Violations:\n${violations.join("\n")}`,
+    ).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 10. Zod validation in API routes
+// ---------------------------------------------------------------------------
+
+describe("Zod validation at API boundaries", () => {
+  const apiDir = resolveFromRoot("app", "api");
+
+  /**
+   * Routes that legitimately do not need Zod validation:
+   *   - GET-only routes that take no body (e.g. health check, list endpoints)
+   *   - Revalidation webhooks
+   *   - SSE/streaming endpoints
+   *   - OpenAPI spec
+   */
+  const EXEMPT_ROUTES = new Set([
+    "app/api/gezondheid/route.ts",
+    "app/api/revalidate/route.ts",
+    "app/api/openapi/route.ts",
+    "app/api/debug-error/route.ts",
+    "app/api/agent-events/route.ts",
+    "app/api/agent-events/stats/route.ts",
+    "app/api/mcp/route.ts",
+    "app/api/chat/route.ts",
+    "app/api/livekit-token/route.ts",
+    "app/api/esco/observability/route.ts",
+    "app/api/whatsapp/status/route.ts",
+    // File upload routes use FormData, not JSON — validated at the service layer
+    "app/api/cv-upload/route.ts",
+    "app/api/cv-analyse/route.ts",
+    // Internal admin/infra routes
+    "app/api/embeddings/backfill/route.ts",
+    "app/api/autopilot/findings/[id]/route.ts",
+    // Platform activation is a simple slug-based trigger
+    "app/api/platforms/[slug]/activate/route.ts",
+  ]);
+
+  it("API routes with POST/PUT/PATCH handlers use Zod validation", () => {
+    function collectRouteFiles(dir: string): string[] {
+      const results: string[] = [];
+      if (!fs.existsSync(dir)) return results;
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (["node_modules", ".next"].includes(entry.name)) continue;
+          results.push(...collectRouteFiles(full));
+        } else if (entry.name === "route.ts") {
+          results.push(full);
+        }
+      }
+      return results;
+    }
+
+    const routeFiles = collectRouteFiles(apiDir);
+    const violations: string[] = [];
+
+    for (const file of routeFiles) {
+      const relativePath = path.relative(ROOT, file);
+      if (EXEMPT_ROUTES.has(relativePath)) continue;
+
+      const source = readFile(file);
+
+      // Check if route has mutation handlers (POST, PUT, PATCH, DELETE)
+      const hasMutationHandler = /export\s+(async\s+)?function\s+(POST|PUT|PATCH|DELETE)\b/.test(
+        source,
+      );
+
+      if (!hasMutationHandler) continue;
+
+      // Check for Zod usage: import from zod, .parse(, .safeParse(, schema reference
+      const hasZodValidation =
+        source.includes("from \"zod\"") ||
+        source.includes("from 'zod'") ||
+        source.includes(".parse(") ||
+        source.includes(".safeParse(") ||
+        // Also accept importing a schema from src/schemas/
+        /from\s+['"]@?\/?(src\/)?schemas\//.test(source) ||
+        // Or inline z.object usage
+        /z\.(object|string|array|union|enum)\s*\(/.test(source);
+
+      if (!hasZodValidation) {
+        violations.push(relativePath);
+      }
+    }
+
+    expect(
+      violations,
+      `API routes with mutation handlers (POST/PUT/PATCH/DELETE) must use Zod validation.\n` +
+        `Missing validation in:\n${violations.map((v) => `  - ${v}`).join("\n")}\n\n` +
+        `Add Zod schemas to src/schemas/ and validate request bodies.`,
+    ).toHaveLength(0);
+  });
+});
