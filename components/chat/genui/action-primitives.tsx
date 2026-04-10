@@ -1,6 +1,8 @@
 "use client";
 import { type Check, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { genuiTouchTargetClassName } from "./genui-utils";
 
 export type ActionState = "idle" | "loading" | "success" | "error";
 
@@ -48,8 +50,10 @@ export function ActionButton({
   onClick: () => void;
   disabled?: boolean;
 }) {
-  const base =
-    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors";
+  const base = cn(
+    "inline-flex items-center justify-center gap-2 transition-colors",
+    genuiTouchTargetClassName,
+  );
   const variants = {
     primary: "bg-primary text-primary-foreground hover:bg-primary/90",
     destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
@@ -60,9 +64,9 @@ export function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`${base} ${variants[variant]} disabled:opacity-50`}
+      className={cn(base, variants[variant], "disabled:opacity-50")}
     >
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className="h-4 w-4" />
       {label}
     </button>
   );

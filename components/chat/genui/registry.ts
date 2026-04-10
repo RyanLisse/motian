@@ -1,22 +1,32 @@
 import { type ComponentType, lazy } from "react";
+import {
+  InterviewPlannedCard,
+  MatchApprovedCard,
+  MatchCreatedCard,
+  MatchRejectedCard,
+  MessageSentCard,
+  StageUpdateCard,
+} from "./action-card";
+import { KandidaatGenUICard } from "./kandidaat-card";
+import { KandidaatListCard } from "./kandidaat-list";
+import { OpdrachtGenUICard } from "./opdracht-card";
+import { OpdrachtListCard } from "./opdracht-list";
 
 export type GenUIEntry = {
-  component: React.LazyExoticComponent<ComponentType<{ output: unknown }>>;
+  component:
+    | ComponentType<{ output: unknown }>
+    | React.LazyExoticComponent<ComponentType<{ output: unknown }>>;
   label: string;
 };
 
 export const GENUI_REGISTRY: Record<string, GenUIEntry> = {
   // Existing detail cards
   getOpdrachtDetail: {
-    component: lazy(() =>
-      import("./opdracht-card").then((m) => ({ default: m.OpdrachtGenUICard })),
-    ),
+    component: OpdrachtGenUICard,
     label: "Opdracht",
   },
   getKandidaatDetail: {
-    component: lazy(() =>
-      import("./kandidaat-card").then((m) => ({ default: m.KandidaatGenUICard })),
-    ),
+    component: KandidaatGenUICard,
     label: "Kandidaat",
   },
   getMatchDetail: {
@@ -25,13 +35,11 @@ export const GENUI_REGISTRY: Record<string, GenUIEntry> = {
   },
   // New search result lists
   queryOpdrachten: {
-    component: lazy(() => import("./opdracht-list").then((m) => ({ default: m.OpdrachtListCard }))),
+    component: OpdrachtListCard,
     label: "Opdrachten",
   },
   zoekKandidaten: {
-    component: lazy(() =>
-      import("./kandidaat-list").then((m) => ({ default: m.KandidaatListCard })),
-    ),
+    component: KandidaatListCard,
     label: "Kandidaten",
   },
   zoekMatches: {
@@ -69,31 +77,27 @@ export const GENUI_REGISTRY: Record<string, GenUIEntry> = {
   },
   // Action cards
   maakMatchAan: {
-    component: lazy(() => import("./action-card").then((m) => ({ default: m.MatchCreatedCard }))),
+    component: MatchCreatedCard,
     label: "Match aangemaakt",
   },
   keurMatchGoed: {
-    component: lazy(() => import("./action-card").then((m) => ({ default: m.MatchApprovedCard }))),
+    component: MatchApprovedCard,
     label: "Match goedgekeurd",
   },
   wijsMatchAf: {
-    component: lazy(() => import("./action-card").then((m) => ({ default: m.MatchRejectedCard }))),
+    component: MatchRejectedCard,
     label: "Match afgewezen",
   },
   updateSollicitatieFase: {
-    component: lazy(() => import("./action-card").then((m) => ({ default: m.StageUpdateCard }))),
+    component: StageUpdateCard,
     label: "Fase bijgewerkt",
   },
   planInterview: {
-    component: lazy(() =>
-      import("./action-card").then((m) => ({
-        default: m.InterviewPlannedCard,
-      })),
-    ),
+    component: InterviewPlannedCard,
     label: "Interview gepland",
   },
   stuurBericht: {
-    component: lazy(() => import("./action-card").then((m) => ({ default: m.MessageSentCard }))),
+    component: MessageSentCard,
     label: "Bericht verstuurd",
   },
   renderCanvas: {

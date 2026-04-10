@@ -2,7 +2,12 @@
 import { Briefcase } from "lucide-react";
 import { useState } from "react";
 import { JobCard } from "@/components/job-card";
-import { getToolErrorMessage, isToolError, toDate } from "./genui-utils";
+import {
+  genuiInlineActionClassName,
+  getToolErrorMessage,
+  isToolError,
+  toDate,
+} from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type OpdrachtItem = {
@@ -84,7 +89,7 @@ export function OpdrachtListCard({ output }: { output: unknown }) {
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="text-xs text-primary hover:underline"
+          className={genuiInlineActionClassName}
         >
           + {output.opdrachten.length - MAX_VISIBLE} meer tonen
         </button>

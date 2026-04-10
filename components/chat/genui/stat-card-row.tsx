@@ -30,7 +30,7 @@ export const StatCardRow = memo(function StatCardRow({ output }: { output: unkno
           </span>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {output.stats.map((stat) => (
           <div key={stat.label} className="rounded-lg border border-border bg-card p-3">
             <p className="text-xs text-muted-foreground truncate">{stat.label}</p>

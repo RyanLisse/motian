@@ -1,6 +1,6 @@
 "use client";
 import { BarChart3 } from "lucide-react";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -15,7 +15,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { getToolErrorMessage, isToolError } from "./genui-utils";
+import { GenUILoadingSkeleton } from "./genui-loading-skeleton";
+import { getToolErrorMessage, isToolError, useGenUIMobile } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type ChartDataItem = Record<string, unknown>;
@@ -65,6 +66,13 @@ function getKeys(data: AnalyseOutput) {
 }
 
 export const InsightChart = memo(function InsightChart({ output }: { output: unknown }) {
+  const isMobile = useGenUIMobile();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (isToolError(output))
     return <ToolErrorBlock message={getToolErrorMessage(output, "Analyse niet beschikbaar")} />;
   if (!isAnalyseOutput(output)) return null;
@@ -79,15 +87,27 @@ export const InsightChart = memo(function InsightChart({ output }: { output: unk
     );
   }
 
+  if (!mounted) {
+    return (
+      <GenUILoadingSkeleton
+        label={output.title ?? "Analyse"}
+        className={isMobile ? "min-h-[220px]" : "min-h-[260px]"}
+        rows={3}
+      />
+    );
+  }
+
   const chartType = inferChartType(output);
   const { xKey, yKey } = getKeys(output);
+  const chartHeight = isMobile ? 200 : 240;
+  const axisFontSize = isMobile ? 10 : 11;
 
   return (
     <div className="my-2 rounded-lg border border-border bg-card p-4">
       {output.title && (
         <h4 className="text-sm font-semibold text-foreground mb-3">{output.title}</h4>
       )}
-      <div style={{ width: "100%", height: 240 }}>
+      <div className="min-w-0" style={{ width: "100%", height: chartHeight }}>
         <ResponsiveContainer width="100%" height="100%">
           {chartType === "pie" ? (
             <PieChart>
@@ -97,7 +117,7 @@ export const InsightChart = memo(function InsightChart({ output }: { output: unk
                 nameKey={xKey}
                 cx="50%"
                 cy="50%"
-                outerRadius={80}
+                outerRadius={isMobile ? 60 : 80}
                 label={(entry) => String((entry as unknown as Record<string, unknown>)[xKey])}
               >
                 {output.data.map((entry, i) => (
@@ -109,16 +129,24 @@ export const InsightChart = memo(function InsightChart({ output }: { output: unk
           ) : chartType === "line" ? (
             <LineChart data={output.data}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey={xKey} tick={{ fontSize: 11 }} className="text-muted-foreground" />
-              <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+              <XAxis
+                dataKey={xKey}
+                tick={{ fontSize: axisFontSize }}
+                className="text-muted-foreground"
+              />
+              <YAxis tick={{ fontSize: axisFontSize }} className="text-muted-foreground" />
               <Tooltip />
               <Line type="monotone" dataKey={yKey} stroke="#6366f1" strokeWidth={2} dot={false} />
             </LineChart>
           ) : (
             <BarChart data={output.data}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey={xKey} tick={{ fontSize: 11 }} className="text-muted-foreground" />
-              <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+              <XAxis
+                dataKey={xKey}
+                tick={{ fontSize: axisFontSize }}
+                className="text-muted-foreground"
+              />
+              <YAxis tick={{ fontSize: axisFontSize }} className="text-muted-foreground" />
               <Tooltip />
               <Bar dataKey={yKey} fill="#6366f1" radius={[4, 4, 0, 0]} />
             </BarChart>

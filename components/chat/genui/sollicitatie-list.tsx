@@ -2,7 +2,13 @@
 import { FileText, Send } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { getToolErrorMessage, isToolError, stageLabels } from "./genui-utils";
+import {
+  genuiInlineActionClassName,
+  genuiMobileWrapClassName,
+  getToolErrorMessage,
+  isToolError,
+  stageLabels,
+} from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type SollicitatieItem = {
@@ -74,14 +80,14 @@ export function SollicitatieListCard({ output }: { output: unknown }) {
       </div>
       <div className="space-y-1.5">
         {visible.map((item) => (
-          <Link key={item.id} href={`/sollicitaties/${item.id}`}>
+          <Link key={item.id} href={`/sollicitaties/${item.id}`} className="block">
             <div className="rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
                   <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${stageColors[item.stage] ?? stageColors.new}`}
                     >
@@ -95,12 +101,12 @@ export function SollicitatieListCard({ output }: { output: unknown }) {
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
                     {item.candidateId && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className={`text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
                         Kandidaat {item.candidateId.slice(0, 8)}...
                       </span>
                     )}
                     {item.jobId && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className={`text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
                         Opdracht {item.jobId.slice(0, 8)}...
                       </span>
                     )}
@@ -118,7 +124,7 @@ export function SollicitatieListCard({ output }: { output: unknown }) {
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="text-xs text-primary hover:underline"
+          className={genuiInlineActionClassName}
         >
           + {output.sollicitaties.length - MAX_VISIBLE} meer tonen
         </button>

@@ -2,7 +2,14 @@
 import { GitCompareArrows, Target } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { getToolErrorMessage, isToolError, matchStatusLabels } from "./genui-utils";
+import {
+  genuiDesktopClampClassName,
+  genuiInlineActionClassName,
+  genuiMobileWrapClassName,
+  getToolErrorMessage,
+  isToolError,
+  matchStatusLabels,
+} from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type MatchItem = {
@@ -70,23 +77,23 @@ export function MatchListCard({ output }: { output: unknown }) {
       </div>
       <div className="space-y-1.5">
         {visible.map((item) => (
-          <Link key={item.id} href={`/kandidaten/${item.candidateId}/matches`}>
+          <Link key={item.id} href={`/kandidaten/${item.candidateId}/matches`} className="block">
             <div className="rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer">
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-current">
                   <span className={`text-sm font-bold ${scoreColor(item.matchScore)}`}>
                     {Math.round(item.matchScore)}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Target className="h-3 w-3 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className={`text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
                       Kandidaat {item.candidateId.slice(0, 8)}... &rarr; Opdracht{" "}
                       {item.jobId.slice(0, 8)}...
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColors[item.status] ?? statusColors.pending}`}
                     >
@@ -99,7 +106,9 @@ export function MatchListCard({ output }: { output: unknown }) {
                     )}
                   </div>
                   {item.reasoning && (
-                    <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1">
+                    <p
+                      className={`mt-1 text-[11px] text-muted-foreground ${genuiDesktopClampClassName}`}
+                    >
                       {item.reasoning}
                     </p>
                   )}
@@ -113,7 +122,7 @@ export function MatchListCard({ output }: { output: unknown }) {
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="text-xs text-primary hover:underline"
+          className={genuiInlineActionClassName}
         >
           + {output.matches.length - MAX_VISIBLE} meer tonen
         </button>

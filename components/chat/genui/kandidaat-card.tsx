@@ -2,7 +2,7 @@
 
 import { User } from "lucide-react";
 import Link from "next/link";
-import { getToolErrorMessage, isToolError } from "./genui-utils";
+import { genuiMobileWrapClassName, getToolErrorMessage, isToolError } from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type CandidateOutput = {
@@ -21,19 +21,25 @@ export function KandidaatGenUICard({ output }: { output: unknown }) {
     return <ToolErrorBlock message={getToolErrorMessage(output, "Kandidaat niet gevonden")} />;
   if (!isCandidateOutput(output)) return null;
   return (
-    <Link href={`/kandidaten/${output.id}`}>
+    <Link href={`/kandidaten/${output.id}`} className="block">
       <div className="my-1.5 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
             <User className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground truncate">{output.name}</p>
+            <p className={`text-sm font-semibold text-foreground ${genuiMobileWrapClassName}`}>
+              {output.name}
+            </p>
             {output.role && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{output.role}</p>
+              <p className={`mt-0.5 text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
+                {output.role}
+              </p>
             )}
             {output.email && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{output.email}</p>
+              <p className={`mt-0.5 text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
+                {output.email}
+              </p>
             )}
           </div>
         </div>

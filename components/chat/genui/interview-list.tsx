@@ -2,7 +2,13 @@
 import { Calendar, Clock, MapPin, Video } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { formatDateTime, getToolErrorMessage, isToolError } from "./genui-utils";
+import {
+  formatDateTime,
+  genuiInlineActionClassName,
+  genuiMobileWrapClassName,
+  getToolErrorMessage,
+  isToolError,
+} from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type InterviewItem = {
@@ -87,17 +93,19 @@ export function InterviewListCard({ output }: { output: unknown }) {
       </div>
       <div className="space-y-1.5">
         {visible.map((item) => (
-          <Link key={item.id} href={`/interviews/${item.id}`}>
+          <Link key={item.id} href={`/interviews/${item.id}`} className="block">
             <div className="rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
                   {typeIcon(item.type)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-2">
                       {item.type && (
-                        <span className="text-xs font-medium text-foreground">
+                        <span
+                          className={`text-xs font-medium text-foreground ${genuiMobileWrapClassName}`}
+                        >
                           {typeLabels[item.type] ?? item.type}
                         </span>
                       )}
@@ -112,7 +120,7 @@ export function InterviewListCard({ output }: { output: unknown }) {
                     {(() => {
                       const dt = formatDateTime(item.scheduledAt);
                       return dt ? (
-                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        <span className="text-[10px] text-muted-foreground sm:whitespace-nowrap">
                           {dt}
                         </span>
                       ) : null;
@@ -120,10 +128,14 @@ export function InterviewListCard({ output }: { output: unknown }) {
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
                     {item.interviewer && (
-                      <span className="text-xs text-muted-foreground">{item.interviewer}</span>
+                      <span className={`text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
+                        {item.interviewer}
+                      </span>
                     )}
                     {item.location && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span
+                        className={`flex items-center gap-1 text-xs text-muted-foreground ${genuiMobileWrapClassName}`}
+                      >
                         <MapPin className="h-2.5 w-2.5" />
                         {item.location}
                       </span>
@@ -139,7 +151,7 @@ export function InterviewListCard({ output }: { output: unknown }) {
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="text-xs text-primary hover:underline"
+          className={genuiInlineActionClassName}
         >
           + {output.interviews.length - MAX_VISIBLE} meer tonen
         </button>
