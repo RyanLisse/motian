@@ -577,9 +577,7 @@ describe("AI SDK import discipline", () => {
   const AI_SDK_IMPORT_PATTERN = /from\s+['"]@ai-sdk\/[^'"]+['"]/;
   const TYPE_ONLY_IMPORT_PATTERN = /import\s+type\s+.*from\s+['"]@ai-sdk\/[^'"]+['"]/;
 
-  const ALLOWED_FILES = new Set([
-    "src/lib/ai-models.ts",
-  ]);
+  const ALLOWED_FILES = new Set(["src/lib/ai-models.ts"]);
 
   it("no direct @ai-sdk/ imports outside src/lib/ai-models.ts", () => {
     const srcDir = resolveFromRoot("src");
@@ -764,7 +762,7 @@ describe("Zod validation at API boundaries", () => {
 
       // Check for Zod usage: import from zod, .parse(, .safeParse(, schema reference
       const hasZodValidation =
-        source.includes("from \"zod\"") ||
+        source.includes('from "zod"') ||
         source.includes("from 'zod'") ||
         source.includes(".parse(") ||
         source.includes(".safeParse(") ||

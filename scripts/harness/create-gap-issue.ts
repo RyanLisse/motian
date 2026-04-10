@@ -74,7 +74,7 @@ function parseArgs(): Args {
 
 function buildBody(args: Args): string {
   const deadline = new Date(Date.now() + SLA_HOURS * 60 * 60 * 1000);
-  const deadlineStr = deadline.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  const deadlineStr = `${deadline.toISOString().replace("T", " ").slice(0, 19)} UTC`;
 
   const lines: string[] = [
     "## Harness Gap",

@@ -176,10 +176,9 @@ describe("Tool parity across agent surfaces", () => {
     // At minimum, voice should cover core domains
     const coreDomains = ["jobs", "candidates", "matches"];
     const missingCore = coreDomains.filter((d) => !voiceDomains.has(d));
-    expect(
-      missingCore,
-      `Voice agent missing core domains: ${missingCore.join(", ")}`,
-    ).toHaveLength(0);
+    expect(missingCore, `Voice agent missing core domains: ${missingCore.join(", ")}`).toHaveLength(
+      0,
+    );
   });
 
   it("voice covers at least 50% of chat tool count", () => {
@@ -191,10 +190,6 @@ describe("Tool parity across agent surfaces", () => {
   });
 
   it("prints full parity report", () => {
-    const chatSet = new Set(chatTools);
-    const mcpSet = new Set(mcpTools);
-    const voiceSet = new Set(voiceTools);
-
     const report: string[] = [];
     report.push(`Chat: ${chatTools.length} tools`);
     report.push(`MCP:  ${mcpTools.length} tools`);

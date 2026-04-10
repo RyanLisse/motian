@@ -37,7 +37,9 @@ function resolveChangedFiles(projectRoot: string): string[] {
       .map((l) => l.trim())
       .filter(Boolean);
     if (lines.length > 0) {
-      console.error(`[docs-drift-check] Gewijzigde bestanden bepaald via git diff ${diffTarget}...HEAD`);
+      console.error(
+        `[docs-drift-check] Gewijzigde bestanden bepaald via git diff ${diffTarget}...HEAD`,
+      );
       return lines;
     }
   } catch {
