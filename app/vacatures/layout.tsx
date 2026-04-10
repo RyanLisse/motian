@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { listJobsPage } from "@/src/services/jobs/page-query";
 import { getSidebarMetadata, refreshSidebarMetadata } from "@/src/services/sidebar-metadata";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const EMPTY_SIDEBAR_METADATA: Omit<OpdrachtenSidebarProps, "jobs"> = {

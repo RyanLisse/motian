@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { candidateSkills, candidates, db, desc, escoSkills, isNull, sql } from "@/src/db";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 interface SkillRow {
   uri: string;
