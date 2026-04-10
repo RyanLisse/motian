@@ -18,6 +18,8 @@ interface JobCardProps {
     applicationDeadline: Date | null;
     postedAt: Date | null;
   };
+  /** Hint that the image is above the fold and should be loaded eagerly */
+  priority?: boolean;
   /** Number of candidates in pipeline for this job */
   pipelineCount?: number;
 }
@@ -28,7 +30,7 @@ const arrangementLabels: Record<string, string> = {
   remote: "Remote",
 };
 
-export function JobCard({ job, pipelineCount }: JobCardProps) {
+export function JobCard({ job, priority, pipelineCount }: JobCardProps) {
   // Deadline urgency: within 3 days = urgent
   const deadlineUrgent =
     job.applicationDeadline &&
@@ -47,6 +49,8 @@ export function JobCard({ job, pipelineCount }: JobCardProps) {
               companyName={job.company}
               size={40}
               sizes="40px"
+              priority={priority}
+              blur
             />
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">

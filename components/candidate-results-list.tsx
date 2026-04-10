@@ -29,7 +29,13 @@ export type CandidateResultsListItem = {
   photoUrl: string | null;
 };
 
-function CandidateResultCard({ candidate }: { candidate: CandidateResultsListItem }) {
+function CandidateResultCard({
+  candidate,
+  priority,
+}: {
+  candidate: CandidateResultsListItem;
+  priority?: boolean;
+}) {
   const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
 
   return (
@@ -44,6 +50,7 @@ function CandidateResultCard({ candidate }: { candidate: CandidateResultsListIte
                   alt={candidate.name}
                   width={32}
                   height={32}
+                  priority={priority}
                   className="h-8 w-8 rounded-full object-cover shrink-0"
                 />
               ) : (
@@ -136,15 +143,17 @@ export function CandidateResultsList({ candidates }: { candidates: CandidateResu
         scrollMode="parent"
         gap={12}
         className="min-h-0"
-        renderItem={(candidate) => <CandidateResultCard candidate={candidate} />}
+        renderItem={(candidate, index) => (
+          <CandidateResultCard candidate={candidate} priority={index < 3} />
+        )}
       />
     );
   }
 
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {candidates.map((candidate) => (
-        <CandidateResultCard key={candidate.id} candidate={candidate} />
+      {candidates.map((candidate, index) => (
+        <CandidateResultCard key={candidate.id} candidate={candidate} priority={index < 3} />
       ))}
     </div>
   );

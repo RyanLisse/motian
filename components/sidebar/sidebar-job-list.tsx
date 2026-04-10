@@ -22,12 +22,13 @@ const OVERVIEW_ITEM_ESTIMATE = 252;
 export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: SidebarJobListProps) {
   const shouldVirtualize = jobs.length > VIRTUALIZATION_THRESHOLD;
 
-  const renderJob = (job: SidebarJob) => (
+  const renderJob = (job: SidebarJob, index?: number) => (
     <JobListItem
       key={job.id}
       job={job}
       isActive={job.id === activeId}
       variant={variant === "overview" ? "card" : "compact"}
+      priority={index != null && index < 3}
       hasPipeline={job.hasPipeline}
       pipelineCount={job.pipelineCount}
       href={buildDetailHref(job.id)}
@@ -45,7 +46,7 @@ export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: Sid
         gap={variant === "overview" ? 16 : 0}
         scrollMode="self"
         className={variant === "compact" ? "bg-[#050506]" : "min-w-0"}
-        renderItem={(job) => renderJob(job)}
+        renderItem={(job, index) => renderJob(job, index)}
       />
     );
   }
@@ -56,7 +57,7 @@ export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: Sid
         {jobs.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-white/45">Geen vacatures gevonden</div>
         ) : (
-          jobs.map((job) => renderJob(job))
+          jobs.map((job, index) => renderJob(job, index))
         )}
       </ScrollArea>
     );
@@ -69,7 +70,9 @@ export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: Sid
           Geen vacatures gevonden voor deze filters.
         </div>
       ) : (
-        <div className="space-y-3 pb-4 sm:space-y-4">{jobs.map((job) => renderJob(job))}</div>
+        <div className="space-y-3 pb-4 sm:space-y-4">
+          {jobs.map((job, index) => renderJob(job, index))}
+        </div>
       )}
     </ScrollArea>
   );

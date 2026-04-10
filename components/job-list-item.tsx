@@ -30,6 +30,8 @@ interface JobListItemProps {
   };
   isActive: boolean;
   variant?: "compact" | "card";
+  /** Hint that the image is above the fold and should be loaded eagerly */
+  priority?: boolean;
   /** Number of candidates in pipeline for this job */
   pipelineCount?: number;
   /** Whether this job already has workflow history, even when no active pipeline remains */
@@ -109,6 +111,7 @@ export function JobListItem({
   job,
   isActive,
   variant = "compact",
+  priority,
   pipelineCount,
   hasPipeline,
   href,
@@ -140,6 +143,8 @@ export function JobListItem({
                   companyName={job.company}
                   size={44}
                   sizes="44px"
+                  priority={priority}
+                  blur
                 />
                 <div className="min-w-0">
                   <h3 className="text-base font-semibold leading-tight text-foreground line-clamp-2 wrap-break-word sm:text-lg">
@@ -251,6 +256,8 @@ export function JobListItem({
               companyName={job.company}
               size={32}
               sizes="32px"
+              priority={priority}
+              blur
               className="rounded-md"
               imageClassName="p-1"
             />
