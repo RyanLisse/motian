@@ -40,9 +40,9 @@ describe("Candidate deduplication", () => {
     expect(source).toContain("existing.location");
   });
 
-  it("enrichCandidateFromCV refreshes candidate embeddings after CV updates", () => {
+  it("enrichCandidateFromCV queues deferred candidate indexing after CV updates", () => {
     const source = readFile("src/services/candidates.ts");
-    expect(source).toContain('const { embedCandidate } = await import("./embedding")');
-    expect(source).toContain("await embedCandidate(candidate.id)");
+    expect(source).toContain("void queueDeferredEmbeddingSync({");
+    expect(source).toContain('source: "candidate:cv-enrichment"');
   });
 });

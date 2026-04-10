@@ -303,6 +303,7 @@ export async function loadJobPageRowsByIds(ids: string[]) {
       contractType: jobs.contractType,
       applicationDeadline: jobs.applicationDeadline,
       pipelineCount: sql<number>`coalesce(${pipelineCounts.pipelineCount}, 0)::int`,
+      isIndexing: sql<boolean>`${jobs.embedding} is null`,
     })
     .from(jobs)
     .leftJoin(pipelineCounts, sql`${pipelineCounts.jobId} = ${jobs.id}`)

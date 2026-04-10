@@ -1,4 +1,4 @@
-import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
+import { Euro, LoaderCircle, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AddCandidateWizard } from "@/components/add-candidate-wizard";
@@ -210,6 +210,7 @@ async function KandidatenContent({ searchParams }: Props) {
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {candidateRows.map((candidate) => {
               const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
+              const isIndexing = candidate.embedding == null;
 
               return (
                 <DraggableCandidate
@@ -235,6 +236,15 @@ async function KandidatenContent({ searchParams }: Props) {
                             className="shrink-0 text-[10px] capitalize border-border text-muted-foreground bg-transparent"
                           >
                             {candidate.source}
+                          </Badge>
+                        )}
+                        {isIndexing && (
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 flex items-center gap-1 text-[10px] border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                          >
+                            <LoaderCircle className="h-3 w-3 animate-spin" />
+                            Indexeren…
                           </Badge>
                         )}
                       </div>

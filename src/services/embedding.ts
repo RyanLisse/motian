@@ -6,6 +6,7 @@ import {
   tracedEmbedMany as embedMany,
 } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
+import { upsertCandidatesByIds, upsertJobsByIds } from "./search-index/typesense-sync";
 
 // ========== Config ==========
 
@@ -23,6 +24,22 @@ const QUERY_EMBEDDING_CACHE_MAX_ENTRIES = 256;
 type CachedQueryEmbedding = {
   embedding: number[];
   expiresAt: number;
+};
+
+export type EmbeddingStatus = "pending" | "ready";
+
+export type DeferredEmbeddingEntityType = "candidate" | "job";
+
+export type DeferredEmbeddingSyncPayload = {
+  entityType: DeferredEmbeddingEntityType;
+  entityId: string;
+  source?: string;
+};
+
+export type DeferredEmbeddingSyncResult = DeferredEmbeddingSyncPayload & {
+  embedded: boolean;
+  indexed: boolean;
+  embeddingStatus: EmbeddingStatus;
 };
 
 const queryEmbeddingCache = new Map<string, CachedQueryEmbedding>();
@@ -95,6 +112,39 @@ function setCachedQueryEmbedding(key: string, embedding: number[]) {
     if (!oldestKey) break;
     queryEmbeddingCache.delete(oldestKey);
   }
+}
+
+export function getEmbeddingStatusFromValue(embedding: unknown): EmbeddingStatus {
+  return embedding == null ? "pending" : "ready";
+}
+
+export function withPendingEmbeddingStatus<T extends Record<string, unknown>>(
+  record: T,
+): T & { embeddingStatus: "pending" } {
+  return {
+    ...record,
+    embeddingStatus: "pending",
+  };
+}
+
+async function getCandidateEmbeddingStatus(candidateId: string): Promise<EmbeddingStatus> {
+  const [row] = await db
+    .select({ embedding: candidates.embedding })
+    .from(candidates)
+    .where(and(eq(candidates.id, candidateId), isNull(candidates.deletedAt)))
+    .limit(1);
+
+  return getEmbeddingStatusFromValue(row?.embedding ?? null);
+}
+
+async function getJobEmbeddingStatus(jobId: string): Promise<EmbeddingStatus> {
+  const [row] = await db
+    .select({ embedding: jobs.embedding })
+    .from(jobs)
+    .where(eq(jobs.id, jobId))
+    .limit(1);
+
+  return getEmbeddingStatusFromValue(row?.embedding ?? null);
 }
 
 // ========== Text Preparation ==========
@@ -328,6 +378,35 @@ export async function embedCandidate(candidateId: string): Promise<boolean> {
     .where(eq(candidates.id, candidateId));
 
   return true;
+}
+
+export async function runDeferredEmbeddingSync(
+  payload: DeferredEmbeddingSyncPayload,
+): Promise<DeferredEmbeddingSyncResult> {
+  switch (payload.entityType) {
+    case "candidate": {
+      const embedded = await embedCandidate(payload.entityId);
+      await upsertCandidatesByIds([payload.entityId]);
+
+      return {
+        ...payload,
+        embedded,
+        indexed: true,
+        embeddingStatus: await getCandidateEmbeddingStatus(payload.entityId),
+      };
+    }
+    case "job": {
+      const embedded = await embedJob(payload.entityId);
+      await upsertJobsByIds([payload.entityId]);
+
+      return {
+        ...payload,
+        embedded,
+        indexed: true,
+        embeddingStatus: await getJobEmbeddingStatus(payload.entityId),
+      };
+    }
+  }
 }
 
 // ========== Backfill Candidate Embeddings ==========

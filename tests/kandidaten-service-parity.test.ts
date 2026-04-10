@@ -22,12 +22,12 @@ describe("kandidaten shared service wiring", () => {
     expect(source).toContain("countCandidates({");
   });
 
-  it("awaits candidate derived sync inline (no setTimeout — safe for serverless)", () => {
+  it("queues candidate embedding sync instead of awaiting it inline", () => {
     const source = readFile("src", "services", "candidates.ts");
 
     expect(source).not.toContain("setTimeout");
-    expect(source).not.toContain("scheduleCandidateDerivedSync");
-    expect(source).toContain("async function runCandidateDerivedSync(candidateId: string)");
-    expect(source).toContain("await runCandidateDerivedSync(candidate.id)");
+    expect(source).not.toContain("runCandidateDerivedSync");
+    expect(source).toContain("void queueDeferredEmbeddingSync({");
+    expect(source).toContain('entityType: "candidate"');
   });
 });
