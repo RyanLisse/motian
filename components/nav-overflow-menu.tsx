@@ -45,7 +45,7 @@ export function OverflowNavMenu({ variant = "sidebar", className }: OverflowNavM
             variant="outline"
             size="sm"
             className={cn(
-              "h-10 rounded-xl border border-border bg-background/95 px-3 shadow-sm",
+              "h-11 rounded-2xl border border-border bg-background/95 px-3 shadow-sm",
               isActive && "border-primary/40 bg-primary/10 text-primary",
               className,
             )}

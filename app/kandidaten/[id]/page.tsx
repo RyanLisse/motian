@@ -207,7 +207,7 @@ function getLanguageSkills(languageSkills: unknown): Array<{ language: string; l
 
 function KandidaatDetailSkeleton() {
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <Skeleton className="h-5 w-64" />
         <div className="flex items-start gap-4">
@@ -454,7 +454,7 @@ async function KandidaatDetailContent({ params }: Props) {
 
   return (
     <CvDropZone candidateId={candidate.id}>
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-6 py-6">
           {/* Breadcrumb + delete */}
           <div className="flex items-center justify-between mb-6">

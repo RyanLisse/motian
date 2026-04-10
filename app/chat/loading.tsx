@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ChatLoading() {
   return (
-    <div className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col overflow-hidden md:h-dvh">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="border-b border-border px-4 py-3">
           <Skeleton className="h-9 w-48 bg-muted" />

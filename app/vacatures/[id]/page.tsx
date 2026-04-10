@@ -192,7 +192,7 @@ function SectionBlock({ title, items }: { title: string; items: string[] }) {
 
 function OpdrachtDetailSkeleton() {
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <Skeleton className="h-5 w-64" />
         <div className="space-y-2">

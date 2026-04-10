@@ -58,6 +58,8 @@
   --shadow-2xl: 0px 4px 10px 0px hsl(0 0% 0% / 0.25);
   --tracking-normal: 0.01em;
   --spacing: 0.25rem;
+  --mobile-top-bar-height: 3rem;
+  --mobile-bottom-nav-height: 4.5rem;
 }
 
 .dark {
@@ -183,14 +185,14 @@
     letter-spacing: var(--tracking-normal);
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
-    overscroll-behavior-y: none;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
   }
 
   html {
     color-scheme: light dark;
     height: 100%;
-    overflow: hidden;
+    overflow-x: hidden;
   }
 
   body,

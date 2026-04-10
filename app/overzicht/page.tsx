@@ -436,7 +436,7 @@ function DashboardSkeleton() {
 
 export default function OverzichtPage() {
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
         <PageHeader
           title="Overzicht"

@@ -31,7 +31,7 @@ const MAX_PER_PAGE = 50;
 
 function KandidatenSkeleton() {
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <Skeleton className="h-8 w-48" />
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -107,7 +107,7 @@ async function KandidatenContent({ searchParams }: Props) {
   const { directCount, weekCount } = stats;
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Header */}
         <PageHeader title="Kandidaten" description="Talent pool — overzicht van alle kandidaten">

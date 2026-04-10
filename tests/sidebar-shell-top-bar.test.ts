@@ -17,6 +17,8 @@ describe("sidebar shell top-bar refactor", () => {
     expect(source).toContain("SidebarTrigger");
     expect(source).toContain("md:hidden");
     expect(source).toContain("⌘/Ctrl+B");
+    expect(source).toContain("size-11");
+    expect(source).toContain("var(--mobile-top-bar-height)");
   });
 
   it("moves theme controls into the user menu", () => {
