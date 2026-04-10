@@ -60,6 +60,7 @@ interface GateResult {
   docsDriftViolations: DocsDriftViolation[];
   failedRequiredChecks: string[];
   fileTiers: FileTierResult[];
+  hasUiFiles: boolean;
   missingRequiredChecks: string[];
   passed: boolean;
   requireCodeReview: boolean;
@@ -353,7 +354,6 @@ async function executeRequiredCheck(
   runRoot: string,
 ): Promise<GateCheckResult> {
   const command = CHECK_COMMANDS[checkName];
-
   if (!command) {
     return {
       detail: `Geen opdracht gedefinieerd voor vereiste controle "${checkName}".`,
@@ -394,7 +394,6 @@ async function executeRequiredCheck(
     stdoutTail: processResult.stdoutTail,
   };
 }
-
 function appendGitHubOutput(name: string, value: string): void {
   const outputFile = process.env.GITHUB_OUTPUT;
   if (!outputFile) return;
@@ -435,12 +434,15 @@ export async function evaluateRiskPolicyGate(
     projectRoot,
   );
   const docsDriftPass = docsDriftViolations.length === 0;
+  const uiPatterns = ["app/**/*.tsx", "components/**/*.tsx"];
+  const hasUiFiles = changedFiles.some((file) =>
+    uiPatterns.some((pattern) => globMatch(pattern, file)),
+  );
 
   const otherRequiredChecks = requiredChecks.filter(
     (checkName) => checkName !== "risk-policy-gate",
   );
   const checkResults = new Map<string, GateCheckResult>();
-
   for (const [checkName, status] of options.checkResults.entries()) {
     checkResults.set(checkName, toProvidedCheckResult(checkName, status));
   }
@@ -510,6 +512,7 @@ export async function evaluateRiskPolicyGate(
     docsDriftViolations,
     failedRequiredChecks,
     fileTiers,
+    hasUiFiles,
     missingRequiredChecks,
     passed,
     requireCodeReview,
@@ -552,7 +555,6 @@ function printSummary(result: GateResult, config: HarnessConfig, verbose: boolea
       console.log(`  [${entry.tier.padEnd(6)}] ${entry.file}`);
     }
   }
-
   console.log(`Gate-resultaat: ${result.passed ? "PASS" : "FAIL"}`);
 }
 
@@ -564,6 +566,7 @@ async function main(): Promise<void> {
   const report = JSON.stringify(result);
 
   appendGitHubOutput("risk-tier", result.tier);
+  appendGitHubOutput("has-ui-files", result.hasUiFiles ? "true" : "false");
   appendGitHubOutput("required-checks", JSON.stringify(result.requiredChecks));
   appendGitHubOutput("require-code-review", result.requireCodeReview ? "true" : "false");
   appendGitHubOutput("gate-passed", result.passed ? "true" : "false");

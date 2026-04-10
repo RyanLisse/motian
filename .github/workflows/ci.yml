@@ -30,6 +30,7 @@ jobs:
       contents: read
     outputs:
       changed-files: ${{ steps.changed.outputs.files }}
+      has-ui-files: ${{ steps.classify.outputs.has-ui-files }}
       report-json: ${{ steps.classify.outputs.report-json }}
       require-code-review: ${{ steps.classify.outputs.require-code-review }}
       required-checks: ${{ steps.classify.outputs.required-checks }}
@@ -187,7 +188,16 @@ jobs:
     name: Browser Evidence
     runs-on: ubuntu-latest
     needs: risk-classification
-    if: needs.risk-classification.outputs.risk-tier == 'high'
+    if: >-
+      needs.risk-classification.outputs.risk-tier == 'high' ||
+      (
+        needs.risk-classification.outputs.has-ui-files == 'true' &&
+        (
+          (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'symphony')) ||
+          startsWith(github.head_ref, 'symphony/') ||
+          startsWith(github.ref_name, 'symphony/')
+        )
+      )
     permissions:
       contents: read
     env:
