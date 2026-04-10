@@ -1,6 +1,11 @@
 import "./src/env";
+import withBundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
+
+const analyzeBundles = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const hasSentryRuntimeConfig = Boolean(
   process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -54,7 +59,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(analyzeBundles(nextConfig), {
   org: "ryan-lisse-bv",
   project: "motian",
   silent: !process.env.CI,

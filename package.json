@@ -113,6 +113,7 @@
     "harness:gap": "tsx scripts/harness/create-gap-issue.ts",
     "harness:gap-sla": "tsx scripts/harness/check-gap-sla.ts",
     "harness:weekly-metrics": "tsx scripts/harness/entropy-check.ts --verbose",
+    "analyze": "ANALYZE=true pnpm build",
     "mcp": "tsx src/mcp/server.ts",
     "cli": "tsx src/cli/index.ts",
     "voice-agent:dev": "tsx src/voice-agent/main.ts dev",
@@ -120,6 +121,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
+    "@next/bundle-analyzer": "^16.2.3",
     "@storybook/nextjs-vite": "^10.3.4",
     "@storybook/react": "^10.3.4",
     "@tailwindcss/postcss": "^4.2.2",
@@ -134,7 +136,8 @@
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "yaml": "^2.8.3"
   },
   "packageManager": "pnpm@9.15.0",
   "pnpm": {
