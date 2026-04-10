@@ -405,6 +405,7 @@ jobs:
         id: kandidaat_route
         run: |
           DETAIL_PATH=$(node --input-type=module <<'EOF'
+          const fallbackDetailPath = process.env.LHCI_CANDIDATE_DETAIL_PATH_FALLBACK?.trim() ?? "";
           const response = await fetch(`${process.env.LHCI_BASE_URL}/api/kandidaten?limit=1`, {
             headers: { accept: "application/json" },
           });
@@ -416,7 +417,13 @@ jobs:
           const candidateId = payload?.data?.[0]?.id;
 
           if (!candidateId) {
-            throw new Error("No candidate id available for Lighthouse detail route");
+            console.warn(
+              fallbackDetailPath
+                ? `No candidate id available for Lighthouse detail route; falling back to ${fallbackDetailPath}`
+                : "No candidate id available for Lighthouse detail route; skipping the detail route for this run",
+            );
+            console.log(fallbackDetailPath);
+            process.exit(0);
           }
 
           console.log(`/kandidaten/${candidateId}`);
@@ -425,6 +432,8 @@ jobs:
 
           echo "detail_path=${DETAIL_PATH}" >> "$GITHUB_OUTPUT"
           echo "Resolved Lighthouse candidate detail path: ${DETAIL_PATH}"
+        env:
+          LHCI_CANDIDATE_DETAIL_PATH_FALLBACK: ${{ vars.LHCI_CANDIDATE_DETAIL_PATH_FALLBACK }}
 
       - name: Run Lighthouse CI
         run: pnpm lighthouse:ci

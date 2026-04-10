@@ -10,12 +10,20 @@ let posthogClientPromise: Promise<typeof import("posthog-js")["default"]> | null
 let sentryClientPromise: Promise<typeof import("@sentry/nextjs")> | null = null;
 
 function getPostHogClient() {
-  posthogClientPromise ??= import("posthog-js").then((mod) => mod.default);
+  posthogClientPromise ??= import("posthog-js")
+    .then((mod) => mod.default)
+    .catch((error) => {
+      posthogClientPromise = null;
+      throw error;
+    });
   return posthogClientPromise;
 }
 
 function getSentryClient() {
-  sentryClientPromise ??= import("@sentry/nextjs");
+  sentryClientPromise ??= import("@sentry/nextjs").catch((error) => {
+    sentryClientPromise = null;
+    throw error;
+  });
   return sentryClientPromise;
 }
 
@@ -40,9 +48,11 @@ const handleWebVital: ReportWebVitalsCallback = (metric) => {
   };
 
   if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-    void getPostHogClient().then((posthog) => {
-      posthog.capture("web_vital_reported", payload);
-    });
+    void getPostHogClient()
+      .then((posthog) => {
+        posthog.capture("web_vital_reported", payload);
+      })
+      .catch(() => {});
   }
 
   const threshold = WEB_VITAL_THRESHOLDS[metric.name];
@@ -50,19 +60,21 @@ const handleWebVital: ReportWebVitalsCallback = (metric) => {
     return;
   }
 
-  void getSentryClient().then((Sentry) => {
-    Sentry.withScope((scope) => {
-      scope.setLevel("warning");
-      scope.setTag("telemetry", "web-vital");
-      scope.setTag("metric", metric.name);
-      scope.setTag("rating", metric.rating);
-      scope.setContext("web-vital", {
-        ...payload,
-        threshold,
+  void getSentryClient()
+    .then((Sentry) => {
+      Sentry.withScope((scope) => {
+        scope.setLevel("warning");
+        scope.setTag("telemetry", "web-vital");
+        scope.setTag("metric", metric.name);
+        scope.setTag("rating", metric.rating);
+        scope.setContext("web-vital", {
+          ...payload,
+          threshold,
+        });
+        Sentry.captureMessage(`poor-web-vital:${metric.name}`);
       });
-      Sentry.captureMessage(`poor-web-vital:${metric.name}`);
-    });
-  });
+    })
+    .catch(() => {});
 };
 
 export function WebVitalsReporter() {
@@ -79,30 +91,34 @@ export function WebVitalsReporter() {
     const hydrationMs = Math.round(performance.now() - navStart);
 
     if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-      void getPostHogClient().then((posthog) => {
-        posthog.capture("shell_hydration_timing", {
-          route: pathname,
-          hydrationMs,
-          budgetMs: SHELL_HYDRATION_BUDGET_MS,
-        });
-      });
+      void getPostHogClient()
+        .then((posthog) => {
+          posthog.capture("shell_hydration_timing", {
+            route: pathname,
+            hydrationMs,
+            budgetMs: SHELL_HYDRATION_BUDGET_MS,
+          });
+        })
+        .catch(() => {});
     }
 
     if (hydrationMs <= SHELL_HYDRATION_BUDGET_MS) return;
 
-    void getSentryClient().then((Sentry) => {
-      Sentry.withScope((scope) => {
-        scope.setLevel("warning");
-        scope.setTag("telemetry", "shell-hydration");
-        scope.setTag("route", pathname);
-        scope.setContext("shell-hydration", {
-          route: pathname,
-          hydrationMs,
-          budgetMs: SHELL_HYDRATION_BUDGET_MS,
+    void getSentryClient()
+      .then((Sentry) => {
+        Sentry.withScope((scope) => {
+          scope.setLevel("warning");
+          scope.setTag("telemetry", "shell-hydration");
+          scope.setTag("route", pathname);
+          scope.setContext("shell-hydration", {
+            route: pathname,
+            hydrationMs,
+            budgetMs: SHELL_HYDRATION_BUDGET_MS,
+          });
+          Sentry.captureMessage("slow-shell-hydration");
         });
-        Sentry.captureMessage("slow-shell-hydration");
-      });
-    });
+      })
+      .catch(() => {});
   }, [pathname]);
 
   useReportWebVitals(handleWebVital);

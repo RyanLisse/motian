@@ -76,7 +76,7 @@
   },
   "scripts": {
     "dev": "next dev --hostname ${HOSTNAME:-0.0.0.0} --port ${PORT:-3002}",
-    "analyze": "SKIP_ENV_VALIDATION=1 DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@127.0.0.1:5432/motian?sslmode=require} SENTRY_DSN= NEXT_PUBLIC_SENTRY_DSN= node ./node_modules/next/dist/bin/next experimental-analyze --output",
+    "analyze": "SKIP_ENV_VALIDATION=1 DATABASE_URL=${DATABASE_URL:-postgresql://127.0.0.1:5432/motian?sslmode=require} SENTRY_DSN= NEXT_PUBLIC_SENTRY_DSN= node ./node_modules/next/dist/bin/next experimental-analyze --output",
     "build": "next build",
     "lighthouse:ci": "lhci collect --config=./lighthouserc.cjs && lhci assert --config=./lighthouserc.cjs && lhci upload --config=./lighthouserc.cjs",
     "start": "next start --hostname ${HOSTNAME:-0.0.0.0} --port ${PORT:-3001}",

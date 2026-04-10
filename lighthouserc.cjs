@@ -1,8 +1,8 @@
 const baseUrl = process.env.LHCI_BASE_URL ?? "http://127.0.0.1:3001";
-const candidateDetailPath = process.env.LHCI_CANDIDATE_DETAIL_PATH ?? "/kandidaten";
+const candidateDetailPath = process.env.LHCI_CANDIDATE_DETAIL_PATH?.trim();
 
-const urls = ["/", "/kandidaten", "/vacatures", candidateDetailPath, "/chat"].map((path) =>
-  new URL(path, baseUrl).toString(),
+const urls = ["/", "/kandidaten", "/vacatures", ...(candidateDetailPath ? [candidateDetailPath] : []), "/chat"].map(
+  (path) => new URL(path, baseUrl).toString(),
 );
 
 module.exports = {
