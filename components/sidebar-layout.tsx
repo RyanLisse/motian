@@ -2,6 +2,7 @@
 
 import { Search } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { DataRefreshListener } from "@/components/data-refresh-listener";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { OverflowNavMenu } from "@/components/nav-overflow-menu";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -29,6 +30,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               <Search className="h-4 w-4" />
             </button>
           </div>
+          <DataRefreshListener />
           <div className="flex min-h-0 flex-1 flex-col pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:pb-0">
             {children}
           </div>

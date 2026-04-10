@@ -8,8 +8,10 @@ import {
   MessageCircle,
   Phone,
   Sparkles,
+  UserCircle,
 } from "lucide-react";
 import nextDynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -239,6 +241,7 @@ async function KandidaatDetailContent({ params }: Props) {
     skills: candidates.skills,
     experience: candidates.experience,
     preferences: candidates.preferences,
+    photoUrl: candidates.photoUrl,
     resumeUrl: candidates.resumeUrl,
     linkedinUrl: candidates.linkedinUrl,
     headline: candidates.headline,
@@ -474,13 +477,26 @@ async function KandidaatDetailContent({ params }: Props) {
           {/* Header: Open to offers (left), name + role (center), website + actions (right) */}
           <div className="flex flex-wrap items-start gap-4 justify-between mb-8">
             <OpenToOffersRing percentage={openToOffersPct} label="Open voor aanbiedingen" />
-            <div className="flex-1 min-w-0 text-center sm:text-left">
-              <h1 className="text-xl font-bold text-foreground">{candidate.name}</h1>
-              {candidate.role && (
-                <p className="text-base font-semibold text-muted-foreground mt-0.5">
-                  {candidate.role}
-                </p>
+            <div className="flex-1 min-w-0 text-center sm:text-left flex items-center gap-3">
+              {candidate.photoUrl ? (
+                <Image
+                  src={candidate.photoUrl}
+                  alt={candidate.name}
+                  width={128}
+                  height={128}
+                  className="h-16 w-16 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <UserCircle className="h-16 w-16 text-muted-foreground shrink-0" />
               )}
+              <div>
+                <h1 className="text-xl font-bold text-foreground">{candidate.name}</h1>
+                {candidate.role && (
+                  <p className="text-base font-semibold text-muted-foreground mt-0.5">
+                    {candidate.role}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
               {websiteUrl && (

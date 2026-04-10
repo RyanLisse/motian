@@ -46,6 +46,7 @@ export type CreateCandidateData = {
   location?: string;
   source?: string;
   linkedinUrl?: string;
+  photoUrl?: string;
   headline?: string;
   profileSummary?: string;
   hourlyRate?: number;
@@ -349,6 +350,7 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
       location: data.location,
       source: data.source,
       linkedinUrl: data.linkedinUrl,
+      photoUrl: data.photoUrl,
       headline: data.headline,
       profileSummary: data.profileSummary,
       hourlyRate: data.hourlyRate,
