@@ -1,11 +1,27 @@
+import { createCipheriv, randomBytes, scryptSync } from "node:crypto";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { decrypt, encrypt } from "../src/lib/crypto";
 
+const ALGORITHM = "aes-256-gcm";
+const KEY_LENGTH = 32;
+const IV_LENGTH = 16;
+
+function encryptLegacy(plaintext: string, secret: string): string {
+  const salt = Buffer.from(`motian-v1-${secret.length}`);
+  const key = scryptSync(secret, salt, KEY_LENGTH);
+  const iv = randomBytes(IV_LENGTH);
+  const cipher = createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, encrypted]).toString("base64");
+}
+
 describe("crypto — encrypt/decrypt", () => {
   const ORIGINAL_ENV = process.env;
+  const TEST_SECRET = "test-secret-key-for-vitest-runs-2026";
 
   beforeEach(() => {
-    process.env = { ...ORIGINAL_ENV, ENCRYPTION_SECRET: "test-secret-key-for-vitest-runs-2026" };
+    process.env = { ...ORIGINAL_ENV, ENCRYPTION_SECRET: TEST_SECRET };
   });
 
   afterEach(() => {
@@ -26,11 +42,21 @@ describe("crypto — encrypt/decrypt", () => {
     expect(decrypted).toBe(plaintext);
   });
 
-  it("encrypt produceert unieke ciphertexts (random IV)", () => {
+  it("encrypt produceert unieke ciphertexts (random salt + IV)", () => {
     const plaintext = "zelfde tekst";
     const a = encrypt(plaintext);
     const b = encrypt(plaintext);
     expect(a).not.toBe(b);
+  });
+
+  it("encrypt prepends een unieke 32-byte salt aan nieuwe blobs", () => {
+    const plaintext = "zelfde tekst";
+    const a = Buffer.from(encrypt(plaintext), "base64");
+    const b = Buffer.from(encrypt(plaintext), "base64");
+
+    expect(a.length).toBe(32 + 16 + 16 + Buffer.byteLength(plaintext));
+    expect(b.length).toBe(32 + 16 + 16 + Buffer.byteLength(plaintext));
+    expect(a.subarray(0, 32)).not.toEqual(b.subarray(0, 32));
   });
 
   it("decrypt faalt bij gemanipuleerde ciphertext", () => {
@@ -83,10 +109,17 @@ describe("crypto — encrypt/decrypt", () => {
     process.env.ENCRYPTION_SECRET = "andere-secret-key-die-niet-klopt";
     expect(() => decrypt(encrypted)).toThrow();
   });
+
+  it("decrypt ondersteunt legacy blobs met deterministische salt", () => {
+    const plaintext = '{"username":"legacy-user","password":"oude-geheim"}';
+    const encrypted = encryptLegacy(plaintext, TEST_SECRET);
+    expect(decrypt(encrypted)).toBe(plaintext);
+  });
 });
 
 describe("encryptAuthConfig / decryptAuthConfig", () => {
   const ORIGINAL_ENV = process.env;
+  const TEST_SECRET = "test-secret-key-for-vitest-runs-2026";
   let encryptAuthConfig: typeof import("../src/services/scrapers").encryptAuthConfig;
   let decryptAuthConfig: typeof import("../src/services/scrapers").decryptAuthConfig;
   let isEncrypted: typeof import("../src/services/scrapers").isEncrypted;
@@ -98,7 +131,7 @@ describe("encryptAuthConfig / decryptAuthConfig", () => {
   }, 20_000);
 
   beforeEach(() => {
-    process.env = { ...ORIGINAL_ENV, ENCRYPTION_SECRET: "test-secret-key-for-vitest-runs-2026" };
+    process.env = { ...ORIGINAL_ENV, ENCRYPTION_SECRET: TEST_SECRET };
   });
 
   afterEach(() => {
@@ -121,5 +154,11 @@ describe("encryptAuthConfig / decryptAuthConfig", () => {
     expect(isEncrypted('{"user":"test"}')).toBe(false);
     expect(isEncrypted("")).toBe(false);
     expect(isEncrypted(null as unknown as string)).toBe(false);
+  });
+
+  it("decryptAuthConfig leest legacy credential blobs", () => {
+    const config = { username: "motian", password: "legacy-secret" };
+    const encrypted = encryptLegacy(JSON.stringify(config), TEST_SECRET);
+    expect(decryptAuthConfig(encrypted)).toEqual(config);
   });
 });
