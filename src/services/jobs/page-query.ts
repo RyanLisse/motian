@@ -29,6 +29,7 @@ export type JobPageRow = {
   applicationDeadline: Date | null;
   hasPipeline: boolean;
   pipelineCount: number;
+  isIndexing: boolean;
 };
 
 export type ListJobsPageOptions = SearchJobsOptions &

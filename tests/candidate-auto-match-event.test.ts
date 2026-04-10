@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------- Mocks (hoisted) ----------
 
-const { mockDb, mockEmitAgentEvent } = vi.hoisted(() => {
+const { mockDb, mockEmitAgentEvent, mockQueueDeferredEmbeddingSync } = vi.hoisted(() => {
   const mockInsert = vi.fn();
   const mockUpdate = vi.fn();
   const mockSelect = vi.fn();
@@ -26,6 +26,7 @@ const { mockDb, mockEmitAgentEvent } = vi.hoisted(() => {
       returning: returningFn,
     },
     mockEmitAgentEvent: vi.fn().mockResolvedValue({ id: "evt-1" }),
+    mockQueueDeferredEmbeddingSync: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -60,13 +61,13 @@ vi.mock("../src/services/agent-events", () => ({
   emitAgentEvent: mockEmitAgentEvent,
 }));
 
-// Mock derived sync dependencies (ESCO, embedding, Typesense) as no-ops
-vi.mock("../src/services/esco", () => ({
-  syncCandidateEscoSkills: vi.fn().mockResolvedValue(undefined),
+vi.mock("../src/lib/event-bus", () => ({
+  queueDeferredEmbeddingSync: mockQueueDeferredEmbeddingSync,
 }));
 
-vi.mock("../src/services/embedding", () => ({
-  embedCandidate: vi.fn().mockResolvedValue(undefined),
+// Mock remaining synchronous derived sync dependency as a no-op
+vi.mock("../src/services/esco", () => ({
+  syncCandidateEscoSkills: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../src/services/search-index/typesense-sync", () => ({
@@ -124,18 +125,18 @@ describe("candidate auto-match event emission", () => {
 
     // Mock: insert().values().returning() → [fakeCandidate]
     mockDb.returning.mockResolvedValueOnce([fakeCandidate]);
-    // Mock: select().from().where().limit() for getCandidateById in runCandidateDerivedSync
-    const limitFn = vi.fn().mockResolvedValue([fakeCandidate]);
-    const whereFn = vi.fn().mockReturnValue({ limit: limitFn });
-    const fromFn = vi.fn().mockReturnValue({ where: whereFn });
-    mockDb.select.mockReturnValueOnce({ from: fromFn });
-
     await createCandidate({
       name: "Jan de Vries",
       skills: ["TypeScript", "React"],
       role: "Frontend Developer",
     });
 
+    expect(mockQueueDeferredEmbeddingSync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "candidate",
+        entityId: "cand-123",
+      }),
+    );
     expect(mockEmitAgentEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceAgent: "intake",
@@ -169,13 +170,14 @@ describe("candidate auto-match event emission", () => {
     };
 
     mockDb.returning.mockResolvedValueOnce([fakeCandidate]);
-    const limitFn = vi.fn().mockResolvedValue([fakeCandidate]);
-    const whereFn = vi.fn().mockReturnValue({ limit: limitFn });
-    const fromFn = vi.fn().mockReturnValue({ where: whereFn });
-    mockDb.select.mockReturnValueOnce({ from: fromFn });
-
     await createCandidate({ name: "Kees Bakker" });
 
+    expect(mockQueueDeferredEmbeddingSync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "candidate",
+        entityId: "cand-456",
+      }),
+    );
     expect(mockEmitAgentEvent).not.toHaveBeenCalled();
   });
 
@@ -203,13 +205,14 @@ describe("candidate auto-match event emission", () => {
     };
 
     mockDb.returning.mockResolvedValueOnce([fakeCandidate]);
-    const limitFn = vi.fn().mockResolvedValue([fakeCandidate]);
-    const whereFn = vi.fn().mockReturnValue({ limit: limitFn });
-    const fromFn = vi.fn().mockReturnValue({ where: whereFn });
-    mockDb.select.mockReturnValueOnce({ from: fromFn });
-
     await createCandidate({ name: "Piet Jansen", skills: [] });
 
+    expect(mockQueueDeferredEmbeddingSync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "candidate",
+        entityId: "cand-789",
+      }),
+    );
     expect(mockEmitAgentEvent).not.toHaveBeenCalled();
   });
 
@@ -242,17 +245,17 @@ describe("candidate auto-match event emission", () => {
     const updateSetFn = vi.fn().mockReturnValue({ where: updateWhereFn });
     mockDb.update.mockReturnValueOnce({ set: updateSetFn });
 
-    // Mock: select().from().where().limit() for getCandidateById in runCandidateDerivedSync
-    const limitFn = vi.fn().mockResolvedValue([updatedCandidate]);
-    const whereFn = vi.fn().mockReturnValue({ limit: limitFn });
-    const fromFn = vi.fn().mockReturnValue({ where: whereFn });
-    mockDb.select.mockReturnValueOnce({ from: fromFn });
-
     await updateCandidate("cand-100", {
       skills: ["Python", "Django"],
       role: "Backend Developer",
     });
 
+    expect(mockQueueDeferredEmbeddingSync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "candidate",
+        entityId: "cand-100",
+      }),
+    );
     expect(mockEmitAgentEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceAgent: "intake",
@@ -290,13 +293,14 @@ describe("candidate auto-match event emission", () => {
     const updateSetFn = vi.fn().mockReturnValue({ where: updateWhereFn });
     mockDb.update.mockReturnValueOnce({ set: updateSetFn });
 
-    const limitFn = vi.fn().mockResolvedValue([updatedCandidate]);
-    const whereFn = vi.fn().mockReturnValue({ limit: limitFn });
-    const fromFn = vi.fn().mockReturnValue({ where: whereFn });
-    mockDb.select.mockReturnValueOnce({ from: fromFn });
-
     await updateCandidate("cand-200", { location: "Amsterdam" });
 
+    expect(mockQueueDeferredEmbeddingSync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "candidate",
+        entityId: "cand-200",
+      }),
+    );
     expect(mockEmitAgentEvent).not.toHaveBeenCalled();
   });
 });

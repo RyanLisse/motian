@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import { and, db, desc, eq, inArray, isNull, sql } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
+import { queueDeferredEmbeddingSync } from "../lib/event-bus";
 import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
 import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../lib/query-observability";
 import type { ParsedCV } from "../schemas/candidate-intelligence";
 import { emitAgentEvent } from "./agent-events";
+import { type EmbeddingStatus, withPendingEmbeddingStatus } from "./embedding";
 import { syncCandidateEscoSkills } from "./esco";
 import { searchCandidateIdsByTypesense } from "./search-index/typesense-search";
 import { deleteCandidatesByIds, upsertCandidatesByIds } from "./search-index/typesense-sync";
@@ -12,6 +14,7 @@ import { deleteCandidatesByIds, upsertCandidatesByIds } from "./search-index/typ
 // ========== Types ==========
 
 export type Candidate = typeof candidates.$inferSelect;
+export type CandidateMutationResult = Candidate & { embeddingStatus: EmbeddingStatus };
 
 export const CANDIDATE_MATCHING_STATUSES = ["open", "in_review", "linked", "no_match"] as const;
 
@@ -194,10 +197,7 @@ async function emitAutoMatchEventIfReady(candidate: Candidate): Promise<void> {
   }
 }
 
-async function runCandidateDerivedSync(candidateId: string): Promise<void> {
-  const candidate = await getCandidateById(candidateId);
-  if (!candidate) return;
-
+async function runCandidateEscoSync(candidate: Candidate): Promise<void> {
   try {
     await syncCandidateEscoSkills({
       candidateId: candidate.id,
@@ -206,19 +206,6 @@ async function runCandidateDerivedSync(candidateId: string): Promise<void> {
     });
   } catch (err) {
     console.error(`[Candidates] ESCO sync error for ${candidate.id}:`, err);
-  }
-
-  try {
-    const { embedCandidate } = await import("./embedding");
-    await embedCandidate(candidate.id);
-  } catch (err) {
-    console.error(`[Candidates] Embedding error for ${candidate.id}:`, err);
-  }
-
-  try {
-    await upsertCandidatesByIds([candidate.id]);
-  } catch (err) {
-    console.error(`[Candidates] Typesense sync error for ${candidate.id}:`, err);
   }
 }
 
@@ -350,7 +337,7 @@ export async function countCandidates(
 }
 
 /** Nieuwe kandidaat aanmaken en teruggeven. Genereert embedding op de achtergrond. */
-export async function createCandidate(data: CreateCandidateData): Promise<Candidate> {
+export async function createCandidate(data: CreateCandidateData): Promise<CandidateMutationResult> {
   const rows = await db
     .insert(candidates)
     .values({
@@ -373,17 +360,22 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     .returning();
 
   const candidate = rows[0];
-  await runCandidateDerivedSync(candidate.id);
+  await runCandidateEscoSync(candidate);
+  void queueDeferredEmbeddingSync({
+    entityType: "candidate",
+    entityId: candidate.id,
+    source: "candidate:create",
+  });
   await emitAutoMatchEventIfReady(candidate);
 
-  return candidate;
+  return withPendingEmbeddingStatus(candidate);
 }
 
 /** Kandidaat bijwerken en teruggeven, of null als niet gevonden. */
 export async function updateCandidate(
   id: string,
   data: Partial<CreateCandidateData>,
-): Promise<Candidate | null> {
+): Promise<CandidateMutationResult | null> {
   const rows = await db
     .update(candidates)
     .set({
@@ -395,10 +387,15 @@ export async function updateCandidate(
 
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
-  await runCandidateDerivedSync(candidate.id);
+  await runCandidateEscoSync(candidate);
+  void queueDeferredEmbeddingSync({
+    entityType: "candidate",
+    entityId: candidate.id,
+    source: "candidate:update",
+  });
   await emitAutoMatchEventIfReady(candidate);
 
-  return candidate;
+  return withPendingEmbeddingStatus(candidate);
 }
 
 export async function updateCandidateMatchingStatus(
@@ -552,7 +549,7 @@ export async function enrichCandidateFromCV(
   parsed: ParsedCV,
   resumeRaw: string,
   resumeUrl?: string,
-): Promise<Candidate | null> {
+): Promise<CandidateMutationResult | null> {
   const existing = await getCandidateById(candidateId);
   if (!existing) return null;
 
@@ -599,8 +596,12 @@ export async function enrichCandidateFromCV(
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
 
-  // Reuse full derived sync (ESCO + embedding + Typesense) for consistency
-  await runCandidateDerivedSync(candidate.id);
+  await runCandidateEscoSync(candidate);
+  void queueDeferredEmbeddingSync({
+    entityType: "candidate",
+    entityId: candidate.id,
+    source: "candidate:cv-enrichment",
+  });
 
-  return candidate;
+  return withPendingEmbeddingStatus(candidate);
 }

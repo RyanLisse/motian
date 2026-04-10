@@ -1,6 +1,8 @@
 // In-memory pub/sub event bus for SSE (Server-Sent Events).
 // Single-instance only — suitable for Vercel serverless with limited concurrency.
 
+import type { DeferredEmbeddingSyncPayload } from "../services/embedding";
+
 export type SSEEvent = {
   type: string;
   data: Record<string, unknown>;
@@ -30,5 +32,36 @@ export function publish(type: string, data: Record<string, unknown> = {}): void 
     } catch {
       listeners.delete(listener);
     }
+  }
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+export async function queueDeferredEmbeddingSync(
+  payload: DeferredEmbeddingSyncPayload,
+): Promise<void> {
+  publish("embedding:needed", payload);
+
+  let triggerTasks: typeof import("@trigger.dev/sdk").tasks;
+  try {
+    const sdk = await import("@trigger.dev/sdk");
+    triggerTasks = sdk.tasks;
+  } catch (error) {
+    const message = getErrorMessage(error);
+    console.error("[embedding] Trigger.dev SDK unavailable for deferred sync:", message);
+    publish("embedding:queue_failed", { ...payload, error: message });
+    return;
+  }
+
+  try {
+    const handle = await triggerTasks.trigger("defer-embedding-sync", payload);
+    publish("embedding:queued", { ...payload, runId: handle.id });
+  } catch (error) {
+    const message = getErrorMessage(error);
+    console.error("[embedding] Failed to queue deferred sync:", message);
+    publish("embedding:queue_failed", { ...payload, error: message });
   }
 }

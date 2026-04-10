@@ -56,7 +56,6 @@ export async function GET(request: Request) {
       headers.set("Content-Type", "application/rss+xml; charset=utf-8");
       return new Response(toJobRss(feedJobs), { headers });
 
-    case "xml":
     default:
       headers.set("Content-Type", "application/xml; charset=utf-8");
       return new Response(toJobXml(feedJobs), { headers });

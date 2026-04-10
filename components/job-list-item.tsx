@@ -1,4 +1,12 @@
-import { ArrowRight, BriefcaseBusiness, Building2, Clock, MapPin, Users } from "lucide-react";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  Building2,
+  Clock,
+  LoaderCircle,
+  MapPin,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +24,7 @@ interface JobListItemProps {
     workArrangement: string | null;
     contractType: string | null;
     applicationDeadline?: Date | string | null;
+    isIndexing?: boolean;
   };
   isActive: boolean;
   variant?: "compact" | "card";
@@ -172,6 +181,15 @@ export function JobListItem({
 
             <div className="mt-3 flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {job.isIndexing ? (
+                  <Badge
+                    variant="outline"
+                    className="flex min-h-5 h-auto max-w-full items-center gap-1 whitespace-normal wrap-break-word rounded-md border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+                  >
+                    <LoaderCircle className="h-2.5 w-2.5 animate-spin" />
+                    Indexeren…
+                  </Badge>
+                ) : null}
                 {job.contractType && (
                   <Badge
                     variant="outline"
@@ -236,6 +254,15 @@ export function JobListItem({
             >
               {job.platform}
             </Badge>
+            {job.isIndexing ? (
+              <Badge
+                variant="outline"
+                className="flex items-center gap-0.5 border-amber-500/20 bg-amber-500/10 px-1.5 py-0 text-[9px] text-amber-700 dark:text-amber-300"
+              >
+                <LoaderCircle className="h-2.5 w-2.5 animate-spin" />
+                Indexeren
+              </Badge>
+            ) : null}
             {deadlineMeta && (
               <Badge
                 variant="outline"
