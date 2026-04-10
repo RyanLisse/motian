@@ -2,13 +2,8 @@
 module.exports = {
   ci: {
     collect: {
-      // Use Vercel preview URL or local dev server
-      url: [
-        "http://localhost:3002/",
-        "http://localhost:3002/kandidaten",
-        "http://localhost:3002/vacatures",
-        "http://localhost:3002/chat",
-      ],
+      // URLs are provided by the GitHub Actions workflow (Vercel preview URL)
+      // For local testing: LHCI_URL=http://localhost:3002 npx lhci collect
       numberOfRuns: 3,
       settings: {
         // Mobile profile: throttled CPU + slow 4G
