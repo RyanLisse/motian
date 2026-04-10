@@ -94,7 +94,12 @@ export function markStaleComments(
 // Main
 // ---------------------------------------------------------------------------
 
-export async function run(prNumber: number, newHeadSha: string, owner: string, repo: string): Promise<ShaDisciplineResult> {
+export async function run(
+  prNumber: number,
+  newHeadSha: string,
+  owner: string,
+  repo: string,
+): Promise<ShaDisciplineResult> {
   const comments = fetchComments(owner, repo, prNumber);
   const { toUpdate, skipped } = markStaleComments(comments, newHeadSha);
 
@@ -136,7 +141,8 @@ async function main(): Promise<void> {
 }
 
 // Only run when executed directly (not when imported in tests)
-const isDirectRun = process.argv[1]?.endsWith("sha-discipline.ts") || process.argv[1]?.includes("sha-discipline");
+const isDirectRun =
+  process.argv[1]?.endsWith("sha-discipline.ts") || process.argv[1]?.includes("sha-discipline");
 if (isDirectRun) {
   main().catch((err) => {
     console.error(`[sha-discipline] Onverwerkte fout: ${err}`);

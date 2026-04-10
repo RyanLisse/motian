@@ -1,6 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  COMMAND_PALETTE_PAGES,
+  isAnyNavItemActive,
+  isNavItemActive,
+  MEER_NAV_ITEMS,
+  PRIMARY_NAV_ITEMS,
+} from "../components/navigation-config";
 
 const ROOT = path.resolve(__dirname, "..");
 const EXCLUDED_DIRECTORIES = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
@@ -44,70 +51,90 @@ function collectRepositoryFiles(directory: string, files: string[] = []) {
 }
 
 describe("Recruiter-first navigation", () => {
-  it("keeps recruiter workflow routes prominent in the sidebar", () => {
-    const source = readFile("components", "app-sidebar.tsx");
+  it("covers direct helper matching for exact, nested, and alias paths", () => {
+    const vacaturesItem = PRIMARY_NAV_ITEMS.find((item) => item.title === "Vacatures");
+    const kandidatenItem = PRIMARY_NAV_ITEMS.find((item) => item.title === "Kandidaten");
+
+    if (!vacaturesItem || !kandidatenItem) {
+      throw new Error("Expected primary navigation items to include Vacatures and Kandidaten");
+    }
+
+    expect(isNavItemActive("/vacatures", vacaturesItem)).toBe(true);
+    expect(isNavItemActive("/vacatures/123", vacaturesItem)).toBe(true);
+    expect(isNavItemActive("/opdrachten/123", vacaturesItem)).toBe(true);
+    expect(isNavItemActive("/agents", kandidatenItem)).toBe(false);
+  });
+
+  it("marks overflow routes active through the shared helper", () => {
+    expect(isAnyNavItemActive("/messages", MEER_NAV_ITEMS)).toBe(true);
+    expect(isAnyNavItemActive("/messages/thread-1", MEER_NAV_ITEMS)).toBe(true);
+    expect(isAnyNavItemActive("/settings", MEER_NAV_ITEMS)).toBe(false);
+  });
+
+  it("defines a 5-item primary nav plus a 6-item Meer overflow", () => {
+    expect(PRIMARY_NAV_ITEMS.map((item) => item.title)).toEqual([
+      "Overzicht",
+      "Vacatures",
+      "Kandidaten",
+      "Pipeline",
+      "Chat",
+    ]);
+    expect(MEER_NAV_ITEMS.map((item) => item.title)).toEqual([
+      "Interviews",
+      "Berichten",
+      "Matching",
+      "Agents",
+      "Autopilot",
+      "Databronnen",
+    ]);
+    expect(PRIMARY_NAV_ITEMS.find((item) => item.title === "Pipeline")?.prefetch).toBe(false);
+    expect(PRIMARY_NAV_ITEMS.find((item) => item.title === "Vacatures")?.matchPaths).toContain(
+      "/opdrachten",
+    );
+  });
+
+  it("keeps the shell focused on primary nav plus an explicit overflow entry", () => {
+    const sidebarSource = readFile("components", "app-sidebar.tsx");
+    const overflowSource = readFile("components", "nav-overflow-menu.tsx");
+    const mobileNavSource = readFile("components", "mobile-bottom-nav.tsx");
+    const shellSource = readFile("components", "sidebar-layout.tsx");
+
+    expect(sidebarSource).toContain("PRIMARY_NAV_ITEMS");
+    expect(sidebarSource).toContain("OverflowNavMenu");
+    expect(overflowSource).toContain("MEER_NAV_ITEMS");
+    expect(overflowSource).toContain("isAnyNavItemActive(pathname, MEER_NAV_ITEMS)");
+    expect(mobileNavSource).toContain("PRIMARY_NAV_ITEMS");
+    expect(mobileNavSource).not.toContain('pathname.startsWith("/chat")');
+    expect(shellSource).toContain('<OverflowNavMenu variant="mobile"');
+  });
+
+  it("keeps command palette coverage for moved and utility destinations", () => {
     const commandPaletteSource = readFile("components", "command-palette.tsx");
-    const automationHubSource = readFile("app", "automatisering", "page.tsx");
+    const labels = COMMAND_PALETTE_PAGES.map((page) => page.label);
 
-    expect(source).toContain('title: "Overzicht"');
-    expect(source).toContain('title: "Vacatures"');
-    expect(source).toContain('title: "Kandidaten"');
-    expect(source).toContain('title: "Pipeline"');
-    expect(source).toContain('title: "Interviews"');
-    expect(source).toContain('title: "Berichten"');
-    expect(source).toContain('title: "Automatisering"');
-    expect(source).toContain('title: "Ontwikkelaar"');
-
-    expect(source).toContain('url: "/overzicht"');
-    expect(source).toContain('url: "/vacatures"');
-    expect(source).toContain('url: "/kandidaten"');
-    expect(source).toContain('url: "/pipeline"');
-    expect(source).toContain('url: "/interviews"');
-    expect(source).toContain('url: "/messages"');
-    expect(source).toContain('url: "/automatisering"');
-    expect(source).toContain('url: "/ontwikkelaar"');
-
-    expect(source).not.toContain('title: "Aanbevelingen"');
-    expect(source).not.toContain('title: "Matching"');
-    expect(source).not.toContain('title: "AI Assistent"');
-    expect(source).not.toContain('title: "Agents"');
-    expect(source).not.toContain('title: "Autopilot"');
-    expect(source).not.toContain('title: "Databronnen"');
-
-    expect(commandPaletteSource).toContain('label: "Automatisering"');
-    expect(commandPaletteSource).toContain('label: "Databronnen"');
-    expect(commandPaletteSource).toContain('label: "Matching"');
-    expect(commandPaletteSource).toContain('label: "AI Assistent"');
-    expect(commandPaletteSource).toContain('label: "API Documentatie"');
-    expect(commandPaletteSource).toContain('label: "XML Feed"');
-    expect(commandPaletteSource).toContain('label: "MCP Server"');
-    expect(commandPaletteSource).toContain('label: "OpenAPI Spec"');
-
-    expect(commandPaletteSource).not.toContain('label: "Agents"');
-    expect(commandPaletteSource).not.toContain('label: "Autopilot"');
-
-    expect(automationHubSource).not.toContain('title: "Agents"');
-    expect(automationHubSource).not.toContain('title: "Autopilot"');
-    expect(automationHubSource).not.toContain('href: "/agents"');
-    expect(automationHubSource).not.toContain('href: "/autopilot"');
-  });
-
-  it("keeps heavy pipeline visuals out of eager sidebar prefetches", () => {
-    const sidebarSource = readFile("components", "app-sidebar.tsx");
-    const navSource = readFile("components", "nav-main.tsx");
-
-    expect(sidebarSource).toContain('title: "Pipeline"');
-    expect(sidebarSource).toContain("prefetch: false");
-    expect(navSource).toContain("prefetch={item.prefetch}");
-  });
-
-  it("keeps Automatisering active for demoted operational pages", () => {
-    const sidebarSource = readFile("components", "app-sidebar.tsx");
-    const navSource = readFile("components", "nav-main.tsx");
-
-    expect(sidebarSource).toContain('matchPaths: ["/agents", "/autopilot", "/scraper"]');
-    expect(navSource).toContain("item.matchPaths?.some");
-    expect(navSource).toContain("pathname === matchPath");
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        "Overzicht",
+        "Vacatures",
+        "Kandidaten",
+        "Pipeline",
+        "Chat",
+        "Interviews",
+        "Berichten",
+        "Matching",
+        "Agents",
+        "Autopilot",
+        "Databronnen",
+        "Automatisering",
+        "Vaardigheden",
+        "Instellingen",
+        "API Documentatie",
+        "XML Feed",
+        "MCP Server",
+        "OpenAPI Spec",
+      ]),
+    );
+    expect(commandPaletteSource).toContain("COMMAND_PALETTE_PAGES");
   });
 });
 
