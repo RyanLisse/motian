@@ -16,6 +16,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { CompanyLogo } from "@/components/company-logo";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { LinkCandidatesDialog } from "@/components/link-candidates-dialog";
 import { OpdrachtDetailEndClientFilter } from "@/components/opdracht-detail-end-client-filter";
@@ -616,10 +617,22 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
                   <JsonViewer data={job as unknown as Record<string, unknown>} />
                 </div>
               </div>
-              <h1 className="text-xl font-bold text-foreground">{job.title}</h1>
-              {job.company ? (
-                <p className="mt-1 text-sm text-muted-foreground">{job.company}</p>
-              ) : null}
+              <div className="flex items-start gap-3">
+                <CompanyLogo
+                  src={job.companyLogoUrl}
+                  companyName={job.company}
+                  size={56}
+                  sizes="56px"
+                  priority
+                  blur
+                />
+                <div className="min-w-0">
+                  <h1 className="text-xl font-bold text-foreground">{job.title}</h1>
+                  {job.company ? (
+                    <p className="mt-1 text-sm text-muted-foreground">{job.company}</p>
+                  ) : null}
+                </div>
+              </div>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">

@@ -56,6 +56,15 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     minimumCacheTTL: 86_400, // Cache optimized images for 24 hours
     formats: ["image/avif", "image/webp"],
+    // Company logos are scraped from multiple external sources, so the allowlist
+    // must support arbitrary HTTP(S) hosts while still keeping SVG delivery safe.
+    remotePatterns: [
+      { protocol: "https", hostname: "**", pathname: "/**" },
+      { protocol: "http", hostname: "**", pathname: "/**" },
+    ],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: "attachment",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 };
 

@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { CompanyLogo } from "@/components/company-logo";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ interface JobListItemProps {
     id: string;
     title: string;
     company: string | null;
+    companyLogoUrl?: string | null;
     location: string | null;
     platform: string;
     workArrangement: string | null;
@@ -132,16 +134,24 @@ export function JobListItem({
             )}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="min-w-0">
-                <h3 className="text-base font-semibold leading-tight text-foreground line-clamp-2 wrap-break-word sm:text-lg">
-                  {job.title}
-                </h3>
-                <p className="mt-1 flex min-w-0 items-start gap-1.5 text-sm text-muted-foreground">
-                  <Building2 className="h-3.5 w-3.5 shrink-0" />
-                  <span className="max-w-full whitespace-normal wrap-break-word">
-                    {job.company || "Onbekend"}
-                  </span>
-                </p>
+              <div className="flex min-w-0 items-start gap-3">
+                <CompanyLogo
+                  src={job.companyLogoUrl}
+                  companyName={job.company}
+                  size={44}
+                  sizes="44px"
+                />
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold leading-tight text-foreground line-clamp-2 wrap-break-word sm:text-lg">
+                    {job.title}
+                  </h3>
+                  <p className="mt-1 flex min-w-0 items-start gap-1.5 text-sm text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="max-w-full whitespace-normal wrap-break-word">
+                      {job.company || "Onbekend"}
+                    </span>
+                  </p>
+                </div>
               </div>
               <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:flex-col sm:items-end">
                 <span className="inline-flex max-w-full whitespace-normal wrap-break-word items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-left text-xs font-medium capitalize text-primary sm:px-3">
@@ -235,12 +245,24 @@ export function JobListItem({
             isActive && "bg-card border-l-[3px] border-l-primary",
           )}
         >
-          <h4 className="mb-1 text-[13px] font-semibold leading-snug text-foreground line-clamp-2 wrap-break-word">
-            {job.title}
-          </h4>
-          <p className="mb-1.5 max-w-full whitespace-normal wrap-break-word text-xs text-muted-foreground">
-            {job.company || "Onbekend"}
-          </p>
+          <div className="mb-1.5 flex min-w-0 items-start gap-2.5">
+            <CompanyLogo
+              src={job.companyLogoUrl}
+              companyName={job.company}
+              size={32}
+              sizes="32px"
+              className="rounded-md"
+              imageClassName="p-1"
+            />
+            <div className="min-w-0">
+              <h4 className="mb-1 text-[13px] font-semibold leading-snug text-foreground line-clamp-2 wrap-break-word">
+                {job.title}
+              </h4>
+              <p className="max-w-full whitespace-normal wrap-break-word text-xs text-muted-foreground">
+                {job.company || "Onbekend"}
+              </p>
+            </div>
+          </div>
           {job.location && (
             <p className="mb-1.5 flex min-w-0 items-start gap-1 text-xs text-muted-foreground">
               <MapPin className="h-3 w-3 shrink-0" />
