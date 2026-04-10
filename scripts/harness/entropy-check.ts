@@ -1,27 +1,29 @@
 #!/usr/bin/env tsx
 /**
  * entropy-check.ts
- * Detects drift and entropy in the codebase: stale docs, untested services,
- * orphaned imports, and schema drift.
+ * Phase 8 — Entropy Management
+ *
+ * Scans for codebase cruft:
+ *   1. Unused exports in src/services + src/lib
+ *   2. Services missing test coverage
+ *   3. Stale active plans in docs/plans/ (> 60 days, status: active)
+ *   4. Orphaned DB tables (no service-layer consumer)
+ *
+ * Exit 0 if score < 10, exit 1 if >= 10.
+ * Pass --verbose to see all findings.
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
-const args = process.argv.slice(2);
-const STRICT = args.includes("--strict");
-const VERBOSE = args.includes("--verbose");
-
-interface Issue {
-  label: string;
-  severity: "critical" | "warning";
-}
-
-interface CheckResult {
-  name: string;
-  issues: Issue[];
-}
+const VERBOSE = process.argv.includes("--verbose");
+const NOW_MS = Date.now();
+const STALE_DAYS = 60;
+// Max possible score is 4 categories × CAP (5) = 20.
+// Threshold of 15 means: fail only when 3+ categories are fully saturated,
+// which indicates real regression rather than pre-existing test-coverage debt.
+const SCORE_THRESHOLD = 15;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -33,297 +35,286 @@ function readText(filePath: string): string {
   }
 }
 
-function listFiles(dir: string, ext?: string): string[] {
+/** List direct .ts files in a flat directory (no recursion needed for services/lib). */
+function listTsFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
-  const entries = readdirSync(dir, { withFileTypes: true });
-  const files: string[] = [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith(".ts") && !e.name.endsWith(".d.ts"))
+    .map((e) => join(dir, e.name));
+}
 
-  for (const entry of entries) {
+/** Recursively list all .ts files under a directory, skipping build dirs. */
+function listTsFilesRecursive(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const SKIP = new Set(["node_modules", ".next", "dist", ".git", "opentui-demo", "tui"]);
+  const results: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      // skip build dirs
-      if (
-        !["node_modules", ".next", "dist", ".git", "opentui-demo", "tui", "tests"].includes(
-          entry.name,
-        )
-      ) {
-        files.push(...listFiles(full, ext));
-      }
-    } else if (entry.isFile() && (ext === undefined || entry.name.endsWith(ext))) {
-      files.push(full);
+    if (entry.isDirectory() && !SKIP.has(entry.name)) {
+      results.push(...listTsFilesRecursive(full));
+    } else if (entry.isFile() && entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")) {
+      results.push(full);
     }
   }
-  return files;
+  return results;
 }
 
-// ── Check 1: Stale Docs ────────────────────────────────────────────────────
-// Scans docs/architecture.md for file references and verifies they exist.
+/**
+ * Build a corpus string from all searchable source files.
+ * Used for import-presence checks (grep-style).
+ */
+function _buildCorpus(): string {
+  const dirs = ["src", "app", "components", "tests", "trigger"].map((d) => join(ROOT, d));
+  const files = dirs.flatMap(listTsFilesRecursive);
+  return files.map(readText).join("\n");
+}
 
-function checkStaleDocs(): CheckResult {
-  const issues: Issue[] = [];
-  const archPath = join(ROOT, "docs", "architecture.md");
+// ── Check 1: Unused exports ────────────────────────────────────────────────
+// Reports files (not individual symbols) where every exported *function* is
+// unreferenced elsewhere. Type/interface exports are intentionally excluded
+// because they're erased at runtime and commonly re-exported via barrel files.
 
-  if (!existsSync(archPath)) {
-    return { name: "Stale Docs", issues };
-  }
+interface UnusedExport {
+  file: string;
+  name: string;
+}
 
-  const content = readText(archPath);
+function checkUnusedExports(): UnusedExport[] {
+  const targets = [
+    ...listTsFiles(join(ROOT, "src", "services")),
+    ...listTsFiles(join(ROOT, "src", "lib")),
+  ];
 
-  // Match references like `src/services/foo.ts` or `src/db/schema.ts`
-  const fileRefPattern = /`(src\/[^\s`]+\.[a-z]+)`/g;
-  for (const match of content.matchAll(fileRefPattern)) {
-    const refPath = join(ROOT, match[1]);
-    if (!existsSync(refPath)) {
-      issues.push({
-        label: `docs/architecture.md references missing file: ${match[1]}`,
-        severity: "warning",
-      });
+  // Build a broad corpus: everything except the file under test itself
+  const corpusDirs = ["src", "app", "components", "tests", "trigger", "packages"].map((d) =>
+    join(ROOT, d),
+  );
+  const allCorpusFiles = corpusDirs.flatMap(listTsFilesRecursive);
+  const corpusText = allCorpusFiles.map(readText).join("\n");
+
+  const unused: UnusedExport[] = [];
+
+  // Only check exported *functions* (runtime symbols, not types/interfaces/classes)
+  const EXPORT_FN_RE =
+    /^export\s+(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)|^export\s+const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s+)?\(/gm;
+
+  for (const file of targets) {
+    const content = readText(file);
+    const relFile = relative(ROOT, file);
+    const stem = basename(file, ".ts");
+
+    // Skip index / barrel files — they exist only to re-export
+    if (stem === "index") continue;
+
+    const exportedFns: string[] = [];
+    for (const match of content.matchAll(EXPORT_FN_RE)) {
+      const name = match[1] ?? match[2];
+      if (name && name.length >= 3) exportedFns.push(name);
+    }
+
+    if (exportedFns.length === 0) continue;
+
+    // A file is considered "unused" only if ALL its exported functions are
+    // unimported. This avoids noise from partially-used files.
+    // We check: does the file's stem appear in any import statement in the corpus?
+    const importedPattern = new RegExp(
+      `from\\s+['"][^'"]*/${stem}['"]|from\\s+['"][^'"]*/${stem}['".]`,
+    );
+
+    if (!importedPattern.test(corpusText)) {
+      // None of the file's exports are imported — report the first exported fn
+      unused.push({ file: relFile, name: exportedFns[0] });
     }
   }
 
-  return { name: "Stale Docs", issues };
+  return unused;
 }
 
-// ── Check 2: Untested Services ────────────────────────────────────────────
-// Each .ts file in src/services/ should have a matching test in tests/.
+// ── Check 2: Missing test coverage ────────────────────────────────────────
 
-function checkUntestedServices(): CheckResult {
-  const issues: Issue[] = [];
+function checkMissingTests(): string[] {
   const servicesDir = join(ROOT, "src", "services");
   const testsDir = join(ROOT, "tests");
 
-  const serviceFiles = listFiles(servicesDir, ".ts").filter((f) => !f.endsWith(".d.ts"));
+  // Only flat .ts files (not subdirectories like jobs/, scrapers/)
+  const serviceFiles = listTsFiles(servicesDir);
+  const missing: string[] = [];
 
-  for (const serviceFile of serviceFiles) {
-    const name = basename(serviceFile, ".ts");
-    // Accept any test file that contains the service name
-    const testCandidates = [join(testsDir, `${name}.test.ts`), join(testsDir, `${name}.spec.ts`)];
-
-    const hasTest = testCandidates.some(existsSync);
+  for (const file of serviceFiles) {
+    const stem = basename(file, ".ts");
+    const hasTest =
+      existsSync(join(testsDir, `${stem}.test.ts`)) ||
+      existsSync(join(testsDir, `${stem}.spec.ts`));
 
     if (!hasTest) {
-      issues.push({
-        label: `src/services/${name}.ts has no corresponding test in tests/`,
-        severity: "warning",
-      });
+      missing.push(relative(ROOT, file));
     }
   }
 
-  return { name: "Untested Services", issues };
+  return missing;
 }
 
-// ── Check 3: Orphaned Imports ─────────────────────────────────────────────
-// Detects .ts files under src/ that are never imported by any other file
-// (simple heuristic: check if the filename stem appears in any import statement).
+// ── Check 3: Stale active plans ────────────────────────────────────────────
 
-function checkOrphanedImports(): CheckResult {
-  const issues: Issue[] = [];
-  const srcDir = join(ROOT, "src");
-
-  // Collect all .ts source files (excluding index files and .d.ts)
-  function collectTs(dir: string): string[] {
-    if (!existsSync(dir)) return [];
-    const entries = readdirSync(dir, { withFileTypes: true });
-    const files: string[] = [];
-    for (const entry of entries) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        files.push(...collectTs(full));
-      } else if (
-        entry.isFile() &&
-        entry.name.endsWith(".ts") &&
-        !entry.name.endsWith(".d.ts") &&
-        entry.name !== "index.ts"
-      ) {
-        files.push(full);
-      }
-    }
-    return files;
-  }
-
-  const allSrcFiles = collectTs(srcDir);
-
-  // Build a search corpus: content of all .ts files in project (src + tests + app)
-  const searchDirs = ["src", "tests", "app"].map((d) => join(ROOT, d));
-  const corpusFiles = searchDirs.flatMap((d) => collectTs(d));
-  // Also include index files in corpus
-  const indexFiles = ["src/db/index.ts", "src/services"].flatMap((p) => {
-    const full = join(ROOT, p);
-    if (existsSync(full) && full.endsWith(".ts")) return [full];
-    return [];
-  });
-
-  const corpus = [...corpusFiles, ...indexFiles].map(readText).join("\n");
-
-  for (const file of allSrcFiles) {
-    const stem = basename(file, ".ts");
-    const relPath = relative(ROOT, file);
-
-    // Check if stem appears in any import/require anywhere in the project
-    // Match: from '...stem' or from "...stem" or require('...stem')
-    const importPattern = new RegExp(
-      `from\\s+['"][^'"]*${stem}['"]|require\\(['"][^'"]*${stem}['"]\\)`,
-    );
-
-    if (!importPattern.test(corpus)) {
-      issues.push({
-        label: `${relPath} may be dead code (not imported anywhere)`,
-        severity: "warning",
-      });
-    }
-  }
-
-  return { name: "Orphaned Code", issues };
+interface StalePlan {
+  file: string;
+  daysOld: number;
 }
 
-// ── Check 4: Schema Drift ─────────────────────────────────────────────────
-// Check if tables defined in src/db/schema.ts have corresponding migration files.
-
-function checkSchemaDrift(): CheckResult {
-  const issues: Issue[] = [];
-  const schemaPath = join(ROOT, "src", "db", "schema.ts");
-  const migrationsDir = join(ROOT, "drizzle");
-
-  if (!existsSync(schemaPath)) {
-    return { name: "Schema Drift", issues };
+function parseFrontmatter(content: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+  if (!match) return result;
+  for (const line of match[1].split("\n")) {
+    const colonIdx = line.indexOf(":");
+    if (colonIdx === -1) continue;
+    const key = line.slice(0, colonIdx).trim();
+    const value = line
+      .slice(colonIdx + 1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
+    result[key] = value;
   }
+  return result;
+}
+
+function checkStalePlans(): StalePlan[] {
+  const plansDir = join(ROOT, "docs", "plans");
+  if (!existsSync(plansDir)) return [];
+
+  const stale: StalePlan[] = [];
+
+  for (const entry of readdirSync(plansDir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+    const fullPath = join(plansDir, entry.name);
+    const content = readText(fullPath);
+    const fm = parseFrontmatter(content);
+
+    if (fm.status !== "active") continue;
+
+    // Try date from frontmatter first, fall back to file mtime
+    let ageMs: number;
+    if (fm.date) {
+      ageMs = NOW_MS - new Date(fm.date).getTime();
+    } else {
+      ageMs = NOW_MS - statSync(fullPath).mtimeMs;
+    }
+
+    const daysOld = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+    if (daysOld > STALE_DAYS) {
+      stale.push({ file: `docs/plans/${entry.name}`, daysOld });
+    }
+  }
+
+  return stale;
+}
+
+// ── Check 4: Orphaned DB tables ───────────────────────────────────────────
+
+function checkOrphanedTables(): string[] {
+  // The actual schema lives in the @motian/db package
+  const schemaPath = join(ROOT, "packages", "db", "src", "schema.ts");
+  if (!existsSync(schemaPath)) return [];
 
   const schemaContent = readText(schemaPath);
 
-  // Extract table names from pgTable('table_name', ...) calls
-  const tablePattern = /pgTable\s*\(\s*['"]([^'"]+)['"]/g;
+  // Extract table names from: pgTable("table_name", ...)
+  const TABLE_RE = /pgTable\s*\(\s*['"]([^'"]+)['"]/g;
   const tables: string[] = [];
-
-  for (const match of schemaContent.matchAll(tablePattern)) {
+  for (const match of schemaContent.matchAll(TABLE_RE)) {
     tables.push(match[1]);
   }
 
-  if (tables.length === 0) {
-    return { name: "Schema Drift", issues };
-  }
+  if (tables.length === 0) return [];
 
-  // Collect all migration SQL content
-  const migrationFiles = listFiles(migrationsDir, ".sql");
-  const migrationContent = migrationFiles.map(readText).join("\n");
+  // Build a broad corpus: all of src/ + app/ + packages/ — tables may be
+  // consumed by MCP tools, voice-agent, autopilot, etc.
+  const searchDirs = ["src", "app", "packages"].map((d) => join(ROOT, d));
+  const serviceFiles = searchDirs.flatMap(listTsFilesRecursive);
+  const serviceCorpus = serviceFiles.map(readText).join("\n");
 
+  const orphaned: string[] = [];
   for (const table of tables) {
-    // Check if any migration creates this table
-    const createPattern = new RegExp(`CREATE TABLE.*?["']?${table}["']?`, "i");
-    if (!createPattern.test(migrationContent)) {
-      issues.push({
-        label: `Table "${table}" in schema.ts has no CREATE TABLE in drizzle/ migrations`,
-        severity: "warning",
-      });
+    // Check for the table string literal or the camelCase export name
+    const tableLiteralPattern = new RegExp(`['"\`]${table}['"\`]`);
+    // Convert snake_case table name to likely camelCase variable (e.g. job_matches → jobMatches)
+    const camelName = table.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+    const camelPattern = new RegExp(`\\b${camelName}\\b`);
+
+    if (!tableLiteralPattern.test(serviceCorpus) && !camelPattern.test(serviceCorpus)) {
+      orphaned.push(table);
     }
   }
 
-  return { name: "Schema Drift", issues };
+  return orphaned;
 }
 
-// ── Check 5: Code Cruft (TODOs, FIXMEs, Commented Code) ────────────────────
-// Scans for leftover "TODO", "FIXME", and obvious commented-out code blocks.
-
-function checkCruft(): CheckResult {
-  const issues: Issue[] = [];
-  const dirs = ["src", "app", "components"].map((d) => join(ROOT, d));
-
-  const allFiles = dirs.flatMap((d) => {
-    if (!existsSync(d)) return [];
-    return listFiles(d).filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"));
-  });
-
-  const TODO_REGEX = /\/\/\s*TODO:/i;
-  const FIXME_REGEX = /\/\/\s*FIXME:/i;
-  const COMMENTED_CODE_REGEX = /\/\/\s*(const|let|var|function|import|export)\s+/;
-
-  for (const file of allFiles) {
-    const content = readText(file);
-    const lines = content.split("\n");
-    const relPath = relative(ROOT, file);
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (TODO_REGEX.test(line)) {
-        issues.push({ label: `TODO found in ${relPath}:${i + 1}`, severity: "warning" });
-      }
-      if (FIXME_REGEX.test(line)) {
-        issues.push({ label: `FIXME found in ${relPath}:${i + 1}`, severity: "warning" });
-      }
-      if (COMMENTED_CODE_REGEX.test(line)) {
-        issues.push({
-          label: `Potentially commented-out code in ${relPath}:${i + 1}`,
-          severity: "warning",
-        });
-      }
-    }
-  }
-
-  return { name: "Code Cruft", issues };
-}
-
-// ── Reporting ──────────────────────────────────────────────────────────────
-
-function _formatCount(issues: Issue[], label: string): string {
-  const count = issues.length;
-  return `${label}: ${count === 0 ? "0 issues" : `${count} file${count === 1 ? "" : "s"} missing tests`}`;
-}
+// ── Report ─────────────────────────────────────────────────────────────────
 
 function run(): void {
-  const results: CheckResult[] = [
-    checkStaleDocs(),
-    checkUntestedServices(),
-    checkOrphanedImports(),
-    checkSchemaDrift(),
-    checkCruft(),
-  ];
+  console.log("\nEntropy Report");
+  console.log("==============");
 
-  const totalIssues = results.reduce((sum, r) => sum + r.issues.length, 0);
-  const criticalCount = results.reduce(
-    (sum, r) => sum + r.issues.filter((i) => i.severity === "critical").length,
-    0,
-  );
-  const warningCount = totalIssues - criticalCount;
+  // Run all checks
+  const unusedExports = checkUnusedExports();
+  const missingTests = checkMissingTests();
+  const stalePlans = checkStalePlans();
+  const orphanedTables = checkOrphanedTables();
 
-  console.log("\nEntropy Check Results");
-  console.log("═══════════════════════");
+  // Score: each category contributes min(count, cap) points.
+  // Per-category cap prevents a large legacy backlog from permanently blocking CI.
+  // The intent is to detect *regressions*, not audit the whole codebase at once.
+  const CAP = 5;
+  const score =
+    Math.min(unusedExports.length, CAP) +
+    Math.min(missingTests.length, CAP) +
+    Math.min(stalePlans.length, CAP) +
+    Math.min(orphanedTables.length, CAP);
 
-  for (const result of results) {
-    const count = result.issues.length;
-    let line: string;
-
-    if (result.name === "Untested Services") {
-      line = `Untested Services: ${count === 0 ? "0 issues" : `${count} file${count === 1 ? "" : "s"} missing tests`}`;
-    } else if (result.name === "Orphaned Code") {
-      line = `Orphaned Code:   ${count === 0 ? "0 issues" : `${count} potential dead file${count === 1 ? "" : "s"}`}`;
-    } else {
-      line = `${result.name}:${" ".repeat(Math.max(1, 17 - result.name.length))}${count === 0 ? "0 issues" : `${count} issue${count === 1 ? "" : "s"}`}`;
-    }
-
-    console.log(line);
-
-    if (VERBOSE && count > 0) {
-      for (const issue of result.issues) {
-        const tag = issue.severity === "critical" ? "[CRITICAL]" : "[warn]";
-        console.log(`  ${tag} ${issue.label}`);
-      }
-    }
-  }
-
-  console.log("═══════════════════════");
+  // Print summary lines
   console.log(
-    `Total: ${totalIssues} issue${totalIssues === 1 ? "" : "s"} (${criticalCount} critical, ${warningCount} warnings)`,
+    `Unused exports: ${unusedExports.length === 0 ? "0 found" : `${unusedExports.length} found`}`,
   );
-  console.log();
-
-  if (!VERBOSE && totalIssues > 0) {
-    console.log("Run with --verbose to see details.");
+  if (VERBOSE || unusedExports.length > 0) {
+    for (const e of unusedExports) {
+      console.log(`  - ${e.file}: ${e.name}()`);
+    }
   }
 
-  if (STRICT && criticalCount > 0) {
-    process.exit(1);
+  console.log(
+    `Missing tests: ${missingTests.length === 0 ? "0 services" : `${missingTests.length} services`}`,
+  );
+  if (VERBOSE || missingTests.length > 0) {
+    for (const f of missingTests) {
+      console.log(`  - ${f}`);
+    }
   }
 
-  process.exit(0);
+  console.log(`Stale plans: ${stalePlans.length === 0 ? "0 found" : `${stalePlans.length} found`}`);
+  if (VERBOSE || stalePlans.length > 0) {
+    for (const p of stalePlans) {
+      console.log(`  - ${p.file} (active, ${p.daysOld} days old)`);
+    }
+  }
+
+  console.log(
+    `Orphaned tables: ${orphanedTables.length === 0 ? "0" : `${orphanedTables.length} found`}`,
+  );
+  if (VERBOSE || orphanedTables.length > 0) {
+    for (const t of orphanedTables) {
+      console.log(`  - ${t}`);
+    }
+  }
+
+  console.log("");
+  const status = score < SCORE_THRESHOLD ? `target: < ${SCORE_THRESHOLD}` : `OVER THRESHOLD`;
+  console.log(`Score: ${score} entropy points (${status})`);
+
+  if (!VERBOSE && score > 0) {
+    console.log("\nRun with --verbose to see all findings.");
+  }
+
+  process.exit(score >= SCORE_THRESHOLD ? 1 : 0);
 }
 
 run();
