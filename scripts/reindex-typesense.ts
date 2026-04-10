@@ -2,9 +2,11 @@ import { and, asc, db, isNull } from "../src/db";
 import { candidates, jobs } from "../src/db/schema";
 import { getTypesenseConfig } from "../src/lib/typesense";
 import { getVisibleVacancyCondition } from "../src/services/jobs/filters";
-import { dropTypesenseCollection } from "../src/services/search-index/typesense-client";
 import {
+  dropTypesenseCollection,
   ensureTypesenseCollections,
+} from "../src/services/search-index/typesense-client";
+import {
   upsertCandidatesByIds,
   upsertJobsByIds,
 } from "../src/services/search-index/typesense-sync";
