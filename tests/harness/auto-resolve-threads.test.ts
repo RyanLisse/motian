@@ -9,11 +9,7 @@ import { classifyThreads, run } from "@/scripts/harness/auto-resolve-threads";
 // Fixtures
 // ---------------------------------------------------------------------------
 
-function makeThread(
-  id: string,
-  isResolved: boolean,
-  logins: string[],
-) {
+function makeThread(id: string, isResolved: boolean, logins: string[]) {
   return {
     id,
     isResolved,
@@ -29,9 +25,7 @@ function makeThread(
 
 describe("classifyThreads", () => {
   it("classifies bot-only unresolved threads as botOnly", () => {
-    const threads = [
-      makeThread("T1", false, ["review-bot[bot]", "github-actions"]),
-    ];
+    const threads = [makeThread("T1", false, ["review-bot[bot]", "github-actions"])];
 
     const { botOnly, withHumans, alreadyResolved } = classifyThreads(threads);
 
@@ -42,9 +36,7 @@ describe("classifyThreads", () => {
   });
 
   it("classifies threads with human comments as withHumans", () => {
-    const threads = [
-      makeThread("T2", false, ["review-bot[bot]", "human-dev"]),
-    ];
+    const threads = [makeThread("T2", false, ["review-bot[bot]", "human-dev"])];
 
     const { botOnly, withHumans } = classifyThreads(threads);
 
@@ -54,9 +46,7 @@ describe("classifyThreads", () => {
   });
 
   it("classifies already-resolved threads separately", () => {
-    const threads = [
-      makeThread("T3", true, ["review-bot[bot]"]),
-    ];
+    const threads = [makeThread("T3", true, ["review-bot[bot]"])];
 
     const { botOnly, withHumans, alreadyResolved } = classifyThreads(threads);
 
@@ -76,10 +66,10 @@ describe("classifyThreads", () => {
 
   it("correctly handles mixed thread types", () => {
     const threads = [
-      makeThread("T4", false, ["ci-bot[bot]"]),                  // bot-only
-      makeThread("T5", false, ["ci-bot[bot]", "developer"]),     // has human
-      makeThread("T6", true, ["ci-bot[bot]"]),                   // already resolved
-      makeThread("T7", false, ["github-actions"]),               // bot-only (known bot)
+      makeThread("T4", false, ["ci-bot[bot]"]), // bot-only
+      makeThread("T5", false, ["ci-bot[bot]", "developer"]), // has human
+      makeThread("T6", true, ["ci-bot[bot]"]), // already resolved
+      makeThread("T7", false, ["github-actions"]), // bot-only (known bot)
     ];
 
     const { botOnly, withHumans, alreadyResolved } = classifyThreads(threads);
@@ -114,8 +104,8 @@ describe("run", () => {
     });
 
     mockExecSync
-      .mockReturnValueOnce(graphqlResponse)  // fetch threads
-      .mockReturnValueOnce("{}");            // resolve T10
+      .mockReturnValueOnce(graphqlResponse) // fetch threads
+      .mockReturnValueOnce("{}"); // resolve T10
 
     const result = await run(42, "TestOwner", "test-repo");
 
@@ -137,9 +127,7 @@ describe("run", () => {
   });
 
   it("does nothing when all threads are already resolved", async () => {
-    const threads = [
-      makeThread("T20", true, ["lint-bot[bot]"]),
-    ];
+    const threads = [makeThread("T20", true, ["lint-bot[bot]"])];
 
     const graphqlResponse = JSON.stringify({
       data: {

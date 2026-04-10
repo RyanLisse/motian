@@ -166,7 +166,9 @@ async function main(): Promise<void> {
 }
 
 // Only run when executed directly (not when imported in tests)
-const isDirectRun = process.argv[1]?.endsWith("auto-resolve-threads.ts") || process.argv[1]?.includes("auto-resolve-threads");
+const isDirectRun =
+  process.argv[1]?.endsWith("auto-resolve-threads.ts") ||
+  process.argv[1]?.includes("auto-resolve-threads");
 if (isDirectRun) {
   main().catch((err) => {
     console.error(`[auto-resolve-threads] Onverwerkte fout: ${err}`);
