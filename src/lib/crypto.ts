@@ -62,7 +62,9 @@ export function decrypt(encoded: string): string {
       return decryptPayload(secret, salt, payload);
     } catch {
       // Backwards compatibility for previously stored credentials that packed only iv+tag+ciphertext.
-      console.warn("[crypto] legacy_decrypt_fallback: blob mist salt-prefix, val terug op deterministische salt");
+      console.warn(
+        "[crypto] legacy_decrypt_fallback: blob mist salt-prefix, val terug op deterministische salt",
+      );
     }
   }
 
