@@ -31,7 +31,7 @@ function encryptWithSalt(plaintext: string, secret: string, salt: Buffer): strin
 
 function decryptPayload(secret: string, salt: Buffer, payload: Buffer): string {
   if (payload.length < IV_LENGTH + TAG_LENGTH) {
-    throw new Error("Encrypted payload is too short");
+    throw new Error("Versleutelde payload is te kort");
   }
 
   const key = deriveKey(secret, salt);
@@ -54,19 +54,27 @@ export function encrypt(plaintext: string): string {
 export function decrypt(encoded: string): string {
   const secret = getSecret();
   const buf = Buffer.from(encoded, "base64");
+  const legacyFallbackWarning =
+    "[crypto] legacy_decrypt_fallback: blob mist salt-prefix, val terug op deterministische salt";
 
   if (buf.length >= SALT_LENGTH + IV_LENGTH + TAG_LENGTH) {
     try {
       const salt = buf.subarray(0, SALT_LENGTH);
       const payload = buf.subarray(SALT_LENGTH);
       return decryptPayload(secret, salt, payload);
-    } catch {
+    } catch (saltedError) {
       // Backwards compatibility for previously stored credentials that packed only iv+tag+ciphertext.
-      console.warn(
-        "[crypto] legacy_decrypt_fallback: blob mist salt-prefix, val terug op deterministische salt",
-      );
+      try {
+        const decrypted = decryptPayload(secret, getLegacySalt(secret), buf);
+        console.warn(legacyFallbackWarning);
+        return decrypted;
+      } catch {
+        throw saltedError;
+      }
     }
   }
 
-  return decryptPayload(secret, getLegacySalt(secret), buf);
+  const decrypted = decryptPayload(secret, getLegacySalt(secret), buf);
+  console.warn(legacyFallbackWarning);
+  return decrypted;
 }

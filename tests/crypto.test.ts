@@ -1,5 +1,5 @@
 import { createCipheriv, randomBytes, scryptSync } from "node:crypto";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { decrypt, encrypt } from "../src/lib/crypto";
 
 const ALGORITHM = "aes-256-gcm";
@@ -25,6 +25,7 @@ describe("crypto — encrypt/decrypt", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     process.env = ORIGINAL_ENV;
   });
 
@@ -60,12 +61,14 @@ describe("crypto — encrypt/decrypt", () => {
   });
 
   it("decrypt faalt bij gemanipuleerde ciphertext", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const encrypted = encrypt("gevoelige data");
     const buf = Buffer.from(encrypted, "base64");
     // Flip een byte in de ciphertext (voorbij IV + tag)
     buf[33] ^= 0xff;
     const tampered = buf.toString("base64");
     expect(() => decrypt(tampered)).toThrow();
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it("verwerkt lege string correct", () => {
@@ -111,9 +114,20 @@ describe("crypto — encrypt/decrypt", () => {
   });
 
   it("decrypt ondersteunt legacy blobs met deterministische salt", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const plaintext = '{"username":"legacy-user","password":"oude-geheim"}';
     const encrypted = encryptLegacy(plaintext, TEST_SECRET);
     expect(decrypt(encrypted)).toBe(plaintext);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[crypto] legacy_decrypt_fallback: blob mist salt-prefix, val terug op deterministische salt",
+    );
+  });
+
+  it("gooit Nederlandse fout voor te korte payloads", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const encoded = Buffer.from([1, 2, 3]).toString("base64");
+    expect(() => decrypt(encoded)).toThrow("Versleutelde payload is te kort");
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
 

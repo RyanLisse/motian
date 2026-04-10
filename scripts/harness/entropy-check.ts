@@ -195,7 +195,10 @@ function checkStalePlans(): StalePlan[] {
     // Try date from frontmatter first, fall back to file mtime
     let ageMs: number;
     if (fm.date) {
-      ageMs = NOW_MS - new Date(fm.date).getTime();
+      const parsedDateMs = new Date(fm.date).getTime();
+      ageMs = Number.isNaN(parsedDateMs)
+        ? NOW_MS - statSync(fullPath).mtimeMs
+        : NOW_MS - parsedDateMs;
     } else {
       ageMs = NOW_MS - statSync(fullPath).mtimeMs;
     }
