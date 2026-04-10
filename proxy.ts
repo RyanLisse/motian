@@ -80,6 +80,7 @@ const FIRST_PARTY_PATHS = [
   "/api/interviews",
   "/api/sollicitaties",
   "/api/berichten",
+  "/api/events",
   "/api/instellingen",
   "/api/platforms",
   "/api/salesforce-feed",

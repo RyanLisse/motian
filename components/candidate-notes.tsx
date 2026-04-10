@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { useDataMutationNotifier } from "@/components/data-refresh-listener";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { appendOptimisticNote } from "@/src/lib/mobile-optimistic";
 
 export function CandidateNotes({
   candidateId,
@@ -12,28 +13,48 @@ export function CandidateNotes({
   candidateId: string;
   initialNotes: string | null;
 }) {
-  const router = useRouter();
+  const notifyDataMutation = useDataMutationNotifier();
   const [notes, setNotes] = useState(initialNotes);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const [, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNotes(initialNotes);
+  }, [initialNotes]);
 
   async function handleAddNote() {
-    if (!draft.trim()) return;
+    const trimmedDraft = draft.trim();
+    if (!trimmedDraft) return;
 
+    const previousNotes = notes;
+    setError(null);
     setSaving(true);
+    setNotes(appendOptimisticNote(notes, trimmedDraft));
+    setDraft("");
+
     try {
       const res = await fetch(`/api/kandidaten/${candidateId}/notities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: draft.trim() }),
+        body: JSON.stringify({ note: trimmedDraft }),
       });
-      if (res.ok) {
-        const { data } = await res.json();
-        setNotes(data.notes);
-        setDraft("");
-        startTransition(() => router.refresh());
+
+      const body = (await res.json().catch(() => null)) as {
+        data?: { notes?: string | null };
+        error?: string;
+      } | null;
+
+      if (!res.ok) {
+        throw new Error(body?.error ?? "Notitie opslaan mislukt");
       }
+
+      setNotes(body?.data?.notes ?? appendOptimisticNote(previousNotes, trimmedDraft));
+      notifyDataMutation(["candidates"]);
+    } catch (saveError) {
+      setNotes(previousNotes);
+      setDraft(trimmedDraft);
+      setError(saveError instanceof Error ? saveError.message : "Notitie opslaan mislukt");
     } finally {
       setSaving(false);
     }
@@ -67,6 +88,7 @@ export function CandidateNotes({
               }
             }}
           />
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <div className="flex justify-end">
             <Button size="sm" onClick={handleAddNote} disabled={saving || !draft.trim()}>
               {saving ? "Opslaan…" : "Notitie toevoegen"}

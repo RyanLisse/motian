@@ -9,12 +9,12 @@ function readFile(...segments: string[]) {
 }
 
 describe("runtime cost reduction cleanup", () => {
-  it("removes the unused Trigger tasks and generic SSE route", () => {
+  it("keeps unused Trigger tasks removed while restoring targeted refresh plumbing", () => {
     expect(fs.existsSync(path.join(ROOT, "trigger", "whatsapp-gateway.ts"))).toBe(false);
     expect(fs.existsSync(path.join(ROOT, "trigger", "autopilot-nightly.ts"))).toBe(false);
-    expect(fs.existsSync(path.join(ROOT, "app", "api", "events", "route.ts"))).toBe(false);
-    expect(fs.existsSync(path.join(ROOT, "components", "data-refresh-listener.tsx"))).toBe(false);
-    expect(fs.existsSync(path.join(ROOT, "src", "hooks", "use-event-source.ts"))).toBe(false);
+    expect(fs.existsSync(path.join(ROOT, "app", "api", "events", "route.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(ROOT, "components", "data-refresh-listener.tsx"))).toBe(true);
+    expect(fs.existsSync(path.join(ROOT, "src", "hooks", "use-event-source.ts"))).toBe(true);
   });
 
   it("returns a static disabled WhatsApp status payload", async () => {
@@ -62,7 +62,8 @@ describe("runtime cost reduction cleanup", () => {
     expect(scraperActions).not.toContain("EventSource");
   });
 
-  it("removes SSE refresh listeners from recruiter pages and proxy allowlists", () => {
+  it("keeps refresh listeners centralized in the app shell instead of route files", () => {
+    const layoutSource = readFile("app", "layout.tsx");
     const kandidatenPage = readFile("app", "kandidaten", "page.tsx");
     const pipelinePage = readFile("app", "pipeline", "page.tsx");
     const interviewsPage = readFile("app", "interviews", "page.tsx");
@@ -70,11 +71,12 @@ describe("runtime cost reduction cleanup", () => {
     const vacaturesPage = readFile("app", "vacatures", "page.tsx");
     const proxySource = readFile("proxy.ts");
 
+    expect(layoutSource).toContain("DataRefreshListener");
     expect(kandidatenPage).not.toContain("DataRefreshListener");
     expect(pipelinePage).not.toContain("DataRefreshListener");
     expect(interviewsPage).not.toContain("DataRefreshListener");
     expect(messagesPage).not.toContain("DataRefreshListener");
     expect(vacaturesPage).not.toContain("DataRefreshListener");
-    expect(proxySource).not.toContain('"/api/events"');
+    expect(proxySource).toContain('"/api/events"');
   });
 });

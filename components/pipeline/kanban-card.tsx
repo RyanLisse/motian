@@ -2,7 +2,7 @@
 
 import { GripVertical } from "lucide-react";
 import Link from "next/link";
-import { type DragEvent, useCallback, useRef, useState } from "react";
+import { type DragEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
 import { Badge } from "@/components/ui/badge";
 import { ApplicationFeedbackEditor } from "./application-feedback-editor";
@@ -27,7 +27,12 @@ interface KanbanCardProps {
 
 export function KanbanCard({ card }: KanbanCardProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [notes, setNotes] = useState(card.notes ?? null);
   const didDrag = useRef(false);
+
+  useEffect(() => {
+    setNotes(card.notes ?? null);
+  }, [card.notes]);
 
   const handleDragStart = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
@@ -139,12 +144,16 @@ export function KanbanCard({ card }: KanbanCardProps) {
             )}
           </div>
 
-          {card.notes ? (
-            <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{card.notes}</p>
+          {notes ? (
+            <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{notes}</p>
           ) : null}
 
           <div className="mt-2">
-            <ApplicationFeedbackEditor applicationId={card.id} initialNotes={card.notes} />
+            <ApplicationFeedbackEditor
+              applicationId={card.id}
+              initialNotes={notes}
+              onNotesChange={setNotes}
+            />
           </div>
         </div>
       </div>

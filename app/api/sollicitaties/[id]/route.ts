@@ -60,7 +60,11 @@ export const PATCH = withApiHandler(
       return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }
     revalidatePath("/pipeline");
-    publish("application:updated", { applicationId: id, stage: parsed.data.stage });
+    publish("application:updated", {
+      applicationId: id,
+      stage: parsed.data.stage,
+      notesUpdated: parsed.data.notes !== undefined,
+    });
     return Response.json(
       { data: application },
       {
@@ -79,6 +83,7 @@ export const DELETE = withApiHandler(
       return Response.json({ error: "Sollicitatie niet gevonden" }, { status: 404 });
     }
     revalidatePath("/pipeline");
+    publish("application:deleted", { applicationId: id });
     return Response.json(
       { data: { id, deleted: true } },
       {

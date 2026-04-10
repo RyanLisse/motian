@@ -3,9 +3,10 @@
 import { ArrowRight, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MatchSuggestionCard } from "@/components/candidate-wizard/match-suggestion-card";
 import type { MatchSuggestionItem } from "@/components/candidate-wizard/types";
+import { useDataMutationNotifier } from "@/components/data-refresh-listener";
 import { Button } from "@/components/ui/button";
 
 interface CandidateRecommendationPanelProps {
@@ -81,9 +82,14 @@ export function CandidateRecommendationPanel({
   initialMatches,
 }: CandidateRecommendationPanelProps) {
   const router = useRouter();
+  const notifyDataMutation = useDataMutationNotifier();
   const [matches, setMatches] = useState(initialMatches);
   const [pendingAction, setPendingAction] = useState<"refresh" | "link" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMatches(initialMatches);
+  }, [initialMatches]);
 
   const recommendedMatch = useMemo(() => pickRecommendedMatch(matches), [matches]);
   const highlightedRecommendationSource: MatchSuggestionItem["recommendationSource"] =
@@ -128,8 +134,14 @@ export function CandidateRecommendationPanel({
   const autoLinkRecommendation = async () => {
     if (!recommendedMatch) return;
 
+    const previousMatches = matches;
     setPendingAction("link");
     setError(null);
+    setMatches((currentMatches) =>
+      currentMatches.map((match) =>
+        match.matchId === recommendedMatch.matchId ? { ...match, isLinked: true } : match,
+      ),
+    );
 
     try {
       const response = await fetch(`/api/kandidaten/${candidateId}/koppel`, {
@@ -144,8 +156,9 @@ export function CandidateRecommendationPanel({
         throw new Error(message ?? "Aanbevolen match koppelen mislukt");
       }
 
-      router.refresh();
+      notifyDataMutation(["pipeline", "matches", "candidates", "jobs"]);
     } catch (err) {
+      setMatches(previousMatches);
       setError(err instanceof Error ? err.message : "Aanbevolen match koppelen mislukt");
     } finally {
       setPendingAction(null);

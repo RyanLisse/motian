@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
+import { publish } from "@/src/lib/event-bus";
 import { addNoteToCandidate } from "@/src/services/candidates";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,8 @@ export const POST = withApiHandler(
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
     revalidatePath("/kandidaten");
+    revalidatePath(`/kandidaten/${id}`);
+    publish("candidate:updated", { id, action: "note_added" });
     return Response.json(
       { data: { notes: candidate.notes } },
       {

@@ -1,8 +1,8 @@
 "use client";
 
 import { Loader2, MessageSquarePlus } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDataMutationNotifier } from "@/components/data-refresh-listener";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,27 +18,37 @@ import { Textarea } from "@/components/ui/textarea";
 export function ApplicationFeedbackEditor({
   applicationId,
   initialNotes,
+  onNotesChange,
 }: {
   applicationId: string;
   initialNotes?: string | null;
+  onNotesChange?: (notes: string | null) => void;
 }) {
-  const router = useRouter();
+  const notifyDataMutation = useDataMutationNotifier();
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState(initialNotes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setNotes(initialNotes ?? "");
+  }, [initialNotes]);
+
   const hasNotes = (initialNotes ?? "").trim().length > 0;
 
   const handleSave = async () => {
+    const previousNotes = initialNotes ?? "";
+    const nextNotes = notes.trim();
+
     setSaving(true);
     setError(null);
+    onNotesChange?.(nextNotes || null);
 
     try {
       const response = await fetch(`/api/sollicitaties/${applicationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify({ notes: nextNotes }),
       });
 
       const body = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -46,9 +56,10 @@ export function ApplicationFeedbackEditor({
         throw new Error(body?.error ?? "Recruiterfeedback opslaan mislukt");
       }
 
+      notifyDataMutation(["pipeline"]);
       setOpen(false);
-      router.refresh();
     } catch (saveError) {
+      onNotesChange?.(previousNotes || null);
       setError(
         saveError instanceof Error ? saveError.message : "Recruiterfeedback opslaan mislukt",
       );

@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useOptimistic, useTransition } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useDataMutationNotifier } from "@/components/data-refresh-listener";
+import { moveStageCard } from "@/src/lib/mobile-optimistic";
 import type { KanbanCardData } from "./kanban-card";
 import { KanbanColumn } from "./kanban-column";
 
@@ -20,30 +21,20 @@ interface KanbanBoardProps {
 type OptimisticAction = { applicationId: string; fromStage: string; toStage: string };
 
 export function KanbanBoard({ byStage }: KanbanBoardProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const notifyDataMutation = useDataMutationNotifier();
+  const [boardState, setBoardState] = useState(byStage);
+  const [savingMove, setSavingMove] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [optimisticByStage, addOptimisticMove] = useOptimistic(
-    byStage,
-    (state, action: OptimisticAction) => {
-      const next = { ...state };
-      // Remove card from old stage
-      const fromCards = [...(next[action.fromStage] ?? [])];
-      const cardIndex = fromCards.findIndex((c) => c.id === action.applicationId);
-      if (cardIndex === -1) return state;
-      const [card] = fromCards.splice(cardIndex, 1);
-      next[action.fromStage] = fromCards;
-      // Add card to new stage
-      next[action.toStage] = [card, ...(next[action.toStage] ?? [])];
-      return next;
-    },
-  );
+  useEffect(() => {
+    setBoardState(byStage);
+  }, [byStage]);
 
   const handleDrop = useCallback(
-    (applicationId: string, targetStage: string) => {
+    async (applicationId: string, targetStage: string) => {
       // Find the card's current stage
       let fromStage = "";
-      for (const [stage, cards] of Object.entries(optimisticByStage)) {
+      for (const [stage, cards] of Object.entries(boardState)) {
         if (cards.some((c) => c.id === applicationId)) {
           fromStage = stage;
           break;
@@ -51,36 +42,53 @@ export function KanbanBoard({ byStage }: KanbanBoardProps) {
       }
       if (!fromStage || fromStage === targetStage) return;
 
-      startTransition(async () => {
-        addOptimisticMove({ applicationId, fromStage, toStage: targetStage });
+      const previousState = boardState;
+      const action: OptimisticAction = { applicationId, fromStage, toStage: targetStage };
+      setError(null);
+      setSavingMove(true);
+      setBoardState((currentState) =>
+        moveStageCard(currentState, {
+          cardId: action.applicationId,
+          fromStage: action.fromStage,
+          toStage: action.toStage,
+        }),
+      );
 
-        try {
-          const res = await fetch(`/api/sollicitaties/${applicationId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ stage: targetStage }),
-          });
+      try {
+        const res = await fetch(`/api/sollicitaties/${applicationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stage: targetStage }),
+        });
 
-          if (!res.ok) {
-            console.error("Failed to update stage:", await res.text());
-          }
-        } catch (err) {
-          console.error("Network error updating stage:", err);
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        if (!res.ok) {
+          throw new Error(body?.error ?? "Pipeline-fase opslaan mislukt");
         }
 
-        router.refresh();
-      });
+        notifyDataMutation(["pipeline"]);
+      } catch (err) {
+        setBoardState(previousState);
+        setError(err instanceof Error ? err.message : "Pipeline-fase opslaan mislukt");
+      } finally {
+        setSavingMove(false);
+      }
     },
-    [optimisticByStage, addOptimisticMove, router],
+    [boardState, notifyDataMutation],
   );
 
   return (
     <div className="relative">
-      {isPending && (
+      {savingMove && (
         <div className="absolute top-0 right-0 z-10">
           <span className="text-xs text-muted-foreground animate-pulse">Opslaan...</span>
         </div>
       )}
+      {error ? (
+        <div className="mb-3 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
       <div className="flex gap-3 overflow-x-auto pb-4">
         {STAGES.map((stage) => (
           <KanbanColumn
@@ -88,7 +96,7 @@ export function KanbanBoard({ byStage }: KanbanBoardProps) {
             stage={stage.key}
             label={stage.label}
             color={stage.color}
-            cards={optimisticByStage[stage.key] ?? []}
+            cards={boardState[stage.key] ?? []}
             onDrop={handleDrop}
           />
         ))}

@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
+import { publish } from "@/src/lib/event-bus";
 import { deleteCandidate, getCandidateById, updateCandidate } from "@/src/services/candidates";
 import { withCandidateCanonicalSkills } from "@/src/services/esco";
 
@@ -55,6 +56,8 @@ export const PATCH = withApiHandler(
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
     revalidatePath("/kandidaten");
+    revalidatePath(`/kandidaten/${id}`);
+    publish("candidate:updated", { id, action: "profile_updated" });
     return Response.json(
       { data: await withCandidateCanonicalSkills(candidate) },
       {
@@ -73,6 +76,7 @@ export const DELETE = withApiHandler(
       return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
     }
     revalidatePath("/kandidaten");
+    publish("candidate:deleted", { id });
     return Response.json(
       { data: { id, deleted: true } },
       {
