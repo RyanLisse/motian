@@ -95,13 +95,13 @@ describe("crypto — encrypt/decrypt", () => {
 
   it("gooit fout als ENCRYPTION_SECRET ontbreekt", () => {
     delete process.env.ENCRYPTION_SECRET;
-    expect(() => encrypt("test")).toThrow("ENCRYPTION_SECRET env var is required");
+    expect(() => encrypt("test")).toThrow("Omgevingsvariabele ENCRYPTION_SECRET is vereist");
   });
 
   it("gooit fout bij decrypt zonder ENCRYPTION_SECRET", () => {
     const encrypted = encrypt("test");
     delete process.env.ENCRYPTION_SECRET;
-    expect(() => decrypt(encrypted)).toThrow("ENCRYPTION_SECRET env var is required");
+    expect(() => decrypt(encrypted)).toThrow("Omgevingsvariabele ENCRYPTION_SECRET is vereist");
   });
 
   it("decrypt faalt met verkeerde secret", () => {

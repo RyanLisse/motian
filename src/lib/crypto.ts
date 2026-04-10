@@ -8,7 +8,7 @@ const TAG_LENGTH = 16;
 
 function getSecret(): string {
   const secret = process.env.ENCRYPTION_SECRET;
-  if (!secret) throw new Error("ENCRYPTION_SECRET env var is required");
+  if (!secret) throw new Error("Omgevingsvariabele ENCRYPTION_SECRET is vereist");
   return secret;
 }
 
