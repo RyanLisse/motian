@@ -286,7 +286,7 @@ export function ChatWidget({ currentOrigin = null }: { currentOrigin?: string | 
           onClick={() => setOpen(true)}
           aria-label="Open chatwidget"
           aria-haspopup="dialog"
-          className="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 sm:right-6 sm:bottom-6"
+          className="fixed right-4 bottom-[calc(var(--mobile-bottom-nav-height)+max(env(safe-area-inset-bottom),0px)+0.5rem)] z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 sm:right-6 sm:bottom-6"
           title="Open chatwidget (⌘J)"
         >
           <MessageSquare className="h-5 w-5" />
