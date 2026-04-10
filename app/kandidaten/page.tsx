@@ -155,7 +155,7 @@ async function KandidatenContent({ searchParams }: Props) {
           <select
             name="vaardigheid"
             defaultValue={escoUri}
-            className="h-9 px-3 min-w-[180px] bg-card border border-border rounded-lg text-sm text-muted-foreground focus:outline-none focus:border-primary/40"
+            className="h-9 px-3 min-w-0 bg-card border border-border rounded-lg text-sm text-muted-foreground focus:outline-none focus:border-primary/40"
             title="Filter op canonieke vaardigheid (ESCO)"
             disabled={!escoCatalogAvailable}
           >

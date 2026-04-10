@@ -43,7 +43,7 @@ function CandidateResultCard({
       <Link href={`/kandidaten/${candidate.id}`}>
         <div className="bg-card border border-border rounded-lg p-3 sm:p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer pl-6">
           <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               {candidate.photoUrl ? (
                 <Image
                   src={candidate.photoUrl}
@@ -56,12 +56,12 @@ function CandidateResultCard({
               ) : (
                 <UserCircle className="h-8 w-8 text-muted-foreground shrink-0" />
               )}
-              <div>
-                <h3 className="text-sm font-semibold text-foreground leading-snug">
+              <div className="min-w-0">
+                <h3 className="truncate text-sm font-semibold text-foreground leading-snug">
                   {candidate.name}
                 </h3>
                 {candidate.role && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{candidate.role}</p>
+                  <p className="truncate text-xs text-muted-foreground mt-0.5">{candidate.role}</p>
                 )}
               </div>
             </div>

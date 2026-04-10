@@ -47,14 +47,14 @@ export function CandidateIntakeScorecard({ scorecard }: Props) {
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {scorecard.completenessItems.map((item) => (
             <div key={item.label} className="rounded-xl border border-border bg-background/70 p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {item.label}
                 </p>
-                <Badge variant="outline" className={toneStyles[item.tone]}>
+                <Badge variant="outline" className={`shrink-0 ${toneStyles[item.tone]}`}>
                   {item.value}
                 </Badge>
               </div>
@@ -62,14 +62,14 @@ export function CandidateIntakeScorecard({ scorecard }: Props) {
           ))}
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           {[scorecard.parsedSkillsQuality, scorecard.escoCoverage, scorecard.likelySeniority].map(
             (item) => (
               <div
                 key={item.label}
                 className="rounded-xl border border-border bg-background/70 p-3"
               >
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {item.label}
                 </p>
                 <div className="mt-2 flex items-center gap-2">

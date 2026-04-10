@@ -70,7 +70,7 @@ export function InterviewCard({
           </Badge>
         </div>
       </div>
-      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Calendar className="h-3 w-3" />
           {new Date(interview.scheduledAt).toLocaleDateString("nl-NL", {
