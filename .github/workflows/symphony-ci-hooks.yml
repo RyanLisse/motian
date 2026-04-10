@@ -1,0 +1,85 @@
+name: Symphony CI Hooks
+
+on:
+  pull_request:
+    types: [synchronize]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  # ────────────────────────────────────────────────────────────
+  # Job 1: SHA Discipline
+  # Marks stale bot comments when a new commit is pushed to a
+  # Symphony PR, so reviewers see which feedback is outdated.
+  # ────────────────────────────────────────────────────────────
+  sha-discipline:
+    if: >-
+      github.event_name == 'pull_request' &&
+      (contains(github.event.pull_request.labels.*.name, 'symphony') ||
+       startsWith(github.head_ref, 'symphony/'))
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    concurrency:
+      group: symphony-hooks-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: "22"
+
+      - name: Mark stale bot comments
+        run: npx tsx scripts/harness/sha-discipline.ts ${{ github.event.pull_request.number }} ${{ github.event.after }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+  # ────────────────────────────────────────────────────────────
+  # Job 2: Auto-Resolve Threads
+  # After a successful CI run on a Symphony branch, resolves
+  # review threads that contain only bot comments.
+  # ────────────────────────────────────────────────────────────
+  auto-resolve-threads:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'symphony/')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: "22"
+
+      - name: Find PR number
+        id: find-pr
+        run: |
+          PR_NUM=$(gh pr list --head "${{ github.event.workflow_run.head_branch }}" --json number --jq '.[0].number')
+          echo "pr-number=$PR_NUM" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve bot-only review threads
+        if: steps.find-pr.outputs.pr-number != ''
+        run: npx tsx scripts/harness/auto-resolve-threads.ts ${{ steps.find-pr.outputs.pr-number }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

@@ -295,6 +295,15 @@ Use this only when completion is blocked by missing required tools or missing au
 - Keep issue text concise, specific, and reviewer-oriented.
 - If blocked and no workpad exists yet, add one blocker comment describing blocker, impact, and next unblock action.
 
+## Terminal failure policy
+
+When the agent exhausts `max_turns` and the PR still has failing CI checks:
+
+1. Add label `symphony:failed` to the PR: `gh pr edit --add-label "symphony:failed"`
+2. Post a summary comment listing which checks failed and the attempt count
+3. Leave the PR open for human triage
+4. Move the Linear ticket to `Human Review` with a blocker brief in the workpad
+
 ## Workpad template
 
 Use this exact structure for the persistent workpad comment and keep it updated in place throughout execution:

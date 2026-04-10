@@ -26,6 +26,7 @@ jobs:
     outputs:
       risk-tier: ${{ steps.gate.outputs.risk-tier }}
       gate-json: ${{ steps.gate.outputs.gate-json }}
+      has-ui-files: ${{ steps.gate.outputs.has-ui-files }}
 
     steps:
       - name: Checkout repository
@@ -325,7 +326,12 @@ jobs:
     name: Browser Evidence
     runs-on: ubuntu-latest
     needs: risk-policy-gate
-    if: needs.risk-policy-gate.outputs.risk-tier == 'high'
+    if: >-
+      needs.risk-policy-gate.outputs.risk-tier == 'high' ||
+      (
+        (contains(github.event.pull_request.labels.*.name, 'symphony') || startsWith(github.head_ref, 'symphony/'))
+        && needs.risk-policy-gate.outputs.has-ui-files == 'true'
+      )
     env:
       HOSTNAME: "0.0.0.0"
       PORT: "3001"

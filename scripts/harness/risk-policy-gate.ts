@@ -27,6 +27,7 @@ interface GateResult {
   docsDriftViolations: DocsDriftViolation[];
   fileTiers: FileTierResult[];
   counts: Record<RiskTier, number>;
+  hasUiFiles: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -208,11 +209,12 @@ async function resolveChangedFiles(projectRoot: string): Promise<string[]> {
 // GitHub Actions output
 // ---------------------------------------------------------------------------
 
-function setGitHubOutputs(tier: RiskTier, requiredChecks: string[]): void {
+function setGitHubOutputs(tier: RiskTier, requiredChecks: string[], hasUiFiles: boolean): void {
   const outputFile = process.env.GITHUB_OUTPUT;
   if (!outputFile) return;
   appendFileSync(outputFile, `risk-tier=${tier}\n`);
   appendFileSync(outputFile, `required-checks=${requiredChecks.join(",")}\n`);
+  appendFileSync(outputFile, `has-ui-files=${hasUiFiles}\n`);
 }
 
 // ---------------------------------------------------------------------------
@@ -251,6 +253,12 @@ async function main(): Promise<void> {
   const violations = checkDocsDrift(changedFiles, config.docsDriftRules.triggers, projectRoot);
   const docsDriftPass = violations.length === 0;
 
+  // UI file detection — any .tsx file under app/ or components/
+  const UI_PATTERNS = ["app/**/*.tsx", "components/**/*.tsx"];
+  const hasUiFiles = changedFiles.some((file) =>
+    UI_PATTERNS.some((pattern) => globMatch(pattern, file)),
+  );
+
   const result: GateResult = {
     overallTier,
     requiredChecks,
@@ -258,6 +266,7 @@ async function main(): Promise<void> {
     docsDriftViolations: violations,
     fileTiers,
     counts,
+    hasUiFiles,
   };
 
   // ---------------------------------------------------------------------------
@@ -271,9 +280,10 @@ async function main(): Promise<void> {
       docsDriftPass: result.docsDriftPass,
       counts: result.counts,
       totalFiles: changedFiles.length,
+      hasUiFiles: result.hasUiFiles,
     });
     console.log(jsonOut);
-    setGitHubOutputs(result.overallTier, result.requiredChecks);
+    setGitHubOutputs(result.overallTier, result.requiredChecks, result.hasUiFiles);
     if (!result.docsDriftPass) process.exit(1);
     return;
   }
@@ -309,7 +319,7 @@ async function main(): Promise<void> {
   }
 
   // GitHub Actions
-  setGitHubOutputs(result.overallTier, result.requiredChecks);
+  setGitHubOutputs(result.overallTier, result.requiredChecks, result.hasUiFiles);
 
   // Exit code
   if (!result.docsDriftPass) {
