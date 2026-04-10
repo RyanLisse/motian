@@ -1,6 +1,7 @@
 import { additionalPackages, syncEnvVars } from "@trigger.dev/build/extensions/core";
 import * as Sentry from "@sentry/node";
 import { defineConfig } from "@trigger.dev/sdk";
+import { scrubSentryEvent, SENTRY_IGNORE_ERRORS } from "./src/lib/sentry-scrub";
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
 
@@ -14,6 +15,14 @@ function ensureSentry() {
     environment: process.env.VERCEL_ENV ?? "development",
     tracesSampleRate: 0.2,
     enableLogs: true,
+    ignoreErrors: SENTRY_IGNORE_ERRORS,
+    // scrubSentryEvent is typed against @sentry/nextjs ErrorEvent; the type is
+    // structurally identical to @sentry/node's ErrorEvent (both from @sentry/core).
+    beforeSend: (event, hint) =>
+      scrubSentryEvent(
+        event as Parameters<typeof scrubSentryEvent>[0],
+        hint as Parameters<typeof scrubSentryEvent>[1],
+      ),
   });
   sentryInitialized = true;
 
@@ -88,7 +97,11 @@ export default defineConfig({
 
     Sentry.captureException(error instanceof Error ? error : new Error(String(error)), {
       tags: { source: "trigger-dev", taskId: ctx.task.id, runId: ctx.run.id },
-      extra: { payload },
+      // Do not pass raw payload — task payloads may contain candidate PII.
+      // Log only the payload shape (field names) for debugging, never values.
+      extra: {
+        payloadKeys: payload !== null && typeof payload === "object" ? Object.keys(payload) : [],
+      },
     });
     await Sentry.flush(2000);
   },

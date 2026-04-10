@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { scrubSentryEvent, SENTRY_IGNORE_ERRORS } from "@/src/lib/sentry-scrub";
 
 const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
@@ -10,6 +11,16 @@ if (SENTRY_DSN) {
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0.5,
     enableLogs: true,
+    beforeSend: scrubSentryEvent,
+    ignoreErrors: SENTRY_IGNORE_ERRORS,
+    // maskAllText + blockAllMedia: prevent Session Replay from capturing candidate
+    // names, emails, or other PII rendered in the DOM at the time of an error.
+    integrations: [
+      Sentry.replayIntegration({
+        maskAllText: true,
+        blockAllMedia: true,
+      }),
+    ],
   });
 }
 

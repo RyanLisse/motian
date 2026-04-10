@@ -28,7 +28,9 @@ function scrubString(value: string): string {
 }
 
 function scrubValue(value: unknown, depth = 0): unknown {
-  if (depth > 6) return value;
+  // Return a sentinel rather than the raw value to prevent silent PII leakage
+  // at deeply nested depths. Limit is 10 to cover typical service-layer payloads.
+  if (depth > 10) return "[depth-limit-exceeded]";
   if (typeof value === "string") return scrubString(value);
   if (Array.isArray(value)) return value.map((item) => scrubValue(item, depth + 1));
   if (value !== null && typeof value === "object") {
@@ -62,8 +64,10 @@ function scrubBreadcrumb(crumb: Breadcrumb): Breadcrumb {
 
 /**
  * Sentry `beforeSend` hook — scrubs PII from ErrorEvents before they leave
- * the runtime. Handles request context, breadcrumbs, exception messages, and
- * extra/contexts payloads.
+ * the runtime. Handles request context, breadcrumbs, exception messages,
+ * user identity, tags, and extra/contexts payloads.
+ *
+ * Wire this into every Sentry.init call (server, edge, client, Trigger.dev).
  */
 export function scrubSentryEvent(event: ErrorEvent, _hint: EventHint): ErrorEvent | null {
   if (event.request) {
@@ -75,21 +79,14 @@ export function scrubSentryEvent(event: ErrorEvent, _hint: EventHint): ErrorEven
     }
     // Never transmit cookies or auth headers
     delete event.request.cookies;
-    event.request.headers = scrubHeaders(
-      event.request.headers as Record<string, string> | undefined,
-    );
+    event.request.headers = scrubHeaders(event.request.headers);
   }
 
-  // breadcrumbs can be Breadcrumb[] or {values?: Breadcrumb[]} depending on SDK version
-  if (event.breadcrumbs) {
-    if (Array.isArray(event.breadcrumbs)) {
-      event.breadcrumbs = (event.breadcrumbs as Breadcrumb[]).map(scrubBreadcrumb);
-    } else {
-      const bc = event.breadcrumbs as { values?: Breadcrumb[] };
-      if (bc.values) {
-        bc.values = bc.values.map(scrubBreadcrumb);
-      }
-    }
+  // In @sentry/nextjs, ErrorEvent.breadcrumbs is typed as Breadcrumb[] | undefined.
+  // The else-branch for {values?: Breadcrumb[]} was a v7 SDK shape; it is unreachable
+  // in v10+ and has been removed to prevent a silent no-op scrub if shapes ever diverge.
+  if (Array.isArray(event.breadcrumbs)) {
+    event.breadcrumbs = event.breadcrumbs.map(scrubBreadcrumb);
   }
 
   if (event.exception?.values) {
@@ -98,6 +95,29 @@ export function scrubSentryEvent(event: ErrorEvent, _hint: EventHint): ErrorEven
       value: exc.value ? scrubString(exc.value) : exc.value,
     }));
   }
+
+  // Scrub user identity — Sentry.setUser() is commonly called with candidate data.
+  if (event.user) {
+    if (event.user.email) event.user.email = "[email]";
+    if (event.user.username) event.user.username = "[redacted]";
+    if (event.user.ip_address) event.user.ip_address = "[ip]";
+    if (event.user.data) {
+      event.user.data = scrubValue(event.user.data) as typeof event.user.data;
+    }
+  }
+
+  // Scrub tags — callers may accidentally set PII-bearing tag values.
+  if (event.tags) {
+    const scrubbedTags: typeof event.tags = {};
+    for (const [k, v] of Object.entries(event.tags)) {
+      scrubbedTags[k] = typeof v === "string" ? scrubString(v) : v;
+    }
+    event.tags = scrubbedTags;
+  }
+
+  // Scrub top-level message and transaction name.
+  if (event.message) event.message = scrubString(event.message);
+  if (event.transaction) event.transaction = scrubString(event.transaction);
 
   if (event.extra) {
     event.extra = scrubValue(event.extra) as typeof event.extra;
@@ -114,11 +134,15 @@ export function scrubSentryEvent(event: ErrorEvent, _hint: EventHint): ErrorEven
  * Errors that are known noise and should not be forwarded to Sentry.
  * PostHog storage errors are already suppressed client-side; these cover
  * any that slip through server paths or the root error boundary.
+ *
+ * Note: the former broad `/storage/i` pattern was removed — it suppressed
+ * any error containing "storage", including legitimate DB/infrastructure errors.
+ * The specific `/Access to storage is not allowed/i` pattern below is sufficient
+ * for the PostHog private-browsing case it was intended to cover.
  */
 export const SENTRY_IGNORE_ERRORS: (string | RegExp)[] = [
-  // PostHog storage (private/incognito mode, strict partitioning)
+  // PostHog storage (private/incognito mode, strict cookie partitioning)
   /Access to storage is not allowed/i,
-  /storage/i,
   // Network noise
   "NetworkError when attempting to fetch resource.",
   "Failed to fetch",
