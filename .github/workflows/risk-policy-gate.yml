@@ -59,6 +59,7 @@ jobs:
           INPUT_BASE_REF: ${{ github.event.inputs.base-ref }}
         run: |
           if [ -n "$INPUT_BASE_REF" ]; then
+            git fetch origin "$INPUT_BASE_REF" --depth=1
             CHANGED=$(git diff --name-only "origin/${INPUT_BASE_REF}...HEAD")
           else
             CHANGED=$(git diff --name-only HEAD~1)
@@ -72,6 +73,7 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: |
+          set -o pipefail
           echo "$CHANGED_FILES" \
             | pnpm exec tsx scripts/harness/risk-policy-gate.ts \
               --json \

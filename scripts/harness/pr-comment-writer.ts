@@ -43,12 +43,7 @@ function findMarkedComment(comments: GitHubComment[], marker: string): GitHubCom
   return comments.find((c) => c.body.includes(marker));
 }
 
-function createComment(
-  owner: string,
-  repo: string,
-  prNumber: number,
-  body: string,
-): GitHubComment {
+function createComment(owner: string, repo: string, prNumber: number, body: string): GitHubComment {
   const raw = execSync(
     `gh api -X POST repos/${owner}/${repo}/issues/${prNumber}/comments --field body='${escapeShellArg(body)}' --jq '{id: .id, body: .body}'`,
     { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },

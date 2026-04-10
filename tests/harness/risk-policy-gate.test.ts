@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadHarnessConfig } from "@/src/harness/config";
-import { evaluateRiskPolicyGate } from "../../scripts/harness/risk-policy-gate";
+import { checkDocsDrift, evaluateRiskPolicyGate } from "../../scripts/harness/risk-policy-gate";
 
 const repoHarnessConfig = loadHarnessConfig({ cwd: process.cwd() });
 
@@ -71,5 +71,35 @@ describe("risk policy gate", () => {
         }),
       ]),
     );
+  });
+
+  it("requires documentation updates when a trigger file changes but the doc file does not", () => {
+    const violations = checkDocsDrift(
+      ["src/db/schema.ts"],
+      {
+        "src/db/schema.ts": ["docs/architecture.md"],
+      },
+      process.cwd(),
+    );
+
+    expect(violations).toEqual([
+      {
+        missingDocs: ["docs/architecture.md"],
+        requiredDocs: ["docs/architecture.md"],
+        triggerFile: "src/db/schema.ts",
+      },
+    ]);
+  });
+
+  it("passes docs drift when the required documentation file is part of the change set", () => {
+    const violations = checkDocsDrift(
+      ["src/db/schema.ts", "docs/architecture.md"],
+      {
+        "src/db/schema.ts": ["docs/architecture.md"],
+      },
+      process.cwd(),
+    );
+
+    expect(violations).toEqual([]);
   });
 });

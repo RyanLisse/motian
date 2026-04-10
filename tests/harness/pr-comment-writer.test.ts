@@ -96,7 +96,9 @@ describe("upsertPrComment", () => {
     // Verify the PATCH call references the correct comment ID
     expect(mockExecSync).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining(`-X PATCH repos/${BASE_OPTIONS.owner}/${BASE_OPTIONS.repo}/issues/comments/77`),
+      expect.stringContaining(
+        `-X PATCH repos/${BASE_OPTIONS.owner}/${BASE_OPTIONS.repo}/issues/comments/77`,
+      ),
       expect.any(Object),
     );
   });

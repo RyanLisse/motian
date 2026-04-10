@@ -25,9 +25,7 @@ describe("markStaleComments", () => {
   const NEW_SHA = "abc1234";
 
   it("marks stale bot comments when SHA changes", () => {
-    const comments = [
-      makeComment(1, "Review feedback\n<!-- sha:oldsha999 -->", "some-app[bot]"),
-    ];
+    const comments = [makeComment(1, "Review feedback\n<!-- sha:oldsha999 -->", "some-app[bot]")];
 
     const { toUpdate, skipped } = markStaleComments(comments, NEW_SHA);
 
@@ -40,9 +38,7 @@ describe("markStaleComments", () => {
   });
 
   it("skips non-bot comments", () => {
-    const comments = [
-      makeComment(2, "Human review\n<!-- sha:oldsha999 -->", "human-reviewer"),
-    ];
+    const comments = [makeComment(2, "Human review\n<!-- sha:oldsha999 -->", "human-reviewer")];
 
     const { toUpdate, skipped } = markStaleComments(comments, NEW_SHA);
 
@@ -51,9 +47,7 @@ describe("markStaleComments", () => {
   });
 
   it("skips comments without SHA tags", () => {
-    const comments = [
-      makeComment(3, "Just a regular comment with no SHA tag", "some-app[bot]"),
-    ];
+    const comments = [makeComment(3, "Just a regular comment with no SHA tag", "some-app[bot]")];
 
     const { toUpdate, skipped } = markStaleComments(comments, NEW_SHA);
 
@@ -69,9 +63,7 @@ describe("markStaleComments", () => {
   });
 
   it("skips bot comments whose SHA already matches the new HEAD", () => {
-    const comments = [
-      makeComment(4, `Up-to-date\n<!-- sha:${NEW_SHA} -->`, "github-actions"),
-    ];
+    const comments = [makeComment(4, `Up-to-date\n<!-- sha:${NEW_SHA} -->`, "github-actions")];
 
     const { toUpdate, skipped } = markStaleComments(comments, NEW_SHA);
 
@@ -91,9 +83,7 @@ describe("markStaleComments", () => {
   });
 
   it("recognizes github-actions as a known bot", () => {
-    const comments = [
-      makeComment(6, "CI feedback\n<!-- sha:oldsha999 -->", "github-actions"),
-    ];
+    const comments = [makeComment(6, "CI feedback\n<!-- sha:oldsha999 -->", "github-actions")];
 
     const { toUpdate } = markStaleComments(comments, NEW_SHA);
 
@@ -139,9 +129,7 @@ describe("run", () => {
   });
 
   it("does nothing when all comments are up-to-date", async () => {
-    const comments = [
-      makeComment(20, "Current review\n<!-- sha:currentsha -->", "ci-bot[bot]"),
-    ];
+    const comments = [makeComment(20, "Current review\n<!-- sha:currentsha -->", "ci-bot[bot]")];
 
     mockExecSync.mockReturnValueOnce(JSON.stringify(comments));
 

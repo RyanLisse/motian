@@ -278,7 +278,7 @@ async function resolveChangedFiles(projectRoot: string, options: CliOptions): Pr
 
   if (options.baseRef) {
     try {
-      return runGitDiff(projectRoot, options.baseRef);
+      return runGitDiff(projectRoot, `${options.baseRef}...HEAD`);
     } catch {
       // Fall through to local diffs below.
     }
@@ -322,8 +322,7 @@ export function checkDocsDrift(
     if (matchingChanged.length === 0) continue;
 
     const missingDocs = requiredDocs.filter((doc) => {
-      if (changedSet.has(doc)) return false;
-      return !existsSync(join(projectRoot, doc));
+      return !changedSet.has(doc) || !existsSync(join(projectRoot, doc));
     });
 
     if (missingDocs.length > 0) {
@@ -394,6 +393,7 @@ async function executeRequiredCheck(
     stdoutTail: processResult.stdoutTail,
   };
 }
+
 function appendGitHubOutput(name: string, value: string): void {
   const outputFile = process.env.GITHUB_OUTPUT;
   if (!outputFile) return;

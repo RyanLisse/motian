@@ -65,10 +65,10 @@ jobs:
         run: |
           if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$BASE_REF" ]; then
             git fetch origin "$BASE_REF" --depth=1
-            CHANGED=$(git diff --name-only "origin/${BASE_REF}")
+            CHANGED=$(git diff --name-only "origin/${BASE_REF}...HEAD")
           elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             git fetch origin main --depth=1
-            CHANGED=$(git diff --name-only origin/main)
+            CHANGED=$(git diff --name-only origin/main...HEAD)
           else
             CHANGED=$(git diff --name-only HEAD~1)
           fi
@@ -84,6 +84,7 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: |
+          set -o pipefail
           echo "$CHANGED_FILES" \
             | pnpm exec tsx scripts/harness/risk-policy-gate.ts \
               --json \
@@ -182,7 +183,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm test
+        run: pnpm test:coverage
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          if-no-files-found: ignore
+          name: coverage
+          path: coverage/
+          retention-days: 14
 
   browser-evidence:
     name: Browser Evidence
@@ -330,6 +340,7 @@ jobs:
           BROWSER_EVIDENCE_RESULT: ${{ needs.browser-evidence.result || 'skipped' }}
           CHANGED_FILES: ${{ needs.risk-classification.outputs.changed-files }}
         run: |
+          set -o pipefail
           echo "$CHANGED_FILES" \
             | pnpm exec tsx scripts/harness/risk-policy-gate.ts \
               --json \
@@ -346,7 +357,7 @@ jobs:
           REPORT_JSON: ${{ steps.gate.outputs.report-json }}
         run: |
           node <<'EOF'
-          const report = JSON.parse(process.env.REPORT_JSON ?? "{}");
+          const report = JSON.parse(process.env.REPORT_JSON || "{}");
           const lines = [
             "## Risk Policy Gate",
             "",
@@ -385,7 +396,7 @@ jobs:
         with:
           script: |
             const marker = "<!-- risk-policy-gate:report -->";
-            const report = JSON.parse(process.env.REPORT_JSON ?? "{}");
+            const report = JSON.parse(process.env.REPORT_JSON || "{}");
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             let issue_number = context.payload.pull_request?.number;
@@ -525,10 +536,31 @@ jobs:
               per_page: 100,
             });
 
-            const approved = reviews.some((review) => {
-              const reviewerType = review.user?.type?.toLowerCase();
-              return review.state === "APPROVED" && reviewerType === "user";
+            const latestReviews = new Map();
+            const orderedReviews = [...reviews].sort((left, right) => {
+              const leftTime = new Date(left.submitted_at ?? left.submittedAt ?? 0).getTime();
+              const rightTime = new Date(right.submitted_at ?? right.submittedAt ?? 0).getTime();
+              return leftTime - rightTime;
             });
+
+            for (const review of orderedReviews) {
+              const reviewerKey = review.user?.id
+                ? String(review.user.id)
+                : review.user?.login;
+
+              if (!reviewerKey) {
+                continue;
+              }
+
+              latestReviews.set(reviewerKey, {
+                reviewerType: review.user?.type?.toLowerCase() ?? "",
+                state: review.state,
+              });
+            }
+
+            const approved = Array.from(latestReviews.values()).some(
+              ({ reviewerType, state }) => reviewerType === "user" && state === "APPROVED",
+            );
 
             if (!approved) {
               core.setFailed("High-risk Symphony PRs require at least one human approval before merge.");

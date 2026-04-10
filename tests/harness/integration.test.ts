@@ -151,6 +151,71 @@ describe("harness integration", () => {
         rmSync(tempRoot, { recursive: true, force: true });
       }
     }, 30_000);
+
+    it("uses a merge-base diff when --base-ref is provided", () => {
+      const tempRoot = mkdtempSync(join(tmpdir(), "motian-risk-policy-gate-base-ref-"));
+
+      try {
+        const repoRoot = createHarnessRepo(join(tempRoot, "repo"));
+        const scriptPath = join(process.cwd(), "scripts/harness/risk-policy-gate.ts");
+
+        execFileSync("git", ["branch", "-M", "main"], { cwd: repoRoot, stdio: "ignore" });
+        execFileSync("git", ["checkout", "-b", "feature/risk-gate"], {
+          cwd: repoRoot,
+          stdio: "ignore",
+        });
+
+        writeFileSync(join(repoRoot, "README.md"), "# feature change\n", "utf8");
+        execFileSync("git", ["add", "README.md"], { cwd: repoRoot, stdio: "ignore" });
+        execFileSync("git", ["commit", "-m", "feature change"], { cwd: repoRoot, stdio: "ignore" });
+
+        execFileSync("git", ["checkout", "main"], { cwd: repoRoot, stdio: "ignore" });
+        mkdirSync(join(repoRoot, "src", "db"), { recursive: true });
+        writeFileSync(
+          join(repoRoot, "src", "db", "schema.ts"),
+          "export const schema = {};\n",
+          "utf8",
+        );
+        execFileSync("git", ["add", "src/db/schema.ts"], { cwd: repoRoot, stdio: "ignore" });
+        execFileSync("git", ["commit", "-m", "main-only high risk change"], {
+          cwd: repoRoot,
+          stdio: "ignore",
+        });
+
+        execFileSync("git", ["checkout", "feature/risk-gate"], { cwd: repoRoot, stdio: "ignore" });
+
+        const output = execFileSync(
+          "pnpm",
+          [
+            "exec",
+            "tsx",
+            scriptPath,
+            "--json",
+            "--no-execute-checks",
+            "--base-ref",
+            "main",
+            "--check-result",
+            "lint=passed",
+            "--cwd",
+            repoRoot,
+          ],
+          {
+            cwd: process.cwd(),
+            encoding: "utf8",
+          },
+        );
+
+        const parsed = JSON.parse(output) as {
+          changedFiles: string[];
+          tier: string;
+        };
+
+        expect(parsed.changedFiles).toEqual(["README.md"]);
+        expect(parsed.tier).toBe("low");
+      } finally {
+        rmSync(tempRoot, { recursive: true, force: true });
+      }
+    }, 30_000);
   });
 
   describe("type sharing between core/orchestrator/adapter", () => {
