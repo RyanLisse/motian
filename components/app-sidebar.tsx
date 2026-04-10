@@ -1,29 +1,19 @@
 "use client";
 
-import {
-  Briefcase,
-  Calendar,
-  Code,
-  GalleryVerticalEnd,
-  Kanban,
-  LayoutDashboard,
-  MessageCircle,
-  MessageSquare,
-  Search,
-  Tags,
-  Users,
-  Wrench,
-} from "lucide-react";
+import { GalleryVerticalEnd, Search } from "lucide-react";
 import type * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
+import { OverflowNavMenu } from "@/components/nav-overflow-menu";
 import { NavUser } from "@/components/nav-user";
+import { PRIMARY_NAV_ITEMS } from "@/components/navigation-config";
 import { SidebarCvDropZone } from "@/components/sidebar-cv-drop-zone";
 import { TeamSwitcher } from "@/components/team-switcher";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -31,96 +21,35 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-const data = {
-  teams: [
-    {
-      name: "Motian",
-      logo: GalleryVerticalEnd,
-    },
-  ],
-  // Legacy navigation contract (structural test expectations):
-  // url: "/opdrachten"
-  // url: "/kandidaten"
-  navGroups: [
-    {
-      label: "Werving",
-      items: [
-        {
-          title: "Overzicht",
-          url: "/overzicht",
-          icon: LayoutDashboard,
-        },
-        {
-          title: "Vacatures",
-          url: "/vacatures",
-          icon: Briefcase,
-        },
-        {
-          title: "Kandidaten",
-          url: "/kandidaten",
-          icon: Users,
-        },
-        {
-          title: "Pipeline",
-          url: "/pipeline",
-          icon: Kanban,
-          prefetch: false,
-        },
-        {
-          title: "Vaardigheden",
-          url: "/vaardigheden",
-          icon: Tags,
-        },
-        {
-          title: "Interviews",
-          url: "/interviews",
-          icon: Calendar,
-        },
-        {
-          title: "Chat",
-          url: "/chat",
-          icon: MessageCircle,
-        },
-        {
-          title: "Berichten",
-          url: "/messages",
-          icon: MessageSquare,
-        },
-      ],
-    },
-    {
-      label: "Platform",
-      items: [
-        {
-          title: "Automatisering",
-          url: "/automatisering",
-          icon: Wrench,
-          matchPaths: ["/agents", "/autopilot", "/scraper"],
-        },
-      ],
-    },
-    {
-      label: "Ontwikkelaar",
-      items: [
-        {
-          title: "Ontwikkelaar",
-          url: "/ontwikkelaar",
-          icon: Code,
-          matchPaths: ["/api-docs"],
-        },
-      ],
-    },
-  ],
-};
+const teams = [
+  {
+    name: "Motian",
+    logo: GalleryVerticalEnd,
+  },
+];
+
+const navGroups = [
+  {
+    label: "Werving",
+    items: PRIMARY_NAV_ITEMS,
+  },
+] as const;
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <TeamSwitcher teams={teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain groups={data.navGroups} />
+        <NavMain groups={[...navGroups]} />
+        <SidebarGroup className="pt-0">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <OverflowNavMenu variant="sidebar" />
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarCvDropZone />
       <SidebarFooter>

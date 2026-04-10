@@ -1,9 +1,12 @@
 import { and, db, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
-import { deleteJobsByIds, upsertJobsByIds } from "../search-index/typesense-sync";
+import { queueDeferredEmbeddingSync } from "../../lib/event-bus";
+import { type EmbeddingStatus, withPendingEmbeddingStatus } from "../embedding";
+import { deleteJobsByIds } from "../search-index/typesense-sync";
 import { scheduleDedupeRanksRefresh } from "./dedupe-ranks";
 
 export type Job = typeof jobs.$inferSelect;
+export type JobMutationResult = Job & { embeddingStatus: EmbeddingStatus };
 
 function getNormalizedCompatibilityExpression(value: SQL) {
   return sql<string>`trim(regexp_replace(lower(coalesce(${value}, '')), '[^[:alnum:]]+', ' ', 'g'))`;
@@ -40,16 +43,6 @@ export function getJobReadSelection() {
 
 export const jobReadSelection = getJobReadSelection();
 
-async function runJobDerivedSync(jobId: string): Promise<void> {
-  try {
-    await upsertJobsByIds([jobId]);
-  } catch (err) {
-    console.error(`[Jobs] Typesense sync error for ${jobId}:`, err);
-  }
-
-  scheduleDedupeRanksRefresh();
-}
-
 async function runJobDeleteSync(jobIds: string[]): Promise<void> {
   if (jobIds.length === 0) return;
 
@@ -83,7 +76,7 @@ export async function updateJob(
       | "workArrangement"
     >
   >,
-): Promise<Job | null> {
+): Promise<JobMutationResult | null> {
   type JobSearchHelperUpdate = {
     dedupeLocationNormalized?: SQL<string>;
     dedupeTitleNormalized?: SQL<string>;
@@ -128,10 +121,15 @@ export async function updateJob(
     .returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    await runJobDerivedSync(rows[0].id);
+    scheduleDedupeRanksRefresh();
+    void queueDeferredEmbeddingSync({
+      entityType: "job",
+      entityId: rows[0].id,
+      source: "job:update",
+    });
   }
 
-  return rows[0] ?? null;
+  return rows[0] ? withPendingEmbeddingStatus(rows[0]) : null;
 }
 
 /** Opdracht verrijken met AI-geëxtraheerde data. Retourneert bijgewerkte job of null. */
@@ -150,7 +148,7 @@ export async function updateJobEnrichment(
       | "categories"
     >
   >,
-): Promise<Job | null> {
+): Promise<JobMutationResult | null> {
   const rows = await db
     .update(jobs)
     .set(data)
@@ -158,10 +156,15 @@ export async function updateJobEnrichment(
     .returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    await runJobDerivedSync(rows[0].id);
+    scheduleDedupeRanksRefresh();
+    void queueDeferredEmbeddingSync({
+      entityType: "job",
+      entityId: rows[0].id,
+      source: "job:enrichment",
+    });
   }
 
-  return rows[0] ?? null;
+  return rows[0] ? withPendingEmbeddingStatus(rows[0]) : null;
 }
 
 /** Handmatig een vacature aanmaken. Retourneert de nieuwe job. */
@@ -183,14 +186,19 @@ export async function createJob(
         | "hoursPerWeek"
       >
     >,
-): Promise<Job> {
+): Promise<JobMutationResult> {
   const rows = await db.insert(jobs).values(data).returning(getJobReadSelection());
 
   if (rows[0]?.id) {
-    await runJobDerivedSync(rows[0].id);
+    scheduleDedupeRanksRefresh();
+    void queueDeferredEmbeddingSync({
+      entityType: "job",
+      entityId: rows[0].id,
+      source: "job:create",
+    });
   }
 
-  return rows[0];
+  return withPendingEmbeddingStatus(rows[0]);
 }
 
 /** Opdracht archiveren. Retourneert true als de status is bijgewerkt. */

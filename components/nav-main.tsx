@@ -1,8 +1,9 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { NavigationItem } from "@/components/navigation-config";
+import { isNavItemActive } from "@/components/navigation-config";
 import { Badge } from "@/components/ui/badge";
 import {
   SidebarGroup,
@@ -12,19 +13,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-interface NavItem {
-  title: string;
-  url: string;
-  icon?: LucideIcon;
-  badge?: { text: string; variant: string };
-  prefetch?: boolean;
-  tooltip?: string;
-  matchPaths?: string[];
-}
-
 interface NavGroup {
   label: string;
-  items: NavItem[];
+  items: readonly NavigationItem[];
 }
 
 export function NavMain({ groups }: { groups: NavGroup[] }) {
@@ -37,13 +28,7 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
           <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
           <SidebarMenu>
             {group.items.map((item) => {
-              const isActive =
-                pathname === item.url ||
-                pathname.startsWith(`${item.url}/`) ||
-                item.matchPaths?.some(
-                  (matchPath) => pathname === matchPath || pathname.startsWith(`${matchPath}/`),
-                ) ||
-                false;
+              const isActive = isNavItemActive(pathname, item);
 
               return (
                 <SidebarMenuItem key={item.title}>
@@ -71,4 +56,3 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
     </>
   );
 }
-// trigger CI

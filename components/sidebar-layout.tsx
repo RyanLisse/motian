@@ -3,6 +3,7 @@
 import { Search } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { OverflowNavMenu } from "@/components/nav-overflow-menu";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -18,6 +19,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               title="Navigatie openen of sluiten (⌘/Ctrl+B)"
             />
             <div className="flex-1" />
+            <OverflowNavMenu variant="mobile" />
             <button
               type="button"
               onClick={() => document.dispatchEvent(new CustomEvent("motian-command-palette-open"))}

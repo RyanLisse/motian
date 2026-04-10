@@ -1,22 +1,17 @@
 name: Lighthouse CI
 
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review]
-    paths:
-      - "app/**"
-      - "components/**"
-      - "src/components/**"
-      - "next.config.ts"
-      - "package.json"
-      - "lighthouserc.cjs"
-      - ".github/workflows/lighthouse-ci.yml"
+  # Run after Vercel deploys the preview (deployment_status gives us the URL)
+  deployment_status:
 
 permissions: {}
 
 jobs:
   lighthouse:
-    if: github.event.pull_request.draft == false
+    # Only run on successful Vercel preview deployments for PRs
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment == 'Preview'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -26,38 +21,18 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
-        with:
-          node-version: "22"
-
-      - uses: pnpm/action-setup@v4
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # Minimal env for build (no DB needed for static analysis)
-          SKIP_ENV_VALIDATION: "1"
-
-      - name: Start server
-        run: |
-          pnpm start &
-          # Wait for server to be ready
-          npx wait-on http://localhost:3002 --timeout 60000
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          PORT: "3002"
-          SKIP_ENV_VALIDATION: "1"
-
       - name: Run Lighthouse CI
+        id: lhci
         uses: treosh/lighthouse-ci-action@v12
         with:
-          configPath: ./lighthouserc.cjs
+          urls: |
+            ${{ github.event.deployment_status.target_url }}/
+            ${{ github.event.deployment_status.target_url }}/kandidaten
+            ${{ github.event.deployment_status.target_url }}/vacatures
+            ${{ github.event.deployment_status.target_url }}/chat
           uploadArtifacts: true
           temporaryPublicStorage: true
+          configPath: ./lighthouserc.cjs
 
       - name: Post results as PR comment
         if: always()
@@ -67,32 +42,48 @@ jobs:
             const fs = require('fs');
             const marker = '<!-- lighthouse-ci-results -->';
 
-            // Read Lighthouse results
+            // Find the PR associated with this deployment
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${context.payload.deployment.ref}`,
+              state: 'open',
+            });
+            if (prs.length === 0) return;
+            const prNumber = prs[0].number;
+
             let summary = '### Lighthouse CI Results\n\n';
             try {
               const manifest = JSON.parse(fs.readFileSync('.lighthouseci/manifest.json', 'utf8'));
+              summary += '| Route | Perf | LCP | CLS |\n|-------|------|-----|-----|\n';
               for (const entry of manifest) {
                 const result = JSON.parse(fs.readFileSync(entry.jsonPath, 'utf8'));
                 const perf = Math.round((result.categories?.performance?.score || 0) * 100);
-                const lcp = Math.round(result.audits?.['largest-contentful-paint']?.numericValue || 0);
-                const cls = (result.audits?.['cumulative-layout-shift']?.numericValue || 0).toFixed(3);
+                const lcp = Math.round(
+                  result.audits?.['largest-contentful-paint']?.numericValue || 0,
+                );
+                const cls = (
+                  result.audits?.['cumulative-layout-shift']?.numericValue || 0
+                ).toFixed(3);
                 const url = new URL(entry.url).pathname;
                 const emoji = perf >= 90 ? '🟢' : perf >= 75 ? '🟡' : '🔴';
                 summary += `| ${url} | ${emoji} ${perf} | ${lcp}ms | ${cls} |\n`;
               }
-              summary = '| Route | Perf | LCP | CLS |\n|-------|------|-----|-----|\n' + summary.split('\n').filter(l => l.startsWith('|')).join('\n');
             } catch (e) {
               summary += '_Results not available_\n';
             }
 
-            const body = `${marker}\n${summary}\n\n_Mobile profile: 4x CPU throttle, slow 4G_`;
+            const previewUrl = context.payload.deployment_status.target_url;
+            const body =
+              `${marker}\n${summary}\n_Tested against: ${previewUrl}_\n` +
+              '_Mobile profile: 4x CPU throttle, slow 4G_';
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: prNumber,
             });
-            const existing = comments.find(c => c.body?.includes(marker));
+            const existing = comments.find((comment) => comment.body?.includes(marker));
             if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
@@ -104,7 +95,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: prNumber,
                 body,
               });
             }

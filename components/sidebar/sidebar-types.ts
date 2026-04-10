@@ -15,6 +15,7 @@ export interface SidebarJob {
   applicationDeadline?: Date | string | null;
   pipelineCount?: number;
   hasPipeline?: boolean;
+  isIndexing?: boolean;
 }
 
 export interface SearchResponse {

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { MEER_NAV_ITEMS, PRIMARY_NAV_ITEMS } from "../components/navigation-config";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -32,7 +33,10 @@ describe("sidebar shell top-bar refactor", () => {
     const widgetSource = readFile("components", "chat", "chat-widget.tsx");
     const candidateDetailSource = readFile("app", "kandidaten", "[id]", "page.tsx");
 
-    expect(sidebarSource).toContain('title: "Interviews"');
+    expect(sidebarSource).toContain("PRIMARY_NAV_ITEMS");
+    expect(sidebarSource).toContain("OverflowNavMenu");
+    expect(PRIMARY_NAV_ITEMS.map((item) => item.title)).toContain("Chat");
+    expect(MEER_NAV_ITEMS.map((item) => item.title)).toContain("Interviews");
     expect(userSource).toContain("motian-chat-open");
     expect(userSource).toContain("⌘J");
     expect(candidateDetailSource).toContain("CandidateRecommendationPanel");

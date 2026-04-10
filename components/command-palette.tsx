@@ -1,25 +1,9 @@
 "use client";
 
-import {
-  Activity,
-  Briefcase,
-  Calendar,
-  Code,
-  FileJson,
-  GitCompareArrows,
-  Kanban,
-  LayoutDashboard,
-  type LucideIcon,
-  MessageSquare,
-  Plug,
-  Rss,
-  Settings,
-  Users,
-  Wrench,
-  Zap,
-} from "lucide-react";
+import { Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { COMMAND_PALETTE_PAGES } from "@/components/navigation-config";
 import {
   CommandDialog,
   CommandEmpty,
@@ -29,122 +13,6 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-
-interface PageEntry {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  group: string;
-  keywords?: string[];
-}
-
-const PAGES: PageEntry[] = [
-  {
-    label: "Overzicht",
-    href: "/overzicht",
-    icon: LayoutDashboard,
-    group: "Werving",
-    keywords: ["dashboard", "home", "start"],
-  },
-  {
-    label: "Vacatures",
-    href: "/vacatures",
-    icon: Briefcase,
-    group: "Werving",
-    keywords: ["jobs", "opdrachten", "werk"],
-  },
-  {
-    label: "Kandidaten",
-    href: "/kandidaten",
-    icon: Users,
-    group: "Werving",
-    keywords: ["talent", "cv", "sollicitant"],
-  },
-  {
-    label: "Pipeline",
-    href: "/pipeline",
-    icon: Kanban,
-    group: "Werving",
-    keywords: ["kanban", "status", "fase"],
-  },
-  {
-    label: "Interviews",
-    href: "/interviews",
-    icon: Calendar,
-    group: "Werving",
-    keywords: ["gesprekken", "agenda", "planning"],
-  },
-  {
-    label: "Berichten",
-    href: "/messages",
-    icon: MessageSquare,
-    group: "Werving",
-    keywords: ["communicatie", "email", "sms"],
-  },
-  {
-    label: "Automatisering",
-    href: "/automatisering",
-    icon: Wrench,
-    group: "Platform",
-    keywords: ["operaties", "tools", "automatisch"],
-  },
-  {
-    label: "Databronnen",
-    href: "/scraper",
-    icon: Activity,
-    group: "Operaties",
-    keywords: ["scraper", "bron", "import"],
-  },
-  {
-    label: "Matching",
-    href: "/matching",
-    icon: GitCompareArrows,
-    group: "Hulpmiddelen",
-    keywords: ["koppelen", "score"],
-  },
-  {
-    label: "AI Assistent",
-    href: "/chat",
-    icon: Zap,
-    group: "Hulpmiddelen",
-    keywords: ["chat", "ai", "vraag", "hulp"],
-  },
-  {
-    label: "Instellingen",
-    href: "/settings",
-    icon: Settings,
-    group: "Hulpmiddelen",
-    keywords: ["config", "profiel"],
-  },
-  {
-    label: "API Documentatie",
-    href: "/api-docs",
-    icon: FileJson,
-    group: "Ontwikkelaar",
-    keywords: ["api", "docs", "openapi", "swagger", "endpoints"],
-  },
-  {
-    label: "XML Feed",
-    href: "/api/salesforce-feed",
-    icon: Rss,
-    group: "Ontwikkelaar",
-    keywords: ["xml", "feed", "salesforce", "export"],
-  },
-  {
-    label: "MCP Server",
-    href: "/ontwikkelaar",
-    icon: Plug,
-    group: "Ontwikkelaar",
-    keywords: ["mcp", "protocol", "tools", "integratie", "ide"],
-  },
-  {
-    label: "OpenAPI Spec",
-    href: "/api/openapi",
-    icon: Code,
-    group: "Ontwikkelaar",
-    keywords: ["openapi", "json", "spec", "schema"],
-  },
-];
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -175,7 +43,7 @@ export function CommandPalette() {
     router.push(href);
   }
 
-  const grouped = PAGES.reduce(
+  const grouped = COMMAND_PALETTE_PAGES.reduce(
     (acc, page) => {
       if (!acc[page.group]) {
         acc[page.group] = [];
@@ -183,7 +51,7 @@ export function CommandPalette() {
       acc[page.group].push(page);
       return acc;
     },
-    {} as Record<string, PageEntry[]>,
+    {} as Record<string, (typeof COMMAND_PALETTE_PAGES)[number][]>,
   );
 
   return (
