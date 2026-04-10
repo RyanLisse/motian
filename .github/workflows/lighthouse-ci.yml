@@ -9,6 +9,8 @@ on:
       - "src/components/**"
       - "next.config.ts"
       - "package.json"
+      - "lighthouserc.cjs"
+      - ".github/workflows/lighthouse-ci.yml"
 
 permissions: {}
 
