@@ -14,7 +14,7 @@ export function OpdrachtenLayoutShell({
   const isDetailPage = pathname.startsWith("/vacatures/") || pathname.startsWith("/opdrachten/");
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="flex h-[var(--mobile-content-height)] min-h-0 md:h-full">
       <div
         className={cn(
           "border-border bg-sidebar flex min-h-0 flex-col",

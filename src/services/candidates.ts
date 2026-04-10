@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, db, desc, eq, inArray, isNull, sql } from "../db";
+import { and, db, desc, eq, getTableColumns, inArray, isNull, sql } from "../db";
 import { candidateSkills, candidates } from "../db/schema";
 import { queueDeferredEmbeddingSync } from "../lib/event-bus";
 import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
@@ -15,6 +15,23 @@ import { deleteCandidatesByIds, upsertCandidatesByIds } from "./search-index/typ
 
 export type Candidate = typeof candidates.$inferSelect;
 export type CandidateMutationResult = Candidate & { embeddingStatus: EmbeddingStatus };
+
+/**
+ * Backward-compatible read projection.
+ *
+ * Some environments still run a candidates table without `photo_url`.
+ * Bare `select()` / `returning()` calls would expand that missing column and
+ * fail otherwise healthy recruiter routes. Keep the returned shape stable until
+ * every database has the column.
+ */
+export function getCandidateReadSelection() {
+  return {
+    ...getTableColumns(candidates),
+    photoUrl: sql<string | null>`null`,
+  };
+}
+
+export const candidateReadSelection = getCandidateReadSelection();
 
 export const CANDIDATE_MATCHING_STATUSES = ["open", "in_review", "linked", "no_match"] as const;
 
@@ -92,7 +109,7 @@ export async function listCandidates(
   const safeOffset = Math.max(0, opts.offset ?? 0);
 
   const rows = await db
-    .select()
+    .select(candidateReadSelection)
     .from(candidates)
     .where(isNull(candidates.deletedAt))
     .orderBy(desc(candidates.createdAt))
@@ -112,7 +129,7 @@ export async function listCandidates(
 /** Enkele kandidaat ophalen op ID, of null als niet gevonden. */
 export async function getCandidateById(id: string): Promise<Candidate | null> {
   const rows = await db
-    .select()
+    .select(candidateReadSelection)
     .from(candidates)
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
     .limit(1);
@@ -259,7 +276,7 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   const conditions = buildCandidateSearchConditions(opts);
   const dbSearchStartedAt = Date.now();
   const result = await db
-    .select()
+    .select(candidateReadSelection)
     .from(candidates)
     .where(and(...conditions))
     .orderBy(desc(candidates.createdAt))
@@ -359,7 +376,7 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
       experience: data.experience,
       education: data.education,
     })
-    .returning();
+    .returning(candidateReadSelection);
 
   const candidate = rows[0];
   await runCandidateEscoSync(candidate);
@@ -385,7 +402,7 @@ export async function updateCandidate(
       updatedAt: new Date(),
     })
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
-    .returning();
+    .returning(candidateReadSelection);
 
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
@@ -427,7 +444,7 @@ export async function updateCandidateMatchingStatus(
     .update(candidates)
     .set(updates)
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
-    .returning();
+    .returning(candidateReadSelection);
 
   if (rows[0]?.id) {
     try {
@@ -446,7 +463,7 @@ export async function listActiveCandidates(limit?: number): Promise<Candidate[]>
   const safeLimit = Math.min(limit ?? 200, 500);
 
   const rows = await db
-    .select()
+    .select(candidateReadSelection)
     .from(candidates)
     .where(isNull(candidates.deletedAt))
     .orderBy(desc(candidates.createdAt))
@@ -466,7 +483,7 @@ export async function getCandidatesByIds(ids: string[]): Promise<Candidate[]> {
   if (ids.length === 0) return [];
 
   return db
-    .select()
+    .select(candidateReadSelection)
     .from(candidates)
     .where(and(inArray(candidates.id, ids), isNull(candidates.deletedAt)));
 }
@@ -477,7 +494,7 @@ export async function deleteCandidate(id: string): Promise<boolean> {
     .update(candidates)
     .set({ deletedAt: new Date() })
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
-    .returning();
+    .returning(candidateReadSelection);
 
   if (rows.length > 0) {
     try {
@@ -503,7 +520,7 @@ export async function addNoteToCandidate(id: string, note: string): Promise<Cand
       updatedAt: new Date(),
     })
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
-    .returning();
+    .returning(candidateReadSelection);
 
   return rows[0] ?? null;
 }
@@ -526,7 +543,7 @@ export async function findDuplicateCandidate(
           .update(candidates)
           .set({ deletedAt: null, updatedAt: new Date() })
           .where(eq(candidates.id, row.id))
-          .returning();
+          .returning(candidateReadSelection);
         if (restored[0]?.id) {
           await upsertCandidatesByIds([restored[0].id]);
         }
@@ -537,7 +554,7 @@ export async function findDuplicateCandidate(
   }
 
   const nameRows = await db
-    .select()
+    .select(candidateReadSelection)
     .from(candidates)
     .where(and(caseInsensitiveContains(candidates.name, parsed.name), isNull(candidates.deletedAt)))
     .limit(5);
@@ -593,7 +610,7 @@ export async function enrichCandidateFromCV(
     .update(candidates)
     .set(updates)
     .where(eq(candidates.id, candidateId))
-    .returning();
+    .returning(candidateReadSelection);
 
   const candidate = rows[0] ?? null;
   if (!candidate) return null;

@@ -49,8 +49,13 @@ import {
   structuredSkillsSchema,
 } from "@/src/schemas/candidate-intelligence";
 import type { CriterionResult } from "@/src/schemas/matching";
+import { candidateReadSelection } from "@/src/services/candidates";
 import { getCandidateSkills, getJobSkillsForJobIds } from "@/src/services/esco";
-import { buildCandidateIntakeScorecard, buildMatchBrief } from "@/src/services/recruiter-insights";
+import {
+  buildCandidateIntakeScorecard,
+  buildCandidateOfferReadiness,
+  buildMatchBrief,
+} from "@/src/services/recruiter-insights";
 
 export const dynamic = "force-dynamic";
 
@@ -121,18 +126,27 @@ const applicationStagePriority: Record<string, number> = {
   rejected: 5,
 };
 
-/** Map availability to an "open to offers" percentage for the ring. */
-function availabilityToPercentage(availability: string | null): number {
+function formatAvailabilityLabel(availability: string | null | undefined): string {
   switch (availability) {
     case "direct":
-      return 90;
+      return "Direct beschikbaar";
     case "1_maand":
-      return 70;
+      return "Binnen 1 maand";
     case "3_maanden":
-      return 50;
+      return "Binnen 3 maanden";
     default:
-      return 60;
+      return "Beschikbaarheid onbekend";
   }
+}
+
+function formatCandidateRole(role: string | null | undefined): string | null {
+  if (!role) return null;
+  const parts = role
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts.join(" · ");
 }
 
 /** Parse experience JSON into a uniform shape (parser or legacy). */
@@ -230,41 +244,8 @@ function KandidaatDetailSkeleton() {
 async function KandidaatDetailContent({ params }: Props) {
   const { id } = await params;
 
-  const candidateSelect = {
-    id: candidates.id,
-    name: candidates.name,
-    email: candidates.email,
-    phone: candidates.phone,
-    role: candidates.role,
-    location: candidates.location,
-    province: candidates.province,
-    skills: candidates.skills,
-    experience: candidates.experience,
-    preferences: candidates.preferences,
-    photoUrl: candidates.photoUrl,
-    resumeUrl: candidates.resumeUrl,
-    linkedinUrl: candidates.linkedinUrl,
-    headline: candidates.headline,
-    source: candidates.source,
-    notes: candidates.notes,
-    hourlyRate: candidates.hourlyRate,
-    availability: candidates.availability,
-    embedding: candidates.embedding,
-    resumeRaw: candidates.resumeRaw,
-    resumeParsedAt: candidates.resumeParsedAt,
-    skillsStructured: candidates.skillsStructured,
-    education: candidates.education,
-    certifications: candidates.certifications,
-    languageSkills: candidates.languageSkills,
-    consentGranted: candidates.consentGranted,
-    dataRetentionUntil: candidates.dataRetentionUntil,
-    createdAt: candidates.createdAt,
-    updatedAt: candidates.updatedAt,
-    deletedAt: candidates.deletedAt,
-  };
-
   const [candidateRows, applicationRows, matchRows] = await Promise.all([
-    db.select(candidateSelect).from(candidates).where(eq(candidates.id, id)).limit(1),
+    db.select(candidateReadSelection).from(candidates).where(eq(candidates.id, id)).limit(1),
     db
       .select({
         application: applications,
@@ -321,7 +302,7 @@ async function KandidaatDetailContent({ params }: Props) {
   const experienceEntries = getExperienceEntries(candidate.experience);
   const languages = getLanguageSkills(candidate.languageSkills);
   const yearsExp = computeYearsExperience(candidate.experience);
-  const openToOffersPct = availabilityToPercentage(candidate.availability);
+  const displayRole = formatCandidateRole(candidate.role);
   const preferences = (candidate.preferences as Record<string, unknown>) ?? {};
   const websiteUrl =
     (typeof preferences.website === "string" && preferences.website) ||
@@ -340,6 +321,10 @@ async function KandidaatDetailContent({ params }: Props) {
   const activeApplications = recruiterApplications.filter(
     (row) => row.application.stage !== "rejected",
   );
+  const offerReadiness = buildCandidateOfferReadiness({
+    candidate,
+    activeApplicationCount: activeApplications.length,
+  });
   const rejectedApplicationCount = recruiterApplications.length - activeApplications.length;
   const primaryActiveApplication = activeApplications[0];
   const primaryWorkflowAction = primaryActiveApplication?.job?.id
@@ -452,92 +437,171 @@ async function KandidaatDetailContent({ params }: Props) {
     }
   };
 
+  const summaryText =
+    candidate.headline ?? candidate.profileSummary ?? "Nog geen profielsamenvatting beschikbaar.";
+  const locationLabel = [candidate.location, candidate.province].filter(Boolean).join(" · ");
+  const activeApplicationsLabel =
+    activeApplications.length > 0
+      ? `${activeApplications.length} actieve sollicitatie${activeApplications.length === 1 ? "" : "s"}`
+      : "Nog niet in een actief traject";
+  const contactLabel = candidate.phone
+    ? "Direct bellen mogelijk"
+    : candidate.email
+      ? "E-mail beschikbaar"
+      : "Geen direct contact";
+
   return (
     <CvDropZone candidateId={candidate.id}>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-6 py-6">
-          {/* Breadcrumb + delete */}
-          <div className="flex items-center justify-between mb-6">
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link href="/kandidaten">Kandidaten</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{candidate.name}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-            <DeleteCandidateButton candidateId={candidate.id} candidateName={candidate.name} />
-          </div>
+        <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <section className="mb-8 rounded-[28px] border border-border/80 bg-card/95 p-5 shadow-sm sm:p-6">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link href="/kandidaten">Kandidaten</Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{candidate.name}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+              <DeleteCandidateButton candidateId={candidate.id} candidateName={candidate.name} />
+            </div>
 
-          {/* Header: Open to offers (left), name + role (center), website + actions (right) */}
-          <div className="flex flex-wrap items-start gap-4 justify-between mb-8">
-            <OpenToOffersRing percentage={openToOffersPct} label="Open voor aanbiedingen" />
-            <div className="flex-1 min-w-0 text-center sm:text-left flex items-center gap-3">
-              {candidate.photoUrl ? (
-                <Image
-                  src={candidate.photoUrl}
-                  alt={candidate.name}
-                  width={128}
-                  height={128}
-                  className="h-16 w-16 rounded-full object-cover shrink-0"
-                />
-              ) : (
-                <UserCircle className="h-16 w-16 text-muted-foreground shrink-0" />
-              )}
-              <div>
-                <h1 className="text-xl font-bold text-foreground">{candidate.name}</h1>
-                {candidate.role && (
-                  <p className="text-base font-semibold text-muted-foreground mt-0.5">
-                    {candidate.role}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
-              {websiteUrl && (
-                <a
-                  href={websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-                >
-                  <Globe className="h-4 w-4 shrink-0" />
-                  <span className="truncate max-w-[200px]">{websiteUrl}</span>
-                </a>
-              )}
-              <div className="flex gap-2">
-                <Button asChild variant="secondary" size="sm" className="gap-1.5">
-                  <Link href={primaryWorkflowAction.href}>
-                    <MessageCircle className="h-4 w-4" />
-                    {primaryWorkflowAction.label}
-                  </Link>
-                </Button>
-                <CandidateOfferActions
-                  candidateId={candidate.id}
-                  defaultJobId={primaryActiveApplication?.job?.id ?? undefined}
-                />
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <Bookmark className="h-4 w-4" />
-                  Kandidaat opslaan
-                </Button>
-                {candidate.phone && (
-                  <ScreeningCallButton
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
+              <div className="min-w-0 space-y-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                  {candidate.photoUrl ? (
+                    <Image
+                      src={candidate.photoUrl}
+                      alt={candidate.name}
+                      width={144}
+                      height={144}
+                      className="h-20 w-20 rounded-3xl object-cover ring-1 ring-border/60 shrink-0"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border border-border/70 bg-muted/30">
+                      <UserCircle className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="space-y-2">
+                      <h1 className="max-w-3xl break-words text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                        {candidate.name}
+                      </h1>
+                      {displayRole ? (
+                        <p className="max-w-3xl text-sm font-medium text-muted-foreground sm:text-base">
+                          {displayRole}
+                        </p>
+                      ) : null}
+                      <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                        {summaryText}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {locationLabel ? (
+                        <Badge variant="outline" className="bg-background/60">
+                          {locationLabel}
+                        </Badge>
+                      ) : null}
+                      <Badge variant="outline" className="bg-background/60">
+                        {formatAvailabilityLabel(candidate.availability)}
+                      </Badge>
+                      <Badge variant="outline" className="bg-background/60">
+                        {activeApplicationsLabel}
+                      </Badge>
+                      {candidate.hourlyRate ? (
+                        <Badge variant="outline" className="bg-background/60">
+                          €{candidate.hourlyRate}/uur
+                        </Badge>
+                      ) : null}
+                      <Badge variant="outline" className="bg-background/60">
+                        {contactLabel}
+                      </Badge>
+                    </div>
+
+                    {websiteUrl ? (
+                      <a
+                        href={websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex max-w-full items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <Globe className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{websiteUrl}</span>
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="secondary" size="sm" className="gap-1.5">
+                    <Link href={primaryWorkflowAction.href}>
+                      <MessageCircle className="h-4 w-4" />
+                      {primaryWorkflowAction.label}
+                    </Link>
+                  </Button>
+                  <CandidateOfferActions
                     candidateId={candidate.id}
-                    candidateName={candidate.name}
-                    jobId={primaryActiveApplication?.job?.id ?? undefined}
-                    jobTitle={primaryActiveApplication?.job?.title ?? undefined}
-                    matchScore={primaryActiveApplication?.linkedMatch?.matchScore ?? undefined}
-                    variant="full"
+                    defaultJobId={primaryActiveApplication?.job?.id ?? undefined}
                   />
-                )}
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Bookmark className="h-4 w-4" />
+                    Kandidaat opslaan
+                  </Button>
+                  {candidate.phone ? (
+                    <ScreeningCallButton
+                      candidateId={candidate.id}
+                      candidateName={candidate.name}
+                      jobId={primaryActiveApplication?.job?.id ?? undefined}
+                      jobTitle={primaryActiveApplication?.job?.title ?? undefined}
+                      matchScore={primaryActiveApplication?.linkedMatch?.matchScore ?? undefined}
+                      variant="full"
+                    />
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <OpenToOffersRing
+                  percentage={offerReadiness.percentage}
+                  label="Open voor aanbiedingen"
+                  statusLabel={offerReadiness.statusLabel}
+                  detail={offerReadiness.detail}
+                />
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      Eerstvolgende stap
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-foreground">
+                      {primaryWorkflowAction.label}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      Gebruik dit profiel om direct te schakelen naar de relevante workflow.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      Profielstatus
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-foreground">{contactLabel}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {candidate.resumeUrl || candidate.resumeRaw
+                        ? "CV en profieldata zijn beschikbaar voor intake en matching."
+                        : "Upload een CV om het profiel verder te verrijken."}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          </section>
 
           <section className="mb-8">
             <div className="rounded-2xl border border-border bg-card p-5 space-y-4">

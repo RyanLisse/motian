@@ -110,6 +110,12 @@ type CandidateLike = {
   availability?: string | null;
 };
 
+export type CandidateOfferReadiness = {
+  percentage: number | null;
+  statusLabel: string;
+  detail: string;
+};
+
 type JobLike = {
   title: string;
   location?: string | null;
@@ -332,6 +338,56 @@ function getCommercialBlockers(candidate: CandidateLike, job: JobLike): string[]
   }
 
   return blockers;
+}
+
+function formatActiveApplicationLabel(count: number): string {
+  return `${count} actieve sollicitatie${count === 1 ? "" : "s"}`;
+}
+
+export function buildCandidateOfferReadiness(input: {
+  candidate: Pick<CandidateLike, "availability">;
+  activeApplicationCount?: number;
+}): CandidateOfferReadiness {
+  const activeApplicationCount = input.activeApplicationCount ?? 0;
+
+  switch (input.candidate.availability) {
+    case "direct":
+      return {
+        percentage: 92,
+        statusLabel: "Direct beschikbaar",
+        detail:
+          activeApplicationCount > 0
+            ? `${formatActiveApplicationLabel(activeApplicationCount)} lopen al`
+            : "Klaar voor snelle opvolging",
+      };
+    case "1_maand":
+      return {
+        percentage: 68,
+        statusLabel: "Binnen 1 maand",
+        detail:
+          activeApplicationCount > 0
+            ? `${formatActiveApplicationLabel(activeApplicationCount)} lopen al`
+            : "Korte lead time voor intake",
+      };
+    case "3_maanden":
+      return {
+        percentage: 38,
+        statusLabel: "Binnen 3 maanden",
+        detail:
+          activeApplicationCount > 0
+            ? `${formatActiveApplicationLabel(activeApplicationCount)} lopen al`
+            : "Langer lead time, minder direct inzetbaar",
+      };
+    default:
+      return {
+        percentage: null,
+        statusLabel: "Beschikbaarheid onbekend",
+        detail:
+          activeApplicationCount > 0
+            ? `${formatActiveApplicationLabel(activeApplicationCount)} maar geen beschikbaarheid ingevuld`
+            : "Vul beschikbaarheid aan om dit signaal te tonen",
+      };
+  }
 }
 
 function parseCriteria(criteriaBreakdown: unknown): MatchCriterionLike[] {

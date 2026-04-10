@@ -329,5 +329,7 @@ describe("Detail surfaces recruiter workflow context", () => {
     expect(source).toContain('<section id="matches">');
     expect(source).toContain("ReportButton");
     expect(source).toContain("MatchDetail");
+    expect(source).toContain("buildCandidateOfferReadiness");
+    expect(source).toContain("break-words");
   });
 });

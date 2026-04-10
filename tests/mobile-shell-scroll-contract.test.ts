@@ -36,4 +36,19 @@ describe("mobile shell scroll contract", () => {
     expect(shell).toContain("var(--mobile-bottom-nav-height)");
     expect(bottomNav).toContain("var(--mobile-bottom-nav-height)");
   });
+
+  it("gives the job list shell a definite mobile height via the content-height token so the scroll chain resolves", () => {
+    const globals = readFile("app", "globals.css");
+    const layoutShell = readFile("components", "opdrachten-layout-shell.tsx");
+
+    // Token must be defined, composing both chrome heights and safe-area insets
+    expect(globals).toContain("--mobile-content-height");
+    expect(globals).toContain("var(--mobile-top-bar-height)");
+    expect(globals).toContain("var(--mobile-bottom-nav-height)");
+    expect(globals).toContain("env(safe-area-inset-bottom)");
+
+    // Layout shell must use the token on mobile and fall back to h-full on desktop
+    expect(layoutShell).toContain("var(--mobile-content-height)");
+    expect(layoutShell).toContain("md:h-full");
+  });
 });

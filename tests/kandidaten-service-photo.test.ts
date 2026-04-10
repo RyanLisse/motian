@@ -13,6 +13,7 @@ vi.mock("../src/db", () => ({
   eq: vi.fn(),
   and: vi.fn(),
   desc: vi.fn(),
+  getTableColumns: vi.fn((table: Record<string, unknown>) => table),
   isNull: vi.fn(),
   inArray: vi.fn(),
   sql: vi.fn(),
@@ -63,7 +64,11 @@ vi.mock("../src/services/search-index/typesense-sync", () => ({
   upsertCandidatesByIds: vi.fn(),
 }));
 
-import { type CreateCandidateData, createCandidate } from "../src/services/candidates";
+import {
+  type CreateCandidateData,
+  candidateReadSelection,
+  createCandidate,
+} from "../src/services/candidates";
 
 describe("createCandidate photoUrl support", () => {
   beforeEach(() => {
@@ -151,5 +156,10 @@ describe("createCandidate photoUrl support", () => {
     expect(withPhoto.photoUrl).toBe("https://example.com/img.png");
     expect(withoutPhoto.photoUrl).toBeUndefined();
     expect(withUndefined.photoUrl).toBeUndefined();
+  });
+
+  it("keeps read projections compatible when photo_url is absent in the database", () => {
+    expect(candidateReadSelection).toHaveProperty("photoUrl");
+    expect("photoUrl" in candidateReadSelection).toBe(true);
   });
 });

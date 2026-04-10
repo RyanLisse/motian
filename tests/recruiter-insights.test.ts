@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCandidateIntakeScorecard,
+  buildCandidateOfferReadiness,
   buildMatchBrief,
   buildPipelineHealthSnapshot,
   buildVacatureTriageScorecard,
@@ -67,6 +68,29 @@ describe("recruiter-insights service", () => {
     expect(scorecard.parsedSkillsQuality.tone).toBe("actie");
     expect(scorecard.escoCoverage.tone).toBe("actie");
     expect(scorecard.nextAction.key).toBe("verrijk");
+  });
+
+  it("derives offer readiness from real availability data instead of a hardcoded default", () => {
+    expect(
+      buildCandidateOfferReadiness({
+        candidate: { availability: "direct" },
+        activeApplicationCount: 0,
+      }),
+    ).toMatchObject({
+      percentage: 92,
+      statusLabel: "Direct beschikbaar",
+    });
+
+    expect(
+      buildCandidateOfferReadiness({
+        candidate: { availability: null },
+        activeApplicationCount: 2,
+      }),
+    ).toMatchObject({
+      percentage: null,
+      statusLabel: "Beschikbaarheid onbekend",
+      detail: "2 actieve sollicitaties maar geen beschikbaarheid ingevuld",
+    });
   });
 
   it("marks a well-enriched vacature as ready for matching", () => {

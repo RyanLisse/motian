@@ -60,6 +60,13 @@
   --spacing: 0.25rem;
   --mobile-top-bar-height: 3rem;
   --mobile-bottom-nav-height: 4.5rem;
+  --mobile-content-height: calc(
+    100dvh
+    - var(--mobile-top-bar-height)
+    - max(env(safe-area-inset-top), 0px)
+    - var(--mobile-bottom-nav-height)
+    - env(safe-area-inset-bottom)
+  );
 }
 
 .dark {
