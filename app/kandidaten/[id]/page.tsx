@@ -500,9 +500,7 @@ async function KandidaatDetailContent({ params }: Props) {
                         {displayRole}
                       </p>
                     ) : null}
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {summaryText}
-                    </p>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{summaryText}</p>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
