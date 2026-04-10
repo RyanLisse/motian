@@ -1,28 +1,35 @@
 import * as Sentry from "@sentry/nextjs";
 import { getPostHogServer } from "@/src/lib/posthog";
+import { scrubSentryEvent, SENTRY_IGNORE_ERRORS } from "@/src/lib/sentry-scrub";
 
-const SENTRY_DSN = process.env.SENTRY_DSN;
+const SENTRY_DSN = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
+const SENTRY_RELEASE = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA;
 
 export function register() {
   if (!SENTRY_DSN) {
     return;
   }
 
+  const sharedConfig: Sentry.NodeOptions = {
+    dsn: SENTRY_DSN,
+    environment: process.env.VERCEL_ENV ?? "development",
+    release: SENTRY_RELEASE,
+    ignoreErrors: SENTRY_IGNORE_ERRORS,
+    enableLogs: true,
+    beforeSend: scrubSentryEvent,
+  };
+
   if (process.env.NEXT_RUNTIME === "nodejs") {
     Sentry.init({
-      dsn: SENTRY_DSN,
-      environment: process.env.VERCEL_ENV ?? "development",
+      ...sharedConfig,
       tracesSampleRate: process.env.NODE_ENV === "production" ? 0.2 : 1,
-      enableLogs: true,
     });
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {
     Sentry.init({
-      dsn: SENTRY_DSN,
-      environment: process.env.VERCEL_ENV ?? "development",
+      ...sharedConfig,
       tracesSampleRate: 0.1,
-      enableLogs: true,
     });
   }
 }
