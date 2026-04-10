@@ -2,7 +2,13 @@ import { and, db, inArray, isNull } from "../../db";
 import { candidates, jobs } from "../../db/schema";
 import { getTypesenseConfig, isTypesenseEnabled } from "../../lib/typesense";
 import { getVisibleVacancyCondition } from "../jobs/filters";
-import { ensureTypesenseCollection, typesenseRequest } from "./typesense-client";
+import {
+  isTypesenseCollectionKnownMissing,
+  isTypesenseCollectionMissingError,
+  markTypesenseCollectionMissing,
+  type TypesenseCollection,
+  typesenseRequest,
+} from "./typesense-client";
 import { toTypesenseCandidateDocument, toTypesenseJobDocument } from "./typesense-documents";
 
 function chunk<T>(items: T[], size = 25): T[][] {
@@ -19,42 +25,56 @@ function asStringArray(value: unknown): string[] {
     : [];
 }
 
-async function importDocuments(collection: "jobs" | "candidates", documents: object[]) {
+async function importDocuments(collection: TypesenseCollection, documents: object[]) {
   if (!isTypesenseEnabled() || documents.length === 0) return;
+  if (isTypesenseCollectionKnownMissing(collection)) return;
 
-  await ensureTypesenseCollection(collection);
   const config = getTypesenseConfig();
   if (!config) return;
 
   const payload = documents.map((document) => JSON.stringify(document)).join("\n");
-  await typesenseRequest(`/collections/${config.collections[collection]}/documents/import`, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    searchParams: new URLSearchParams({ action: "upsert" }),
-    body: payload,
-  });
+
+  try {
+    await typesenseRequest(`/collections/${config.collections[collection]}/documents/import`, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      searchParams: new URLSearchParams({ action: "upsert" }),
+      body: payload,
+    });
+  } catch (error) {
+    if (isTypesenseCollectionMissingError(error)) {
+      markTypesenseCollectionMissing(collection);
+      return;
+    }
+
+    throw error;
+  }
 }
 
-async function deleteDocuments(collection: "jobs" | "candidates", ids: string[]) {
+async function deleteDocuments(collection: TypesenseCollection, ids: string[]) {
   if (!isTypesenseEnabled() || ids.length === 0) return;
+  if (isTypesenseCollectionKnownMissing(collection)) return;
 
-  await ensureTypesenseCollection(collection);
   const config = getTypesenseConfig();
   if (!config) return;
 
-  await Promise.all(
-    ids.map((id) =>
-      typesenseRequest(
-        `/collections/${config.collections[collection]}/documents/${encodeURIComponent(id)}`,
-        { method: "DELETE", skipNotFound: true },
+  try {
+    await Promise.all(
+      ids.map((id) =>
+        typesenseRequest(
+          `/collections/${config.collections[collection]}/documents/${encodeURIComponent(id)}`,
+          { method: "DELETE", skipNotFound: true },
+        ),
       ),
-    ),
-  );
-}
+    );
+  } catch (error) {
+    if (isTypesenseCollectionMissingError(error)) {
+      markTypesenseCollectionMissing(collection);
+      return;
+    }
 
-export async function ensureTypesenseCollections() {
-  if (!isTypesenseEnabled()) return;
-  await Promise.all([ensureTypesenseCollection("jobs"), ensureTypesenseCollection("candidates")]);
+    throw error;
+  }
 }
 
 export async function upsertJobsByIds(ids: string[]) {

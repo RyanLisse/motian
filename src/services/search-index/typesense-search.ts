@@ -3,7 +3,13 @@ import { getTypesenseConfig, isTypesenseEnabled } from "../../lib/typesense";
 import type { SearchCandidatesOptions } from "../candidates";
 import type { ListJobsSortBy } from "../jobs/filters";
 import type { HybridSearchOptions } from "../jobs/search";
-import { typesenseRequest } from "./typesense-client";
+import {
+  isTypesenseCollectionKnownMissing,
+  isTypesenseCollectionMissingError,
+  markTypesenseCollectionMissing,
+  type TypesenseCollection,
+  typesenseRequest,
+} from "./typesense-client";
 
 type TypesenseSearchResponse<TDocument> = {
   found?: number;
@@ -138,16 +144,27 @@ export function canUseTypesenseForCandidates(opts: SearchCandidatesOptions = {})
 }
 
 async function searchCollectionByIds<TDocument extends { id: string }>(
-  collection: "jobs" | "candidates",
+  collection: TypesenseCollection,
   params: URLSearchParams,
 ): Promise<SearchIdsResult | null> {
   const config = getTypesenseConfig();
   if (!config) return null;
+  if (isTypesenseCollectionKnownMissing(collection)) return null;
 
-  const response = await typesenseRequest<TypesenseSearchResponse<TDocument>>(
-    `/collections/${config.collections[collection]}/documents/search`,
-    { searchParams: params },
-  );
+  let response: TypesenseSearchResponse<TDocument> | null;
+  try {
+    response = await typesenseRequest<TypesenseSearchResponse<TDocument>>(
+      `/collections/${config.collections[collection]}/documents/search`,
+      { searchParams: params },
+    );
+  } catch (error) {
+    if (isTypesenseCollectionMissingError(error)) {
+      markTypesenseCollectionMissing(collection);
+      return null;
+    }
+
+    throw error;
+  }
 
   if (!response) {
     return { ids: [], total: 0 };

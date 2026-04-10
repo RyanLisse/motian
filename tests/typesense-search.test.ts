@@ -1,8 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetTypesenseConfig, mockIsTypesenseEnabled, mockTypesenseRequest } = vi.hoisted(() => ({
+const {
+  mockGetTypesenseConfig,
+  mockIsTypesenseCollectionKnownMissing,
+  mockIsTypesenseEnabled,
+  mockIsTypesenseCollectionMissingError,
+  mockMarkTypesenseCollectionMissing,
+  mockTypesenseRequest,
+} = vi.hoisted(() => ({
   mockGetTypesenseConfig: vi.fn(),
+  mockIsTypesenseCollectionKnownMissing: vi.fn(),
   mockIsTypesenseEnabled: vi.fn(),
+  mockIsTypesenseCollectionMissingError: vi.fn(),
+  mockMarkTypesenseCollectionMissing: vi.fn(),
   mockTypesenseRequest: vi.fn(),
 }));
 
@@ -12,6 +22,9 @@ vi.mock("../src/lib/typesense", () => ({
 }));
 
 vi.mock("../src/services/search-index/typesense-client", () => ({
+  isTypesenseCollectionKnownMissing: mockIsTypesenseCollectionKnownMissing,
+  isTypesenseCollectionMissingError: mockIsTypesenseCollectionMissingError,
+  markTypesenseCollectionMissing: mockMarkTypesenseCollectionMissing,
   typesenseRequest: mockTypesenseRequest,
 }));
 
@@ -26,6 +39,8 @@ describe("typesense search", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsTypesenseEnabled.mockReturnValue(true);
+    mockIsTypesenseCollectionKnownMissing.mockReturnValue(false);
+    mockIsTypesenseCollectionMissingError.mockReturnValue(false);
     mockGetTypesenseConfig.mockReturnValue({
       url: "https://typesense.example.com",
       apiKey: "secret-key",
@@ -116,6 +131,34 @@ describe("typesense search", () => {
 
     expect(result).toBeNull();
     expect(mockTypesenseRequest).not.toHaveBeenCalled();
+  });
+
+  it("skips vacature typesense search when the collection is already marked missing", async () => {
+    mockIsTypesenseCollectionKnownMissing.mockReturnValue(true);
+
+    const result = await searchJobIdsByTypesense("java developer", {
+      platform: "opdrachtoverheid",
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toBeNull();
+    expect(mockTypesenseRequest).not.toHaveBeenCalled();
+  });
+
+  it("marks vacature collections missing and returns null when Typesense reports a missing collection", async () => {
+    const error = new Error("collection missing");
+    mockTypesenseRequest.mockRejectedValue(error);
+    mockIsTypesenseCollectionMissingError.mockReturnValue(true);
+
+    const result = await searchJobIdsByTypesense("java developer", {
+      platform: "opdrachtoverheid",
+      limit: 20,
+      offset: 0,
+    });
+
+    expect(result).toBeNull();
+    expect(mockMarkTypesenseCollectionMissing).toHaveBeenCalledWith("jobs");
   });
 
   it("builds kandidaat search params and returns ids plus total", async () => {

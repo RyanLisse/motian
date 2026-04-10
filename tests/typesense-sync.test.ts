@@ -4,7 +4,9 @@ const {
   mockSelect,
   mockFrom,
   mockWhere,
-  mockEnsureTypesenseCollection,
+  mockIsTypesenseCollectionKnownMissing,
+  mockIsTypesenseCollectionMissingError,
+  mockMarkTypesenseCollectionMissing,
   mockTypesenseRequest,
   mockIsTypesenseEnabled,
   mockGetTypesenseConfig,
@@ -12,7 +14,9 @@ const {
   mockSelect: vi.fn(),
   mockFrom: vi.fn(),
   mockWhere: vi.fn(),
-  mockEnsureTypesenseCollection: vi.fn(),
+  mockIsTypesenseCollectionKnownMissing: vi.fn(),
+  mockIsTypesenseCollectionMissingError: vi.fn(),
+  mockMarkTypesenseCollectionMissing: vi.fn(),
   mockTypesenseRequest: vi.fn(),
   mockIsTypesenseEnabled: vi.fn(),
   mockGetTypesenseConfig: vi.fn(),
@@ -37,7 +41,9 @@ vi.mock("../src/services/jobs/filters", () => ({
 }));
 
 vi.mock("../src/services/search-index/typesense-client", () => ({
-  ensureTypesenseCollection: mockEnsureTypesenseCollection,
+  isTypesenseCollectionKnownMissing: mockIsTypesenseCollectionKnownMissing,
+  isTypesenseCollectionMissingError: mockIsTypesenseCollectionMissingError,
+  markTypesenseCollectionMissing: mockMarkTypesenseCollectionMissing,
   typesenseRequest: mockTypesenseRequest,
 }));
 
@@ -59,6 +65,8 @@ describe("typesense sync", () => {
       where: mockWhere,
     });
     mockIsTypesenseEnabled.mockReturnValue(true);
+    mockIsTypesenseCollectionKnownMissing.mockReturnValue(false);
+    mockIsTypesenseCollectionMissingError.mockReturnValue(false);
     mockGetTypesenseConfig.mockReturnValue({
       url: "https://typesense.example.com",
       apiKey: "secret-key",
@@ -75,7 +83,6 @@ describe("typesense sync", () => {
     await upsertJobsByIds(["job-1"]);
 
     expect(mockWhere).not.toHaveBeenCalled();
-    expect(mockEnsureTypesenseCollection).not.toHaveBeenCalled();
     expect(mockTypesenseRequest).not.toHaveBeenCalled();
   });
 
@@ -93,7 +100,6 @@ describe("typesense sync", () => {
 
     await upsertJobsByIds(["job-1", "job-2"]);
 
-    expect(mockEnsureTypesenseCollection).toHaveBeenCalledWith("jobs");
     expect(mockTypesenseRequest).toHaveBeenNthCalledWith(
       1,
       "/collections/motian_jobs_preview/documents/import",
@@ -136,7 +142,6 @@ describe("typesense sync", () => {
 
     await upsertCandidatesByIds(["candidate-1"]);
 
-    expect(mockEnsureTypesenseCollection).toHaveBeenCalledWith("candidates");
     expect(mockTypesenseRequest).toHaveBeenCalledWith(
       "/collections/motian_candidates_preview/documents/import",
       expect.objectContaining({
@@ -162,5 +167,35 @@ describe("typesense sync", () => {
       "/collections/motian_candidates_preview/documents/candidate-1",
       { method: "DELETE", skipNotFound: true },
     );
+  });
+
+  it("skips hot-path sync work when a collection is already known missing", async () => {
+    mockIsTypesenseCollectionKnownMissing.mockReturnValue(true);
+
+    await upsertJobsByIds(["job-1"]);
+    await deleteCandidatesByIds(["candidate-1"]);
+
+    expect(mockTypesenseRequest).not.toHaveBeenCalled();
+  });
+
+  it("marks job collections missing when Typesense import reports a missing collection", async () => {
+    mockWhere.mockResolvedValue([
+      {
+        id: "job-1",
+        title: "Senior Java Developer",
+        searchText: "Senior Java Developer",
+        platform: "opdrachtoverheid",
+        status: "open",
+        categories: ["ICT"],
+      },
+    ]);
+
+    const missingCollectionError = new Error("missing collection");
+    mockTypesenseRequest.mockRejectedValue(missingCollectionError);
+    mockIsTypesenseCollectionMissingError.mockReturnValue(true);
+
+    await upsertJobsByIds(["job-1"]);
+
+    expect(mockMarkTypesenseCollectionMissing).toHaveBeenCalledWith("jobs");
   });
 });

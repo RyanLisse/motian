@@ -2,6 +2,8 @@ import { getTypesenseConfig } from "../../lib/typesense";
 import { TYPESENSE_CANDIDATES_SCHEMA, TYPESENSE_JOBS_SCHEMA } from "./typesense-schema";
 
 type TypesenseMethod = "GET" | "POST" | "PUT" | "DELETE";
+export type TypesenseCollection = "jobs" | "candidates";
+type TypesenseCollectionState = "unknown" | "exists" | "missing";
 
 type TypesenseRequestOptions = {
   body?: BodyInit;
@@ -11,7 +13,47 @@ type TypesenseRequestOptions = {
   skipNotFound?: boolean;
 };
 
-const ensuredCollections = new Map<string, Promise<void>>();
+type TypesenseCollectionCacheEntry = {
+  bootstrapPromise?: Promise<void>;
+  state: TypesenseCollectionState;
+};
+
+const collectionBootstrapCache = new Map<string, TypesenseCollectionCacheEntry>();
+
+export class TypesenseRequestError extends Error {
+  body: string;
+  status: number;
+
+  constructor(status: number, body: string) {
+    super(`Typesense request failed (${status}): ${body}`);
+    this.name = "TypesenseRequestError";
+    this.body = body;
+    this.status = status;
+  }
+}
+
+function getCollectionSchema(collection: TypesenseCollection, name: string) {
+  if (collection === "jobs") {
+    return { ...TYPESENSE_JOBS_SCHEMA, name };
+  }
+
+  return { ...TYPESENSE_CANDIDATES_SCHEMA, name };
+}
+
+function getCollectionCacheContext(collection: TypesenseCollection) {
+  const config = getTypesenseConfig();
+  if (!config) return null;
+
+  const collectionName = config.collections[collection];
+  const cacheKey = `${collection}:${collectionName}`;
+  const cacheEntry = collectionBootstrapCache.get(cacheKey) ?? { state: "unknown" as const };
+
+  if (!collectionBootstrapCache.has(cacheKey)) {
+    collectionBootstrapCache.set(cacheKey, cacheEntry);
+  }
+
+  return { cacheEntry, cacheKey, collectionName };
+}
 
 function buildUrl(path: string, searchParams?: URLSearchParams) {
   const config = getTypesenseConfig();
@@ -47,7 +89,7 @@ export async function typesenseRequest<T>(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Typesense request failed (${response.status}): ${text}`);
+    throw new TypesenseRequestError(response.status, text);
   }
 
   if (response.status === 204) {
@@ -67,16 +109,48 @@ export async function typesenseRequest<T>(
   return JSON.parse(text) as T;
 }
 
-function getCollectionSchema(collection: "jobs" | "candidates", name: string) {
-  if (collection === "jobs") {
-    return { ...TYPESENSE_JOBS_SCHEMA, name };
+export function isTypesenseCollectionKnownMissing(collection: TypesenseCollection) {
+  return getCollectionCacheContext(collection)?.cacheEntry.state === "missing";
+}
+
+export function markTypesenseCollectionMissing(collection: TypesenseCollection) {
+  const context = getCollectionCacheContext(collection);
+  if (!context) return;
+
+  context.cacheEntry.bootstrapPromise = undefined;
+  context.cacheEntry.state = "missing";
+}
+
+function markTypesenseCollectionExists(collection: TypesenseCollection) {
+  const context = getCollectionCacheContext(collection);
+  if (!context) return;
+
+  context.cacheEntry.bootstrapPromise = undefined;
+  context.cacheEntry.state = "exists";
+}
+
+export function resetTypesenseCollectionCache(collection?: TypesenseCollection) {
+  if (!collection) {
+    collectionBootstrapCache.clear();
+    return;
   }
 
-  return { ...TYPESENSE_CANDIDATES_SCHEMA, name };
+  const context = getCollectionCacheContext(collection);
+  if (!context) return;
+
+  collectionBootstrapCache.delete(context.cacheKey);
+}
+
+export function isTypesenseCollectionMissingError(error: unknown) {
+  if (!(error instanceof TypesenseRequestError)) return false;
+  if (error.status !== 404) return false;
+
+  const normalizedBody = error.body.toLocaleLowerCase("en-US");
+  return normalizedBody.includes("collection") || normalizedBody.includes("not found");
 }
 
 /** Drop a Typesense collection so it can be recreated fresh (used by reindex). */
-export async function dropTypesenseCollection(collection: "jobs" | "candidates") {
+export async function dropTypesenseCollection(collection: TypesenseCollection) {
   const config = getTypesenseConfig();
   if (!config) return;
 
@@ -86,39 +160,56 @@ export async function dropTypesenseCollection(collection: "jobs" | "candidates")
     skipNotFound: true,
   });
 
-  // Clear the memoized bootstrap promise so ensureTypesenseCollection recreates it.
-  for (const [key] of ensuredCollections) {
-    if (key.startsWith(`${collection}:`)) ensuredCollections.delete(key);
-  }
+  markTypesenseCollectionMissing(collection);
 }
 
-export async function ensureTypesenseCollection(collection: "jobs" | "candidates") {
-  const config = getTypesenseConfig();
-  if (!config) return;
+export async function ensureTypesenseCollection(collection: TypesenseCollection) {
+  const context = getCollectionCacheContext(collection);
+  if (!context) return;
 
-  const collectionName = config.collections[collection];
-  const cacheKey = `${collection}:${collectionName}`;
+  if (context.cacheEntry.state === "exists") {
+    return;
+  }
 
-  const existing = ensuredCollections.get(cacheKey);
-  if (existing) return existing;
+  if (context.cacheEntry.bootstrapPromise) {
+    return context.cacheEntry.bootstrapPromise;
+  }
 
   const promise = (async () => {
-    const found = await typesenseRequest(`/collections/${collectionName}`, { skipNotFound: true });
+    const found = await typesenseRequest(`/collections/${context.collectionName}`, {
+      skipNotFound: true,
+    });
     if (!found) {
       await typesenseRequest("/collections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(getCollectionSchema(collection, collectionName)),
+        body: JSON.stringify(getCollectionSchema(collection, context.collectionName)),
       });
     }
+
+    markTypesenseCollectionExists(collection);
   })();
 
-  ensuredCollections.set(cacheKey, promise);
+  context.cacheEntry.bootstrapPromise = promise;
+  collectionBootstrapCache.set(context.cacheKey, context.cacheEntry);
 
   try {
     await promise;
   } catch (err) {
-    ensuredCollections.delete(cacheKey);
+    if (context.cacheEntry.bootstrapPromise === promise) {
+      context.cacheEntry.bootstrapPromise = undefined;
+      context.cacheEntry.state = "unknown";
+    }
     throw err;
+  } finally {
+    if (context.cacheEntry.bootstrapPromise === promise) {
+      context.cacheEntry.bootstrapPromise = undefined;
+    }
   }
+}
+
+export async function ensureTypesenseCollections() {
+  if (!getTypesenseConfig()) return;
+
+  await Promise.all([ensureTypesenseCollection("jobs"), ensureTypesenseCollection("candidates")]);
 }
