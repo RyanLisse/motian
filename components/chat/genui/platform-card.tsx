@@ -6,8 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { submitPlatformCredentials } from "./credential-submit";
-import { onboardingStepLabels, platformStatusLabels } from "./genui-utils";
+import {
+  genuiDisclosureSummaryClassName,
+  onboardingStepLabels,
+  platformStatusLabels,
+  useGenUIMobile,
+} from "./genui-utils";
 
 // ─── Type Guards ──────────────────────────────────────────────
 
@@ -116,8 +122,52 @@ function isPlatformList(o: unknown): o is PlatformListOutput {
 // ─── Sub-Components ──────────────────────────────────────────
 
 function StepperBar({ currentStep, failed }: { currentStep: string; failed?: boolean }) {
+  const isMobile = useGenUIMobile();
   const steps = Object.entries(onboardingStepLabels);
   const currentIndex = steps.findIndex(([key]) => key === currentStep);
+
+  if (isMobile) {
+    return (
+      <details className="rounded-md border border-border/70 bg-background/70">
+        <summary className={genuiDisclosureSummaryClassName}>
+          <span>{onboardingStepLabels[currentStep] ?? "Onboardingstatus"}</span>
+          <span className="text-xs font-normal text-muted-foreground">
+            {Math.max(currentIndex + 1, 1)}/{steps.length}
+          </span>
+        </summary>
+        <ol className="space-y-2 border-t border-border/70 p-3 text-xs">
+          {steps.map(([key, label], i) => {
+            const isActive = i === currentIndex;
+            const isDone = i < currentIndex;
+            const isFailed = isActive && failed;
+            return (
+              <li key={key} className="flex items-start gap-2">
+                <span
+                  className={cn(
+                    "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium",
+                    isFailed
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      : isDone
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : isActive
+                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                          : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {isDone ? "\u2713" : i + 1}
+                </span>
+                <span
+                  className={cn(isActive ? "font-medium text-foreground" : "text-muted-foreground")}
+                >
+                  {label}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </details>
+    );
+  }
 
   return (
     <div className="flex items-center gap-1 text-xs">
@@ -196,6 +246,7 @@ function CredentialForm({ platform, fields }: { platform: string; fields: Creden
           <Input
             id={field.name}
             type={field.type}
+            className="min-h-11"
             autoComplete="off"
             value={values[field.name] ?? ""}
             onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
@@ -203,7 +254,7 @@ function CredentialForm({ platform, fields }: { platform: string; fields: Creden
           />
         </div>
       ))}
-      <Button type="submit" size="sm" disabled={submitting}>
+      <Button type="submit" disabled={submitting} className="min-h-11 w-full sm:w-auto">
         {submitting ? "Verbinden..." : "Verbinden"}
       </Button>
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -247,7 +298,7 @@ function OnboardingRealtimeCard({ output }: { output: OnboardingTriggeredOutput 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-sm">{output.displayName}</CardTitle>
           <Badge variant={isDone ? "default" : isFailed ? "destructive" : "secondary"}>
             {isDone
@@ -311,7 +362,7 @@ export function PlatformCard({ output }: { output: unknown }) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm">{output.displayName}</CardTitle>
             <Badge variant={output.isActive ? "default" : "secondary"}>
               {output.isActive ? "Actief" : "Inactief"}
@@ -335,7 +386,7 @@ export function PlatformCard({ output }: { output: unknown }) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm">{output.displayName}</CardTitle>
             <Badge variant={output.activated ? "default" : "secondary"}>
               {output.activated ? "Actief" : "Niet geactiveerd"}
@@ -383,7 +434,7 @@ export function PlatformCard({ output }: { output: unknown }) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm">{output.catalog.displayName}</CardTitle>
             <Badge
               variant={
@@ -438,7 +489,7 @@ export function PlatformCard({ output }: { output: unknown }) {
     }
 
     return (
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {output.slice(0, 8).map((p) => (
           <Card key={p.slug} className="p-2">
             <div className="flex items-center justify-between">

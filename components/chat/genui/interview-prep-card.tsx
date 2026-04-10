@@ -1,8 +1,13 @@
 "use client";
 
-import { ClipboardList, ShieldCheck, Sparkles } from "lucide-react";
+import { ChevronDown, ClipboardList, ShieldCheck, Sparkles } from "lucide-react";
 import { memo } from "react";
-import { getToolErrorMessage, isToolError } from "./genui-utils";
+import {
+  genuiDisclosureSummaryClassName,
+  getToolErrorMessage,
+  isToolError,
+  useGenUIMobile,
+} from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type ClarificationOutput = {
@@ -77,6 +82,8 @@ function BulletList({ items }: { items: string[] }) {
 }
 
 export const InterviewPrepCard = memo(function InterviewPrepCard({ output }: { output: unknown }) {
+  const isMobile = useGenUIMobile();
+
   if (isToolError(output)) {
     return (
       <ToolErrorBlock
@@ -118,6 +125,22 @@ export const InterviewPrepCard = memo(function InterviewPrepCard({ output }: { o
   if (!isReadyOutput(output)) return null;
 
   const { artifact } = output;
+  const scorecardContent = (
+    <div className="mt-2 space-y-2">
+      {artifact.scorecardCriteria.map((criterion) => (
+        <div
+          key={criterion.criterion}
+          className="rounded-md border border-border/70 bg-muted/30 p-3"
+        >
+          <p className="text-sm font-medium text-foreground">{criterion.criterion}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Goed signaal: {criterion.whatGoodLooksLike}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Red flag: {criterion.redFlag}</p>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="my-1.5 rounded-lg border border-border bg-card p-4">
@@ -172,23 +195,20 @@ export const InterviewPrepCard = memo(function InterviewPrepCard({ output }: { o
         </div>
       </div>
 
-      <div className="mt-4 rounded-md border border-border/70 bg-background/70 p-3">
-        <p className="text-sm font-semibold text-foreground">Scorecardcriteria</p>
-        <div className="mt-2 space-y-2">
-          {artifact.scorecardCriteria.map((criterion) => (
-            <div
-              key={criterion.criterion}
-              className="rounded-md border border-border/70 bg-muted/30 p-3"
-            >
-              <p className="text-sm font-medium text-foreground">{criterion.criterion}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Goed signaal: {criterion.whatGoodLooksLike}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">Red flag: {criterion.redFlag}</p>
-            </div>
-          ))}
+      {isMobile ? (
+        <details className="mt-4 rounded-md border border-border/70 bg-background/70">
+          <summary className={genuiDisclosureSummaryClassName}>
+            <span>Scorecardcriteria</span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </summary>
+          <div className="border-t border-border/70 p-3">{scorecardContent}</div>
+        </details>
+      ) : (
+        <div className="mt-4 rounded-md border border-border/70 bg-background/70 p-3">
+          <p className="text-sm font-semibold text-foreground">Scorecardcriteria</p>
+          {scorecardContent}
         </div>
-      </div>
+      )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-md border border-border/70 bg-background/70 p-3">
@@ -205,15 +225,34 @@ export const InterviewPrepCard = memo(function InterviewPrepCard({ output }: { o
         </div>
       </div>
 
-      <div className="mt-4 rounded-md border border-border/70 bg-background/70 p-3">
-        <p className="text-sm font-semibold text-foreground">Writeback payload</p>
-        <p className="mt-1 text-xs text-muted-foreground">Type: {artifact.writebackPayload.type}</p>
-        <p className="text-xs text-muted-foreground">
-          Job: {artifact.writebackPayload.linkedJobId ?? "geen"} · Kandidaat:{" "}
-          {artifact.writebackPayload.linkedCandidateId ?? "geen"} · Match:{" "}
-          {artifact.writebackPayload.linkedMatchId ?? "geen"}
-        </p>
-      </div>
+      {isMobile ? (
+        <details className="mt-4 rounded-md border border-border/70 bg-background/70">
+          <summary className={genuiDisclosureSummaryClassName}>
+            <span>Writeback payload</span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </summary>
+          <div className="space-y-1 border-t border-border/70 p-3">
+            <p className="text-xs text-muted-foreground">Type: {artifact.writebackPayload.type}</p>
+            <p className="text-xs text-muted-foreground">
+              Job: {artifact.writebackPayload.linkedJobId ?? "geen"} · Kandidaat:{" "}
+              {artifact.writebackPayload.linkedCandidateId ?? "geen"} · Match:{" "}
+              {artifact.writebackPayload.linkedMatchId ?? "geen"}
+            </p>
+          </div>
+        </details>
+      ) : (
+        <div className="mt-4 rounded-md border border-border/70 bg-background/70 p-3">
+          <p className="text-sm font-semibold text-foreground">Writeback payload</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Type: {artifact.writebackPayload.type}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Job: {artifact.writebackPayload.linkedJobId ?? "geen"} · Kandidaat:{" "}
+            {artifact.writebackPayload.linkedCandidateId ?? "geen"} · Match:{" "}
+            {artifact.writebackPayload.linkedMatchId ?? "geen"}
+          </p>
+        </div>
+      )}
     </div>
   );
 });

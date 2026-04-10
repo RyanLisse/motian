@@ -34,15 +34,15 @@ export function JobCard({ job, pipelineCount }: JobCardProps) {
     new Date(job.applicationDeadline).getTime() > Date.now();
 
   return (
-    <Link href={`/vacatures/${job.id}`}>
+    <Link href={`/vacatures/${job.id}`} className="block">
       <div
         className={`bg-card border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer ${deadlineUrgent ? "border-orange-400/60" : "border-border"}`}
       >
-        <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
             {job.title}
           </h3>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
             {pipelineCount != null && pipelineCount > 0 && (
               <Badge
                 variant="outline"
@@ -109,7 +109,7 @@ export function JobCard({ job, pipelineCount }: JobCardProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+        <div className="flex flex-col items-start gap-1.5 pt-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-4">
           {job.applicationDeadline && (
             <span
               className={`flex items-center gap-1 ${deadlineUrgent ? "text-orange-600 font-medium" : ""}`}

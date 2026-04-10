@@ -2,13 +2,23 @@
 import { Maximize2, Minimize2, Network } from "lucide-react";
 import dynamic from "next/dynamic";
 import { memo, useCallback, useState } from "react";
-import { getToolErrorMessage, isToolError } from "./genui-utils";
+import { cn } from "@/lib/utils";
+import { GenUILoadingSkeleton } from "./genui-loading-skeleton";
+import {
+  genuiIconButtonClassName,
+  getToolErrorMessage,
+  isToolError,
+  useGenUIMobile,
+} from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 const MatchNetworkCanvas = dynamic(
   () =>
     import("../../canvas/match-network-canvas").then((m) => ({ default: m.MatchNetworkCanvas })),
-  { ssr: false, loading: () => <div className="h-[400px] animate-pulse rounded-lg bg-muted" /> },
+  {
+    ssr: false,
+    loading: () => <GenUILoadingSkeleton label="Canvas" className="h-[320px]" rows={4} />,
+  },
 );
 
 const CanvasSidebar = dynamic(
@@ -36,6 +46,7 @@ function isCanvasOutput(o: unknown): o is CanvasOutput {
 }
 
 export const CanvasEmbed = memo(function CanvasEmbed({ output }: { output: unknown }) {
+  const isMobile = useGenUIMobile();
   const [expanded, setExpanded] = useState(false);
   const [sidebar, setSidebar] = useState<{
     type: "kandidaat" | "vacature";
@@ -70,7 +81,10 @@ export const CanvasEmbed = memo(function CanvasEmbed({ output }: { output: unkno
 
   return (
     <div
-      className={`my-2 rounded-lg border border-border bg-card overflow-hidden relative ${expanded ? "h-[600px]" : "h-[400px]"}`}
+      className={cn(
+        "relative my-2 overflow-hidden rounded-lg border border-border bg-card",
+        expanded ? (isMobile ? "h-[460px]" : "h-[600px]") : isMobile ? "h-[320px]" : "h-[400px]",
+      )}
     >
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -80,7 +94,7 @@ export const CanvasEmbed = memo(function CanvasEmbed({ output }: { output: unkno
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="rounded p-1 hover:bg-muted"
+          className={cn(genuiIconButtonClassName, "hover:bg-muted")}
           title={expanded ? "Verkleinen" : "Vergroten"}
         >
           {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}

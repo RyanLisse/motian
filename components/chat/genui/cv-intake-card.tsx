@@ -3,7 +3,16 @@
 import { Download, Target, User } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { getToolErrorMessage, isToolError } from "./genui-utils";
+import { cn } from "@/lib/utils";
+import {
+  genuiDesktopClampClassName,
+  genuiDisclosureSummaryClassName,
+  genuiMobileWrapClassName,
+  genuiTouchTargetClassName,
+  getToolErrorMessage,
+  isToolError,
+  useGenUIMobile,
+} from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type CvIntakeOutput = {
@@ -69,6 +78,7 @@ const recommendationConfig: Record<string, { label: string; icon: string; classe
 };
 
 export function CvIntakeCard({ output }: { output: unknown }) {
+  const isMobile = useGenUIMobile();
   const [downloading, setDownloading] = useState(false);
 
   if (isToolError(output))
@@ -112,9 +122,11 @@ export function CvIntakeCard({ output }: { output: unknown }) {
             <User className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground truncate">{output.candidateName}</p>
+            <p className={`text-sm font-semibold text-foreground ${genuiMobileWrapClassName}`}>
+              {output.candidateName}
+            </p>
             {output.candidateRole && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">
+              <p className={`mt-0.5 text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
                 {output.candidateRole}
               </p>
             )}
@@ -158,11 +170,15 @@ export function CvIntakeCard({ output }: { output: unknown }) {
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-foreground truncate">
+                      <p
+                        className={`text-xs font-medium text-foreground ${genuiMobileWrapClassName}`}
+                      >
                         {match.jobTitle}
                       </p>
                       {match.company && (
-                        <p className="text-[10px] text-muted-foreground truncate">
+                        <p
+                          className={`text-[10px] text-muted-foreground ${genuiMobileWrapClassName}`}
+                        >
                           {match.company}
                         </p>
                       )}
@@ -175,11 +191,23 @@ export function CvIntakeCard({ output }: { output: unknown }) {
                           </span>
                         )}
                       </div>
-                      {match.reasoning && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
-                          {match.reasoning}
-                        </p>
-                      )}
+                      {match.reasoning &&
+                        (isMobile ? (
+                          <details className="mt-1 rounded-md border border-border/70 bg-muted/20">
+                            <summary className={genuiDisclosureSummaryClassName}>
+                              Matchmotivatie
+                            </summary>
+                            <p className="border-t border-border/70 p-3 text-[10px] leading-5 text-muted-foreground">
+                              {match.reasoning}
+                            </p>
+                          </details>
+                        ) : (
+                          <p
+                            className={`mt-0.5 text-[10px] text-muted-foreground ${genuiDesktopClampClassName}`}
+                          >
+                            {match.reasoning}
+                          </p>
+                        ))}
                     </div>
                   </div>
                 </div>
@@ -195,7 +223,10 @@ export function CvIntakeCard({ output }: { output: unknown }) {
           type="button"
           onClick={handleDownloadCv}
           disabled={downloading}
-          className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors border border-border text-foreground hover:bg-accent disabled:opacity-50"
+          className={cn(
+            "inline-flex items-center gap-1.5 border border-border text-foreground hover:bg-accent disabled:opacity-50",
+            genuiTouchTargetClassName,
+          )}
         >
           <Download className="h-3.5 w-3.5" />
           {downloading ? "Laden..." : "Download CV"}

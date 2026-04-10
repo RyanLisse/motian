@@ -2,7 +2,12 @@
 import { User, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { getToolErrorMessage, isToolError } from "./genui-utils";
+import {
+  genuiInlineActionClassName,
+  genuiMobileWrapClassName,
+  getToolErrorMessage,
+  isToolError,
+} from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type KandidaatItem = {
@@ -56,20 +61,26 @@ export function KandidaatListCard({ output }: { output: unknown }) {
       </div>
       <div className="space-y-1.5">
         {visible.map((item) => (
-          <Link key={item.id} href={`/kandidaten/${item.id}`}>
+          <Link key={item.id} href={`/kandidaten/${item.id}`} className="block">
             <div className="rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
                   <User className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground truncate">{item.name}</p>
+                  <p
+                    className={`text-sm font-semibold text-foreground ${genuiMobileWrapClassName}`}
+                  >
+                    {item.name}
+                  </p>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                     {item.role && (
-                      <span className="text-xs text-muted-foreground truncate">{item.role}</span>
+                      <span className={`text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
+                        {item.role}
+                      </span>
                     )}
                     {item.location && (
-                      <span className="text-xs text-muted-foreground truncate">
+                      <span className={`text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
                         {item.location}
                       </span>
                     )}
@@ -87,7 +98,7 @@ export function KandidaatListCard({ output }: { output: unknown }) {
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="text-xs text-primary hover:underline"
+          className={genuiInlineActionClassName}
         >
           + {output.kandidaten.length - MAX_VISIBLE} meer tonen
         </button>

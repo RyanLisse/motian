@@ -41,7 +41,7 @@ export const MatchCreatedCard = memo(function MatchCreatedCard({ output }: { out
         <span className="text-xs text-muted-foreground capitalize">{output.status}</span>
       </div>
       {!actionTaken && output.status === "pending" && (
-        <div className="flex items-center gap-2 mt-3">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <ActionButton
             label="Goedkeuren"
             variant="primary"

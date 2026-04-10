@@ -2,7 +2,12 @@
 
 import { Link2 } from "lucide-react";
 import Link from "next/link";
-import { getToolErrorMessage, isToolError, matchStatusLabels } from "./genui-utils";
+import {
+  genuiMobileWrapClassName,
+  getToolErrorMessage,
+  isToolError,
+  matchStatusLabels,
+} from "./genui-utils";
 import { ToolErrorBlock } from "./tool-error-block";
 
 type MatchOutput = {
@@ -33,19 +38,21 @@ export function MatchGenUICard({ output }: { output: unknown }) {
       ? "Open vacaturecontext →"
       : "Open kandidaten →";
   return (
-    <Link href={href}>
+    <Link href={href} className="block">
       <div className="my-1.5 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2">
             <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground">
                 Match — score {Math.round(output.matchScore)}%
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Status: {statusLabel}</p>
+              <p className={`mt-0.5 text-xs text-muted-foreground ${genuiMobileWrapClassName}`}>
+                Status: {statusLabel}
+              </p>
             </div>
           </div>
-          <span className="text-xs text-muted-foreground shrink-0">{ctaLabel}</span>
+          <span className="text-sm font-medium text-muted-foreground sm:shrink-0">{ctaLabel}</span>
         </div>
       </div>
     </Link>
