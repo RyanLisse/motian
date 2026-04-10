@@ -474,7 +474,7 @@ async function KandidaatDetailContent({ params }: Props) {
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
               <div className="min-w-0 space-y-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className="flex items-start gap-4">
                   {candidate.photoUrl ? (
                     <Image
                       src={candidate.photoUrl}
@@ -488,56 +488,56 @@ async function KandidaatDetailContent({ params }: Props) {
                       <UserCircle className="h-12 w-12 text-muted-foreground" />
                     </div>
                   )}
+                </div>
 
-                  <div className="min-w-0 flex-1 space-y-3">
-                    <div className="space-y-2">
-                      <h1 className="max-w-3xl break-words text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                        {candidate.name}
-                      </h1>
-                      {displayRole ? (
-                        <p className="max-w-3xl text-sm font-medium text-muted-foreground sm:text-base">
-                          {displayRole}
-                        </p>
-                      ) : null}
-                      <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                        {summaryText}
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <h1 className="break-words text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                      {candidate.name}
+                    </h1>
+                    {displayRole ? (
+                      <p className="text-sm font-medium text-muted-foreground sm:text-base">
+                        {displayRole}
                       </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {locationLabel ? (
-                        <Badge variant="outline" className="bg-background/60">
-                          {locationLabel}
-                        </Badge>
-                      ) : null}
-                      <Badge variant="outline" className="bg-background/60">
-                        {formatAvailabilityLabel(candidate.availability)}
-                      </Badge>
-                      <Badge variant="outline" className="bg-background/60">
-                        {activeApplicationsLabel}
-                      </Badge>
-                      {candidate.hourlyRate ? (
-                        <Badge variant="outline" className="bg-background/60">
-                          €{candidate.hourlyRate}/uur
-                        </Badge>
-                      ) : null}
-                      <Badge variant="outline" className="bg-background/60">
-                        {contactLabel}
-                      </Badge>
-                    </div>
-
-                    {websiteUrl ? (
-                      <a
-                        href={websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex max-w-full items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        <Globe className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{websiteUrl}</span>
-                      </a>
                     ) : null}
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {summaryText}
+                    </p>
                   </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {locationLabel ? (
+                      <Badge variant="outline" className="bg-background/60">
+                        {locationLabel}
+                      </Badge>
+                    ) : null}
+                    <Badge variant="outline" className="bg-background/60">
+                      {formatAvailabilityLabel(candidate.availability)}
+                    </Badge>
+                    <Badge variant="outline" className="bg-background/60">
+                      {activeApplicationsLabel}
+                    </Badge>
+                    {candidate.hourlyRate ? (
+                      <Badge variant="outline" className="bg-background/60">
+                        €{candidate.hourlyRate}/uur
+                      </Badge>
+                    ) : null}
+                    <Badge variant="outline" className="bg-background/60">
+                      {contactLabel}
+                    </Badge>
+                  </div>
+
+                  {websiteUrl ? (
+                    <a
+                      href={websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex max-w-full items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <Globe className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{websiteUrl}</span>
+                    </a>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
