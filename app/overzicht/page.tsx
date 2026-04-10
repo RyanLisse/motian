@@ -25,7 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime } from "@/src/lib/helpers";
 import { getOverviewData } from "./data";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 const PRIORITY_TONE_STYLES = {
   amber: {

@@ -10,7 +10,7 @@ import { applications, candidates, jobs, messages } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 import { channelLabels, directionLabels, MessageCard } from "./_components/message-card";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 /** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {

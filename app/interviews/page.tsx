@@ -10,7 +10,7 @@ import { applications, candidates, interviews, jobs } from "@/src/db/schema";
 import { parsePagination } from "@/src/lib/pagination";
 import { InterviewCard, statusLabels } from "./_components/interview-card";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 /** Search and pagination via URL (Next.js Learn: adding-search-and-pagination). */
 interface Props {
