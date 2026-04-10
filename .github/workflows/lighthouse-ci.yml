@@ -1,0 +1,106 @@
+name: Lighthouse CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "src/components/**"
+      - "next.config.ts"
+      - "package.json"
+
+permissions: {}
+
+jobs:
+  lighthouse:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+        with:
+          node-version: "22"
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Minimal env for build (no DB needed for static analysis)
+          SKIP_ENV_VALIDATION: "1"
+
+      - name: Start server
+        run: |
+          pnpm start &
+          # Wait for server to be ready
+          npx wait-on http://localhost:3002 --timeout 60000
+        env:
+          PORT: "3002"
+          SKIP_ENV_VALIDATION: "1"
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.js
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Post results as PR comment
+        if: always()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- lighthouse-ci-results -->';
+
+            // Read Lighthouse results
+            let summary = '### Lighthouse CI Results\n\n';
+            try {
+              const manifest = JSON.parse(fs.readFileSync('.lighthouseci/manifest.json', 'utf8'));
+              for (const entry of manifest) {
+                const result = JSON.parse(fs.readFileSync(entry.jsonPath, 'utf8'));
+                const perf = Math.round((result.categories?.performance?.score || 0) * 100);
+                const lcp = Math.round(result.audits?.['largest-contentful-paint']?.numericValue || 0);
+                const cls = (result.audits?.['cumulative-layout-shift']?.numericValue || 0).toFixed(3);
+                const url = new URL(entry.url).pathname;
+                const emoji = perf >= 90 ? '🟢' : perf >= 75 ? '🟡' : '🔴';
+                summary += `| ${url} | ${emoji} ${perf} | ${lcp}ms | ${cls} |\n`;
+              }
+              summary = '| Route | Perf | LCP | CLS |\n|-------|------|-----|-----|\n' + summary.split('\n').filter(l => l.startsWith('|')).join('\n');
+            } catch (e) {
+              summary += '_Results not available_\n';
+            }
+
+            const body = `${marker}\n${summary}\n\n_Mobile profile: 4x CPU throttle, slow 4G_`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

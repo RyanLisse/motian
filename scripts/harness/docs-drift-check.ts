@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadHarnessConfig } from "@/src/harness/config";
@@ -13,6 +13,7 @@ function globMatch(pattern: string, filePath: string): boolean {
   const regexParts = segments.map((seg) =>
     escapeRegex(seg).replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]"),
   );
+  // Patterns come from the repository-owned harness config, not user input.
   const regex = new RegExp(`^${regexParts.join(".*")}$`);
   return regex.test(filePath);
 }
@@ -27,7 +28,7 @@ function resolveChangedFiles(projectRoot: string): string[] {
   const diffTarget = baseRef ? `origin/${baseRef}` : "origin/main";
 
   try {
-    const output = execSync(`git diff --name-only ${diffTarget}...HEAD`, {
+    const output = execFileSync("git", ["diff", "--name-only", `${diffTarget}...HEAD`], {
       cwd: projectRoot,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -48,7 +49,7 @@ function resolveChangedFiles(projectRoot: string): string[] {
 
   // Fallback: staged files (useful locally before a push)
   try {
-    const output = execSync("git diff --name-only --cached", {
+    const output = execFileSync("git", ["diff", "--name-only", "--cached"], {
       cwd: projectRoot,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],

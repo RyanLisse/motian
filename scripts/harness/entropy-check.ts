@@ -9,7 +9,7 @@
  *   3. Stale active plans in docs/plans/ (> 60 days, status: active)
  *   4. Orphaned DB tables (no service-layer consumer)
  *
- * Exit 0 if score < 10, exit 1 if >= 10.
+ * Exit 0 if score < 15, exit 1 if >= 15.
  * Pass --verbose to see all findings.
  */
 
@@ -195,7 +195,10 @@ function checkStalePlans(): StalePlan[] {
     // Try date from frontmatter first, fall back to file mtime
     let ageMs: number;
     if (fm.date) {
-      ageMs = NOW_MS - new Date(fm.date).getTime();
+      const parsedDateMs = new Date(fm.date).getTime();
+      ageMs = Number.isNaN(parsedDateMs)
+        ? NOW_MS - statSync(fullPath).mtimeMs
+        : NOW_MS - parsedDateMs;
     } else {
       ageMs = NOW_MS - statSync(fullPath).mtimeMs;
     }
