@@ -1,29 +1,40 @@
 #!/usr/bin/env tsx
 /**
  * create-gap-issue.ts
- * Creates a harness gap issue in Beads (bd) when a production regression occurs.
+ * Creates a harness gap GitHub issue when a production incident reveals a
+ * missing harness check.
  *
  * Usage:
  *   tsx scripts/harness/create-gap-issue.ts \
  *     --title "Login fails after deploy" \
  *     --description "Users cannot log in after the 2026-02-23 deploy" \
+ *     --incident-url "https://sentry.io/..." \
  *     --severity high
  */
 
-import { spawnSync } from "node:child_process";
+import { execSync } from "node:child_process";
 
-// ── Arg Parsing ────────────────────────────────────────────────────────────
+// ── Config ─────────────────────────────────────────────────────────────────
+
+const SLA_HOURS = 48;
+const LABEL_PREFIX = "harness-gap";
+
+// ── Types ──────────────────────────────────────────────────────────────────
 
 type Severity = "high" | "medium" | "low";
 
 interface Args {
   title: string;
   description: string;
+  incidentUrl: string | undefined;
   severity: Severity;
 }
 
+// ── Arg Parsing ────────────────────────────────────────────────────────────
+
 function parseArgs(): Args {
   const raw = process.argv.slice(2);
+
   const get = (flag: string): string | undefined => {
     for (let i = 0; i < raw.length; i++) {
       if (raw[i] === flag && raw[i + 1] !== undefined) return raw[i + 1];
@@ -34,12 +45,13 @@ function parseArgs(): Args {
 
   const title = get("--title");
   const description = get("--description") ?? "";
+  const incidentUrl = get("--incident-url");
   const severityRaw = get("--severity") ?? "medium";
 
   if (!title) {
     console.error("Error: --title is required");
     console.error(
-      "Usage: tsx scripts/harness/create-gap-issue.ts --title <title> [--description <desc>] [--severity high|medium|low]",
+      "Usage: tsx scripts/harness/create-gap-issue.ts --title <title> [--description <desc>] [--incident-url <url>] [--severity high|medium|low]",
     );
     process.exit(1);
   }
@@ -53,62 +65,100 @@ function parseArgs(): Args {
   return {
     title,
     description,
+    incidentUrl,
     severity: severityRaw as Severity,
   };
 }
 
-// ── Priority Mapping ───────────────────────────────────────────────────────
+// ── Issue Body ─────────────────────────────────────────────────────────────
 
-const SEVERITY_TO_PRIORITY: Record<Severity, string> = {
-  high: "urgent",
-  medium: "medium",
-  low: "low",
-};
+function buildBody(args: Args): string {
+  const deadline = new Date(Date.now() + SLA_HOURS * 60 * 60 * 1000);
+  const deadlineStr = deadline.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+
+  const lines: string[] = [
+    "## Harness Gap",
+    "",
+    args.description || "_No description provided._",
+    "",
+  ];
+
+  if (args.incidentUrl) {
+    lines.push("## Incident", "", `${args.incidentUrl}`, "");
+  }
+
+  lines.push(
+    "## SLA",
+    "",
+    `This gap must be resolved within **${SLA_HOURS} hours**.`,
+    `**Deadline:** ${deadlineStr}`,
+    "",
+    "---",
+    `_Created by \`pnpm harness:gap\`_`,
+  );
+
+  return lines.join("\n");
+}
 
 // ── Issue Creation ─────────────────────────────────────────────────────────
 
-function createGapIssue(args: Args): void {
-  const { title, description, severity } = args;
-  const issueTitle = `[harness-gap] ${title}`;
-  const priority = SEVERITY_TO_PRIORITY[severity];
-
-  const bdArgs: string[] = [`--title=${issueTitle}`, "--type=bug", `--priority=${priority}`];
-
-  if (description) {
-    bdArgs.push(`--description=${description}`);
+function ensureLabels(labels: string[]): void {
+  for (const label of labels) {
+    try {
+      execSync(`gh label create "${label}" --color "d93f0b" --force`, {
+        stdio: ["ignore", "ignore", "ignore"],
+      });
+    } catch {
+      // Label already exists or gh call failed — non-fatal
+    }
   }
+}
 
-  console.log(`Creating harness gap issue...`);
+function createGapIssue(args: Args): void {
+  const issueTitle = `[${LABEL_PREFIX}] ${args.title}`;
+  const severityLabel = `${LABEL_PREFIX}-${args.severity}`;
+  const labels = [LABEL_PREFIX, severityLabel];
+  const body = buildBody(args);
+
+  console.log("Creating harness gap issue...");
   console.log(`  Title:    ${issueTitle}`);
-  console.log(`  Severity: ${severity} (priority: ${priority})`);
-  if (description) {
-    console.log(`  Desc:     ${description}`);
+  console.log(`  Severity: ${args.severity}`);
+  console.log(`  Labels:   ${labels.join(", ")}`);
+  if (args.incidentUrl) {
+    console.log(`  Incident: ${args.incidentUrl}`);
   }
   console.log();
 
-  // Use spawnSync with args array to prevent command injection
-  const result = spawnSync("bd", ["create", ...bdArgs], {
-    encoding: "utf-8",
-    stdio: ["pipe", "pipe", "pipe"],
-  });
+  // Ensure labels exist before creating the issue
+  ensureLabels(labels);
 
-  if (result.status !== 0) {
-    console.error("Failed to create issue via bd CLI.");
-    console.error("Make sure `bd` is installed and you are authenticated.");
-    if (result.stderr) {
-      console.error("bd stderr:", result.stderr.trim());
-    }
+  // Build gh issue create command args
+  const ghArgs = [
+    "issue",
+    "create",
+    "--title",
+    issueTitle,
+    "--body",
+    body,
+    "--label",
+    labels.join(","),
+  ];
+
+  let output: string;
+  try {
+    output = execSync(`gh ${ghArgs.map((a) => JSON.stringify(a)).join(" ")}`, {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Failed to create GitHub issue via gh CLI.");
+    console.error("Make sure `gh` is installed and authenticated (`gh auth status`).");
+    console.error(msg);
     process.exit(1);
   }
 
-  const output = (result.stdout ?? "").trim();
-
-  // Extract issue ID from bd output (expected: "Created issue ABC-123" or similar)
-  const idMatch = output.match(/([A-Z]+-\d+|#\d+|\bISSUE-\d+\b)/i);
-  const issueId = idMatch ? idMatch[0] : output;
-
-  console.log(`Issue created: ${issueId}`);
-  console.log(output);
+  console.log(`Issue created: ${output}`);
 }
 
 // ── Entry Point ────────────────────────────────────────────────────────────

@@ -25,6 +25,7 @@ jobs:
       contents: read
     outputs:
       risk-tier: ${{ steps.gate.outputs.risk-tier }}
+      gate-json: ${{ steps.gate.outputs.gate-json }}
 
     steps:
       - name: Checkout repository
@@ -82,8 +83,103 @@ jobs:
           echo "risk-tier=$TIER" >> "$GITHUB_OUTPUT"
           echo "Risk tier: $TIER"
 
+          # Persist full JSON for the comment job
+          GATE_JSON=$(cat /tmp/gate-output.json)
+          echo "gate-json<<GATEJSONEOF" >> "$GITHUB_OUTPUT"
+          echo "$GATE_JSON" >> "$GITHUB_OUTPUT"
+          echo "GATEJSONEOF" >> "$GITHUB_OUTPUT"
+
+      - name: Annotate step summary
+        if: always()
+        env:
+          RISK_TIER: ${{ steps.gate.outputs.risk-tier }}
+        run: |
+          GATE_JSON='${{ steps.gate.outputs.gate-json }}'
+          CHECKS=$(echo "$GATE_JSON" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const p=JSON.parse(d);console.log((p.requiredChecks||[]).join(', '))" 2>/dev/null || echo "unknown")
+          TOTAL=$(echo "$GATE_JSON" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const p=JSON.parse(d);console.log(p.totalFiles||0)" 2>/dev/null || echo "0")
+          COUNTS=$(echo "$GATE_JSON" | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const p=JSON.parse(d);const c=p.counts||{};console.log(Object.entries(c).map(([k,v])=>k+': '+v).join(', '))" 2>/dev/null || echo "")
+
+          echo "## Risk Policy Gate" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Risk Tier | \`${RISK_TIER}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Required Checks | ${CHECKS} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Changed Files | ${TOTAL} (${COUNTS}) |" >> "$GITHUB_STEP_SUMMARY"
+
   # ────────────────────────────────────────────────────────────
-  # Job 2: Lint
+  # Job 2: PR Risk Comment
+  # Posts or updates a risk classification comment on PRs.
+  # ────────────────────────────────────────────────────────────
+  pr-risk-comment:
+    name: PR Risk Comment
+    runs-on: ubuntu-latest
+    needs: risk-policy-gate
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Post risk classification comment
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          RISK_TIER: ${{ needs.risk-policy-gate.outputs.risk-tier }}
+          GATE_JSON: ${{ needs.risk-policy-gate.outputs.gate-json }}
+        with:
+          script: |
+            const tier = process.env.RISK_TIER || 'unknown';
+            let gateData = {};
+            try { gateData = JSON.parse(process.env.GATE_JSON || '{}'); } catch {}
+
+            const checks = (gateData.requiredChecks || []).map(c => `\`${c}\``).join(', ') || 'none';
+            const total = gateData.totalFiles || 0;
+            const counts = gateData.counts || {};
+            const driftPass = gateData.docsDriftPass !== false;
+            const tierEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[tier] || '⚪';
+            const reviewRequired = tier === 'high';
+
+            const body = [
+              `## ${tierEmoji} Risk Policy Gate: \`${tier}\``,
+              '',
+              '| Field | Value |',
+              '|-------|-------|',
+              `| Risk Tier | \`${tier}\` |`,
+              `| Required Checks | ${checks} |`,
+              `| Changed Files | ${total} (high: ${counts.high || 0}, medium: ${counts.medium || 0}, low: ${counts.low || 0}) |`,
+              `| Docs Drift | ${driftPass ? '✅ Pass' : '❌ Drift detected'} |`,
+              `| Code Review Required | ${reviewRequired ? '**Yes**' : 'No'} |`,
+              '',
+              `<!-- harness-risk-comment -->`,
+            ].join('\n');
+
+            // Update existing comment or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const marker = '<!-- harness-risk-comment -->';
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  # ────────────────────────────────────────────────────────────
+  # Job 3: Lint
   # ────────────────────────────────────────────────────────────
   lint:
     name: Lint
