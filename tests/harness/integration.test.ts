@@ -108,12 +108,28 @@ describe("harness integration", () => {
         const repoRoot = createHarnessRepo(join(tempRoot, "repo"));
         const scriptPath = join(process.cwd(), "scripts/harness/risk-policy-gate.ts");
 
-        const output = execFileSync("pnpm", ["tsx", scriptPath, "--json", "--cwd", repoRoot], {
-          cwd: process.cwd(),
-          encoding: "utf8",
-        });
+        const output = execFileSync(
+          "pnpm",
+          [
+            "exec",
+            "tsx",
+            scriptPath,
+            "--json",
+            "--no-execute-checks",
+            "--check-result",
+            "lint=passed",
+            "--cwd",
+            repoRoot,
+          ],
+          {
+            cwd: process.cwd(),
+            encoding: "utf8",
+          },
+        );
 
         const parsed = JSON.parse(output) as {
+          checkResults: Array<{ name: string; status: string }>;
+          passed: boolean;
           tier: string;
           requiredChecks: string[];
           docsDriftPass: boolean;
@@ -124,6 +140,13 @@ describe("harness integration", () => {
         expect(parsed.requiredChecks).toEqual(["risk-policy-gate", "lint"]);
         expect(parsed.docsDriftPass).toBe(true);
         expect(parsed.totalFiles).toBe(0);
+        expect(parsed.passed).toBe(true);
+        expect(parsed.checkResults).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ name: "lint", status: "passed" }),
+            expect.objectContaining({ name: "risk-policy-gate", status: "passed" }),
+          ]),
+        );
       } finally {
         rmSync(tempRoot, { recursive: true, force: true });
       }

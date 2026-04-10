@@ -104,7 +104,7 @@
     "perf:check:shell": "pnpm build && pnpm perf:budget:shell",
     "qa:mobile:expect": "npx expect-cli@latest --ci --yes --target changes --url http://localhost:3002 --message \"Validate mobile shell: safe-area insets, bottom tabs, touch targets, input zoom behavior, and viewport overflow regressions across /overzicht, /vacatures, /kandidaten, /pipeline, and /chat.\"",
     "harness:risk-tier": "tsx scripts/harness/risk-policy-gate.ts",
-    "harness:pre-pr": "pnpm lint && pnpm exec tsc --noEmit && pnpm test && tsx scripts/harness/risk-policy-gate.ts",
+    "harness:pre-pr": "pnpm lint && pnpm exec tsc --noEmit && pnpm test && tsx scripts/harness/risk-policy-gate.ts --base-ref origin/main --check-result lint=passed --check-result typecheck=passed --check-result test=passed",
     "harness:smoke": "vitest run tests/harness/",
     "harness:browser-evidence": "tsx scripts/harness/capture-browser-evidence.ts",
     "harness:verify-evidence": "tsx scripts/harness/verify-browser-evidence.ts",

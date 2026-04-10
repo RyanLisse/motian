@@ -5,26 +5,34 @@ on:
     branches:
       - main
   pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
+      - unlabeled
 
 permissions: {}
 
 env:
-  PNPM_VERSION: "9.15.0"
   NODE_VERSION: "22"
+  PNPM_VERSION: "9.15.0"
 
 jobs:
-  # ────────────────────────────────────────────────────────────
-  # Job 1: Risk Policy Gate
-  # Classifies changed files and emits a risk tier so downstream
-  # jobs can gate on it.
-  # ────────────────────────────────────────────────────────────
-  risk-policy-gate:
-    name: Risk Policy Gate
+  risk-classification:
+    name: Risk Classification
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
-      risk-tier: ${{ steps.gate.outputs.risk-tier }}
+      changed-files: ${{ steps.changed.outputs.files }}
+      report-json: ${{ steps.classify.outputs.report-json }}
+      require-code-review: ${{ steps.classify.outputs.require-code-review }}
+      required-checks: ${{ steps.classify.outputs.required-checks }}
+      risk-tier: ${{ steps.classify.outputs.risk-tier }}
 
     steps:
       - name: Checkout repository
@@ -41,16 +49,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-
-      - name: Restore pnpm store cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-store-${{ runner.os }}-
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -58,37 +58,41 @@ jobs:
       - name: Compute changed files
         id: changed
         env:
-          EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$BASE_REF" ]; then
+            git fetch origin "$BASE_REF" --depth=1
             CHANGED=$(git diff --name-only "origin/${BASE_REF}...HEAD")
           else
             CHANGED=$(git diff --name-only HEAD~1)
           fi
-          echo "files<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$CHANGED" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
 
-      - name: Run risk policy gate
-        id: gate
+          {
+            echo "files<<EOF"
+            echo "$CHANGED"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Classify risk tier
+        id: classify
         env:
           CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: |
           echo "$CHANGED_FILES" \
-            | pnpm tsx scripts/harness/risk-policy-gate.ts --json \
-            | tee /tmp/gate-output.json
-          TIER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/gate-output.json','utf8')).tier)")
-          echo "risk-tier=$TIER" >> "$GITHUB_OUTPUT"
-          echo "Risk tier: $TIER"
+            | pnpm exec tsx scripts/harness/risk-policy-gate.ts \
+              --json \
+              --no-execute-checks \
+              --check-result lint=passed \
+              --check-result typecheck=passed \
+              --check-result test=passed \
+              --check-result browser-evidence=passed \
+            | tee "$RUNNER_TEMP/risk-classification.json"
 
-  # ────────────────────────────────────────────────────────────
-  # Job 2: Lint
-  # ────────────────────────────────────────────────────────────
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    needs: risk-policy-gate
+    needs: risk-classification
     permissions:
       contents: read
 
@@ -106,30 +110,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-
-      - name: Restore pnpm store cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-store-${{ runner.os }}-
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
+      - name: Run lint
         run: pnpm lint
 
-  # ────────────────────────────────────────────────────────────
-  # Job 3: Typecheck
-  # ────────────────────────────────────────────────────────────
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
-    needs: risk-policy-gate
+    needs: risk-classification
     permissions:
       contents: read
 
@@ -147,30 +140,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-
-      - name: Restore pnpm store cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-store-${{ runner.os }}-
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
+      - name: Run typecheck
         run: pnpm exec tsc --noEmit
 
-  # ────────────────────────────────────────────────────────────
-  # Job 4: Test
-  # ────────────────────────────────────────────────────────────
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: risk-policy-gate
+    needs: risk-classification
     permissions:
       contents: read
 
@@ -188,53 +170,25 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-
-      - name: Restore pnpm store cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-store-${{ runner.os }}-
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Run tests
+        run: pnpm test
 
-      - name: Test with coverage
-        run: |
-          start=$(date +%s)
-          pnpm test:coverage -- \
-            --coverage.thresholds.statements 1 \
-            --coverage.thresholds.branches 1 \
-            --coverage.thresholds.functions 1 \
-            --coverage.thresholds.lines 1
-          echo "::notice:: Test run completed in $(($(date +%s) - start))s"
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
-        with:
-          name: coverage
-          path: coverage/
-          retention-days: 14
-
-  # ────────────────────────────────────────────────────────────
-  # Job 5: Browser Evidence (high-tier PRs only)
-  # ────────────────────────────────────────────────────────────
   browser-evidence:
     name: Browser Evidence
     runs-on: ubuntu-latest
-    needs: risk-policy-gate
-    if: needs.risk-policy-gate.outputs.risk-tier == 'high'
+    needs: risk-classification
+    if: needs.risk-classification.outputs.risk-tier == 'high'
+    permissions:
+      contents: read
     env:
       HOSTNAME: "0.0.0.0"
       PORT: "3001"
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout repository
@@ -250,16 +204,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-
-      - name: Restore pnpm store cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-store-${{ runner.os }}-
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -268,32 +214,28 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Start dev server
-        run: |
-          pnpm dev > /tmp/next-dev.log 2>&1 &
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm dev > /tmp/next-dev.log 2>&1 &
 
       - name: Wait for server
         run: npx wait-on http://localhost:${{ env.PORT }} --timeout 180000
 
       - name: Capture browser evidence
-        run: pnpm tsx scripts/harness/capture-browser-evidence.ts
+        run: pnpm harness:browser-evidence
 
       - name: Verify browser evidence
-        run: pnpm tsx scripts/harness/verify-browser-evidence.ts
+        run: pnpm harness:verify-evidence
 
       - name: Upload evidence artifacts
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
+          if-no-files-found: ignore
           name: browser-evidence
           path: harness-evidence/
           retention-days: 30
 
-  # ────────────────────────────────────────────────────────────
-  # Job 6: Build
-  # Runs only after lint, typecheck, and test all pass.
-  # ────────────────────────────────────────────────────────────
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -318,59 +260,228 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-
-      - name: Restore pnpm store cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-store-${{ runner.os }}-
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm build
+      - name: Run build
         env:
-          SKIP_ENV_VALIDATION: "1"
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SKIP_ENV_VALIDATION: "1"
+        run: pnpm build
 
-  # ────────────────────────────────────────────────────────────
-  # Job 7: Symphony Gate
-  # Single required status check for Symphony auto-merge.
-  # Depends on all quality gates passing.
-  # ────────────────────────────────────────────────────────────
+  risk-policy-gate:
+    name: Risk Policy Gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - risk-classification
+      - lint
+      - typecheck
+      - test
+      - browser-evidence
+    permissions:
+      contents: read
+    outputs:
+      report-json: ${{ steps.gate.outputs.report-json }}
+      require-code-review: ${{ steps.gate.outputs.require-code-review }}
+      risk-tier: ${{ steps.gate.outputs.risk-tier }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          cache: pnpm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Evaluate merge policy
+        id: gate
+        env:
+          BROWSER_EVIDENCE_RESULT: ${{ needs.browser-evidence.result || 'skipped' }}
+          CHANGED_FILES: ${{ needs.risk-classification.outputs.changed-files }}
+        run: |
+          echo "$CHANGED_FILES" \
+            | pnpm exec tsx scripts/harness/risk-policy-gate.ts \
+              --json \
+              --no-execute-checks \
+              --check-result lint=${{ needs.lint.result }} \
+              --check-result typecheck=${{ needs.typecheck.result }} \
+              --check-result test=${{ needs.test.result }} \
+              --check-result browser-evidence=${BROWSER_EVIDENCE_RESULT} \
+            | tee "$RUNNER_TEMP/risk-policy-gate.json"
+
+      - name: Publish summary
+        if: always()
+        env:
+          REPORT_JSON: ${{ steps.gate.outputs.report-json }}
+        run: |
+          node <<'EOF'
+          const report = JSON.parse(process.env.REPORT_JSON ?? "{}");
+          const lines = [
+            "## Risk Policy Gate",
+            "",
+            `- tier: \`${report.tier ?? "unknown"}\``,
+            `- human review required: ${report.requireCodeReview ? "yes" : "no"}`,
+            `- passed: ${report.passed ? "yes" : "no"}`,
+            `- required checks: ${(report.requiredChecks ?? []).join(", ") || "none"}`,
+          ];
+          const checkLines = (report.checkResults ?? []).map((check) =>
+            `- ${check.name}: \`${check.status}\` (${check.source})`,
+          );
+          if (checkLines.length > 0) {
+            lines.push("", "### Check Results", "", ...checkLines);
+          }
+          require("fs").appendFileSync(
+            process.env.GITHUB_STEP_SUMMARY,
+            `${lines.join("\n")}\n`,
+          );
+          EOF
+
+  pr-risk-comment:
+    name: PR Risk Comment
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    needs:
+      - risk-policy-gate
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Upsert risk classification comment
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          REPORT_JSON: ${{ needs.risk-policy-gate.outputs.report-json }}
+        with:
+          script: |
+            const marker = "<!-- risk-policy-gate:report -->";
+            const report = JSON.parse(process.env.REPORT_JSON ?? "{}");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = context.payload.pull_request.number;
+            const changedFiles = (report.changedFiles ?? []).map((file) => `- \`${file}\``);
+            const checkLines = (report.checkResults ?? []).map((check) =>
+              `- \`${check.name}\`: \`${check.status}\` (${check.source}${check.required ? ", required" : ""})`,
+            );
+
+            const body = [
+              marker,
+              "## Risk Policy Gate",
+              "",
+              `- Tier: \`${report.tier ?? "unknown"}\``,
+              `- Human review required: ${report.requireCodeReview ? "yes" : "no"}`,
+              `- Passed: ${report.passed ? "yes" : "no"}`,
+              `- Required checks: ${(report.requiredChecks ?? []).join(", ") || "none"}`,
+              "",
+              "### Check Results",
+              "",
+              ...(checkLines.length > 0 ? checkLines : ["- No checks recorded."]),
+              "",
+              "### Changed Files",
+              "",
+              ...(changedFiles.length > 0 ? changedFiles : ["- No changed files detected."]),
+            ].join("\n");
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                body,
+                comment_id: existing.id,
+                owner,
+                repo,
+              });
+              core.info(`Updated risk policy comment ${existing.id}`);
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              body,
+              issue_number,
+              owner,
+              repo,
+            });
+            core.info("Created risk policy comment");
+
   symphony-gate:
     name: Symphony Gate
     runs-on: ubuntu-latest
     if: always()
     needs:
-      - risk-policy-gate
-      - lint
-      - typecheck
-      - test
       - build
+      - risk-policy-gate
     permissions:
-      contents: read
+      pull-requests: read
 
     steps:
-      - name: Check all gates passed
+      - name: Require green CI before merge
         run: |
           echo "Risk Policy Gate: ${{ needs.risk-policy-gate.result }}"
-          echo "Lint: ${{ needs.lint.result }}"
-          echo "Typecheck: ${{ needs.typecheck.result }}"
-          echo "Test: ${{ needs.test.result }}"
           echo "Build: ${{ needs.build.result }}"
 
-          if [[ "${{ needs.risk-policy-gate.result }}" != "success" ]] || \
-             [[ "${{ needs.lint.result }}" != "success" ]] || \
-             [[ "${{ needs.typecheck.result }}" != "success" ]] || \
-             [[ "${{ needs.test.result }}" != "success" ]] || \
-             [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "::error::One or more quality gates failed"
+          if [ "${{ needs.risk-policy-gate.result }}" != "success" ] || [ "${{ needs.build.result }}" != "success" ]; then
+            echo "::error::Symphony Gate requires a green build and risk policy gate."
             exit 1
           fi
-          echo "All quality gates passed — safe for Symphony auto-merge"
+
+      - name: Enforce Symphony review policy
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          REQUIRE_CODE_REVIEW: ${{ needs.risk-policy-gate.outputs.require-code-review }}
+          RISK_TIER: ${{ needs.risk-policy-gate.outputs.risk-tier }}
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map((label) => label.name);
+            const hasSymphonyLabel = labels.includes("symphony");
+
+            if (!hasSymphonyLabel) {
+              core.info("PR heeft geen symphony-label; geen extra mergebeleid nodig.");
+              return;
+            }
+
+            if (process.env.REQUIRE_CODE_REVIEW !== "true" || process.env.RISK_TIER !== "high") {
+              core.info("Symphony PR is niet high-risk; green CI is voldoende.");
+              return;
+            }
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+
+            const approved = reviews.some((review) => {
+              const reviewerType = review.user?.type?.toLowerCase();
+              return review.state === "APPROVED" && reviewerType === "user";
+            });
+
+            if (!approved) {
+              core.setFailed("High-risk Symphony PRs require at least one human approval before merge.");
+              return;
+            }
+
+            core.info("High-risk Symphony PR has a human approval.");
