@@ -1,5 +1,6 @@
 import { AlertTriangle, Building2, Calendar, Clock, Euro, MapPin, Users } from "lucide-react";
 import Link from "next/link";
+import { CompanyLogo } from "@/components/company-logo";
 import { Badge } from "@/components/ui/badge";
 
 interface JobCardProps {
@@ -7,6 +8,7 @@ interface JobCardProps {
     id: string;
     title: string;
     company: string | null;
+    companyLogoUrl?: string | null;
     location: string | null;
     platform: string;
     contractType: string | null;
@@ -39,9 +41,25 @@ export function JobCard({ job, pipelineCount }: JobCardProps) {
         className={`bg-card border rounded-lg p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer ${deadlineUrgent ? "border-orange-400/60" : "border-border"}`}
       >
         <div className="flex items-start justify-between gap-2 mb-3">
-          <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
-            {job.title}
-          </h3>
+          <div className="flex min-w-0 items-start gap-3">
+            <CompanyLogo
+              src={job.companyLogoUrl}
+              companyName={job.company}
+              size={40}
+              sizes="40px"
+            />
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
+                {job.title}
+              </h3>
+              {job.company && (
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Building2 className="h-3.5 w-3.5 shrink-0" />
+                  <span className="line-clamp-1">{job.company}</span>
+                </p>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {pipelineCount != null && pipelineCount > 0 && (
               <Badge
@@ -62,12 +80,6 @@ export function JobCard({ job, pipelineCount }: JobCardProps) {
         </div>
 
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-3">
-          {job.company && (
-            <span className="flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5" />
-              {job.company}
-            </span>
-          )}
           {job.location && (
             <span className="flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5" />

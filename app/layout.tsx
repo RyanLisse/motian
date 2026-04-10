@@ -8,21 +8,27 @@ import { SidebarLayout } from "@/components/sidebar-layout";
 import { Providers } from "./providers";
 
 const inter = Inter({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   variable: "--font-sans",
   display: "swap",
+  fallback: ["system-ui", "arial", "sans-serif"],
+  preload: true,
 });
 
 const playfair = Playfair_Display({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   variable: "--font-serif",
   display: "swap",
+  fallback: ["Georgia", "Times New Roman", "serif"],
+  preload: false,
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   variable: "--font-mono",
   display: "swap",
+  fallback: ["ui-monospace", "SFMono-Regular", "Consolas", "monospace"],
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -32,14 +38,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="nl" suppressHydrationWarning>
+    <html
+      lang="nl"
+      suppressHydrationWarning
+      className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable}`}
+    >
       <head>
         <Script src="/suppress-vendor-noise.js" strategy="beforeInteractive" />
         <Script src="/theme-init.js" strategy="beforeInteractive" />
       </head>
-      <body
-        className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable} min-h-screen bg-background antialiased`}
-      >
+      <body className="min-h-screen bg-background antialiased">
         <Providers>
           <SidebarLayout>{children}</SidebarLayout>
           <RouteShellOverlays />

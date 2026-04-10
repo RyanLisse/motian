@@ -297,6 +297,7 @@ export async function loadJobPageRowsByIds(ids: string[]) {
       id: jobs.id,
       title: jobs.title,
       company: sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`,
+      companyLogoUrl: jobs.companyLogoUrl,
       location: sql<string | null>`coalesce(${jobs.location}, ${jobs.province})`,
       platform: jobs.platform,
       workArrangement: jobs.workArrangement,

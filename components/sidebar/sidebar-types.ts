@@ -8,6 +8,7 @@ export interface SidebarJob {
   id: string;
   title: string;
   company: string | null;
+  companyLogoUrl?: string | null;
   location: string | null;
   platform: string;
   workArrangement: string | null;
