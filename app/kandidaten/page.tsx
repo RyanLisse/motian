@@ -1,13 +1,11 @@
-import { Euro, MapPin, Search, UserPlus, Users, Zap } from "lucide-react";
-import Link from "next/link";
+import { Search, UserPlus, Users, Zap } from "lucide-react";
 import { Suspense } from "react";
 import { AddCandidateWizard } from "@/components/add-candidate-wizard";
-import { DraggableCandidate } from "@/components/draggable-candidate";
+import { CandidateResultsList } from "@/components/candidate-results-list";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parsePagination } from "@/src/lib/pagination";
 import { countCandidates, listCandidates, searchCandidates } from "@/src/services/candidates";
@@ -30,12 +28,6 @@ interface Props {
 
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 50;
-
-const availabilityLabels: Record<string, string> = {
-  direct: "Direct beschikbaar",
-  "1_maand": "Binnen 1 maand",
-  "3_maanden": "Binnen 3 maanden",
-};
 
 function KandidatenSkeleton() {
   return (
@@ -207,96 +199,7 @@ async function KandidatenContent({ searchParams }: Props) {
             subtitle="Pas je zoekopdracht of filters aan"
           />
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {candidateRows.map((candidate) => {
-              const skills = Array.isArray(candidate.skills) ? (candidate.skills as string[]) : [];
-
-              return (
-                <DraggableCandidate
-                  key={candidate.id}
-                  candidateId={candidate.id}
-                  candidateName={candidate.name}
-                >
-                  <Link href={`/kandidaten/${candidate.id}`}>
-                    <div className="bg-card border border-border rounded-lg p-3 sm:p-4 hover:border-primary/40 hover:bg-accent transition-colors cursor-pointer pl-6">
-                      {/* Name + source */}
-                      <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground leading-snug">
-                            {candidate.name}
-                          </h3>
-                          {candidate.role && (
-                            <p className="text-xs text-muted-foreground mt-0.5">{candidate.role}</p>
-                          )}
-                        </div>
-                        {candidate.source && (
-                          <Badge
-                            variant="outline"
-                            className="shrink-0 text-[10px] capitalize border-border text-muted-foreground bg-transparent"
-                          >
-                            {candidate.source}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Meta */}
-                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground mb-2 sm:mb-3">
-                        {candidate.location && (
-                          <span className="flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5" />
-                            {candidate.location}
-                          </span>
-                        )}
-                        {candidate.hourlyRate && (
-                          <span className="flex items-center gap-1.5">
-                            <Euro className="h-3.5 w-3.5" />
-                            {candidate.hourlyRate}/uur
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Skills */}
-                      {skills.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-2 sm:mb-3">
-                          {skills.slice(0, 5).map((skill) => (
-                            <Badge
-                              key={`${candidate.id}-${skill}`}
-                              variant="outline"
-                              className="bg-primary/10 text-primary border-primary/20 text-[10px]"
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
-                          {skills.length > 5 && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] border-border text-muted-foreground bg-transparent"
-                            >
-                              +{skills.length - 5}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Availability badge */}
-                      {candidate.availability && (
-                        <Badge
-                          variant="outline"
-                          className={
-                            candidate.availability === "direct"
-                              ? "bg-primary/10 text-primary border-primary/20 text-[10px]"
-                              : "text-[10px] border-border text-muted-foreground bg-transparent"
-                          }
-                        >
-                          {availabilityLabels[candidate.availability] ?? candidate.availability}
-                        </Badge>
-                      )}
-                    </div>
-                  </Link>
-                </DraggableCandidate>
-              );
-            })}
-          </div>
+          <CandidateResultsList candidates={candidateRows} />
         )}
 
         {/* Pagination */}

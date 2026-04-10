@@ -21,6 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { Suspense, useCallback, useId, useState } from "react";
+import { VirtualList } from "@/components/shared/virtual-list";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -121,6 +122,10 @@ const DEFAULT_EMPTY_STATE_PROMPTS: ChatSuggestion[] = [
     toneClassName: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
   },
 ];
+
+const CHAT_HISTORY_VIRTUALIZATION_THRESHOLD = 50;
+const CHAT_MESSAGE_GAP = 32;
+const CHAT_MESSAGE_ESTIMATE = 180;
 
 function ReasoningBlock({ text, state }: { text: string; state?: "streaming" | "done" }) {
   const hasContent = text.length > 0;
@@ -305,6 +310,174 @@ function AssistantMessageActions({
   );
 }
 
+function ChatMessageItem({
+  message,
+  currentOrigin,
+  onRetry,
+}: {
+  message: UIMessage;
+  currentOrigin?: string | null;
+  onRetry?: (messageId: string) => void;
+}) {
+  return (
+    <Message from={message.role}>
+      <MessageContent>
+        {message.parts.map((part, partIndex) => {
+          const partKey = `${message.id}-${partIndex}`;
+
+          if (part.type === "text") {
+            if (message.role === "user") {
+              return (
+                <p key={partKey} className="whitespace-pre-wrap leading-relaxed">
+                  {part.text}
+                </p>
+              );
+            }
+
+            return (
+              <MessageResponse
+                key={partKey}
+                allowedTags={CHAT_MESSAGE_ALLOWED_TAGS}
+                components={CHAT_MESSAGE_COMPONENTS}
+              >
+                {rewriteChatJobLinks(part.text, currentOrigin)}
+              </MessageResponse>
+            );
+          }
+
+          if (part.type === "reasoning") {
+            const reasoningPart = part as {
+              type: "reasoning";
+              text: string;
+              state?: "streaming" | "done";
+            };
+
+            return (
+              <ReasoningBlock key={partKey} text={reasoningPart.text} state={reasoningPart.state} />
+            );
+          }
+
+          if (part.type === "source-url") {
+            const sourcePart = part as {
+              type: "source-url";
+              sourceId: string;
+              url: string;
+              title?: string;
+            };
+
+            return (
+              <SourceUrlBlock
+                key={partKey}
+                url={sourcePart.url}
+                title={sourcePart.title ?? sourcePart.url}
+              />
+            );
+          }
+
+          if (part.type === "source-document") {
+            const docPart = part as {
+              type: "source-document";
+              sourceId: string;
+              mediaType: string;
+              title: string;
+            };
+
+            return (
+              <SourceDocumentBlock
+                key={partKey}
+                title={docPart.title}
+                mediaType={docPart.mediaType}
+              />
+            );
+          }
+
+          if (isToolUIPart(part)) {
+            const toolPart = part as {
+              type: string;
+              toolName?: string;
+              state: string;
+              input?: unknown;
+              output?: unknown;
+            };
+            const name = toolPart.toolName ?? getToolName(part);
+            const entry = name ? GENUI_REGISTRY[name] : undefined;
+            const isErrorOutput =
+              toolPart.output && typeof toolPart.output === "object" && "error" in toolPart.output;
+
+            if (toolPart.state === "output-error") {
+              const messageText =
+                toolPart.output &&
+                typeof toolPart.output === "object" &&
+                "error" in toolPart.output &&
+                typeof (toolPart.output as { error: unknown }).error === "string"
+                  ? (toolPart.output as { error: string }).error
+                  : "Er is iets misgegaan bij deze actie.";
+              return <ToolErrorBlock key={partKey} message={messageText} />;
+            }
+
+            if (
+              toolPart.state === "output-available" &&
+              toolPart.output !== undefined &&
+              isA2UIEnvelope(toolPart.output)
+            ) {
+              const resolved = resolveA2UIComponent(toolPart.output);
+              if (resolved.entry) {
+                const GenUICard = resolved.entry.component;
+                return (
+                  <Suspense
+                    key={partKey}
+                    fallback={<GenUILoadingSkeleton label={resolved.entry.label} />}
+                  >
+                    <div>
+                      <GenUICard output={resolved.props} />
+                      {resolved.actions && resolved.actions.length > 0 && (
+                        <A2UIActionBar actions={resolved.actions} />
+                      )}
+                    </div>
+                  </Suspense>
+                );
+              }
+              return <A2UIFallback key={partKey} envelope={toolPart.output} />;
+            }
+
+            if (toolPart.state === "output-available" && entry && toolPart.output !== undefined) {
+              if (isErrorOutput) {
+                const messageText =
+                  typeof (toolPart.output as { error: unknown }).error === "string"
+                    ? (toolPart.output as { error: string }).error
+                    : "Niet gevonden.";
+                return <ToolErrorBlock key={partKey} message={messageText} />;
+              }
+
+              const GenUICard = entry.component;
+              return (
+                <Suspense key={partKey} fallback={<GenUILoadingSkeleton label={entry.label} />}>
+                  <GenUICard output={toolPart.output} />
+                </Suspense>
+              );
+            }
+
+            return (
+              <ChatToolCall
+                key={partKey}
+                toolName={name}
+                state={toolPart.state}
+                input={toolPart.input}
+                output={toolPart.output}
+              />
+            );
+          }
+
+          return null;
+        })}
+      </MessageContent>
+      {message.role === "assistant" && (
+        <AssistantMessageActions message={message} onRetry={onRetry} />
+      )}
+    </Message>
+  );
+}
+
 export function ChatMessages({
   messages,
   status,
@@ -324,6 +497,8 @@ export function ChatMessages({
   const hasUserMessage = messages.some((message) => message.role === "user");
   const isWidget = layout === "widget";
   const showFollowUpPrompts = hasUserMessage && status === "ready" && followUpPrompts.length > 0;
+  const shouldVirtualizeHistory =
+    hasUserMessage && messages.length > CHAT_HISTORY_VIRTUALIZATION_THRESHOLD;
 
   return (
     <Conversation className="flex-1" aria-label={conversationLabel}>
@@ -360,177 +535,28 @@ export function ChatMessages({
           </div>
         ) : null}
 
-        {messages.map((message) => (
-          <Message key={message.id} from={message.role}>
-            <MessageContent>
-              {message.parts.map((part, partIndex) => {
-                const partKey = `${message.id}-${partIndex}`;
-
-                if (part.type === "text") {
-                  if (message.role === "user") {
-                    return (
-                      <p key={partKey} className="whitespace-pre-wrap leading-relaxed">
-                        {part.text}
-                      </p>
-                    );
-                  }
-
-                  return (
-                    <MessageResponse
-                      key={partKey}
-                      allowedTags={CHAT_MESSAGE_ALLOWED_TAGS}
-                      components={CHAT_MESSAGE_COMPONENTS}
-                    >
-                      {rewriteChatJobLinks(part.text, currentOrigin)}
-                    </MessageResponse>
-                  );
-                }
-
-                if (part.type === "reasoning") {
-                  const reasoningPart = part as {
-                    type: "reasoning";
-                    text: string;
-                    state?: "streaming" | "done";
-                  };
-
-                  return (
-                    <ReasoningBlock
-                      key={partKey}
-                      text={reasoningPart.text}
-                      state={reasoningPart.state}
-                    />
-                  );
-                }
-
-                if (part.type === "source-url") {
-                  const sourcePart = part as {
-                    type: "source-url";
-                    sourceId: string;
-                    url: string;
-                    title?: string;
-                  };
-
-                  return (
-                    <SourceUrlBlock
-                      key={partKey}
-                      url={sourcePart.url}
-                      title={sourcePart.title ?? sourcePart.url}
-                    />
-                  );
-                }
-
-                if (part.type === "source-document") {
-                  const docPart = part as {
-                    type: "source-document";
-                    sourceId: string;
-                    mediaType: string;
-                    title: string;
-                  };
-
-                  return (
-                    <SourceDocumentBlock
-                      key={partKey}
-                      title={docPart.title}
-                      mediaType={docPart.mediaType}
-                    />
-                  );
-                }
-
-                if (isToolUIPart(part)) {
-                  const toolPart = part as {
-                    type: string;
-                    toolName?: string;
-                    state: string;
-                    input?: unknown;
-                    output?: unknown;
-                  };
-                  const name = toolPart.toolName ?? getToolName(part);
-                  const entry = name ? GENUI_REGISTRY[name] : undefined;
-                  const isErrorOutput =
-                    toolPart.output &&
-                    typeof toolPart.output === "object" &&
-                    "error" in toolPart.output;
-
-                  if (toolPart.state === "output-error") {
-                    const messageText =
-                      toolPart.output &&
-                      typeof toolPart.output === "object" &&
-                      "error" in toolPart.output &&
-                      typeof (toolPart.output as { error: unknown }).error === "string"
-                        ? (toolPart.output as { error: string }).error
-                        : "Er is iets misgegaan bij deze actie.";
-                    return <ToolErrorBlock key={partKey} message={messageText} />;
-                  }
-
-                  // ── A2UI envelope detection ──
-                  if (
-                    toolPart.state === "output-available" &&
-                    toolPart.output !== undefined &&
-                    isA2UIEnvelope(toolPart.output)
-                  ) {
-                    const resolved = resolveA2UIComponent(toolPart.output);
-                    if (resolved.entry) {
-                      const GenUICard = resolved.entry.component;
-                      return (
-                        <Suspense
-                          key={partKey}
-                          fallback={<GenUILoadingSkeleton label={resolved.entry.label} />}
-                        >
-                          <div>
-                            <GenUICard output={resolved.props} />
-                            {resolved.actions && resolved.actions.length > 0 && (
-                              <A2UIActionBar actions={resolved.actions} />
-                            )}
-                          </div>
-                        </Suspense>
-                      );
-                    }
-                    return <A2UIFallback key={partKey} envelope={toolPart.output} />;
-                  }
-
-                  if (
-                    toolPart.state === "output-available" &&
-                    entry &&
-                    toolPart.output !== undefined
-                  ) {
-                    if (isErrorOutput) {
-                      const messageText =
-                        typeof (toolPart.output as { error: unknown }).error === "string"
-                          ? (toolPart.output as { error: string }).error
-                          : "Niet gevonden.";
-                      return <ToolErrorBlock key={partKey} message={messageText} />;
-                    }
-
-                    const GenUICard = entry.component;
-                    return (
-                      <Suspense
-                        key={partKey}
-                        fallback={<GenUILoadingSkeleton label={entry.label} />}
-                      >
-                        <GenUICard output={toolPart.output} />
-                      </Suspense>
-                    );
-                  }
-
-                  return (
-                    <ChatToolCall
-                      key={partKey}
-                      toolName={name}
-                      state={toolPart.state}
-                      input={toolPart.input}
-                      output={toolPart.output}
-                    />
-                  );
-                }
-
-                return null;
-              })}
-            </MessageContent>
-            {message.role === "assistant" && (
-              <AssistantMessageActions message={message} onRetry={onRetry} />
+        {shouldVirtualizeHistory ? (
+          <VirtualList
+            items={messages}
+            getItemKey={(message) => message.id}
+            estimateSize={() => CHAT_MESSAGE_ESTIMATE}
+            gap={CHAT_MESSAGE_GAP}
+            scrollMode="parent"
+            className="min-h-0"
+            renderItem={(message) => (
+              <ChatMessageItem message={message} currentOrigin={currentOrigin} onRetry={onRetry} />
             )}
-          </Message>
-        ))}
+          />
+        ) : (
+          messages.map((message) => (
+            <ChatMessageItem
+              key={message.id}
+              message={message}
+              currentOrigin={currentOrigin}
+              onRetry={onRetry}
+            />
+          ))
+        )}
 
         {showFollowUpPrompts ? (
           <section className="mt-2 flex flex-col gap-3 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-3 sm:p-4">
