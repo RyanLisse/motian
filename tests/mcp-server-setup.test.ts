@@ -49,6 +49,30 @@ describe("createMotianMCPServer", () => {
     expect(registeredNames.length).toBeGreaterThan(0);
   });
 
+
+  it("includes cookbook_get in tool list", async () => {
+    const server = createMotianMCPServer();
+
+    const listResult = await invokeHandler(server, "tools/list", {
+      method: "tools/list",
+    });
+
+    const registeredNames = listResult.tools.map((t: { name: string }) => t.name);
+    expect(registeredNames).toContain("cookbook_get");
+  });
+
+  it("appends cookbook hint when a tool call fails", async () => {
+    const server = createMotianMCPServer();
+
+    const result = await invokeHandler(server, "tools/call", {
+      method: "tools/call",
+      params: { name: "kandidaat_detail", arguments: { id: "not-a-uuid" } },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("Tip: gebruik cookbook_get");
+  });
+
   it("returns error for unknown tool name", async () => {
     const server = createMotianMCPServer();
 

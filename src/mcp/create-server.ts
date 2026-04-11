@@ -1,6 +1,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import * as Sentry from "@sentry/node";
+import { generateCookbooksFromTools, suggestCookbookForError } from "../services/cookbooks";
 import { allHandlers, allTools } from "./tools/index";
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
@@ -10,6 +11,7 @@ const SENTRY_DSN = process.env.SENTRY_DSN;
  * Shared between the stdio entrypoint and the Vercel HTTP adapter.
  */
 function registerToolHandlers(server: Server): void {
+  generateCookbooksFromTools(allTools);
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: allTools,
   }));
@@ -31,8 +33,12 @@ function registerToolHandlers(server: Server): void {
     } catch (err) {
       if (SENTRY_DSN) Sentry.captureException(err);
       const message = err instanceof Error ? err.message : String(err);
+      const cookbookHint = suggestCookbookForError(name);
+      const hintText = cookbookHint ? `
+
+${cookbookHint}` : "";
       return {
-        content: [{ type: "text" as const, text: `Fout: ${message}` }],
+        content: [{ type: "text" as const, text: `Fout: ${message}${hintText}` }],
         isError: true,
       };
     }

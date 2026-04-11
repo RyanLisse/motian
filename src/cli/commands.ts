@@ -1,4 +1,6 @@
 import type { ParsedArgs } from "./parse-args";
+import { generateCookbooksFromTools } from "../services/cookbooks";
+import { allTools } from "../mcp/tools";
 
 // ========== Kandidaten ==========
 
@@ -129,6 +131,18 @@ export type Command = {
 };
 
 export const commands: Record<string, Command> = {
+  "orbit:cookbook:generate": {
+    description: "Genereer cookbook-memory packs voor alle MCP tools",
+    usage: "",
+    handler: async () => {
+      const cookbooks = generateCookbooksFromTools(allTools);
+      return {
+        generated: cookbooks.length,
+        tools: cookbooks.map((entry) => entry.toolName),
+      };
+    },
+  },
+
   // ── Kandidaten ─────────────────────────────────────────────────────────
 
   "kandidaten:zoek": {
