@@ -17,6 +17,7 @@ import { handlers as kandidatenHandlers, tools as kandidatenTools } from "./kand
 import { handlers as matchHandlers, tools as matchTools } from "./matches";
 import { handlers as pipelineHandlers, tools as pipelineTools } from "./pipeline";
 import { handlers as platformsHandlers, tools as platformsTools } from "./platforms";
+import { handlers as repoLearningHandlers, tools as repoLearningTools } from "./repo-learning";
 import {
   handlers as salesforceFeedHandlers,
   tools as salesforceFeedTools,
@@ -46,6 +47,7 @@ export const allTools = [
   ...batchOperationsTools,
   ...cvOpsTools,
   ...channelOfferTools,
+  ...repoLearningTools,
 ];
 
 export const allHandlers: Record<string, (args: unknown) => Promise<unknown>> = {
@@ -66,4 +68,5 @@ export const allHandlers: Record<string, (args: unknown) => Promise<unknown>> = 
   ...batchOperationsHandlers,
   ...cvOpsHandlers,
   ...channelOfferHandlers,
+  ...repoLearningHandlers,
 };

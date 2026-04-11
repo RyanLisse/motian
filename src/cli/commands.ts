@@ -62,6 +62,7 @@ import {
   reviewGdprRetention,
   runCandidateScoringBatch,
 } from "../services/operations-console";
+import { runRepoLearning } from "../services/repo-learning";
 import { getHistory } from "../services/scrape-results";
 import {
   activatePlatform,
@@ -767,6 +768,20 @@ export const commands: Record<string, Command> = {
         count: records.length,
         xml: buildSalesforceFeedXml(records),
       };
+    },
+  },
+
+  // ── Repo Learning ─────────────────────────────────────────────────────
+
+  "repo:learn": {
+    description: "Extraheer repository-kennis naar gestructureerde facts",
+    usage: "[--repo-root <pad>] [--state-path <pad>] [--facts-path <pad>]",
+    handler: async (args) => {
+      return runRepoLearning({
+        repoRoot: optionalString(args, "repo-root"),
+        statePath: optionalString(args, "state-path"),
+        factsPath: optionalString(args, "facts-path"),
+      });
     },
   },
 
