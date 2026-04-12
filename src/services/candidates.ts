@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, db, desc, eq, getTableColumns, inArray, isNull, sql } from "../db";
-import { candidateSkills, candidates } from "../db/schema";
+import { candidateSkillsV2, candidates, skills } from "../db/schema";
 import { queueDeferredEmbeddingSync } from "../lib/event-bus";
 import { caseInsensitiveContains, escapeLike, toTsQueryInput } from "../lib/helpers";
 import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../lib/query-observability";
@@ -179,7 +179,13 @@ function buildCandidateSearchConditions(
 
   if (opts.escoUri) {
     conditions.push(
-      sql`EXISTS (SELECT 1 FROM ${candidateSkills} WHERE ${candidateSkills.candidateId} = ${candidates.id} AND ${candidateSkills.escoUri} = ${opts.escoUri})`,
+      sql`EXISTS (
+        SELECT 1
+        FROM ${candidateSkillsV2}
+        INNER JOIN ${skills} ON ${candidateSkillsV2.skillId} = ${skills.id}
+        WHERE ${candidateSkillsV2.candidateId} = ${candidates.id}
+          AND ${skills.slug} = ${opts.escoUri}
+      )`,
     );
   }
 

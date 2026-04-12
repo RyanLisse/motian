@@ -5,38 +5,36 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { candidateSkills, candidates, db, desc, escoSkills, isNull, sql } from "@/src/db";
+import { candidateSkillsV2, candidates, db, desc, isNull, skills, sql } from "@/src/db";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 interface SkillRow {
-  uri: string;
-  labelNl: string | null;
-  labelEn: string;
+  slug: string;
+  name: string;
   candidateCount: number;
 }
 
 async function getSkillAggregation(): Promise<SkillRow[]> {
   const rows = await db
     .select({
-      uri: escoSkills.uri,
-      labelNl: escoSkills.preferredLabelNl,
-      labelEn: escoSkills.preferredLabelEn,
-      candidateCount: sql<number>`count(distinct ${candidateSkills.candidateId})`.as(
+      slug: skills.slug,
+      name: skills.name,
+      candidateCount: sql<number>`count(distinct ${candidateSkillsV2.candidateId})`.as(
         "candidate_count",
       ),
     })
-    .from(candidateSkills)
-    .innerJoin(escoSkills, sql`${candidateSkills.escoUri} = ${escoSkills.uri}`)
-    .innerJoin(candidates, sql`${candidateSkills.candidateId} = ${candidates.id}`)
+    .from(candidateSkillsV2)
+    .innerJoin(skills, sql`${candidateSkillsV2.skillId} = ${skills.id}`)
+    .innerJoin(candidates, sql`${candidateSkillsV2.candidateId} = ${candidates.id}`)
     .where(isNull(candidates.deletedAt))
-    .groupBy(escoSkills.uri, escoSkills.preferredLabelNl, escoSkills.preferredLabelEn)
+    .groupBy(skills.slug, skills.name)
     .orderBy(desc(sql`candidate_count`));
 
   return rows.map((r) => ({
-    uri: r.uri,
-    labelNl: r.labelNl,
-    labelEn: r.labelEn,
+    slug: r.slug,
+    name: r.name,
     candidateCount: Number(r.candidateCount),
   }));
 }
@@ -64,25 +62,24 @@ function VaardighedenSkeleton() {
 }
 
 async function VaardighedenContent() {
-  const skills = await getSkillAggregation();
+  const skillRows = await getSkillAggregation();
 
-  const totalSkills = skills.length;
-  const totalMappings = skills.reduce((sum, s) => sum + s.candidateCount, 0);
-  const topSkill = skills[0];
+  const totalSkills = skillRows.length;
+  const totalMappings = skillRows.reduce((sum, skill) => sum + skill.candidateCount, 0);
+  const topSkill = skillRows[0];
 
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <PageHeader
           title="Vaardigheden"
-          description="Overzicht van alle vaardigheden in de kandidatenpool (ESCO-classificatie)"
+          description="Overzicht van alle herkenbare skills in de kandidatenpool"
           breadcrumbs={[
             { href: "/overzicht", label: "Dashboard" },
             { href: "/vaardigheden", label: "Vaardigheden" },
           ]}
         />
 
-        {/* KPI summary row */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
           <div className="bg-card border border-border rounded-xl p-3 sm:p-4">
             <p className="text-xs text-muted-foreground">Unieke vaardigheden</p>
@@ -95,33 +92,32 @@ async function VaardighedenContent() {
           <div className="bg-card border border-border rounded-xl p-3 sm:p-4 col-span-2 sm:col-span-1">
             <p className="text-xs text-muted-foreground">Populairste vaardigheid</p>
             <p className="text-sm font-semibold text-foreground truncate">
-              {topSkill ? (topSkill.labelNl ?? topSkill.labelEn) : "—"}
+              {topSkill ? topSkill.name : "—"}
             </p>
           </div>
         </div>
 
-        {skills.length === 0 ? (
+        {skillRows.length === 0 ? (
           <EmptyState
             icon={<Tags className="h-8 w-8" />}
             title="Geen vaardigheden gevonden"
-            subtitle="Er zijn nog geen ESCO-vaardigheden gekoppeld aan kandidaten"
+            subtitle="Er zijn nog geen skills gekoppeld aan kandidaten"
           />
         ) : (
           <>
-            {/* Top skills as badges */}
             <div>
               <h2 className="text-sm font-semibold text-foreground mb-3">Top vaardigheden</h2>
               <div className="flex flex-wrap gap-2">
-                {skills.slice(0, 20).map((skill) => (
+                {skillRows.slice(0, 20).map((skill) => (
                   <Link
-                    key={skill.uri}
-                    href={`/kandidaten?vaardigheid=${encodeURIComponent(skill.uri)}`}
+                    key={skill.slug}
+                    href={`/kandidaten?vaardigheid=${encodeURIComponent(skill.slug)}`}
                   >
                     <Badge
                       variant="outline"
                       className="bg-primary/10 text-primary border-primary/20 text-xs cursor-pointer hover:bg-primary/20 transition-colors"
                     >
-                      {skill.labelNl ?? skill.labelEn}
+                      {skill.name}
                       <span className="ml-1.5 text-primary/60">{skill.candidateCount}</span>
                     </Badge>
                   </Link>
@@ -129,16 +125,15 @@ async function VaardighedenContent() {
               </div>
             </div>
 
-            {/* Full ranked list */}
             <div>
               <h2 className="text-sm font-semibold text-foreground mb-3">
                 Alle vaardigheden ({totalSkills})
               </h2>
               <div className="bg-card border border-border rounded-lg divide-y divide-border">
-                {skills.map((skill, index) => (
+                {skillRows.map((skill, index) => (
                   <Link
-                    key={skill.uri}
-                    href={`/kandidaten?vaardigheid=${encodeURIComponent(skill.uri)}`}
+                    key={skill.slug}
+                    href={`/kandidaten?vaardigheid=${encodeURIComponent(skill.slug)}`}
                     className="flex items-center justify-between px-4 py-3 hover:bg-accent transition-colors first:rounded-t-lg last:rounded-b-lg"
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -146,12 +141,8 @@ async function VaardighedenContent() {
                         {index + 1}
                       </span>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {skill.labelNl ?? skill.labelEn}
-                        </p>
-                        {skill.labelNl && (
-                          <p className="text-xs text-muted-foreground truncate">{skill.labelEn}</p>
-                        )}
+                        <p className="text-sm font-medium text-foreground truncate">{skill.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{skill.slug}</p>
                       </div>
                     </div>
                     <Badge

@@ -36,7 +36,7 @@ vi.mock("@/src/db/schema", () => ({
   },
 }));
 
-vi.mock("@motian/esco", () => ({
+vi.mock("@/src/services/esco", () => ({
   getEscoCatalogStatus: vi.fn().mockResolvedValue({
     available: true,
     issue: null,
@@ -49,9 +49,7 @@ vi.mock("@motian/esco", () => ({
   }),
   listEscoSkillsForFilter: vi
     .fn()
-    .mockResolvedValue([
-      { uri: "http://esco/skill/1", labelNl: "TypeScript", labelEn: "TypeScript" },
-    ]),
+    .mockResolvedValue([{ uri: "typescript", labelNl: "TypeScript", labelEn: "TypeScript" }]),
 }));
 
 vi.mock("@/src/services/jobs/filters", () => ({

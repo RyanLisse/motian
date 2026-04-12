@@ -35,7 +35,7 @@ const getCachedKandidatenStats = unstable_cache(
 export const getKandidatenStats = cache(getCachedKandidatenStats);
 
 // ---------------------------------------------------------------------------
-// ESCO catalog status + skills list — rarely changes
+// Skills catalog status + skills list — rarely changes
 // ---------------------------------------------------------------------------
 
 async function getEscoFilterDataUncached() {
@@ -44,12 +44,9 @@ async function getEscoFilterDataUncached() {
     listEscoSkillsForFilter(),
   ]);
 
-  let escoCatalogMessage = "ESCO-filter is tijdelijk niet beschikbaar.";
-  if (catalogStatus.issue === "missing_catalog" || catalogStatus.issue === "missing_skills") {
-    escoCatalogMessage = "ESCO-catalogus ontbreekt; importeer eerst de dataset.";
-  } else if (catalogStatus.issue === "missing_aliases") {
-    escoCatalogMessage =
-      "ESCO-aliases ontbreken; exacte labels werken nog wel, maar mapping is beperkt.";
+  let escoCatalogMessage = "Skills-filter is tijdelijk niet beschikbaar.";
+  if (catalogStatus.issue === "missing_catalog") {
+    escoCatalogMessage = "Skills-catalogus ontbreekt; genereer eerst canonical skills.";
   }
 
   return {

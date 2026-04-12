@@ -90,7 +90,9 @@ describe("Hybrid scoring — rule + vector blend", () => {
     const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
       candidateEscoSkills: [
         {
-          escoUri: "skill:react",
+          skillId: "react",
+          slug: "react",
+          escoUri: "react",
           label: "React",
           confidence: 0.98,
           critical: false,
@@ -98,25 +100,30 @@ describe("Hybrid scoring — rule + vector blend", () => {
       ],
       jobEscoSkills: [
         {
-          escoUri: "skill:react",
+          skillId: "react",
+          slug: "react",
+          escoUri: "react",
           label: "React",
           confidence: 0.99,
           required: true,
           critical: true,
           weight: 1,
+          importance: "must",
         },
       ],
     });
 
     expect(result.model).toBe("esco-rule-v1");
-    expect(result.reasoning).toContain("ESCO");
+    expect(result.reasoning).toContain("vereiste skills");
   });
 
   it("falls back to legacy scoring when no canonical job skills are available", () => {
     const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
       candidateEscoSkills: [
         {
-          escoUri: "skill:react",
+          skillId: "react",
+          slug: "react",
+          escoUri: "react",
           label: "React",
           confidence: 0.98,
           critical: false,
@@ -129,11 +136,13 @@ describe("Hybrid scoring — rule + vector blend", () => {
     expect(result.reasoning).not.toContain("Geen ESCO-vaardigheden voor opdracht");
   });
 
-  it("falls back to legacy scoring when a critical canonical skill has low confidence", () => {
+  it("keeps canonical skill scoring active even when confidence metadata is low", () => {
     const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
       candidateEscoSkills: [
         {
-          escoUri: "skill:react",
+          skillId: "react",
+          slug: "react",
+          escoUri: "react",
           label: "React",
           confidence: 0.95,
           critical: false,
@@ -141,27 +150,32 @@ describe("Hybrid scoring — rule + vector blend", () => {
       ],
       jobEscoSkills: [
         {
-          escoUri: "skill:react",
+          skillId: "react",
+          slug: "react",
+          escoUri: "react",
           label: "React",
           confidence: 0.2,
           required: true,
           critical: true,
           weight: 1,
+          importance: "must",
         },
       ],
     });
 
-    expect(result.model).toBe("rule-based-v1");
-    expect(result.reasoning).toContain("skills match");
+    expect(result.model).toBe("esco-rule-v1");
+    expect(result.reasoning).toContain("vereiste skills");
   });
 
-  it("emits a guardrail fallback log for ESCO observability", () => {
+  it("does not emit legacy ESCO guardrail logs in the simplified skills flow", () => {
     const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
 
     computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
       candidateEscoSkills: [
         {
-          escoUri: "skill:react",
+          skillId: "react",
+          slug: "react",
+          escoUri: "react",
           label: "React",
           confidence: 0.95,
           critical: false,
@@ -169,23 +183,20 @@ describe("Hybrid scoring — rule + vector blend", () => {
       ],
       jobEscoSkills: [
         {
-          escoUri: "skill:react",
+          skillId: "react",
+          slug: "react",
+          escoUri: "react",
           label: "React",
           confidence: 0.2,
           required: true,
           critical: true,
           weight: 1,
+          importance: "must",
         },
       ],
     });
 
-    expect(infoSpy).toHaveBeenCalledWith(
-      "[ESCO] guardrail_fallback",
-      expect.objectContaining({
-        candidateId: "cand-1",
-        jobId: "job-1",
-      }),
-    );
+    expect(infoSpy).not.toHaveBeenCalled();
   });
 });
 

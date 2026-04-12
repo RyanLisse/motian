@@ -405,6 +405,77 @@ export const jobSkills = pgTable(
   }),
 );
 
+export const skills = pgTable(
+  "skills",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    slugUniqueIdx: uniqueIndex("uq_skills_slug").on(table.slug),
+    nameIdx: index("idx_skills_name").on(table.name),
+  }),
+);
+
+export const candidateSkillsV2 = pgTable(
+  "candidate_skills_v2",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    candidateId: text("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    skillId: text("skill_id")
+      .notNull()
+      .references(() => skills.id, { onDelete: "restrict" }),
+    rawLabel: text("raw_label"),
+    source: text("source").notNull(),
+    confidence: real("confidence"),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    candidateIdIdx: index("idx_candidate_skills_v2_candidate_id").on(table.candidateId),
+    skillIdIdx: index("idx_candidate_skills_v2_skill_id").on(table.skillId),
+    candidateSkillUniqueIdx: uniqueIndex("uq_candidate_skills_v2_candidate_skill_source").on(
+      table.candidateId,
+      table.skillId,
+      table.source,
+    ),
+  }),
+);
+
+export const jobSkillsV2 = pgTable(
+  "job_skills_v2",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    skillId: text("skill_id")
+      .notNull()
+      .references(() => skills.id, { onDelete: "restrict" }),
+    rawLabel: text("raw_label"),
+    source: text("source").notNull(),
+    importance: text("importance").notNull().default("nice"),
+    confidence: real("confidence"),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    jobIdIdx: index("idx_job_skills_v2_job_id").on(table.jobId),
+    skillIdIdx: index("idx_job_skills_v2_skill_id").on(table.skillId),
+    importanceIdx: index("idx_job_skills_v2_importance").on(table.importance),
+    jobSkillUniqueIdx: uniqueIndex("uq_job_skills_v2_job_skill_source").on(
+      table.jobId,
+      table.skillId,
+      table.source,
+    ),
+  }),
+);
+
 export const skillMappings = pgTable(
   "skill_mappings",
   {

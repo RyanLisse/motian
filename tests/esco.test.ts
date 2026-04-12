@@ -5,14 +5,8 @@ const { mockLimit, mockDb } = vi.hoisted(() => {
   const mockWhere = vi.fn().mockReturnValue({
     limit: mockLimit,
   });
-  const mockOrderBy = vi.fn().mockReturnValue({
-    where: mockWhere,
-    limit: mockLimit,
-  });
   const mockFrom = vi.fn().mockReturnValue({
     where: mockWhere,
-    orderBy: mockOrderBy,
-    limit: mockLimit,
   });
   const mockDb = {
     select: vi.fn().mockReturnValue({
@@ -20,7 +14,9 @@ const { mockLimit, mockDb } = vi.hoisted(() => {
     }),
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
-        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+        onConflictDoUpdate: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: "skill-1", slug: "react", name: "React" }]),
+        }),
       }),
     }),
   };
@@ -31,23 +27,9 @@ const { mockLimit, mockDb } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@motian/db", async (importOriginal) => ({
+vi.mock("../src/db", async (importOriginal) => ({
   ...(await importOriginal()),
   db: mockDb,
-  candidateSkills: {},
-  escoSkills: {
-    uri: "escoSkills.uri",
-    preferredLabelEn: "escoSkills.preferredLabelEn",
-    preferredLabelNl: "escoSkills.preferredLabelNl",
-  },
-  jobSkills: {},
-  skillAliases: {
-    escoUri: "skillAliases.escoUri",
-    confidence: "skillAliases.confidence",
-    normalizedAlias: "skillAliases.normalizedAlias",
-    language: "skillAliases.language",
-  },
-  skillMappings: {},
 }));
 
 import {
@@ -64,7 +46,7 @@ const baseInput = {
   critical: false,
 };
 
-describe("mapSkillInput", () => {
+describe("skills compatibility facade", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetEscoCatalogStatusCache();
@@ -75,116 +57,44 @@ describe("mapSkillInput", () => {
     resetEscoCatalogStatusCache();
   });
 
-  it("returns none strategy and zero confidence for empty/whitespace rawSkill", async () => {
-    const result = await mapSkillInput({
-      ...baseInput,
-      rawSkill: "   ",
-    });
+  it("returns none strategy for empty skill input", async () => {
+    const result = await mapSkillInput({ ...baseInput, rawSkill: "   " });
     expect(result).toEqual({
       escoUri: null,
       confidence: 0,
       strategy: "none",
       reviewRequired: false,
     });
-    expect(mockLimit).not.toHaveBeenCalled();
-    expect(mockDb.insert).toHaveBeenCalled();
   });
 
-  it("returns alias strategy with expected escoUri and confidence when normalized rawSkill matches alias", async () => {
-    const escoUri = "http://data.europa.eu/esco/skill/react";
-    mockLimit.mockResolvedValueOnce([{ escoUri, confidence: 0.9 }]);
+  it("returns exact strategy with a canonical slug", async () => {
+    mockLimit.mockResolvedValueOnce([]);
 
-    const result = await mapSkillInput({
-      ...baseInput,
-      rawSkill: "  react  ",
-    });
+    const result = await mapSkillInput({ ...baseInput, rawSkill: "React" });
 
-    expect(result.strategy).toBe("alias");
-    expect(result.escoUri).toBe(escoUri);
-    expect(result.confidence).toBe(0.9);
-    expect(result.reviewRequired).toBe(false);
-    expect(mockLimit).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns exact strategy when rawSkill trim matches preferred label (no alias hit)", async () => {
-    const uri = "http://data.europa.eu/esco/skill/typescript";
-    mockLimit.mockResolvedValueOnce([]).mockResolvedValueOnce([{ uri }]);
-
-    const result = await mapSkillInput({
-      ...baseInput,
-      rawSkill: "TypeScript",
-    });
-
-    expect(result.strategy).toBe("exact");
-    expect(result.escoUri).toBe(uri);
-    expect(result.confidence).toBe(0.95);
-    expect(mockLimit).toHaveBeenCalledTimes(2);
-  });
-
-  it("returns none strategy when neither alias nor exact match", async () => {
-    mockLimit.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-
-    const result = await mapSkillInput({
-      ...baseInput,
-      rawSkill: "UnknownSkillXYZ",
-    });
-
-    expect(result.strategy).toBe("none");
-    expect(result.escoUri).toBe(null);
-    expect(result.confidence).toBe(0);
-    expect(result.reviewRequired).toBe(false);
-    expect(mockLimit).toHaveBeenCalledTimes(2);
-  });
-
-  it("sets reviewRequired when critical and alias confidence below threshold", async () => {
-    const escoUri = "http://data.europa.eu/esco/skill/vue";
-    mockLimit.mockResolvedValueOnce([{ escoUri, confidence: 0.5 }]);
-
-    const result = await mapSkillInput({
-      ...baseInput,
-      rawSkill: "vue",
-      critical: true,
-    });
-
-    expect(result.strategy).toBe("alias");
-    expect(result.reviewRequired).toBe(true);
-  });
-
-  it("reuses cached alias lookups for repeated raw skills while persisting each mapping event", async () => {
-    const escoUri = "http://data.europa.eu/esco/skill/redux";
-    mockLimit.mockResolvedValueOnce([{ escoUri, confidence: 0.9 }]);
-
-    const first = await mapSkillInput({
-      ...baseInput,
-      rawSkill: "Redux",
-      contextId: "job-1",
-      contextType: "job",
-    });
-    const second = await mapSkillInput({
-      ...baseInput,
-      rawSkill: "Redux",
-      contextId: "job-2",
-      contextType: "job",
-    });
-
-    expect(first).toEqual({
-      escoUri,
-      confidence: 0.9,
-      strategy: "alias",
+    expect(result).toEqual({
+      escoUri: "react",
+      confidence: 1,
+      strategy: "exact",
       reviewRequired: false,
     });
-    expect(second).toEqual(first);
-    expect(mockLimit).toHaveBeenCalledTimes(1);
-    expect(mockDb.insert).toHaveBeenCalledTimes(2);
+    expect(mockDb.insert).toHaveBeenCalledTimes(1);
   });
 
-  it("reports a missing catalog when skills and aliases are both absent", async () => {
-    mockLimit
-      .mockResolvedValueOnce([{ count: 0 }])
-      .mockResolvedValueOnce([{ count: 0 }])
-      .mockResolvedValueOnce([{ count: 12 }])
-      .mockResolvedValueOnce([{ count: 0 }])
-      .mockResolvedValueOnce([{ count: 0 }]);
+  it("reuses an existing canonical skill when found by slug", async () => {
+    mockLimit.mockResolvedValueOnce([{ id: "skill-2", slug: "typescript", name: "TypeScript" }]);
+
+    const result = await mapSkillInput({ ...baseInput, rawSkill: "TypeScript" });
+
+    expect(result.escoUri).toBe("typescript");
+    expect(mockDb.insert).not.toHaveBeenCalled();
+  });
+
+  it("reports a missing catalog when no canonical skills exist", async () => {
+    mockDb.select
+      .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 0 }]) })
+      .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 0 }]) })
+      .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 0 }]) });
 
     const status = await getEscoCatalogStatus({ refresh: true });
 
@@ -193,29 +103,27 @@ describe("mapSkillInput", () => {
       issue: "missing_catalog",
       skillCount: 0,
       aliasCount: 0,
-      mappingCount: 12,
+      mappingCount: 0,
       jobSkillCount: 0,
       candidateSkillCount: 0,
     });
     expect(await isEscoCatalogAvailable()).toBe(false);
   });
 
-  it("keeps the catalog available but flags missing aliases when only canonical skills exist", async () => {
-    mockLimit
-      .mockResolvedValueOnce([{ count: 42 }])
-      .mockResolvedValueOnce([{ count: 0 }])
-      .mockResolvedValueOnce([{ count: 5 }])
-      .mockResolvedValueOnce([{ count: 7 }])
-      .mockResolvedValueOnce([{ count: 3 }]);
+  it("reports the catalog as available when canonical skills exist", async () => {
+    mockDb.select
+      .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 42 }]) })
+      .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 7 }]) })
+      .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 3 }]) });
 
     const status = await getEscoCatalogStatus({ refresh: true });
 
     expect(status).toMatchObject({
       available: true,
-      issue: "missing_aliases",
+      issue: null,
       skillCount: 42,
       aliasCount: 0,
-      mappingCount: 5,
+      mappingCount: 0,
       jobSkillCount: 7,
       candidateSkillCount: 3,
     });

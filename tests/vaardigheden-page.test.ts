@@ -32,10 +32,10 @@ describe("Vaardigheden page", () => {
     expect(source).toMatch(/export\s+const\s+revalidate\s*=\s*300/);
   });
 
-  it("page references candidateSkills and escoSkills tables", () => {
+  it("page references the canonical skills tables", () => {
     const source = readFileSync(pagePath, "utf-8");
-    expect(source).toContain("candidateSkills");
-    expect(source).toContain("escoSkills");
+    expect(source).toContain("candidateSkillsV2");
+    expect(source).toContain("skills");
   });
 
   it("page links skills to /kandidaten?vaardigheid=", () => {

@@ -1,14 +1,14 @@
-import { and, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/src/db";
 import {
-  candidateSkills,
+  candidateSkillsV2,
   candidates,
-  escoSkills,
   jobMatches,
-  jobSkills,
+  jobSkillsV2,
   jobs,
+  skills,
 } from "@/src/db/schema";
 import { withApiHandler } from "@/src/lib/api-handler";
 import {
@@ -133,26 +133,28 @@ export const GET = withApiHandler(
       validJobIdArray.length > 0
         ? db
             .select({
-              id: jobSkills.id,
-              jobId: jobSkills.jobId,
-              escoUri: jobSkills.escoUri,
-              confidence: jobSkills.confidence,
-              required: jobSkills.required,
-              critical: jobSkills.critical,
+              id: jobSkillsV2.id,
+              jobId: jobSkillsV2.jobId,
+              escoUri: skills.slug,
+              confidence: jobSkillsV2.confidence,
+              required: sql<boolean>`${jobSkillsV2.importance} = ${"must"}`.as("required"),
+              critical: sql<boolean>`${jobSkillsV2.importance} = ${"must"}`.as("critical"),
             })
-            .from(jobSkills)
-            .where(inArray(jobSkills.jobId, validJobIdArray))
+            .from(jobSkillsV2)
+            .innerJoin(skills, eq(jobSkillsV2.skillId, skills.id))
+            .where(inArray(jobSkillsV2.jobId, validJobIdArray))
         : Promise.resolve([]),
       validCandidateIdArray.length > 0
         ? db
             .select({
-              id: candidateSkills.id,
-              candidateId: candidateSkills.candidateId,
-              escoUri: candidateSkills.escoUri,
-              confidence: candidateSkills.confidence,
+              id: candidateSkillsV2.id,
+              candidateId: candidateSkillsV2.candidateId,
+              escoUri: skills.slug,
+              confidence: candidateSkillsV2.confidence,
             })
-            .from(candidateSkills)
-            .where(inArray(candidateSkills.candidateId, validCandidateIdArray))
+            .from(candidateSkillsV2)
+            .innerJoin(skills, eq(candidateSkillsV2.skillId, skills.id))
+            .where(inArray(candidateSkillsV2.candidateId, validCandidateIdArray))
         : Promise.resolve([]),
     ]);
 
@@ -164,20 +166,18 @@ export const GET = withApiHandler(
       ]),
     ];
 
-    // Fetch top-level ESCO skills (broaderUri IS NULL, filtered by referenced URIs)
     const filteredSkillRows =
       referencedSkillUris.length > 0
         ? await db
             .select({
-              uri: escoSkills.uri,
-              preferredLabelEn: escoSkills.preferredLabelEn,
-              preferredLabelNl: escoSkills.preferredLabelNl,
-              escoVersion: escoSkills.escoVersion,
-              skillType: escoSkills.skillType,
-              broaderUri: escoSkills.broaderUri,
+              uri: skills.slug,
+              preferredLabelEn: skills.name,
+              preferredLabelNl: sql<string | null>`${skills.name}`.as("preferredLabelNl"),
+              escoVersion: sql<string>`'linkedin-style'`.as("escoVersion"),
+              skillType: sql<string | null>`null`.as("skillType"),
             })
-            .from(escoSkills)
-            .where(and(isNull(escoSkills.broaderUri), inArray(escoSkills.uri, referencedSkillUris)))
+            .from(skills)
+            .where(inArray(skills.slug, referencedSkillUris))
         : [];
 
     // Build nodes

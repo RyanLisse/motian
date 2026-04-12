@@ -1,8 +1,8 @@
-import { isEscoCatalogAvailable, syncJobEscoSkills } from "@motian/esco";
 import type { z } from "zod";
 import { stripHtml } from "../../packages/scrapers/src/strip-html";
 import { db, jobs, sql } from "../db";
 import { unifiedJobSchema } from "../schemas/job";
+import { isEscoCatalogAvailable, syncJobEscoSkills } from "./esco";
 import { upsertJobsByIds } from "./search-index/typesense-sync";
 
 /** Permissive type for scraped data — Zod validates at runtime via safeParse */

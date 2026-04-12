@@ -18,9 +18,9 @@ export type EscoMatchOptions = {
 
 function loadScoringWeights() {
   return {
-    skills: parseInt(process.env.SCORING_WEIGHT_SKILLS ?? "40", 10),
-    location: parseInt(process.env.SCORING_WEIGHT_LOCATION ?? "20", 10),
-    rate: parseInt(process.env.SCORING_WEIGHT_RATE ?? "20", 10),
+    skills: parseInt(process.env.SCORING_WEIGHT_SKILLS ?? "50", 10),
+    location: parseInt(process.env.SCORING_WEIGHT_LOCATION ?? "15", 10),
+    rate: parseInt(process.env.SCORING_WEIGHT_RATE ?? "15", 10),
     role: parseInt(process.env.SCORING_WEIGHT_ROLE ?? "20", 10),
   };
 }
@@ -261,7 +261,7 @@ function computeLegacySkillDimension(
 }
 
 function logEscoGuardrailFallback(job: Job, candidate: Candidate, reasoning: string) {
-  console.info("[ESCO] guardrail_fallback", {
+  console.info("[skills] fallback", {
     jobId: job.id,
     candidateId: candidate.id,
     reasoning,
@@ -294,7 +294,7 @@ function computeSkillDimension(
       score: legacy.score,
       reasoning:
         legacy.overlap.length > 0
-          ? `${legacy.overlap.length} skills match: ${legacy.overlap.slice(0, 3).join(", ")}`
+          ? `${legacy.overlap.length} skill${legacy.overlap.length === 1 ? "" : "s"} matchen: ${legacy.overlap.slice(0, 3).join(", ")}`
           : null,
       usedEsco: false,
       guardrailFallback: true,
@@ -308,7 +308,7 @@ function computeSkillDimension(
     score: legacy.score,
     reasoning:
       legacy.overlap.length > 0
-        ? `${legacy.overlap.length} skills match: ${legacy.overlap.slice(0, 3).join(", ")}`
+        ? `${legacy.overlap.length} skill${legacy.overlap.length === 1 ? "" : "s"} matchen: ${legacy.overlap.slice(0, 3).join(", ")}`
         : null,
     usedEsco: false,
     guardrailFallback: false,

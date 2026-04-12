@@ -1,10 +1,10 @@
-import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@motian/esco";
 import { cache } from "react";
 import { db, eq, sql } from "@/src/db";
 import { jobs, sidebarMetadata } from "@/src/db/schema";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
+import { getEscoCatalogStatus, listEscoSkillsForFilter } from "./esco";
 
-const DEFAULT_SKILL_EMPTY_TEXT = "Geen vaardigheden gevonden.";
+const DEFAULT_SKILL_EMPTY_TEXT = "Geen skills gevonden.";
 
 export type SidebarMetadataRow = {
   totalCount: number;
@@ -17,11 +17,8 @@ export type SidebarMetadataRow = {
 };
 
 function resolveSkillEmptyText(issue: string | null | undefined): string {
-  if (issue === "missing_catalog" || issue === "missing_skills") {
-    return "ESCO-catalogus ontbreekt. Importeer eerst de dataset.";
-  }
-  if (issue === "missing_aliases") {
-    return "ESCO-aliases ontbreken. Mapping is tijdelijk beperkt.";
+  if (issue === "missing_catalog") {
+    return "Skills-catalogus ontbreekt. Genereer eerst de canonical skills.";
   }
   return DEFAULT_SKILL_EMPTY_TEXT;
 }

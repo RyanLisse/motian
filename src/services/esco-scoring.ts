@@ -1,10 +1,6 @@
 import type { CandidateCanonicalSkill, JobCanonicalSkill } from "./esco";
 
-const MIN_CONFIDENCE = Number(process.env.ESCO_SCORING_MIN_CONFIDENCE ?? "0.5");
-/** Align with esco.ts CRITICAL_REVIEW_THRESHOLD default (0.7) when used for guardrail. */
-const CRITICAL_REVIEW_THRESHOLD = Number(process.env.ESCO_CRITICAL_REVIEW_THRESHOLD ?? "0.7");
-
-export const ESCO_SKILL_WEIGHT = 40;
+export const ESCO_SKILL_WEIGHT = 50;
 
 export type EscoSkillScoreResult = {
   skillScore: number;
@@ -20,70 +16,43 @@ export function computeEscoSkillScore(
     return {
       skillScore: 0,
       guardrailFallback: false,
-      reasoning: "Geen ESCO-vaardigheden voor opdracht",
+      reasoning: "Geen skills opgegeven voor vacature",
     };
   }
 
-  const lowConfidenceCritical = jobSkills.filter(
-    (skill) => skill.critical && skill.confidence < CRITICAL_REVIEW_THRESHOLD,
-  );
-  if (lowConfidenceCritical.length > 0) {
-    return {
-      skillScore: 0,
-      guardrailFallback: true,
-      reasoning: `ESCO guardrail fallback: ${lowConfidenceCritical.length} kritieke skill(s) met lage confidence`,
-    };
+  const candidateSkillIds = new Set(candidateSkills.map((skill) => skill.skillId));
+  const mustSkills = jobSkills.filter((skill) => skill.importance === "must" || skill.required);
+  const niceSkills = jobSkills.filter((skill) => !(skill.importance === "must" || skill.required));
+
+  const matchedMust = mustSkills.filter((skill) => candidateSkillIds.has(skill.skillId));
+  const matchedNice = niceSkills.filter((skill) => candidateSkillIds.has(skill.skillId));
+  const missingMust = mustSkills.filter((skill) => !candidateSkillIds.has(skill.skillId));
+
+  const weightedEarned = matchedMust.length * 1 + matchedNice.length * 0.35;
+  const weightedTotal = mustSkills.length * 1 + niceSkills.length * 0.35;
+  const ratio = weightedTotal > 0 ? weightedEarned / weightedTotal : 0;
+
+  const skillScore = Math.round(Math.min(ESCO_SKILL_WEIGHT, ratio * ESCO_SKILL_WEIGHT));
+  const reasoningParts = [`${matchedMust.length} van ${mustSkills.length} vereiste skills matchen`];
+
+  if (matchedNice.length > 0) {
+    reasoningParts.push(
+      `${matchedNice.length} aanvullende skill${matchedNice.length === 1 ? "" : "s"} matchen`,
+    );
   }
 
-  const candidateUris = new Set(
-    candidateSkills
-      .filter((skill) => skill.confidence >= MIN_CONFIDENCE)
-      .map((skill) => skill.escoUri),
-  );
-
-  if (candidateUris.size === 0) {
-    return {
-      skillScore: 0,
-      guardrailFallback: true,
-      reasoning: "Geen ESCO-vaardigheden voor kandidaat; fallback naar legacy skill score",
-    };
+  if (missingMust.length > 0) {
+    reasoningParts.push(
+      `ontbreekt: ${missingMust
+        .slice(0, 3)
+        .map((skill) => skill.label ?? skill.slug)
+        .join(", ")}`,
+    );
   }
 
-  let earnedWeight = 0;
-  let totalWeight = 0;
-  const matched: string[] = [];
-  const missingCritical: string[] = [];
-
-  for (const jobSkill of jobSkills) {
-    const baseWeight = jobSkill.weight ?? (jobSkill.critical ? 1.5 : jobSkill.required ? 1 : 0.6);
-    totalWeight += baseWeight;
-
-    if (candidateUris.has(jobSkill.escoUri)) {
-      earnedWeight += baseWeight;
-      matched.push(jobSkill.label ?? jobSkill.escoUri);
-      continue;
-    }
-
-    if (jobSkill.critical) {
-      missingCritical.push(jobSkill.label ?? jobSkill.escoUri);
-    }
-  }
-
-  if (missingCritical.length > 0) {
-    return {
-      skillScore: 0,
-      guardrailFallback: true,
-      reasoning: `ESCO guardrail fallback: ontbrekende kritieke skill(s): ${missingCritical.join(", ")}`,
-    };
-  }
-
-  const ratio = totalWeight > 0 ? earnedWeight / totalWeight : 0;
   return {
-    skillScore: Math.round(Math.min(ESCO_SKILL_WEIGHT, ratio * ESCO_SKILL_WEIGHT)),
+    skillScore,
     guardrailFallback: false,
-    reasoning:
-      matched.length > 0
-        ? `ESCO: ${matched.length} match(es) op ${matched.slice(0, 3).join(", ")}`
-        : "Geen ESCO skill overlap",
+    reasoning: reasoningParts.join("; "),
   };
 }

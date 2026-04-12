@@ -1,5 +1,5 @@
 import { and, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from "../../db";
-import { applications, jobSkills, jobs } from "../../db/schema";
+import { applications, jobSkillsV2, jobs, skills } from "../../db/schema";
 import {
   getHoursRangeForBucket,
   getProvinceAnchor,
@@ -78,7 +78,13 @@ export function buildJobFilterConditions(opts: SharedJobFilterOptions = {}) {
 
   if (opts.escoUri) {
     conditions.push(
-      sql`exists (select 1 from ${jobSkills} where ${jobSkills.jobId} = ${jobs.id} and ${jobSkills.escoUri} = ${opts.escoUri})`,
+      sql`exists (
+        select 1
+        from ${jobSkillsV2}
+        inner join ${skills} on ${jobSkillsV2.skillId} = ${skills.id}
+        where ${jobSkillsV2.jobId} = ${jobs.id}
+          and ${skills.slug} = ${opts.escoUri}
+      )`,
     );
   }
 
