@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, FileText, Loader2, Send } from "lucide-react";
+import { Copy, ExternalLink, FileText, Loader2, Send } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,7 @@ type CommercialCvResponse = {
     title: string;
     body: string;
     format: "markdown";
+    htmlUrl?: string;
   };
 };
 
@@ -56,6 +57,7 @@ export function CandidateOfferActions({
   const [cvLoading, setCvLoading] = useState(false);
   const [cvError, setCvError] = useState<string | null>(null);
   const [cvCopyFeedback, setCvCopyFeedback] = useState<string | null>(null);
+  const [cvHtmlUrl, setCvHtmlUrl] = useState<string | null>(null);
 
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [channelHint, setChannelHint] = useState("");
@@ -110,6 +112,7 @@ export function CandidateOfferActions({
 
       setCvTitle(body.data.title);
       setCvDraft(body.data.body);
+      setCvHtmlUrl(body.data.htmlUrl ?? "/api/commercieel-cv/html");
     } catch (error) {
       setCvError(error instanceof Error ? error.message : "Commercieel CV genereren mislukt");
     } finally {
@@ -159,6 +162,9 @@ export function CandidateOfferActions({
           setCvOpen(open);
           if (open && cvDraft.length === 0 && !cvLoading) {
             void loadCommercialCv();
+          }
+          if (!open) {
+            setCvCopyFeedback(null);
           }
         }}
       >
@@ -210,6 +216,19 @@ export function CandidateOfferActions({
                 <Copy className="h-4 w-4" />
                 Kopieer concept
               </Button>
+              <form
+                action={cvHtmlUrl ?? "/api/commercieel-cv/html"}
+                method="POST"
+                target="_blank"
+                rel="noopener"
+              >
+                <input type="hidden" name="candidateId" value={candidateId} />
+                {defaultJobId ? <input type="hidden" name="jobId" value={defaultJobId} /> : null}
+                <Button type="submit" variant="secondary" disabled={cvLoading}>
+                  <ExternalLink className="h-4 w-4" />
+                  Open HTML-preview
+                </Button>
+              </form>
             </div>
           </DialogFooter>
         </DialogContent>

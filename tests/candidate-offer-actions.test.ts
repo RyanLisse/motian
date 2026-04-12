@@ -17,8 +17,10 @@ describe("candidate offer actions", () => {
   it("loads commercial cv drafts and channel handoff data in the shared action component", () => {
     const source = readFile("components/candidate-offer-actions.tsx");
     expect(source).toContain("/api/commercieel-cv");
+    expect(source).toContain("/api/commercieel-cv/html");
     expect(source).toContain("kanaal-aanbod");
     expect(source).toContain("Commercieel CV");
+    expect(source).toContain("Open HTML-preview");
     expect(source).toContain("Kanaal-aanbod");
     expect(source).toContain("Kopieer handoff");
   });
