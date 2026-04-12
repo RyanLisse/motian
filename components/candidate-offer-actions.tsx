@@ -174,7 +174,7 @@ export function CandidateOfferActions({
             Commercieel CV
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{cvTitle}</DialogTitle>
             <DialogDescription>
@@ -184,14 +184,16 @@ export function CandidateOfferActions({
 
           {cvError ? <p className="text-sm text-destructive">{cvError}</p> : null}
 
-          <Textarea
-            value={cvDraft}
-            onChange={(event) => setCvDraft(event.target.value)}
-            className="min-h-[360px] font-mono text-xs"
-            placeholder={cvLoading ? "Concept wordt geladen..." : "Nog geen concept beschikbaar"}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Textarea
+              value={cvDraft}
+              onChange={(event) => setCvDraft(event.target.value)}
+              className="min-h-[360px] font-mono text-xs"
+              placeholder={cvLoading ? "Concept wordt geladen..." : "Nog geen concept beschikbaar"}
+            />
+          </div>
 
-          <DialogFooter className="flex flex-wrap items-center justify-between gap-2">
+          <DialogFooter className="border-t border-border/60 pt-4 flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs text-muted-foreground">
               {cvCopyFeedback ?? "Markdown-concept, direct bewerkbaar."}
             </div>
