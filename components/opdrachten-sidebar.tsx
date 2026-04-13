@@ -90,14 +90,21 @@ export function OpdrachtenSidebar({
   } = useSidebarFilters({ initialJobs, initialTotal, categories });
 
   if (!isOverviewPage) {
+    // Detail-page (compact) sidebar: the WHOLE column is the scroll container.
+    // Filters render at natural height, then results header, then the job list,
+    // then pagination — all scrolling together so users can move from filters
+    // into the list without the list being squeezed to 0 by tall filters.
+    // The job list (VirtualList) virtualizes against this aside (scrollMode="parent").
     return (
-      <aside className="flex h-full w-full flex-col overflow-hidden bg-[#050506] text-white">
-        <SidebarSearchBar
-          value={inputValue}
-          onChange={setInputValue}
-          isFetching={isFetching}
-          variant="compact"
-        />
+      <aside className="flex h-full w-full flex-col overflow-y-auto bg-[#050506] text-white">
+        <div className="sticky top-0 z-10 bg-[#050506]">
+          <SidebarSearchBar
+            value={inputValue}
+            onChange={setInputValue}
+            isFetching={isFetching}
+            variant="compact"
+          />
+        </div>
 
         <CompactSidebarFilters
           selectedPlatforms={selectedPlatforms}
@@ -152,13 +159,15 @@ export function OpdrachtenSidebar({
           variant="compact"
         />
 
-        <SidebarPagination
-          pageParam={pageParam}
-          totalPages={totalPages}
-          isFetching={isFetching}
-          pushParams={pushParams}
-          variant="compact"
-        />
+        <div className="sticky bottom-0 z-10 mt-auto bg-[#050506]">
+          <SidebarPagination
+            pageParam={pageParam}
+            totalPages={totalPages}
+            isFetching={isFetching}
+            pushParams={pushParams}
+            variant="compact"
+          />
+        </div>
       </aside>
     );
   }

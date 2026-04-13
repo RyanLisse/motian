@@ -45,6 +45,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "critters": "^0.0.25",
+    "croner": "^10.0.1",
     "drizzle-orm": "^0.38.4",
     "jimp": "^1.6.0",
     "just-bash": "^2.14.1",
@@ -157,7 +158,11 @@
     "peerDependencyRules": {
       "allowedVersions": {
         "@modelcontextprotocol/sdk": ">=1.26.0"
-      }
+      },
+      "ignoreMissing": [
+        "@libsql/client",
+        "@libsql/client-wasm"
+      ]
     },
     "overrides": {
       "systeminformation": ">=5.31.0",
