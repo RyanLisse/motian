@@ -30,23 +30,20 @@ const { mockDb, mockEmitAgentEvent, mockQueueDeferredEmbeddingSync } = vi.hoiste
   };
 });
 
-vi.mock("../src/db", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/db")>();
-  return {
-    db: {
-      insert: mockDb.insert,
-      update: mockDb.update,
-      select: mockDb.select,
-    },
-    eq: vi.fn((...args: unknown[]) => ({ type: "eq", args })),
-    and: vi.fn((...args: unknown[]) => ({ type: "and", args })),
-    desc: vi.fn((col: unknown) => ({ type: "desc", col })),
-    isNull: vi.fn((col: unknown) => ({ type: "isNull", col })),
-    inArray: vi.fn((...args: unknown[]) => ({ type: "inArray", args })),
-    sql: vi.fn(),
-    getTableColumns: actual.getTableColumns,
-  };
-});
+vi.mock("../src/db", () => ({
+  db: {
+    insert: mockDb.insert,
+    update: mockDb.update,
+    select: mockDb.select,
+  },
+  eq: vi.fn((...args: unknown[]) => ({ type: "eq", args })),
+  and: vi.fn((...args: unknown[]) => ({ type: "and", args })),
+  desc: vi.fn((col: unknown) => ({ type: "desc", col })),
+  isNull: vi.fn((col: unknown) => ({ type: "isNull", col })),
+  inArray: vi.fn((...args: unknown[]) => ({ type: "inArray", args })),
+  sql: vi.fn(() => "sql"),
+  getTableColumns: vi.fn((table: Record<string, unknown>) => table),
+}));
 
 vi.mock("../src/db/schema", () => ({
   candidates: {
