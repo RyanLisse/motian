@@ -1,4 +1,5 @@
 import { runs } from "@trigger.dev/sdk";
+import { parseCronNext } from "@/src/lib/cron-utils";
 import { and, db, desc, gte, sql } from "../db";
 import { jobs, scrapeResults, scraperConfigs } from "../db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
@@ -262,37 +263,6 @@ async function getActiveVacancyCount(database: TransactionDb = db): Promise<numb
     offset: 0,
   });
   return page.total;
-}
-
-function cronIntervalMs(cron: string | null | undefined): number | null {
-  if (!cron) return null;
-
-  const parts = cron.trim().split(/\s+/);
-  const fields = parts.length === 6 ? parts.slice(1) : parts;
-  if (fields.length !== 5) return null;
-
-  const [minute, hour] = fields;
-  const hourMatch = hour.match(/^\*\/(\d+)$/);
-  if (hourMatch && minute === "0") {
-    return Number.parseInt(hourMatch[1], 10) * 3_600_000;
-  }
-
-  const minuteMatch = minute.match(/^\*\/(\d+)$/);
-  if (minuteMatch) {
-    return Number.parseInt(minuteMatch[1], 10) * 60_000;
-  }
-
-  return null;
-}
-
-function getNextRunAt(config: {
-  lastRunAt: Date | null;
-  cronExpression: string | null;
-}): Date | null {
-  if (!config.lastRunAt || !config.cronExpression) return null;
-  const interval = cronIntervalMs(config.cronExpression);
-  if (!interval) return null;
-  return new Date(config.lastRunAt.getTime() + interval);
 }
 
 function normalizeText(value: string | null | undefined): string | null {
@@ -966,10 +936,10 @@ async function getScraperDashboardDataUncached(
         successRate: 0,
         avgDurationMs: 0,
       };
-      const nextRunAt = getNextRunAt({
-        lastRunAt: config?.lastRunAt ?? null,
-        cronExpression: config?.cronExpression ?? null,
-      });
+      const nextRunAt = parseCronNext(
+        config?.cronExpression ?? null,
+        config?.lastRunAt ?? undefined,
+      );
       const health = derivePlatformHealth({
         isActive: config?.isActive ?? true,
         lastRunAt: config?.lastRunAt ?? null,
