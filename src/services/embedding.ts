@@ -285,8 +285,11 @@ export async function embedJob(jobId: string): Promise<boolean> {
 
   if (!job) return false;
 
+  // Use the full embedding text (title + description + categories + requirements)
+  // so jobs with just a title still get embedded instead of being stuck as "indexing".
   const text = buildJobEmbeddingText(job);
   if (text.length < MIN_JOB_EMBEDDING_SOURCE_CHARS) return false;
+
   const embedding = await generateEmbedding(text);
 
   await db
@@ -583,6 +586,8 @@ export async function embedJobsBatch(opts: {
   const validTexts: string[] = [];
 
   for (let i = 0; i < texts.length; i++) {
+    // Use full embedding text (title + description + categories + requirements)
+    // so jobs with just a title still get embedded.
     if (texts[i].length >= MIN_JOB_EMBEDDING_SOURCE_CHARS) {
       validIndices.push(i);
       validTexts.push(texts[i]);
