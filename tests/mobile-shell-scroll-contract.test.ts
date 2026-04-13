@@ -51,4 +51,16 @@ describe("mobile shell scroll contract", () => {
     expect(layoutShell).toContain("var(--mobile-content-height)");
     expect(layoutShell).toContain("md:h-full");
   });
+
+  it("gives the chat page a definite mobile height via the content-height token so StickToBottom resolves", () => {
+    const chatPage = readFile("app", "chat", "page.tsx");
+    const chatMessages = readFile("components", "chat", "chat-messages.tsx");
+
+    // Chat page must use the mobile content-height token
+    expect(chatPage).toContain("var(--mobile-content-height)");
+    expect(chatPage).toContain("md:h-auto");
+
+    // Chat messages must not use raw 100vh (breaks on mobile with chrome)
+    expect(chatMessages).not.toContain("100vh");
+  });
 });

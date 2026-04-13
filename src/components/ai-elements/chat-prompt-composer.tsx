@@ -89,7 +89,7 @@ export function ChatPromptComposer({
   );
 
   return (
-    <div className="shrink-0 border-t border-border/70 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+    <div className="shrink-0 border-t border-border/70 bg-background/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-3 py-3 sm:px-4 sm:py-4">
         {composerContextHint ? (
           <div
