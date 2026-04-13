@@ -237,6 +237,7 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 - The Justfile uses `zsh` as its shell — use `pnpm` commands directly instead if `zsh` is not installed.
 - `bv` (Bead Viewer) without flags launches an interactive TUI that will block the session. Always use `bv --robot-*` flags.
 - Sidebar and canonical route for talent pool: `/kandidaten`; implementation lives in `app/kandidaten` (app/professionals was removed).
+- Shell-level `DATABASE_URL` (injected as a VM secret) takes precedence over `.env.local`. If you update the URL in `.env.local` but the dev server still uses the old one, export the correct value in the tmux session before running `pnpm dev`.
 
 ## Learned User Preferences
 
