@@ -42,47 +42,58 @@ export async function saveAutopilotFindings(
 ) {
   if (findings.length === 0) return;
 
-  for (const finding of findings) {
-    await db
-      .insert(autopilotFindings)
-      .values({
-        findingId: finding.id,
-        runId: finding.runId,
-        category: finding.category,
-        surface: finding.surface,
-        title: finding.title,
-        description: finding.description,
-        severity: finding.severity,
-        confidence: finding.confidence,
-        autoFixable: finding.autoFixable,
-        status: finding.status,
-        fingerprint: finding.fingerprint,
-        suspectedRootCause: finding.suspectedRootCause ?? null,
-        recommendedAction: finding.recommendedAction ?? null,
-        githubIssueNumber: githubIssueMap?.get(finding.id) ?? null,
-        metadata: finding.metadata ?? {},
-      })
-      .onConflictDoUpdate({
-        target: autopilotFindings.findingId,
-        set: {
+  await db.transaction(async (tx) => {
+    for (const finding of findings) {
+      await tx
+        .insert(autopilotFindings)
+        .values({
+          findingId: finding.id,
+          runId: finding.runId,
+          category: finding.category,
+          surface: finding.surface,
+          title: finding.title,
+          description: finding.description,
+          severity: finding.severity,
+          confidence: finding.confidence,
+          autoFixable: finding.autoFixable,
           status: finding.status,
+          fingerprint: finding.fingerprint,
+          suspectedRootCause: finding.suspectedRootCause ?? null,
+          recommendedAction: finding.recommendedAction ?? null,
           githubIssueNumber: githubIssueMap?.get(finding.id) ?? null,
-          updatedAt: new Date(),
-        },
-      });
-  }
+          metadata: finding.metadata ?? {},
+        })
+        .onConflictDoUpdate({
+          target: autopilotFindings.findingId,
+          set: {
+            status: finding.status,
+            githubIssueNumber: githubIssueMap?.get(finding.id) ?? null,
+            updatedAt: new Date(),
+          },
+        });
+    }
+  });
 }
 
 export async function getRecentRuns(limit = 20) {
   return db.select().from(autopilotRuns).orderBy(desc(autopilotRuns.startedAt)).limit(limit);
 }
 
+const SEVERITY_RANK: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
 export async function getRunFindings(runId: string) {
-  return db
+  const results = await db
     .select()
     .from(autopilotFindings)
-    .where(eq(autopilotFindings.runId, runId))
-    .orderBy(desc(autopilotFindings.severity));
+    .where(eq(autopilotFindings.runId, runId));
+  return results.sort(
+    (a, b) => (SEVERITY_RANK[a.severity] ?? 4) - (SEVERITY_RANK[b.severity] ?? 4),
+  );
 }
 
 export async function updateFindingStatus(findingId: string, status: FindingStatus) {

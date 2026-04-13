@@ -8,6 +8,7 @@ import {
   updateFindingStatus,
 } from "@/src/autopilot/persistence";
 import type { AutopilotFinding, AutopilotRunSummary } from "@/src/autopilot/types";
+import { db } from "@/src/db";
 
 // Mock the database using importOriginal for type-safe helpers
 vi.mock("@/src/db", async (importOriginal) => {
@@ -24,9 +25,12 @@ vi.mock("@/src/db", async (importOriginal) => {
           orderBy: vi.fn(() => ({
             limit: vi.fn(() => Promise.resolve([])),
           })),
-          where: vi.fn(() => ({
-            orderBy: vi.fn(() => Promise.resolve([])),
-          })),
+          where: vi.fn(() => {
+            const resolved = Promise.resolve([]);
+            return Object.assign(resolved, {
+              orderBy: vi.fn(() => Promise.resolve([])),
+            });
+          }),
         })),
       })),
       update: vi.fn(() => ({
@@ -34,6 +38,16 @@ vi.mock("@/src/db", async (importOriginal) => {
           where: vi.fn(() => Promise.resolve([{ findingId: "test-finding" }])),
         })),
       })),
+      transaction: vi.fn(async (cb) => {
+        const txMock = {
+          insert: vi.fn(() => ({
+            values: vi.fn(() => ({
+              onConflictDoUpdate: vi.fn(() => Promise.resolve()),
+            })),
+          })),
+        };
+        return cb(txMock);
+      }),
     },
     // Re-export actual Drizzle helpers for type safety
     eq: actual.eq,
@@ -136,6 +150,45 @@ describe("autopilot persistence", () => {
       await expect(saveAutopilotFindings([])).resolves.not.toThrow();
     });
 
+    it("wraps inserts in a single transaction", async () => {
+      const findings: AutopilotFinding[] = [
+        {
+          id: "f-1",
+          runId: "test-run",
+          category: "bug",
+          surface: "/chat",
+          title: "Finding one",
+          description: "Desc",
+          severity: "high",
+          confidence: 0.9,
+          autoFixable: false,
+          status: "detected",
+          fingerprint: "/chat|bug|finding-one",
+        },
+        {
+          id: "f-2",
+          runId: "test-run",
+          category: "ux",
+          surface: "/matching",
+          title: "Finding two",
+          description: "Desc",
+          severity: "medium",
+          confidence: 0.75,
+          autoFixable: true,
+          status: "detected",
+          fingerprint: "/matching|ux|finding-two",
+        },
+      ];
+
+      await saveAutopilotFindings(findings);
+      expect(vi.mocked(db.transaction)).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not call db.transaction for empty findings array", async () => {
+      await saveAutopilotFindings([]);
+      expect(vi.mocked(db.transaction)).not.toHaveBeenCalled();
+    });
+
     it("includes GitHub issue numbers when provided", async () => {
       const findings: AutopilotFinding[] = [
         {
@@ -182,6 +235,28 @@ describe("autopilot persistence", () => {
       const findings = await getRunFindings("nonexistent-run");
       expect(Array.isArray(findings)).toBe(true);
       expect(findings).toHaveLength(0);
+    });
+
+    it("sorts findings by severity: critical, high, medium, low", async () => {
+      const unsorted = [
+        { severity: "medium", findingId: "f-m" },
+        { severity: "critical", findingId: "f-c" },
+        { severity: "low", findingId: "f-l" },
+        { severity: "high", findingId: "f-h" },
+      ];
+
+      const whereMock = vi.fn(() => {
+        const resolved = Promise.resolve(unsorted);
+        return Object.assign(resolved, {
+          orderBy: vi.fn(() => Promise.resolve(unsorted)),
+        });
+      });
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn(() => ({ where: whereMock })),
+      } as ReturnType<typeof db.select>);
+
+      const results = await getRunFindings("sort-test-run");
+      expect(results.map((r) => r.severity)).toEqual(["critical", "high", "medium", "low"]);
     });
   });
 
