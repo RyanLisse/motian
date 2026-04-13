@@ -2,6 +2,12 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+// TanStack Virtual v3 subscribes via useLayoutEffect (_didMount). When a
+// useState callback-ref fires, React queues a re-render but _didMount has
+// already run with null → no scroll-element subscription → 0 virtual items.
+// Fix: mirror the element into a ref so getScrollElement() returns a non-null
+// value synchronously at commit time, while state still drives reactive effects.
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +70,13 @@ export function VirtualList<T>({
 }: VirtualListProps<T>) {
   const isMobile = useIsMobile();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const selfScrollRef = useRef<HTMLDivElement | null>(null);
   const [selfScrollElement, setSelfScrollElement] = useState<HTMLDivElement | null>(null);
+
+  const setSelfScroll = useCallback((node: HTMLDivElement | null) => {
+    selfScrollRef.current = node;
+    setSelfScrollElement(node);
+  }, []);
   const [parentScrollElement, setParentScrollElement] = useState<HTMLElement | null>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
 
@@ -135,7 +147,7 @@ export function VirtualList<T>({
 
   const virtualizer = useVirtualizer({
     count: items.length,
-    getScrollElement: () => scrollElement,
+    getScrollElement: () => (scrollMode === "parent" ? parentScrollElement : selfScrollRef.current),
     estimateSize: (index) => estimateSize?.(items[index] as T, index) ?? 160,
     getItemKey: (index) => getItemKey?.(items[index] as T, index) ?? index,
     overscan: resolvedOverscan,
@@ -210,7 +222,7 @@ export function VirtualList<T>({
 
   return (
     <div ref={setRootRef} className="flex min-h-0 flex-1 flex-col">
-      <div ref={setSelfScrollElement} className={cn("min-h-0 flex-1 overflow-y-auto", className)}>
+      <div ref={setSelfScroll} className={cn("min-h-0 flex-1 overflow-y-auto", className)}>
         {virtualizedContent}
       </div>
     </div>

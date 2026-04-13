@@ -85,6 +85,8 @@ const FIRST_PARTY_PATHS = [
   "/api/salesforce-feed",
   "/api/commercieel-cv",
   "/api/zoekfilters",
+  "/api/scrape/starten",
+  "/api/scraper-configuraties",
 ];
 
 const PUBLIC_GET_PATHS = ["/api/vacatures/zoeken", "/api/opdrachten/zoeken"];
@@ -127,6 +129,15 @@ function isFirstPartyBrowserRoute(request: NextRequest): boolean {
   }
 
   if (origin === request.nextUrl.origin) {
+    return true;
+  }
+
+  // Fallback: compare against the Host request header. In Next.js 16 dev mode,
+  // request.nextUrl.origin may normalize to "localhost" even when the app is
+  // accessed via a LAN IP. The Host header always reflects the address the
+  // request actually arrived on, so it matches the browser's Origin header.
+  const host = request.headers.get("host");
+  if (host && origin === `${request.nextUrl.protocol}//${host}`) {
     return true;
   }
 
