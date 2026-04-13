@@ -232,8 +232,8 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 
 ### Gotchas
 
-- `pnpm lint` reports pre-existing formatting and lint errors (23 errors as of initial setup). These are not blocking — they are in the existing codebase.
-- 4 test failures are pre-existing: 3 tests check for literal `"gemini-"` string in source but the code uses a `geminiFlash` alias from `src/lib/ai-models.ts`; 1 structural test flags an English `candidates` API route segment.
+- `pnpm lint` currently passes clean (0 errors as of 2026-04-13). Earlier versions had pre-existing formatting errors.
+- 1 test failure is pre-existing: `vaardigheden-page.test.ts` checks for `revalidate = 300` in source but the page does not export that constant.
 - The Justfile uses `zsh` as its shell — use `pnpm` commands directly instead if `zsh` is not installed.
 - `bv` (Bead Viewer) without flags launches an interactive TUI that will block the session. Always use `bv --robot-*` flags.
 - Sidebar and canonical route for talent pool: `/kandidaten`; implementation lives in `app/kandidaten` (app/professionals was removed).
