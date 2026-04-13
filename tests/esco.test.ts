@@ -33,11 +33,11 @@ vi.mock("../src/db", async (importOriginal) => ({
 }));
 
 import {
-  getEscoCatalogStatus,
-  isEscoCatalogAvailable,
+  getSkillsCatalogStatusCached,
+  isSkillsCatalogAvailable,
   mapSkillInput,
-  resetEscoCatalogStatusCache,
-} from "../src/services/esco.js";
+  resetSkillsCatalogStatusCache,
+} from "../src/services/skills.js";
 
 const baseInput = {
   rawSkill: "React",
@@ -49,12 +49,12 @@ const baseInput = {
 describe("skills compatibility facade", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    resetEscoCatalogStatusCache();
+    resetSkillsCatalogStatusCache();
   });
 
   afterEach(() => {
     mockLimit.mockReset();
-    resetEscoCatalogStatusCache();
+    resetSkillsCatalogStatusCache();
   });
 
   it("returns none strategy for empty skill input", async () => {
@@ -96,7 +96,7 @@ describe("skills compatibility facade", () => {
       .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 0 }]) })
       .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 0 }]) });
 
-    const status = await getEscoCatalogStatus({ refresh: true });
+    const status = await getSkillsCatalogStatusCached({ refresh: true });
 
     expect(status).toMatchObject({
       available: false,
@@ -107,7 +107,7 @@ describe("skills compatibility facade", () => {
       jobSkillCount: 0,
       candidateSkillCount: 0,
     });
-    expect(await isEscoCatalogAvailable()).toBe(false);
+    expect(await isSkillsCatalogAvailable()).toBe(false);
   });
 
   it("reports the catalog as available when canonical skills exist", async () => {
@@ -116,7 +116,7 @@ describe("skills compatibility facade", () => {
       .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 7 }]) })
       .mockReturnValueOnce({ from: vi.fn().mockResolvedValue([{ count: 3 }]) });
 
-    const status = await getEscoCatalogStatus({ refresh: true });
+    const status = await getSkillsCatalogStatusCached({ refresh: true });
 
     expect(status).toMatchObject({
       available: true,

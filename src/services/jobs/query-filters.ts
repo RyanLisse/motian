@@ -14,7 +14,7 @@ export type SharedJobFilterOptions = {
   platforms?: string[];
   company?: string;
   endClient?: string;
-  escoUri?: string;
+  escoUri?: string; // deprecated: use skillSlug
   category?: string;
   categories?: string[];
   status?: JobStatus;

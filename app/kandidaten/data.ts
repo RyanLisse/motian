@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { db, isNull, sql } from "@/src/db";
 import { candidates } from "@/src/db/schema";
-import { getEscoCatalogStatus, listEscoSkillsForFilter } from "@/src/services/esco";
+import { getSkillsCatalogStatusCached, listSkillsForFilterOptions } from "@/src/services/esco";
 
 // ---------------------------------------------------------------------------
 // Global candidate stats — independent of search params
@@ -38,10 +38,10 @@ export const getKandidatenStats = cache(getCachedKandidatenStats);
 // Skills catalog status + skills list — rarely changes
 // ---------------------------------------------------------------------------
 
-async function getEscoFilterDataUncached() {
+async function getSkillsFilterDataUncached() {
   const [catalogStatus, skillOptions] = await Promise.all([
-    getEscoCatalogStatus(),
-    listEscoSkillsForFilter(),
+    getSkillsCatalogStatusCached(),
+    listSkillsForFilterOptions(),
   ]);
 
   let escoCatalogMessage = "Skills-filter is tijdelijk niet beschikbaar.";
@@ -56,10 +56,10 @@ async function getEscoFilterDataUncached() {
   };
 }
 
-const getCachedEscoFilterData = unstable_cache(
-  getEscoFilterDataUncached,
-  ["kandidaten-esco-filter", "v1"],
+const getCachedSkillsFilterData = unstable_cache(
+  getSkillsFilterDataUncached,
+  ["kandidaten-skills-filter", "v1"],
   { revalidate: 300 },
 );
 
-export const getEscoFilterData = cache(getCachedEscoFilterData);
+export const getSkillsFilterData = cache(getCachedSkillsFilterData);

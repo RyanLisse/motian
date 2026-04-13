@@ -2,7 +2,7 @@
  * Standardized Cache-Control headers for API routes.
  *
  * Policies:
- *  - static:     Rarely-changing data (health, config, catalogs, ESCO data).
+ *  - static:     Rarely-changing data (health, config, catalogs, skills-catalogi).
  *                Cached 5 min at CDN, stale for 10 min while revalidating.
  *  - revalidate: Semi-static lists (vacancies, candidates, dashboard data).
  *                Cached 60s at CDN, stale for 2 min while revalidating.

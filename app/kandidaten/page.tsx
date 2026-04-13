@@ -9,7 +9,7 @@ import { Pagination } from "@/components/shared/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parsePagination } from "@/src/lib/pagination";
 import { countCandidates, listCandidates, searchCandidates } from "@/src/services/candidates";
-import { getEscoFilterData, getKandidatenStats } from "./data";
+import { getKandidatenStats, getSkillsFilterData } from "./data";
 
 export const revalidate = 120;
 
@@ -56,19 +56,19 @@ async function KandidatenContent({ searchParams }: Props) {
   const params = await searchParams;
   const query = params.q ?? "";
   const availability = params.beschikbaarheid ?? "";
-  const escoUri = params.vaardigheid ?? "";
+  const skillSlug = params.vaardigheid ?? "";
 
-  let escoData = {
-    skillOptions: [] as { uri: string; labelNl: string | null; labelEn: string }[],
+  let skillsData = {
+    skillOptions: [] as { slug: string; name: string }[],
     escoCatalogAvailable: false,
-    escoCatalogMessage: "ESCO-filter is tijdelijk niet beschikbaar.",
+    escoCatalogMessage: "Vaardigheden-filter is tijdelijk niet beschikbaar.",
   };
   try {
-    escoData = await getEscoFilterData();
+    skillsData = await getSkillsFilterData();
   } catch (err) {
-    console.error("[Kandidaten] getEscoFilterData failed:", err);
+    console.error("[Kandidaten] getSkillsFilterData failed:", err);
   }
-  const { skillOptions, escoCatalogAvailable, escoCatalogMessage } = escoData;
+  const { skillOptions, escoCatalogAvailable, escoCatalogMessage } = skillsData;
 
   const urlParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -82,11 +82,11 @@ async function KandidatenContent({ searchParams }: Props) {
   });
 
   // Fetch candidates, cached stats, and total count in parallel
-  const useSearch = Boolean(query || availability || (escoUri && escoCatalogAvailable));
+  const useSearch = Boolean(query || availability || (skillSlug && escoCatalogAvailable));
   const searchOptions = {
     query: query || undefined,
     availability: availability || undefined,
-    escoUri: escoCatalogAvailable ? escoUri || undefined : undefined,
+    escoUri: escoCatalogAvailable ? skillSlug || undefined : undefined,
     limit,
     offset,
   };
@@ -154,19 +154,19 @@ async function KandidatenContent({ searchParams }: Props) {
           </select>
           <select
             name="vaardigheid"
-            defaultValue={escoUri}
+            defaultValue={skillSlug}
             className="h-9 px-3 min-w-0 bg-card border border-border rounded-lg text-sm text-muted-foreground focus:outline-none focus:border-primary/40"
-            title="Filter op canonieke vaardigheid (ESCO)"
+            title="Filter op vaardigheid"
             disabled={!escoCatalogAvailable}
           >
             <option value="">
               {escoCatalogAvailable
                 ? "Alle vaardigheden"
-                : "ESCO-filter tijdelijk niet beschikbaar"}
+                : "Vaardigheden-filter tijdelijk niet beschikbaar"}
             </option>
             {skillOptions.map((s) => (
-              <option key={s.uri} value={s.uri}>
-                {s.labelNl ?? s.labelEn}
+              <option key={s.slug} value={s.slug}>
+                {s.name}
               </option>
             ))}
           </select>

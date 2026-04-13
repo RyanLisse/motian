@@ -2,19 +2,18 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import {
   getCandidateSkills,
-  getEscoCatalogStatus,
-  getEscoMappingStats,
   getJobSkills,
-  listEscoSkillsForFilter,
+  getSkillsCatalogStatusCached,
+  listSkillsForFilterOptions,
 } from "../../services/esco";
 
 // ========== Schemas ==========
 
-const zoekEscoSkillsSchema = z.object({
-  query: z.string().optional().describe("Zoekterm om ESCO-skills op naam te filteren"),
+const zoekSkillsSchema = z.object({
+  query: z.string().optional().describe("Zoekterm om vaardigheden op naam te filteren"),
 });
 
-const escoStatusSchema = z.object({});
+const skillsStatusSchema = z.object({});
 
 const kandidaatSkillsSchema = z.object({
   kandidaatId: z.string().uuid().describe("UUID van de kandidaat"),
@@ -28,25 +27,24 @@ const vacatureSkillsSchema = z.object({
 
 export const tools = [
   {
-    name: "zoek_esco_skills",
+    name: "zoek_skills",
     description:
-      "Zoek ESCO-skills op naam. Retourneert een lijst van ESCO-skills die matchen met de zoekterm.",
-    inputSchema: zodToJsonSchema(zoekEscoSkillsSchema, { $refStrategy: "none" }),
+      "Zoek vaardigheden op naam. Retourneert een lijst van vaardigheden die matchen met de zoekterm.",
+    inputSchema: zodToJsonSchema(zoekSkillsSchema, { $refStrategy: "none" }),
   },
   {
-    name: "esco_status",
-    description:
-      "Controleer de ESCO-catalogusstatus en mapping-statistieken. Toont of de catalogus geladen is en hoeveel skills gemapt zijn.",
-    inputSchema: zodToJsonSchema(escoStatusSchema, { $refStrategy: "none" }),
+    name: "skills_status",
+    description: "Controleer de vaardigheden-catalogusstatus. Toont of de catalogus geladen is.",
+    inputSchema: zodToJsonSchema(skillsStatusSchema, { $refStrategy: "none" }),
   },
   {
     name: "kandidaat_skills",
-    description: "Haal de canonieke ESCO-skills op voor een kandidaat op basis van UUID.",
+    description: "Haal de canonieke vaardigheden op voor een kandidaat op basis van UUID.",
     inputSchema: zodToJsonSchema(kandidaatSkillsSchema, { $refStrategy: "none" }),
   },
   {
     name: "vacature_skills",
-    description: "Haal de canonieke ESCO-skills op voor een vacature op basis van UUID.",
+    description: "Haal de canonieke vaardigheden op voor een vacature op basis van UUID.",
     inputSchema: zodToJsonSchema(vacatureSkillsSchema, { $refStrategy: "none" }),
   },
 ];
@@ -54,14 +52,14 @@ export const tools = [
 // ========== Handlers ==========
 
 export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
-  zoek_esco_skills: async (raw) => {
-    const { query } = zoekEscoSkillsSchema.parse(raw);
-    return listEscoSkillsForFilter(query);
+  zoek_skills: async (raw) => {
+    const { query } = zoekSkillsSchema.parse(raw);
+    return listSkillsForFilterOptions(query);
   },
 
-  esco_status: async () => {
-    const [catalogus, stats] = await Promise.all([getEscoCatalogStatus(), getEscoMappingStats()]);
-    return { catalogus, stats };
+  skills_status: async () => {
+    const catalogus = await getSkillsCatalogStatusCached();
+    return { catalogus };
   },
 
   kandidaat_skills: async (raw) => {

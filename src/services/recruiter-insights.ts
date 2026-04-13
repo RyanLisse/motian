@@ -584,14 +584,14 @@ export function buildCandidateIntakeScorecard(input: {
           };
 
   const canonicalCount = input.candidateCanonicalSkills?.length ?? 0;
-  const escoCoverageRatio = hardSkills.length > 0 ? canonicalCount / hardSkills.length : 0;
+  const canonicalCoverageRatio = hardSkills.length > 0 ? canonicalCount / hardSkills.length : 0;
   const escoCoverage: ScorecardChip =
-    canonicalCount >= 3 && escoCoverageRatio >= 0.5
-      ? { label: "ESCO-dekking", value: `${canonicalCount} canonieke skills`, tone: "goed" }
+    canonicalCount >= 3 && canonicalCoverageRatio >= 0.5
+      ? { label: "Skill-dekking", value: `${canonicalCount} canonieke skills`, tone: "goed" }
       : canonicalCount > 0
-        ? { label: "ESCO-dekking", value: `${canonicalCount} canonieke skills`, tone: "let-op" }
+        ? { label: "Skill-dekking", value: `${canonicalCount} canonieke skills`, tone: "let-op" }
         : {
-            label: "ESCO-dekking",
+            label: "Skill-dekking",
             value: "Nog geen canonieke skills",
             tone: "actie",
           };
@@ -620,8 +620,7 @@ export function buildCandidateIntakeScorecard(input: {
     nextAction = {
       key: "auto-match",
       label: "Auto-match klaar",
-      reason:
-        "Het profiel heeft genoeg skill- en ESCO-signaal om matching direct te laten renderen.",
+      reason: "Het profiel heeft genoeg skill-signaal om matching direct te laten renderen.",
     };
   } else {
     nextAction = {

@@ -8,18 +8,18 @@ function readFile(...segments: string[]): string {
   return fs.readFileSync(path.join(ROOT, ...segments), "utf-8");
 }
 
-describe("ESCO ingestion wiring", () => {
+describe("Skills ingestion wiring", () => {
   it("syncs canonical candidate skills on candidate service writes", () => {
     const source = readFile("src", "services", "candidates.ts");
 
-    expect(source).toContain("syncCandidateEscoSkills");
-    expect(source).toContain("await syncCandidateEscoSkills({");
+    expect(source).toContain("syncCandidateSkills");
+    expect(source).toContain("await syncCandidateSkills({");
   });
 
   it("syncs canonical job skills after normalization upserts", () => {
     const source = readFile("src", "services", "normalize.ts");
 
-    expect(source).toContain("syncJobEscoSkills");
-    expect(source).toContain("await syncJobEscoSkills({");
+    expect(source).toContain("syncJobSkills");
+    expect(source).toContain("await syncJobSkills({");
   });
 });

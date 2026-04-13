@@ -1,7 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
+import { getSafeSentryDsn } from "@/src/lib/sentry-config";
 import { scrubSentryEvent, SENTRY_IGNORE_ERRORS } from "@/src/lib/sentry-scrub";
 
-const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN;
+const SENTRY_DSN = getSafeSentryDsn(process.env.NEXT_PUBLIC_SENTRY_DSN);
 
 if (SENTRY_DSN) {
   Sentry.init({

@@ -9,7 +9,7 @@ import {
 } from "@/src/services/candidate-effects";
 import type { Candidate } from "@/src/services/candidates";
 import { getCandidateById, listCandidates, searchCandidates } from "@/src/services/candidates";
-import { withCandidateCanonicalSkills, withCandidatesCanonicalSkills } from "@/src/services/esco";
+import { withCandidateSkills, withCandidatesSkills } from "@/src/services/esco";
 import { getJobById } from "@/src/services/jobs";
 import { getMatchesForCandidate } from "@/src/services/matches";
 
@@ -30,7 +30,7 @@ export const zoekKandidaten = tool({
     } else {
       results = await listCandidates(limit);
     }
-    const withSkills = await withCandidatesCanonicalSkills(results);
+    const withSkills = await withCandidatesSkills(results);
     const kandidaten = withSkills.map((c) => normalizeCandidateForDisplay(c));
     return { total: kandidaten.length, kandidaten };
   },
@@ -54,7 +54,7 @@ export const getKandidaatDetail = tool({
   execute: async ({ id }) => {
     const candidate = await getCandidateById(id);
     if (!candidate) return { error: "Kandidaat niet gevonden" };
-    const withSkills = await withCandidateCanonicalSkills(candidate);
+    const withSkills = await withCandidateSkills(candidate);
     return normalizeCandidateForDisplay(withSkills);
   },
 });
@@ -81,7 +81,7 @@ export const maakKandidaatAan = tool({
   }),
   execute: async (data) => {
     const candidate = await createCandidateWithEffects(data);
-    return withCandidateCanonicalSkills(candidate);
+    return withCandidateSkills(candidate);
   },
 });
 
@@ -110,7 +110,7 @@ export const updateKandidaat = tool({
   execute: async ({ id, ...data }) => {
     const candidate = await updateCandidateWithEffects(id, data);
     if (!candidate) return { error: "Kandidaat niet gevonden" };
-    return withCandidateCanonicalSkills(candidate);
+    return withCandidateSkills(candidate);
   },
 });
 
@@ -157,7 +157,7 @@ export const cvIntakeResultaat = tool({
       const candidate = await getCandidateById(candidateId);
       if (!candidate) return { error: "Kandidaat niet gevonden" };
 
-      const enriched = await withCandidateCanonicalSkills(candidate);
+      const enriched = await withCandidateSkills(candidate);
       const skills = Array.isArray(enriched.skills) ? enriched.skills : [];
       const topSkills = skills.slice(0, 6);
 

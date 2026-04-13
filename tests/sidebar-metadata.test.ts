@@ -36,20 +36,33 @@ vi.mock("@/src/db/schema", () => ({
   },
 }));
 
-vi.mock("@/src/services/esco", () => ({
-  getEscoCatalogStatus: vi.fn().mockResolvedValue({
+vi.mock("@/src/services/skills", () => ({
+  getSkillsCatalogStatus: vi.fn().mockResolvedValue({
     available: true,
     issue: null,
     skillCount: 100,
-    aliasCount: 50,
-    mappingCount: 25,
+    aliasCount: 0,
+    mappingCount: 0,
     jobSkillCount: 10,
     candidateSkillCount: 5,
     checkedAt: new Date().toISOString(),
   }),
-  listEscoSkillsForFilter: vi
+  getSkillsCatalogStatusCached: vi.fn().mockResolvedValue({
+    available: true,
+    issue: null,
+    skillCount: 100,
+    aliasCount: 0,
+    mappingCount: 0,
+    jobSkillCount: 10,
+    candidateSkillCount: 5,
+    checkedAt: new Date().toISOString(),
+  }),
+  listSkillsForFilter: vi
     .fn()
-    .mockResolvedValue([{ uri: "typescript", labelNl: "TypeScript", labelEn: "TypeScript" }]),
+    .mockResolvedValue([{ id: "skill-1", slug: "typescript", name: "TypeScript" }]),
+  listSkillsForFilterOptions: vi
+    .fn()
+    .mockResolvedValue([{ slug: "typescript", name: "TypeScript" }]),
 }));
 
 vi.mock("@/src/services/jobs/filters", () => ({

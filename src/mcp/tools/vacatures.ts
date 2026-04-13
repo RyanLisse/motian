@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { withJobCanonicalSkills, withJobsCanonicalSkills } from "../../services/esco";
+import { withJobSkills, withJobsSkills } from "../../services/esco";
 import {
   autoMatchJobWithEffects,
   createJobWithEffects,
@@ -152,7 +152,7 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       limit: opts.limit,
       offset: opts.offset,
     });
-    const vacatures = await withJobsCanonicalSkills(result.data);
+    const vacatures = await withJobsSkills(result.data);
     if (opts.compact) {
       return { total: result.total, vacatures: vacatures.map(({ description, ...v }) => v) };
     }
@@ -162,21 +162,21 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   maak_vacature_aan: async (raw) => {
     const data = maakVacatureAanSchema.parse(raw);
     const result = await createJobWithEffects(data);
-    return withJobCanonicalSkills(result);
+    return withJobSkills(result);
   },
 
   vacature_detail: async (raw) => {
     const { id } = vacatureDetailSchema.parse(raw);
     const result = await getJobById(id);
     if (!result) return { error: "Vacature niet gevonden" };
-    return withJobCanonicalSkills(result);
+    return withJobSkills(result);
   },
 
   update_vacature: async (raw) => {
     const { id, ...data } = updateVacatureSchema.parse(raw);
     const result = await updateJobWithEffects(id, data);
     if (!result) return { error: "Vacature niet gevonden" };
-    return withJobCanonicalSkills(result);
+    return withJobSkills(result);
   },
 
   verwijder_vacature: async (raw) => {

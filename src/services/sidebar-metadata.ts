@@ -2,7 +2,7 @@ import { cache } from "react";
 import { db, eq, sql } from "@/src/db";
 import { jobs, sidebarMetadata } from "@/src/db/schema";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
-import { getEscoCatalogStatus, listEscoSkillsForFilter } from "./esco";
+import { getSkillsCatalogStatusCached, listSkillsForFilterOptions } from "./esco";
 
 const DEFAULT_SKILL_EMPTY_TEXT = "Geen skills gevonden.";
 
@@ -65,8 +65,8 @@ export const refreshSidebarMetadata = cache(
     const activeJobsCondition = getJobStatusCondition("open");
     const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
-    const escoCatalogStatusPromise = getEscoCatalogStatus().catch((error) => {
-      console.error("[SidebarMetadata] getEscoCatalogStatus failed:", error);
+    const skillsCatalogStatusPromise = getSkillsCatalogStatusCached().catch((error) => {
+      console.error("[SidebarMetadata] getSkillsCatalogStatusCached failed:", error);
       return {
         available: false,
         issue: "missing_catalog" as const,
@@ -79,12 +79,12 @@ export const refreshSidebarMetadata = cache(
       };
     });
 
-    const escoSkillRowsPromise = listEscoSkillsForFilter().catch((error) => {
-      console.error("[SidebarMetadata] listEscoSkillsForFilter failed:", error);
+    const skillsRowsPromise = listSkillsForFilterOptions().catch((error) => {
+      console.error("[SidebarMetadata] listSkillsForFilterOptions failed:", error);
       return [];
     });
 
-    const [countResult, metaResult, categoryResult, escoCatalogStatus, escoSkillRows] =
+    const [countResult, metaResult, categoryResult, skillsCatalogStatus, skillsRows] =
       await Promise.all([
         db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(activeJobsCondition),
         db
@@ -100,8 +100,8 @@ export const refreshSidebarMetadata = cache(
         WHERE ${activeJobsCondition} AND je.value IS NOT NULL
         ORDER BY category ASC
       `),
-        escoCatalogStatusPromise,
-        escoSkillRowsPromise,
+        skillsCatalogStatusPromise,
+        skillsRowsPromise,
       ]);
 
     const totalCount = countResult[0]?.count ?? 0;
@@ -129,12 +129,12 @@ export const refreshSidebarMetadata = cache(
       .map((row) => row.category?.trim())
       .filter((value): value is string => Boolean(value && value.length > 0));
 
-    const skillOptions = escoSkillRows.map((skill) => ({
-      value: skill.uri,
-      label: skill.labelNl ?? skill.labelEn,
+    const skillOptions = skillsRows.map((skill) => ({
+      value: skill.slug,
+      label: skill.name,
     }));
 
-    const skillEmptyText = resolveSkillEmptyText(escoCatalogStatus.issue);
+    const skillEmptyText = resolveSkillEmptyText(skillsCatalogStatus.issue);
     const computedAt = new Date();
 
     await db

@@ -1,9 +1,10 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import * as Sentry from "@sentry/node";
+import { getSafeSentryDsn } from "@/src/lib/sentry-config";
 import { allHandlers, allTools } from "./tools/index";
 
-const SENTRY_DSN = process.env.SENTRY_DSN;
+const SENTRY_DSN = getSafeSentryDsn(process.env.SENTRY_DSN);
 
 /**
  * Registers ListTools and CallTool request handlers on a raw MCP Server.

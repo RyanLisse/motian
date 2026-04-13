@@ -41,7 +41,7 @@ vi.mock("../src/services/esco", () => ({
   getCandidateSkillsForCandidateIds: vi.fn(),
   getJobSkills: vi.fn(),
   getJobSkillsForJobIds: vi.fn(),
-  isEscoScoringEnabled: vi.fn(() => false),
+  isSkillScoringEnabled: vi.fn(() => false),
 }));
 vi.mock("../src/services/jobs", () => ({
   getJobById: mockGetJobById,

@@ -244,7 +244,7 @@ function KandidaatDetailSkeleton() {
 async function KandidaatDetailContent({ params }: Props) {
   const { id } = await params;
 
-  const [candidateRows, applicationRows, matchRows] = await Promise.all([
+  const [candidateRows, applicationRows, matchRows, candidateCanonicalSkills] = await Promise.all([
     db.select(candidateReadSelection).from(candidates).where(eq(candidates.id, id)).limit(1),
     db
       .select({
@@ -287,6 +287,7 @@ async function KandidaatDetailContent({ params }: Props) {
       .leftJoin(jobs, eq(jobMatches.jobId, jobs.id))
       .where(eq(jobMatches.candidateId, id))
       .orderBy(desc(jobMatches.matchScore)),
+    getCandidateSkills(id).catch(() => []),
   ]);
 
   const candidate = candidateRows[0];
@@ -352,12 +353,10 @@ async function KandidaatDetailContent({ params }: Props) {
   const remainingMatchJobIds = remainingMatchRows
     .map((row) => row.job?.id)
     .filter((jobId): jobId is string => Boolean(jobId));
-  const [candidateCanonicalSkills, jobCanonicalSkillsMap] = await Promise.all([
-    getCandidateSkills(candidate.id).catch(() => []),
+  const jobCanonicalSkillsMap =
     remainingMatchJobIds.length > 0
-      ? getJobSkillsForJobIds(remainingMatchJobIds).catch(() => new Map())
-      : Promise.resolve(new Map()),
-  ]);
+      ? await getJobSkillsForJobIds(remainingMatchJobIds).catch(() => new Map())
+      : new Map();
   const candidateIntakeScorecard = buildCandidateIntakeScorecard({
     candidate,
     candidateCanonicalSkills,

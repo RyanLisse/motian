@@ -1,5 +1,6 @@
-import { extractCandidateSkillSeeds, extractJobSkillSeeds, normalizeAlias } from "@motian/esco";
 import { candidateSkillsV2, db, eq, inArray, jobSkillsV2, or, skills, sql } from "../db";
+import { extractCandidateSkillSeeds, extractJobSkillSeeds } from "./esco-backfill";
+import { normalizeAlias } from "./esco-import";
 
 export type CandidateSkillRecord = {
   skillId: string;
@@ -30,6 +31,50 @@ export type SkillsCatalogStatus = {
   candidateSkillCount: number;
   checkedAt: string;
 };
+
+export type MapSkillInput = {
+  rawSkill: string;
+  language?: string;
+  contextType: "candidate" | "job" | "tool";
+  contextId: string;
+  critical: boolean;
+  source?: string;
+};
+
+export type MapSkillResult = {
+  escoUri: string | null;
+  confidence: number;
+  strategy: "exact" | "none";
+  reviewRequired: boolean;
+};
+
+export function resetSkillsCatalogStatusCache(): void {
+  // no-op: no in-memory cache in the simplified skills service
+}
+
+export async function getSkillsCatalogStatusCached(): Promise<SkillsCatalogStatus> {
+  return getSkillsCatalogStatus();
+}
+
+export async function isSkillsCatalogAvailable(): Promise<boolean> {
+  const status = await getSkillsCatalogStatusCached();
+  return status.available;
+}
+
+export async function mapSkillInput(input: MapSkillInput): Promise<MapSkillResult> {
+  const slug = toSkillSlug(input.rawSkill);
+  if (!slug) {
+    return { escoUri: null, confidence: 0, strategy: "none", reviewRequired: false };
+  }
+
+  const skill = await findOrCreateSkill(input.rawSkill);
+  return {
+    escoUri: skill.slug,
+    confidence: 1,
+    strategy: "exact",
+    reviewRequired: false,
+  };
+}
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
-import { withJobCanonicalSkills } from "@/src/services/esco";
+import { withJobSkills } from "@/src/services/esco";
 import { deleteJob, getJobById, updateJob } from "@/src/services/jobs";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export const GET = withApiHandler(
       return Response.json({ error: "Vacature niet gevonden" }, { status: 404 });
     }
     return Response.json(
-      { data: await withJobCanonicalSkills(job) },
+      { data: await withJobSkills(job) },
       {
         headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
       },
@@ -49,7 +49,7 @@ export const PATCH = withApiHandler(
       return Response.json({ error: "Vacature niet gevonden" }, { status: 404 });
     }
     return Response.json(
-      { data: await withJobCanonicalSkills(job) },
+      { data: await withJobSkills(job) },
       {
         headers: { "Cache-Control": "private, no-cache, no-store" },
       },

@@ -110,6 +110,7 @@ describe("Opdrachten shared filter parsing", () => {
       platform: "opdrachtoverheid",
       endClient: "Gemeente Utrecht",
       escoUri: "skill:java",
+      skillUri: "skill:java",
       status: "closed",
       province: "Utrecht",
       categories: ["ICT", "Data"],
@@ -128,16 +129,16 @@ describe("Opdrachten shared filter parsing", () => {
     });
   });
 
-  it("accepts both recruiter and programmatic ESCO skill query aliases", () => {
+  it("accepts both recruiter and programmatic skill query aliases", () => {
     const recruiter = parseOpdrachtenFilters(new URLSearchParams("vaardigheid=skill:react"));
-    const api = parseOpdrachtenFilters(new URLSearchParams("escoUri=skill:java"));
+    const api = parseOpdrachtenFilters(new URLSearchParams("skillUri=skill:java"));
 
-    expect(recruiter.escoUri).toBe("skill:react");
-    expect(api.escoUri).toBe("skill:java");
+    expect(recruiter.skillUri).toBe("skill:react");
+    expect(api.skillUri).toBe("skill:java");
     expect(
       validateOpdrachtenQueryParams(new URLSearchParams("vaardigheid=skill:react")).success,
     ).toBe(true);
-    expect(validateOpdrachtenQueryParams(new URLSearchParams("escoUri=skill:java")).success).toBe(
+    expect(validateOpdrachtenQueryParams(new URLSearchParams("skillUri=skill:java")).success).toBe(
       true,
     );
   });
@@ -295,9 +296,9 @@ describe("Opdrachten UI/API contracts", () => {
     expect(source).toContain('searchPlaceholder="Zoek eindopdrachtgever..."');
     expect(source).toContain('clearLabel="Alle eindopdrachtgevers"');
     expect(source).toContain('triggerId="opdrachten-eindopdrachtgever"');
-    expect(source).toContain('searchPlaceholder="Zoek ESCO vaardigheid..."');
+    expect(source).toContain('searchPlaceholder="Zoek vaardigheid..."');
     expect(source).toContain('clearLabel="Alle vaardigheden"');
-    expect(source).toContain('triggerId="opdrachten-esco-vaardigheid"');
+    expect(source).toContain('triggerId="opdrachten-vaardigheid"');
     expect(source).toContain('placeholder="Sortering"');
     expect(source).toContain("CompactMultiSelectFilter");
     expect(source).toContain("FilterChecklist");
@@ -391,8 +392,8 @@ describe("Opdrachten UI/API contracts", () => {
     expect(sidebarMetadataService).toContain('getJobStatusCondition("open")');
     expect(sidebarMetadataService).toContain(`coalesce(\${jobs.endClient}, \${jobs.company})`);
     expect(sidebarMetadataService).toContain("jsonb_array_elements_text");
-    expect(sidebarMetadataService).toContain("listEscoSkillsForFilter");
-    expect(sidebarMetadataService).toContain("getEscoCatalogStatus");
+    expect(sidebarMetadataService).toContain("listSkillsForFilter");
+    expect(sidebarMetadataService).toContain("getSkillsCatalogStatus");
 
     expect(pageQuery).toContain("loadJobPageRowsByIds");
     expect(deduplication).toContain("pipelineCount");

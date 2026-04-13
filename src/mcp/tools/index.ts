@@ -10,7 +10,7 @@ import {
 import { handlers as channelOfferHandlers, tools as channelOfferTools } from "./channel-offer";
 import { handlers as chatSessionsHandlers, tools as chatSessionsTools } from "./chat-sessions";
 import { handlers as cvOpsHandlers, tools as cvOpsTools } from "./cv-operations";
-import { handlers as escoSkillsHandlers, tools as escoSkillsTools } from "./esco-skills";
+import { handlers as skillsHandlers, tools as skillsTools } from "./esco-skills";
 import { handlers as gdprOpsHandlers, tools as gdprOpsTools } from "./gdpr-ops";
 import { handlers as instellingenHandlers, tools as instellingenTools } from "./instellingen";
 import { handlers as kandidatenHandlers, tools as kandidatenTools } from "./kandidaten";
@@ -42,7 +42,7 @@ export const allTools = [
   ...screeningCallsTools,
   ...instellingenTools,
   ...workspaceTools,
-  ...escoSkillsTools,
+  ...skillsTools,
   ...batchOperationsTools,
   ...cvOpsTools,
   ...channelOfferTools,
@@ -62,7 +62,7 @@ export const allHandlers: Record<string, (args: unknown) => Promise<unknown>> = 
   ...screeningCallsHandlers,
   ...instellingenHandlers,
   ...workspaceHandlers,
-  ...escoSkillsHandlers,
+  ...skillsHandlers,
   ...batchOperationsHandlers,
   ...cvOpsHandlers,
   ...channelOfferHandlers,

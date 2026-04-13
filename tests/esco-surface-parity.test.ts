@@ -15,10 +15,10 @@ describe("ESCO surface parity", () => {
     const vacaturesListRoute = readFile("app", "api", "vacatures", "route.ts");
     const vacaturesDetailRoute = readFile("app", "api", "vacatures", "[id]", "route.ts");
 
-    expect(kandidaatListRoute).toContain("withCandidatesCanonicalSkills");
-    expect(kandidaatDetailRoute).toContain("withCandidateCanonicalSkills");
-    expect(vacaturesListRoute).toContain("withJobsCanonicalSkills");
-    expect(vacaturesDetailRoute).toContain("withJobCanonicalSkills");
+    expect(kandidaatListRoute).toContain("withCandidatesSkills");
+    expect(kandidaatDetailRoute).toContain("withCandidateSkills");
+    expect(vacaturesListRoute).toContain("withJobsSkills");
+    expect(vacaturesDetailRoute).toContain("withJobSkills");
   });
 
   it("includes canonicalSkills in AI, MCP, and voice candidate/job outputs", () => {
@@ -29,12 +29,12 @@ describe("ESCO surface parity", () => {
     const mcpVacatures = readFile("src", "mcp", "tools", "vacatures.ts");
     const voiceAgent = readFile("src", "voice-agent", "agent.ts");
 
-    expect(aiKandidaten).toContain("withCandidateCanonicalSkills");
-    expect(aiOpdrachten).toContain("withJobsCanonicalSkills");
-    expect(aiOpdrachtDetail).toContain("withJobCanonicalSkills");
-    expect(mcpKandidaten).toContain("withCandidateCanonicalSkills");
-    expect(mcpVacatures).toContain("withJobCanonicalSkills");
-    expect(voiceAgent).toContain("withCandidateCanonicalSkills");
-    expect(voiceAgent).toContain("withJobCanonicalSkills");
+    expect(aiKandidaten).toContain("withCandidateSkills");
+    expect(aiOpdrachten).toContain("withJobsSkills");
+    expect(aiOpdrachtDetail).toContain("withJobSkills");
+    expect(mcpKandidaten).toContain("withCandidateSkills");
+    expect(mcpVacatures).toContain("withJobSkills");
+    expect(voiceAgent).toContain("withCandidateSkills");
+    expect(voiceAgent).toContain("withJobSkills");
   });
 });

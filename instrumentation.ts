@@ -1,8 +1,9 @@
 import * as Sentry from "@sentry/nextjs";
 import { getPostHogServer } from "@/src/lib/posthog";
+import { getSafeSentryDsn } from "@/src/lib/sentry-config";
 import { scrubSentryEvent, SENTRY_IGNORE_ERRORS } from "@/src/lib/sentry-scrub";
 
-const SENTRY_DSN = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
+const SENTRY_DSN = getSafeSentryDsn(process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN);
 const SENTRY_RELEASE = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA;
 
 export function register() {

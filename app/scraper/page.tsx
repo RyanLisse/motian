@@ -38,6 +38,7 @@ import { formatDateTime } from "@/src/lib/helpers";
 import {
   getScraperDashboardData,
   type PlatformOperationalMetrics,
+  type ScraperDashboardData,
 } from "@/src/services/scraper-dashboard";
 import { listPlatformCatalog } from "@/src/services/scrapers";
 import { ScraperActions } from "./actions";
@@ -256,14 +257,92 @@ function DashboardSkeleton() {
 
 export const dynamic = "force-dynamic";
 
+const SCRAPER_PAGE_DATA_TIMEOUT_MS = 2_500;
+const SCRAPER_PAGE_FAILURE_TTL_MS = 30_000;
+
+const scraperPageFailureUntil = new Map<string, number>();
+
+function createScraperDashboardFallback(reason: string): ScraperDashboardData {
+  return {
+    generatedAt: new Date().toISOString(),
+    configs: [],
+    analytics: {
+      totalRuns: 0,
+      totalJobsFound: 0,
+      totalJobsNew: 0,
+      totalDuplicates: 0,
+      totalUniqueJobs: 0,
+      overallSuccessRate: 0,
+      avgDurationMs: 0,
+      byPlatform: [],
+    },
+    activeVacancies: 0,
+    recentRuns: [],
+    platforms: [],
+    activity: [],
+    overlap: { totalGroups: 0, groups: [] },
+    trigger: {
+      available: false,
+      checkedAt: new Date().toISOString(),
+      reason,
+      tasks: [],
+    },
+  };
+}
+
+async function withTimeoutFallback<T>(
+  load: () => Promise<T>,
+  fallback: T,
+  label: string,
+  timeoutMs: number = SCRAPER_PAGE_DATA_TIMEOUT_MS,
+): Promise<T> {
+  const failureUntil = scraperPageFailureUntil.get(label) ?? 0;
+  if (failureUntil > Date.now()) {
+    return fallback;
+  }
+
+  let timeoutId: NodeJS.Timeout | null = null;
+  const guardedPromise = load()
+    .then((result) => {
+      scraperPageFailureUntil.delete(label);
+      return result;
+    })
+    .catch((error) => {
+      scraperPageFailureUntil.set(label, Date.now() + SCRAPER_PAGE_FAILURE_TTL_MS);
+      console.error(`[scraper-page] ${label} mislukt, fallback wordt gebruikt`, error);
+      return fallback;
+    });
+
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => {
+      scraperPageFailureUntil.set(label, Date.now() + SCRAPER_PAGE_FAILURE_TTL_MS);
+      console.error(`[scraper-page] ${label} timeout na ${timeoutMs}ms, fallback wordt gebruikt`);
+      resolve(fallback);
+    }, timeoutMs);
+  });
+
+  const result = await Promise.race([guardedPromise, timeoutPromise]);
+  if (timeoutId) clearTimeout(timeoutId);
+  return result;
+}
+
 async function ScraperDashboardContent() {
   const [scraperDashboard, platformCatalog] = await Promise.all([
-    getScraperDashboardData({
-      activityLimit: 20,
-      overlapLimit: 8,
-      includeTrigger: true,
-    }),
-    listPlatformCatalog(),
+    withTimeoutFallback(
+      () =>
+        getScraperDashboardData({
+          activityLimit: 20,
+          overlapLimit: 8,
+          includeTrigger: true,
+        }),
+      createScraperDashboardFallback("Scraper dashboard data timeout"),
+      "getScraperDashboardData",
+    ),
+    withTimeoutFallback(
+      () => listPlatformCatalog(),
+      [] as Awaited<ReturnType<typeof listPlatformCatalog>>,
+      "listPlatformCatalog",
+    ),
   ]);
   const {
     analytics,

@@ -86,9 +86,9 @@ describe("Hybrid scoring — rule + vector blend", () => {
     expect(result.confidence).toBeLessThanOrEqual(100);
   });
 
-  it("uses esco-rule-v1 when canonical skills are provided without embeddings", () => {
+  it("uses skills-rule-v1 when canonical skills are provided without embeddings", () => {
     const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
-      candidateEscoSkills: [
+      candidateSkills: [
         {
           skillId: "react",
           slug: "react",
@@ -98,7 +98,7 @@ describe("Hybrid scoring — rule + vector blend", () => {
           critical: false,
         },
       ],
-      jobEscoSkills: [
+      jobSkills: [
         {
           skillId: "react",
           slug: "react",
@@ -113,13 +113,13 @@ describe("Hybrid scoring — rule + vector blend", () => {
       ],
     });
 
-    expect(result.model).toBe("esco-rule-v1");
+    expect(result.model).toBe("skills-rule-v1");
     expect(result.reasoning).toContain("vereiste skills");
   });
 
   it("falls back to legacy scoring when no canonical job skills are available", () => {
     const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
-      candidateEscoSkills: [
+      candidateSkills: [
         {
           skillId: "react",
           slug: "react",
@@ -129,7 +129,7 @@ describe("Hybrid scoring — rule + vector blend", () => {
           critical: false,
         },
       ],
-      jobEscoSkills: [],
+      jobSkills: [],
     });
 
     expect(result.model).toBe("rule-based-v1");
@@ -138,7 +138,7 @@ describe("Hybrid scoring — rule + vector blend", () => {
 
   it("keeps canonical skill scoring active even when confidence metadata is low", () => {
     const result = computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
-      candidateEscoSkills: [
+      candidateSkills: [
         {
           skillId: "react",
           slug: "react",
@@ -148,7 +148,7 @@ describe("Hybrid scoring — rule + vector blend", () => {
           critical: false,
         },
       ],
-      jobEscoSkills: [
+      jobSkills: [
         {
           skillId: "react",
           slug: "react",
@@ -163,7 +163,7 @@ describe("Hybrid scoring — rule + vector blend", () => {
       ],
     });
 
-    expect(result.model).toBe("esco-rule-v1");
+    expect(result.model).toBe("skills-rule-v1");
     expect(result.reasoning).toContain("vereiste skills");
   });
 
@@ -171,7 +171,7 @@ describe("Hybrid scoring — rule + vector blend", () => {
     const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
 
     computeMatchScore(job as unknown as Job, candidate as unknown as Candidate, {
-      candidateEscoSkills: [
+      candidateSkills: [
         {
           skillId: "react",
           slug: "react",
@@ -181,7 +181,7 @@ describe("Hybrid scoring — rule + vector blend", () => {
           critical: false,
         },
       ],
-      jobEscoSkills: [
+      jobSkills: [
         {
           skillId: "react",
           slug: "react",

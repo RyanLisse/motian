@@ -10,6 +10,32 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ACTIVITY_LIMIT = 20;
 const DEFAULT_OVERLAP_LIMIT = 8;
 
+const SCRAPER_DASHBOARD_CACHE_TTL_MS = 30_000;
+
+type ScraperDashboardCacheEntry = {
+  key: string;
+  expiresAt: number;
+  promise: Promise<ScraperDashboardData>;
+};
+
+let scraperDashboardCache: ScraperDashboardCacheEntry | null = null;
+
+function canUseScraperDashboardCache(database: TransactionDb): boolean {
+  return database === db && process.env.NODE_ENV !== "test";
+}
+
+function buildScraperDashboardCacheKey(opts: ScraperDashboardOptions): string {
+  return JSON.stringify({
+    activityLimit: opts.activityLimit ?? DEFAULT_ACTIVITY_LIMIT,
+    overlapLimit: opts.overlapLimit ?? DEFAULT_OVERLAP_LIMIT,
+    includeTrigger: opts.includeTrigger !== false,
+  });
+}
+
+export function resetScraperDashboardCache(): void {
+  scraperDashboardCache = null;
+}
+
 const TRIGGER_TASKS = [
   {
     taskIdentifier: "scrape-pipeline",
@@ -690,6 +716,21 @@ function emptyPlatformStats(platform: string): PlatformStats {
   };
 }
 
+async function readDashboardQueryOrFallback<T>(
+  label: string,
+  read: () => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    console.error(`[scraper-dashboard] ${label} laden mislukt, fallback wordt gebruikt`, {
+      error,
+    });
+    return fallback;
+  }
+}
+
 function emptyScrapeAnalytics(): ScrapeAnalytics {
   return {
     totalRuns: 0,
@@ -718,6 +759,33 @@ async function getAnalyticsOrFallback(database: TransactionDb): Promise<ScrapeAn
 }
 
 export async function getScraperDashboardData(
+  opts: ScraperDashboardOptions = {},
+  database: TransactionDb = db,
+): Promise<ScraperDashboardData> {
+  if (canUseScraperDashboardCache(database)) {
+    const key = buildScraperDashboardCacheKey(opts);
+    const nowMs = Date.now();
+    if (
+      scraperDashboardCache &&
+      scraperDashboardCache.key === key &&
+      scraperDashboardCache.expiresAt > nowMs
+    ) {
+      return scraperDashboardCache.promise;
+    }
+
+    const promise = getScraperDashboardDataUncached(opts, database);
+    scraperDashboardCache = {
+      key,
+      expiresAt: nowMs + SCRAPER_DASHBOARD_CACHE_TTL_MS,
+      promise,
+    };
+    return promise;
+  }
+
+  return getScraperDashboardDataUncached(opts, database);
+}
+
+async function getScraperDashboardDataUncached(
   opts: ScraperDashboardOptions = {},
   database: TransactionDb = db,
 ): Promise<ScraperDashboardData> {
@@ -756,55 +824,81 @@ export async function getScraperDashboardData(
     trigger,
   ] = await Promise.all([
     getAnalyticsOrFallback(database),
-    database.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
-    database
-      .select({
-        id: scrapeResults.id,
-        configId: scrapeResults.configId,
-        platform: scrapeResults.platform,
-        runAt: scrapeResults.runAt,
-        durationMs: scrapeResults.durationMs,
-        jobsFound: scrapeResults.jobsFound,
-        jobsNew: scrapeResults.jobsNew,
-        duplicates: scrapeResults.duplicates,
-        status: scrapeResults.status,
-        errors: scrapeResults.errors,
-      })
-      .from(scrapeResults)
-      .orderBy(desc(scrapeResults.runAt))
-      .limit(runLimit),
-    database
-      .select({
-        platform: scrapeResults.platform,
-        runs: sql<number>`cast(count(*) as integer)`,
-        successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
-        partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
-        failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
-        avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
-      })
-      .from(scrapeResults)
-      .where(gte(scrapeResults.runAt, last24Hours))
-      .groupBy(scrapeResults.platform),
-    database
-      .select({
-        id: jobs.id,
-        platform: jobs.platform,
-        externalId: jobs.externalId,
-        externalUrl: jobs.externalUrl,
-        clientReferenceCode: jobs.clientReferenceCode,
-        title: jobs.title,
-        company: jobs.company,
-        endClient: jobs.endClient,
-        location: jobs.location,
-        province: jobs.province,
-        postedAt: jobs.postedAt,
-        applicationDeadline: jobs.applicationDeadline,
-        startDate: jobs.startDate,
-        scrapedAt: jobs.scrapedAt,
-      })
-      .from(jobs)
-      .where(sql`${jobs.platform} is not null`),
-    getActiveVacancyCount(database),
+    readDashboardQueryOrFallback(
+      "configs",
+      () => database.select().from(scraperConfigs).orderBy(scraperConfigs.platform),
+      [] as ScraperConfigRow[],
+    ),
+    readDashboardQueryOrFallback(
+      "recentRuns",
+      () =>
+        database
+          .select({
+            id: scrapeResults.id,
+            configId: scrapeResults.configId,
+            platform: scrapeResults.platform,
+            runAt: scrapeResults.runAt,
+            durationMs: scrapeResults.durationMs,
+            jobsFound: scrapeResults.jobsFound,
+            jobsNew: scrapeResults.jobsNew,
+            duplicates: scrapeResults.duplicates,
+            status: scrapeResults.status,
+            errors: scrapeResults.errors,
+          })
+          .from(scrapeResults)
+          .orderBy(desc(scrapeResults.runAt))
+          .limit(runLimit),
+      [] as RecentRunRow[],
+    ),
+    readDashboardQueryOrFallback(
+      "recent24h-window",
+      () =>
+        database
+          .select({
+            platform: scrapeResults.platform,
+            runs: sql<number>`cast(count(*) as integer)`,
+            successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
+            partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
+            failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
+            avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
+          })
+          .from(scrapeResults)
+          .where(gte(scrapeResults.runAt, last24Hours))
+          .groupBy(scrapeResults.platform),
+      [] as Array<{
+        platform: string;
+        runs: number;
+        successCount: number;
+        partialCount: number;
+        failedCount: number;
+        avgDurationMs: number;
+      }>,
+    ),
+    readDashboardQueryOrFallback(
+      "overlap-candidates",
+      () =>
+        database
+          .select({
+            id: jobs.id,
+            platform: jobs.platform,
+            externalId: jobs.externalId,
+            externalUrl: jobs.externalUrl,
+            clientReferenceCode: jobs.clientReferenceCode,
+            title: jobs.title,
+            company: jobs.company,
+            endClient: jobs.endClient,
+            location: jobs.location,
+            province: jobs.province,
+            postedAt: jobs.postedAt,
+            applicationDeadline: jobs.applicationDeadline,
+            startDate: jobs.startDate,
+            scrapedAt: jobs.scrapedAt,
+          })
+          .from(jobs)
+          .where(sql`${jobs.platform} is not null`),
+      [] as OverlapReference[],
+    ),
+    readDashboardQueryOrFallback("active-vacancy-count", () => getActiveVacancyCount(database), 0),
     triggerPromise,
   ]);
 

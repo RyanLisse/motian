@@ -8,7 +8,7 @@ import {
   updateCandidateWithEffects,
 } from "../../services/candidate-effects";
 import { getCandidateById, listCandidates, searchCandidates } from "../../services/candidates";
-import { withCandidateCanonicalSkills, withCandidatesCanonicalSkills } from "../../services/esco";
+import { withCandidateSkills, withCandidatesSkills } from "../../services/esco";
 
 // ========== Schemas ==========
 
@@ -128,18 +128,16 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
   zoek_kandidaten: async (raw) => {
     const opts = zoekKandidatenSchema.parse(raw);
     if (opts.query || opts.location || opts.skills || opts.role) {
-      return withCandidatesCanonicalSkills(await searchCandidates(opts));
+      return withCandidatesSkills(await searchCandidates(opts));
     }
-    return withCandidatesCanonicalSkills(
-      await listCandidates({ limit: opts.limit, offset: opts.offset }),
-    );
+    return withCandidatesSkills(await listCandidates({ limit: opts.limit, offset: opts.offset }));
   },
 
   kandidaat_detail: async (raw) => {
     const { id } = kandidaatDetailSchema.parse(raw);
     const result = await getCandidateById(id);
     if (!result) return { error: "Kandidaat niet gevonden" };
-    return withCandidateCanonicalSkills(result);
+    return withCandidateSkills(result);
   },
 
   maak_kandidaat_aan: async (raw) => {
@@ -159,14 +157,14 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
     }
 
     const candidate = await createCandidateWithEffects(data);
-    return withCandidateCanonicalSkills(candidate);
+    return withCandidateSkills(candidate);
   },
 
   update_kandidaat: async (raw) => {
     const { id, ...data } = updateKandidaatSchema.parse(raw);
     const result = await updateCandidateWithEffects(id, data);
     if (!result) return { error: "Kandidaat niet gevonden" };
-    return withCandidateCanonicalSkills(result);
+    return withCandidateSkills(result);
   },
 
   verwijder_kandidaat: async (raw) => {

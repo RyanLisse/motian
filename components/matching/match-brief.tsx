@@ -90,7 +90,7 @@ export function RecruiterMatchBrief({ brief }: Props) {
       <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded-lg border border-border bg-background/80 p-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            ESCO overlap
+            Canonieke skill-overlap
           </p>
           <p className="mt-1 text-sm font-semibold text-foreground">
             {brief.escoOverlap.sharedCount} gedeeld

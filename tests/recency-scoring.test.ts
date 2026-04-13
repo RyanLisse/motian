@@ -313,7 +313,7 @@ describe("computeMatchScore with recency", () => {
     };
 
     const result = computeMatchScore(baseJob, candidate, {
-      candidateEscoSkills: [
+      candidateSkills: [
         {
           escoUri: "skill:react",
           label: "React",
@@ -321,7 +321,7 @@ describe("computeMatchScore with recency", () => {
           critical: false,
         },
       ],
-      jobEscoSkills: [
+      jobSkills: [
         {
           escoUri: "skill:react",
           label: "React",

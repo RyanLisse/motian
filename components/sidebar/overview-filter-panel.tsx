@@ -220,7 +220,7 @@ export function OverviewFilterPanel({
 
           <div>
             <label
-              htmlFor="opdrachten-esco-vaardigheid"
+              htmlFor="opdrachten-vaardigheid"
               className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm"
             >
               Vaardigheid
@@ -230,12 +230,12 @@ export function OverviewFilterPanel({
               onValueChange={(value) => onFilterChange("vaardigheid", value)}
               options={skillOptions}
               placeholder="Alle vaardigheden"
-              searchPlaceholder="Zoek ESCO vaardigheid..."
+              searchPlaceholder="Zoek vaardigheid..."
               emptyText={skillEmptyText}
               clearLabel="Alle vaardigheden"
               buttonClassName="h-10 rounded-lg border-border bg-background text-left text-xs sm:h-11 sm:text-sm"
-              triggerId="opdrachten-esco-vaardigheid"
-              ariaLabel="ESCO vaardigheid"
+              triggerId="opdrachten-vaardigheid"
+              ariaLabel="Vaardigheid"
             />
           </div>
 

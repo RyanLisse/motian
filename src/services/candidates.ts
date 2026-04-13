@@ -7,7 +7,7 @@ import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../lib/query-observabi
 import type { ParsedCV } from "../schemas/candidate-intelligence";
 import { emitAgentEvent } from "./agent-events";
 import { type EmbeddingStatus, withPendingEmbeddingStatus } from "./embedding";
-import { syncCandidateEscoSkills } from "./esco";
+import { syncCandidateSkills } from "./esco";
 import { searchCandidateIdsByTypesense } from "./search-index/typesense-search";
 import { deleteCandidatesByIds, upsertCandidatesByIds } from "./search-index/typesense-sync";
 
@@ -43,7 +43,7 @@ export type SearchCandidatesOptions = {
   skills?: string;
   role?: string;
   availability?: string;
-  /** Filter by canonical ESCO skill URI (candidate must have this skill in candidate_skills). */
+  /** Filter by canonical skill slug (candidate must have this skill in candidate_skills_v2). */
   escoUri?: string;
   limit?: number;
   offset?: number;
@@ -221,15 +221,15 @@ async function emitAutoMatchEventIfReady(candidate: Candidate): Promise<void> {
   }
 }
 
-async function runCandidateEscoSync(candidate: Candidate): Promise<void> {
+async function runCandidateSkillSync(candidate: Candidate): Promise<void> {
   try {
-    await syncCandidateEscoSkills({
+    await syncCandidateSkills({
       candidateId: candidate.id,
       skills: candidate.skills,
       skillsStructured: candidate.skillsStructured,
     });
   } catch (err) {
-    console.error(`[Candidates] ESCO sync error for ${candidate.id}:`, err);
+    console.error(`[Candidates] Skill sync error for ${candidate.id}:`, err);
   }
 }
 
@@ -385,7 +385,7 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     .returning(candidateReadSelection);
 
   const candidate = rows[0];
-  await runCandidateEscoSync(candidate);
+  await runCandidateSkillSync(candidate);
   void queueDeferredEmbeddingSync({
     entityType: "candidate",
     entityId: candidate.id,
@@ -412,7 +412,7 @@ export async function updateCandidate(
 
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
-  await runCandidateEscoSync(candidate);
+  await runCandidateSkillSync(candidate);
   void queueDeferredEmbeddingSync({
     entityType: "candidate",
     entityId: candidate.id,
@@ -621,7 +621,7 @@ export async function enrichCandidateFromCV(
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
 
-  await runCandidateEscoSync(candidate);
+  await runCandidateSkillSync(candidate);
   void queueDeferredEmbeddingSync({
     entityType: "candidate",
     entityId: candidate.id,

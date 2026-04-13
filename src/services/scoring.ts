@@ -1,7 +1,7 @@
 import type { Candidate } from "./candidates";
-import type { CandidateCanonicalSkill, JobCanonicalSkill } from "./esco";
-import { isEscoScoringEnabled } from "./esco";
-import { computeEscoSkillScore } from "./esco-scoring";
+import type { CandidateSkill, JobSkill } from "./esco";
+import { isSkillScoringEnabled } from "./esco";
+import { computeSkillScore } from "./esco-scoring";
 import type { Job } from "./jobs";
 
 export type MatchResult = {
@@ -11,10 +11,13 @@ export type MatchResult = {
   model: string;
 };
 
-export type EscoMatchOptions = {
-  candidateEscoSkills: CandidateCanonicalSkill[];
-  jobEscoSkills: JobCanonicalSkill[];
+export type SkillMatchOptions = {
+  candidateSkills: CandidateSkill[];
+  jobSkills: JobSkill[];
 };
+
+/** @deprecated Use SkillMatchOptions */
+export type EscoMatchOptions = SkillMatchOptions;
 
 function loadScoringWeights() {
   return {
@@ -207,30 +210,30 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return denom === 0 ? 0 : dot / denom;
 }
 
-function isEscoScoringPathEnabled(options?: EscoMatchOptions): boolean {
+function isSkillScoringPathEnabled(options?: SkillMatchOptions): boolean {
   const envFlag =
+    process.env.USE_SKILL_SCORING === "true" ||
+    process.env.USE_SKILL_SCORING === "1" ||
     process.env.USE_ESCO_SCORING === "true" ||
-    process.env.USE_ESCO_SCORING === "1" ||
-    (typeof process.env.USE_ESCO_SCORING === "string" && process.env.USE_ESCO_SCORING.length > 0);
-  const hasJobEscoSkills =
-    Array.isArray(options?.jobEscoSkills) && options.jobEscoSkills.length > 0;
+    process.env.USE_ESCO_SCORING === "1";
+  const hasJobSkills = Array.isArray(options?.jobSkills) && options.jobSkills.length > 0;
   return Boolean(
-    (envFlag || isEscoScoringEnabled()) &&
-      hasJobEscoSkills &&
-      options?.candidateEscoSkills != null &&
-      options?.jobEscoSkills != null,
+    (envFlag || isSkillScoringEnabled()) &&
+      hasJobSkills &&
+      options?.candidateSkills != null &&
+      options?.jobSkills != null,
   );
 }
 
 type SkillDimensionResult = {
   score: number;
   reasoning: string | null;
-  usedEsco: boolean;
+  usedCanonicalSkills: boolean;
   guardrailFallback: boolean;
-  /** When ESCO path was used but guardrail triggered; append to match reasoning. */
-  escoReasoning?: string;
-  /** True when ESCO path was attempted (used for model label). */
-  escoPathUsed?: boolean;
+  /** When canonical skill path fallback triggered; append to match reasoning. */
+  skillReasoning?: string;
+  /** True when canonical skill path was attempted (used for model label). */
+  skillPathUsed?: boolean;
 };
 
 function computeLegacySkillDimension(
@@ -260,7 +263,7 @@ function computeLegacySkillDimension(
   return { score, overlap };
 }
 
-function logEscoGuardrailFallback(job: Job, candidate: Candidate, reasoning: string) {
+function logSkillScoringFallback(job: Job, candidate: Candidate, reasoning: string) {
   console.info("[skills] fallback", {
     jobId: job.id,
     candidateId: candidate.id,
@@ -271,35 +274,35 @@ function logEscoGuardrailFallback(job: Job, candidate: Candidate, reasoning: str
 function computeSkillDimension(
   job: Job,
   candidate: Candidate,
-  options?: EscoMatchOptions,
+  options?: SkillMatchOptions,
   skillsWeight?: number,
 ): SkillDimensionResult {
-  if (isEscoScoringPathEnabled(options)) {
-    const candidateEscoSkills = options?.candidateEscoSkills ?? [];
-    const jobEscoSkills = options?.jobEscoSkills ?? [];
-    const escoResult = computeEscoSkillScore(candidateEscoSkills, jobEscoSkills);
-    if (!escoResult.guardrailFallback) {
+  if (isSkillScoringPathEnabled(options)) {
+    const candidateSkills = options?.candidateSkills ?? [];
+    const jobSkills = options?.jobSkills ?? [];
+    const skillResult = computeSkillScore(candidateSkills, jobSkills);
+    if (!skillResult.guardrailFallback) {
       return {
-        score: escoResult.skillScore,
-        reasoning: escoResult.reasoning,
-        usedEsco: true,
+        score: skillResult.skillScore,
+        reasoning: skillResult.reasoning,
+        usedCanonicalSkills: true,
         guardrailFallback: false,
-        escoPathUsed: true,
+        skillPathUsed: true,
       };
     }
-    // Guardrail fallback: use rule-based skill dimension and append ESCO reasoning
+    // Guardrail fallback: use rule-based skill dimension and append skill reasoning
     const legacy = computeLegacySkillDimension(job, candidate, skillsWeight);
-    logEscoGuardrailFallback(job, candidate, escoResult.reasoning);
+    logSkillScoringFallback(job, candidate, skillResult.reasoning);
     return {
       score: legacy.score,
       reasoning:
         legacy.overlap.length > 0
           ? `${legacy.overlap.length} skill${legacy.overlap.length === 1 ? "" : "s"} matchen: ${legacy.overlap.slice(0, 3).join(", ")}`
           : null,
-      usedEsco: false,
+      usedCanonicalSkills: false,
       guardrailFallback: true,
-      escoReasoning: escoResult.reasoning,
-      escoPathUsed: true,
+      skillReasoning: skillResult.reasoning,
+      skillPathUsed: true,
     };
   }
 
@@ -310,7 +313,7 @@ function computeSkillDimension(
       legacy.overlap.length > 0
         ? `${legacy.overlap.length} skill${legacy.overlap.length === 1 ? "" : "s"} matchen: ${legacy.overlap.slice(0, 3).join(", ")}`
         : null,
-    usedEsco: false,
+    usedCanonicalSkills: false,
     guardrailFallback: false,
   };
 }
@@ -328,8 +331,8 @@ function computeRuleScore(
   if (skillDimension.reasoning) {
     reasons.push(skillDimension.reasoning);
   }
-  if (skillDimension.escoReasoning) {
-    reasons.push(skillDimension.escoReasoning);
+  if (skillDimension.skillReasoning) {
+    reasons.push(skillDimension.skillReasoning);
   }
 
   if (
@@ -400,7 +403,7 @@ export type DynamicWeights = {
   vectorWeight?: number;
 };
 
-export type ComputeMatchScoreOptions = EscoMatchOptions & {
+export type ComputeMatchScoreOptions = SkillMatchOptions & {
   matchDecisions?: MatchDecision[];
   weights?: DynamicWeights;
 };
@@ -541,9 +544,9 @@ export function computeMatchScore(
 
   // Determine model label
   let modelLabel: string;
-  if (skillDimension.usedEsco) {
+  if (skillDimension.usedCanonicalSkills) {
     modelLabel =
-      jobEmbedding?.length && candidateEmbedding?.length ? "esco-hybrid-v1" : "esco-rule-v1";
+      jobEmbedding?.length && candidateEmbedding?.length ? "skills-hybrid-v1" : "skills-rule-v1";
   } else {
     modelLabel = jobEmbedding?.length && candidateEmbedding?.length ? "hybrid-v1" : "rule-based-v1";
   }

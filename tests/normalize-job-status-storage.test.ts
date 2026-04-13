@@ -6,8 +6,8 @@ const {
   mockValues,
   mockOnConflictDoUpdate,
   mockReturning,
-  mockIsEscoCatalogAvailable,
-  mockSyncJobEscoSkills,
+  mockIsSkillsCatalogAvailable,
+  mockSyncJobSkills,
 } = vi.hoisted(() => {
   const mockReturning = vi.fn();
   const mockOnConflictDoUpdate = vi.fn();
@@ -28,8 +28,8 @@ const {
     mockValues,
     mockOnConflictDoUpdate,
     mockReturning,
-    mockIsEscoCatalogAvailable: vi.fn().mockResolvedValue(true),
-    mockSyncJobEscoSkills: vi.fn(),
+    mockIsSkillsCatalogAvailable: vi.fn().mockResolvedValue(true),
+    mockSyncJobSkills: vi.fn(),
   };
 });
 
@@ -38,8 +38,16 @@ vi.mock("../src/db", async (importOriginal) => ({
   db: mockDb,
 }));
 vi.mock("../src/services/esco", () => ({
-  isEscoCatalogAvailable: mockIsEscoCatalogAvailable,
-  syncJobEscoSkills: mockSyncJobEscoSkills,
+  isSkillsCatalogAvailable: mockIsSkillsCatalogAvailable,
+  syncJobSkills: mockSyncJobSkills,
+  getSkillsCatalogStatusCached: vi.fn().mockResolvedValue({
+    available: true,
+    issue: null,
+    skillCount: 1,
+    jobSkillCount: 1,
+    candidateSkillCount: 1,
+    checkedAt: new Date().toISOString(),
+  }),
 }));
 
 import { normalizeAndSaveJobs } from "../src/services/normalize";
@@ -47,9 +55,9 @@ import { normalizeAndSaveJobs } from "../src/services/normalize";
 describe("normalizeAndSaveJobs status/endClient storage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIsEscoCatalogAvailable.mockResolvedValue(true);
+    mockIsSkillsCatalogAvailable.mockResolvedValue(true);
     mockReturning.mockResolvedValue([{ id: "job-1", externalId: "oo-123", isNew: true }]);
-    mockSyncJobEscoSkills.mockResolvedValue(undefined);
+    mockSyncJobSkills.mockResolvedValue(undefined);
   });
 
   it("persists status and endClient on insert and upsert update", async () => {
@@ -88,7 +96,7 @@ describe("normalizeAndSaveJobs status/endClient storage", () => {
     expect(conflictConfig.set).toHaveProperty("status");
     expect(conflictConfig.set).toHaveProperty("archivedAt");
     expect(conflictConfig.set).toHaveProperty("deletedAt");
-    expect(mockSyncJobEscoSkills).toHaveBeenCalledWith(
+    expect(mockSyncJobSkills).toHaveBeenCalledWith(
       expect.objectContaining({
         jobId: "job-1",
         requirements: [],

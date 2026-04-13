@@ -575,9 +575,44 @@ async function resolveAdapter(platform: string) {
   return undefined;
 }
 
+const PLATFORM_CATALOG_CACHE_TTL_MS = 30_000;
+
+type PlatformCatalogCacheEntry = {
+  expiresAt: number;
+  promise: Promise<PlatformCatalogEntryView[]>;
+};
+
+let platformCatalogCache: PlatformCatalogCacheEntry | null = null;
+
+function canUsePlatformCatalogCache(): boolean {
+  return process.env.NODE_ENV !== "test";
+}
+
+export function resetPlatformCatalogCache(): void {
+  platformCatalogCache = null;
+}
+
 // ========== Service Functions ==========
 
 export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]> {
+  if (canUsePlatformCatalogCache()) {
+    const nowMs = Date.now();
+    if (platformCatalogCache && platformCatalogCache.expiresAt > nowMs) {
+      return platformCatalogCache.promise;
+    }
+
+    const promise = listPlatformCatalogUncached();
+    platformCatalogCache = {
+      expiresAt: nowMs + PLATFORM_CATALOG_CACHE_TTL_MS,
+      promise,
+    };
+    return promise;
+  }
+
+  return listPlatformCatalogUncached();
+}
+
+async function listPlatformCatalogUncached(): Promise<PlatformCatalogEntryView[]> {
   const catalogRows = await db.select().from(platformCatalog).orderBy(asc(platformCatalog.slug));
   const configs = await db.select().from(scraperConfigs).orderBy(asc(scraperConfigs.platform));
   const runs = await listLatestOnboardingRuns();

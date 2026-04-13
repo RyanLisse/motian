@@ -2,7 +2,7 @@ import type { z } from "zod";
 import { stripHtml } from "../../packages/scrapers/src/strip-html";
 import { db, jobs, sql } from "../db";
 import { unifiedJobSchema } from "../schemas/job";
-import { isEscoCatalogAvailable, syncJobEscoSkills } from "./esco";
+import { isSkillsCatalogAvailable, syncJobSkills } from "./esco";
 import { upsertJobsByIds } from "./search-index/typesense-sync";
 
 /** Permissive type for scraped data — Zod validates at runtime via safeParse */
@@ -301,15 +301,15 @@ export async function normalizeAndSaveJobs(
         jobsNew += inserted;
         duplicates += updated;
 
-        const escoCatalogAvailable = await isEscoCatalogAvailable();
-        if (!escoCatalogAvailable) {
+        const skillsCatalogAvailable = await isSkillsCatalogAvailable();
+        if (!skillsCatalogAvailable) {
           continue;
         }
 
-        // Parallel ESCO sync with concurrency cap to avoid exhausting Neon connection pool
-        const ESCO_CONCURRENCY = 5;
-        for (let j = 0; j < result.length; j += ESCO_CONCURRENCY) {
-          const chunk = result.slice(j, j + ESCO_CONCURRENCY);
+        // Parallel skill sync with concurrency cap to avoid exhausting Neon connection pool
+        const SKILL_SYNC_CONCURRENCY = 5;
+        for (let j = 0; j < result.length; j += SKILL_SYNC_CONCURRENCY) {
+          const chunk = result.slice(j, j + SKILL_SYNC_CONCURRENCY);
           const settled = await Promise.allSettled(
             chunk.map(async (row) => {
               const item = batch.items.find(
@@ -317,7 +317,7 @@ export async function normalizeAndSaveJobs(
               );
               if (!item) return;
 
-              await syncJobEscoSkills({
+              await syncJobSkills({
                 jobId: row.id,
                 requirements: item.item.parsed.requirements,
                 wishes: item.item.parsed.wishes,

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { normalizeAndSaveJobs } from "../src/services/normalize";
 
-const { mockSyncJobEscoSkills, mockIsEscoCatalogAvailable } = vi.hoisted(() => ({
-  mockSyncJobEscoSkills: vi.fn().mockResolvedValue(undefined),
-  mockIsEscoCatalogAvailable: vi.fn().mockResolvedValue(true),
+const { mockSyncJobSkills, mockIsSkillsCatalogAvailable } = vi.hoisted(() => ({
+  mockSyncJobSkills: vi.fn().mockResolvedValue(undefined),
+  mockIsSkillsCatalogAvailable: vi.fn().mockResolvedValue(true),
 }));
 
 const mockValues = vi.fn().mockImplementation(() => ({
@@ -21,14 +21,22 @@ vi.mock("../src/db", async (importOriginal) => ({
 }));
 
 vi.mock("../src/services/esco", () => ({
-  isEscoCatalogAvailable: mockIsEscoCatalogAvailable,
-  syncJobEscoSkills: mockSyncJobEscoSkills,
+  isSkillsCatalogAvailable: mockIsSkillsCatalogAvailable,
+  syncJobSkills: mockSyncJobSkills,
+  getSkillsCatalogStatusCached: vi.fn().mockResolvedValue({
+    available: true,
+    issue: null,
+    skillCount: 1,
+    jobSkillCount: 1,
+    candidateSkillCount: 1,
+    checkedAt: new Date().toISOString(),
+  }),
 }));
 
 describe("normalizeAndSaveJobs regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIsEscoCatalogAvailable.mockResolvedValue(true);
+    mockIsSkillsCatalogAvailable.mockResolvedValue(true);
   });
 
   it("should verify HTML stripping and range clamping", async () => {
@@ -73,8 +81,8 @@ describe("normalizeAndSaveJobs regression", () => {
     expect(valuesCall[1].minHoursPerWeek).toBe(1);
   });
 
-  it("skips ESCO sync entirely when the canonical ESCO catalog is unavailable", async () => {
-    mockIsEscoCatalogAvailable.mockResolvedValue(false);
+  it("skips skill sync entirely when the canonical skills catalog is unavailable", async () => {
+    mockIsSkillsCatalogAvailable.mockResolvedValue(false);
 
     await normalizeAndSaveJobs("test-platform", [
       {
@@ -88,7 +96,7 @@ describe("normalizeAndSaveJobs regression", () => {
       },
     ]);
 
-    expect(mockIsEscoCatalogAvailable).toHaveBeenCalledTimes(1);
-    expect(mockSyncJobEscoSkills).not.toHaveBeenCalled();
+    expect(mockIsSkillsCatalogAvailable).toHaveBeenCalledTimes(1);
+    expect(mockSyncJobSkills).not.toHaveBeenCalled();
   });
 });

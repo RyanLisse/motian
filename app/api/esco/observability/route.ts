@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/esco/observability
- * Metrics and review backlog for ESCO mapping/scoring observability.
+ * Legacy observability endpoint for canonical skills catalog status.
  */
 export async function GET() {
   const { getEscoCatalogStatus, getEscoMappingStats, getReviewQueueSummary } = await import(

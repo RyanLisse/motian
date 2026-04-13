@@ -23,10 +23,10 @@ import {
 } from "../services/candidates.js";
 import { findSimilarJobs } from "../services/embedding.js";
 import {
-  withCandidateCanonicalSkills,
-  withCandidatesCanonicalSkills,
-  withJobCanonicalSkills,
-  withJobsCanonicalSkills,
+  withCandidateSkills,
+  withCandidatesSkills,
+  withJobSkills,
+  withJobsSkills,
 } from "../services/esco.js";
 import {
   eraseCandidateData,
@@ -151,10 +151,10 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
               limit: limit ?? 10,
               offset: 0,
             });
-            const jobsWithCanonicalSkills = await withJobsCanonicalSkills(result.data);
+            const jobsWithSkills = await withJobsSkills(result.data);
             return {
               total: result.total,
-              opdrachten: jobsWithCanonicalSkills.map((j) => ({
+              opdrachten: jobsWithSkills.map((j) => ({
                 id: j.id,
                 title: j.title,
                 company: j.company,
@@ -179,7 +179,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
           execute: async ({ id }) => {
             const job = await getJobById(id);
             if (!job) return { error: "Opdracht niet gevonden" };
-            return withJobCanonicalSkills(job);
+            return withJobSkills(job);
           },
         }),
 
@@ -196,7 +196,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
           execute: async ({ id, ...data }) => {
             const job = await updateJob(id, data);
             if (!job) return { error: "Opdracht niet gevonden" };
-            return withJobCanonicalSkills(job);
+            return withJobSkills(job);
           },
         }),
 
@@ -228,10 +228,10 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
               limit: limit ?? 20,
               offset: 0,
             });
-            const candidatesWithCanonicalSkills = await withCandidatesCanonicalSkills(data);
+            const candidatesWithSkills = await withCandidatesSkills(data);
             return {
-              total: candidatesWithCanonicalSkills.length,
-              kandidaten: candidatesWithCanonicalSkills.map((c) => ({
+              total: candidatesWithSkills.length,
+              kandidaten: candidatesWithSkills.map((c) => ({
                 id: c.id,
                 name: c.name,
                 role: c.role,
@@ -251,7 +251,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
           execute: async ({ id }) => {
             const candidate = await getCandidateById(id);
             if (!candidate) return { error: "Kandidaat niet gevonden" };
-            return withCandidateCanonicalSkills(candidate);
+            return withCandidateSkills(candidate);
           },
         }),
 
@@ -270,7 +270,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
               .optional()
               .describe("Beschikbaarheid"),
           }),
-          execute: async (data) => withCandidateCanonicalSkills(await createCandidate(data)),
+          execute: async (data) => withCandidateSkills(await createCandidate(data)),
         }),
 
         updateKandidaat: llm.tool({
@@ -289,7 +289,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
           execute: async ({ id, ...data }) => {
             const candidate = await updateCandidate(id, data);
             if (!candidate) return { error: "Kandidaat niet gevonden" };
-            return withCandidateCanonicalSkills(candidate);
+            return withCandidateSkills(candidate);
           },
         }),
 

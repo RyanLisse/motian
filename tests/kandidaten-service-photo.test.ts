@@ -52,7 +52,7 @@ vi.mock("../src/services/embedding", () => ({
 }));
 
 vi.mock("../src/services/esco", () => ({
-  syncCandidateEscoSkills: vi.fn(),
+  syncCandidateSkills: vi.fn(),
 }));
 
 vi.mock("../src/services/search-index/typesense-search", () => ({

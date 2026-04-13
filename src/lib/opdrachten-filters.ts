@@ -145,6 +145,7 @@ export const opdrachtenQuerySchema = z.object({
   endClient: optionalQueryString(200),
   vaardigheid: optionalQueryString(255),
   escoUri: optionalQueryString(255),
+  skillUri: optionalQueryString(255),
   status: optionalQueryString(32),
   provincie: optionalQueryString(64),
   province: optionalQueryString(64),
@@ -177,6 +178,7 @@ export function validateOpdrachtenQueryParams(params: URLSearchParams) {
     endClient: params.get("endClient") ?? undefined,
     vaardigheid: params.get("vaardigheid") ?? undefined,
     escoUri: params.get("escoUri") ?? undefined,
+    skillUri: params.get("skillUri") ?? undefined,
     status: params.get("status") ?? undefined,
     provincie: params.get("provincie") ?? undefined,
     province: params.get("province") ?? undefined,
@@ -377,6 +379,7 @@ export type ParsedOpdrachtenFilters = {
   platform?: string;
   endClient?: string;
   escoUri?: string;
+  skillUri?: string;
   status: OpdrachtenStatus;
   province?: OpdrachtenProvince;
   categories: string[];
@@ -405,7 +408,12 @@ export function parseOpdrachtenFilters(params: URLSearchParams): ParsedOpdrachte
     platforms,
     platform: platforms[0],
     endClient: normalizeTextFilter(params.get("endClient")),
-    escoUri: normalizeTextFilter(params.get("vaardigheid") ?? params.get("escoUri")),
+    escoUri: normalizeTextFilter(
+      params.get("vaardigheid") ?? params.get("skillUri") ?? params.get("escoUri"),
+    ),
+    skillUri: normalizeTextFilter(
+      params.get("vaardigheid") ?? params.get("skillUri") ?? params.get("escoUri"),
+    ),
     status: normalizeOpdrachtenStatus(params.get("status")),
     province: normalizeOpdrachtenProvince(params.get("provincie") ?? params.get("province")),
     categories,

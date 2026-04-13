@@ -1,17 +1,17 @@
-import type { CandidateCanonicalSkill, JobCanonicalSkill } from "./esco";
+import type { CandidateSkill, JobSkill } from "./esco";
 
-export const ESCO_SKILL_WEIGHT = 50;
+export const SKILL_MATCH_WEIGHT = 50;
 
-export type EscoSkillScoreResult = {
+export type SkillScoreResult = {
   skillScore: number;
   guardrailFallback: boolean;
   reasoning: string;
 };
 
-export function computeEscoSkillScore(
-  candidateSkills: CandidateCanonicalSkill[],
-  jobSkills: JobCanonicalSkill[],
-): EscoSkillScoreResult {
+export function computeSkillScore(
+  candidateSkills: CandidateSkill[],
+  jobSkills: JobSkill[],
+): SkillScoreResult {
   if (jobSkills.length === 0) {
     return {
       skillScore: 0,
@@ -32,7 +32,7 @@ export function computeEscoSkillScore(
   const weightedTotal = mustSkills.length * 1 + niceSkills.length * 0.35;
   const ratio = weightedTotal > 0 ? weightedEarned / weightedTotal : 0;
 
-  const skillScore = Math.round(Math.min(ESCO_SKILL_WEIGHT, ratio * ESCO_SKILL_WEIGHT));
+  const skillScore = Math.round(Math.min(SKILL_MATCH_WEIGHT, ratio * SKILL_MATCH_WEIGHT));
   const reasoningParts = [`${matchedMust.length} van ${mustSkills.length} vereiste skills matchen`];
 
   if (matchedNice.length > 0) {
@@ -56,3 +56,13 @@ export function computeEscoSkillScore(
     reasoning: reasoningParts.join("; "),
   };
 }
+
+// Legacy aliases for backward compatibility
+/** @deprecated Use SKILL_MATCH_WEIGHT instead */
+export const ESCO_SKILL_WEIGHT = SKILL_MATCH_WEIGHT;
+
+/** @deprecated Use SkillScoreResult instead */
+export type EscoSkillScoreResult = SkillScoreResult;
+
+/** @deprecated Use computeSkillScore instead */
+export const computeEscoSkillScore = computeSkillScore;

@@ -18,7 +18,7 @@ import {
   getCandidateSkillsForCandidateIds,
   getJobSkills,
   getJobSkillsForJobIds,
-  isEscoScoringEnabled,
+  isSkillScoringEnabled,
 } from "./esco";
 import { getJobById, type Job, listActiveJobs } from "./jobs";
 import { loadJobsByIds } from "./jobs/deduplication";
@@ -260,21 +260,20 @@ export async function autoMatchCandidateToJobs(
   const activeJobs = await listActiveJobs(getAutoMatchFallbackLimit());
   if (activeJobs.length === 0) return [];
 
-  const useEscoScoring =
+  const useSkillScoring =
+    process.env.USE_SKILL_SCORING === "true" ||
     process.env.USE_ESCO_SCORING === "true" ||
-    process.env.USE_ESCO_SCORING === "1" ||
-    (typeof process.env.USE_ESCO_SCORING === "string" && process.env.USE_ESCO_SCORING.length > 0) ||
-    isEscoScoringEnabled();
-  let candidateEscoSkills: Awaited<ReturnType<typeof getCandidateSkills>> = [];
-  let jobEscoMap: Awaited<ReturnType<typeof getJobSkillsForJobIds>> = new Map();
-  if (useEscoScoring) {
+    isSkillScoringEnabled();
+  let candidateMatchSkills: Awaited<ReturnType<typeof getCandidateSkills>> = [];
+  let jobSkillsMap: Awaited<ReturnType<typeof getJobSkillsForJobIds>> = new Map();
+  if (useSkillScoring) {
     try {
-      [candidateEscoSkills, jobEscoMap] = await Promise.all([
+      [candidateMatchSkills, jobSkillsMap] = await Promise.all([
         getCandidateSkills(candidateId),
         getJobSkillsForJobIds(activeJobs.map((j) => j.id)),
       ]);
     } catch (err) {
-      console.warn("[Auto-Match] ESCO skills fetch failed, using legacy scoring:", err);
+      console.warn("[Auto-Match] Skills fetch failed, using legacy scoring:", err);
     }
   }
 
@@ -282,8 +281,8 @@ export async function autoMatchCandidateToJobs(
     job,
     candidate: freshCandidate,
     ...computeMatchScore(job, freshCandidate, {
-      candidateEscoSkills,
-      jobEscoSkills: jobEscoMap.get(job.id) ?? [],
+      candidateSkills: candidateMatchSkills,
+      jobSkills: jobSkillsMap.get(job.id) ?? [],
     }),
   }));
 
@@ -348,21 +347,20 @@ export async function autoMatchJobToCandidates(
   const activeCandidates = await listActiveCandidates(getAutoMatchFallbackLimit());
   if (activeCandidates.length === 0) return [];
 
-  const useEscoScoringJob =
+  const useSkillScoringJob =
+    process.env.USE_SKILL_SCORING === "true" ||
     process.env.USE_ESCO_SCORING === "true" ||
-    process.env.USE_ESCO_SCORING === "1" ||
-    (typeof process.env.USE_ESCO_SCORING === "string" && process.env.USE_ESCO_SCORING.length > 0) ||
-    isEscoScoringEnabled();
-  let jobEscoSkills: Awaited<ReturnType<typeof getJobSkills>> = [];
-  let candidateEscoMap: Awaited<ReturnType<typeof getCandidateSkillsForCandidateIds>> = new Map();
-  if (useEscoScoringJob) {
+    isSkillScoringEnabled();
+  let matchJobSkills: Awaited<ReturnType<typeof getJobSkills>> = [];
+  let candidateSkillsMap: Awaited<ReturnType<typeof getCandidateSkillsForCandidateIds>> = new Map();
+  if (useSkillScoringJob) {
     try {
-      [jobEscoSkills, candidateEscoMap] = await Promise.all([
+      [matchJobSkills, candidateSkillsMap] = await Promise.all([
         getJobSkills(jobId),
         getCandidateSkillsForCandidateIds(activeCandidates.map((c) => c.id)),
       ]);
     } catch (err) {
-      console.warn("[Auto-Match] ESCO skills fetch failed, using legacy scoring:", err);
+      console.warn("[Auto-Match] Skills fetch failed, using legacy scoring:", err);
     }
   }
 
@@ -370,8 +368,8 @@ export async function autoMatchJobToCandidates(
     job,
     candidate,
     ...computeMatchScore(job, candidate, {
-      candidateEscoSkills: candidateEscoMap.get(candidate.id) ?? [],
-      jobEscoSkills,
+      candidateSkills: candidateSkillsMap.get(candidate.id) ?? [],
+      jobSkills: matchJobSkills,
     }),
   }));
 

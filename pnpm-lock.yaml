@@ -64,9 +64,6 @@ importers:
       '@motian/db':
         specifier: workspace:*
         version: link:packages/db
-      '@motian/esco':
-        specifier: workspace:*
-        version: link:packages/esco
       '@motian/scrapers':
         specifier: workspace:*
         version: link:packages/scrapers

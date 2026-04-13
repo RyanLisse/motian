@@ -7,8 +7,8 @@ const {
   mockOnConflictDoUpdate,
   mockReturning,
   mockValues,
-  mockIsEscoCatalogAvailable,
-  mockSyncJobEscoSkills,
+  mockIsSkillsCatalogAvailable,
+  mockSyncJobSkills,
 } = vi.hoisted(() => {
   const mockReturning = vi.fn();
   const mockOnConflictDoUpdate = vi.fn();
@@ -24,8 +24,8 @@ const {
     mockInsert,
     mockOnConflictDoUpdate,
     mockReturning,
-    mockIsEscoCatalogAvailable: vi.fn().mockResolvedValue(true),
-    mockSyncJobEscoSkills: vi.fn(),
+    mockIsSkillsCatalogAvailable: vi.fn().mockResolvedValue(true),
+    mockSyncJobSkills: vi.fn(),
     mockValues,
   };
 });
@@ -35,8 +35,16 @@ vi.mock("../src/db", async (importOriginal) => ({
   db: mockDb,
 }));
 vi.mock("../src/services/esco", () => ({
-  isEscoCatalogAvailable: mockIsEscoCatalogAvailable,
-  syncJobEscoSkills: mockSyncJobEscoSkills,
+  isSkillsCatalogAvailable: mockIsSkillsCatalogAvailable,
+  syncJobSkills: mockSyncJobSkills,
+  getSkillsCatalogStatusCached: vi.fn().mockResolvedValue({
+    available: true,
+    issue: null,
+    skillCount: 1,
+    jobSkillCount: 1,
+    candidateSkillCount: 1,
+    checkedAt: new Date().toISOString(),
+  }),
 }));
 
 import {
@@ -48,9 +56,9 @@ import {
 describe("normalizeAndSaveJobs derived fields", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIsEscoCatalogAvailable.mockResolvedValue(true);
+    mockIsSkillsCatalogAvailable.mockResolvedValue(true);
     mockReturning.mockResolvedValue([{ id: "job-1", externalId: "derived-1", isNew: true }]);
-    mockSyncJobEscoSkills.mockResolvedValue(undefined);
+    mockSyncJobSkills.mockResolvedValue(undefined);
   });
 
   it("derives normalized dedupe fields and search text from vacature content", () => {

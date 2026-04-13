@@ -316,14 +316,14 @@ export function CompactSidebarFilters({
           onValueChange={(value) => onFilterChange("vaardigheid", value)}
           options={skillOptions}
           placeholder="Vaardigheid"
-          searchPlaceholder="Zoek ESCO vaardigheid..."
+          searchPlaceholder="Zoek vaardigheid..."
           emptyText={skillEmptyText}
           clearLabel="Alle vaardigheden"
           buttonClassName={cn("w-full", DARK_FILTER_TRIGGER_CLASS)}
           contentClassName={DARK_FILTER_MENU_CLASS}
           itemClassName="text-sm text-white"
-          triggerId="opdrachten-esco-vaardigheid"
-          ariaLabel="ESCO vaardigheid"
+          triggerId="opdrachten-vaardigheid"
+          ariaLabel="Vaardigheid"
         />
 
         <div className="grid grid-cols-2 gap-3">

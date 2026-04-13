@@ -19,7 +19,6 @@
     "@mcp-b/react-webmcp": "^2.2.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@motian/db": "workspace:*",
-    "@motian/esco": "workspace:*",
     "@motian/scrapers": "workspace:*",
     "@sentry/nextjs": "^10.47.0",
     "@sentry/node": "^10.47.0",

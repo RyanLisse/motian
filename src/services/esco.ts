@@ -1,3 +1,13 @@
+/**
+ * Skills service — canonical skill layer for candidates and jobs.
+ *
+ * This module re-exports the core skills service and provides enrichment
+ * helpers (withCandidateSkills, withJobSkills) used throughout the app.
+ *
+ * Historical note: this file was previously the ESCO compatibility facade.
+ * Consumers still import from "./esco" — a future rename to "./skills-facade"
+ * or direct "./skills" imports will complete the migration.
+ */
 import {
   type CandidateSkillRecord,
   findOrCreateSkill,
@@ -13,67 +23,50 @@ import {
   toSkillSlug,
 } from "./skills";
 
-export type MapSkillContextType = "candidate" | "job" | "tool";
+// ========== Types ==========
 
-export type MapSkillInput = {
-  rawSkill: string;
-  language?: string;
-  contextType: MapSkillContextType;
-  contextId: string;
-  critical: boolean;
-  source?: string;
-};
-
-export type MapSkillResult = {
-  escoUri: string | null;
-  confidence: number;
-  strategy: "exact" | "none";
-  reviewRequired: boolean;
-};
-
-export type CandidateCanonicalSkill = {
+/** Canonical skill attached to a candidate. */
+export type CandidateSkill = {
   skillId: string;
   slug: string;
-  escoUri: string;
-  label: string | null;
+  label: string;
   confidence: number;
-  critical: boolean;
-  rawLabel?: string | null;
-  source?: string;
+  source: string;
+  rawLabel: string | null;
 };
 
-export type JobCanonicalSkill = {
+/** Canonical skill attached to a job. */
+export type JobSkill = {
   skillId: string;
   slug: string;
-  escoUri: string;
-  label: string | null;
+  label: string;
   confidence: number;
-  required: boolean;
-  critical: boolean;
-  weight: number | null;
   importance: "must" | "nice";
-  rawLabel?: string | null;
-  source?: string;
+  required: boolean;
+  weight: number;
+  source: string;
+  rawLabel: string | null;
 };
 
-export type WithCanonicalSkills<T, TCanonicalSkill> = T & {
-  canonicalSkills: TCanonicalSkill[];
+export type WithSkills<T, TSkill> = T & {
+  canonicalSkills: TSkill[];
 };
 
-export type EscoCatalogIssue = "missing_catalog" | null;
-
-export type EscoCatalogStatus = {
+export type SkillsCatalogStatus = {
   available: boolean;
-  issue: EscoCatalogIssue;
+  issue: "missing_catalog" | null;
   skillCount: number;
-  aliasCount: number;
-  mappingCount: number;
   jobSkillCount: number;
   candidateSkillCount: number;
   checkedAt: string;
 };
 
-export type EscoMappingStats = {
+export type SkillFilterOption = {
+  slug: string;
+  name: string;
+};
+
+export type SkillsMappingStats = {
   totalMappings: number;
   byStrategy: Record<string, number>;
   avgConfidence: number | null;
@@ -81,77 +74,66 @@ export type EscoMappingStats = {
   last24hCount: number;
 };
 
-export type ReviewQueueSummary = {
+export type SkillsReviewQueueSummary = {
   pendingCount: number;
   byContextType: Record<string, number>;
   oldestPendingAt: string | null;
 };
 
-function toCandidateCanonicalSkill(record: CandidateSkillRecord): CandidateCanonicalSkill {
+// ========== Converters ==========
+
+function toCandidateSkill(record: CandidateSkillRecord): CandidateSkill {
   return {
     skillId: record.skillId,
     slug: record.slug,
-    escoUri: record.slug,
     label: record.label,
     confidence: record.confidence,
-    critical: false,
-    rawLabel: record.rawLabel,
     source: record.source,
+    rawLabel: record.rawLabel,
   };
 }
 
-function toJobCanonicalSkill(record: JobSkillRecord): JobCanonicalSkill {
+function toJobSkill(record: JobSkillRecord): JobSkill {
   const required = record.importance === "must";
   return {
     skillId: record.skillId,
     slug: record.slug,
-    escoUri: record.slug,
     label: record.label,
     confidence: record.confidence,
-    required,
-    critical: required,
-    weight: required ? 1 : 0.6,
     importance: record.importance,
-    rawLabel: record.rawLabel,
+    required,
+    weight: required ? 1 : 0.6,
     source: record.source,
+    rawLabel: record.rawLabel,
   };
 }
 
-export function resetEscoCatalogStatusCache(): void {
-  // no-op; legacy compatibility surface
+// ========== Catalog ==========
+
+export function isSkillScoringEnabled(): boolean {
+  return process.env.SKILL_SCORING_ENABLED !== "false";
 }
 
-export function isEscoScoringEnabled(): boolean {
-  return process.env.ESCO_SCORING_ENABLED !== "false";
+export async function getSkillsCatalogStatusCached(): Promise<SkillsCatalogStatus> {
+  const status = await getSkillsCatalogStatus();
+  return {
+    available: status.available,
+    issue: status.issue,
+    skillCount: status.skillCount,
+    jobSkillCount: status.jobSkillCount,
+    candidateSkillCount: status.candidateSkillCount,
+    checkedAt: status.checkedAt,
+  };
 }
 
-export async function getEscoCatalogStatus(_opts?: {
-  refresh?: boolean;
-}): Promise<EscoCatalogStatus> {
-  return getSkillsCatalogStatus();
-}
-
-export async function isEscoCatalogAvailable(_opts?: { refresh?: boolean }): Promise<boolean> {
-  const status = await getEscoCatalogStatus();
+export async function isSkillsCatalogAvailable(): Promise<boolean> {
+  const status = await getSkillsCatalogStatusCached();
   return status.available;
 }
 
-export async function mapSkillInput(input: MapSkillInput): Promise<MapSkillResult> {
-  const slug = toSkillSlug(input.rawSkill);
-  if (!slug) {
-    return { escoUri: null, confidence: 0, strategy: "none", reviewRequired: false };
-  }
+// ========== Sync ==========
 
-  const skill = await findOrCreateSkill(input.rawSkill);
-  return {
-    escoUri: skill.slug,
-    confidence: 1,
-    strategy: "exact",
-    reviewRequired: false,
-  };
-}
-
-export async function syncCandidateEscoSkills(input: {
+export async function syncCandidateSkills(input: {
   candidateId: string;
   skills?: unknown;
   skillsStructured?: unknown;
@@ -159,7 +141,7 @@ export async function syncCandidateEscoSkills(input: {
   await syncCandidateSkillsV2(input);
 }
 
-export async function syncJobEscoSkills(input: {
+export async function syncJobSkills(input: {
   jobId: string;
   requirements?: unknown;
   wishes?: unknown;
@@ -168,82 +150,80 @@ export async function syncJobEscoSkills(input: {
   await syncJobSkillsV2(input);
 }
 
-export async function getCandidateSkills(candidateId: string): Promise<CandidateCanonicalSkill[]> {
+// ========== Read ==========
+
+export async function getCandidateSkills(candidateId: string): Promise<CandidateSkill[]> {
   const records = await getCandidateSkillsV2(candidateId);
-  return records.map(toCandidateCanonicalSkill);
+  return records.map(toCandidateSkill);
 }
 
-export async function getJobSkills(jobId: string): Promise<JobCanonicalSkill[]> {
+export async function getJobSkills(jobId: string): Promise<JobSkill[]> {
   const records = await getJobSkillsV2(jobId);
-  return records.map(toJobCanonicalSkill);
+  return records.map(toJobSkill);
 }
 
-export async function getJobSkillsForJobIds(
-  jobIds: string[],
-): Promise<Map<string, JobCanonicalSkill[]>> {
+export async function getJobSkillsForJobIds(jobIds: string[]): Promise<Map<string, JobSkill[]>> {
   const grouped = await getJobSkillsV2ForJobIds(jobIds);
   return new Map(
-    Array.from(grouped.entries()).map(([jobId, rows]) => [jobId, rows.map(toJobCanonicalSkill)]),
+    Array.from(grouped.entries()).map(([jobId, rows]) => [jobId, rows.map(toJobSkill)]),
   );
 }
 
 export async function getCandidateSkillsForCandidateIds(
   candidateIds: string[],
-): Promise<Map<string, CandidateCanonicalSkill[]>> {
+): Promise<Map<string, CandidateSkill[]>> {
   const grouped = await getCandidateSkillsV2ForCandidateIds(candidateIds);
   return new Map(
     Array.from(grouped.entries()).map(([candidateId, rows]) => [
       candidateId,
-      rows.map(toCandidateCanonicalSkill),
+      rows.map(toCandidateSkill),
     ]),
   );
 }
 
-export async function withCandidateCanonicalSkills<T extends { id: string }>(
+// ========== Enrichment helpers ==========
+
+export async function withCandidateSkills<T extends { id: string }>(
   candidate: T,
-): Promise<WithCanonicalSkills<T, CandidateCanonicalSkill>> {
+): Promise<WithSkills<T, CandidateSkill>> {
   return { ...candidate, canonicalSkills: await getCandidateSkills(candidate.id) };
 }
 
-export async function withCandidatesCanonicalSkills<T extends { id: string }>(
+export async function withCandidatesSkills<T extends { id: string }>(
   candidates: T[],
-): Promise<Array<WithCanonicalSkills<T, CandidateCanonicalSkill>>> {
-  const grouped = await getCandidateSkillsForCandidateIds(
-    candidates.map((candidate) => candidate.id),
-  );
-  return candidates.map((candidate) => ({
-    ...candidate,
-    canonicalSkills: grouped.get(candidate.id) ?? [],
+): Promise<Array<WithSkills<T, CandidateSkill>>> {
+  const grouped = await getCandidateSkillsForCandidateIds(candidates.map((c) => c.id));
+  return candidates.map((c) => ({
+    ...c,
+    canonicalSkills: grouped.get(c.id) ?? [],
   }));
 }
 
-export async function withJobCanonicalSkills<T extends { id: string }>(
+export async function withJobSkills<T extends { id: string }>(
   job: T,
-): Promise<WithCanonicalSkills<T, JobCanonicalSkill>> {
+): Promise<WithSkills<T, JobSkill>> {
   return { ...job, canonicalSkills: await getJobSkills(job.id) };
 }
 
-export async function withJobsCanonicalSkills<T extends { id: string }>(
+export async function withJobsSkills<T extends { id: string }>(
   jobs: T[],
-): Promise<Array<WithCanonicalSkills<T, JobCanonicalSkill>>> {
-  const grouped = await getJobSkillsForJobIds(jobs.map((job) => job.id));
-  return jobs.map((job) => ({
-    ...job,
-    canonicalSkills: grouped.get(job.id) ?? [],
+): Promise<Array<WithSkills<T, JobSkill>>> {
+  const grouped = await getJobSkillsForJobIds(jobs.map((j) => j.id));
+  return jobs.map((j) => ({
+    ...j,
+    canonicalSkills: grouped.get(j.id) ?? [],
   }));
 }
 
-export async function listEscoSkillsForFilter(query?: string) {
+// ========== Filter ==========
+
+export async function listSkillsForFilterOptions(query?: string): Promise<SkillFilterOption[]> {
   const rows = await listSkillsForFilter(query);
-  return rows.map((row) => ({
-    uri: row.slug,
-    labelNl: row.name,
-    labelEn: row.name,
-  }));
+  return rows.map((row) => ({ slug: row.slug, name: row.name }));
 }
 
-export async function getEscoMappingStats(): Promise<EscoMappingStats> {
-  const status = await getEscoCatalogStatus();
+export async function getSkillsMappingStats(): Promise<SkillsMappingStats> {
+  const status = await getSkillsCatalogStatusCached();
   const totalMappings = status.jobSkillCount + status.candidateSkillCount;
   return {
     totalMappings,
@@ -254,10 +234,50 @@ export async function getEscoMappingStats(): Promise<EscoMappingStats> {
   };
 }
 
-export async function getReviewQueueSummary(): Promise<ReviewQueueSummary> {
+export async function getSkillsReviewQueueSummary(): Promise<SkillsReviewQueueSummary> {
   return {
     pendingCount: 0,
     byContextType: {},
     oldestPendingAt: null,
   };
 }
+
+// ========== Re-exports for direct access ==========
+
+export { findOrCreateSkill, toSkillSlug };
+
+// ========== Legacy aliases (deprecated — will be removed) ==========
+
+/** @deprecated Use CandidateSkill */
+export type CandidateCanonicalSkill = CandidateSkill;
+/** @deprecated Use JobSkill */
+export type JobCanonicalSkill = JobSkill;
+/** @deprecated Use WithSkills */
+export type WithCanonicalSkills<T, TSkill> = WithSkills<T, TSkill>;
+/** @deprecated Use isSkillScoringEnabled */
+export const isEscoScoringEnabled = isSkillScoringEnabled;
+/** @deprecated Use getSkillsCatalogStatusCached */
+export const getEscoCatalogStatus = getSkillsCatalogStatusCached;
+/** @deprecated Use isSkillsCatalogAvailable */
+export const isEscoCatalogAvailable = isSkillsCatalogAvailable;
+/** @deprecated Use syncCandidateSkills */
+export const syncCandidateEscoSkills = syncCandidateSkills;
+/** @deprecated Use syncJobSkills */
+export const syncJobEscoSkills = syncJobSkills;
+/** @deprecated Use getSkillsMappingStats */
+export const getEscoMappingStats = getSkillsMappingStats;
+/** @deprecated Use getSkillsReviewQueueSummary */
+export const getReviewQueueSummary = getSkillsReviewQueueSummary;
+/** @deprecated Use listSkillsForFilterOptions */
+export async function listEscoSkillsForFilter(query?: string) {
+  const rows = await listSkillsForFilter(query);
+  return rows.map((row) => ({ uri: row.slug, labelNl: row.name, labelEn: row.name }));
+}
+/** @deprecated Use withCandidateSkills */
+export const withCandidateCanonicalSkills = withCandidateSkills;
+/** @deprecated Use withCandidatesSkills */
+export const withCandidatesCanonicalSkills = withCandidatesSkills;
+/** @deprecated Use withJobSkills */
+export const withJobCanonicalSkills = withJobSkills;
+/** @deprecated Use withJobsSkills */
+export const withJobsCanonicalSkills = withJobsSkills;

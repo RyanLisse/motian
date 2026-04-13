@@ -71,7 +71,7 @@ vi.mock("../src/lib/event-bus", () => ({
 
 // Mock remaining synchronous derived sync dependency as a no-op
 vi.mock("../src/services/esco", () => ({
-  syncCandidateEscoSkills: vi.fn().mockResolvedValue(undefined),
+  syncCandidateSkills: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../src/services/search-index/typesense-sync", () => ({
