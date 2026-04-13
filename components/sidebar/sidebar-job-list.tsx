@@ -44,7 +44,9 @@ export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: Sid
           variant === "overview" ? OVERVIEW_ITEM_ESTIMATE : COMPACT_ITEM_ESTIMATE
         }
         gap={variant === "overview" ? 16 : 0}
-        scrollMode="self"
+        // Compact (detail-page) sidebar scrolls as one column → virtualize against
+        // the parent aside. Overview keeps its own bounded scroll inside the list column.
+        scrollMode={variant === "compact" ? "parent" : "self"}
         className={variant === "compact" ? "bg-[#050506]" : "min-w-0"}
         renderItem={(job, index) => renderJob(job, index)}
       />
@@ -52,14 +54,16 @@ export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: Sid
   }
 
   if (variant === "compact") {
+    // Compact sidebar already scrolls at the aside level — render a plain
+    // container so we don't introduce a nested scroll region inside it.
     return (
-      <ScrollArea className="min-h-0 flex-1 bg-[#050506]">
+      <div className="bg-[#050506]">
         {jobs.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-white/45">Geen vacatures gevonden</div>
         ) : (
           jobs.map((job, index) => renderJob(job, index))
         )}
-      </ScrollArea>
+      </div>
     );
   }
 

@@ -34,6 +34,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { normalizeExternalUrl } from "@/src/lib/external-url";
 import { formatDateTime } from "@/src/lib/helpers";
 import {
   getScraperDashboardData,
@@ -93,6 +94,7 @@ function PlatformHealthCard({
   overlapCount: number;
 }) {
   const latestSignals = platform.signals.slice(0, 2);
+  const platformBaseUrl = normalizeExternalUrl(platform.baseUrl);
 
   return (
     <Card className="bg-card border-border">
@@ -112,15 +114,15 @@ function PlatformHealthCard({
                 </Badge>
               )}
             </div>
-            {platform.baseUrl ? (
-              <Link
-                href={platform.baseUrl}
+            {platformBaseUrl ? (
+              <a
+                href={platformBaseUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs text-muted-foreground hover:text-foreground hover:underline"
               >
-                {platform.baseUrl}
-              </Link>
+                {platformBaseUrl}
+              </a>
             ) : (
               <p className="text-xs text-muted-foreground">Geen bron-URL opgeslagen</p>
             )}
@@ -301,20 +303,24 @@ async function withTimeoutFallback<T>(
     return fallback;
   }
 
+  let timedOut = false;
   let timeoutId: NodeJS.Timeout | null = null;
   const guardedPromise = load()
     .then((result) => {
-      scraperPageFailureUntil.delete(label);
+      if (!timedOut) scraperPageFailureUntil.delete(label);
       return result;
     })
     .catch((error) => {
-      scraperPageFailureUntil.set(label, Date.now() + SCRAPER_PAGE_FAILURE_TTL_MS);
-      console.error(`[scraper-page] ${label} mislukt, fallback wordt gebruikt`, error);
+      if (!timedOut) {
+        scraperPageFailureUntil.set(label, Date.now() + SCRAPER_PAGE_FAILURE_TTL_MS);
+        console.error(`[scraper-page] ${label} mislukt, fallback wordt gebruikt`, error);
+      }
       return fallback;
     });
 
   const timeoutPromise = new Promise<T>((resolve) => {
     timeoutId = setTimeout(() => {
+      timedOut = true;
       scraperPageFailureUntil.set(label, Date.now() + SCRAPER_PAGE_FAILURE_TTL_MS);
       console.error(`[scraper-page] ${label} timeout na ${timeoutMs}ms, fallback wordt gebruikt`);
       resolve(fallback);

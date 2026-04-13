@@ -2,6 +2,7 @@ import { logger, schedules } from "@trigger.dev/sdk";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
+import { parseCronNext } from "@/src/lib/cron-utils";
 import { publish } from "@/src/lib/event-bus";
 import { CIRCUIT_BREAKER_THRESHOLD } from "@/src/lib/helpers";
 import { notifySlack } from "@/src/lib/notify-slack";
@@ -10,35 +11,15 @@ import { runScrapePipelinesWithConcurrency } from "@/src/services/scrape-pipelin
 
 // ========== Helpers ==========
 
-function cronIntervalMs(expr: string | null | undefined): number {
-  const HOUR = 3_600_000;
-  if (!expr) return 24 * HOUR;
-
-  const parts = expr.trim().split(/\s+/);
-  const fields = parts.length === 6 ? parts.slice(1) : parts;
-  if (fields.length < 5) return 24 * HOUR;
-
-  const [minute, hour] = fields;
-
-  const hourStep = hour.match(/^\*\/(\d+)$/);
-  if (hourStep) return Number(hourStep[1]) * HOUR;
-
-  const minStep = minute.match(/^\*\/(\d+)$/);
-  if (minStep) return Number(minStep[1]) * 60_000;
-
-  if (/^\d+$/.test(hour) && /^\d+$/.test(minute)) return 24 * HOUR;
-
-  return 24 * HOUR;
-}
-
 function isDue(
   cronExpression: string | null | undefined,
   lastRunAt: Date | null | undefined,
 ): boolean {
   if (!lastRunAt) return true;
-  const interval = cronIntervalMs(cronExpression);
+  const nextRun = parseCronNext(cronExpression, lastRunAt);
+  if (!nextRun) return true; // unknown schedule → always consider due
   const grace = 5 * 60_000;
-  return Date.now() - lastRunAt.getTime() >= interval - grace;
+  return Date.now() >= nextRun.getTime() - grace;
 }
 
 // ========== Scheduled Task ==========
