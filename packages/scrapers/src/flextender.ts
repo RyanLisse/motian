@@ -47,7 +47,6 @@ export async function scrapeFlextender(): Promise<RawScrapedListing[]> {
       }
       formData.append("action", "kbs_flx_searchjobs");
       formData.append("kbs_flx_joblsrc_freetext", "");
-      formData.append("StackOverflow1370021", "Fix autosubmit bug");
 
       const res = await fetch(AJAX_URL, {
         method: "POST",

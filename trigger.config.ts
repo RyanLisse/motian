@@ -1,9 +1,10 @@
 import { additionalPackages, syncEnvVars } from "@trigger.dev/build/extensions/core";
 import * as Sentry from "@sentry/node";
 import { defineConfig } from "@trigger.dev/sdk";
+import { getSafeSentryDsn } from "./src/lib/sentry-config";
 import { scrubSentryEvent, SENTRY_IGNORE_ERRORS } from "./src/lib/sentry-scrub";
 
-const SENTRY_DSN = process.env.SENTRY_DSN;
+const SENTRY_DSN = getSafeSentryDsn(process.env.SENTRY_DSN);
 
 let sentryInitialized = false;
 function ensureSentry() {

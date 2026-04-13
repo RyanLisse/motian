@@ -68,12 +68,16 @@ export const scraperHealthTask = schedules.task({
 
     // Probe tripped platforms that have been stuck without any recent success
     let probeAttempts = 0;
+    let staleResets = 0;
+    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
     for (const cfg of tripped) {
       // Only probe platforms still in the alerts list (no recent success)
       const isStuckPlatform = alerts.some((a) => a.startsWith(cfg.platform));
       if (!isStuckPlatform) continue;
 
       probeAttempts++;
+      let probeRecovered = false;
       try {
         const adapter = getPlatformAdapter(cfg.platform);
         if (!adapter) continue;
@@ -86,6 +90,7 @@ export const scraperHealthTask = schedules.task({
 
         if (probeResult.status === "success" && probeResult.jobsFound > 0) {
           // Probe succeeded — reset circuit breaker
+          probeRecovered = true;
           await db
             .update(scraperConfigs)
             .set({ consecutiveFailures: 0 })
@@ -109,12 +114,28 @@ export const scraperHealthTask = schedules.task({
           error: probeErr instanceof Error ? probeErr.message : String(probeErr),
         });
       }
+
+      // If probe didn't recover and the scraper has been stuck for 48h+, force-reset to unblock
+      if (!probeRecovered && cfg.lastRunAt && cfg.lastRunAt < fortyEightHoursAgo) {
+        await db
+          .update(scraperConfigs)
+          .set({ consecutiveFailures: 0 })
+          .where(eq(scraperConfigs.id, cfg.id));
+        staleResets++;
+        const staleAlertIdx = alerts.findIndex((a) => a.startsWith(cfg.platform));
+        if (staleAlertIdx !== -1) alerts.splice(staleAlertIdx, 1);
+        logger.warn(`Stale circuit breaker geforceerd gereset voor ${cfg.platform}`, {
+          lastRunAt: cfg.lastRunAt,
+          previousFailures: cfg.consecutiveFailures,
+        });
+      }
     }
 
     logger.info("Scraper gezondheidscheck voltooid", {
       trippedCount: tripped.length,
       resetCount: reset,
       probeAttempts,
+      staleResets,
       alertCount: alerts.length,
     });
 
@@ -122,6 +143,7 @@ export const scraperHealthTask = schedules.task({
       trippedScrapers: tripped.length,
       resetCircuitBreakers: reset,
       probeAttempts,
+      staleResets,
       alerts,
     };
   },

@@ -64,7 +64,7 @@ export function VirtualList<T>({
 }: VirtualListProps<T>) {
   const isMobile = useIsMobile();
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const selfScrollRef = useRef<HTMLDivElement | null>(null);
+  const [selfScrollElement, setSelfScrollElement] = useState<HTMLDivElement | null>(null);
   const [parentScrollElement, setParentScrollElement] = useState<HTMLElement | null>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
 
@@ -120,7 +120,7 @@ export function VirtualList<T>({
     };
   }, [parentScrollElement, scrollMode, updateParentScrollState]);
 
-  const scrollElement = scrollMode === "parent" ? parentScrollElement : selfScrollRef.current;
+  const scrollElement = scrollMode === "parent" ? parentScrollElement : selfScrollElement;
 
   useEffect(() => {
     if (!smoothScroll || !scrollElement) return undefined;
@@ -209,8 +209,8 @@ export function VirtualList<T>({
   }
 
   return (
-    <div ref={setRootRef} className="min-h-0 flex-1">
-      <div ref={selfScrollRef} className={cn("min-h-0 flex-1 overflow-y-auto", className)}>
+    <div ref={setRootRef} className="flex min-h-0 flex-1 flex-col">
+      <div ref={setSelfScrollElement} className={cn("min-h-0 flex-1 overflow-y-auto", className)}>
         {virtualizedContent}
       </div>
     </div>

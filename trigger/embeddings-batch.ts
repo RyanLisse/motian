@@ -1,5 +1,5 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { and, db, isNotNull, isNull, jobs, or, sql } from "@/src/db";
+import { and, db, isNull, jobs } from "@/src/db";
 import { embedCandidatesBatch, embedJob } from "@/src/services/embedding";
 import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
 
@@ -20,16 +20,7 @@ export const embeddingsBatchTask = schedules.task({
     const jobsWithout = await db
       .select({ id: jobs.id, title: jobs.title })
       .from(jobs)
-      .where(
-        and(
-          getVisibleVacancyCondition(),
-          isNull(jobs.embedding),
-          or(
-            isNotNull(jobs.descriptionSummary),
-            sql`nullif(trim(${jobs.description}), '') is not null`,
-          ),
-        ),
-      )
+      .where(and(getVisibleVacancyCondition(), isNull(jobs.embedding)))
       .limit(50);
 
     let jobsEmbedded = 0;

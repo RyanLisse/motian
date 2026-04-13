@@ -13,16 +13,22 @@ const triggerSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const ip =
-    request.headers.get("x-real-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    "anonymous";
-  const { success, reset } = limiter.check(ip);
-  if (!success) {
-    return Response.json(
-      { error: "Te veel verzoeken. Probeer het later opnieuw." },
-      { status: 429, headers: { "Retry-After": String(Math.ceil((reset - Date.now()) / 1000)) } },
-    );
+  // Bearer token auth bypasses the IP rate limiter (for automated/cron callers)
+  const authHeader = request.headers.get("authorization");
+  const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!isAuthorized) {
+    const ip =
+      request.headers.get("x-real-ip") ??
+      request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+      "anonymous";
+    const { success, reset } = limiter.check(ip);
+    if (!success) {
+      return Response.json(
+        { error: "Te veel verzoeken. Probeer het later opnieuw." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((reset - Date.now()) / 1000)) } },
+      );
+    }
   }
 
   try {

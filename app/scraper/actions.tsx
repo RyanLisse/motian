@@ -83,6 +83,7 @@ export function ScraperActions() {
         </p>
       )}
       <Button
+        type="button"
         onClick={handleScrapeAll}
         disabled={loading}
         className="w-full bg-primary text-white hover:bg-primary/90 sm:w-auto"
