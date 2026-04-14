@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const limitMock = vi.fn();
-const orderByMock = vi.fn();
 const whereMock = vi.fn(() => ({
   limit: limitMock,
-  orderBy: orderByMock,
 }));
 const fromMock = vi.fn(() => ({
   where: whereMock,
@@ -13,7 +11,8 @@ const selectMock = vi.fn(() => ({
   from: fromMock,
 }));
 
-const downloadFileMock = vi.fn();
+const getRunFindingsMock = vi.fn();
+const loadRunEvidenceFromReportUrlMock = vi.fn();
 
 vi.mock("@/src/db", async (importOriginal) => ({
   ...(await importOriginal()),
@@ -33,8 +32,13 @@ vi.mock("@/src/db/schema", () => ({
   },
 }));
 
-vi.mock("@/src/lib/file-storage", () => ({
-  downloadFile: downloadFileMock,
+vi.mock("@/src/autopilot/persistence", () => ({
+  getRunFindings: getRunFindingsMock,
+}));
+
+vi.mock("@/src/autopilot/run-detail", async (importOriginal) => ({
+  ...(await importOriginal()),
+  loadRunEvidenceFromReportUrl: loadRunEvidenceFromReportUrlMock,
 }));
 
 describe("autopilot run detail evidence loading", () => {
@@ -65,7 +69,7 @@ describe("autopilot run detail evidence loading", () => {
       },
     ]);
 
-    orderByMock.mockResolvedValueOnce([
+    getRunFindingsMock.mockResolvedValueOnce([
       {
         id: "finding-1",
         findingId: "finding-1",
@@ -88,67 +92,48 @@ describe("autopilot run detail evidence loading", () => {
       },
     ]);
 
-    downloadFileMock.mockResolvedValueOnce(
-      Buffer.from(
-        JSON.stringify({
-          runId: "run-123",
-          status: "failed",
-          startedAt: "2026-03-12T04:00:00.000Z",
-          completedAt: "2026-03-12T04:05:00.000Z",
-          commitSha: "abc123def456",
-          journeyResults: [
+    loadRunEvidenceFromReportUrlMock.mockResolvedValueOnce({
+      summaryUrl: "https://blob.vercel-storage.com/autopilot/run-123/summary.json",
+      evidence: [
+        {
+          journeyId: "chat-rich-evidence",
+          surface: "/chat",
+          success: false,
+          failureReason: "Expected selector not found: #result",
+          artifacts: [
             {
-              journeyId: "chat-rich-evidence",
-              surface: "/chat",
-              success: false,
-              durationMs: 1800,
+              id: "chat-rich-evidence-video",
+              kind: "video",
+              path: "/tmp/autopilot/run-123/videos/chat-rich-evidence.webm",
+              capturedAt: "2026-03-12T04:04:05.000Z",
+              filename: "chat-rich-evidence.webm",
+              proxyPath:
+                "/api/autopilot/runs/run-123/evidence/chat-rich-evidence/chat-rich-evidence-video",
+            },
+            {
+              id: "chat-rich-evidence-trace",
+              kind: "trace",
+              path: "/tmp/autopilot/run-123/chat-rich-evidence-trace.zip",
+              capturedAt: "2026-03-12T04:04:06.000Z",
+              metadata: { capturedOnError: true },
+              filename: "chat-rich-evidence-trace.zip",
+              proxyPath:
+                "/api/autopilot/runs/run-123/evidence/chat-rich-evidence/chat-rich-evidence-trace",
+            },
+            {
+              id: "chat-rich-evidence-har",
+              kind: "har",
+              path: "/tmp/autopilot/run-123/chat-rich-evidence.har",
+              capturedAt: "2026-03-12T04:04:07.000Z",
+              filename: "chat-rich-evidence.har",
+              proxyPath:
+                "/api/autopilot/runs/run-123/evidence/chat-rich-evidence/chat-rich-evidence-har",
             },
           ],
-          findings: [],
-          evidenceManifests: [
-            {
-              runId: "run-123",
-              journeyId: "chat-rich-evidence",
-              surface: "/chat",
-              capturedAt: "2026-03-12T04:04:00.000Z",
-              gitSha: "abc123def456",
-              success: false,
-              failureReason: "Expected selector not found: #result",
-              artifacts: [
-                {
-                  id: "chat-rich-evidence-video",
-                  kind: "video",
-                  path: "/tmp/autopilot/run-123/videos/chat-rich-evidence.webm",
-                  capturedAt: "2026-03-12T04:04:05.000Z",
-                },
-                {
-                  id: "chat-rich-evidence-trace",
-                  kind: "trace",
-                  path: "/tmp/autopilot/run-123/chat-rich-evidence-trace.zip",
-                  capturedAt: "2026-03-12T04:04:06.000Z",
-                  metadata: { capturedOnError: true },
-                },
-                {
-                  id: "chat-rich-evidence-har",
-                  kind: "har",
-                  path: "/tmp/autopilot/run-123/chat-rich-evidence.har",
-                  capturedAt: "2026-03-12T04:04:07.000Z",
-                },
-              ],
-            },
-          ],
-          stats: {
-            totalJourneys: 1,
-            passedJourneys: 0,
-            failedJourneys: 1,
-            totalFindings: 1,
-            findingsBySeverity: { high: 1 },
-            findingsByCategory: { bug: 1 },
-          },
-        }),
-        "utf8",
-      ),
-    );
+        },
+      ],
+      summary: {},
+    });
 
     const detail = await getRunDetail("run-123");
 
@@ -190,12 +175,12 @@ describe("autopilot run detail evidence loading", () => {
       },
     ]);
 
-    orderByMock.mockResolvedValueOnce([]);
+    getRunFindingsMock.mockResolvedValueOnce([]);
 
     const detail = await getRunDetail("run-456");
 
     expect(detail?.summaryUrl).toBeNull();
     expect(detail?.evidence).toEqual([]);
-    expect(downloadFileMock).not.toHaveBeenCalled();
+    expect(loadRunEvidenceFromReportUrlMock).not.toHaveBeenCalled();
   });
 });
