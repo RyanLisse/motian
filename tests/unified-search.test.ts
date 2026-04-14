@@ -7,7 +7,7 @@ const { mockListJobs, mockHybridSearch, mockHybridSearchWithTotal } = vi.hoisted
 }));
 
 vi.mock("next/cache", () => ({
-  unstable_cache: <T extends (...args: any[]) => any>(fn: T) => fn,
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
 
 vi.mock("../src/services/jobs/list", () => ({

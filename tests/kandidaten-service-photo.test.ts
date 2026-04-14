@@ -55,7 +55,6 @@ vi.mock("../src/services/esco", () => ({
   syncCandidateSkills: vi.fn(),
 }));
 
-
 import {
   type CreateCandidateData,
   candidateReadSelection,

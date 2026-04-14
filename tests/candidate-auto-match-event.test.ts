@@ -71,7 +71,6 @@ vi.mock("../src/services/esco", () => ({
   syncCandidateSkills: vi.fn().mockResolvedValue(undefined),
 }));
 
-
 vi.mock("../src/lib/query-observability", () => ({
   LIST_SLO_MS: 500,
   SEARCH_SLO_MS: 1000,
