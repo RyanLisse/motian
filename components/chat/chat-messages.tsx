@@ -20,7 +20,7 @@ import {
   Upload,
   Users,
 } from "lucide-react";
-import { Suspense, useCallback, useId, useState } from "react";
+import { memo, Suspense, useCallback, useId, useState } from "react";
 import { VirtualList } from "@/components/shared/virtual-list";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -310,7 +310,7 @@ function AssistantMessageActions({
   );
 }
 
-function ChatMessageItem({
+const ChatMessageItem = memo(function ChatMessageItem({
   message,
   currentOrigin,
   onRetry,
@@ -476,7 +476,7 @@ function ChatMessageItem({
       )}
     </Message>
   );
-}
+});
 
 export function ChatMessages({
   messages,
