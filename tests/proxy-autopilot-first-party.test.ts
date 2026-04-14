@@ -10,10 +10,8 @@ describe("proxy autopilot allowlist", () => {
 
     // Autopilot routes are internal — they must NOT appear in FIRST_PARTY_PATHS
     // to ensure they remain auth-gated.
-    const firstPartyBlock = source.match(
-      /FIRST_PARTY_PATHS\s*=\s*\[([\s\S]*?)\]/,
-    );
+    const firstPartyBlock = source.match(/FIRST_PARTY_PATHS\s*=\s*\[([\s\S]*?)\]/);
     expect(firstPartyBlock).not.toBeNull();
-    expect(firstPartyBlock![1]).not.toContain("/api/autopilot");
+    expect(firstPartyBlock?.[1]).not.toContain("/api/autopilot");
   });
 });
