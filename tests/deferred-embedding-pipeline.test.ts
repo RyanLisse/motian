@@ -86,7 +86,7 @@ describe("deferred embedding pipeline", () => {
       entityId: "cand-123",
       source: "candidate:create",
       embedded: true,
-      indexed: true,
+      indexed: false,
       embeddingStatus: "ready",
     });
 
@@ -121,7 +121,7 @@ describe("deferred embedding pipeline", () => {
       entityId: "job-456",
       source: "job:update",
       embedded: true,
-      indexed: true,
+      indexed: false,
       embeddingStatus: "ready",
     });
 

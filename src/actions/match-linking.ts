@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { db } from "@/src/db";
 import { jobMatches } from "@/src/db/schema";
 import { createOrReuseApplicationForMatch } from "@/src/services/applications";
@@ -39,6 +39,7 @@ export async function linkCandidateToJob(
       });
     }
 
+    revalidateTag("jobs", "default");
     revalidatePath("/kandidaten");
     revalidatePath("/vacatures");
     revalidatePath("/pipeline");
@@ -53,6 +54,7 @@ export async function linkCandidateToJob(
       if (concurrent) {
         await updateMatchStatus(concurrent.id, "approved", "system");
       }
+      revalidateTag("jobs", "default");
       revalidatePath("/kandidaten");
       revalidatePath("/vacatures");
       revalidatePath("/pipeline");

@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { publish } from "../lib/event-bus";
 import { autoMatchJobToCandidates } from "./auto-matching";
 import { createJob, deleteJob, updateJob } from "./jobs";
@@ -34,6 +34,7 @@ export async function createJobWithEffects(data: CreateJobData) {
     ...data,
     externalId: data.externalId || `handmatig-${crypto.randomUUID()}`,
   });
+  revalidateTag("jobs", "default");
   revalidatePath("/vacatures");
   revalidatePath("/overzicht");
   publish("job:created", { id: result.id });
@@ -43,6 +44,7 @@ export async function createJobWithEffects(data: CreateJobData) {
 export async function updateJobWithEffects(id: string, data: UpdateJobData) {
   const result = await updateJob(id, data);
   if (!result) return null;
+  revalidateTag("jobs", "default");
   revalidatePath("/vacatures");
   revalidatePath(`/vacatures/${id}`);
   publish("job:updated", { id });
@@ -52,6 +54,7 @@ export async function updateJobWithEffects(id: string, data: UpdateJobData) {
 export async function deleteJobWithEffects(id: string) {
   const deleted = await deleteJob(id);
   if (!deleted) return false;
+  revalidateTag("jobs", "default");
   revalidatePath("/vacatures");
   revalidatePath("/overzicht");
   publish("job:deleted", { id });

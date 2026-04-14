@@ -55,14 +55,6 @@ vi.mock("../src/services/esco", () => ({
   syncCandidateSkills: vi.fn(),
 }));
 
-vi.mock("../src/services/search-index/typesense-search", () => ({
-  searchCandidateIdsByTypesense: vi.fn(),
-}));
-
-vi.mock("../src/services/search-index/typesense-sync", () => ({
-  deleteCandidatesByIds: vi.fn(),
-  upsertCandidatesByIds: vi.fn(),
-}));
 
 import {
   type CreateCandidateData,

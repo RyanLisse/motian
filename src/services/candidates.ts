@@ -8,8 +8,6 @@ import type { ParsedCV } from "../schemas/candidate-intelligence";
 import { emitAgentEvent } from "./agent-events";
 import { type EmbeddingStatus, withPendingEmbeddingStatus } from "./embedding";
 import { syncCandidateSkills } from "./esco";
-import { searchCandidateIdsByTypesense } from "./search-index/typesense-search";
-import { deleteCandidatesByIds, upsertCandidatesByIds } from "./search-index/typesense-sync";
 
 // ========== Types ==========
 
@@ -239,45 +237,7 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = Math.max(0, opts.offset ?? 0);
   const queryTelemetry = getSearchTelemetryMeta(opts.query);
-  let typesenseSearchMs = 0;
-  let hydrateMs = 0;
   let dbSearchMs = 0;
-  let fallbackReason: "typesense-unavailable" | "typesense-zero-hits" | null = null;
-
-  try {
-    const typesenseSearchStartedAt = Date.now();
-    const externalResult = await searchCandidateIdsByTypesense({ ...opts, limit, offset });
-    typesenseSearchMs = Date.now() - typesenseSearchStartedAt;
-    if (externalResult && externalResult.ids.length > 0) {
-      const hydrateStartedAt = Date.now();
-      const hydrated = await getCandidatesByIds(externalResult.ids);
-      hydrateMs = Date.now() - hydrateStartedAt;
-      const candidatesById = new Map(hydrated.map((candidate) => [candidate.id, candidate]));
-      const result = externalResult.ids
-        .map((id) => candidatesById.get(id))
-        .filter((candidate): candidate is Candidate => Boolean(candidate));
-
-      logSlowQuery("searchCandidates", Date.now() - start, SEARCH_SLO_MS, {
-        limit,
-        offset,
-        total: externalResult.total,
-        results: result.length,
-        typesenseSearchMs,
-        hydrateMs,
-        dbSearchMs,
-        fallbackReason,
-        queryPath: "candidate-search-typesense",
-        ...queryTelemetry,
-      });
-
-      return result;
-    }
-    // Zero hits from Typesense: fall through to PostgreSQL (cold index).
-    fallbackReason = "typesense-zero-hits";
-  } catch {
-    // Fall back to PostgreSQL search when Typesense is unavailable.
-    fallbackReason = "typesense-unavailable";
-  }
 
   const conditions = buildCandidateSearchConditions(opts);
   const dbSearchStartedAt = Date.now();
@@ -295,10 +255,7 @@ export async function searchCandidates(opts: SearchCandidatesOptions = {}): Prom
     offset,
     total: result.length,
     results: result.length,
-    typesenseSearchMs,
-    hydrateMs,
     dbSearchMs,
-    fallbackReason,
     queryPath: "candidate-search-db",
     ...queryTelemetry,
   });
@@ -312,31 +269,7 @@ export async function countCandidates(
 ): Promise<number> {
   const start = Date.now();
   const queryTelemetry = getSearchTelemetryMeta(opts.query);
-  let typesenseSearchMs = 0;
   let dbSearchMs = 0;
-  let fallbackReason: "typesense-unavailable" | "typesense-zero-hits" | null = null;
-
-  try {
-    const typesenseSearchStartedAt = Date.now();
-    const externalResult = await searchCandidateIdsByTypesense(opts);
-    typesenseSearchMs = Date.now() - typesenseSearchStartedAt;
-    if (externalResult && externalResult.total > 0) {
-      logSlowQuery("countCandidates", Date.now() - start, LIST_SLO_MS, {
-        total: externalResult.total,
-        results: externalResult.total,
-        typesenseSearchMs,
-        dbSearchMs,
-        fallbackReason,
-        queryPath: "candidate-count-typesense",
-        ...queryTelemetry,
-      });
-      return externalResult.total;
-    }
-    fallbackReason = "typesense-zero-hits";
-  } catch {
-    // Fall back to PostgreSQL counting when Typesense is unavailable.
-    fallbackReason = "typesense-unavailable";
-  }
 
   const conditions = buildCandidateSearchConditions(opts);
   const dbSearchStartedAt = Date.now();
@@ -350,9 +283,7 @@ export async function countCandidates(
   logSlowQuery("countCandidates", Date.now() - start, LIST_SLO_MS, {
     total: count ?? 0,
     results: count ?? 0,
-    typesenseSearchMs,
     dbSearchMs,
-    fallbackReason,
     queryPath: "candidate-count-db",
     ...queryTelemetry,
   });
@@ -452,14 +383,6 @@ export async function updateCandidateMatchingStatus(
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
     .returning(candidateReadSelection);
 
-  if (rows[0]?.id) {
-    try {
-      await upsertCandidatesByIds([rows[0].id]);
-    } catch (err) {
-      console.error(`[Candidates] Typesense sync error for ${rows[0].id}:`, err);
-    }
-  }
-
   return rows[0] ?? null;
 }
 
@@ -502,14 +425,6 @@ export async function deleteCandidate(id: string): Promise<boolean> {
     .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)))
     .returning(candidateReadSelection);
 
-  if (rows.length > 0) {
-    try {
-      await deleteCandidatesByIds([id]);
-    } catch (err) {
-      console.error(`[Candidates] Typesense delete error for ${id}:`, err);
-    }
-  }
-
   return rows.length > 0;
 }
 
@@ -550,9 +465,6 @@ export async function findDuplicateCandidate(
           .set({ deletedAt: null, updatedAt: new Date() })
           .where(eq(candidates.id, row.id))
           .returning(candidateReadSelection);
-        if (restored[0]?.id) {
-          await upsertCandidatesByIds([restored[0].id]);
-        }
         return { exact: restored[0] ?? row, similar: [] };
       }
       return { exact: row, similar: [] };

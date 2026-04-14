@@ -71,14 +71,6 @@ vi.mock("../src/services/esco", () => ({
   syncCandidateSkills: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../src/services/search-index/typesense-sync", () => ({
-  upsertCandidatesByIds: vi.fn().mockResolvedValue(undefined),
-  deleteCandidatesByIds: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("../src/services/search-index/typesense-search", () => ({
-  searchCandidateIdsByTypesense: vi.fn().mockResolvedValue(null),
-}));
 
 vi.mock("../src/lib/query-observability", () => ({
   LIST_SLO_MS: 500,

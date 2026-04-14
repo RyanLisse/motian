@@ -1,4 +1,6 @@
+import { unstable_cache } from "next/cache";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../lib/opdrachten-filters";
+import { getSidebarMetadata } from "./sidebar-metadata";
 import {
   deriveJobStatus,
   type JobStatus,
@@ -94,6 +96,102 @@ export {
   updateJobEnrichment,
 };
 
+const DEFAULT_OPEN_VACATURES_CACHE_VERSION = "v1";
+
+function isDefaultOpenVacaturesList(opts: UnifiedJobSearchOptions) {
+  return (
+    !opts.q &&
+    !opts.platform &&
+    !(opts.platforms?.length) &&
+    !opts.company &&
+    !opts.endClient &&
+    !opts.escoUri &&
+    !opts.category &&
+    !(opts.categories?.length) &&
+    (!opts.status || opts.status === "open") &&
+    !opts.province &&
+    !opts.region &&
+    !(opts.regions?.length) &&
+    opts.rateMin == null &&
+    opts.rateMax == null &&
+    !opts.contractType &&
+    !opts.workArrangement &&
+    !opts.hoursPerWeekBucket &&
+    opts.minHoursPerWeek == null &&
+    opts.maxHoursPerWeek == null &&
+    opts.radiusKm == null &&
+    !opts.postedAfter &&
+    !opts.deadlineBefore &&
+    !opts.startDateAfter &&
+    !opts.onlyWithActivePipeline
+  );
+}
+
+async function getKnownTotalForDefaultOpenVacaturesList(
+  opts: UnifiedJobSearchOptions,
+): Promise<number | undefined> {
+  if (!isDefaultOpenVacaturesList(opts)) return undefined;
+
+  const metadata = await getSidebarMetadata();
+  return metadata?.totalCount;
+}
+
+function buildCachedNoQueryListOptions(
+  opts: UnifiedJobSearchOptions,
+  knownTotal: number | undefined,
+  platforms: string[],
+) {
+  return {
+    limit: opts.limit,
+    offset: opts.offset,
+    knownTotal,
+    platform: platforms.length > 0 ? platforms.join(",") : undefined,
+    platforms: platforms.length > 0 ? platforms : undefined,
+    company: opts.company,
+    endClient: opts.endClient,
+    escoUri: opts.escoUri,
+    category: opts.category,
+    categories: opts.categories,
+    status: opts.status ?? "open",
+    province: opts.province,
+    region: opts.region,
+    regions: opts.regions,
+    rateMin: opts.rateMin,
+    rateMax: opts.rateMax,
+    contractType: opts.contractType,
+    workArrangement: opts.workArrangement,
+    hoursPerWeekBucket: opts.hoursPerWeekBucket,
+    minHoursPerWeek: opts.minHoursPerWeek,
+    maxHoursPerWeek: opts.maxHoursPerWeek,
+    radiusKm: opts.radiusKm,
+    postedAfter: opts.postedAfter,
+    deadlineBefore: opts.deadlineBefore,
+    startDateAfter: opts.startDateAfter,
+    sortBy: opts.sortBy,
+    onlyWithActivePipeline: opts.onlyWithActivePipeline,
+  } satisfies ListJobsOptions;
+}
+
+function buildNoQueryListCacheKey(
+  opts: UnifiedJobSearchOptions,
+  knownTotal: number | undefined,
+  platforms: string[],
+) {
+  return JSON.stringify(buildCachedNoQueryListOptions(opts, knownTotal, platforms));
+}
+
+const getCachedNoQueryVacaturesList = unstable_cache(
+  async (cacheKey: string) => listJobsImpl(JSON.parse(cacheKey) as ListJobsOptions),
+  ["no-query-vacatures-list", DEFAULT_OPEN_VACATURES_CACHE_VERSION],
+  { revalidate: 60, tags: ["jobs"] },
+);
+
+const getCachedNoQueryVacaturesPage = unstable_cache(
+  async (cacheKey: string) => listJobsPageImpl(JSON.parse(cacheKey) as ListJobsPageOptions),
+  ["no-query-vacatures-page", DEFAULT_OPEN_VACATURES_CACHE_VERSION],
+  { revalidate: 60, tags: ["jobs"] },
+);
+
 function normalizeUnifiedSearchTerms(query: JobSearchQuery | undefined) {
   if (query == null) return [];
   const terms = Array.isArray(query) ? query : [query];
@@ -108,35 +206,9 @@ export async function searchJobsUnified(
   const platformFilter = platforms.length > 0 ? platforms.join(",") : undefined;
 
   if (query.length === 0) {
-    const listOpts: ListJobsOptions = {
-      limit: opts.limit,
-      offset: opts.offset,
-      platform: platformFilter,
-      platforms: platforms.length > 0 ? platforms : undefined,
-      company: opts.company,
-      endClient: opts.endClient,
-      escoUri: opts.escoUri,
-      category: opts.category,
-      categories: opts.categories,
-      status: opts.status,
-      province: opts.province,
-      region: opts.region,
-      regions: opts.regions,
-      rateMin: opts.rateMin,
-      rateMax: opts.rateMax,
-      contractType: opts.contractType,
-      workArrangement: opts.workArrangement,
-      hoursPerWeekBucket: opts.hoursPerWeekBucket,
-      minHoursPerWeek: opts.minHoursPerWeek,
-      maxHoursPerWeek: opts.maxHoursPerWeek,
-      radiusKm: opts.radiusKm,
-      postedAfter: opts.postedAfter,
-      deadlineBefore: opts.deadlineBefore,
-      startDateAfter: opts.startDateAfter,
-      sortBy: opts.sortBy,
-      onlyWithActivePipeline: opts.onlyWithActivePipeline,
-    };
-    const { data, total } = await listJobsImpl(listOpts);
+    const knownTotal = await getKnownTotalForDefaultOpenVacaturesList(opts);
+    const cacheKey = buildNoQueryListCacheKey(opts, knownTotal, platforms);
+    const { data, total } = await getCachedNoQueryVacaturesList(cacheKey);
     return { data: data as Array<Job & { score?: number }>, total };
   }
 
@@ -180,34 +252,9 @@ export async function searchJobsPageUnified(
   const platformFilter = platforms.length > 0 ? platforms.join(",") : undefined;
 
   if (query.length === 0) {
-    return listJobsPageImpl({
-      limit: opts.limit,
-      offset: opts.offset,
-      platform: platformFilter,
-      platforms: platforms.length > 0 ? platforms : undefined,
-      company: opts.company,
-      endClient: opts.endClient,
-      escoUri: opts.escoUri,
-      category: opts.category,
-      categories: opts.categories,
-      status: opts.status,
-      province: opts.province,
-      region: opts.region,
-      regions: opts.regions,
-      rateMin: opts.rateMin,
-      rateMax: opts.rateMax,
-      contractType: opts.contractType,
-      workArrangement: opts.workArrangement,
-      hoursPerWeekBucket: opts.hoursPerWeekBucket,
-      minHoursPerWeek: opts.minHoursPerWeek,
-      maxHoursPerWeek: opts.maxHoursPerWeek,
-      radiusKm: opts.radiusKm,
-      postedAfter: opts.postedAfter,
-      deadlineBefore: opts.deadlineBefore,
-      startDateAfter: opts.startDateAfter,
-      sortBy: opts.sortBy,
-      onlyWithActivePipeline: opts.onlyWithActivePipeline,
-    });
+    const knownTotal = await getKnownTotalForDefaultOpenVacaturesList(opts);
+    const cacheKey = buildNoQueryListCacheKey(opts, knownTotal, platforms);
+    return getCachedNoQueryVacaturesPage(cacheKey);
   }
 
   return hybridSearchPageWithTotalImpl(query, {

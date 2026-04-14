@@ -27,7 +27,6 @@ Business logic layer for Motian. This is the highest-value domain area, containi
 |-----------|---------|
 | `jobs/` | Vacancy service modules split by concern. |
 | `scrapers/` | Platform-specific scraper implementations. |
-| `search-index/` | Search index integration helpers. |
 
 ## For AI Agents
 

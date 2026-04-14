@@ -11,6 +11,7 @@ import { type Job, jobReadSelection } from "./repository";
 export type ListJobsOptions = {
   limit?: number;
   offset?: number;
+  knownTotal?: number;
   platform?: string;
   platforms?: string[];
   company?: string;
@@ -105,6 +106,7 @@ export async function listJobs(
     limit,
     offset,
     sortBy: opts.sortBy ?? "nieuwste",
+    knownTotal: opts.knownTotal,
   });
   const dedupePageMs = Date.now() - dedupePageStartedAt;
 

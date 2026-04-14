@@ -6,7 +6,6 @@ import {
   tracedEmbedMany as embedMany,
 } from "../lib/ai-models";
 import { withRetry } from "../lib/retry";
-import { upsertCandidatesByIds, upsertJobsByIds } from "./search-index/typesense-sync";
 
 // ========== Config ==========
 
@@ -387,23 +386,21 @@ export async function runDeferredEmbeddingSync(
   switch (payload.entityType) {
     case "candidate": {
       const embedded = await embedCandidate(payload.entityId);
-      await upsertCandidatesByIds([payload.entityId]);
 
       return {
         ...payload,
         embedded,
-        indexed: true,
+        indexed: false,
         embeddingStatus: await getCandidateEmbeddingStatus(payload.entityId),
       };
     }
     case "job": {
       const embedded = await embedJob(payload.entityId);
-      await upsertJobsByIds([payload.entityId]);
 
       return {
         ...payload,
         embedded,
-        indexed: true,
+        indexed: false,
         embeddingStatus: await getJobEmbeddingStatus(payload.entityId),
       };
     }
