@@ -221,23 +221,23 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 | Service | Command | Notes |
 |---------|---------|-------|
 | Next.js dev server | `pnpm dev` (port 3002 by default) | Requires `.env.local`. Turbopack hot-reload. |
-| Lint | `pnpm lint` | Biome — see `biome.json`. Currently passes cleanly in this Cursor Cloud setup. |
-| Tests | `pnpm test` | Vitest — `tests/**/*.test.ts`. Known pre-existing failures currently remain in `tests/autopilot-run-detail-evidence.test.ts`, `tests/opdrachten-filters-pagination.test.ts`, and `tests/harness/integration.test.ts`. |
+| Lint | `pnpm lint` | Biome — see `biome.json`. Lint currently passes cleanly once dependencies are installed. |
+| Tests | `pnpm test` | Vitest — `tests/**/*.test.ts`. Baseline is currently green (with a small number of intentionally skipped tests in rich-evidence suites). |
 
 ### Environment setup
 
 - Node 22.x and pnpm 9.15.0 are managed via corepack. The update script handles `pnpm install --frozen-lockfile`.
 - `.env.local` must exist (copied from `.env.example`). The app connects to a live Neon PostgreSQL database via `DATABASE_URL`. Without valid credentials, pages will load but some server-side data fetching will fail.
-- `drizzle.config.ts` loads `.env.local` (not `.env`), but already-exported shell values like `DATABASE_URL` still take precedence.
+- `drizzle.config.ts` reads from `.env.local` (not `.env`).
 
 ### Gotchas
 
-- `pnpm lint` currently passes clean (0 errors as of 2026-04-14). Earlier versions had pre-existing formatting errors.
-- `pnpm test` still has known pre-existing failures (as of 2026-04-14): 2 assertions in `tests/autopilot-run-detail-evidence.test.ts` (`reportUrl` metadata assertions), 1 assertion in `tests/opdrachten-filters-pagination.test.ts` (filter sidebar markup expectation drift), and the `risk-policy-gate` JSON case in `tests/harness/integration.test.ts` (`STACK_TRACE_ERROR`).
+- `pnpm lint` should pass cleanly in a healthy local setup (`pnpm install --frozen-lockfile` + dependencies available).
+- `pnpm test` is currently expected to pass on a clean checkout; investigate failures as regressions unless they are explicitly skipped tests.
+- `dotenv` does not override existing shell environment variables. In tmux or long-lived shells, an exported `DATABASE_URL`/`DATABASE_URL_UNPOOLED` can silently override `.env.local` values (including `drizzle.config.ts` usage).
 - The Justfile uses `zsh` as its shell — use `pnpm` commands directly instead if `zsh` is not installed.
 - `bv` (Bead Viewer) without flags launches an interactive TUI that will block the session. Always use `bv --robot-*` flags.
 - Sidebar and canonical route for talent pool: `/kandidaten`; implementation lives in `app/kandidaten` (app/professionals was removed).
-- Shell-level `DATABASE_URL` (including tmux or VM-injected secrets) takes precedence over `.env.local`. If you update the URL in `.env.local` but the app still uses the old database, export the correct value in that shell before running `pnpm dev` or `pnpm db:*`.
 
 ## Learned User Preferences
 
