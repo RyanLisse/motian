@@ -25,9 +25,7 @@ describe("normalizeExternalUrl", () => {
   });
 
   it("preserves trailing slash on URLs with deeper paths", () => {
-    expect(normalizeExternalUrl("https://example.com/jobs/")).toBe(
-      "https://example.com/jobs/",
-    );
+    expect(normalizeExternalUrl("https://example.com/jobs/")).toBe("https://example.com/jobs/");
   });
 
   it("trims surrounding whitespace", () => {
