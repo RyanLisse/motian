@@ -12,6 +12,9 @@ describe("proxy autopilot allowlist", () => {
     // to ensure they remain auth-gated.
     const firstPartyBlock = source.match(/FIRST_PARTY_PATHS\s*=\s*\[([\s\S]*?)\]/);
     expect(firstPartyBlock).not.toBeNull();
-    expect(firstPartyBlock?.[1]).not.toContain("/api/autopilot");
+    if (!firstPartyBlock) {
+      throw new Error("Expected FIRST_PARTY_PATHS block");
+    }
+    expect(firstPartyBlock[1]).not.toContain("/api/autopilot");
   });
 });

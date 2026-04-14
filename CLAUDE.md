@@ -43,9 +43,10 @@ pnpm voice-agent:dev      # LiveKit voice agent (dev)
 pnpm harness:pre-pr       # lint + tsc + test + risk policy gate
 ```
 
-`pnpm lint` currently reports a handful of pre-existing Biome errors; those are not blocking
-for your changes, but do not *add* new ones. Similarly, a few structural tests are known
-flaky around model-alias indirection — do not "fix" them by reverting model abstractions.
+`pnpm lint` currently passes cleanly. `pnpm test` still has known pre-existing failures in
+`tests/autopilot-run-detail-evidence.test.ts`, `tests/opdrachten-filters-pagination.test.ts`,
+and `tests/harness/integration.test.ts`. Do not assume your changes caused them without
+reproducing, and do not "fix" them by reverting unrelated abstractions.
 
 ## Architecture (big picture)
 
