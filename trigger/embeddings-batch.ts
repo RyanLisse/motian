@@ -17,6 +17,8 @@ export const embeddingsBatchTask = schedules.task({
   },
   run: async () => {
     // --- Jobs without embeddings ---
+    // Pick up ALL jobs without embeddings — even those without descriptions.
+    // embedJob() now falls back to title + categories + requirements for embedding text.
     const jobsWithout = await db
       .select({ id: jobs.id, title: jobs.title })
       .from(jobs)

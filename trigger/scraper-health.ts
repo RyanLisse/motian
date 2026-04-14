@@ -69,7 +69,7 @@ export const scraperHealthTask = schedules.task({
     // Probe tripped platforms that have been stuck without any recent success
     let probeAttempts = 0;
     let staleResets = 0;
-    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    const STALE_CIRCUIT_BREAKER_MS = 48 * 60 * 60 * 1000; // 48 hours
 
     for (const cfg of tripped) {
       // Only probe platforms still in the alerts list (no recent success)
@@ -80,34 +80,34 @@ export const scraperHealthTask = schedules.task({
       let probeRecovered = false;
       try {
         const adapter = getPlatformAdapter(cfg.platform);
-        if (!adapter) continue;
+        if (adapter) {
+          const config = await getConfigByPlatform(cfg.platform);
+          if (config) {
+            const runtimeConfig = toRuntimeConfig(cfg.platform, config);
+            const probeResult = await adapter.testImport(runtimeConfig, { limit: 1 });
 
-        const config = await getConfigByPlatform(cfg.platform);
-        if (!config) continue;
-
-        const runtimeConfig = toRuntimeConfig(cfg.platform, config);
-        const probeResult = await adapter.testImport(runtimeConfig, { limit: 1 });
-
-        if (probeResult.status === "success" && probeResult.jobsFound > 0) {
-          // Probe succeeded — reset circuit breaker
-          probeRecovered = true;
-          await db
-            .update(scraperConfigs)
-            .set({ consecutiveFailures: 0 })
-            .where(eq(scraperConfigs.id, cfg.id));
-          reset++;
-          // Remove from alerts since we just recovered
-          const alertIdx = alerts.findIndex((a) => a.startsWith(cfg.platform));
-          if (alertIdx !== -1) alerts.splice(alertIdx, 1);
-          logger.info(`Circuit breaker probe-reset voor ${cfg.platform}`, {
-            previousFailures: cfg.consecutiveFailures,
-            probeJobsFound: probeResult.jobsFound,
-          });
-        } else {
-          logger.warn(`Circuit breaker probe mislukt voor ${cfg.platform}`, {
-            probeStatus: probeResult.status,
-            probeErrors: probeResult.errors,
-          });
+            if (probeResult.status === "success" && probeResult.jobsFound > 0) {
+              // Probe succeeded — reset circuit breaker
+              await db
+                .update(scraperConfigs)
+                .set({ consecutiveFailures: 0 })
+                .where(eq(scraperConfigs.id, cfg.id));
+              reset++;
+              probeRecovered = true;
+              // Remove from alerts since we just recovered
+              const alertIdx = alerts.findIndex((a) => a.startsWith(cfg.platform));
+              if (alertIdx !== -1) alerts.splice(alertIdx, 1);
+              logger.info(`Circuit breaker probe-reset voor ${cfg.platform}`, {
+                previousFailures: cfg.consecutiveFailures,
+                probeJobsFound: probeResult.jobsFound,
+              });
+            } else {
+              logger.warn(`Circuit breaker probe mislukt voor ${cfg.platform}`, {
+                probeStatus: probeResult.status,
+                probeErrors: probeResult.errors,
+              });
+            }
+          }
         }
       } catch (probeErr) {
         logger.warn(`Circuit breaker probe error voor ${cfg.platform}`, {
@@ -115,19 +115,24 @@ export const scraperHealthTask = schedules.task({
         });
       }
 
-      // If probe didn't recover and the scraper has been stuck for 48h+, force-reset to unblock
-      if (!probeRecovered && cfg.lastRunAt && cfg.lastRunAt < fortyEightHoursAgo) {
-        await db
-          .update(scraperConfigs)
-          .set({ consecutiveFailures: 0 })
-          .where(eq(scraperConfigs.id, cfg.id));
-        staleResets++;
-        const staleAlertIdx = alerts.findIndex((a) => a.startsWith(cfg.platform));
-        if (staleAlertIdx !== -1) alerts.splice(staleAlertIdx, 1);
-        logger.warn(`Stale circuit breaker geforceerd gereset voor ${cfg.platform}`, {
-          lastRunAt: cfg.lastRunAt,
-          previousFailures: cfg.consecutiveFailures,
-        });
+      // Auto-reset stale circuit breakers (open > 48h) so platforms get another chance.
+      // Without this, a platform that fails 5x and whose probe also fails stays dead forever.
+      if (!probeRecovered && cfg.lastRunAt) {
+        const staleDuration = Date.now() - new Date(cfg.lastRunAt).getTime();
+        if (staleDuration >= STALE_CIRCUIT_BREAKER_MS) {
+          await db
+            .update(scraperConfigs)
+            .set({ consecutiveFailures: 0 })
+            .where(eq(scraperConfigs.id, cfg.id));
+          staleResets++;
+          reset++;
+          const alertIdx = alerts.findIndex((a) => a.startsWith(cfg.platform));
+          if (alertIdx !== -1) alerts.splice(alertIdx, 1);
+          logger.info(`Circuit breaker stale-reset voor ${cfg.platform}`, {
+            previousFailures: cfg.consecutiveFailures,
+            staleDurationHours: Math.round(staleDuration / 3_600_000),
+          });
+        }
       }
     }
 

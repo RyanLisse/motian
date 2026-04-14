@@ -9,11 +9,13 @@ function readFile(...segments: string[]): string {
 }
 
 describe("embeddings batch backfill", () => {
-  it("selects all jobs without embeddings via the visible vacancy condition", () => {
+  it("selects all jobs without embeddings for backfill", () => {
     const source = readFile("trigger/embeddings-batch.ts");
 
-    expect(source).toContain("getVisibleVacancyCondition()");
+    // embedJob() now falls back to title + categories + requirements,
+    // so the batch task picks up ALL jobs without embeddings.
     expect(source).toContain("isNull(jobs.embedding)");
+    expect(source).toContain("getVisibleVacancyCondition()");
   });
 
   it("serializes job embeddings before updating the database", () => {
