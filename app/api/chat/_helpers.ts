@@ -53,8 +53,8 @@ export function extractClientIp(req: Request): string {
 // checkRateLimit
 // ---------------------------------------------------------------------------
 
-export async function checkRateLimit(ip: string): Promise<Response | null> {
-  const { success, reset } = await limiter.check(ip);
+export function checkRateLimit(ip: string): Response | null {
+  const { success, reset } = limiter.check(ip);
   if (!success) {
     return Response.json(
       { error: "Te veel verzoeken. Probeer het later opnieuw." },

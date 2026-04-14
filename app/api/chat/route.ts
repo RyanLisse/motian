@@ -83,7 +83,7 @@ async function loadSessionSnapshotOrFallback(sessionId: string): Promise<Session
 export async function POST(req: Request) {
   // 1. Rate limiting
   const ip = extractClientIp(req);
-  const rateLimitResponse = await checkRateLimit(ip);
+  const rateLimitResponse = checkRateLimit(ip);
   if (rateLimitResponse) return rateLimitResponse;
 
   // 2. Body parsing & validation

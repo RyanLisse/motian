@@ -1,33 +1,29 @@
 /**
  * Upstash Redis integration for global rate limiting and query caching.
  *
- * Requires optional peer dependencies: @upstash/redis, @upstash/ratelimit
- * Install them and set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN to activate.
- * When packages are not installed or env vars are missing, all functions
- * return null / fall through gracefully — callers should always provide fallbacks.
+ * To activate:
+ *   1. pnpm add @upstash/redis @upstash/ratelimit
+ *   2. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN env vars
+ *
+ * All functions fall through gracefully when packages are missing or
+ * env vars are not set — callers should always provide fallbacks.
  */
 
-// biome-ignore lint/suspicious/noExplicitAny: dynamic imports for optional peer deps
-type RedisClient = any;
-// biome-ignore lint/suspicious/noExplicitAny: dynamic imports for optional peer deps
-type RatelimitInstance = any;
-
-let redisClient: RedisClient | undefined;
+const CACHE_PREFIX = "cache:";
 let redisUnavailable = false;
 
-/**
- * Returns a shared Upstash Redis client.
- * Returns undefined when not configured or package is missing.
- */
-export async function getRedis(): Promise<RedisClient | undefined> {
+// biome-ignore lint/suspicious/noExplicitAny: lazy-loaded optional peer dep
+let redisClient: any;
+
+async function getRedis() {
   if (redisClient) return redisClient;
-  if (redisUnavailable) return undefined;
+  if (redisUnavailable) return null;
 
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
   const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   if (!url || !token) {
     redisUnavailable = true;
-    return undefined;
+    return null;
   }
 
   try {
@@ -36,45 +32,13 @@ export async function getRedis(): Promise<RedisClient | undefined> {
     return redisClient;
   } catch {
     redisUnavailable = true;
-    return undefined;
-  }
-}
-
-let ratelimitUnavailable = false;
-
-/**
- * Creates an Upstash-backed sliding window rate limiter.
- * Returns null when packages are not installed or env vars are missing.
- */
-export async function createUpstashRateLimiter(config: {
-  limit: number;
-  window: string;
-  prefix?: string;
-}): Promise<RatelimitInstance | null> {
-  if (ratelimitUnavailable) return null;
-
-  const redis = await getRedis();
-  if (!redis) return null;
-
-  try {
-    const { Ratelimit } = await import("@upstash/ratelimit");
-    return new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(config.limit, config.window),
-      prefix: config.prefix ?? "rl",
-      analytics: true,
-    });
-  } catch {
-    ratelimitUnavailable = true;
     return null;
   }
 }
 
-const CACHE_PREFIX = "cache:";
-
 /**
  * Redis-backed query cache with TTL.
- * Falls back to executing the factory directly when Redis is not configured.
+ * Falls back to executing the factory directly when Redis is not available.
  */
 export async function cachedQuery<T>(
   key: string,

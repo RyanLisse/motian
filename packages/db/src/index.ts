@@ -15,10 +15,17 @@ function getNeonUrl(): string | undefined {
   return process.env.DATABASE_URL?.trim();
 }
 
+function isNeonHost(url: string): boolean {
+  try {
+    return new URL(url).hostname.endsWith(".neon.tech");
+  } catch {
+    return false;
+  }
+}
+
 function isPoolerEndpoint(url: string): boolean {
   try {
-    const parsed = new URL(url);
-    return parsed.hostname.includes("-pooler.");
+    return new URL(url).hostname.includes("-pooler.");
   } catch {
     return false;
   }
@@ -108,7 +115,7 @@ function createNeonDatabaseClient(): DatabaseClient {
   const url = getNeonUrl();
   if (!url) throw new Error(MISSING_DATABASE_ENV_ERROR);
 
-  if (!isPoolerEndpoint(url)) {
+  if (isNeonHost(url) && !isPoolerEndpoint(url)) {
     console.warn(POOLER_HINT);
   }
 
