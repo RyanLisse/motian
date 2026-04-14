@@ -135,11 +135,6 @@ export function OverviewFilterPanel({
           variant="overview"
         />
 
-        <VacatureFilterExtras
-          onlyShortlist={onlyShortlist}
-          onOnlyShortlistChange={onOnlyShortlistChange}
-        />
-
         <button
           type="button"
           aria-expanded={mobileFiltersOpen}
@@ -178,6 +173,11 @@ export function OverviewFilterPanel({
             !mobileFiltersOpen && "hidden lg:block",
           )}
         >
+          <VacatureFilterExtras
+            onlyShortlist={onlyShortlist}
+            onOnlyShortlistChange={onOnlyShortlistChange}
+          />
+
           <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:gap-0 lg:block">
             <div>
               <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">

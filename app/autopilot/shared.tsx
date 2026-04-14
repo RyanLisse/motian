@@ -1,6 +1,23 @@
 import { Activity, CheckCircle2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+interface RunStatusInput {
+  status: string;
+  totalJourneys: number;
+  passedJourneys: number;
+  failedJourneys: number;
+}
+
+export function getAutopilotStatusPresentation(run: RunStatusInput): {
+  badgeStatus: string;
+  note: string | null;
+} {
+  if (run.status === "failed" && run.failedJourneys === 0) {
+    return { badgeStatus: "completed", note: "Workflow mislukt na succesvolle journeys" };
+  }
+  return { badgeStatus: run.status, note: null };
+}
+
 export function getStatusBadge(status: string) {
   switch (status) {
     case "completed":
