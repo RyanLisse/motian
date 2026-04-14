@@ -221,23 +221,23 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 | Service | Command | Notes |
 |---------|---------|-------|
 | Next.js dev server | `pnpm dev` (port 3002 by default) | Requires `.env.local`. Turbopack hot-reload. |
-| Lint | `pnpm lint` | Biome — see `biome.json`. Pre-existing errors exist in the codebase (formatting). |
-| Tests | `pnpm test` | Vitest — `tests/**/*.test.ts`. A few structural/string-match tests may fail due to model abstraction indirection. |
+| Lint | `pnpm lint` | Biome — see `biome.json`. Currently passes cleanly in this Cursor Cloud setup. |
+| Tests | `pnpm test` | Vitest — `tests/**/*.test.ts`. Known pre-existing failures currently remain in `tests/autopilot-run-detail-evidence.test.ts`, `tests/opdrachten-filters-pagination.test.ts`, and `tests/harness/integration.test.ts`. |
 
 ### Environment setup
 
 - Node 22.x and pnpm 9.15.0 are managed via corepack. The update script handles `pnpm install --frozen-lockfile`.
 - `.env.local` must exist (copied from `.env.example`). The app connects to a live Neon PostgreSQL database via `DATABASE_URL`. Without valid credentials, pages will load but some server-side data fetching will fail.
-- `drizzle.config.ts` reads from `.env.local` (not `.env`).
+- `drizzle.config.ts` loads `.env.local` (not `.env`), but already-exported shell values like `DATABASE_URL` still take precedence.
 
 ### Gotchas
 
-- `pnpm lint` currently passes clean (0 errors as of 2026-04-13). Earlier versions had pre-existing formatting errors.
-- 1 test failure is pre-existing: `vaardigheden-page.test.ts` checks for `revalidate = 300` in source but the page does not export that constant.
+- `pnpm lint` currently passes clean (0 errors as of 2026-04-14). Earlier versions had pre-existing formatting errors.
+- `pnpm test` still has known pre-existing failures (as of 2026-04-14): 2 assertions in `tests/autopilot-run-detail-evidence.test.ts` (`reportUrl` metadata assertions), 1 assertion in `tests/opdrachten-filters-pagination.test.ts` (filter sidebar markup expectation drift), and the `risk-policy-gate` JSON case in `tests/harness/integration.test.ts` (`STACK_TRACE_ERROR`).
 - The Justfile uses `zsh` as its shell — use `pnpm` commands directly instead if `zsh` is not installed.
 - `bv` (Bead Viewer) without flags launches an interactive TUI that will block the session. Always use `bv --robot-*` flags.
 - Sidebar and canonical route for talent pool: `/kandidaten`; implementation lives in `app/kandidaten` (app/professionals was removed).
-- Shell-level `DATABASE_URL` (injected as a VM secret) takes precedence over `.env.local`. If you update the URL in `.env.local` but the dev server still uses the old one, export the correct value in the tmux session before running `pnpm dev`.
+- Shell-level `DATABASE_URL` (including tmux or VM-injected secrets) takes precedence over `.env.local`. If you update the URL in `.env.local` but the app still uses the old database, export the correct value in that shell before running `pnpm dev` or `pnpm db:*`.
 
 ## Learned User Preferences
 

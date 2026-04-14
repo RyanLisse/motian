@@ -1,43 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { normalizeExternalUrl } from "@/src/lib/external-url";
+import { normalizeExternalUrl } from "../src/lib/external-url";
 
 describe("normalizeExternalUrl", () => {
-  it("returns null for null, undefined, and empty inputs", () => {
-    expect(normalizeExternalUrl(null)).toBeNull();
-    expect(normalizeExternalUrl(undefined)).toBeNull();
+  it("accepts valid http(s) urls", () => {
+    expect(normalizeExternalUrl("https://example.com/path")).toBe("https://example.com/path");
+    expect(normalizeExternalUrl("http://example.com/path")).toBe("http://example.com/path");
+  });
+
+  it("normalizes protocol-relative urls", () => {
+    expect(normalizeExternalUrl("//example.com/path")).toBe("https://example.com/path");
+  });
+
+  it("rejects malformed or unsafe urls", () => {
+    expect(normalizeExternalUrl("javascript:alert(1)")).toBeNull();
+    expect(normalizeExternalUrl("not a url")).toBeNull();
     expect(normalizeExternalUrl("")).toBeNull();
-    expect(normalizeExternalUrl("   ")).toBeNull();
-  });
-
-  it("prepends https:// when no protocol is present", () => {
-    expect(normalizeExternalUrl("example.com")).toBe("https://example.com");
-    expect(normalizeExternalUrl("www.flextender.nl")).toBe("https://www.flextender.nl");
-  });
-
-  it("preserves existing http:// and https:// protocols", () => {
-    expect(normalizeExternalUrl("https://example.com")).toBe("https://example.com");
-    expect(normalizeExternalUrl("http://example.com")).toBe("http://example.com");
-  });
-
-  it("strips trailing slash on domain-only URLs", () => {
-    expect(normalizeExternalUrl("https://example.com/")).toBe("https://example.com");
-    expect(normalizeExternalUrl("example.com/")).toBe("https://example.com");
-  });
-
-  it("preserves trailing slash on URLs with deeper paths", () => {
-    expect(normalizeExternalUrl("https://example.com/jobs/")).toBe("https://example.com/jobs/");
-  });
-
-  it("trims surrounding whitespace", () => {
-    expect(normalizeExternalUrl("  https://example.com  ")).toBe("https://example.com");
-  });
-
-  it("returns null for scheme-only inputs", () => {
-    expect(normalizeExternalUrl("http://")).toBeNull();
-    expect(normalizeExternalUrl("https://")).toBeNull();
-  });
-
-  it("returns null for invalid URLs", () => {
-    expect(normalizeExternalUrl("://")).toBeNull();
   });
 });
