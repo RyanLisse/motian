@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-real-ip") ??
     request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
     "anonymous";
-  const { success, reset } = limiter.check(ip);
+  const { success, reset } = await limiter.check(ip);
   if (!success) {
     return Response.json(
       { error: "Te veel verzoeken. Probeer het later opnieuw." },

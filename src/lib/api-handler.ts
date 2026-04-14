@@ -48,7 +48,7 @@ export function withApiHandler<TArgs extends unknown[]>(
       const limiter = getLimiter(limiterKey, options.rateLimit.interval, options.rateLimit.limit);
       const request = args[0] as Request;
       const ip = extractIp(request);
-      const { success, reset } = limiter.check(ip);
+      const { success, reset } = await limiter.check(ip);
       if (!success) {
         return Response.json(
           { error: "Te veel verzoeken. Probeer het later opnieuw." },

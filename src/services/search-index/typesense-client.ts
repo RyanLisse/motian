@@ -69,6 +69,8 @@ function buildUrl(path: string, searchParams?: URLSearchParams) {
   return { config, url };
 }
 
+const TYPESENSE_TIMEOUT_MS = 3_000;
+
 export async function typesenseRequest<T>(
   path: string,
   options: TypesenseRequestOptions = {},
@@ -81,6 +83,7 @@ export async function typesenseRequest<T>(
       ...options.headers,
     },
     body: options.body,
+    signal: AbortSignal.timeout(TYPESENSE_TIMEOUT_MS),
   });
 
   if (options.skipNotFound && response.status === 404) {

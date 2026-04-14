@@ -12,7 +12,7 @@ const limiter = rateLimit({ interval: 60_000, limit: 10 });
 
 export async function POST(request: NextRequest) {
   const ip = extractClientIp(request);
-  const { success, reset } = limiter.check(ip);
+  const { success, reset } = await limiter.check(ip);
   if (!success) {
     return Response.json(
       { error: "Te veel verzoeken. Probeer het later opnieuw." },
