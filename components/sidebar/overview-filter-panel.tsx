@@ -127,7 +127,7 @@ export function OverviewFilterPanel({
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-4">
+      <div className="flex min-h-0 flex-col gap-2 sm:gap-4 lg:flex-1">
         <SidebarSearchBar
           value={inputValue}
           onChange={onInputChange}
@@ -169,8 +169,8 @@ export function OverviewFilterPanel({
         <div
           id="opdrachten-mobile-filters"
           className={cn(
-            "min-h-0 flex-1 space-y-2 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-2.5 sm:space-y-3 sm:p-3 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:space-y-4",
-            !mobileFiltersOpen && "hidden lg:block",
+            "min-h-0 space-y-2 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-2.5 sm:space-y-3 sm:p-3 lg:flex-1 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:space-y-4",
+            mobileFiltersOpen ? "max-h-[40vh] lg:max-h-none" : "hidden lg:block",
           )}
         >
           <VacatureFilterExtras
