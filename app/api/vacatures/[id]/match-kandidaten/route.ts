@@ -12,8 +12,10 @@ export const dynamic = "force-dynamic";
 export const POST = withApiHandler(
   async (_request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const { id: jobId } = await params;
-    const matches = await autoMatchJobToCandidates(jobId, 3);
-    const existing = await listApplications({ jobId });
+    const [matches, existing] = await Promise.all([
+      autoMatchJobToCandidates(jobId, 3),
+      listApplications({ jobId }),
+    ]);
     const alreadyLinked = existing
       .map((a) => a.candidateId)
       .filter((candidateId): candidateId is string => candidateId != null);

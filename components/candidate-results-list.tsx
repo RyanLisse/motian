@@ -3,6 +3,7 @@
 import { Euro, MapPin, UserCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { memo } from "react";
 import { DraggableCandidate } from "@/components/draggable-candidate";
 import { VirtualList } from "@/components/shared/virtual-list";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,7 @@ export type CandidateResultsListItem = {
   photoUrl: string | null;
 };
 
-function CandidateResultCard({
+const CandidateResultCard = memo(function CandidateResultCard({
   candidate,
   priority,
 }: {
@@ -128,7 +129,7 @@ function CandidateResultCard({
       </Link>
     </DraggableCandidate>
   );
-}
+});
 
 export function CandidateResultsList({ candidates }: { candidates: CandidateResultsListItem[] }) {
   const isMobile = useIsMobile();

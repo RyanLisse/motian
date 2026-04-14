@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { memo } from "react";
 import { CompanyLogo } from "@/components/company-logo";
 import { DroppableVacancy } from "@/components/droppable-vacancy";
 import { Badge } from "@/components/ui/badge";
@@ -107,7 +108,7 @@ function getDeadlineMeta(deadline?: Date | string | null) {
   };
 }
 
-export function JobListItem({
+export const JobListItem = memo(function JobListItem({
   job,
   isActive,
   variant = "compact",
@@ -335,4 +336,4 @@ export function JobListItem({
       </Link>
     </DroppableVacancy>
   );
-}
+});
