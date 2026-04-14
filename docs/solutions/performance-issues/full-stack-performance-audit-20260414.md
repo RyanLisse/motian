@@ -67,7 +67,7 @@ incremental improvements, not architectural changes.
 
 ### Architecture: 3-Layer Hybrid Search + Vector
 
-```
+```text
 Layer 1: Typesense (multi-word queries, fast fuzzy)
 Layer 2: PostgreSQL FTS (single-word, GIN-indexed tsvector)
 Layer 3: PostgreSQL ILIKE (fallback, trigram-indexed)
@@ -159,7 +159,7 @@ Layer 3: PostgreSQL ILIKE (fallback, trigram-indexed)
 - Function-level: unstable_cache with tag-based revalidation
 - HTTP-level: s-maxage + stale-while-revalidate for public endpoints
 
-### Findings requiring action:
+### Findings identified (addressed in this PR — see Section 5):
 
 **1. Sequential queries in match-kandidaten endpoint**
 - File: `app/api/vacatures/[id]/match-kandidaten/route.ts`

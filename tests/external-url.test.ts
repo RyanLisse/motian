@@ -31,4 +31,13 @@ describe("normalizeExternalUrl", () => {
   it("trims surrounding whitespace", () => {
     expect(normalizeExternalUrl("  https://example.com  ")).toBe("https://example.com");
   });
+
+  it("returns null for scheme-only inputs", () => {
+    expect(normalizeExternalUrl("http://")).toBeNull();
+    expect(normalizeExternalUrl("https://")).toBeNull();
+  });
+
+  it("returns null for invalid URLs", () => {
+    expect(normalizeExternalUrl("://")).toBeNull();
+  });
 });
