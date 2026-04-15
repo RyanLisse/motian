@@ -539,6 +539,10 @@ export const jobMatches = pgTable(
       table.jobId,
       table.candidateId,
     ),
+    candidateScoreIdx: index("idx_job_matches_candidate_score").on(
+      table.candidateId,
+      table.matchScore,
+    ),
   }),
 );
 
@@ -565,6 +569,11 @@ export const applications = pgTable(
       .on(table.jobId, table.candidateId)
       .where(sql`deleted_at IS NULL`),
     jobActiveIdx: index("idx_applications_job_active").on(table.jobId).where(sql`deleted_at IS NULL`),
+    candidateActiveIdx: index("idx_applications_candidate_active").on(
+      table.candidateId,
+      table.deletedAt,
+    ),
+    jobStageIdx: index("idx_applications_job_stage").on(table.jobId, table.stage, table.createdAt),
   }),
 );
 

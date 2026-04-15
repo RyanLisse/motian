@@ -6,8 +6,29 @@ const MISSING_DATABASE_ENV_ERROR = "DATABASE_URL is not set";
 const PUBLIC_DATABASE_URL_ERROR =
   "NEXT_PUBLIC_DATABASE_URL is set. Keep the Neon connection string server-only in DATABASE_URL.";
 
+const POOLER_HINT =
+  "[db-pool] HINT: DATABASE_URL does not use Neon's connection pooler (-pooler.). " +
+  "For serverless deployments, using the pooler endpoint reduces cold-start latency by ~100-200ms. " +
+  "Update the hostname in DATABASE_URL from '<project>.neon.tech' to '<project>-pooler.neon.tech'.";
+
 function getNeonUrl(): string | undefined {
   return process.env.DATABASE_URL?.trim();
+}
+
+function isNeonHost(url: string): boolean {
+  try {
+    return new URL(url).hostname.endsWith(".neon.tech");
+  } catch {
+    return false;
+  }
+}
+
+function isPoolerEndpoint(url: string): boolean {
+  try {
+    return new URL(url).hostname.includes("-pooler.");
+  } catch {
+    return false;
+  }
 }
 
 function assertNoPublicDatabaseUrl(): void {
@@ -93,6 +114,10 @@ function createNeonDatabaseClient(): DatabaseClient {
 
   const url = getNeonUrl();
   if (!url) throw new Error(MISSING_DATABASE_ENV_ERROR);
+
+  if (isNeonHost(url) && !isPoolerEndpoint(url)) {
+    console.warn(POOLER_HINT);
+  }
 
   // max: 1 is correct for Vercel serverless — each invocation gets its own
   // process. Higher values multiply connections across concurrent invocations

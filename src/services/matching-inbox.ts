@@ -83,28 +83,21 @@ export async function listMatchingInboxCandidates(
   const offset = Math.max(0, opts.offset ?? 0);
   const conditions = buildMatchingInboxConditions(opts);
 
+  // Uses LEFT JOIN + GROUP BY instead of correlated subqueries.
+  // Previous approach ran 3 subqueries per row (150 for 50 candidates).
+  // This executes a single query with aggregate functions.
   const rows = await db
     .select({
       candidate: candidates,
-      activeApplicationCount: sql<number>`(
-        SELECT CAST(count(*) AS INTEGER)
-        FROM ${applications}
-        WHERE ${applications.candidateId} = ${candidates.id}
-          AND ${applications.deletedAt} IS NULL
-      )`,
-      matchCount: sql<number>`(
-        SELECT CAST(count(*) AS INTEGER)
-        FROM ${jobMatches}
-        WHERE ${jobMatches.candidateId} = ${candidates.id}
-      )`,
-      bestMatchScore: sql<number | null>`(
-        SELECT max(${jobMatches.matchScore})
-        FROM ${jobMatches}
-        WHERE ${jobMatches.candidateId} = ${candidates.id}
-      )`,
+      activeApplicationCount: sql<number>`CAST(count(DISTINCT CASE WHEN ${applications.deletedAt} IS NULL THEN ${applications.id} END) AS INTEGER)`,
+      matchCount: sql<number>`CAST(count(DISTINCT ${jobMatches.id}) AS INTEGER)`,
+      bestMatchScore: sql<number | null>`max(${jobMatches.matchScore})`,
     })
     .from(candidates)
+    .leftJoin(applications, eq(applications.candidateId, candidates.id))
+    .leftJoin(jobMatches, eq(jobMatches.candidateId, candidates.id))
     .where(and(...conditions))
+    .groupBy(candidates.id)
     .orderBy(desc(candidates.lastMatchedAt), desc(candidates.updatedAt), desc(candidates.createdAt))
     .limit(limit)
     .offset(offset);
