@@ -173,12 +173,6 @@ export async function hybridSearchPageWithTotal(
         return await searchJobIdsByTitle(query, {
           limit: policy.fetchSize,
           filterCondition: retrievalFilterCondition,
-          typesenseOptions: {
-            ...opts,
-            status: requestedStatus,
-            limit: policy.fetchSize,
-            offset: 0,
-          },
         });
       } finally {
         textSearchMs = Date.now() - textSearchStartedAt;

@@ -19,9 +19,7 @@ export type QueryPath =
   | "list-fts"
   | "candidate-list"
   | "candidate-active-list"
-  | "candidate-search-typesense"
   | "candidate-search-db"
-  | "candidate-count-typesense"
   | "candidate-count-db";
 
 export type SlowQueryMeta = Record<string, unknown>;

@@ -449,18 +449,22 @@ export async function fetchDedupedJobsPage({
   /** Skip the COUNT query when total is already known. */
   knownTotal?: number;
 }): Promise<{ ids: string[]; total: number }> {
-  // Try fast path with precomputed ranks
+  // Prefer the precomputed-ranks fast path whenever rank data exists at all.
+  // If ranks are stale, serve the last computed snapshot and trigger a
+  // background refresh instead of blocking the request on the expensive CTE.
   try {
-    const { isFresh } = await getDedupeRanksFreshness();
-    if (isFresh) {
+    const { computedAt, isFresh } = await getDedupeRanksFreshness();
+    if (computedAt) {
+      if (!isFresh) {
+        scheduleDedupeRankRefresh();
+      }
       return fetchDedupedJobsPageFast({ whereClause, limit, offset, sortBy, knownTotal });
     }
-    scheduleDedupeRankRefresh();
   } catch {
     // Ranks table may not exist yet or db is mocked — fall through to CTE
   }
 
-  // Fallback: run the full CTE when ranks are stale (>30 min)
+  // Fallback: run the full CTE only when ranks do not exist yet.
   const sortOrder = getListSortOrderSql(sortBy);
 
   return withJobsDeduplicationCompatibility(async (mode) => {

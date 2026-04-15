@@ -6,6 +6,10 @@ const { mockListJobs, mockHybridSearch, mockHybridSearchWithTotal } = vi.hoisted
   mockHybridSearchWithTotal: vi.fn(),
 }));
 
+vi.mock("next/cache", () => ({
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+}));
+
 vi.mock("../src/services/jobs/list", () => ({
   listActiveJobs: vi.fn(),
   listJobs: mockListJobs,
@@ -18,11 +22,17 @@ vi.mock("../src/services/jobs/search", () => ({
   searchJobsByTitle: vi.fn(),
 }));
 
+vi.mock("../src/services/sidebar-metadata", () => ({
+  getSidebarMetadata: vi.fn(),
+}));
+
 import { searchJobsUnified, type UnifiedJobSearchResult } from "../src/services/jobs";
+import { getSidebarMetadata } from "../src/services/sidebar-metadata";
 
 describe("searchJobsUnified", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getSidebarMetadata).mockResolvedValue(null);
     mockListJobs.mockResolvedValue({
       data: [{ id: "job-1", title: "Test job", platform: "opdrachtoverheid" }],
       total: 1,
@@ -51,23 +61,9 @@ describe("searchJobsUnified", () => {
     expect(mockListJobs).toHaveBeenCalledWith({
       limit: 2,
       offset: undefined,
-      platform: undefined,
-      company: undefined,
-      endClient: undefined,
-      category: undefined,
-      status: undefined,
-      province: undefined,
-      region: undefined,
-      rateMin: undefined,
-      rateMax: undefined,
-      contractType: undefined,
-      workArrangement: undefined,
-      hoursPerWeekBucket: undefined,
-      radiusKm: undefined,
-      postedAfter: undefined,
-      deadlineBefore: undefined,
-      startDateAfter: undefined,
       sortBy: undefined,
+      status: "open",
+      knownTotal: undefined,
     });
     expect(first).toMatchObject({
       id: "job-1",
@@ -84,6 +80,41 @@ describe("searchJobsUnified", () => {
       expect.objectContaining({
         endClient: "Gemeente Utrecht",
         limit: 5,
+      }),
+    );
+  });
+
+  it("reuses precomputed sidebar totals for the default open listing", async () => {
+    vi.mocked(getSidebarMetadata).mockResolvedValue({
+      totalCount: 41140,
+      platforms: [],
+      endClients: [],
+      categories: [],
+      skillOptions: [],
+      skillEmptyText: "Geen skills gevonden.",
+      computedAt: new Date(),
+    });
+
+    await searchJobsUnified({ limit: 20, offset: 0 });
+
+    expect(mockListJobs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 20,
+        offset: 0,
+        knownTotal: 41140,
+      }),
+    );
+  });
+
+  it("routes the default open listing through the cached default-open path", async () => {
+    await searchJobsUnified({ limit: 20, offset: 0, sortBy: "nieuwste" });
+
+    expect(mockListJobs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 20,
+        offset: 0,
+        sortBy: "nieuwste",
+        status: "open",
       }),
     );
   });

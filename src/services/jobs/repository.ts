@@ -2,7 +2,6 @@ import { and, db, eq, getTableColumns, isNotNull, ne, or, type SQL, sql } from "
 import { jobs } from "../../db/schema";
 import { queueDeferredEmbeddingSync } from "../../lib/event-bus";
 import { type EmbeddingStatus, withPendingEmbeddingStatus } from "../embedding";
-import { deleteJobsByIds } from "../search-index/typesense-sync";
 import { scheduleDedupeRanksRefresh } from "./dedupe-ranks";
 
 export type Job = typeof jobs.$inferSelect;
@@ -42,18 +41,6 @@ export function getJobReadSelection() {
 }
 
 export const jobReadSelection = getJobReadSelection();
-
-async function runJobDeleteSync(jobIds: string[]): Promise<void> {
-  if (jobIds.length === 0) return;
-
-  try {
-    await deleteJobsByIds(jobIds);
-  } catch (err) {
-    console.error(`[Jobs] Typesense delete error for ${jobIds.join(",")}:`, err);
-  }
-
-  scheduleDedupeRanksRefresh();
-}
 
 /** Enkele opdracht ophalen op ID, inclusief gesloten/gearchiveerde retained vacatures. */
 export async function getJobById(id: string): Promise<Job | null> {
@@ -213,7 +200,7 @@ export async function deleteJob(id: string): Promise<boolean> {
     .returning({ id: jobs.id });
 
   if (rows.length > 0) {
-    await runJobDeleteSync(rows.map((row) => row.id));
+    scheduleDedupeRanksRefresh();
   }
 
   return rows.length > 0;

@@ -5,16 +5,26 @@ const { mockListJobsPage, mockHybridSearchPageWithTotal } = vi.hoisted(() => ({
   mockHybridSearchPageWithTotal: vi.fn(),
 }));
 
+vi.mock("next/cache", () => ({
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+}));
+
 vi.mock("../src/services/jobs/page-query", () => ({
   hybridSearchPageWithTotal: mockHybridSearchPageWithTotal,
   listJobsPage: mockListJobsPage,
 }));
 
+vi.mock("../src/services/sidebar-metadata", () => ({
+  getSidebarMetadata: vi.fn(),
+}));
+
 import { searchJobsPageUnified, type UnifiedJobPageSearchResult } from "../src/services/jobs";
+import { getSidebarMetadata } from "../src/services/sidebar-metadata";
 
 describe("searchJobsPageUnified", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getSidebarMetadata).mockResolvedValue(null);
     mockListJobsPage.mockResolvedValue({
       data: [
         {
@@ -60,30 +70,11 @@ describe("searchJobsPageUnified", () => {
     });
 
     expect(mockListJobsPage).toHaveBeenCalledWith({
-      platform: undefined,
-      company: undefined,
       endClient: "Gemeente Utrecht",
-      escoUri: undefined,
-      category: undefined,
-      categories: undefined,
-      status: undefined,
-      province: undefined,
-      region: undefined,
-      regions: undefined,
-      rateMin: undefined,
-      rateMax: undefined,
-      contractType: undefined,
-      workArrangement: undefined,
-      hoursPerWeekBucket: undefined,
-      minHoursPerWeek: undefined,
-      maxHoursPerWeek: undefined,
-      radiusKm: undefined,
-      postedAfter: undefined,
-      deadlineBefore: undefined,
-      startDateAfter: undefined,
       sortBy: "deadline_desc",
       limit: 25,
       offset: 25,
+      status: "open",
     });
     expect(result).toEqual({
       data: [
@@ -159,6 +150,50 @@ describe("searchJobsPageUnified", () => {
         platforms: ["opdrachtoverheid", "nationalevacaturebank"],
         limit: 5,
         offset: 10,
+      }),
+    );
+  });
+
+  it("reuses precomputed sidebar totals for the default open page listing", async () => {
+    vi.mocked(getSidebarMetadata).mockResolvedValue({
+      totalCount: 41140,
+      platforms: [],
+      endClients: [],
+      categories: [],
+      skillOptions: [],
+      skillEmptyText: "Geen skills gevonden.",
+      computedAt: new Date(),
+    });
+
+    await searchJobsPageUnified({
+      limit: 20,
+      offset: 0,
+      sortBy: "nieuwste",
+    });
+
+    expect(mockListJobsPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 20,
+        offset: 0,
+        sortBy: "nieuwste",
+        knownTotal: 41140,
+      }),
+    );
+  });
+
+  it("routes the default open page listing through the cached default-open page path", async () => {
+    await searchJobsPageUnified({
+      limit: 20,
+      offset: 0,
+      sortBy: "nieuwste",
+    });
+
+    expect(mockListJobsPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 20,
+        offset: 0,
+        sortBy: "nieuwste",
+        status: "open",
       }),
     );
   });
