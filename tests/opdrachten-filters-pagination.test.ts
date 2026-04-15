@@ -470,9 +470,9 @@ describe("Opdrachten UI/API contracts", () => {
     expect(normalizedSidebar).toContain(
       'className="flex min-h-0 flex-col border-b border-border/70 px-3 py-2 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6"',
     );
-    expect(normalizedSidebar).toContain('className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-4"');
+    expect(normalizedSidebar).toContain('className="flex min-h-0 flex-col gap-2 sm:gap-4 lg:flex-1"');
     expect(normalizedSidebar).toContain(
-      '"min-h-0 flex-1 space-y-2 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-2.5 sm:space-y-3 sm:p-3 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:space-y-4"',
+      '"min-h-0 space-y-2 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-2.5 sm:space-y-3 sm:p-3 lg:flex-1 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:space-y-4"',
     );
   });
 });
