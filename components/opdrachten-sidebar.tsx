@@ -96,77 +96,79 @@ export function OpdrachtenSidebar({
     // into the list without the list being squeezed to 0 by tall filters.
     // The job list (VirtualList) virtualizes against this aside (scrollMode="parent").
     return (
-      <aside className="flex h-full w-full flex-col overflow-y-auto bg-[#050506] text-white">
-        <div className="sticky top-0 z-10 bg-[#050506]">
-          <SidebarSearchBar
-            value={inputValue}
-            onChange={setInputValue}
-            isFetching={isFetching}
-            variant="compact"
+      <aside className="flex h-full w-full flex-col overflow-hidden bg-[#050506] text-white">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="sticky top-0 z-10 bg-[#050506]">
+            <SidebarSearchBar
+              value={inputValue}
+              onChange={setInputValue}
+              isFetching={isFetching}
+              variant="compact"
+            />
+          </div>
+
+          <CompactSidebarFilters
+            selectedPlatforms={selectedPlatforms}
+            platforms={platforms}
+            endClient={endClient}
+            endClients={endClients}
+            vaardigheid={vaardigheid}
+            skillOptions={skillOptions}
+            skillEmptyText={skillEmptyText}
+            status={status}
+            provincie={provincie}
+            regios={regios}
+            regionOptions={regionOptions}
+            vakgebieden={vakgebieden}
+            categoryOptions={categoryOptions}
+            hoursMinInput={hoursMinInput}
+            hoursMaxInput={hoursMaxInput}
+            radiusKmInput={radiusKmInput}
+            provinceAnchor={provinceAnchor}
+            sort={sort}
+            sortOptions={sortOptions}
+            onFilterChange={handleFilterChange}
+            onTogglePlatform={handleTogglePlatform}
+            onProvinceChange={handleProvinceChange}
+            onToggleRegio={handleToggleRegio}
+            onToggleVakgebied={handleToggleVakgebied}
+            onHoursRangeChange={handleHoursRangeChange}
+            onRadiusChange={handleRadiusChange}
+            onlyShortlist={onlyShortlist}
+            onOnlyShortlistChange={handleOnlyShortlistChange}
           />
-        </div>
 
-        <CompactSidebarFilters
-          selectedPlatforms={selectedPlatforms}
-          platforms={platforms}
-          endClient={endClient}
-          endClients={endClients}
-          vaardigheid={vaardigheid}
-          skillOptions={skillOptions}
-          skillEmptyText={skillEmptyText}
-          status={status}
-          provincie={provincie}
-          regios={regios}
-          regionOptions={regionOptions}
-          vakgebieden={vakgebieden}
-          categoryOptions={categoryOptions}
-          hoursMinInput={hoursMinInput}
-          hoursMaxInput={hoursMaxInput}
-          radiusKmInput={radiusKmInput}
-          provinceAnchor={provinceAnchor}
-          sort={sort}
-          sortOptions={sortOptions}
-          onFilterChange={handleFilterChange}
-          onTogglePlatform={handleTogglePlatform}
-          onProvinceChange={handleProvinceChange}
-          onToggleRegio={handleToggleRegio}
-          onToggleVakgebied={handleToggleVakgebied}
-          onHoursRangeChange={handleHoursRangeChange}
-          onRadiusChange={handleRadiusChange}
-          onlyShortlist={onlyShortlist}
-          onOnlyShortlistChange={handleOnlyShortlistChange}
-        />
-
-        <SidebarResultsHeader
-          displayTotal={displayTotal}
-          shortlistCount={shortlistCount}
-          urgentDeadlineCount={urgentDeadlineCount}
-          displayPerPage={displayPerPage}
-          pageParam={pageParam}
-          totalPages={totalPages}
-          pushParams={pushParams}
-          variant="compact"
-        />
-
-        {searchErrorMessage ? (
-          <div className="px-4 py-3 text-sm text-red-300">{searchErrorMessage}</div>
-        ) : null}
-
-        <SidebarJobList
-          jobs={displayJobs}
-          activeId={activeId}
-          buildDetailHref={buildDetailHref}
-          variant="compact"
-        />
-
-        <div className="sticky bottom-0 z-10 mt-auto bg-[#050506]">
-          <SidebarPagination
+          <SidebarResultsHeader
+            displayTotal={displayTotal}
+            shortlistCount={shortlistCount}
+            urgentDeadlineCount={urgentDeadlineCount}
+            displayPerPage={displayPerPage}
             pageParam={pageParam}
             totalPages={totalPages}
-            isFetching={isFetching}
             pushParams={pushParams}
             variant="compact"
           />
+
+          {searchErrorMessage ? (
+            <div className="px-4 py-3 text-sm text-red-300">{searchErrorMessage}</div>
+          ) : null}
+
+          <SidebarJobList
+            jobs={displayJobs}
+            activeId={activeId}
+            buildDetailHref={buildDetailHref}
+            variant="compact"
+          />
+
+          <div className="sticky bottom-0 z-10 mt-auto bg-[#050506]">
+            <SidebarPagination
+              pageParam={pageParam}
+              totalPages={totalPages}
+              isFetching={isFetching}
+              pushParams={pushParams}
+              variant="compact"
+            />
+          </div>
         </div>
       </aside>
     );

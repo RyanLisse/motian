@@ -13,7 +13,9 @@ describe("chat layout scroll structure", () => {
     const page = readFile("app", "chat", "page.tsx");
     const source = readFile("components", "chat", "chat-page-content.tsx");
 
-    expect(page).toContain('className="flex h-[var(--mobile-content-height)] min-h-0 flex-col overflow-hidden md:h-auto md:flex-1"');
+    expect(page).toContain(
+      'className="flex h-[var(--mobile-content-height)] min-h-0 flex-col overflow-hidden md:h-auto md:flex-1"',
+    );
     expect(source).toContain(
       'className="relative flex min-h-0 flex-1 overflow-hidden bg-background"',
     );
