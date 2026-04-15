@@ -259,6 +259,7 @@ function DashboardSkeleton() {
 export const dynamic = "force-dynamic";
 
 const SCRAPER_PAGE_DATA_TIMEOUT_MS = 10_000;
+const SCRAPER_PAGE_CATALOG_TIMEOUT_MS = 1_500;
 const SCRAPER_PAGE_FAILURE_TTL_MS = 30_000;
 
 const scraperPageFailureUntil = new Map<string, number>();
@@ -304,18 +305,11 @@ async function withTimeoutFallback<T>(
 }
 
 async function ScraperDashboardContent() {
-  const [scraperDashboard, platformCatalog] = await Promise.all([
-    getScraperDashboardData({
-      activityLimit: 20,
-      overlapLimit: 8,
-      includeTrigger: true,
-    }),
-    withTimeoutFallback(
-      () => listPlatformCatalog(),
-      [] as Awaited<ReturnType<typeof listPlatformCatalog>>,
-      "listPlatformCatalog",
-    ),
-  ]);
+  const scraperDashboard = await getScraperDashboardData({
+    activityLimit: 20,
+    overlapLimit: 8,
+    includeTrigger: true,
+  });
   const {
     analytics,
     activeVacancies,
@@ -400,22 +394,6 @@ async function ScraperDashboardContent() {
         <ScrapeMetricsExplainer />
         <RecentActivityFeed activities={activity} />
       </div>
-
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Layers3 className="h-4 w-4" />
-            Platformcatalogus en inrichting
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Recruiters en agenten gebruiken hier dezelfde bouwstenen: kies een platform, sla de
-            configuratie op, valideer de toegang en voer een proefimport uit.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <PlatformCatalogList entries={platformCatalog} />
-        </CardContent>
-      </Card>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
         <Card className="min-w-0 overflow-hidden bg-card border-border">
@@ -689,6 +667,55 @@ async function ScraperDashboardContent() {
   );
 }
 
+function PlatformCatalogCardShell({ children }: { children: React.ReactNode }) {
+  return (
+    <Card className="border-border bg-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Layers3 className="h-4 w-4" />
+          Platformcatalogus en inrichting
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Recruiters en agenten gebruiken hier dezelfde bouwstenen: kies een platform, sla de
+          configuratie op, valideer de toegang en voer een proefimport uit.
+        </p>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
+function PlatformCatalogCardFallback() {
+  return (
+    <PlatformCatalogCardShell>
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+            key={`platform-catalog-skeleton-${index}`}
+            className="h-24 rounded-xl bg-muted"
+          />
+        ))}
+      </div>
+    </PlatformCatalogCardShell>
+  );
+}
+
+async function PlatformCatalogCard() {
+  const platformCatalog = await withTimeoutFallback(
+    () => listPlatformCatalog(),
+    [] as Awaited<ReturnType<typeof listPlatformCatalog>>,
+    "listPlatformCatalog",
+    SCRAPER_PAGE_CATALOG_TIMEOUT_MS,
+  );
+
+  return (
+    <PlatformCatalogCardShell>
+      <PlatformCatalogList entries={platformCatalog} />
+    </PlatformCatalogCardShell>
+  );
+}
+
 export default function ScraperPage() {
   return (
     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
@@ -712,6 +739,10 @@ export default function ScraperPage() {
 
         <Suspense fallback={<DashboardSkeleton />}>
           <ScraperDashboardContent />
+        </Suspense>
+
+        <Suspense fallback={<PlatformCatalogCardFallback />}>
+          <PlatformCatalogCard />
         </Suspense>
       </div>
     </div>

@@ -166,4 +166,24 @@ describe("job deduplication compatibility fallback", () => {
     expect(ids).toEqual(["job-3"]);
     expect(mockDb.execute).toHaveBeenCalledTimes(1);
   }, 15_000);
+
+  it("reuses known totals with the lighter id-only fallback when dedupe ranks are unavailable", async () => {
+    mockDb.execute.mockResolvedValueOnce({ rows: [{ id: "job-1" }, { id: "job-2" }] });
+
+    const { fetchDedupedJobsPage } = await import("../src/services/jobs/deduplication");
+    const { sql } = await import("drizzle-orm");
+
+    const page = await fetchDedupedJobsPage({
+      whereClause: sql`true`,
+      limit: 10,
+      offset: 0,
+      knownTotal: 41,
+    });
+
+    expect(page).toEqual({ ids: ["job-1", "job-2"], total: 41 });
+    expect(mockDb.execute).toHaveBeenCalledTimes(1);
+
+    const queryText = collectSqlTokens(mockDb.execute.mock.calls[0]?.[0]).join(" ");
+    expect(queryText).toContain("pre_filtered");
+  }, 15_000);
 });

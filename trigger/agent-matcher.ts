@@ -37,7 +37,13 @@ export const agentMatcherTask = task({
   ) => {
     const triggerRunId = ctx.run.id;
 
-    metadata.set("agent", "matcher").set("mode", payload.mode).set("status", "matching");
+    const metadataChain = metadata
+      .set("agent", "matcher")
+      .set("mode", payload.mode)
+      .set("status", "matching");
+
+    if (payload.jobId) metadataChain.set("jobId", payload.jobId);
+    if (payload.candidateId) metadataChain.set("candidateId", payload.candidateId);
 
     logger.info("Matcher agent gestart", { mode: payload.mode });
 

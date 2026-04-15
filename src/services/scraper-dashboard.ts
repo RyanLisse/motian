@@ -1,6 +1,6 @@
 import { runs } from "@trigger.dev/sdk";
 import { parseCronNext } from "@/src/lib/cron-utils";
-import { and, db, desc, gte, sql } from "../db";
+import { and, db, desc, gte, isNull, sql } from "../db";
 import { jobs, scrapeResults, scraperConfigs } from "../db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
 import { fetchDedupedJobsPage } from "./jobs/deduplication";
@@ -867,10 +867,12 @@ async function getScraperDashboardDataUncached(
           .from(jobs)
           .where(
             and(
+              isNull(jobs.deletedAt),
               sql`${jobs.platform} is not null`,
               gte(jobs.scrapedAt, new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)),
             ),
           )
+          .orderBy(desc(jobs.scrapedAt), desc(jobs.id))
           .limit(5000),
       [] as OverlapReference[],
     ),

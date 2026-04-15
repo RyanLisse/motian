@@ -1373,7 +1373,7 @@ export async function runPlatformOnboardingWorkflow(input: {
 
 /** Platform gezondheidsrapport: status per scraper + 24-uurs failure rate */
 export async function getHealth(): Promise<HealthReport> {
-  const [configs, recentRuns] = await Promise.all([
+  const [configs, recentRunStats] = await Promise.all([
     db
       .select({
         platform: scraperConfigs.platform,
@@ -1386,22 +1386,17 @@ export async function getHealth(): Promise<HealthReport> {
     db
       .select({
         platform: scrapeResults.platform,
-        status: scrapeResults.status,
-        runAt: scrapeResults.runAt,
+        total: sql<number>`cast(count(*) as integer)`,
+        failures: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
       })
       .from(scrapeResults)
-      .where(gte(scrapeResults.runAt, new Date(Date.now() - 24 * 60 * 60 * 1000))),
+      .where(gte(scrapeResults.runAt, new Date(Date.now() - 24 * 60 * 60 * 1000)))
+      .groupBy(scrapeResults.platform),
   ]);
 
-  const statsMap = new Map<string, { total: number; failures: number }>();
-  for (const run of recentRuns) {
-    if (!run.runAt) continue;
-
-    const current = statsMap.get(run.platform) ?? { total: 0, failures: 0 };
-    current.total += 1;
-    if (run.status === "failed") current.failures += 1;
-    statsMap.set(run.platform, current);
-  }
+  const statsMap = new Map(
+    recentRunStats.map((row) => [row.platform, { total: row.total, failures: row.failures }]),
+  );
 
   const health: PlatformHealth[] = configs.map((cfg) => {
     const failures = cfg.consecutiveFailures ?? 0;

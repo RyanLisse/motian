@@ -121,20 +121,35 @@ export const nightlyMaintenanceTask = schedules.task({
             candidatesFound: qualified.length,
           });
 
-          for (const match of qualified) {
-            await emitAgentEvent({
-              sourceAgent: "sourcing",
-              eventType: "sourcing.candidate_found",
-              candidateId: match.candidateId,
-              jobId: match.jobId,
-              matchId: match.matchId,
-              payload: {
-                score: match.structuredResult?.overallScore ?? match.quickScore,
-                candidateName: match.candidateName,
-                jobTitle: match.jobTitle,
-                nightlyRun: true,
-              },
-            });
+          const eventResults = await Promise.allSettled(
+            qualified.map((match) =>
+              emitAgentEvent({
+                sourceAgent: "sourcing",
+                eventType: "sourcing.candidate_found",
+                candidateId: match.candidateId,
+                jobId: match.jobId,
+                matchId: match.matchId,
+                payload: {
+                  score: match.structuredResult?.overallScore ?? match.quickScore,
+                  candidateName: match.candidateName,
+                  jobTitle: match.jobTitle,
+                  nightlyRun: true,
+                },
+              }),
+            ),
+          );
+
+          for (let k = 0; k < eventResults.length; k++) {
+            const eventResult = eventResults[k];
+            if (eventResult.status === "rejected") {
+              const failedMatch = qualified[k];
+              logger.error("Emit agent event mislukt tijdens nightly sourcing", {
+                error: String(eventResult.reason),
+                matchId: failedMatch.matchId,
+                candidateId: failedMatch.candidateId,
+                jobId: failedMatch.jobId,
+              });
+            }
           }
 
           logger.info(`Vacature ${job.title}: ${qualified.length} kandidaten gevonden`);

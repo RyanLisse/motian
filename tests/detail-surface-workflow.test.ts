@@ -199,15 +199,27 @@ describe("Detail surfaces recruiter workflow context", () => {
       useRouter: () => ({ refresh: mockRefresh }),
     }));
 
+    let mockedRunId: string | null = null;
+
     vi.doMock("@tanstack/react-query", async () => {
       const actual =
         await vi.importActual<typeof import("@tanstack/react-query")>("@tanstack/react-query");
       return {
         ...actual,
-        useQuery: () => ({ data: matches, isLoading: false, error: null }),
+        useQuery: ({ enabled }: { enabled?: boolean }) => ({
+          data: mockedRunId
+            ? { status: "completed" as const, items: matches }
+            : { status: "running" as const, items: [] },
+          isLoading: Boolean(enabled && !mockedRunId),
+          error: null,
+        }),
         useMutation: ({ onSuccess }: { onSuccess?: (data: unknown) => void }) => ({
-          mutate: () => onSuccess?.({ runId: "run-1", alreadyLinked: ["cand-2"] }),
+          mutate: () => {
+            mockedRunId = "run-1";
+            onSuccess?.({ runId: "run-1", alreadyLinked: ["cand-2"] });
+          },
           isPending: false,
+          error: null,
         }),
       };
     });
@@ -246,7 +258,7 @@ describe("Detail surfaces recruiter workflow context", () => {
         expect(init).toEqual({ method: "POST" });
         return {
           ok: true,
-          json: async () => ({ matches, alreadyLinked: ["cand-2"] }),
+          json: async () => ({ runId: "run-1", alreadyLinked: ["cand-2"] }),
         };
       }
 

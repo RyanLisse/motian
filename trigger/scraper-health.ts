@@ -1,6 +1,6 @@
 import { getPlatformAdapter } from "@motian/scrapers";
 import { logger, schedules } from "@trigger.dev/sdk";
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scrapeResults, scraperConfigs } from "@/src/db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "@/src/lib/helpers";

@@ -1,6 +1,7 @@
 import { runs, tasks } from "@trigger.dev/sdk";
 import type { NextRequest } from "next/server";
 import { withApiHandler } from "@/src/lib/api-handler";
+import { matchKandidatenRunQuerySchema } from "@/src/schemas/match-kandidaten";
 import { listApplications } from "@/src/services/applications";
 
 export const dynamic = "force-dynamic";
@@ -45,13 +46,31 @@ export const POST = withApiHandler(
  * Polls the agent-matcher task status. Returns matches when complete.
  */
 export const GET = withApiHandler(
-  async (request: NextRequest) => {
-    const runId = request.nextUrl.searchParams.get("runId");
-    if (!runId) {
-      return Response.json({ error: "runId is verplicht" }, { status: 400 });
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const { id: jobId } = await params;
+    const parsedQuery = matchKandidatenRunQuerySchema.safeParse({
+      runId: request.nextUrl.searchParams.get("runId"),
+    });
+
+    if (!parsedQuery.success) {
+      return Response.json(
+        { error: parsedQuery.error.issues[0]?.message ?? "runId is verplicht" },
+        { status: 400 },
+      );
     }
 
+    const { runId } = parsedQuery.data;
     const run = await runs.retrieve(runId);
+    const runPayload = (run as { payload?: { jobId?: string | null } }).payload;
+    const runMetadata = run.metadata as { jobId?: string | null } | undefined;
+    const runJobId = runPayload?.jobId ?? runMetadata?.jobId ?? null;
+
+    if (runJobId && runJobId !== jobId) {
+      return Response.json(
+        { error: "Deze match-run hoort niet bij deze vacature." },
+        { status: 403 },
+      );
+    }
 
     if (run.isSuccess) {
       const output = run.output as {

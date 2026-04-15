@@ -464,6 +464,18 @@ export async function fetchDedupedJobsPage({
     // Ranks table may not exist yet or db is mocked — fall through to CTE
   }
 
+  if (knownTotal != null) {
+    return {
+      ids: await fetchDedupedJobIds({
+        whereClause,
+        limit,
+        offset,
+        sortBy,
+      }),
+      total: knownTotal,
+    };
+  }
+
   // Fallback: run the full CTE only when ranks do not exist yet.
   const sortOrder = getListSortOrderSql(sortBy);
 
