@@ -39,7 +39,6 @@ import { formatDateTime } from "@/src/lib/helpers";
 import {
   getScraperDashboardData,
   type PlatformOperationalMetrics,
-  type ScraperDashboardData,
 } from "@/src/services/scraper-dashboard";
 import { listPlatformCatalog } from "@/src/services/scrapers";
 import { ScraperActions } from "./actions";
@@ -259,38 +258,10 @@ function DashboardSkeleton() {
 
 export const dynamic = "force-dynamic";
 
-const SCRAPER_PAGE_DATA_TIMEOUT_MS = 2_500;
+const SCRAPER_PAGE_DATA_TIMEOUT_MS = 10_000;
 const SCRAPER_PAGE_FAILURE_TTL_MS = 30_000;
 
 const scraperPageFailureUntil = new Map<string, number>();
-
-function createScraperDashboardFallback(reason: string): ScraperDashboardData {
-  return {
-    generatedAt: new Date().toISOString(),
-    configs: [],
-    analytics: {
-      totalRuns: 0,
-      totalJobsFound: 0,
-      totalJobsNew: 0,
-      totalDuplicates: 0,
-      totalUniqueJobs: 0,
-      overallSuccessRate: 0,
-      avgDurationMs: 0,
-      byPlatform: [],
-    },
-    activeVacancies: 0,
-    recentRuns: [],
-    platforms: [],
-    activity: [],
-    overlap: { totalGroups: 0, groups: [] },
-    trigger: {
-      available: false,
-      checkedAt: new Date().toISOString(),
-      reason,
-      tasks: [],
-    },
-  };
-}
 
 async function withTimeoutFallback<T>(
   load: () => Promise<T>,
@@ -334,16 +305,11 @@ async function withTimeoutFallback<T>(
 
 async function ScraperDashboardContent() {
   const [scraperDashboard, platformCatalog] = await Promise.all([
-    withTimeoutFallback(
-      () =>
-        getScraperDashboardData({
-          activityLimit: 20,
-          overlapLimit: 8,
-          includeTrigger: true,
-        }),
-      createScraperDashboardFallback("Scraper dashboard data timeout"),
-      "getScraperDashboardData",
-    ),
+    getScraperDashboardData({
+      activityLimit: 20,
+      overlapLimit: 8,
+      includeTrigger: true,
+    }),
     withTimeoutFallback(
       () => listPlatformCatalog(),
       [] as Awaited<ReturnType<typeof listPlatformCatalog>>,
