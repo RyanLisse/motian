@@ -13,7 +13,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ACTIVITY_LIMIT = 20;
 const DEFAULT_OVERLAP_LIMIT = 8;
 const TRIGGER_VISIBILITY_CACHE_TTL_SECONDS = 300;
-const TRIGGER_VISIBILITY_TIMEOUT_MS = 8_000;
+const TRIGGER_VISIBILITY_TIMEOUT_MS = 1_000;
 
 const SCRAPER_DASHBOARD_CACHE_TTL_MS = 30_000;
 
@@ -38,22 +38,10 @@ async function getActiveVacancyCountFast(database: TransactionDb): Promise<numbe
   return getActiveVacancyCount(database);
 }
 
-async function getTriggerVisibilityWithTimeout(limit: number): Promise<TriggerVisibility> {
-  return Promise.race([
-    getTriggerVisibility(limit),
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Trigger.dev visibility timeout")),
-        TRIGGER_VISIBILITY_TIMEOUT_MS,
-      ),
-    ),
-  ]);
-}
-
 async function getCachedTriggerVisibility(limit: number): Promise<TriggerVisibility> {
   return cachedQuery(
     `scraper-dashboard-trigger-visibility:${limit}`,
-    () => getTriggerVisibilityWithTimeout(limit),
+    () => getTriggerVisibility(limit),
     TRIGGER_VISIBILITY_CACHE_TTL_SECONDS,
   );
 }

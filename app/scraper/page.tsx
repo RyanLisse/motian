@@ -304,12 +304,12 @@ async function withTimeoutFallback<T>(
   return result;
 }
 
-async function ScraperDashboardContent() {
-  const scraperDashboard = await getScraperDashboardData({
-    activityLimit: 20,
-    overlapLimit: 8,
-    includeTrigger: true,
-  });
+async function ScraperDashboardContent({
+  dashboardPromise,
+}: {
+  dashboardPromise: ReturnType<typeof getScraperDashboardData>;
+}) {
+  const scraperDashboard = await dashboardPromise;
   const {
     analytics,
     activeVacancies,
@@ -701,13 +701,12 @@ function PlatformCatalogCardFallback() {
   );
 }
 
-async function PlatformCatalogCard() {
-  const platformCatalog = await withTimeoutFallback(
-    () => listPlatformCatalog(),
-    [] as Awaited<ReturnType<typeof listPlatformCatalog>>,
-    "listPlatformCatalog",
-    SCRAPER_PAGE_CATALOG_TIMEOUT_MS,
-  );
+async function PlatformCatalogCard({
+  platformCatalogPromise,
+}: {
+  platformCatalogPromise: Promise<Awaited<ReturnType<typeof listPlatformCatalog>>>;
+}) {
+  const platformCatalog = await platformCatalogPromise;
 
   return (
     <PlatformCatalogCardShell>
@@ -717,6 +716,18 @@ async function PlatformCatalogCard() {
 }
 
 export default function ScraperPage() {
+  const dashboardPromise = getScraperDashboardData({
+    activityLimit: 20,
+    overlapLimit: 8,
+    includeTrigger: true,
+  });
+  const platformCatalogPromise = withTimeoutFallback(
+    () => listPlatformCatalog(),
+    [] as Awaited<ReturnType<typeof listPlatformCatalog>>,
+    "listPlatformCatalog",
+    SCRAPER_PAGE_CATALOG_TIMEOUT_MS,
+  );
+
   return (
     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
       <div className="mx-auto min-w-0 max-w-[1400px] space-y-6 px-4 py-6 md:px-6 lg:px-8">
@@ -738,11 +749,11 @@ export default function ScraperPage() {
         </PageHeader>
 
         <Suspense fallback={<DashboardSkeleton />}>
-          <ScraperDashboardContent />
+          <ScraperDashboardContent dashboardPromise={dashboardPromise} />
         </Suspense>
 
         <Suspense fallback={<PlatformCatalogCardFallback />}>
-          <PlatformCatalogCard />
+          <PlatformCatalogCard platformCatalogPromise={platformCatalogPromise} />
         </Suspense>
       </div>
     </div>

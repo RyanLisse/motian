@@ -9,7 +9,9 @@ vi.mock("@/src/db", () => {
   };
   return {
     db: mockDb,
+    and: vi.fn((...conditions: unknown[]) => conditions),
     eq: vi.fn((_col: unknown, _val: unknown) => "eq-condition"),
+    isNull: vi.fn((_col: unknown) => "is-null-condition"),
     sql: Object.assign((strings: TemplateStringsArray, ..._values: unknown[]) => strings.join(""), {
       raw: (s: string) => s,
     }),

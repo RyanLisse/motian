@@ -209,14 +209,15 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
 
   const matches = pollResult?.items ?? [];
   const isLoading =
-    isTriggerPending || (!!runId && (isPollLoading || pollResult?.status === "running") && matches.length === 0);
+    isTriggerPending ||
+    (!!runId && (isPollLoading || pollResult?.status === "running") && matches.length === 0);
 
   const selected = useMemo(
     () => userSelection ?? getInitialSelection(matches),
     [userSelection, matches],
   );
 
-  const mutationError = triggerMutation.error instanceof Error ? triggerMutation.error.message : "";
+  const mutationError = triggerError instanceof Error ? triggerError.message : "";
   const error =
     submitError || mutationError || (queryError instanceof Error ? queryError.message : "");
 
