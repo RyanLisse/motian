@@ -94,11 +94,9 @@ export const env = createEnv({
     RATE_CAP_EUR: z.coerce.number().optional(),
     CHAT_MAX_TOKENS_PER_SESSION: z.coerce.number().optional(),
 
-    // Typesense — http(s):// URL for search index
-    TYPESENSE_URL: z.string().url().optional(),
-    TYPESENSE_API_KEY: z.string().optional(),
-    TYPESENSE_JOBS_COLLECTION: z.string().optional(),
-    TYPESENSE_CANDIDATES_COLLECTION: z.string().optional(),
+    // Upstash Redis — optional caching layer
+    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
     // Scoring weights
     SCORING_WEIGHT_SKILLS: z.coerce.number().min(0).max(100).optional(),
@@ -198,10 +196,8 @@ export const env = createEnv({
     HOSTNAME: process.env.HOSTNAME,
     RATE_CAP_EUR: process.env.RATE_CAP_EUR,
     CHAT_MAX_TOKENS_PER_SESSION: process.env.CHAT_MAX_TOKENS_PER_SESSION,
-    TYPESENSE_URL: process.env.TYPESENSE_URL,
-    TYPESENSE_API_KEY: process.env.TYPESENSE_API_KEY,
-    TYPESENSE_JOBS_COLLECTION: process.env.TYPESENSE_JOBS_COLLECTION,
-    TYPESENSE_CANDIDATES_COLLECTION: process.env.TYPESENSE_CANDIDATES_COLLECTION,
+    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     SCORING_WEIGHT_SKILLS: process.env.SCORING_WEIGHT_SKILLS,
     SCORING_WEIGHT_LOCATION: process.env.SCORING_WEIGHT_LOCATION,
     SCORING_WEIGHT_RATE: process.env.SCORING_WEIGHT_RATE,

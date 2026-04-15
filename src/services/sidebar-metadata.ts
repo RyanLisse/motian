@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { db, eq, sql } from "@/src/db";
 import { jobs, sidebarMetadata } from "@/src/db/schema";
+import { cachedQuery } from "@/src/lib/upstash";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
 import { getSkillsCatalogStatusCached, listSkillsForFilterOptions } from "./esco";
 
@@ -34,25 +35,31 @@ function resolveSkillEmptyText(issue: string | null | undefined): string {
  */
 export const getSidebarMetadata = cache(
   async function getSidebarMetadata(): Promise<SidebarMetadataRow | null> {
-    const rows = await db
-      .select()
-      .from(sidebarMetadata)
-      .where(eq(sidebarMetadata.id, "default"))
-      .limit(1);
+    return cachedQuery(
+      "sidebar-metadata",
+      async () => {
+        const rows = await db
+          .select()
+          .from(sidebarMetadata)
+          .where(eq(sidebarMetadata.id, "default"))
+          .limit(1);
 
-    if (rows.length === 0) return null;
+        if (rows.length === 0) return null;
 
-    const row = rows[0];
+        const row = rows[0];
 
-    return {
-      totalCount: row.totalCount,
-      platforms: row.platforms as string[],
-      endClients: row.endClients as string[],
-      categories: row.categories as string[],
-      skillOptions: row.skillOptions as { value: string; label: string }[],
-      skillEmptyText: row.skillEmptyText,
-      computedAt: row.computedAt,
-    };
+        return {
+          totalCount: row.totalCount,
+          platforms: row.platforms as string[],
+          endClients: row.endClients as string[],
+          categories: row.categories as string[],
+          skillOptions: row.skillOptions as { value: string; label: string }[],
+          skillEmptyText: row.skillEmptyText,
+          computedAt: row.computedAt,
+        };
+      },
+      300, // 5 min TTL — Trigger.dev refreshes every 15 min
+    );
   },
 );
 

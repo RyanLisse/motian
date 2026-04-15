@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import type { NextRequest } from "next/server";
 import { withApiHandler } from "@/src/lib/api-handler";
 import { publish } from "@/src/lib/event-bus";
@@ -50,6 +50,7 @@ export const POST = withApiHandler(
     for (const app of result.created) {
       publish("application:created", { applicationId: app.id });
     }
+    revalidateTag("jobs", "default");
     revalidatePath("/kandidaten");
     revalidatePath("/pipeline");
     revalidatePath("/overzicht");

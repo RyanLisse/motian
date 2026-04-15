@@ -452,7 +452,7 @@ describe("Opdrachten UI/API contracts", () => {
     const normalizedSidebar = sidebar.replace(/\s+/g, " ");
 
     expect(normalizedSidebar).toContain(
-      'className="flex h-full w-full flex-col overflow-y-auto bg-[#050506] text-white"',
+      'className="flex h-full w-full flex-col overflow-hidden bg-[#050506] text-white"',
     );
     expect(normalizedSidebar).toContain("rounded-[24px]");
     expect(normalizedSidebar).toContain("rounded-[20px]");

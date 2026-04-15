@@ -92,10 +92,17 @@ export async function invalidateCachePattern(pattern: string): Promise<void> {
   if (!redis) return;
 
   try {
-    const keys = await redis.keys(`${CACHE_PREFIX}${pattern}`);
-    if (keys.length > 0) {
-      await redis.del(...keys);
-    }
+    let cursor = 0;
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, {
+        match: `${CACHE_PREFIX}${pattern}`,
+        count: 100,
+      });
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+      cursor = Number(nextCursor);
+    } while (cursor !== 0);
   } catch {
     // Best effort
   }

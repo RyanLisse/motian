@@ -1,6 +1,6 @@
 import { getPlatformAdapter } from "@motian/scrapers";
 import { logger, schedules } from "@trigger.dev/sdk";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scrapeResults, scraperConfigs } from "@/src/db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "@/src/lib/helpers";
@@ -35,21 +35,28 @@ export const scraperHealthTask = schedules.task({
         ),
       );
 
-    for (const cfg of tripped) {
-      // Check for any successful run in the last 72 hours
-      const recentSuccess = await db
-        .select({ id: scrapeResults.id })
-        .from(scrapeResults)
-        .where(
-          and(
-            eq(scrapeResults.platform, cfg.platform),
-            eq(scrapeResults.status, "success"),
-            gt(scrapeResults.runAt, seventyTwoHoursAgo),
-          ),
-        )
-        .limit(1);
+    // Batch: find all tripped platforms that had a recent success in one query
+    const trippedPlatforms = tripped.map((c) => c.platform);
+    const platformsWithRecentSuccess = new Set(
+      trippedPlatforms.length > 0
+        ? (
+            await db
+              .select({ platform: scrapeResults.platform })
+              .from(scrapeResults)
+              .where(
+                and(
+                  inArray(scrapeResults.platform, trippedPlatforms),
+                  eq(scrapeResults.status, "success"),
+                  gt(scrapeResults.runAt, seventyTwoHoursAgo),
+                ),
+              )
+              .groupBy(scrapeResults.platform)
+          ).map((r) => r.platform)
+        : [],
+    );
 
-      if (recentSuccess.length > 0) {
+    for (const cfg of tripped) {
+      if (platformsWithRecentSuccess.has(cfg.platform)) {
         // Reset circuit breaker — recent success proves transient issue
         await db
           .update(scraperConfigs)
