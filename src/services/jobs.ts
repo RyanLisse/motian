@@ -1,6 +1,5 @@
 import { unstable_cache } from "next/cache";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../lib/opdrachten-filters";
-import { getSidebarMetadata } from "./sidebar-metadata";
 import {
   deriveJobStatus,
   type JobStatus,
@@ -13,6 +12,7 @@ import {
   hybridSearchPageWithTotal as hybridSearchPageWithTotalImpl,
   type JobPageResult,
   type JobPageRow,
+  type ListJobsPageOptions,
   listJobsPage as listJobsPageImpl,
 } from "./jobs/page-query";
 import { normalizeJobPlatforms } from "./jobs/query-filters";
@@ -34,6 +34,7 @@ import {
   searchJobsByTitle,
 } from "./jobs/search";
 import { getActivePipelineCount, getJobStats } from "./jobs/stats";
+import { getSidebarMetadata } from "./sidebar-metadata";
 
 export type UnifiedJobSearchOptions = {
   q?: JobSearchQuery;
@@ -102,16 +103,16 @@ function isDefaultOpenVacaturesList(opts: UnifiedJobSearchOptions) {
   return (
     !opts.q &&
     !opts.platform &&
-    !(opts.platforms?.length) &&
+    !opts.platforms?.length &&
     !opts.company &&
     !opts.endClient &&
     !opts.escoUri &&
     !opts.category &&
-    !(opts.categories?.length) &&
+    !opts.categories?.length &&
     (!opts.status || opts.status === "open") &&
     !opts.province &&
     !opts.region &&
-    !(opts.regions?.length) &&
+    !opts.regions?.length &&
     opts.rateMin == null &&
     opts.rateMax == null &&
     !opts.contractType &&
