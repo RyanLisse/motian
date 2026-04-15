@@ -25,7 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const KpiTrendChart = nextDynamic(
   () => import("@/components/overview/kpi-trend-chart").then((m) => ({ default: m.KpiTrendChart })),
-  { ssr: false, loading: () => <Skeleton className="h-48 w-full" /> },
+  { loading: () => <Skeleton className="h-48 w-full" /> },
 );
 
 import { formatDateTime } from "@/src/lib/helpers";

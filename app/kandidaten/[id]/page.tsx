@@ -46,11 +46,11 @@ const MatchScoresChart = nextDynamic(
     import("@/components/candidate-profile/match-scores-chart").then((m) => ({
       default: m.MatchScoresChart,
     })),
-  { ssr: false, loading: () => <Skeleton className="h-48 w-full" /> },
+  { loading: () => <Skeleton className="h-48 w-full" /> },
 );
 const SkillsRadar = nextDynamic(
   () => import("@/components/skills-radar").then((m) => ({ default: m.SkillsRadar })),
-  { ssr: false, loading: () => <Skeleton className="h-48 w-full" /> },
+  { loading: () => <Skeleton className="h-48 w-full" /> },
 );
 
 import { and, db, desc, eq, isNull } from "@/src/db";
