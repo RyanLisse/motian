@@ -19,6 +19,13 @@ export const scraperHealthTask = schedules.task({
     pattern: "0 6 * * *", // Daily at 6:00 AM
     timezone: "Europe/Amsterdam",
   },
+  maxDuration: 300,
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 2000,
+    maxTimeoutInMs: 15_000,
+  },
   run: async () => {
     const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000);
     let reset = 0;

@@ -18,6 +18,12 @@ export const dailyKpiSnapshotTask = schedules.task({
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 60,
+  retry: {
+    maxAttempts: 3,
+    factor: 2,
+    minTimeoutInMs: 1000,
+    maxTimeoutInMs: 10_000,
+  },
   run: async () => {
     const today = new Date().toISOString().slice(0, 10);
 

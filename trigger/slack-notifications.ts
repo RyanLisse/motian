@@ -11,6 +11,7 @@ import {
  */
 export const slackNotificationTask = task({
   id: "slack-notification",
+  maxDuration: 30,
   retry: {
     maxAttempts: 5,
     factor: 2,

@@ -289,6 +289,7 @@ export const candidates = pgTable(
     nameIdx: index("idx_candidates_name").on(table.name),
     provinceIdx: index("idx_candidates_province").on(table.province),
     deletedAtIdx: index("idx_candidates_deleted_at").on(table.deletedAt),
+    createdAtIdx: index("idx_candidates_created_at").on(table.createdAt),
   }),
 );
 
@@ -543,6 +544,7 @@ export const jobMatches = pgTable(
       table.candidateId,
       table.matchScore,
     ),
+    createdAtIdx: index("idx_job_matches_created_at").on(table.createdAt),
   }),
 );
 

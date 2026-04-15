@@ -106,6 +106,7 @@ export async function analyzeManifestEvidence(
         system: ANALYSIS_SYSTEM_PROMPT,
         messages: [{ role: "user", content: promptParts }],
         providerOptions: { google: { structuredOutputs: true } },
+        abortSignal: AbortSignal.timeout(45_000),
       }),
     { label: `Autopilot Analysis (${manifest.journeyId})` },
   );

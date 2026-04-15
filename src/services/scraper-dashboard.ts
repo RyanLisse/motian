@@ -865,7 +865,13 @@ async function getScraperDashboardDataUncached(
             scrapedAt: jobs.scrapedAt,
           })
           .from(jobs)
-          .where(sql`${jobs.platform} is not null`),
+          .where(
+            and(
+              sql`${jobs.platform} is not null`,
+              gte(jobs.scrapedAt, new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)),
+            ),
+          )
+          .limit(5000),
       [] as OverlapReference[],
     ),
     readDashboardQueryOrFallback("active-vacancy-count", () => getActiveVacancyCount(database), 0),

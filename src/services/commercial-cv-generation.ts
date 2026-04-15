@@ -440,6 +440,7 @@ async function maybeEnhanceCommercialCvMarkdown(
           system:
             "Je bent een recruiter die een commercieel CV aanscherpt. Gebruik uitsluitend feiten uit de aangeleverde factsheet en het concept. Hallucineer niets. Houd het in het Nederlands, concreet, recruiter-waardig en in markdown.",
           prompt: `Herschrijf dit commerciële CV-concept naar een scherp recruiter-document.\n\nREGELS:\n- Houd dezelfde globale markdown-structuur aan.\n- Maak de profielsectie overtuigender en concreter.\n- Kies alleen competenties en highlights die door de factsheet ondersteund worden.\n- Als vacaturecontext aanwezig is, benoem de match zonder te overdrijven.\n- Voeg geen nieuwe feiten, werkgevers, certificaten of resultaten toe.\n- Gebruik geen AI-disclaimer anders dan de bestaande Motian footer.\n- Houd het compact: geschikt als direct deelbaar commercieel CV.\n\nFACTSHEET:\n${deterministicDraft.factSheet}\n\nVACATURE MEEGEGEVEN: ${job ? "ja" : "nee"}\n\nCONCEPT:\n${deterministicDraft.body}`,
+          abortSignal: AbortSignal.timeout(30_000),
         }),
       { label: "Commercial CV rewrite", maxAttempts: 2, baseDelayMs: 750 },
     );

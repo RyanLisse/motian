@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -142,17 +142,50 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
   const [submitError, setSubmitError] = useState("");
   const [linkedCount, setLinkedCount] = useState(0);
 
-  const {
-    data: matches = [],
-    isLoading,
-    error: queryError,
-  } = useQuery({
-    queryKey: ["link-candidates", jobId],
-    queryFn: async () => {
+  const [runId, setRunId] = useState<string | null>(null);
+  const [alreadyLinkedIds, setAlreadyLinkedIds] = useState<Set<string>>(new Set());
+
+  // Step 1: Trigger the background matching task
+  const triggerMutation = useMutation({
+    mutationFn: async () => {
       const res = await fetch(`/api/vacatures/${jobId}/match-kandidaten`, { method: "POST" });
       if (!res.ok) throw new Error("Matchen mislukt");
+      return res.json() as Promise<{ runId: string; alreadyLinked: string[] }>;
+    },
+    onSuccess: (data) => {
+      setRunId(data.runId);
+      setAlreadyLinkedIds(new Set(data.alreadyLinked ?? []));
+    },
+  });
+
+  // Trigger on mount
+  useState(() => {
+    triggerMutation.mutate();
+  });
+
+  // Step 2: Poll for results once we have a runId
+  const {
+    data: matches = [],
+    isLoading: isPollLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["link-candidates-poll", jobId, runId],
+    enabled: !!runId,
+    refetchInterval: (query) => {
+      const status = query.state.data as CandidateMatchItem[] | undefined;
+      // Stop polling once we have results
+      if (status && status.length > 0) return false;
+      // Also stop if the raw response indicated completion
+      return 2000;
+    },
+    queryFn: async () => {
+      const res = await fetch(`/api/vacatures/${jobId}/match-kandidaten?runId=${runId}`);
+      if (!res.ok) throw new Error("Status ophalen mislukt");
       const data = await res.json();
-      const linkedSet = new Set<string>(data.alreadyLinked ?? []);
+
+      if (data.status === "failed") throw new Error(data.error ?? "Matchen mislukt");
+      if (data.status === "running") return [] as CandidateMatchItem[];
+
       const items: CandidateMatchItem[] = (data.matches ?? []).map(
         (match: Record<string, unknown>) => ({
           candidateId: match.candidateId as string,
@@ -160,12 +193,14 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
           quickScore: Number(match.quickScore ?? 0),
           matchId: (match.matchId as string) ?? "",
           reasoning: (match.reasoning as string) ?? null,
-          isLinked: linkedSet.has(match.candidateId as string),
+          isLinked: alreadyLinkedIds.has(match.candidateId as string),
         }),
       );
       return items;
     },
   });
+
+  const isLoading = triggerMutation.isPending || (!!runId && isPollLoading && matches.length === 0);
 
   const selected = useMemo(
     () => userSelection ?? getInitialSelection(matches),

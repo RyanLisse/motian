@@ -32,6 +32,12 @@ export const scrapePipelineTask = schedules.task({
   },
   maxDuration: 1800, // 30 minutes — NVB province sharding + werkzoeken Firecrawl fallback need headroom
   machine: { preset: "medium-1x" }, // 1 vCPU, 2 GB RAM — werkzoeken cumulative HTML + Firecrawl responses need headroom
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 5000,
+    maxTimeoutInMs: 60_000,
+  },
   run: async () => {
     const activeConfigs = await db
       .select()

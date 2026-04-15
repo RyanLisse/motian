@@ -120,6 +120,7 @@ export async function runStructuredMatch(input: {
         system: SYSTEM_PROMPT,
         prompt,
         providerOptions: { google: { structuredOutputs: true } },
+        abortSignal: AbortSignal.timeout(45_000),
       }),
     { label: "Structured Matching" },
   );

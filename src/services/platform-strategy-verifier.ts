@@ -217,6 +217,7 @@ Als je verbeteringen ziet, geef concrete suggestedFixes met betere CSS-selectors
     model: geminiFlash,
     output: Output.object({ schema: scorecardSchema }),
     messages: [{ role: "user", content: promptParts }],
+    abortSignal: AbortSignal.timeout(45_000),
   });
 
   if (!output) {

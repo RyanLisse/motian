@@ -15,6 +15,14 @@ export const embeddingsBatchTask = schedules.task({
     pattern: "15 6,10,14,18 * * *", // After each scrape window
     timezone: "Europe/Amsterdam",
   },
+  maxDuration: 600,
+  machine: { preset: "small-1x" },
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 5000,
+    maxTimeoutInMs: 30_000,
+  },
   run: async () => {
     // --- Jobs without embeddings ---
     // Pick up ALL jobs without embeddings — even those without descriptions.

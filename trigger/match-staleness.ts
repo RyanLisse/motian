@@ -15,6 +15,13 @@ export const matchStalenessTask = schedules.task({
     pattern: "0 5 * * 1", // Mondays at 5:00 AM
     timezone: "Europe/Amsterdam",
   },
+  maxDuration: 120,
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 1000,
+    maxTimeoutInMs: 10_000,
+  },
   run: async () => {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 

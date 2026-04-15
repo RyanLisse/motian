@@ -37,7 +37,7 @@ describe("vacancy retention surfaces", () => {
 
     expect(analytics).toContain(".select({ count: sql<number>`cast(count(*) as integer)` })");
     expect(analytics).toContain(".from(jobs)");
-    expect(dashboard).toContain(`.where(sql\`${JOBS_PLATFORM_PLACEHOLDER} is not null\`)`);
+    expect(dashboard).toContain(`sql\`${JOBS_PLATFORM_PLACEHOLDER} is not null\``);
     expect(dashboard).not.toContain(
       `and(isNull(jobs.deletedAt), sql\`${JOBS_PLATFORM_PLACEHOLDER} is not null\`)\n`,
     );

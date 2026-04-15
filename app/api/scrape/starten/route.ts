@@ -7,6 +7,7 @@ import { importJobsFromActiveScrapers } from "@/src/services/operations-console"
 const limiter = rateLimit({ interval: 300_000, limit: 5 });
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const triggerSchema = z.object({
   platform: z.string().optional(),

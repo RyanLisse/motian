@@ -82,6 +82,7 @@ export async function parseCV(
             },
           ],
           providerOptions: { google: { structuredOutputs: true } },
+          abortSignal: AbortSignal.timeout(60_000),
         }),
       { label: "CV Parser (PDF)" },
     );
@@ -100,6 +101,7 @@ export async function parseCV(
         system: SYSTEM_PROMPT,
         prompt: `Analyseer dit CV en extraheer alle informatie.\n\n${text}`,
         providerOptions: { google: { structuredOutputs: true } },
+        abortSignal: AbortSignal.timeout(45_000),
       }),
     { label: "CV Parser (Word)" },
   );

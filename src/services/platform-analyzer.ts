@@ -145,6 +145,7 @@ export async function analyzePlatform(url: string): Promise<PlatformAnalysisResu
   const { output } = await generateText({
     model: geminiFlash,
     output: Output.object({ schema: analysisResultSchema }),
+    abortSignal: AbortSignal.timeout(45_000),
     prompt: `You are an expert web scraper analyst. Analyze this job platform page and determine the optimal scraping strategy.
 
 SOURCE URL: ${url}

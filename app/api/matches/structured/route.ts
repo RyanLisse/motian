@@ -7,6 +7,7 @@ import {
 } from "@/src/services/structured-match-review";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const requestSchema = z.object({
   jobId: z.string().uuid(),

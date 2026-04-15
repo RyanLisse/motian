@@ -19,6 +19,12 @@ export const dailyPlatformSyncTask = schedules.task({
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 300,
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 2000,
+    maxTimeoutInMs: 15_000,
+  },
   run: async () => {
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const alerts: string[] = [];

@@ -1,2 +1,2 @@
 export const dynamic = "force-dynamic";
-export { POST } from "@/app/api/vacatures/[id]/match-kandidaten/route";
+export { GET, POST } from "@/app/api/vacatures/[id]/match-kandidaten/route";

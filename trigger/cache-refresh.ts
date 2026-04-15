@@ -21,6 +21,7 @@ export const cacheRefreshTask = schedules.task({
     minTimeoutInMs: 1_000,
     maxTimeoutInMs: 30_000,
   },
+  maxDuration: 60,
   run: async () => {
     // Run both refreshes in parallel — they're independent DB queries
     const [dedupeResult, sidebarResult] = await Promise.all([

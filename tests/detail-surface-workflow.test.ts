@@ -205,6 +205,10 @@ describe("Detail surfaces recruiter workflow context", () => {
       return {
         ...actual,
         useQuery: () => ({ data: matches, isLoading: false, error: null }),
+        useMutation: ({ onSuccess }: { onSuccess?: (data: unknown) => void }) => ({
+          mutate: () => onSuccess?.({ runId: "run-1", alreadyLinked: ["cand-2"] }),
+          isPending: false,
+        }),
       };
     });
 
