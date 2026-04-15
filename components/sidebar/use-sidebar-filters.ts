@@ -367,6 +367,12 @@ export function useSidebarFilters({
 
   const pushParams = useCallback(
     (overrides: Record<string, FilterOverrideValue>) => {
+      const pageOverride = overrides.pagina;
+      if (typeof pageOverride === "string") {
+        const nextPage = Number.parseInt(pageOverride, 10);
+        setLocalPage(Number.isFinite(nextPage) && nextPage > 0 ? nextPage : 1);
+      }
+
       selfPushRef.current = true;
       startTransition(() => {
         pushOpdrachtenParams(searchParams, router, pathname, overrides);
@@ -513,7 +519,7 @@ export function useSidebarFilters({
     displayTotal,
     displayPerPage,
     totalPages,
-    pageParam,
+    pageParam: localPage,
     searchErrorMessage,
     isFetching,
     shortlistCount,
