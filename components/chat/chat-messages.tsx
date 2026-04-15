@@ -508,10 +508,7 @@ export function ChatMessages({
           isWidget
             ? "max-w-3xl px-3 py-4 pb-28 sm:px-4 sm:pb-32"
             : "max-w-4xl px-3 py-4 pb-32 sm:px-4 sm:py-6 sm:pb-40",
-          !hasUserMessage &&
-            (isWidget
-              ? "flex min-h-full flex-col justify-center"
-              : "flex min-h-[calc(100vh-160px)] flex-col justify-center"),
+          !hasUserMessage && "flex min-h-full flex-col justify-center",
         )}
       >
         {hasOlderMessages || loadingOlder ? (
@@ -631,7 +628,7 @@ export function ChatMessages({
               <div
                 className={cn(
                   "grid gap-3",
-                  isWidget ? "grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4",
+                  isWidget ? "grid-cols-2" : "grid-cols-2 xl:grid-cols-4",
                 )}
               >
                 {emptyStatePrompts.map((suggestion) => (

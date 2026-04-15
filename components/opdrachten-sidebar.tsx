@@ -174,7 +174,7 @@ export function OpdrachtenSidebar({
 
   return (
     <aside className="h-full min-w-0 w-full bg-sidebar/25">
-      <div className="grid h-full min-h-0 overflow-hidden lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
         <OverviewFilterPanel
           inputValue={inputValue}
           onInputChange={setInputValue}
@@ -217,7 +217,7 @@ export function OpdrachtenSidebar({
           onOnlyShortlistChange={handleOnlyShortlistChange}
         />
 
-        <div className="flex h-full min-h-0 min-w-0 flex-col px-3 py-2 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-6 overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col px-3 py-2 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-6 overflow-hidden">
           <div className="mb-2 flex flex-col gap-2 border-b border-border/70 pb-2 sm:mb-4 sm:gap-3 sm:pb-4">
             <SidebarResultsHeader
               displayTotal={displayTotal}
