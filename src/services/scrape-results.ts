@@ -158,28 +158,29 @@ export async function countHistory(
 
 /** Bereken analytics per platform over alle scrape resultaten */
 export async function getAnalytics(database: ScrapeResultsReader = db): Promise<ScrapeAnalytics> {
-  const rows = await database
-    .select({
-      platform: scrapeResults.platform,
-      totalRuns: sql<number>`cast(count(*) as integer)`,
-      successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
-      partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
-      failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
-      totalJobsFound: sql<number>`cast(coalesce(sum(${scrapeResults.jobsFound}), 0) as integer)`,
-      totalJobsNew: sql<number>`cast(coalesce(sum(${scrapeResults.jobsNew}), 0) as integer)`,
-      totalDuplicates: sql<number>`cast(coalesce(sum(${scrapeResults.duplicates}), 0) as integer)`,
-      avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
-    })
-    .from(scrapeResults)
-    .groupBy(scrapeResults.platform);
-  const uniqueJobsResult = await database
-    .select({ count: sql<number>`cast(count(*) as integer)` })
-    .from(jobs);
-  const overallDuration = await database
-    .select({
-      avgMs: sql<number>`cast(coalesce(round(avg(${scrapeResults.durationMs})), 0) as integer)`,
-    })
-    .from(scrapeResults);
+  // Run all three aggregate queries in parallel — they're independent reads
+  const [rows, uniqueJobsResult, overallDuration] = await Promise.all([
+    database
+      .select({
+        platform: scrapeResults.platform,
+        totalRuns: sql<number>`cast(count(*) as integer)`,
+        successCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'success') as integer)`,
+        partialCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'partial') as integer)`,
+        failedCount: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
+        totalJobsFound: sql<number>`cast(coalesce(sum(${scrapeResults.jobsFound}), 0) as integer)`,
+        totalJobsNew: sql<number>`cast(coalesce(sum(${scrapeResults.jobsNew}), 0) as integer)`,
+        totalDuplicates: sql<number>`cast(coalesce(sum(${scrapeResults.duplicates}), 0) as integer)`,
+        avgDurationMs: sql<number>`cast(coalesce(avg(${scrapeResults.durationMs}), 0) as integer)`,
+      })
+      .from(scrapeResults)
+      .groupBy(scrapeResults.platform),
+    database.select({ count: sql<number>`cast(count(*) as integer)` }).from(jobs),
+    database
+      .select({
+        avgMs: sql<number>`cast(coalesce(round(avg(${scrapeResults.durationMs})), 0) as integer)`,
+      })
+      .from(scrapeResults),
+  ]);
 
   const totalUniqueJobs = uniqueJobsResult?.[0]?.count ?? 0;
   const overallAvgDurationMs = overallDuration?.[0]?.avgMs ?? 0;

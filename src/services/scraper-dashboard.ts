@@ -1,15 +1,19 @@
 import { runs } from "@trigger.dev/sdk";
 import { parseCronNext } from "@/src/lib/cron-utils";
+import { cachedQuery } from "@/src/lib/upstash";
 import { and, db, desc, gte, isNull, sql } from "../db";
 import { jobs, scrapeResults, scraperConfigs } from "../db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
 import { fetchDedupedJobsPage } from "./jobs/deduplication";
 import { buildJobFilterConditions } from "./jobs/query-filters";
 import { getAnalytics, type PlatformStats, type ScrapeAnalytics } from "./scrape-results";
+import { getSidebarMetadata } from "./sidebar-metadata";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ACTIVITY_LIMIT = 20;
 const DEFAULT_OVERLAP_LIMIT = 8;
+const TRIGGER_VISIBILITY_CACHE_TTL_SECONDS = 300;
+const TRIGGER_VISIBILITY_TIMEOUT_MS = 8_000;
 
 const SCRAPER_DASHBOARD_CACHE_TTL_MS = 30_000;
 
@@ -23,6 +27,35 @@ let scraperDashboardCache: ScraperDashboardCacheEntry | null = null;
 
 function canUseScraperDashboardCache(database: TransactionDb): boolean {
   return database === db && process.env.NODE_ENV !== "test";
+}
+
+async function getActiveVacancyCountFast(database: TransactionDb): Promise<number> {
+  if (database === db) {
+    const metadata = await getSidebarMetadata().catch(() => null);
+    if (metadata) return metadata.totalCount;
+  }
+
+  return getActiveVacancyCount(database);
+}
+
+async function getTriggerVisibilityWithTimeout(limit: number): Promise<TriggerVisibility> {
+  return Promise.race([
+    getTriggerVisibility(limit),
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Trigger.dev visibility timeout")),
+        TRIGGER_VISIBILITY_TIMEOUT_MS,
+      ),
+    ),
+  ]);
+}
+
+async function getCachedTriggerVisibility(limit: number): Promise<TriggerVisibility> {
+  return cachedQuery(
+    `scraper-dashboard-trigger-visibility:${limit}`,
+    () => getTriggerVisibilityWithTimeout(limit),
+    TRIGGER_VISIBILITY_CACHE_TTL_SECONDS,
+  );
 }
 
 function buildScraperDashboardCacheKey(opts: ScraperDashboardOptions): string {
@@ -253,6 +286,15 @@ async function getActiveVacancyCount(database: TransactionDb = db): Promise<numb
     return 0;
   }
 
+  // Use precomputed sidebar metadata count instead of running the expensive
+  // dedup CTE window function on 53K+ jobs. Sidebar metadata is cached in
+  // Upstash with 5-min TTL and refreshed by a Trigger.dev task every 15 min.
+  const metadata = await getSidebarMetadata();
+  if (metadata?.totalCount) {
+    return metadata.totalCount;
+  }
+
+  // Fallback: run the dedup query only if sidebar metadata is unavailable
   const whereConditions = buildJobFilterConditions();
   const whereClause = (
     whereConditions.length > 0 ? and(...whereConditions) : sql`true`
@@ -623,20 +665,52 @@ function normalizeTriggerRun(run: unknown): TriggerRunSummary {
   };
 }
 
+function createTriggerVisibilityFallback(
+  checkedAt: string,
+  reason: string | null,
+): TriggerVisibility {
+  return {
+    available: false,
+    checkedAt,
+    reason,
+    tasks: TRIGGER_TASKS.map((task) => ({
+      taskIdentifier: task.taskIdentifier,
+      label: task.label,
+      cronExpression: task.cronExpression,
+      timezone: task.timezone,
+      latestRun: null,
+      recentRuns: [],
+    })),
+  };
+}
+
+async function collectTriggerRuns(limit: number): Promise<TriggerRunSummary[]> {
+  const runList: TriggerRunSummary[] = [];
+
+  for await (const run of runs.list({
+    limit,
+    taskIdentifier: TRIGGER_TASKS.map((task) => task.taskIdentifier),
+    from: new Date(Date.now() - 7 * DAY_MS),
+  })) {
+    runList.push(normalizeTriggerRun(run));
+    if (runList.length >= limit) break;
+  }
+
+  return runList;
+}
+
 async function getTriggerVisibility(limit = 8): Promise<TriggerVisibility> {
   const checkedAt = new Date().toISOString();
 
   try {
-    const runList: TriggerRunSummary[] = [];
-
-    for await (const run of runs.list({
-      limit,
-      taskIdentifier: TRIGGER_TASKS.map((task) => task.taskIdentifier),
-      from: new Date(Date.now() - 7 * DAY_MS),
-    })) {
-      runList.push(normalizeTriggerRun(run));
-      if (runList.length >= limit) break;
-    }
+    const runList = await Promise.race([
+      collectTriggerRuns(limit),
+      new Promise<TriggerRunSummary[]>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Trigger.dev timeout na ${TRIGGER_VISIBILITY_TIMEOUT_MS}ms`));
+        }, TRIGGER_VISIBILITY_TIMEOUT_MS);
+      }),
+    ]);
 
     return {
       available: true,
@@ -655,19 +729,10 @@ async function getTriggerVisibility(limit = 8): Promise<TriggerVisibility> {
       }),
     };
   } catch (error) {
-    return {
-      available: false,
+    return createTriggerVisibilityFallback(
       checkedAt,
-      reason: error instanceof Error ? error.message : "Trigger.dev is niet beschikbaar.",
-      tasks: TRIGGER_TASKS.map((task) => ({
-        taskIdentifier: task.taskIdentifier,
-        label: task.label,
-        cronExpression: task.cronExpression,
-        timezone: task.timezone,
-        latestRun: null,
-        recentRuns: [],
-      })),
-    };
+      error instanceof Error ? error.message : "Trigger.dev is niet beschikbaar.",
+    );
   }
 }
 
@@ -766,7 +831,7 @@ async function getScraperDashboardDataUncached(
   const last24Hours = new Date(now.getTime() - DAY_MS);
   const runLimit = Math.max(30, activityLimit);
   const triggerPromise = includeTrigger
-    ? getTriggerVisibility(8)
+    ? getCachedTriggerVisibility(8)
     : Promise.resolve<TriggerVisibility>({
         available: false,
         checkedAt: now.toISOString(),
@@ -876,7 +941,11 @@ async function getScraperDashboardDataUncached(
           .limit(5000),
       [] as OverlapReference[],
     ),
-    readDashboardQueryOrFallback("active-vacancy-count", () => getActiveVacancyCount(database), 0),
+    readDashboardQueryOrFallback(
+      "active-vacancy-count",
+      () => getActiveVacancyCountFast(database),
+      0,
+    ),
     triggerPromise,
   ]);
 
