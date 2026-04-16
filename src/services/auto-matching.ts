@@ -57,20 +57,31 @@ export type AutoMatchResult = {
   matchSaveError: boolean;
 };
 
+type ExtractedRequirements = Awaited<ReturnType<typeof extractRequirements>>;
+
 // ========== Helpers ==========
 
-/** Run deep structured match for a candidate against a job. Returns null on failure. */
-async function deepMatch(job: Job, candidate: Candidate): Promise<StructuredMatchOutput | null> {
-  if (!job.description || job.description.length < 50) return null;
-  if (!candidate.resumeRaw) return null;
-
-  const requirements = await extractRequirements({
+function buildRequirementExtractionInput(job: Job) {
+  return {
     title: job.title,
     description: job.description,
     requirements: job.requirements as unknown[],
     wishes: job.wishes as unknown[],
     competences: job.competences as unknown[],
-  });
+  };
+}
+
+/** Run deep structured match for a candidate against a job. Returns null on failure. */
+async function deepMatch(
+  job: Job,
+  candidate: Candidate,
+  requirementsPromise?: Promise<ExtractedRequirements>,
+): Promise<StructuredMatchOutput | null> {
+  if (!job.description || job.description.length < 50) return null;
+  if (!candidate.resumeRaw) return null;
+
+  const requirements = await (requirementsPromise ??
+    extractRequirements(buildRequirementExtractionInput(job)));
 
   if (requirements.length === 0) return null;
 
@@ -134,11 +145,19 @@ async function runAutoMatchPipeline(
 
   if (top.length === 0) return [];
 
+  const requirementsByJobId = new Map<string, Promise<ExtractedRequirements>>();
+  for (const { job, candidate } of top) {
+    if (requirementsByJobId.has(job.id)) continue;
+    if (!job.description || job.description.length < 50) continue;
+    if (!candidate.resumeRaw) continue;
+    requirementsByJobId.set(job.id, extractRequirements(buildRequirementExtractionInput(job)));
+  }
+
   return Promise.all(
     top.map(async ({ job: j, candidate: c, score, reasoning, model }): Promise<AutoMatchResult> => {
       let structuredResult: StructuredMatchOutput | null = null;
       try {
-        structuredResult = await deepMatch(j, c);
+        structuredResult = await deepMatch(j, c, requirementsByJobId.get(j.id));
       } catch (err) {
         console.error(`[Auto-Match] Deep match failed for job ${j.id} / candidate ${c.id}:`, err);
       }
