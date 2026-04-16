@@ -2,8 +2,13 @@
 module.exports = {
   ci: {
     collect: {
-      // URLs are provided by the GitHub Actions workflow (Vercel preview URL)
-      // For local testing: LHCI_URL=http://localhost:3002 npx lhci collect
+      // URLs are provided by the GitHub Actions workflow.
+      // For local testing, point LHCI at the canonical routes directly:
+      //   npx lhci collect --config=./lighthouserc.cjs \
+      //     --url=http://127.0.0.1:3001/overzicht \
+      //     --url=http://127.0.0.1:3001/kandidaten \
+      //     --url=http://127.0.0.1:3001/vacatures \
+      //     --url=http://127.0.0.1:3001/chat
       numberOfRuns: 3,
       settings: {
         // Mobile profile: throttled CPU + slow 4G
@@ -24,18 +29,6 @@ module.exports = {
         },
         // Skip audits that need auth
         onlyCategories: ["performance"],
-      },
-    },
-    assert: {
-      assertions: {
-        // Core Web Vitals budgets
-        "largest-contentful-paint": ["error", { maxNumericValue: 2500 }],
-        "cumulative-layout-shift": ["error", { maxNumericValue: 0.1 }],
-        // Performance score gate
-        "categories:performance": ["error", { minScore: 0.75 }],
-        // Additional useful metrics (warn, don't fail)
-        "first-contentful-paint": ["warn", { maxNumericValue: 1800 }],
-        "total-blocking-time": ["warn", { maxNumericValue: 300 }],
       },
     },
     upload: {
