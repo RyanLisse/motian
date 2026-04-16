@@ -7,6 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useDebouncedFilterPush } from "@/components/sidebar/use-debounced-filter-push";
 import { useDebouncedValue } from "@/components/sidebar/use-debounced-value";
 import { getOpdrachtenBasePath } from "@/src/lib/opdrachten-filter-url";
 import {
@@ -212,60 +213,48 @@ export function useSidebarFilters({
     ],
   );
 
-  useEffect(() => {
-    const shouldPushHours = debouncedHoursHasManualInput;
-    const shouldPushRadius = debouncedRadiusKm !== straalKm;
-    const shouldPushRateMin = debouncedRateMin !== tariefMinParamFromUrl;
-    const shouldPushRateMax = debouncedRateMax !== tariefMaxParamFromUrl;
+  const pushCtx = { searchParams, router, pathname, startTransition, selfPushRef, setLocalPage };
 
-    if (!shouldPushHours && !shouldPushRadius && !shouldPushRateMin && !shouldPushRateMax) return;
+  const hoursRadiusRateShouldPush =
+    debouncedHoursHasManualInput ||
+    debouncedRadiusKm !== straalKm ||
+    debouncedRateMin !== tariefMinParamFromUrl ||
+    debouncedRateMax !== tariefMaxParamFromUrl;
 
-    // Reset localPage in lockstep with the pagina=1 URL push. Otherwise the
-    // URL→local sync effect (skipped because selfPushRef is set) never updates
-    // localPage, and the TanStack Query key keeps the stale page number.
-    setLocalPage(1);
-    selfPushRef.current = true;
-    startTransition(() => {
-      pushOpdrachtenParams(searchParams, router, pathname, {
-        urenPerWeek: shouldPushHours ? "" : urenPerWeek,
-        urenPerWeekMin: debouncedHoursMin,
-        urenPerWeekMax: debouncedHoursMax,
-        straalKm: debouncedRadiusKm,
-        tariefMin: debouncedRateMin,
-        tariefMax: debouncedRateMax,
-        pagina: "1",
-      });
-    });
-  }, [
-    debouncedHoursHasManualInput,
-    debouncedHoursMin,
-    debouncedHoursMax,
-    debouncedRadiusKm,
-    debouncedRateMin,
-    debouncedRateMax,
-    straalKm,
-    tariefMinParamFromUrl,
-    tariefMaxParamFromUrl,
-    urenPerWeek,
-    router,
-    pathname,
-    searchParams,
-  ]);
+  useDebouncedFilterPush(
+    hoursRadiusRateShouldPush,
+    () => ({
+      urenPerWeek: debouncedHoursHasManualInput ? "" : urenPerWeek,
+      urenPerWeekMin: debouncedHoursMin,
+      urenPerWeekMax: debouncedHoursMax,
+      straalKm: debouncedRadiusKm,
+      tariefMin: debouncedRateMin,
+      tariefMax: debouncedRateMax,
+    }),
+    [
+      debouncedHoursHasManualInput,
+      debouncedHoursMin,
+      debouncedHoursMax,
+      debouncedRadiusKm,
+      debouncedRateMin,
+      debouncedRateMax,
+      straalKm,
+      tariefMinParamFromUrl,
+      tariefMaxParamFromUrl,
+      urenPerWeek,
+      router,
+      pathname,
+      searchParams,
+    ],
+    pushCtx,
+  );
 
-  useEffect(() => {
-    if (debouncedSearchQuery === committedSearchQuery) return;
-
-    // Reset localPage in lockstep with the pagina=1 URL push — see the
-    // hours/radius/rate effect above for the full rationale.
-    setLocalPage(1);
-    selfPushRef.current = true;
-    startTransition(() => {
-      pushOpdrachtenParams(searchParams, router, pathname, {
-        q: debouncedSearchQuery,
-        pagina: "1",
-      });
-    });
-  }, [debouncedSearchQuery, committedSearchQuery, pathname, searchParams, router]);
+  useDebouncedFilterPush(
+    debouncedSearchQuery !== committedSearchQuery,
+    () => ({ q: debouncedSearchQuery }),
+    [debouncedSearchQuery, committedSearchQuery, pathname, searchParams, router],
+    pushCtx,
+  );
 
   const { data, error, isFetching } = useQuery({
     queryKey: ["opdrachten-search", searchQueryKey],
