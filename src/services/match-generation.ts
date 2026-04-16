@@ -63,23 +63,30 @@ export async function generateMatchesForJob({
   let duplicateMatches = 0;
   const errors: string[] = [];
 
-  for (const match of topMatches) {
-    try {
-      await createMatch({
+  const results = await Promise.allSettled(
+    topMatches.map((match) =>
+      createMatch({
         jobId: job.id,
         candidateId: match.candidate.id,
         matchScore: match.score,
         confidence: match.confidence,
         reasoning: match.reasoning,
         model: match.model,
-      });
+      }),
+    ),
+  );
+
+  for (const [index, result] of results.entries()) {
+    if (result.status === "fulfilled") {
       matchesCreated++;
-    } catch (err) {
-      if (isDuplicateError(err)) {
-        duplicateMatches++;
-      } else {
-        errors.push(`Kandidaat ${match.candidate.id}: ${String(err)}`);
-      }
+      continue;
+    }
+
+    if (isDuplicateError(result.reason)) {
+      duplicateMatches++;
+    } else {
+      const failedMatch = topMatches[index];
+      errors.push(`Kandidaat ${failedMatch.candidate.id}: ${String(result.reason)}`);
     }
   }
 
