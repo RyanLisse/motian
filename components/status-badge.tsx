@@ -28,7 +28,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   },
   inactief: {
     label: "Inactief",
-    className: "bg-muted text-muted-foreground border-border",
+    className: "bg-muted text-muted-foreground border-border dark:text-foreground/70",
   },
 };
 
