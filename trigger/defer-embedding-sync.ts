@@ -5,6 +5,7 @@ import {
   type DeferredEmbeddingSyncPayload,
   runDeferredEmbeddingSync,
 } from "@/src/services/embedding";
+import { embeddingProducerQueue } from "./queues";
 
 function revalidateEntity(payload: DeferredEmbeddingSyncPayload) {
   switch (payload.entityType) {
@@ -30,6 +31,7 @@ function toErrorMessage(error: unknown): string {
 
 export const deferEmbeddingSyncTask = task({
   id: "defer-embedding-sync",
+  queue: embeddingProducerQueue,
   retry: {
     maxAttempts: 3,
     factor: 2,

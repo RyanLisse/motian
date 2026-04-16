@@ -28,6 +28,7 @@ const {
 vi.mock("@trigger.dev/sdk", () => ({
   tasks: { trigger: mockTrigger },
   task: <T extends Record<string, unknown>>(config: T) => config,
+  queue: <T extends Record<string, unknown>>(config: T) => config,
   logger: {
     info: mockLoggerInfo,
     error: mockLoggerError,
@@ -65,6 +66,13 @@ describe("deferred embedding pipeline", () => {
       entityType: "candidate",
       entityId: "cand-123",
       source: "candidate:create",
+    });
+  });
+
+  it("uses the shared embedding producer queue", () => {
+    expect(deferEmbeddingSyncTask.queue).toMatchObject({
+      name: "embedding-producers",
+      concurrencyLimit: 2,
     });
   });
 

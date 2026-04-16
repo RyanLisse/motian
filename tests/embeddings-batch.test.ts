@@ -21,8 +21,7 @@ describe("embeddings batch backfill", () => {
   it("caps concurrent task instances while preserving the per-run worker pool", () => {
     const source = readFile("trigger/embeddings-batch.ts");
 
-    expect(source).toContain("queue: {");
-    expect(source).toContain("concurrencyLimit: 2");
+    expect(source).toContain("queue: embeddingProducerQueue");
     expect(source).toContain("const EMBEDDING_CONCURRENCY = 5");
   });
 
