@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import { VacatureShareButton } from "@/components/vacature-share-button";
 import { VacatureTriageScorecard } from "@/components/vacatures/vacature-triage-scorecard";
 import { stripHtml } from "@/src/lib/html";
@@ -41,6 +40,7 @@ import { getJobDetailPageData } from "@/src/services/jobs/detail-page";
 import { buildVacatureTriageScorecard } from "@/src/services/recruiter-insights";
 import { JobDetailFields } from "./job-detail-fields";
 import { JsonViewer } from "./json-viewer";
+import VacatureDetailLoading from "./loading";
 
 const AIGrading = dynamic(
   () => import("@/components/ai-grading").then((mod) => ({ default: mod.AIGrading })),
@@ -186,30 +186,6 @@ function SectionBlock({ title, items }: { title: string; items: string[] }) {
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function OpdrachtDetailSkeleton() {
-  return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        <Skeleton className="h-5 w-64" />
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-72" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-            <Skeleton key={`kpi-${i}`} className="h-20 rounded-xl" />
-          ))}
-        </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Skeleton className="h-64 rounded-xl lg:col-span-2" />
-          <Skeleton className="h-64 rounded-xl" />
-        </div>
-      </div>
     </div>
   );
 }
@@ -1104,7 +1080,7 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
 
 export default function OpdrachtDetailPage(props: Props) {
   return (
-    <Suspense fallback={<OpdrachtDetailSkeleton />}>
+    <Suspense fallback={<VacatureDetailLoading />}>
       <OpdrachtDetailContent {...props} />
     </Suspense>
   );
