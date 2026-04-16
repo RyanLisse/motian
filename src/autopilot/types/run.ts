@@ -15,6 +15,8 @@ export interface AutopilotRunSummary {
   findings: AutopilotFinding[];
   evidenceManifests: EvidenceManifest[];
   stats: RunStats;
+  /** Human-readable reason when the run failed or timed out. */
+  failureReason?: string;
 }
 
 export interface JourneyResult {

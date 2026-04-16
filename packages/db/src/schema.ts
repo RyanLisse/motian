@@ -801,6 +801,7 @@ export const autopilotRuns = pgTable(
     findingsByCategory: jsonb("findings_by_category").default({}),
     reportUrl: text("report_url"),
     triggerRunId: text("trigger_run_id"),
+    failureReason: text("failure_reason"),
     createdAt: timestamp("created_at").$defaultFn(() => new Date()),
   },
   (table) => ({
