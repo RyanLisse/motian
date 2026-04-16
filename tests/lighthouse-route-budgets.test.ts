@@ -23,14 +23,14 @@ describe("lighthouse route budgets", () => {
         { score: 0.78, lcp: 3550, tbt: 530, fcp: 1010, cls: 0 },
       ],
       "/vacatures": [
-        { score: 0.68, lcp: 4100, tbt: 820, fcp: 1200, cls: 0 },
-        { score: 0.69, lcp: 4050, tbt: 810, fcp: 1180, cls: 0 },
-        { score: 0.67, lcp: 4200, tbt: 830, fcp: 1220, cls: 0 },
+        { score: 0.58, lcp: 4700, tbt: 820, fcp: 1200, cls: 0 },
+        { score: 0.59, lcp: 4650, tbt: 810, fcp: 1180, cls: 0 },
+        { score: 0.57, lcp: 4800, tbt: 830, fcp: 1220, cls: 0 },
       ],
       "/chat": [
-        { score: 0.74, lcp: 3900, tbt: 700, fcp: 1400, cls: 0 },
-        { score: 0.73, lcp: 3950, tbt: 680, fcp: 1450, cls: 0 },
-        { score: 0.75, lcp: 3850, tbt: 690, fcp: 1380, cls: 0 },
+        { score: 0.74, lcp: 3600, tbt: 1300, fcp: 1400, cls: 0 },
+        { score: 0.73, lcp: 3650, tbt: 1280, fcp: 1450, cls: 0 },
+        { score: 0.75, lcp: 3550, tbt: 1290, fcp: 1380, cls: 0 },
       ],
     });
 
@@ -43,8 +43,8 @@ describe("lighthouse route budgets", () => {
     expect(byRoute["/kandidaten"]?.warnings).toHaveLength(0);
 
     expect(byRoute["/vacatures"]?.failures).toEqual([
-      `Performance median 0.68 below ${LIGHTHOUSE_ROUTE_BUDGETS["/vacatures"].performanceMin.toFixed(2)}`,
-      `LCP median 4100ms above ${LIGHTHOUSE_ROUTE_BUDGETS["/vacatures"].lcpMaxMs}ms`,
+      `Performance median 0.58 below ${LIGHTHOUSE_ROUTE_BUDGETS["/vacatures"].performanceMin.toFixed(2)}`,
+      `LCP median 4700ms above ${LIGHTHOUSE_ROUTE_BUDGETS["/vacatures"].lcpMaxMs}ms`,
     ]);
     expect(byRoute["/vacatures"]?.warnings).toEqual([
       `TBT median 820ms above ${LIGHTHOUSE_ROUTE_BUDGETS["/vacatures"].tbtWarnMs}ms`,
@@ -52,7 +52,7 @@ describe("lighthouse route budgets", () => {
 
     expect(byRoute["/chat"]?.failures).toHaveLength(0);
     expect(byRoute["/chat"]?.warnings).toEqual([
-      `TBT median 690ms above ${LIGHTHOUSE_ROUTE_BUDGETS["/chat"].tbtWarnMs}ms`,
+      `TBT median 1290ms above ${LIGHTHOUSE_ROUTE_BUDGETS["/chat"].tbtWarnMs}ms`,
     ]);
 
     expect(summary.failureCount).toBe(2);

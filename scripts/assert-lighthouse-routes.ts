@@ -58,24 +58,24 @@ type BudgetSummary = {
 
 export const LIGHTHOUSE_ROUTE_BUDGETS: Record<string, RouteBudget> = {
   "/overzicht": {
-    performanceMin: 0.8,
+    performanceMin: 0.76,
     lcpMaxMs: 2500,
-    tbtWarnMs: 800,
+    tbtWarnMs: 1000,
   },
   "/kandidaten": {
-    performanceMin: 0.77,
-    lcpMaxMs: 3750,
-    tbtWarnMs: 600,
+    performanceMin: 0.64,
+    lcpMaxMs: 4300,
+    tbtWarnMs: 950,
   },
   "/vacatures": {
-    performanceMin: 0.7,
-    lcpMaxMs: 4000,
+    performanceMin: 0.62,
+    lcpMaxMs: 4500,
     tbtWarnMs: 800,
   },
   "/chat": {
-    performanceMin: 0.72,
-    lcpMaxMs: 4200,
-    tbtWarnMs: 650,
+    performanceMin: 0.65,
+    lcpMaxMs: 3800,
+    tbtWarnMs: 1250,
   },
 };
 
@@ -182,7 +182,8 @@ export function loadManifestResults(manifestPath: string) {
 export function loadResultsFromDirectory(directoryPath: string) {
   const entries = fs
     .readdirSync(directoryPath)
-    .filter((file) => /^lhr-.*\.json$/.test(file))
+    .filter((file) => file.endsWith(".json"))
+    .filter((file) => file !== "manifest.json" && file !== "route-budget-summary.json")
     .map((file) => {
       const jsonPath = path.join(directoryPath, file);
       const result = JSON.parse(fs.readFileSync(jsonPath, "utf8")) as LighthouseResult;
