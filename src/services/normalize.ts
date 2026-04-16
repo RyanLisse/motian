@@ -2,7 +2,7 @@ import type { z } from "zod";
 import { stripHtml } from "../../packages/scrapers/src/strip-html";
 import { db, jobs, sql } from "../db";
 import { unifiedJobSchema } from "../schemas/job";
-import { isSkillsCatalogAvailable, syncJobSkills } from "./esco";
+import { syncJobSkills } from "./esco";
 
 /** Permissive type for scraped data — Zod validates at runtime via safeParse */
 export type RawScrapedListing = Record<string, unknown>;
@@ -295,11 +295,6 @@ export async function normalizeAndSaveJobs(
         jobsNew += inserted;
         duplicates += updated;
 
-        const skillsCatalogAvailable = await isSkillsCatalogAvailable();
-        if (!skillsCatalogAvailable) {
-          continue;
-        }
-
         // Parallel skill sync with concurrency cap to avoid exhausting Neon connection pool
         const SKILL_SYNC_CONCURRENCY = 5;
         for (let j = 0; j < result.length; j += SKILL_SYNC_CONCURRENCY) {
@@ -321,7 +316,9 @@ export async function normalizeAndSaveJobs(
           );
           const failed = settled.filter((s) => s.status === "rejected").length;
           if (failed > 0) {
-            console.warn(`[normalize] ${failed}/${chunk.length} ESCO syncs failed in chunk`);
+            console.warn(
+              `[normalize] ${failed}/${chunk.length} canonical skill syncs failed in chunk`,
+            );
           }
         }
       } catch (err) {

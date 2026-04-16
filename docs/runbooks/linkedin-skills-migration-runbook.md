@@ -1,19 +1,61 @@
 # LinkedIn-style skills migratie & backfill runbook
 
-Runbook voor de overstap van ESCO-first skills naar een eenvoudiger
+Runbook voor de overstap van ESCO-first skills naar het huidige
 LinkedIn-style skillsmodel met canonical labels/slugs.
 
 ## Doel
 
-Deze rollout vervangt ESCO niet in één stap, maar introduceert een nieuwe
-canonical skill-laag naast de bestaande tabellen:
+De runtime source of truth voor canonieke skills is:
 
 - `skills`
 - `candidate_skills_v2`
 - `job_skills_v2`
 
-De applicatie leest daarna skills via recruiter-vriendelijke labels en slugs,
-met exact-match scoring en consistente tags/badges in de UI.
+De applicatie leest, filtert en scoort daarna via recruiter-vriendelijke labels
+en slugs uit deze tabellen.
+
+Legacy ESCO-tabellen blijven alleen bestaan voor import/backfill/reference:
+
+- `esco_skills`
+- `skill_aliases`
+- `candidate_skills`
+- `job_skills`
+- `skill_mappings`
+
+Die legacy laag is **niet** meer de runtime source of truth voor matching,
+filters of skill-weergave in de app.
+
+## Runtime source of truth
+
+### Schrijven / bootstrap
+
+- `src/services/normalize.ts` roept `syncJobSkills()` aan na job-upserts.
+- `src/services/candidates.ts` roept `syncCandidateSkills()` aan op writes.
+- `src/services/skills.ts` maakt ontbrekende `skills` rows zelf aan via
+  `findOrCreateSkill()`.
+
+Dat betekent dat een lege `skills`-catalogus zichzelf weer kan opbouwen vanuit
+nieuwe vacature- of kandidaat-ingestie. Een expliciete seed blijft mogelijk via
+`scripts/backfill-skills-v2.ts` wanneer je bestaande legacy ESCO-data wilt
+omzetten.
+
+### Lezen / runtime consumers
+
+De volgende runtime-paden lezen al uit de v2-catalogus:
+
+- detail/enrichment facades in `src/services/esco.ts`
+- search filters in `src/services/candidates.ts` en `src/services/jobs/query-filters.ts`
+- matching/scoring in `src/services/auto-matching.ts`, `src/services/scoring.ts`, en `src/services/esco-scoring.ts`
+- filter/sidebar metadata in `src/services/sidebar-metadata.ts`
+- AI/MCP/detail surfaces zoals `src/mcp/tools/esco-skills.ts`, `src/ai/tools/get-opdracht-detail.ts`, `app/kandidaten/[id]/page.tsx`, en `app/vacatures/[id]/page.tsx`
+
+### Legacy relatie
+
+- `scripts/import-esco-skills.ts` vult alleen de legacy ESCO-tabellen.
+- `scripts/backfill-skills-v2.ts` is de brug van legacy ESCO-data naar de
+  runtime catalogus.
+- `packages/esco` bevat nog legacy ESCO-logica, maar wordt niet gebruikt door
+  de live app-runtime.
 
 ---
 
@@ -68,7 +110,7 @@ Nieuwe tabellen bestaan, maar oude ESCO-tabellen blijven nog intact.
 
 ## 3. Backfill uitvoeren
 
-### Stap 2 — vul canonical skills vanuit bestaande ESCO-data
+### Stap 2 — optioneel: vul canonical skills vanuit bestaande ESCO-data
 
 Voer het backfill script uit:
 
@@ -96,6 +138,9 @@ Het script logt JSON met ongeveer deze shape:
 - vult `candidate_skills_v2`
 - vult `job_skills_v2`
 - laat bestaande ESCO-tabellen ongemoeid
+
+> Niet verplicht voor bootstrap van nieuwe data: nieuwe kandidaat/job writes
+> vullen de runtime catalogus ook zonder voorafgaande seed.
 
 ---
 
@@ -160,7 +205,7 @@ LIMIT 20;
 Controleer een paar matches handmatig:
 
 - [ ] reasoning gebruikt recruiter-taal zoals `3 van 5 vereiste skills matchen`
-- [ ] `model` blijft `esco-rule-v1` op canonical skill path
+- [ ] `model` blijft `skills-rule-v1` op canonical skill path
 - [ ] er zijn geen ESCO guardrail fallback logs meer nodig voor deze flow
 
 ---
@@ -230,8 +275,8 @@ TRUNCATE TABLE skills RESTART IDENTITY CASCADE;
 
 Na een stabiele periode kun je fase 2 van cleanup plannen:
 
-- ESCO reads verwijderen uit app/services
-- MCP/AI surfaces hernoemen van `esco` naar `skills`
+- legacy `esco` naming verwijderen uit app/services en tool surfaces
+- MCP/AI/API filter-interfaces hernoemen van `esco` naar `skills` / `skillSlug`
 - oude tabellen pas daarna droppen:
   - `esco_skills`
   - `skill_aliases`

@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { normalizeAndSaveJobs } from "../src/services/normalize";
 
-const { mockSyncJobSkills, mockIsSkillsCatalogAvailable } = vi.hoisted(() => ({
+const { mockSyncJobSkills } = vi.hoisted(() => ({
   mockSyncJobSkills: vi.fn().mockResolvedValue(undefined),
-  mockIsSkillsCatalogAvailable: vi.fn().mockResolvedValue(true),
 }));
 
 const mockValues = vi.fn().mockImplementation(() => ({
@@ -21,7 +20,6 @@ vi.mock("../src/db", async (importOriginal) => ({
 }));
 
 vi.mock("../src/services/esco", () => ({
-  isSkillsCatalogAvailable: mockIsSkillsCatalogAvailable,
   syncJobSkills: mockSyncJobSkills,
   getSkillsCatalogStatusCached: vi.fn().mockResolvedValue({
     available: true,
@@ -36,7 +34,6 @@ vi.mock("../src/services/esco", () => ({
 describe("normalizeAndSaveJobs regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIsSkillsCatalogAvailable.mockResolvedValue(true);
   });
 
   it("should verify HTML stripping and range clamping", async () => {
@@ -81,9 +78,7 @@ describe("normalizeAndSaveJobs regression", () => {
     expect(valuesCall[1].minHoursPerWeek).toBe(1);
   });
 
-  it("skips skill sync entirely when the canonical skills catalog is unavailable", async () => {
-    mockIsSkillsCatalogAvailable.mockResolvedValue(false);
-
+  it("keeps syncing canonical job skills even when the catalog starts empty", async () => {
     await normalizeAndSaveJobs("test-platform", [
       {
         externalId: "ext-1",
@@ -96,7 +91,12 @@ describe("normalizeAndSaveJobs regression", () => {
       },
     ]);
 
-    expect(mockIsSkillsCatalogAvailable).toHaveBeenCalledTimes(1);
-    expect(mockSyncJobSkills).not.toHaveBeenCalled();
+    expect(mockSyncJobSkills).toHaveBeenCalledTimes(1);
+    expect(mockSyncJobSkills).toHaveBeenCalledWith({
+      jobId: "uuid-1",
+      requirements: [{ description: "React", isKnockout: true }],
+      wishes: [],
+      competences: ["TypeScript"],
+    });
   });
 });
