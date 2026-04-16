@@ -15,7 +15,9 @@ const DEFAULT_OVERLAP_LIMIT = 8;
 const TRIGGER_VISIBILITY_CACHE_TTL_SECONDS = 300;
 const TRIGGER_VISIBILITY_TIMEOUT_MS = 1_000;
 
-const SCRAPER_DASHBOARD_CACHE_TTL_MS = 30_000;
+// 5 min TTL — overlap groups are expensive to compute on 5000 candidates.
+// Trigger.dev refreshes dashboard cron every 15 min, and user activity is low.
+const SCRAPER_DASHBOARD_CACHE_TTL_MS = 300_000;
 
 type ScraperDashboardCacheEntry = {
   key: string;

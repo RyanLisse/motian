@@ -58,7 +58,7 @@ export const getSidebarMetadata = cache(
           computedAt: row.computedAt,
         };
       },
-      300, // 5 min TTL — Trigger.dev refreshes every 15 min
+      600, // 10 min TTL — Trigger.dev refreshes every 15 min anyway
     );
   },
 );
