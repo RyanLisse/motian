@@ -81,6 +81,7 @@ export const GET = withApiHandler(
           quickScore: number;
           overallScore: number;
           recommendation: string | null;
+          recommendationReasoning: string | null;
         }>;
       } | null;
 
@@ -92,7 +93,9 @@ export const GET = withApiHandler(
             candidateName: m.candidateName,
             quickScore: m.quickScore,
             matchId: m.matchId,
-            reasoning: m.recommendation,
+            // Prefer the detailed reasoning text; fall back to the enum label
+            // so older runs still have something to display.
+            reasoning: m.recommendationReasoning ?? m.recommendation,
           })),
         },
         { headers: { "Cache-Control": "private, no-cache, no-store" } },

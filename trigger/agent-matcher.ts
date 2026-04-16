@@ -160,6 +160,9 @@ export const agentMatcherTask = task({
         quickScore: m.quickScore,
         overallScore: m.structuredResult?.overallScore ?? m.quickScore,
         recommendation: m.structuredResult?.recommendation ?? null,
+        // Detailed 2-3 sentence summary rendered by CandidateMatchCard. Without
+        // this the UI showed just the enum ("go" / "no-go" / "conditional").
+        recommendationReasoning: m.structuredResult?.recommendationReasoning ?? null,
         judgeVerdict: m.judgeVerdict?.adjustedRecommendation ?? null,
       })),
       screeningCallsCreated,

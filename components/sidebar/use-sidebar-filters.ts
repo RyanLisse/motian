@@ -220,6 +220,10 @@ export function useSidebarFilters({
 
     if (!shouldPushHours && !shouldPushRadius && !shouldPushRateMin && !shouldPushRateMax) return;
 
+    // Reset localPage in lockstep with the pagina=1 URL push. Otherwise the
+    // URL→local sync effect (skipped because selfPushRef is set) never updates
+    // localPage, and the TanStack Query key keeps the stale page number.
+    setLocalPage(1);
     selfPushRef.current = true;
     startTransition(() => {
       pushOpdrachtenParams(searchParams, router, pathname, {
@@ -251,6 +255,9 @@ export function useSidebarFilters({
   useEffect(() => {
     if (debouncedSearchQuery === committedSearchQuery) return;
 
+    // Reset localPage in lockstep with the pagina=1 URL push — see the
+    // hours/radius/rate effect above for the full rationale.
+    setLocalPage(1);
     selfPushRef.current = true;
     startTransition(() => {
       pushOpdrachtenParams(searchParams, router, pathname, {
