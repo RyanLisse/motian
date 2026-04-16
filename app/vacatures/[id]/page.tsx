@@ -190,10 +190,6 @@ function SectionBlock({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-function OpdrachtDetailSkeleton() {
-  return <VacatureDetailLoading />;
-}
-
 async function OpdrachtDetailContent({ params, searchParams }: Props) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
@@ -1084,7 +1080,7 @@ async function OpdrachtDetailContent({ params, searchParams }: Props) {
 
 export default function OpdrachtDetailPage(props: Props) {
   return (
-    <Suspense fallback={<OpdrachtDetailSkeleton />}>
+    <Suspense fallback={<VacatureDetailLoading />}>
       <OpdrachtDetailContent {...props} />
     </Suspense>
   );

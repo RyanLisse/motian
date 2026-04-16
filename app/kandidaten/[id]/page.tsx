@@ -231,10 +231,6 @@ function getLanguageSkills(languageSkills: unknown): Array<{ language: string; l
     .filter((l) => l.language);
 }
 
-function KandidaatDetailSkeleton() {
-  return <KandidaatDetailLoading />;
-}
-
 async function KandidaatDetailContent({ params }: Props) {
   const { id } = await params;
 
@@ -1172,7 +1168,7 @@ async function KandidaatDetailContent({ params }: Props) {
 
 export default function KandidaatDetailPage(props: Props) {
   return (
-    <Suspense fallback={<KandidaatDetailSkeleton />}>
+    <Suspense fallback={<KandidaatDetailLoading />}>
       <KandidaatDetailContent {...props} />
     </Suspense>
   );
