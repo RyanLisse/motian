@@ -261,7 +261,10 @@ describe("getScraperDashboardData", () => {
 
     expect(source).toContain("const TRIGGER_VISIBILITY_TIMEOUT_MS = 1_000");
     expect(source).toContain("Promise.race([");
-    expect(source).toContain("collectTriggerRuns(limit)");
+    // Iterator check — `@trigger.dev/sdk` has no AbortSignal, so cancellation
+    // must propagate via a shared flag the iterator polls each step.
+    expect(source).toContain("collectTriggerRuns(limit, () => cancelled)");
+    expect(source).toContain("if (isCancelled()) break;");
     expect(source).toContain("Trigger.dev timeout na");
   });
 

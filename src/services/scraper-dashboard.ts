@@ -287,8 +287,11 @@ async function getActiveVacancyCount(database: TransactionDb = db): Promise<numb
   // Use precomputed sidebar metadata count instead of running the expensive
   // dedup CTE window function on 53K+ jobs. Sidebar metadata is cached in
   // Upstash with 5-min TTL and refreshed by a Trigger.dev task every 15 min.
+  // Use `!= null` rather than truthiness so a legitimate count of 0 (no open
+  // vacancies) still returns from cache instead of falling through to the
+  // expensive dedup query.
   const metadata = await getSidebarMetadata();
-  if (metadata?.totalCount) {
+  if (metadata?.totalCount != null) {
     return metadata.totalCount;
   }
 
@@ -682,7 +685,10 @@ function createTriggerVisibilityFallback(
   };
 }
 
-async function collectTriggerRuns(limit: number): Promise<TriggerRunSummary[]> {
+async function collectTriggerRuns(
+  limit: number,
+  isCancelled: () => boolean,
+): Promise<TriggerRunSummary[]> {
   const runList: TriggerRunSummary[] = [];
 
   for await (const run of runs.list({
@@ -690,6 +696,11 @@ async function collectTriggerRuns(limit: number): Promise<TriggerRunSummary[]> {
     taskIdentifier: TRIGGER_TASKS.map((task) => task.taskIdentifier),
     from: new Date(Date.now() - 7 * DAY_MS),
   })) {
+    // `@trigger.dev/sdk@4` does not accept an AbortSignal on paginated
+    // iteration, so we check a shared flag each step and break out when the
+    // Promise.race timeout wins. This stops further network work instead of
+    // letting the iterator continue in the background after the caller gave up.
+    if (isCancelled()) break;
     runList.push(normalizeTriggerRun(run));
     if (runList.length >= limit) break;
   }
@@ -699,16 +710,21 @@ async function collectTriggerRuns(limit: number): Promise<TriggerRunSummary[]> {
 
 async function getTriggerVisibility(limit = 8): Promise<TriggerVisibility> {
   const checkedAt = new Date().toISOString();
+  let cancelled = false;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   try {
     const runList = await Promise.race([
-      collectTriggerRuns(limit),
+      collectTriggerRuns(limit, () => cancelled),
       new Promise<TriggerRunSummary[]>((_, reject) => {
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
+          cancelled = true;
           reject(new Error(`Trigger.dev timeout na ${TRIGGER_VISIBILITY_TIMEOUT_MS}ms`));
         }, TRIGGER_VISIBILITY_TIMEOUT_MS);
       }),
     ]);
+
+    if (timeoutId) clearTimeout(timeoutId);
 
     return {
       available: true,
@@ -727,6 +743,8 @@ async function getTriggerVisibility(limit = 8): Promise<TriggerVisibility> {
       }),
     };
   } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
+    cancelled = true;
     return createTriggerVisibilityFallback(
       checkedAt,
       error instanceof Error ? error.message : "Trigger.dev is niet beschikbaar.",
