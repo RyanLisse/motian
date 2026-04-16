@@ -1,4 +1,4 @@
-import { db, eq } from "../db";
+import { db, eq, inArray } from "../db";
 import { candidates } from "../db/schema";
 import { uploadFile } from "../lib/file-storage";
 import { computeGradeFromParsed } from "../lib/grading-utils";
@@ -239,10 +239,9 @@ export async function handleWhatsAppText(phone: string, jid: string, text: strin
       return;
     }
 
-    // Soft-delete candidates by setting deletedAt
-    for (const c of found) {
-      await db.update(candidates).set({ deletedAt: new Date() }).where(eq(candidates.id, c.id));
-    }
+    // Soft-delete candidates in a single batch update
+    const ids = found.map((c) => c.id);
+    await db.update(candidates).set({ deletedAt: new Date() }).where(inArray(candidates.id, ids));
 
     await gateway.sendText(
       jid,

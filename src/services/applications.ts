@@ -1,4 +1,4 @@
-import { and, db, desc, eq, isNull, sql } from "../db";
+import { and, db, desc, eq, inArray, isNull, sql } from "../db";
 import { applications } from "../db/schema";
 
 export type Application = typeof applications.$inferSelect;
@@ -192,10 +192,41 @@ export async function createApplicationsFromMatches(
   stage: string = "screening",
 ): Promise<CreateApplicationsFromMatchesResult> {
   if (!VALID_STAGES.includes(stage)) stage = "screening";
+  if (matches.length === 0) return { created: [], alreadyLinked: [] };
+
+  const jobIds = matches.map((m) => m.jobId);
+
+  // Batch-fetch all existing applications for this candidate + these jobs in one query
+  const existing = await db
+    .select()
+    .from(applications)
+    .where(
+      and(
+        eq(applications.candidateId, candidateId),
+        inArray(applications.jobId, jobIds),
+        isNull(applications.deletedAt),
+      ),
+    );
+
+  const existingByJobId = new Map(existing.map((a) => [a.jobId, a]));
   const created: Application[] = [];
   const alreadyLinked: string[] = [];
 
+  // Only call createOrReuseApplicationForMatch for entries that don't already exist
   for (const { jobId, matchId } of matches) {
+    const ex = existingByJobId.get(jobId);
+    if (ex) {
+      // Update matchId if needed
+      if (matchId && ex.matchId !== matchId) {
+        await db
+          .update(applications)
+          .set({ matchId, updatedAt: new Date() })
+          .where(and(eq(applications.id, ex.id), isNull(applications.deletedAt)));
+      }
+      alreadyLinked.push(jobId);
+      continue;
+    }
+
     const result = await createOrReuseApplicationForMatch({
       jobId,
       candidateId,
@@ -227,10 +258,39 @@ export async function createApplicationsForJob(
   stage: string = "screening",
 ): Promise<CreateApplicationsForJobResult> {
   if (!VALID_STAGES.includes(stage)) stage = "screening";
+  if (pairs.length === 0) return { created: [], alreadyLinked: [] };
+
+  const candidateIds = pairs.map((p) => p.candidateId);
+
+  // Batch-fetch all existing applications for this job + these candidates in one query
+  const existing = await db
+    .select()
+    .from(applications)
+    .where(
+      and(
+        eq(applications.jobId, jobId),
+        inArray(applications.candidateId, candidateIds),
+        isNull(applications.deletedAt),
+      ),
+    );
+
+  const existingByCandidateId = new Map(existing.map((a) => [a.candidateId, a]));
   const created: Application[] = [];
   const alreadyLinked: string[] = [];
 
   for (const { candidateId, matchId } of pairs) {
+    const ex = existingByCandidateId.get(candidateId);
+    if (ex) {
+      if (matchId && ex.matchId !== matchId) {
+        await db
+          .update(applications)
+          .set({ matchId, updatedAt: new Date() })
+          .where(and(eq(applications.id, ex.id), isNull(applications.deletedAt)));
+      }
+      alreadyLinked.push(candidateId);
+      continue;
+    }
+
     const result = await createOrReuseApplicationForMatch({
       jobId,
       candidateId,

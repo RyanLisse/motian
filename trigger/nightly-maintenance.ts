@@ -22,6 +22,13 @@ export const nightlyMaintenanceTask = schedules.task({
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 600,
+  machine: { preset: "small-2x" },
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 5_000,
+    maxTimeoutInMs: 30_000,
+  },
   run: async () => {
     // ── Step 1: GDPR data retention cleanup ──
     logger.info("Stap 1: Data retention cleanup");
@@ -29,12 +36,19 @@ export const nightlyMaintenanceTask = schedules.task({
     let totalErased = 0;
     const retentionErrors: string[] = [];
 
-    for (const candidate of expired) {
-      try {
-        const result = await eraseCandidateData(candidate.id);
-        if (result.deletedCandidate) totalErased++;
-      } catch (err) {
-        retentionErrors.push(`Kandidaat ${candidate.id}: ${String(err)}`);
+    const GDPR_BATCH_SIZE = 5;
+    for (let i = 0; i < expired.length; i += GDPR_BATCH_SIZE) {
+      const batch = expired.slice(i, i + GDPR_BATCH_SIZE);
+      const settled = await Promise.allSettled(
+        batch.map((candidate) => eraseCandidateData(candidate.id)),
+      );
+      for (let j = 0; j < settled.length; j++) {
+        const outcome = settled[j];
+        if (outcome.status === "fulfilled" && outcome.value.deletedCandidate) {
+          totalErased++;
+        } else if (outcome.status === "rejected") {
+          retentionErrors.push(`Kandidaat ${batch[j].id}: ${String(outcome.reason)}`);
+        }
       }
     }
 
@@ -83,40 +97,68 @@ export const nightlyMaintenanceTask = schedules.task({
     let totalCandidatesFound = 0;
     const sourcingResults: Array<{ jobId: string; jobTitle: string; candidatesFound: number }> = [];
 
-    for (const job of underservedJobs) {
-      try {
-        const matches = await autoMatchJobToCandidates(job.id, 3);
-        const qualified = matches.filter(
-          (m) => (m.structuredResult?.overallScore ?? m.quickScore) >= 40 && !m.matchSaveError,
-        );
+    const SOURCING_BATCH = 3;
+    for (let i = 0; i < underservedJobs.length; i += SOURCING_BATCH) {
+      const batch = underservedJobs.slice(i, i + SOURCING_BATCH);
+      const settled = await Promise.allSettled(
+        batch.map((job) => autoMatchJobToCandidates(job.id, 3)),
+      );
 
-        totalCandidatesFound += qualified.length;
-        sourcingResults.push({
-          jobId: job.id,
-          jobTitle: job.title,
-          candidatesFound: qualified.length,
-        });
+      for (let j = 0; j < settled.length; j++) {
+        const job = batch[j];
+        const outcome = settled[j];
 
-        for (const match of qualified) {
-          await emitAgentEvent({
-            sourceAgent: "sourcing",
-            eventType: "sourcing.candidate_found",
-            candidateId: match.candidateId,
-            jobId: match.jobId,
-            matchId: match.matchId,
-            payload: {
-              score: match.structuredResult?.overallScore ?? match.quickScore,
-              candidateName: match.candidateName,
-              jobTitle: match.jobTitle,
-              nightlyRun: true,
-            },
+        if (outcome.status === "fulfilled") {
+          const matches = outcome.value;
+          const qualified = matches.filter(
+            (m) => (m.structuredResult?.overallScore ?? m.quickScore) >= 40 && !m.matchSaveError,
+          );
+
+          totalCandidatesFound += qualified.length;
+          sourcingResults.push({
+            jobId: job.id,
+            jobTitle: job.title,
+            candidatesFound: qualified.length,
           });
-        }
 
-        logger.info(`Vacature ${job.title}: ${qualified.length} kandidaten gevonden`);
-      } catch (err) {
-        logger.error(`Sourcing mislukt voor vacature ${job.id}`, { error: String(err) });
-        sourcingResults.push({ jobId: job.id, jobTitle: job.title, candidatesFound: 0 });
+          const eventResults = await Promise.allSettled(
+            qualified.map((match) =>
+              emitAgentEvent({
+                sourceAgent: "sourcing",
+                eventType: "sourcing.candidate_found",
+                candidateId: match.candidateId,
+                jobId: match.jobId,
+                matchId: match.matchId,
+                payload: {
+                  score: match.structuredResult?.overallScore ?? match.quickScore,
+                  candidateName: match.candidateName,
+                  jobTitle: match.jobTitle,
+                  nightlyRun: true,
+                },
+              }),
+            ),
+          );
+
+          for (let k = 0; k < eventResults.length; k++) {
+            const eventResult = eventResults[k];
+            if (eventResult.status === "rejected") {
+              const failedMatch = qualified[k];
+              logger.error("Emit agent event mislukt tijdens nightly sourcing", {
+                error: String(eventResult.reason),
+                matchId: failedMatch.matchId,
+                candidateId: failedMatch.candidateId,
+                jobId: failedMatch.jobId,
+              });
+            }
+          }
+
+          logger.info(`Vacature ${job.title}: ${qualified.length} kandidaten gevonden`);
+        } else {
+          logger.error(`Sourcing mislukt voor vacature ${job.id}`, {
+            error: String(outcome.reason),
+          });
+          sourcingResults.push({ jobId: job.id, jobTitle: job.title, candidatesFound: 0 });
+        }
       }
     }
 

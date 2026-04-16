@@ -153,6 +153,7 @@ export async function generateSessionTitle(
           .describe("Korte titel voor dit gesprek in 3-6 woorden, Nederlands"),
       }),
       prompt: `Genereer een korte titel (3-6 woorden) voor dit gesprek. Gebruikersvraag: "${userText.slice(0, 200)}"`,
+      abortSignal: AbortSignal.timeout(15_000),
     });
     title = (titleResult.object as { title: string }).title;
   } catch (err) {

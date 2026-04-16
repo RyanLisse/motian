@@ -14,14 +14,20 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import nextDynamic from "next/dynamic";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
-import { KpiTrendChart } from "@/components/overview/kpi-trend-chart";
 import { PipelineHealthCard } from "@/components/overview/pipeline-health-card";
 import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const KpiTrendChart = nextDynamic(
+  () => import("@/components/overview/kpi-trend-chart").then((m) => ({ default: m.KpiTrendChart })),
+  { loading: () => <Skeleton className="h-48 w-full" /> },
+);
+
 import { formatDateTime } from "@/src/lib/helpers";
 import { getOverviewData } from "./data";
 

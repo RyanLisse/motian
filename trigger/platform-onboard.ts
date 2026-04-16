@@ -4,6 +4,8 @@ import type { PlatformTestImportResponse } from "../src/services/scrapers";
 
 export const platformOnboardTask = task({
   id: "platform-onboard",
+  maxDuration: 300,
+  machine: { preset: "small-2x" },
   retry: {
     maxAttempts: 2,
     factor: 2,

@@ -1,9 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CandidateMatchItem } from "@/components/candidate-wizard/candidate-match-card";
 import { CandidateMatchCard } from "@/components/candidate-wizard/candidate-match-card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,11 @@ interface LinkCandidatesDialogProps {
   jobId: string;
   jobTitle: string;
 }
+
+type MatchPollResult = {
+  items: CandidateMatchItem[];
+  status: "completed" | "running";
+};
 
 /** Auto-select the first available (unlinked) candidate for quick linking. */
 function getInitialSelection(items: CandidateMatchItem[]) {
@@ -142,17 +147,52 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
   const [submitError, setSubmitError] = useState("");
   const [linkedCount, setLinkedCount] = useState(0);
 
+  const [runId, setRunId] = useState<string | null>(null);
+  const [alreadyLinkedIds, setAlreadyLinkedIds] = useState<Set<string>>(new Set());
+
+  // Step 1: Trigger the background matching task
   const {
-    data: matches = [],
-    isLoading,
-    error: queryError,
-  } = useQuery({
-    queryKey: ["link-candidates", jobId],
-    queryFn: async () => {
+    mutate: triggerMatches,
+    isPending: isTriggerPending,
+    error: triggerError,
+  } = useMutation({
+    mutationFn: async () => {
       const res = await fetch(`/api/vacatures/${jobId}/match-kandidaten`, { method: "POST" });
       if (!res.ok) throw new Error("Matchen mislukt");
+      return res.json() as Promise<{ runId: string; alreadyLinked: string[] }>;
+    },
+    onSuccess: (data) => {
+      setRunId(data.runId);
+      setAlreadyLinkedIds(new Set(data.alreadyLinked ?? []));
+    },
+  });
+
+  useEffect(() => {
+    triggerMatches();
+  }, [triggerMatches]);
+
+  // Step 2: Poll for results once we have a runId
+  const {
+    data: pollResult,
+    isLoading: isPollLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["link-candidates-poll", jobId, runId],
+    enabled: !!runId,
+    refetchInterval: (query) => {
+      const status = (query.state.data as MatchPollResult | undefined)?.status;
+      return status === "running" ? 2000 : false;
+    },
+    queryFn: async () => {
+      const res = await fetch(`/api/vacatures/${jobId}/match-kandidaten?runId=${runId}`);
+      if (!res.ok) throw new Error("Status ophalen mislukt");
       const data = await res.json();
-      const linkedSet = new Set<string>(data.alreadyLinked ?? []);
+
+      if (data.status === "failed") throw new Error(data.error ?? "Matchen mislukt");
+      if (data.status === "running") {
+        return { status: "running", items: [] } satisfies MatchPollResult;
+      }
+
       const items: CandidateMatchItem[] = (data.matches ?? []).map(
         (match: Record<string, unknown>) => ({
           candidateId: match.candidateId as string,
@@ -160,19 +200,26 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
           quickScore: Number(match.quickScore ?? 0),
           matchId: (match.matchId as string) ?? "",
           reasoning: (match.reasoning as string) ?? null,
-          isLinked: linkedSet.has(match.candidateId as string),
+          isLinked: alreadyLinkedIds.has(match.candidateId as string),
         }),
       );
-      return items;
+      return { status: "completed", items } satisfies MatchPollResult;
     },
   });
+
+  const matches = pollResult?.items ?? [];
+  const isLoading =
+    isTriggerPending ||
+    (!!runId && (isPollLoading || pollResult?.status === "running") && matches.length === 0);
 
   const selected = useMemo(
     () => userSelection ?? getInitialSelection(matches),
     [userSelection, matches],
   );
 
-  const error = submitError || (queryError instanceof Error ? queryError.message : "");
+  const mutationError = triggerError instanceof Error ? triggerError.message : "";
+  const error =
+    submitError || mutationError || (queryError instanceof Error ? queryError.message : "");
 
   const toggle = useCallback(
     (matchId: string, checked: boolean) => {

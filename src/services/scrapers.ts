@@ -11,7 +11,7 @@ import {
 } from "@motian/scrapers";
 import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { asc, db, desc, eq, type SQL, sql } from "../db";
+import { asc, db, desc, eq, gte, type SQL, sql } from "../db";
 import {
   platformCatalog,
   platformOnboardingRuns,
@@ -613,6 +613,7 @@ export async function listPlatformCatalog(): Promise<PlatformCatalogEntryView[]>
 }
 
 async function listPlatformCatalogUncached(): Promise<PlatformCatalogEntryView[]> {
+  // Serialized queries — Neon serverless pool max is 1, concurrent queries burst connections
   const catalogRows = await db.select().from(platformCatalog).orderBy(asc(platformCatalog.slug));
   const configs = await db.select().from(scraperConfigs).orderBy(asc(scraperConfigs.platform));
   const runs = await listLatestOnboardingRuns();
@@ -1372,9 +1373,7 @@ export async function runPlatformOnboardingWorkflow(input: {
 
 /** Platform gezondheidsrapport: status per scraper + 24-uurs failure rate */
 export async function getHealth(): Promise<HealthReport> {
-  const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
-
-  const [configs, recentRuns] = await Promise.all([
+  const [configs, recentRunStats] = await Promise.all([
     db
       .select({
         platform: scraperConfigs.platform,
@@ -1387,28 +1386,17 @@ export async function getHealth(): Promise<HealthReport> {
     db
       .select({
         platform: scrapeResults.platform,
-        status: scrapeResults.status,
-        runAt: scrapeResults.runAt,
+        total: sql<number>`cast(count(*) as integer)`,
+        failures: sql<number>`cast(count(*) filter (where ${scrapeResults.status} = 'failed') as integer)`,
       })
-      .from(scrapeResults),
+      .from(scrapeResults)
+      .where(gte(scrapeResults.runAt, new Date(Date.now() - 24 * 60 * 60 * 1000)))
+      .groupBy(scrapeResults.platform),
   ]);
 
-  const statsMap = new Map<string, { total: number; failures: number }>();
-  for (const run of recentRuns) {
-    if (!run.runAt) continue;
-    const runTime =
-      run.runAt instanceof Date
-        ? run.runAt.getTime()
-        : typeof run.runAt === "number"
-          ? run.runAt
-          : new Date(String(run.runAt)).getTime();
-    if (!Number.isFinite(runTime) || runTime < twentyFourHoursAgo) continue;
-
-    const current = statsMap.get(run.platform) ?? { total: 0, failures: 0 };
-    current.total += 1;
-    if (run.status === "failed") current.failures += 1;
-    statsMap.set(run.platform, current);
-  }
+  const statsMap = new Map(
+    recentRunStats.map((row) => [row.platform, { total: row.total, failures: row.failures }]),
+  );
 
   const health: PlatformHealth[] = configs.map((cfg) => {
     const failures = cfg.consecutiveFailures ?? 0;

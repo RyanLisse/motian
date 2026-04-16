@@ -7,6 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useDebouncedFilterPush } from "@/components/sidebar/use-debounced-filter-push";
 import { useDebouncedValue } from "@/components/sidebar/use-debounced-value";
 import { getOpdrachtenBasePath } from "@/src/lib/opdrachten-filter-url";
 import {
@@ -212,53 +213,48 @@ export function useSidebarFilters({
     ],
   );
 
-  useEffect(() => {
-    const shouldPushHours = debouncedHoursHasManualInput;
-    const shouldPushRadius = debouncedRadiusKm !== straalKm;
-    const shouldPushRateMin = debouncedRateMin !== tariefMinParamFromUrl;
-    const shouldPushRateMax = debouncedRateMax !== tariefMaxParamFromUrl;
+  const pushCtx = { searchParams, router, pathname, startTransition, selfPushRef, setLocalPage };
 
-    if (!shouldPushHours && !shouldPushRadius && !shouldPushRateMin && !shouldPushRateMax) return;
+  const hoursRadiusRateShouldPush =
+    debouncedHoursHasManualInput ||
+    debouncedRadiusKm !== straalKm ||
+    debouncedRateMin !== tariefMinParamFromUrl ||
+    debouncedRateMax !== tariefMaxParamFromUrl;
 
-    selfPushRef.current = true;
-    startTransition(() => {
-      pushOpdrachtenParams(searchParams, router, pathname, {
-        urenPerWeek: shouldPushHours ? "" : urenPerWeek,
-        urenPerWeekMin: debouncedHoursMin,
-        urenPerWeekMax: debouncedHoursMax,
-        straalKm: debouncedRadiusKm,
-        tariefMin: debouncedRateMin,
-        tariefMax: debouncedRateMax,
-        pagina: "1",
-      });
-    });
-  }, [
-    debouncedHoursHasManualInput,
-    debouncedHoursMin,
-    debouncedHoursMax,
-    debouncedRadiusKm,
-    debouncedRateMin,
-    debouncedRateMax,
-    straalKm,
-    tariefMinParamFromUrl,
-    tariefMaxParamFromUrl,
-    urenPerWeek,
-    router,
-    pathname,
-    searchParams,
-  ]);
+  useDebouncedFilterPush(
+    hoursRadiusRateShouldPush,
+    () => ({
+      urenPerWeek: debouncedHoursHasManualInput ? "" : urenPerWeek,
+      urenPerWeekMin: debouncedHoursMin,
+      urenPerWeekMax: debouncedHoursMax,
+      straalKm: debouncedRadiusKm,
+      tariefMin: debouncedRateMin,
+      tariefMax: debouncedRateMax,
+    }),
+    [
+      debouncedHoursHasManualInput,
+      debouncedHoursMin,
+      debouncedHoursMax,
+      debouncedRadiusKm,
+      debouncedRateMin,
+      debouncedRateMax,
+      straalKm,
+      tariefMinParamFromUrl,
+      tariefMaxParamFromUrl,
+      urenPerWeek,
+      router,
+      pathname,
+      searchParams,
+    ],
+    pushCtx,
+  );
 
-  useEffect(() => {
-    if (debouncedSearchQuery === committedSearchQuery) return;
-
-    selfPushRef.current = true;
-    startTransition(() => {
-      pushOpdrachtenParams(searchParams, router, pathname, {
-        q: debouncedSearchQuery,
-        pagina: "1",
-      });
-    });
-  }, [debouncedSearchQuery, committedSearchQuery, pathname, searchParams, router]);
+  useDebouncedFilterPush(
+    debouncedSearchQuery !== committedSearchQuery,
+    () => ({ q: debouncedSearchQuery }),
+    [debouncedSearchQuery, committedSearchQuery, pathname, searchParams, router],
+    pushCtx,
+  );
 
   const { data, error, isFetching } = useQuery({
     queryKey: ["opdrachten-search", searchQueryKey],
@@ -367,6 +363,12 @@ export function useSidebarFilters({
 
   const pushParams = useCallback(
     (overrides: Record<string, FilterOverrideValue>) => {
+      const pageOverride = overrides.pagina;
+      if (typeof pageOverride === "string") {
+        const nextPage = Number.parseInt(pageOverride, 10);
+        setLocalPage(Number.isFinite(nextPage) && nextPage > 0 ? nextPage : 1);
+      }
+
       selfPushRef.current = true;
       startTransition(() => {
         pushOpdrachtenParams(searchParams, router, pathname, overrides);
@@ -513,7 +515,7 @@ export function useSidebarFilters({
     displayTotal,
     displayPerPage,
     totalPages,
-    pageParam,
+    pageParam: localPage,
     searchErrorMessage,
     isFetching,
     shortlistCount,

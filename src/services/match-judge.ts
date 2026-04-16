@@ -69,6 +69,7 @@ export async function judgeMatch(input: {
           output: Output.object({ schema: judgeVerdictSchema }),
           system: JUDGE_SYSTEM_PROMPT,
           prompt,
+          abortSignal: AbortSignal.timeout(30_000),
         }),
       { label: "Match Judge (Grok)" },
     );

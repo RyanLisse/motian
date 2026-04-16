@@ -9,6 +9,13 @@ import { db, type SQL, sql } from "@/src/db";
  */
 export const candidateDedupTask = schedules.task({
   id: "candidate-dedup",
+  maxDuration: 120,
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 2000,
+    maxTimeoutInMs: 15_000,
+  },
   cron: {
     pattern: "0 4 * * 0", // Sundays at 4:00 AM
     timezone: "Europe/Amsterdam",
@@ -20,7 +27,7 @@ export const candidateDedupTask = schedules.task({
         execute(sql: SQL): Promise<{ rows: Array<{ email: string; ids: string; cnt: number }> }>;
       }
     ).execute(sql`
-      SELECT email, group_concat(id) AS ids, count(*) AS cnt
+      SELECT email, string_agg(id::text, ',') AS ids, count(*) AS cnt
       FROM candidates
       WHERE email IS NOT NULL
         AND deleted_at IS NULL
@@ -40,7 +47,7 @@ export const candidateDedupTask = schedules.task({
       }
     ).execute(sql`
       SELECT lower(name) AS norm_name, role,
-             group_concat(id) AS ids,
+             string_agg(id::text, ',') AS ids,
              count(*) AS cnt
       FROM candidates
       WHERE deleted_at IS NULL

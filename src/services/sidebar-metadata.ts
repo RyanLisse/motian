@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { db, eq, sql } from "@/src/db";
+import { and, db, eq, isNull, sql } from "@/src/db";
 import { jobs, sidebarMetadata } from "@/src/db/schema";
 import { cachedQuery } from "@/src/lib/upstash";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
@@ -58,7 +58,7 @@ export const getSidebarMetadata = cache(
           computedAt: row.computedAt,
         };
       },
-      300, // 5 min TTL — Trigger.dev refreshes every 15 min
+      600, // 10 min TTL — Trigger.dev refreshes every 15 min anyway
     );
   },
 );
@@ -69,7 +69,7 @@ export const getSidebarMetadata = cache(
  */
 export const refreshSidebarMetadata = cache(
   async function refreshSidebarMetadata(): Promise<SidebarMetadataRow> {
-    const activeJobsCondition = getJobStatusCondition("open");
+    const activeJobsCondition = and(getJobStatusCondition("open"), isNull(jobs.deletedAt));
     const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
 
     const skillsCatalogStatusPromise = getSkillsCatalogStatusCached().catch((error) => {

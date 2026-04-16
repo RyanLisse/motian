@@ -7,6 +7,9 @@ import {
 } from "@/src/services/structured-match-review";
 
 export const dynamic = "force-dynamic";
+// Must exceed the combined AI abort windows used by requirement-extraction and
+// structured-matching so the route does not terminate a valid review early.
+export const maxDuration = 120;
 
 const requestSchema = z.object({
   jobId: z.string().uuid(),

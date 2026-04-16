@@ -3,8 +3,10 @@ import { parseCronNext } from "@/src/lib/cron-utils";
 
 describe("parseCronNext", () => {
   it("returns the next occurrence for a comma-separated hour schedule", () => {
-    // "0 6,10,14,18 * * *" — after 07:00 UTC (= 09:00 Amsterdam), the next
-    // occurrence is 10:00 Amsterdam which equals 08:00 UTC (CEST, UTC+2).
+    // "0 6,10,14,18 * * *" — after 09:00 Amsterdam the next slot is 10:00
+    // Amsterdam. We assert on the Amsterdam wall-clock hour via Intl so the
+    // test is independent of the CI runner's process timezone and of daylight
+    // saving transitions (CET vs CEST).
     const after = new Date("2026-04-13T07:00:00.000Z");
     const result = parseCronNext("0 6,10,14,18 * * *", after);
     expect(result).not.toBeNull();
@@ -14,8 +16,15 @@ describe("parseCronNext", () => {
     // Verify the next run is strictly after `after` and on the minute boundary
     expect(result.getTime()).toBeGreaterThan(after.getTime());
     expect(result.getUTCMinutes()).toBe(0);
-    // Verify it is the expected 10:00 Amsterdam slot (08:00 UTC in CEST)
-    expect(result.getUTCHours()).toBe(8);
+    // Verify it is the expected 10:00 Amsterdam slot, regardless of runner TZ.
+    const amsterdamHour = Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Amsterdam",
+        hour: "2-digit",
+        hour12: false,
+      }).format(result),
+    );
+    expect(amsterdamHour).toBe(10);
   });
 
   it("returns a non-null Date for a simple daily schedule", () => {

@@ -6,6 +6,16 @@ export async function saveAutopilotRun(
   reportUrl?: string,
   triggerRunId?: string,
 ) {
+  // If no explicit failureReason, synthesize one from failed journey error messages
+  const failureReason =
+    summary.failureReason ??
+    (summary.status === "failed" || summary.status === "timed_out"
+      ? summary.journeyResults
+          .filter((j) => !j.success && j.errorMessage)
+          .map((j) => `${j.journeyId}: ${j.errorMessage}`)
+          .join("; ") || null
+      : null);
+
   await db
     .insert(autopilotRuns)
     .values({
@@ -22,6 +32,7 @@ export async function saveAutopilotRun(
       findingsByCategory: summary.stats.findingsByCategory,
       reportUrl: reportUrl ?? null,
       triggerRunId: triggerRunId ?? null,
+      failureReason: failureReason || null,
     })
     .onConflictDoUpdate({
       target: autopilotRuns.runId,
@@ -32,6 +43,7 @@ export async function saveAutopilotRun(
         findingsBySeverity: summary.stats.findingsBySeverity,
         findingsByCategory: summary.stats.findingsByCategory,
         reportUrl: reportUrl ?? null,
+        failureReason: failureReason || null,
       },
     });
 }

@@ -37,7 +37,13 @@ export const agentMatcherTask = task({
   ) => {
     const triggerRunId = ctx.run.id;
 
-    metadata.set("agent", "matcher").set("mode", payload.mode).set("status", "matching");
+    const metadataChain = metadata
+      .set("agent", "matcher")
+      .set("mode", payload.mode)
+      .set("status", "matching");
+
+    if (payload.jobId) metadataChain.set("jobId", payload.jobId);
+    if (payload.candidateId) metadataChain.set("candidateId", payload.candidateId);
 
     logger.info("Matcher agent gestart", { mode: payload.mode });
 
@@ -154,6 +160,9 @@ export const agentMatcherTask = task({
         quickScore: m.quickScore,
         overallScore: m.structuredResult?.overallScore ?? m.quickScore,
         recommendation: m.structuredResult?.recommendation ?? null,
+        // Detailed 2-3 sentence summary rendered by CandidateMatchCard. Without
+        // this the UI showed just the enum ("go" / "no-go" / "conditional").
+        recommendationReasoning: m.structuredResult?.recommendationReasoning ?? null,
         judgeVerdict: m.judgeVerdict?.adjustedRecommendation ?? null,
       })),
       screeningCallsCreated,

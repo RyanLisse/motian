@@ -30,6 +30,7 @@ async function sendEmail(to: string, subject: string, htmlBody: string): Promise
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",

@@ -6,6 +6,7 @@ import { rateLimit } from "@/src/lib/rate-limit";
 import { generateMatchesForJob } from "@/src/services/match-generation";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const limiter = rateLimit({ interval: 60_000, limit: 10 });
 

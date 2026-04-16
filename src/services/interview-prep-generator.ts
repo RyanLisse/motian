@@ -244,6 +244,7 @@ Vereisten:
         structuredOutputs: true,
       },
     },
+    abortSignal: AbortSignal.timeout(30_000),
   });
 
   return {

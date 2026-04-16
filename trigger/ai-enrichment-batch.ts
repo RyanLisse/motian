@@ -20,6 +20,13 @@ export const aiEnrichmentBatchTask = schedules.task({
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 300, // 5 minutes — platforms run in parallel now
+  machine: { preset: "small-2x" },
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 5000,
+    maxTimeoutInMs: 30_000,
+  },
   run: async () => {
     logger.info("AI enrichment batch gestart");
 

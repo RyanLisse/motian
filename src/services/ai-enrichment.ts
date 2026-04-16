@@ -84,6 +84,7 @@ export async function enrichJobWithAI(job: {
         system: SYSTEM_PROMPT,
         prompt: contextParts.join("\n\n"),
         providerOptions: { google: { structuredOutputs: true } },
+        abortSignal: AbortSignal.timeout(30_000),
       }),
     { label: "AI Enrichment" },
   );

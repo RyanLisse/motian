@@ -58,6 +58,7 @@ export async function extractRequirements(job: {
         system: SYSTEM_PROMPT,
         prompt: contextParts.join("\n\n"),
         providerOptions: { google: { structuredOutputs: true } },
+        abortSignal: AbortSignal.timeout(30_000),
       }),
     { label: "Requirement Extraction" },
   );

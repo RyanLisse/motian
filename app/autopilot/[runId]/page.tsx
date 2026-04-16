@@ -130,6 +130,21 @@ async function AutopilotRunDetailContent({ params }: RunDetailProps) {
             {getStatusBadge(run.status)}
           </div>
 
+          {/* Failure reason banner */}
+          {(run.status === "failed" || run.status === "timed_out") && run.failureReason ? (
+            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/30">
+              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-red-900 dark:text-red-200 mb-1">
+                  Run {run.status === "timed_out" ? "timed out" : "mislukt"}
+                </div>
+                <div className="text-sm text-red-800 dark:text-red-300 break-words whitespace-pre-wrap">
+                  {run.failureReason}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {/* Run Metadata */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-card border border-border rounded-lg p-4">

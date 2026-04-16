@@ -5,6 +5,7 @@ import {
   applications,
   candidates,
   interviews,
+  jobDedupeRanks,
   jobMatches,
   jobs,
   scrapeResults,
@@ -165,21 +166,35 @@ async function getOverviewDataUncached(database: typeof db = db) {
           execute(query: unknown): Promise<{ rows: Array<{ cnt: number }> }>;
         }
       ).execute(sql`
-        with ranked as (
-          select ${jobs.id},
-            row_number() over (
-              partition by ${jobs.dedupeTitleNormalized}, ${jobs.dedupeClientNormalized}, ${jobs.dedupeLocationNormalized}
-              order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
-            ) as rn
-          from ${jobs}
-          where ${openCondition}
-        )
-        select cast(count(*) as integer) as cnt from ranked where rn = 1
+        select cast(count(*) as integer) as cnt
+        from ${jobs}
+        inner join ${jobDedupeRanks} on ${jobDedupeRanks.jobId} = ${jobs.id}
+        where ${openCondition} and ${jobDedupeRanks.dedupeRank} = 1
       `);
       return dedupedTotalResult.rows[0]?.cnt ?? 0;
     } catch {
-      // execute may not be available in all environments; fall back to 0
-      return 0;
+      try {
+        const dedupedTotalResult = await (
+          database as unknown as {
+            execute(query: unknown): Promise<{ rows: Array<{ cnt: number }> }>;
+          }
+        ).execute(sql`
+          with ranked as (
+            select ${jobs.id},
+              row_number() over (
+                partition by ${jobs.dedupeTitleNormalized}, ${jobs.dedupeClientNormalized}, ${jobs.dedupeLocationNormalized}
+                order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
+              ) as rn
+            from ${jobs}
+            where ${openCondition}
+          )
+          select cast(count(*) as integer) as cnt from ranked where rn = 1
+        `);
+        return dedupedTotalResult.rows[0]?.cnt ?? 0;
+      } catch {
+        // execute may not be available in all environments; fall back to 0
+        return 0;
+      }
     }
   })();
 

@@ -1,6 +1,6 @@
 import { getPlatformAdapter } from "@motian/scrapers";
 import { logger, schedules } from "@trigger.dev/sdk";
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scrapeResults, scraperConfigs } from "@/src/db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "@/src/lib/helpers";
@@ -18,6 +18,13 @@ export const scraperHealthTask = schedules.task({
   cron: {
     pattern: "0 6 * * *", // Daily at 6:00 AM
     timezone: "Europe/Amsterdam",
+  },
+  maxDuration: 300,
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 2000,
+    maxTimeoutInMs: 15_000,
   },
   run: async () => {
     const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000);

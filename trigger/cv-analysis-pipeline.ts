@@ -3,6 +3,8 @@ import { type AllowedMimeType, processStoredCV } from "@/src/services/cv-analysi
 
 export const cvAnalysisPipelineTask = task({
   id: "cv-analysis-pipeline",
+  maxDuration: 300,
+  machine: { preset: "small-2x" },
   retry: {
     maxAttempts: 3,
     factor: 2,

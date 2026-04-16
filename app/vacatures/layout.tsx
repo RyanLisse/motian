@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { Suspense } from "react";
 import { OpdrachtenLayoutShell } from "@/components/opdrachten-layout-shell";
 import { OpdrachtenSidebar } from "@/components/opdrachten-sidebar";
@@ -8,6 +9,19 @@ import { getSidebarMetadata, refreshSidebarMetadata } from "@/src/services/sideb
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
+
+const SIDEBAR_INITIAL_LIMIT = 12;
+
+const getCachedSidebarInitialJobs = unstable_cache(
+  async (knownTotal: number) =>
+    listJobsPage({
+      limit: SIDEBAR_INITIAL_LIMIT,
+      status: "open",
+      knownTotal,
+    }),
+  ["vacatures-sidebar-initial-jobs", "v1"],
+  { revalidate: 60 },
+);
 
 const EMPTY_SIDEBAR_METADATA: Omit<OpdrachtenSidebarProps, "jobs"> = {
   totalCount: 0,
@@ -40,10 +54,6 @@ function SidebarSkeleton() {
 }
 
 async function SidebarContent() {
-  // Load only 20 jobs for the initial sidebar render (user sees ~8 at once).
-  // The client fetches more on scroll/filter via the /api/vacatures/zoeken endpoint.
-  const SIDEBAR_INITIAL_LIMIT = 20;
-
   const metadata = await getSidebarMetadata()
     .then((cached) => cached ?? refreshSidebarMetadata())
     .catch((error) => {
@@ -51,14 +61,12 @@ async function SidebarContent() {
       return EMPTY_SIDEBAR_METADATA;
     });
   // Pass knownTotal from precomputed metadata to skip the COUNT(*) query
-  const { data: sidebarJobs } = await listJobsPage({
-    limit: SIDEBAR_INITIAL_LIMIT,
-    status: "open",
-    knownTotal: metadata.totalCount,
-  }).catch((error) => {
-    console.error("[VacaturesLayout] Sidebar jobs unavailable, using empty fallback:", error);
-    return { data: [], total: metadata.totalCount };
-  });
+  const { data: sidebarJobs } = await getCachedSidebarInitialJobs(metadata.totalCount).catch(
+    (error) => {
+      console.error("[VacaturesLayout] Sidebar jobs unavailable, using empty fallback:", error);
+      return { data: [], total: metadata.totalCount };
+    },
+  );
 
   return (
     <OpdrachtenSidebar

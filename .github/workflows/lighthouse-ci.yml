@@ -32,7 +32,7 @@ jobs:
             ${{ github.event.deployment_status.target_url }}/chat
           uploadArtifacts: true
           temporaryPublicStorage: true
-          configPath: ./lighthouserc.js
+          configPath: ./lighthouserc.cjs
 
       - name: Post results as PR comment
         if: always()
