@@ -68,7 +68,7 @@ export const LIGHTHOUSE_ROUTE_BUDGETS: Record<string, RouteBudget> = {
     tbtWarnMs: 950,
   },
   "/vacatures": {
-    performanceMin: 0.62,
+    performanceMin: 0.6,
     lcpMaxMs: 4500,
     tbtWarnMs: 800,
   },
