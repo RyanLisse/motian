@@ -21,6 +21,13 @@ describe("sidebar shell top-bar refactor", () => {
     expect(source).toContain("var(--mobile-top-bar-height)");
   });
 
+  it("gives the mobile search icon button an explicit accessible name", () => {
+    const source = readFile("components", "sidebar-layout.tsx");
+
+    expect(source).toContain('aria-label="Zoeken (⌘K)"');
+    expect(source).toContain('title="Zoeken (⌘K)"');
+  });
+
   it("moves theme controls into the user menu", () => {
     const source = readFile("components", "nav-user.tsx");
 

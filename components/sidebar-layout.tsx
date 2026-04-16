@@ -24,6 +24,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => document.dispatchEvent(new CustomEvent("motian-command-palette-open"))}
               className="flex size-11 items-center justify-center rounded-2xl border border-border bg-background/95 shadow-sm text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Zoeken (⌘K)"
               title="Zoeken (⌘K)"
             >
               <Search className="h-4 w-4" />
