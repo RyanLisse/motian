@@ -15,6 +15,10 @@ export const embeddingsBatchTask = schedules.task({
     pattern: "15 6,10,14,18 * * *", // After each scrape window
     timezone: "Europe/Amsterdam",
   },
+  queue: {
+    // Bound concurrent task instances; the run body still fans out 5 workers per batch.
+    concurrencyLimit: 2,
+  },
   maxDuration: 600,
   machine: { preset: "small-1x" },
   retry: {

@@ -18,6 +18,14 @@ describe("embeddings batch backfill", () => {
     expect(source).toContain("getVisibleVacancyCondition()");
   });
 
+  it("caps concurrent task instances while preserving the per-run worker pool", () => {
+    const source = readFile("trigger/embeddings-batch.ts");
+
+    expect(source).toContain("queue: {");
+    expect(source).toContain("concurrencyLimit: 2");
+    expect(source).toContain("const EMBEDDING_CONCURRENCY = 5");
+  });
+
   it("serializes job embeddings before updating the database", () => {
     const source = readFile("src/services/embedding.ts");
 
