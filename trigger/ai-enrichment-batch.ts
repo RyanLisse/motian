@@ -1,5 +1,6 @@
 import { logger, schedules } from "@trigger.dev/sdk";
 import { enrichJobsBatch } from "@/src/services/ai-enrichment";
+import { embeddingProducerQueue } from "./queues";
 
 /**
  * Post-scrape AI enrichment — runs after scrape-pipeline completes.
@@ -19,6 +20,8 @@ export const aiEnrichmentBatchTask = schedules.task({
     pattern: "30 6,10,14,18 * * *", // 30 min after each scrape run
     timezone: "Europe/Amsterdam",
   },
+  // Coordinate post-enrichment embeddings with backfill and deferred sync work.
+  queue: embeddingProducerQueue,
   maxDuration: 300, // 5 minutes — platforms run in parallel now
   machine: { preset: "small-2x" },
   retry: {

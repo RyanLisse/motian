@@ -2,6 +2,7 @@ import { logger, schedules } from "@trigger.dev/sdk";
 import { and, db, isNull, jobs } from "@/src/db";
 import { embedCandidatesBatch, embedJob } from "@/src/services/embedding";
 import { getVisibleVacancyCondition } from "@/src/services/jobs/filters";
+import { embeddingProducerQueue } from "./queues";
 
 /**
  * Hourly task to backfill missing embeddings for jobs and candidates.
@@ -15,10 +16,8 @@ export const embeddingsBatchTask = schedules.task({
     pattern: "15 6,10,14,18 * * *", // After each scrape window
     timezone: "Europe/Amsterdam",
   },
-  queue: {
-    // Bound concurrent task instances; the run body still fans out 5 workers per batch.
-    concurrencyLimit: 2,
-  },
+  // Share the same concurrency budget as other embedding-producing tasks.
+  queue: embeddingProducerQueue,
   maxDuration: 600,
   machine: { preset: "small-1x" },
   retry: {
