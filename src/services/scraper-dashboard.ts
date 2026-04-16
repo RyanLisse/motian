@@ -41,11 +41,19 @@ async function getActiveVacancyCountFast(database: TransactionDb): Promise<numbe
 }
 
 async function getCachedTriggerVisibility(limit: number): Promise<TriggerVisibility> {
-  return cachedQuery(
-    `scraper-dashboard-trigger-visibility:${limit}`,
-    () => getTriggerVisibility(limit),
-    TRIGGER_VISIBILITY_CACHE_TTL_SECONDS,
-  );
+  try {
+    return await cachedQuery(
+      `scraper-dashboard-trigger-visibility:${limit}`,
+      () => getTriggerVisibility(limit),
+      TRIGGER_VISIBILITY_CACHE_TTL_SECONDS,
+    );
+  } catch (error) {
+    console.error("[scraper-dashboard] Trigger.dev zichtbaarheid mislukt, fallback", { error });
+    return createTriggerVisibilityFallback(
+      new Date().toISOString(),
+      error instanceof Error ? error.message : "Trigger.dev is niet beschikbaar.",
+    );
+  }
 }
 
 function buildScraperDashboardCacheKey(opts: ScraperDashboardOptions): string {

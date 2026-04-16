@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { mockRunsList } = vi.hoisted(() => ({
@@ -123,14 +125,15 @@ function createAnalyticsFailureDatabase(queryResultsAfterAnalytics: unknown[][],
 }
 
 /**
- * Build mock query results in the order that Promise.all consumes them:
- * 1. analytics byPlatform  (getAnalytics select #1, fires synchronously)
- * 2. configs               (Promise.all, synchronous)
- * 3. recentRuns            (Promise.all, synchronous)
- * 4. recentWindow          (Promise.all, synchronous)
- * 5. overlap candidates    (Promise.all, synchronous)
- * 6. uniqueJobs count      (getAnalytics select #2, after #1 resolves)
- * 7. overallDuration       (getAnalytics select #3, after #6 resolves)
+ * Build mock query results in the order that getScraperDashboardData invokes
+ * select() today:
+ * 1. analytics byPlatform  (getAnalytics select #1)
+ * 2. uniqueJobs count      (getAnalytics select #2)
+ * 3. overallDuration       (getAnalytics select #3)
+ * 4. configs               (dashboard Promise.all)
+ * 5. recentRuns            (dashboard Promise.all)
+ * 6. recentWindow          (dashboard Promise.all)
+ * 7. overlap candidates    (dashboard Promise.all)
  */
 function buildQueryResults(platforms: string[]) {
   const now = new Date("2026-03-10T09:00:00Z");
@@ -148,7 +151,11 @@ function buildQueryResults(platforms: string[]) {
       totalDuplicates: 6,
       avgDurationMs: 500,
     })),
-    // 2. configs
+    // 2. uniqueJobs count (getAnalytics select #2)
+    [{ count: 12 }],
+    // 3. overallDuration (getAnalytics select #3)
+    [{ avgMs: 500 }],
+    // 4. configs
     platforms.map((platform) => ({
       id: `cfg-${platform}`,
       platform,
@@ -159,7 +166,7 @@ function buildQueryResults(platforms: string[]) {
       lastRunStatus: "success",
       consecutiveFailures: 0,
     })),
-    // 3. recentRuns
+    // 5. recentRuns
     platforms.map((platform, index) => ({
       id: `run-${platform}`,
       configId: `cfg-${platform}`,
@@ -172,7 +179,7 @@ function buildQueryResults(platforms: string[]) {
       status: "success",
       errors: [],
     })),
-    // 4. recentWindow (24h aggregation)
+    // 6. recentWindow (24h aggregation)
     platforms.map((platform) => ({
       platform,
       runs: 1,
@@ -181,12 +188,8 @@ function buildQueryResults(platforms: string[]) {
       failedCount: 0,
       avgDurationMs: 500,
     })),
-    // 5. overlap candidates
+    // 7. overlap candidates
     [],
-    // 6. uniqueJobs count (getAnalytics select #2)
-    [{ count: 12 }],
-    // 7. overallDuration (getAnalytics select #3)
-    [{ avgMs: 500 }],
   ];
 }
 
@@ -250,6 +253,18 @@ describe("getScraperDashboardData", () => {
     ]);
   });
 
+  it("caps Trigger.dev visibility waits with an explicit timeout", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../src/services/scraper-dashboard.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("const TRIGGER_VISIBILITY_TIMEOUT_MS = 1_000");
+    expect(source).toContain("Promise.race([");
+    expect(source).toContain("collectTriggerRuns(limit)");
+    expect(source).toContain("Trigger.dev timeout na");
+  });
+
   it("executes scraper dashboard reads in parallel with Promise.all for performance", async () => {
     mockRunsList.mockImplementation(() => emptyAsyncIterable());
     const mockDb = createMockDatabase(
@@ -273,7 +288,7 @@ describe("getScraperDashboardData", () => {
     mockRunsList.mockImplementation(() => emptyAsyncIterable());
     const analyticsError = new Error("Connection terminated due to connection timeout");
     const mockDb = createAnalyticsFailureDatabase(
-      buildQueryResults(["flextender"]).slice(1, 5),
+      buildQueryResults(["flextender"]).slice(1),
       analyticsError,
     );
 
@@ -314,7 +329,11 @@ describe("getScraperDashboardData", () => {
           avgDurationMs: 500,
         },
       ],
-      // 2. configs
+      // 2. uniqueJobs (getAnalytics #2)
+      [{ count: 12 }],
+      // 3. overallDuration (getAnalytics #3)
+      [{ avgMs: 500 }],
+      // 4. configs
       [
         {
           id: "cfg-striive",
@@ -327,7 +346,7 @@ describe("getScraperDashboardData", () => {
           consecutiveFailures: 0,
         },
       ],
-      // 3. recentRuns
+      // 5. recentRuns
       [
         {
           id: "run-success",
@@ -354,7 +373,7 @@ describe("getScraperDashboardData", () => {
           errors: ["Timeout bij import"],
         },
       ],
-      // 4. recentWindow
+      // 6. recentWindow
       [
         {
           platform: "striive",
@@ -365,12 +384,8 @@ describe("getScraperDashboardData", () => {
           avgDurationMs: 500,
         },
       ],
-      // 5. overlap
+      // 7. overlap
       [],
-      // 6. uniqueJobs (getAnalytics #2)
-      [{ count: 12 }],
-      // 7. overallDuration (getAnalytics #3)
-      [{ avgMs: 500 }],
     ]);
 
     const result = await getScraperDashboardData(
@@ -403,7 +418,11 @@ describe("getScraperDashboardData", () => {
           avgDurationMs: 500,
         },
       ],
-      // 2. configs
+      // 2. uniqueJobs (getAnalytics #2)
+      [{ count: 12 }],
+      // 3. overallDuration (getAnalytics #3)
+      [{ avgMs: 500 }],
+      // 4. configs
       [
         {
           id: "cfg-striive",
@@ -416,7 +435,7 @@ describe("getScraperDashboardData", () => {
           consecutiveFailures: 0,
         },
       ],
-      // 3. recentRuns
+      // 5. recentRuns
       [
         {
           id: "run-failed",
@@ -431,7 +450,7 @@ describe("getScraperDashboardData", () => {
           errors: ["Oude DB-fout"],
         },
       ],
-      // 4. recentWindow
+      // 6. recentWindow
       [
         {
           platform: "striive",
@@ -442,12 +461,8 @@ describe("getScraperDashboardData", () => {
           avgDurationMs: 500,
         },
       ],
-      // 5. overlap
+      // 7. overlap
       [],
-      // 6. uniqueJobs (getAnalytics #2)
-      [{ count: 12 }],
-      // 7. overallDuration (getAnalytics #3)
-      [{ avgMs: 500 }],
     ]);
 
     const result = await getScraperDashboardData(

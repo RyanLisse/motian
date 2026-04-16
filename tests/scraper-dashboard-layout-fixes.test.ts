@@ -51,14 +51,18 @@ describe("scraper dashboard layout fixes", () => {
     );
   });
 
-  it("streams the platform catalog separately so slow catalog reads do not block the dashboard", () => {
+  it("preloads dashboard and platform catalog reads before entering the suspense boundaries", () => {
     const source = readFile("app", "scraper", "page.tsx");
 
-    expect(source).toContain("async function PlatformCatalogCard()");
+    expect(source).toContain("const dashboardPromise = getScraperDashboardData({");
+    expect(source).toContain("const platformCatalogPromise = withTimeoutFallback(");
     expect(source).toContain("SCRAPER_PAGE_CATALOG_TIMEOUT_MS = 1_500");
     expect(source).toContain("<Suspense fallback={<DashboardSkeleton />}>");
     expect(source).toContain("<Suspense fallback={<PlatformCatalogCardFallback />}>");
-    expect(source).toContain("listPlatformCatalog(),");
+    expect(source).toContain("<ScraperDashboardContent dashboardPromise={dashboardPromise} />");
+    expect(source).toContain(
+      "<PlatformCatalogCard platformCatalogPromise={platformCatalogPromise} />",
+    );
     expect(source).not.toContain("const [scraperDashboard, platformCatalog] = await Promise.all([");
   });
 

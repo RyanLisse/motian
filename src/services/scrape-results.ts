@@ -1,4 +1,4 @@
-import { db, desc, eq, inArray, sql } from "../db";
+import { db, desc, eq, inArray, isNull, sql } from "../db";
 import { jobs, scrapeResults } from "../db/schema";
 
 type ScrapeResultsReader = Pick<typeof db, "select">;
@@ -174,7 +174,10 @@ export async function getAnalytics(database: ScrapeResultsReader = db): Promise<
       })
       .from(scrapeResults)
       .groupBy(scrapeResults.platform),
-    database.select({ count: sql<number>`cast(count(*) as integer)` }).from(jobs),
+    database
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(jobs)
+      .where(isNull(jobs.deletedAt)),
     database
       .select({
         avgMs: sql<number>`cast(coalesce(round(avg(${scrapeResults.durationMs})), 0) as integer)`,
