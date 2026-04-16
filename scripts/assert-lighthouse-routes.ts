@@ -85,7 +85,13 @@ export function computeMedian(values: number[]) {
   }
 
   const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.floor(sorted.length / 2)];
+  const middleIndex = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 !== 0) {
+    return sorted[middleIndex];
+  }
+
+  return (sorted[middleIndex - 1] + sorted[middleIndex]) / 2;
 }
 
 function normalizeRoute(route: string) {

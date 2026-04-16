@@ -10,6 +10,10 @@ describe("lighthouse route budgets", () => {
     expect(computeMedian([5, 1, 9])).toBe(5);
   });
 
+  it("computes the median from even-length samples", () => {
+    expect(computeMedian([0.8, 0.7])).toBe(0.75);
+  });
+
   it("evaluates route-specific failures and warnings from collected runs", () => {
     const summary = evaluateRouteBudgets({
       "/overzicht": [
