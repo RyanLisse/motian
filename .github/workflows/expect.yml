@@ -17,7 +17,11 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Authenticate the Claude Code CLI via the OAuth token exclusively.
+      # Setting ANTHROPIC_API_KEY alongside it causes the ACP provider to
+      # take the API-key path and surface AcpProviderUnauthenticatedError
+      # because the runner has no interactive `claude login` session.
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
