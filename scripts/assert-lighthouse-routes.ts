@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 type LighthouseManifestEntry = {
   jsonPath: string;
   url: string;
+  parsedResult?: LighthouseResult;
 };
 
 type LighthouseResult = {
@@ -156,7 +157,9 @@ function buildResultsFromEntries(entries: LighthouseManifestEntry[]) {
   const results: Partial<Record<string, RouteMetrics[]>> = {};
 
   for (const entry of entries) {
-    const result = JSON.parse(fs.readFileSync(entry.jsonPath, "utf8")) as LighthouseResult;
+    const result =
+      entry.parsedResult ??
+      (JSON.parse(fs.readFileSync(entry.jsonPath, "utf8")) as LighthouseResult);
     const displayedUrl = result.finalDisplayedUrl ?? entry.url;
     const route = normalizeRoute(new URL(displayedUrl).pathname);
 
@@ -196,6 +199,7 @@ export function loadResultsFromDirectory(directoryPath: string) {
       return {
         jsonPath,
         url: result.finalDisplayedUrl ?? "http://127.0.0.1/unknown",
+        parsedResult: result,
       };
     });
 

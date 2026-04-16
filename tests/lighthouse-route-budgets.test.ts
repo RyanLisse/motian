@@ -14,6 +14,10 @@ describe("lighthouse route budgets", () => {
     expect(computeMedian([0.8, 0.7])).toBe(0.75);
   });
 
+  it("throws on empty samples", () => {
+    expect(() => computeMedian([])).toThrow("Cannot compute median of an empty array");
+  });
+
   it("evaluates route-specific failures and warnings from collected runs", () => {
     const summary = evaluateRouteBudgets({
       "/overzicht": [

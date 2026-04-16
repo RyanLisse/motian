@@ -13,7 +13,6 @@ permissions: {}
 env:
   PNPM_VERSION: "9.15.0"
   NODE_VERSION: "22"
-  HOSTNAME: "0.0.0.0"
   PORT: "3001"
   LOCAL_LIGHTHOUSE_URL: "http://127.0.0.1:3001"
 
@@ -61,6 +60,8 @@ jobs:
           ALLOWED_ORIGINS: ${{ env.LOCAL_LIGHTHOUSE_URL }}
 
       - name: Start app
+        # The local Lighthouse server renders DB-backed shell routes such as
+        # /overzicht, so this step requires DATABASE_URL to be available in CI.
         run: pnpm start > /tmp/lighthouse-next-start.log 2>&1 &
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
