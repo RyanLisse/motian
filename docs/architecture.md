@@ -80,6 +80,31 @@ Unified job search lives in `src/services/jobs/` (modules: `repository`, `filter
 
 RRF formula: `score = sum(1 / (k + rank))` with k=60. Benchmark: `just benchmark-hybrid-search` (writes `docs/metrics/hybrid-search-benchmark-latest.json`).
 
+## Canonical Skills Runtime
+
+The runtime source of truth for canonical skills is the LinkedIn-style v2
+catalog:
+
+- `skills`
+- `candidate_skills_v2`
+- `job_skills_v2`
+
+Writes bootstrap through `src/services/skills.ts`: `findOrCreateSkill()`
+creates missing `skills` rows, while `syncCandidateSkills()` and
+`syncJobSkills()` populate the link tables from candidate/job ingest.
+
+Runtime readers include:
+
+- search filters in `src/services/candidates.ts` and `src/services/jobs/query-filters.ts`
+- matching/scoring in `src/services/auto-matching.ts`, `src/services/scoring.ts`, and `src/services/esco-scoring.ts`
+- metadata/detail/tool facades in `src/services/esco.ts`, `src/services/sidebar-metadata.ts`, AI tools, MCP tools, and detail pages
+
+Legacy ESCO tables (`esco_skills`, `skill_aliases`, `candidate_skills`,
+`job_skills`, `skill_mappings`) are now import/backfill/reference data, not the
+runtime source of truth. `scripts/import-esco-skills.ts` seeds that legacy
+layer, and `scripts/backfill-skills-v2.ts` bridges legacy ESCO rows into the
+runtime catalog when explicit seeding is needed.
+
 ## Salesforce XML Feed
 
 `/api/salesforce-feed` is a live **read-only XML export** for **pull-based Salesforce integrations**. It reads from Motian records and returns a custom `<sObjects>` XML document, so it should be treated as a bespoke feed rather than an OData surface.
