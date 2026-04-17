@@ -629,6 +629,14 @@ export const jobDedupeRanks = pgTable("job_dedupe_ranks", {
   computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ========== Scraper Overlap Groups (precomputed) ==========
+export const overlapGroups = pgTable("overlap_groups", {
+  id: text("id").primaryKey().default("default"),
+  totalGroups: integer("total_groups").notNull().default(0),
+  groups: jsonb("groups").notNull().default([]),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ========== GDPR Audit Log ==========
 export const gdprAuditLog = pgTable(
   "gdpr_audit_log",
