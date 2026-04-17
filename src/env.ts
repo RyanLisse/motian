@@ -82,6 +82,11 @@ export const env = createEnv({
     ESCO_SCORING_ENABLED: z.string().optional(),
 
     // App config
+    MAIL_PROVIDER: z.enum(["agentmail", "m365"]).optional(),
+    M365_TENANT_ID: z.string().optional(),
+    M365_CLIENT_ID: z.string().optional(),
+    M365_CLIENT_SECRET: z.string().optional(),
+    M365_WEBHOOK_CLIENT_STATE: z.string().optional(),
     MOTIA_API_URL: z.string().url().optional(),
     NEXT_URL: z.string().url().optional(),
     PUBLIC_API_BASE_URL: z.string().url().optional(),
@@ -185,6 +190,11 @@ export const env = createEnv({
     ESCO_VERSION: process.env.ESCO_VERSION,
     ESCO_CRITICAL_REVIEW_THRESHOLD: process.env.ESCO_CRITICAL_REVIEW_THRESHOLD,
     ESCO_SCORING_ENABLED: process.env.ESCO_SCORING_ENABLED,
+    MAIL_PROVIDER: process.env.MAIL_PROVIDER,
+    M365_TENANT_ID: process.env.M365_TENANT_ID,
+    M365_CLIENT_ID: process.env.M365_CLIENT_ID,
+    M365_CLIENT_SECRET: process.env.M365_CLIENT_SECRET,
+    M365_WEBHOOK_CLIENT_STATE: process.env.M365_WEBHOOK_CLIENT_STATE,
     MOTIA_API_URL: process.env.MOTIA_API_URL,
     NEXT_URL: process.env.NEXT_URL,
     PUBLIC_API_BASE_URL: process.env.PUBLIC_API_BASE_URL,
