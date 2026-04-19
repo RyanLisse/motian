@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAgentDashboardData } from "./data";
 
-export const revalidate = 120;
+export const dynamic = "force-dynamic";
 
 // ---------- Server Data Component ----------
 
