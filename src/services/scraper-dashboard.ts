@@ -1,8 +1,8 @@
 import { runs } from "@trigger.dev/sdk";
 import { parseCronNext } from "@/src/lib/cron-utils";
 import { cachedQuery } from "@/src/lib/upstash";
-import { and, db, desc, gte, isNull, sql } from "../db";
-import { jobs, scrapeResults, scraperConfigs } from "../db/schema";
+import { and, db, desc, eq, gte, isNull, sql } from "../db";
+import { jobs, overlapGroups, scrapeResults, scraperConfigs } from "../db/schema";
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
 import { fetchDedupedJobsPage } from "./jobs/deduplication";
 import { buildJobFilterConditions } from "./jobs/query-filters";
@@ -12,6 +12,7 @@ import { getSidebarMetadata } from "./sidebar-metadata";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ACTIVITY_LIMIT = 20;
 const DEFAULT_OVERLAP_LIMIT = 8;
+const OVERLAP_GROUPS_ROW_ID = "default";
 const TRIGGER_VISIBILITY_CACHE_TTL_SECONDS = 300;
 const TRIGGER_VISIBILITY_TIMEOUT_MS = 1_000;
 
@@ -81,10 +82,17 @@ const TRIGGER_TASKS = [
     cronExpression: "0 6 * * *",
     timezone: "Europe/Amsterdam",
   },
+  {
+    taskIdentifier: "scraper-overlap-precompute",
+    label: "Scraper overlap precompute",
+    cronExpression: "15 * * * *",
+    timezone: "Europe/Amsterdam",
+  },
 ] as const;
 
 type TransactionDb = typeof db;
 type ScraperConfigRow = typeof scraperConfigs.$inferSelect;
+type OverlapGroupsRow = typeof overlapGroups.$inferSelect;
 type RecentRunRow = {
   id: string;
   configId: string | null;
@@ -584,6 +592,143 @@ export function buildListingOverlapGroups(input: OverlapReference[]): ListingOve
   return selected;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toDateOrNull(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value !== "string") return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function normalizeStoredListing(raw: unknown): OverlapReference | null {
+  if (!isRecord(raw)) return null;
+  const id = typeof raw.id === "string" ? raw.id : null;
+  const platform = typeof raw.platform === "string" ? raw.platform : null;
+  const externalId = typeof raw.externalId === "string" ? raw.externalId : null;
+  const title = typeof raw.title === "string" ? raw.title : null;
+
+  if (!id || !platform || !externalId || !title) {
+    return null;
+  }
+
+  return {
+    id,
+    platform,
+    externalId,
+    externalUrl: typeof raw.externalUrl === "string" ? raw.externalUrl : null,
+    clientReferenceCode:
+      typeof raw.clientReferenceCode === "string" ? raw.clientReferenceCode : null,
+    title,
+    company: typeof raw.company === "string" ? raw.company : null,
+    endClient: typeof raw.endClient === "string" ? raw.endClient : null,
+    location: typeof raw.location === "string" ? raw.location : null,
+    province: typeof raw.province === "string" ? raw.province : null,
+    postedAt: toDateOrNull(raw.postedAt),
+    applicationDeadline: toDateOrNull(raw.applicationDeadline),
+    startDate: toDateOrNull(raw.startDate),
+    scrapedAt: toDateOrNull(raw.scrapedAt),
+  };
+}
+
+function normalizeStoredOverlapGroup(raw: unknown): ListingOverlapGroup | null {
+  if (!isRecord(raw)) return null;
+  const groupId = typeof raw.groupId === "string" ? raw.groupId : null;
+  const strategy = typeof raw.strategy === "string" ? raw.strategy : null;
+  const title = typeof raw.title === "string" ? raw.title : null;
+
+  if (!groupId || !strategy || !title) {
+    return null;
+  }
+
+  const listingsRaw = Array.isArray(raw.listings) ? raw.listings : [];
+  const listings = listingsRaw
+    .map((listing) => normalizeStoredListing(listing))
+    .filter((listing): listing is OverlapReference => Boolean(listing));
+
+  return {
+    groupId,
+    strategy: strategy as ListingOverlapGroup["strategy"],
+    title,
+    criteria: Array.isArray(raw.criteria)
+      ? raw.criteria.filter((item): item is string => typeof item === "string")
+      : [],
+    sharedValues: isRecord(raw.sharedValues)
+      ? Object.fromEntries(
+          Object.entries(raw.sharedValues)
+            .filter(([, value]) => typeof value === "string")
+            .map(([key, value]) => [key, value as string]),
+        )
+      : {},
+    listings,
+    platforms: Array.isArray(raw.platforms)
+      ? raw.platforms.filter((item): item is string => typeof item === "string")
+      : [],
+  };
+}
+
+async function fetchOverlapCandidates(database: TransactionDb = db): Promise<OverlapReference[]> {
+  return database
+    .select({
+      id: jobs.id,
+      platform: jobs.platform,
+      externalId: jobs.externalId,
+      externalUrl: jobs.externalUrl,
+      clientReferenceCode: jobs.clientReferenceCode,
+      title: jobs.title,
+      company: jobs.company,
+      endClient: jobs.endClient,
+      location: jobs.location,
+      province: jobs.province,
+      postedAt: jobs.postedAt,
+      applicationDeadline: jobs.applicationDeadline,
+      startDate: jobs.startDate,
+      scrapedAt: jobs.scrapedAt,
+    })
+    .from(jobs)
+    .where(
+      and(
+        isNull(jobs.deletedAt),
+        sql`${jobs.platform} is not null`,
+        gte(jobs.scrapedAt, new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)),
+      ),
+    )
+    .orderBy(desc(jobs.scrapedAt), desc(jobs.id))
+    .limit(5000);
+}
+
+export async function refreshPrecomputedOverlapGroups(
+  database: TransactionDb = db,
+): Promise<{ totalGroups: number; computedAt: Date }> {
+  const overlapCandidates = await fetchOverlapCandidates(database);
+  const groups = buildListingOverlapGroups(overlapCandidates).sort(
+    (left, right) => right.platforms.length - left.platforms.length,
+  );
+  const computedAt = new Date();
+
+  await database
+    .insert(overlapGroups)
+    .values({
+      id: OVERLAP_GROUPS_ROW_ID,
+      totalGroups: groups.length,
+      groups,
+      computedAt,
+    })
+    .onConflictDoUpdate({
+      target: overlapGroups.id,
+      set: {
+        totalGroups: groups.length,
+        groups,
+        computedAt,
+      },
+    });
+
+  return { totalGroups: groups.length, computedAt };
+}
+
 function buildActivityFeed(runsInput: RecentRunRow[], limit: number): ScraperActivityItem[] {
   return runsInput.slice(0, limit).map((run) => {
     const errors = asStringArray(run.errors);
@@ -870,7 +1015,7 @@ async function getScraperDashboardDataUncached(
     configs,
     recentRuns,
     recentWindowRows,
-    overlapCandidates,
+    precomputedOverlapRow,
     activeVacancies,
     trigger,
   ] = await Promise.all([
@@ -926,36 +1071,20 @@ async function getScraperDashboardDataUncached(
       }>,
     ),
     readDashboardQueryOrFallback(
-      "overlap-candidates",
+      "overlap-groups",
       () =>
         database
           .select({
-            id: jobs.id,
-            platform: jobs.platform,
-            externalId: jobs.externalId,
-            externalUrl: jobs.externalUrl,
-            clientReferenceCode: jobs.clientReferenceCode,
-            title: jobs.title,
-            company: jobs.company,
-            endClient: jobs.endClient,
-            location: jobs.location,
-            province: jobs.province,
-            postedAt: jobs.postedAt,
-            applicationDeadline: jobs.applicationDeadline,
-            startDate: jobs.startDate,
-            scrapedAt: jobs.scrapedAt,
+            id: overlapGroups.id,
+            totalGroups: overlapGroups.totalGroups,
+            groups: overlapGroups.groups,
+            computedAt: overlapGroups.computedAt,
           })
-          .from(jobs)
-          .where(
-            and(
-              isNull(jobs.deletedAt),
-              sql`${jobs.platform} is not null`,
-              gte(jobs.scrapedAt, new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)),
-            ),
-          )
-          .orderBy(desc(jobs.scrapedAt), desc(jobs.id))
-          .limit(5000),
-      [] as OverlapReference[],
+          .from(overlapGroups)
+          .where(eq(overlapGroups.id, OVERLAP_GROUPS_ROW_ID))
+          .limit(1)
+          .then((rows) => rows[0] ?? null),
+      null as OverlapGroupsRow | null,
     ),
     readDashboardQueryOrFallback(
       "active-vacancy-count",
@@ -1064,10 +1193,29 @@ async function getScraperDashboardDataUncached(
       } satisfies PlatformOperationalMetrics;
     });
 
-  const allOverlapGroups = buildListingOverlapGroups(overlapCandidates).sort(
-    (left, right) => right.platforms.length - left.platforms.length,
-  );
-  const overlapGroups = allOverlapGroups.slice(0, overlapLimit);
+  let allOverlapGroups: ListingOverlapGroup[] = [];
+  let overlapTotalGroups = 0;
+
+  if (precomputedOverlapRow) {
+    const groups = Array.isArray(precomputedOverlapRow.groups) ? precomputedOverlapRow.groups : [];
+    allOverlapGroups = groups
+      .map((group) => normalizeStoredOverlapGroup(group))
+      .filter((group): group is ListingOverlapGroup => Boolean(group));
+    overlapTotalGroups = Math.max(precomputedOverlapRow.totalGroups ?? 0, allOverlapGroups.length);
+  } else {
+    const overlapCandidates = await readDashboardQueryOrFallback(
+      "overlap-candidates-fallback",
+      () => fetchOverlapCandidates(database),
+      [] as OverlapReference[],
+    );
+
+    allOverlapGroups = buildListingOverlapGroups(overlapCandidates).sort(
+      (left, right) => right.platforms.length - left.platforms.length,
+    );
+    overlapTotalGroups = allOverlapGroups.length;
+  }
+
+  const visibleOverlapGroups = allOverlapGroups.slice(0, overlapLimit);
 
   return {
     generatedAt: now.toISOString(),
@@ -1078,8 +1226,8 @@ async function getScraperDashboardDataUncached(
     platforms,
     activity: buildActivityFeed(recentRuns, activityLimit),
     overlap: {
-      totalGroups: allOverlapGroups.length,
-      groups: overlapGroups,
+      totalGroups: overlapTotalGroups,
+      groups: visibleOverlapGroups,
     },
     trigger,
   };

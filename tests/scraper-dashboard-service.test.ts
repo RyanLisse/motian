@@ -133,7 +133,7 @@ function createAnalyticsFailureDatabase(queryResultsAfterAnalytics: unknown[][],
  * 4. configs               (dashboard Promise.all)
  * 5. recentRuns            (dashboard Promise.all)
  * 6. recentWindow          (dashboard Promise.all)
- * 7. overlap candidates    (dashboard Promise.all)
+ * 7. overlap groups        (dashboard Promise.all)
  */
 function buildQueryResults(platforms: string[]) {
   const now = new Date("2026-03-10T09:00:00Z");
@@ -188,8 +188,15 @@ function buildQueryResults(platforms: string[]) {
       failedCount: 0,
       avgDurationMs: 500,
     })),
-    // 7. overlap candidates
-    [],
+    // 7. overlap groups
+    [
+      {
+        id: "default",
+        totalGroups: 0,
+        groups: [],
+        computedAt: now,
+      },
+    ],
   ];
 }
 
@@ -250,6 +257,7 @@ describe("getScraperDashboardData", () => {
     expect(result.trigger.tasks.map((task) => task.taskIdentifier)).toEqual([
       "scrape-pipeline",
       "scraper-health-check",
+      "scraper-overlap-precompute",
     ]);
   });
 
@@ -387,8 +395,15 @@ describe("getScraperDashboardData", () => {
           avgDurationMs: 500,
         },
       ],
-      // 7. overlap
-      [],
+      // 7. overlap groups
+      [
+        {
+          id: "default",
+          totalGroups: 0,
+          groups: [],
+          computedAt: now,
+        },
+      ],
     ]);
 
     const result = await getScraperDashboardData(
@@ -464,8 +479,15 @@ describe("getScraperDashboardData", () => {
           avgDurationMs: 500,
         },
       ],
-      // 7. overlap
-      [],
+      // 7. overlap groups
+      [
+        {
+          id: "default",
+          totalGroups: 0,
+          groups: [],
+          computedAt: lastRunAt,
+        },
+      ],
     ]);
 
     const result = await getScraperDashboardData(
