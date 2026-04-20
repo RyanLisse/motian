@@ -11,7 +11,7 @@ import {
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 10;
-const REQUEST_TIMEOUT_MS = 20_000;
+const REQUEST_TIMEOUT_MS = 60_000;
 const MAX_ALLOWED_PAGES = 25;
 
 type ScrapeOpdrachtoverheidOptions = {
@@ -129,8 +129,8 @@ export async function scrapeOpdrachtoverheid(
   const requestTimeoutMs = toBoundedPositiveInteger(
     options.requestTimeoutMs,
     REQUEST_TIMEOUT_MS,
-    1_000,
-    120_000,
+    5_000,
+    180_000,
   );
   const limit =
     typeof options.limit === "number" && Number.isFinite(options.limit) && options.limit > 0
