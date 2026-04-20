@@ -2,6 +2,7 @@ import { cache } from "react";
 import { and, db, eq, isNull, sql } from "@/src/db";
 import { jobs, sidebarMetadata } from "@/src/db/schema";
 import { cachedQuery } from "@/src/lib/upstash";
+import { countDedupedOpenJobs } from "@/src/services/jobs/deduplication";
 import { getJobStatusCondition } from "@/src/services/jobs/filters";
 import { getSkillsCatalogStatusCached, listSkillsForFilterOptions } from "./esco";
 
@@ -91,9 +92,9 @@ export const refreshSidebarMetadata = cache(
       return [];
     });
 
-    const [countResult, metaResult, categoryResult, skillsCatalogStatus, skillsRows] =
+    const [dedupedCount, metaResult, categoryResult, skillsCatalogStatus, skillsRows] =
       await Promise.all([
-        db.select({ count: sql<number>`count(*)::int` }).from(jobs).where(activeJobsCondition),
+        countDedupedOpenJobs(db),
         db
           .select({
             platforms: sql<string | null>`json_agg(distinct ${jobs.platform})`,
@@ -111,7 +112,7 @@ export const refreshSidebarMetadata = cache(
         skillsRowsPromise,
       ]);
 
-    const totalCount = countResult[0]?.count ?? 0;
+    const totalCount = dedupedCount;
 
     const platformsRaw = metaResult[0]?.platforms;
     const endClientsRaw = metaResult[0]?.endClients;

@@ -37,6 +37,57 @@ function normalizeDeduplicationPart(value: string | null | undefined) {
     .replace(/\s+/g, " ");
 }
 
+/**
+ * Counts open (status='open', not soft-deleted) jobs after deduplication.
+ *
+ * Uses the precomputed jobDedupeRanks table when available. Falls back to an
+ * on-the-fly CTE ranking identical to the one in app/overzicht/data.ts so the
+ * Overzicht headline number and the Vacatures sidebar totalCount always agree.
+ *
+ * Returns 0 if both paths fail (e.g. execute() unavailable in current driver).
+ */
+export async function countDedupedOpenJobs(
+  database: typeof db = db,
+): Promise<number> {
+  const openCondition = and(eq(jobs.status, "open"), isNull(jobs.deletedAt));
+
+  try {
+    const result = await (
+      database as unknown as {
+        execute(query: SQL): Promise<{ rows: Array<{ cnt: number }> }>;
+      }
+    ).execute(sql`
+      select cast(count(*) as integer) as cnt
+      from ${jobs}
+      inner join ${jobDedupeRanks} on ${jobDedupeRanks.jobId} = ${jobs.id}
+      where ${openCondition} and ${jobDedupeRanks.dedupeRank} = 1
+    `);
+    return result.rows[0]?.cnt ?? 0;
+  } catch {
+    try {
+      const result = await (
+        database as unknown as {
+          execute(query: SQL): Promise<{ rows: Array<{ cnt: number }> }>;
+        }
+      ).execute(sql`
+        with ranked as (
+          select ${jobs.id},
+            row_number() over (
+              partition by ${jobs.dedupeTitleNormalized}, ${jobs.dedupeClientNormalized}, ${jobs.dedupeLocationNormalized}
+              order by ${jobs.scrapedAt} desc nulls last, ${jobs.id} desc
+            ) as rn
+          from ${jobs}
+          where ${openCondition}
+        )
+        select cast(count(*) as integer) as cnt from ranked where rn = 1
+      `);
+      return result.rows[0]?.cnt ?? 0;
+    } catch {
+      return 0;
+    }
+  }
+}
+
 export function getListSortOrderSql(sortBy: ListJobsSortBy = "nieuwste") {
   switch (sortBy) {
     case "tarief_hoog":
