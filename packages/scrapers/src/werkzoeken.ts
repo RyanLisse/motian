@@ -17,6 +17,25 @@ import {
 } from "./lib/utils";
 
 const WERKZOEKEN_FETCH_TIMEOUT_MS = 20_000;
+const WERKZOEKEN_SCRAPE_MAX_DURATION_MS = 240_000;
+const WERKZOEKEN_SCRAPE_MAX_DURATION_MIN_MS = 30_000;
+const WERKZOEKEN_SCRAPE_MAX_DURATION_MAX_MS = 600_000;
+
+function resolveWerkzoekenMaxDurationMs(value: unknown): number {
+  const candidate =
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.trunc(value)
+      : typeof value === "string" && value.trim().length > 0
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+
+  if (!Number.isFinite(candidate)) return WERKZOEKEN_SCRAPE_MAX_DURATION_MS;
+
+  return Math.min(
+    Math.max(candidate, WERKZOEKEN_SCRAPE_MAX_DURATION_MIN_MS),
+    WERKZOEKEN_SCRAPE_MAX_DURATION_MAX_MS,
+  );
+}
 const DEFAULT_WERKZOEKEN_ORIGIN = "https://www.werkzoeken.nl";
 const DEFAULT_REQUEST_HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -544,7 +563,18 @@ export const werkzoekenAdapter: PlatformAdapter = {
     config: PlatformRuntimeConfig,
     options?: { limit?: number; smoke?: boolean },
   ): Promise<PlatformScrapeResult> {
-    return scrapeWerkzoekenInternal(config, options);
+    const maxDurationMs = resolveWerkzoekenMaxDurationMs(config.parameters.maxDurationMs);
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<PlatformScrapeResult>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        reject(new Error(`Werkzoeken scrape overschreed deadline van ${maxDurationMs}ms`));
+      }, maxDurationMs);
+    });
+    try {
+      return await Promise.race([scrapeWerkzoekenInternal(config, options), timeoutPromise]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
   },
 
   async testImport(
