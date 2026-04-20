@@ -76,11 +76,46 @@ const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefiniti
     case "opdrachtoverheid":
       return {
         ...definition,
-        adapter: createDirectScrapeAdapter(() => scrapeOpdrachtoverheid(), {
-          requiresRuntimeBaseUrl: false,
-          validationMessage:
-            "Configuratie is geldig. Opdrachtoverheid gebruikt een vaste API-bron tijdens runtime.",
-        }),
+        adapter: {
+          async validate(): Promise<PlatformValidationResult> {
+            return {
+              ok: true,
+              status: "validated",
+              message:
+                "Configuratie is geldig. Opdrachtoverheid gebruikt een vaste API-bron tijdens runtime.",
+            };
+          },
+
+          async scrape(
+            config: PlatformRuntimeConfig,
+            options?: { limit?: number; smoke?: boolean },
+          ): Promise<PlatformScrapeResult> {
+            return {
+              listings: await scrapeOpdrachtoverheid({
+                limit: options?.limit,
+                maxPages: config.parameters.maxPages,
+                smoke: options?.smoke,
+              }),
+            };
+          },
+
+          async testImport(
+            config: PlatformRuntimeConfig,
+            options?: { limit?: number },
+          ): Promise<PlatformTestImportResult> {
+            const listings = await scrapeOpdrachtoverheid({
+              limit: options?.limit,
+              maxPages: config.parameters.maxPages,
+              smoke: true,
+            });
+
+            return {
+              status: listings.length > 0 ? "success" : "failed",
+              jobsFound: Math.min(listings.length, options?.limit ?? listings.length),
+              listings: listings.slice(0, options?.limit ?? listings.length),
+            };
+          },
+        },
       };
     case "mipublic":
       return {

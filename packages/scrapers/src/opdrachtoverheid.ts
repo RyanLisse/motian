@@ -11,6 +11,16 @@ import {
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 10;
+const REQUEST_TIMEOUT_MS = 20_000;
+const MAX_ALLOWED_PAGES = 25;
+
+type ScrapeOpdrachtoverheidOptions = {
+  limit?: number;
+  maxPages?: unknown;
+  pageSize?: unknown;
+  requestTimeoutMs?: unknown;
+  smoke?: boolean;
+};
 
 type OpdrachtoverheidCategory = {
   tender_category_obj?: {
@@ -86,10 +96,46 @@ const CATEGORY_MAP: Record<number, string> = {
   26: "Vastgoed en Grondzaken",
 };
 
-export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
+function toBoundedPositiveInteger(
+  value: unknown,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.min(Math.max(Math.trunc(value), min), max);
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) {
+      return Math.min(Math.max(parsed, min), max);
+    }
+  }
+
+  return fallback;
+}
+
+export async function scrapeOpdrachtoverheid(
+  options: ScrapeOpdrachtoverheidOptions = {},
+): Promise<RawScrapedListing[]> {
   console.log("Opdrachtoverheid scrapen via API");
 
   const MAX_RETRIES = 2;
+  const pageSize = toBoundedPositiveInteger(options.pageSize, PAGE_SIZE, 1, PAGE_SIZE);
+  const maxPages = options.smoke
+    ? 1
+    : toBoundedPositiveInteger(options.maxPages, MAX_PAGES, 1, MAX_ALLOWED_PAGES);
+  const requestTimeoutMs = toBoundedPositiveInteger(
+    options.requestTimeoutMs,
+    REQUEST_TIMEOUT_MS,
+    1_000,
+    120_000,
+  );
+  const limit =
+    typeof options.limit === "number" && Number.isFinite(options.limit) && options.limit > 0
+      ? Math.trunc(options.limit)
+      : undefined;
   let attempt = 0;
 
   while (attempt <= MAX_RETRIES) {
@@ -97,17 +143,18 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
       // Paginate through the API to avoid the 1000-result hard cap
       const allTenders: OpdrachtoverheidTender[] = [];
 
-      for (let page = 0; page < MAX_PAGES; page++) {
+      for (let page = 0; page < maxPages; page++) {
         const res = await fetch(`${API_BASE}/search`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "User-Agent": "Mozilla/5.0 (compatible; MotianBot/1.0)",
           },
+          signal: AbortSignal.timeout(requestTimeoutMs),
           body: JSON.stringify({
             single: false,
-            limit: PAGE_SIZE,
-            offset: page * PAGE_SIZE,
+            limit: pageSize,
+            offset: page * pageSize,
             disjunction: 0,
             user_coordinates: {},
             filters: {
@@ -130,12 +177,18 @@ export async function scrapeOpdrachtoverheid(): Promise<RawScrapedListing[]> {
 
         console.log(`Opdrachtoverheid page ${page}: ${tenders.length} (total: ${allTenders.length})`);
 
-        if (tenders.length < PAGE_SIZE) break;
+        if (limit && allTenders.length >= limit) {
+          break;
+        }
+
+        if (tenders.length < pageSize) break;
       }
 
       console.log(`Opdrachtoverheid API: ${allTenders.length} opdrachten opgehaald`);
 
-      const listings: RawScrapedListing[] = allTenders.map(mapOpdrachtoverheidTenderToListing);
+      const listings: RawScrapedListing[] = allTenders
+        .slice(0, limit ?? allTenders.length)
+        .map(mapOpdrachtoverheidTenderToListing);
 
       const validListings = listings.filter(
         (listing) => (listing.externalId as string)?.length > 0,
