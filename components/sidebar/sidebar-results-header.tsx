@@ -28,6 +28,7 @@ interface SidebarResultsHeaderProps {
   totalPages: number;
   pushParams: PushParamsFn;
   variant: "compact" | "overview";
+  searchTerm?: string;
 }
 
 export function SidebarResultsHeader({
@@ -39,6 +40,7 @@ export function SidebarResultsHeader({
   totalPages,
   pushParams,
   variant,
+  searchTerm,
 }: SidebarResultsHeaderProps) {
   const handlePageSizeChange = (v: string) => {
     pushParams({
@@ -94,9 +96,16 @@ export function SidebarResultsHeader({
     );
   }
 
+  const trimmedTerm = searchTerm?.trim();
+
   return (
     <div className="min-w-0">
-      {/* Mobile: single compact line with count + badges inline */}
+      {trimmedTerm ? (
+        <p className="mb-1 text-sm text-muted-foreground">
+          <span className="text-foreground">{trimmedTerm}</span> vacatures · {displayTotal}{" "}
+          resultaten
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-start sm:gap-2">
         <div className="text-sm font-semibold text-foreground sm:text-lg">
           {displayTotal} vacatures

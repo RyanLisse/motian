@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ChatPromptComposer } from "@/src/components/ai-elements/chat-prompt-composer";
 import { PromptInputProvider } from "@/src/components/ai-elements/prompt-input";
+import { QuickActionChips } from "@/src/components/ai-elements/quick-action-chips";
 import {
   ChatCvDropOverlay,
   type ChatCvUploadController,
@@ -373,7 +374,7 @@ function ChatPageHeader({
             <Menu className="h-4 w-4" />
           </button>
 
-          <div className="min-w-0">
+          <div className="hidden min-w-0 lg:block">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate text-sm font-semibold text-foreground sm:text-base">
                 {title}
@@ -391,11 +392,11 @@ function ChatPageHeader({
         <button
           type="button"
           onClick={onNewSession}
-          className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:px-2.5"
           aria-label="Nieuw gesprek"
         >
-          <Plus className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Nieuw gesprek</span>
+          <Plus className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
+          <span className="hidden lg:inline">Nieuw gesprek</span>
         </button>
       </div>
     </header>
@@ -485,6 +486,7 @@ function ChatSessionSurface({
   surfaceConfig: ChatSurfaceConfig;
 }) {
   const cvUpload = useChatCvUpload({ onSendMessage: sendMessage });
+  const hasUserMessage = messages.some((m) => m.role === "user");
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -522,6 +524,8 @@ function ChatSessionSurface({
         composerHint={surfaceConfig.composerHint}
         composerContextHint={surfaceConfig.composerContextHint}
       />
+
+      {!hasUserMessage ? <QuickActionChips onSelect={onSuggestion} /> : null}
     </div>
   );
 }
