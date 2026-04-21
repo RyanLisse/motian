@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { appendFileSync, existsSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type HarnessConfig, loadHarnessConfig } from "@/src/harness/config";
 
@@ -149,12 +149,7 @@ async function resolveChangedFiles(projectRoot: string): Promise<string[]> {
 
   // Check if stdin has data (non-TTY)
   if (!process.stdin.isTTY) {
-    const stdinData = await new Promise<string>((res) => {
-      let buf = "";
-      process.stdin.setEncoding("utf8");
-      process.stdin.on("data", (chunk) => (buf += chunk));
-      process.stdin.on("end", () => res(buf));
-    });
+    const stdinData = readFileSync(0, "utf8");
     const lines = stdinData
       .split("\n")
       .map((l) => l.trim())
