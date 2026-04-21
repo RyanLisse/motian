@@ -244,12 +244,7 @@ export async function collectTrendMetrics(database: typeof db = db): Promise<Tre
     database
       .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(scrapeResults)
-      .where(
-        and(
-          gte(scrapeResults.runAt, sevenDaysAgo),
-          sql`(${scrapeResults.status} = 'failed' or jsonb_array_length(coalesce(${scrapeResults.errors}, '[]'::jsonb)) > 0)`,
-        ),
-      ),
+      .where(and(gte(scrapeResults.runAt, sevenDaysAgo), eq(scrapeResults.status, "failed"))),
 
     database
       .select({
@@ -274,13 +269,17 @@ export async function collectTrendMetrics(database: typeof db = db): Promise<Tre
       .limit(5),
 
     database
-      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .select({ count: sql<number>`cast(count(distinct ${candidates.id}) as integer)` })
       .from(candidates)
+      .leftJoin(
+        applications,
+        and(eq(applications.candidateId, candidates.id), isNull(applications.deletedAt)),
+      )
       .where(
         and(
           isNull(candidates.deletedAt),
           gte(candidates.createdAt, sevenDaysAgo),
-          sql`not exists (select 1 from ${applications} a where a.candidate_id = ${candidates.id} and a.deleted_at is null)`,
+          isNull(applications.id),
         ),
       ),
 
@@ -570,9 +569,21 @@ export function buildFallbackInsights(
 
 // ── Orchestrator (cached) ────────────────────────────────────────────
 
+const EMPTY_METRICS_RESULT: TrendInsightsResult = {
+  generatedAt: new Date(0).toISOString(),
+  source: "fallback",
+  summary: "Trenddata is tijdelijk niet beschikbaar.",
+  insights: [],
+};
+
 async function getTrendInsightsUncached(database: typeof db = db): Promise<TrendInsightsResult> {
-  const metrics = await collectTrendMetrics(database);
-  return generateTrendInsights(metrics);
+  try {
+    const metrics = await collectTrendMetrics(database);
+    return generateTrendInsights(metrics);
+  } catch (error) {
+    console.warn("[trend-insights] metrics collection failed", error);
+    return { ...EMPTY_METRICS_RESULT, generatedAt: new Date().toISOString() };
+  }
 }
 
 const getCached = unstable_cache(
