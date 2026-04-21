@@ -119,14 +119,16 @@ function createNeonDatabaseClient(): DatabaseClient {
     console.warn(POOLER_HINT);
   }
 
-  // max: 1 is correct for Vercel serverless — each invocation gets its own
-  // process. Higher values multiply connections across concurrent invocations
-  // and exhaust Neon's per-project connection limit under load. Use Neon's
-  // connection pooler endpoint (hostname contains "-pooler.") for multiplexing.
+  // max: 5 matches concurrent DB round-trips per invocation (e.g. /overzicht
+  // runs ~12 aggregate queries via Promise.all). With max=1 they serialise
+  // through a single TCP connection — defeating Promise.all and turning cold
+  // renders into 10s+ latency. The Neon pooler endpoint (hostname contains
+  // "-pooler.") multiplexes the server-side pool across lambdas, so a modest
+  // client pool does not risk exhausting the Neon project connection cap.
   // Node.js 22 has native WebSocket — no ws package or neonConfig needed.
   const pool = new Pool({
     connectionString: url,
-    max: 1,
+    max: 5,
     connectionTimeoutMillis: 5_000,
   });
 
