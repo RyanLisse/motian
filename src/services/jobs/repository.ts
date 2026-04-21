@@ -9,6 +9,7 @@ export type JobListRow = Omit<
   Job,
   | "embedding"
   | "searchVector"
+  | "searchText"
   | "rawPayload"
   | "descriptionSummary"
   | "questions"
@@ -50,11 +51,26 @@ export function getJobReadSelection() {
   };
 }
 
+/**
+ * Slim projection for list/card views. Drops the heaviest columns the
+ * client never reads from a list response:
+ *   - embedding (pgvector, 3-6 KB per row)
+ *   - searchVector (tsvector, large)
+ *   - searchText (server-side compatibility helper, ~8 KB per row)
+ *   - rawPayload (scraper internals)
+ *   - descriptionSummary, questions, attachments, faqAnswers (detail-only)
+ *
+ * Text content (`description`, `requirements`, `wishes`, `competences`,
+ * `conditions`, `languages`, `agentContact`, `recruiterContact`) stays
+ * because MCP, feed, and auto-match consumers all read it from list rows.
+ * Truly UI-only endpoints can project further inside their own route.
+ */
 export function getJobListReadSelection() {
   const full = getJobReadSelection();
   const {
     embedding: _embedding,
     searchVector: _searchVector,
+    searchText: _searchText,
     rawPayload: _rawPayload,
     descriptionSummary: _descriptionSummary,
     questions: _questions,
