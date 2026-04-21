@@ -11,17 +11,20 @@ import {
   Kanban,
   MapPin,
   RefreshCw,
+  Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react";
 import nextDynamic from "next/dynamic";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
+import { AiInsightsCard } from "@/components/overview/ai-insights-card";
 import { PipelineHealthCard } from "@/components/overview/pipeline-health-card";
 import { PageHeader } from "@/components/page-header";
 import { KPICard } from "@/components/shared/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getTrendInsights } from "@/src/services/trend-insights";
 
 const KpiTrendChart = nextDynamic(
   () => import("@/components/overview/kpi-trend-chart").then((m) => ({ default: m.KpiTrendChart })),
@@ -152,6 +155,12 @@ async function DashboardContent() {
           href="/interviews"
         />
       </div>
+
+      <DashboardCard title="AI-analyse & kansen" icon={<Sparkles className="h-4 w-4" />}>
+        <Suspense fallback={<AiInsightsSkeleton />}>
+          <AiInsightsSection />
+        </Suspense>
+      </DashboardCard>
 
       <DashboardCard title="Trend (30 dagen)" icon={<TrendingUp className="h-4 w-4" />}>
         <KpiTrendChart data={[]} />
@@ -421,6 +430,25 @@ async function DashboardContent() {
         </DashboardCard>
       </div>
     </>
+  );
+}
+
+async function AiInsightsSection() {
+  const result = await getTrendInsights();
+  return <AiInsightsCard result={result} />;
+}
+
+function AiInsightsSkeleton() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-4 w-2/3" />
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+          <Skeleton key={i} className="h-32 rounded-lg" />
+        ))}
+      </div>
+    </div>
   );
 }
 
