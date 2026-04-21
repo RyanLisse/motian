@@ -97,6 +97,7 @@
     "test:cv": "tsx scripts/test-cv-upload.ts",
     "test:cv:all": "tsx scripts/test-cv-upload.ts --all",
     "test:cv:generate": "tsx scripts/generate-test-cv.ts",
+    "test:e2e:candidate": "tsx scripts/e2e/candidate-flow.ts",
     "track:ai-costs": "npx ccusage",
     "baseline:metrics": "tsx scripts/baseline-metrics.ts",
     "benchmark:hybrid-search": "tsx scripts/benchmark-hybrid-search.ts",
