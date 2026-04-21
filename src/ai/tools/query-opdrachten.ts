@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { PLATFORMS } from "@/src/lib/helpers";
-import { withJobsSkills } from "@/src/services/esco";
+import { withJobsSkillsLite } from "@/src/services/esco";
 import type { ListJobsSortBy } from "@/src/services/jobs";
 import { searchJobsUnified } from "@/src/services/jobs";
 
@@ -144,7 +144,7 @@ export const queryOpdrachten = tool({
       startDateAfter: n.startDateAfter,
       limit: params.limit ?? 20,
     });
-    const dataWithCanonicalSkills = await withJobsSkills(result.data);
+    const dataWithCanonicalSkills = await withJobsSkillsLite(result.data);
     const hasScore = result.data.some((j) => "score" in j && typeof j.score === "number");
     return {
       total: result.total,

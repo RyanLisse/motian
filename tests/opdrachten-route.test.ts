@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRunVacaturesSearch, mockWithJobsSkills } = vi.hoisted(() => ({
+const { mockRunVacaturesSearch, mockWithJobsSkillsLite } = vi.hoisted(() => ({
   mockRunVacaturesSearch: vi.fn(),
-  mockWithJobsSkills: vi.fn(),
+  mockWithJobsSkillsLite: vi.fn(),
 }));
 
 vi.mock("../src/lib/vacatures-search", () => ({
@@ -10,7 +10,7 @@ vi.mock("../src/lib/vacatures-search", () => ({
 }));
 
 vi.mock("../src/services/esco", () => ({
-  withJobsSkills: mockWithJobsSkills,
+  withJobsSkillsLite: mockWithJobsSkillsLite,
 }));
 
 import { GET } from "../app/api/opdrachten/route";
@@ -27,7 +27,7 @@ describe("GET /api/opdrachten", () => {
         offset: 0,
       },
     });
-    mockWithJobsSkills.mockResolvedValue([]);
+    mockWithJobsSkillsLite.mockResolvedValue([]);
   });
 
   it("delegates the request query to the shared vacatures search runner", async () => {
@@ -62,12 +62,12 @@ describe("GET /api/opdrachten", () => {
         offset: 25,
       },
     });
-    mockWithJobsSkills.mockResolvedValueOnce([{ id: "job-1", title: "Manager Inhuur" }]);
+    mockWithJobsSkillsLite.mockResolvedValueOnce([{ id: "job-1", title: "Manager Inhuur" }]);
 
     const request = new Request("http://localhost/api/opdrachten?q=manager&pagina=2&perPage=25");
     await GET(request);
 
-    expect(mockWithJobsSkills).toHaveBeenCalledWith([{ id: "job-1", title: "Manager Inhuur" }]);
+    expect(mockWithJobsSkillsLite).toHaveBeenCalledWith([{ id: "job-1", title: "Manager Inhuur" }]);
   });
 
   it("returns runner validation errors unchanged", async () => {

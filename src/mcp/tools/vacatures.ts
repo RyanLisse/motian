@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { withJobSkills, withJobsSkills } from "../../services/esco";
+import { withJobSkills, withJobsSkillsLite } from "../../services/esco";
 import {
   autoMatchJobWithEffects,
   createJobWithEffects,
@@ -152,7 +152,7 @@ export const handlers: Record<string, (args: unknown) => Promise<unknown>> = {
       limit: opts.limit,
       offset: opts.offset,
     });
-    const vacatures = await withJobsSkills(result.data);
+    const vacatures = await withJobsSkillsLite(result.data);
     if (opts.compact) {
       return { total: result.total, vacatures: vacatures.map(({ description, ...v }) => v) };
     }

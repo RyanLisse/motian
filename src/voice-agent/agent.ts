@@ -26,7 +26,7 @@ import {
   withCandidateSkills,
   withCandidatesSkills,
   withJobSkills,
-  withJobsSkills,
+  withJobsSkillsLite,
 } from "../services/esco.js";
 import {
   eraseCandidateData,
@@ -151,7 +151,7 @@ Bij gevaarlijke acties (verwijderen, GDPR wissen) vraag altijd om bevestiging.`,
               limit: limit ?? 10,
               offset: 0,
             });
-            const jobsWithSkills = await withJobsSkills(result.data);
+            const jobsWithSkills = await withJobsSkillsLite(result.data);
             return {
               total: result.total,
               opdrachten: jobsWithSkills.map((j) => ({

@@ -17,7 +17,7 @@ describe("ESCO surface parity", () => {
 
     expect(kandidaatListRoute).toContain("withCandidatesSkills");
     expect(kandidaatDetailRoute).toContain("withCandidateSkills");
-    expect(vacaturesListRoute).toContain("withJobsSkills");
+    expect(vacaturesListRoute).toContain("withJobsSkillsLite");
     expect(vacaturesDetailRoute).toContain("withJobSkills");
   });
 
@@ -30,11 +30,13 @@ describe("ESCO surface parity", () => {
     const voiceAgent = readFile("src", "voice-agent", "agent.ts");
 
     expect(aiKandidaten).toContain("withCandidateSkills");
-    expect(aiOpdrachten).toContain("withJobsSkills");
+    expect(aiOpdrachten).toContain("withJobsSkillsLite");
     expect(aiOpdrachtDetail).toContain("withJobSkills");
     expect(mcpKandidaten).toContain("withCandidateSkills");
+    expect(mcpVacatures).toContain("withJobsSkillsLite");
     expect(mcpVacatures).toContain("withJobSkills");
     expect(voiceAgent).toContain("withCandidateSkills");
     expect(voiceAgent).toContain("withJobSkills");
+    expect(voiceAgent).toContain("withJobsSkillsLite");
   });
 });

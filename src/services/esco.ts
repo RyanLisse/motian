@@ -48,6 +48,11 @@ export type JobSkill = {
   rawLabel: string | null;
 };
 
+export type JobSkillLite = {
+  slug: string;
+  label: string;
+};
+
 export type WithSkills<T, TSkill> = T & {
   canonicalSkills: TSkill[];
 };
@@ -212,6 +217,16 @@ export async function withJobsSkills<T extends { id: string }>(
   return jobs.map((j) => ({
     ...j,
     canonicalSkills: grouped.get(j.id) ?? [],
+  }));
+}
+
+export async function withJobsSkillsLite<T extends { id: string }>(
+  jobs: T[],
+): Promise<Array<WithSkills<T, JobSkillLite>>> {
+  const grouped = await getJobSkillsForJobIds(jobs.map((j) => j.id));
+  return jobs.map((j) => ({
+    ...j,
+    canonicalSkills: (grouped.get(j.id) ?? []).map((s) => ({ slug: s.slug, label: s.label })),
   }));
 }
 
