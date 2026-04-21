@@ -40,7 +40,72 @@ export type PreparedJobBatch = {
 const DEDUPE_MAX_BYTES = 700;
 const MAX_INSERT_ROWS = 50;
 const MAX_INSERT_BYTES = 8 * 1024 * 1024;
+const HOURS_MAX = 168;
+const MAX_HOURLY_RATE = 500;
+const SKILL_SYNC_CONCURRENCY = 5;
 type JobInsertRow = typeof jobs.$inferInsert;
+
+const JOB_CONFLICT_UPDATE_SET = {
+  title: sql`excluded.title`,
+  company: sql`excluded.company`,
+  endClient: sql`excluded.end_client`,
+  contractLabel: sql`excluded.contract_label`,
+  location: sql`excluded.location`,
+  province: sql`excluded.province`,
+  description: sql`excluded.description`,
+  dedupeTitleNormalized: sql`excluded.dedupe_title_normalized`,
+  dedupeClientNormalized: sql`excluded.dedupe_client_normalized`,
+  dedupeLocationNormalized: sql`excluded.dedupe_location_normalized`,
+  searchText: sql`excluded.search_text`,
+  status: sql`excluded.status`,
+  clientReferenceCode: sql`excluded.client_reference_code`,
+  rateMin: sql`excluded.rate_min`,
+  rateMax: sql`excluded.rate_max`,
+  currency: sql`excluded.currency`,
+  positionsAvailable: sql`excluded.positions_available`,
+  startDate: sql`excluded.start_date`,
+  endDate: sql`excluded.end_date`,
+  applicationDeadline: sql`excluded.application_deadline`,
+  postedAt: sql`excluded.posted_at`,
+  contractType: sql`excluded.contract_type`,
+  workArrangement: sql`excluded.work_arrangement`,
+  allowsSubcontracting: sql`excluded.allows_subcontracting`,
+  requirements: sql`excluded.requirements`,
+  wishes: sql`excluded.wishes`,
+  competences: sql`excluded.competences`,
+  conditions: sql`excluded.conditions`,
+  hoursPerWeek: sql`excluded.hours_per_week`,
+  minHoursPerWeek: sql`excluded.min_hours_per_week`,
+  extensionPossible: sql`excluded.extension_possible`,
+  countryCode: sql`excluded.country_code`,
+  remunerationType: sql`excluded.remuneration_type`,
+  workExperienceYears: sql`excluded.work_experience_years`,
+  numberOfViews: sql`excluded.number_of_views`,
+  attachments: sql`excluded.attachments`,
+  questions: sql`excluded.questions`,
+  languages: sql`excluded.languages`,
+  descriptionSummary: sql`excluded.description_summary`,
+  faqAnswers: sql`excluded.faq_answers`,
+  agentContact: sql`excluded.agent_contact`,
+  recruiterContact: sql`excluded.recruiter_contact`,
+  latitude: sql`excluded.latitude`,
+  longitude: sql`excluded.longitude`,
+  postcode: sql`excluded.postcode`,
+  companyLogoUrl: sql`excluded.company_logo_url`,
+  educationLevel: sql`excluded.education_level`,
+  durationMonths: sql`excluded.duration_months`,
+  sourceUrl: sql`excluded.source_url`,
+  sourcePlatform: sql`excluded.source_platform`,
+  categories: sql`excluded.categories`,
+  companyAddress: sql`excluded.company_address`,
+  scrapedAt: sql`now()`,
+  archivedAt: sql`case
+    when excluded.status = 'archived' then coalesce(${jobs.archivedAt}, ${jobs.deletedAt}, now())
+    else null
+  end`,
+  deletedAt: sql`null`,
+  rawPayload: sql`excluded.raw_payload`,
+} satisfies Partial<Record<keyof JobInsertRow, ReturnType<typeof sql>>>;
 
 function normalizeDedupePart(value: string | null | undefined) {
   let result = (value ?? "")
@@ -71,6 +136,47 @@ function normalizeDedupePart(value: string | null | undefined) {
 
 function normalizeSearchPart(value: string | null | undefined) {
   return (value ?? "").trim().replace(/\s+/g, " ");
+}
+
+function clampHoursValue(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return value;
+  return Math.min(HOURS_MAX, Math.max(1, Math.round(parsed)));
+}
+
+function sanitizeListingForValidation(raw: RawScrapedListing): RawScrapedListing {
+  const preProcessed = { ...raw };
+
+  if (preProcessed.hoursPerWeek != null) {
+    preProcessed.hoursPerWeek = clampHoursValue(preProcessed.hoursPerWeek);
+  }
+  if (preProcessed.minHoursPerWeek != null) {
+    preProcessed.minHoursPerWeek = clampHoursValue(preProcessed.minHoursPerWeek);
+  }
+
+  // Null out rates that are clearly not hourly (monthly/annual salaries).
+  // Platforms like NVB mix hourly and monthly/annual in the same salary field
+  // without indicating the period. Hourly rates for Dutch freelance/interim are
+  // typically €30-300/hour. Values >500 are almost certainly monthly (€3,500) or
+  // annual (€80,000). The raw value is preserved in rawPayload for reference.
+  if (typeof preProcessed.rateMax === "number" && preProcessed.rateMax > MAX_HOURLY_RATE) {
+    preProcessed.rateMin = undefined;
+    preProcessed.rateMax = undefined;
+  }
+  if (typeof preProcessed.rateMin === "number" && preProcessed.rateMin > MAX_HOURLY_RATE) {
+    preProcessed.rateMin = undefined;
+  }
+
+  return preProcessed;
+}
+
+function sanitizeParsedJob(parsed: z.output<typeof unifiedJobSchema>) {
+  return {
+    ...parsed,
+    title: stripHtml(parsed.title),
+    company: parsed.company ? stripHtml(parsed.company) : undefined,
+    endClient: parsed.endClient ? stripHtml(parsed.endClient) : undefined,
+  };
 }
 
 function prepareJobInsertRow(item: NormalizedJobItem, platform: string): JobInsertRow {
@@ -146,6 +252,36 @@ export function deriveJobSearchFields(job: JobDerivedFieldSource) {
   };
 }
 
+async function syncBatchSkills(
+  result: { id: string; externalId: string }[],
+  batch: PreparedJobBatch,
+) {
+  const batchItemsByExternalId = new Map(
+    batch.items.map((batchItem) => [batchItem.item.parsed.externalId, batchItem.item] as const),
+  );
+
+  for (let index = 0; index < result.length; index += SKILL_SYNC_CONCURRENCY) {
+    const chunk = result.slice(index, index + SKILL_SYNC_CONCURRENCY);
+    const settled = await Promise.allSettled(
+      chunk.map(async (row) => {
+        const item = batchItemsByExternalId.get(row.externalId);
+        if (!item) return;
+
+        await syncJobSkills({
+          jobId: row.id,
+          requirements: item.parsed.requirements,
+          wishes: item.parsed.wishes,
+          competences: item.parsed.competences,
+        });
+      }),
+    );
+    const failed = settled.filter((entry) => entry.status === "rejected").length;
+    if (failed > 0) {
+      console.warn(`[normalize] ${failed}/${chunk.length} canonical skill syncs failed in chunk`);
+    }
+  }
+}
+
 export async function normalizeAndSaveJobs(
   platform: string,
   listings: Record<string, unknown>[],
@@ -157,38 +293,8 @@ export async function normalizeAndSaveJobs(
 
   // Stap 1: Valideer alle listings
   const validItems: NormalizedJobItem[] = [];
-  const HOURS_MAX = 168;
   for (const raw of listings) {
-    // Voor-processing voor veiligheid VÓÓR validatie (cap uren/week op 168)
-    const preProcessed = { ...raw };
-    if (preProcessed.hoursPerWeek != null) {
-      const n = Number(preProcessed.hoursPerWeek);
-      if (Number.isFinite(n)) {
-        preProcessed.hoursPerWeek = Math.min(HOURS_MAX, Math.max(1, Math.round(n)));
-      }
-    }
-    if (preProcessed.minHoursPerWeek != null) {
-      const n = Number(preProcessed.minHoursPerWeek);
-      if (Number.isFinite(n)) {
-        preProcessed.minHoursPerWeek = Math.min(HOURS_MAX, Math.max(1, Math.round(n)));
-      }
-    }
-
-    // Null out rates that are clearly not hourly (monthly/annual salaries).
-    // Platforms like NVB mix hourly and monthly/annual in the same salary field
-    // without indicating the period. Hourly rates for Dutch freelance/interim are
-    // typically €30-300/hour. Values >500 are almost certainly monthly (€3,500) or
-    // annual (€80,000). The raw value is preserved in rawPayload for reference.
-    const MAX_HOURLY_RATE = 500;
-    if (typeof preProcessed.rateMax === "number" && preProcessed.rateMax > MAX_HOURLY_RATE) {
-      preProcessed.rateMin = undefined;
-      preProcessed.rateMax = undefined;
-    }
-    if (typeof preProcessed.rateMin === "number" && preProcessed.rateMin > MAX_HOURLY_RATE) {
-      preProcessed.rateMin = undefined;
-    }
-
-    const parsed = unifiedJobSchema.safeParse(preProcessed);
+    const parsed = unifiedJobSchema.safeParse(sanitizeListingForValidation(raw));
     if (!parsed.success) {
       const externalId = (raw as { externalId?: string }).externalId ?? "?";
       console.warn(
@@ -197,12 +303,7 @@ export async function normalizeAndSaveJobs(
       errors.push(`Validation: ${parsed.error.message}`);
     } else {
       validItems.push({
-        parsed: {
-          ...parsed.data,
-          title: stripHtml(parsed.data.title),
-          company: parsed.data.company ? stripHtml(parsed.data.company) : undefined,
-          endClient: parsed.data.endClient ? stripHtml(parsed.data.endClient) : undefined,
-        },
+        parsed: sanitizeParsedJob(parsed.data),
         raw,
       });
     }
@@ -218,67 +319,7 @@ export async function normalizeAndSaveJobs(
           .values(batch.items.map(({ row }) => row))
           .onConflictDoUpdate({
             target: [jobs.platform, jobs.externalId],
-            set: {
-              title: sql`excluded.title`,
-              company: sql`excluded.company`,
-              endClient: sql`excluded.end_client`,
-              contractLabel: sql`excluded.contract_label`,
-              location: sql`excluded.location`,
-              province: sql`excluded.province`,
-              description: sql`excluded.description`,
-              dedupeTitleNormalized: sql`excluded.dedupe_title_normalized`,
-              dedupeClientNormalized: sql`excluded.dedupe_client_normalized`,
-              dedupeLocationNormalized: sql`excluded.dedupe_location_normalized`,
-              searchText: sql`excluded.search_text`,
-              status: sql`excluded.status`,
-              clientReferenceCode: sql`excluded.client_reference_code`,
-              rateMin: sql`excluded.rate_min`,
-              rateMax: sql`excluded.rate_max`,
-              currency: sql`excluded.currency`,
-              positionsAvailable: sql`excluded.positions_available`,
-              startDate: sql`excluded.start_date`,
-              endDate: sql`excluded.end_date`,
-              applicationDeadline: sql`excluded.application_deadline`,
-              postedAt: sql`excluded.posted_at`,
-              contractType: sql`excluded.contract_type`,
-              workArrangement: sql`excluded.work_arrangement`,
-              allowsSubcontracting: sql`excluded.allows_subcontracting`,
-              requirements: sql`excluded.requirements`,
-              wishes: sql`excluded.wishes`,
-              competences: sql`excluded.competences`,
-              conditions: sql`excluded.conditions`,
-              hoursPerWeek: sql`excluded.hours_per_week`,
-              minHoursPerWeek: sql`excluded.min_hours_per_week`,
-              extensionPossible: sql`excluded.extension_possible`,
-              countryCode: sql`excluded.country_code`,
-              remunerationType: sql`excluded.remuneration_type`,
-              workExperienceYears: sql`excluded.work_experience_years`,
-              numberOfViews: sql`excluded.number_of_views`,
-              attachments: sql`excluded.attachments`,
-              questions: sql`excluded.questions`,
-              languages: sql`excluded.languages`,
-              descriptionSummary: sql`excluded.description_summary`,
-              faqAnswers: sql`excluded.faq_answers`,
-              agentContact: sql`excluded.agent_contact`,
-              recruiterContact: sql`excluded.recruiter_contact`,
-              latitude: sql`excluded.latitude`,
-              longitude: sql`excluded.longitude`,
-              postcode: sql`excluded.postcode`,
-              companyLogoUrl: sql`excluded.company_logo_url`,
-              educationLevel: sql`excluded.education_level`,
-              durationMonths: sql`excluded.duration_months`,
-              sourceUrl: sql`excluded.source_url`,
-              sourcePlatform: sql`excluded.source_platform`,
-              categories: sql`excluded.categories`,
-              companyAddress: sql`excluded.company_address`,
-              scrapedAt: sql`now()`,
-              archivedAt: sql`case
-                when excluded.status = 'archived' then coalesce(${jobs.archivedAt}, ${jobs.deletedAt}, now())
-                else null
-              end`,
-              deletedAt: sql`null`,
-              rawPayload: sql`excluded.raw_payload`,
-            },
+            set: JOB_CONFLICT_UPDATE_SET,
           })
           .returning({
             id: jobs.id,
@@ -295,32 +336,7 @@ export async function normalizeAndSaveJobs(
         jobsNew += inserted;
         duplicates += updated;
 
-        // Parallel skill sync with concurrency cap to avoid exhausting Neon connection pool
-        const SKILL_SYNC_CONCURRENCY = 5;
-        for (let j = 0; j < result.length; j += SKILL_SYNC_CONCURRENCY) {
-          const chunk = result.slice(j, j + SKILL_SYNC_CONCURRENCY);
-          const settled = await Promise.allSettled(
-            chunk.map(async (row) => {
-              const item = batch.items.find(
-                (batchItem) => batchItem.item.parsed.externalId === row.externalId,
-              );
-              if (!item) return;
-
-              await syncJobSkills({
-                jobId: row.id,
-                requirements: item.item.parsed.requirements,
-                wishes: item.item.parsed.wishes,
-                competences: item.item.parsed.competences,
-              });
-            }),
-          );
-          const failed = settled.filter((s) => s.status === "rejected").length;
-          if (failed > 0) {
-            console.warn(
-              `[normalize] ${failed}/${chunk.length} canonical skill syncs failed in chunk`,
-            );
-          }
-        }
+        await syncBatchSkills(result, batch);
       } catch (err) {
         errors.push(`DB batch ${batch.startIndex}-${batch.endIndex}: ${String(err)}`);
       }

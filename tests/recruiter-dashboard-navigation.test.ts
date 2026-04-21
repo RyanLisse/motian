@@ -61,7 +61,7 @@ describe("Recruiter-first navigation", () => {
 
     expect(isNavItemActive("/vacatures", vacaturesItem)).toBe(true);
     expect(isNavItemActive("/vacatures/123", vacaturesItem)).toBe(true);
-    expect(isNavItemActive("/opdrachten/123", vacaturesItem)).toBe(true);
+    expect(isNavItemActive("/opdrachten/123", vacaturesItem)).toBe(false);
     expect(isNavItemActive("/agents", kandidatenItem)).toBe(false);
   });
 
@@ -88,9 +88,9 @@ describe("Recruiter-first navigation", () => {
       "Databronnen",
     ]);
     expect(PRIMARY_NAV_ITEMS.find((item) => item.title === "Pipeline")?.prefetch).toBe(false);
-    expect(PRIMARY_NAV_ITEMS.find((item) => item.title === "Vacatures")?.matchPaths).toContain(
-      "/opdrachten",
-    );
+    expect(
+      PRIMARY_NAV_ITEMS.find((item) => item.title === "Vacatures")?.matchPaths,
+    ).toBeUndefined();
   });
 
   it("keeps the shell focused on primary nav plus an explicit overflow entry", () => {

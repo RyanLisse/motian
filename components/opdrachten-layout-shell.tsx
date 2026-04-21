@@ -11,7 +11,7 @@ export function OpdrachtenLayoutShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isDetailPage = pathname.startsWith("/vacatures/") || pathname.startsWith("/opdrachten/");
+  const isDetailPage = pathname.startsWith("/vacatures/");
 
   return (
     <div className="flex h-[var(--mobile-content-height)] min-h-0 md:h-full">

@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/lib/event-bus", () => ({ publish: vi.fn() }));
-vi.mock("../src/services/ai-enrichment", () => ({
-  enrichJobsBatch: vi.fn(() => Promise.resolve()),
-}));
 vi.mock("../src/services/normalize", () => ({
   normalizeAndSaveJobs: vi.fn(),
 }));

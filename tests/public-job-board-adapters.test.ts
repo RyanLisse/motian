@@ -358,6 +358,142 @@ describe("public job board adapters", () => {
     expect(result.errors).toBeDefined();
   });
 
+  it("summarises MiPublic detail pages without JobPosting data and includes example URLs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url === "https://mipublic.nl/vacature-sitemap.xml") {
+          return createHtmlResponse({
+            url,
+            html: `<?xml version="1.0" encoding="UTF-8"?>
+              <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                <url>
+                  <loc>https://mipublic.nl/vacature/onbruikbare-pagina/</loc>
+                </url>
+              </urlset>`,
+            headers: { "content-type": "application/xml" },
+          });
+        }
+
+        if (url === "https://mipublic.nl/vacature/onbruikbare-pagina/") {
+          return createHtmlResponse({
+            url,
+            html: "<html><head></head><body><div>Geen vacaturedata aanwezig</div></body></html>",
+          });
+        }
+
+        throw new Error(`Unexpected fetch for ${url}`);
+      }),
+    );
+
+    const adapter = getPlatformAdapter("mipublic");
+    const result = await adapter?.scrape({
+      slug: "mipublic",
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+      auth: {},
+    });
+
+    expect(result.listings).toHaveLength(0);
+    expect(result.errors).toEqual([
+      expect.stringContaining("1 MiPublic detailpagina's bevatten geen JobPosting-data"),
+    ]);
+    expect(result.errors?.[0]).toContain("https://mipublic.nl/vacature/onbruikbare-pagina/");
+  });
+
+  it("classifies MiPublic anti-bot captcha pages as blocker errors instead of missing JobPosting data", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url === "https://mipublic.nl/vacature-sitemap.xml") {
+          return createHtmlResponse({
+            url,
+            html: `<?xml version="1.0" encoding="UTF-8"?>
+              <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                <url>
+                  <loc>https://mipublic.nl/vacature/afgeschermde-pagina/</loc>
+                </url>
+              </urlset>`,
+            headers: { "content-type": "application/xml" },
+          });
+        }
+
+        if (url === "https://mipublic.nl/vacature/afgeschermde-pagina/") {
+          return createHtmlResponse({
+            url,
+            status: 202,
+            html: '<html><head><meta http-equiv="refresh" content="0;/.well-known/sgcaptcha/?r=%2Fvacature%2Fafgeschermde-pagina%2F"></head></html>',
+          });
+        }
+
+        throw new Error(`Unexpected fetch for ${url}`);
+      }),
+    );
+
+    const adapter = getPlatformAdapter("mipublic");
+    const result = await adapter?.scrape({
+      slug: "mipublic",
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+      auth: {},
+    });
+
+    expect(result.listings).toHaveLength(0);
+    expect(result.errors).toEqual([
+      "MiPublic pagina wordt geblokkeerd door een anti-bot challenge: https://mipublic.nl/vacature/afgeschermde-pagina/",
+    ]);
+  });
+
+  it("classifies a captcha-blocked MiPublic sitemap as an anti-bot blocker", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url === "https://mipublic.nl/vacature-sitemap.xml") {
+          return createHtmlResponse({
+            url,
+            status: 202,
+            html: '<html><head><meta http-equiv="refresh" content="0;/.well-known/sgcaptcha/?r=%2Fvacature-sitemap.xml"></head></html>',
+            headers: { "content-type": "text/html" },
+          });
+        }
+
+        throw new Error(`Unexpected fetch for ${url}`);
+      }),
+    );
+
+    const adapter = getPlatformAdapter("mipublic");
+    const result = await adapter?.scrape({
+      slug: "mipublic",
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+      auth: {},
+    });
+
+    expect(result.listings).toHaveLength(0);
+    expect(result.errors).toEqual([
+      "MiPublic pagina wordt geblokkeerd door een anti-bot challenge: https://mipublic.nl/vacature-sitemap.xml",
+    ]);
+
+    const validation = await adapter?.validate({
+      slug: "mipublic",
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+      auth: {},
+    });
+
+    expect(validation).toMatchObject({
+      ok: false,
+      status: "failed",
+      blockerKind: "anti_bot_challenge",
+    });
+  });
+
   it("preserves hyphenated titles in title-only fallback path", async () => {
     vi.stubGlobal(
       "fetch",

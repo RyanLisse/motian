@@ -187,8 +187,8 @@ The incoming owner should start with the currently known high-priority risks rat
 
 - `motian-n38`: Modal scraping stub blocks a complete Vercel-safe path for Striive-style flows
 - `motian-scy`: scoring is still too rule-based and needs stronger semantic/vector matching
-- `motian-o5g`: pagination is missing in key surfaces, increasing performance and usability risk
-- `motian-uml`: cron scheduling currently ignores per-platform `cronExpression` in the database
+- `motian-o5g`: pagination coverage is still incomplete on some surfaces, even though core recruiter views already paginate
+- `motian-uml`: cron due checks now respect per-platform `cronExpression`; the remaining risk is schedule observability and coverage drift
 - Scraper reliability remains a standing operational concern, especially where auth, browser automation, or provider markup changes are involved
 - Platform onboarding remains a critical operator workflow, not a one-time setup task
 

@@ -155,9 +155,9 @@ export async function runScrapePipeline(
     status,
   });
 
-  // NOTE: AI enrichment moved to separate Trigger.dev task (embeddings-batch)
-  // to prevent fire-and-forget promises from blocking scrape pipeline duration.
-  // Previously enrichJobsBatch ran here but kept the process alive past maxDuration.
+  // NOTE: AI enrichment moved to the separate Trigger.dev task `ai-enrichment-batch`.
+  // This keeps scrape execution focused on scrape + normalize + record behavior and
+  // avoids long-lived post-scrape AI work extending the scrape pipeline runtime.
 
   // Return merged scrape + normalization errors so callers see the full picture.
   return {

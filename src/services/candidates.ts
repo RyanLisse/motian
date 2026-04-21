@@ -190,6 +190,13 @@ function buildCandidateSearchConditions(
   return conditions;
 }
 
+function buildCandidateSearchScope(opts: Omit<SearchCandidatesOptions, "limit" | "offset"> = {}) {
+  return {
+    queryTelemetry: getSearchTelemetryMeta(opts.query),
+    whereClause: and(...buildCandidateSearchConditions(opts)),
+  };
+}
+
 /** Check whether a candidate has enough data to trigger auto-matching. */
 function candidateHasMatchableData(candidate: Candidate): boolean {
   const skills = candidate.skills as unknown;
@@ -231,20 +238,43 @@ async function runCandidateSkillSync(candidate: Candidate): Promise<void> {
   }
 }
 
+function queueCandidateEmbeddingSync(
+  candidateId: string,
+  source: "candidate:create" | "candidate:update" | "candidate:cv-enrichment",
+) {
+  void queueDeferredEmbeddingSync({
+    entityType: "candidate",
+    entityId: candidateId,
+    source,
+  });
+}
+
+async function applyCandidateWriteSideEffects(
+  candidate: Candidate,
+  source: "candidate:create" | "candidate:update" | "candidate:cv-enrichment",
+  options?: { emitAutoMatch?: boolean },
+) {
+  await runCandidateSkillSync(candidate);
+  queueCandidateEmbeddingSync(candidate.id, source);
+
+  if (options?.emitAutoMatch !== false) {
+    await emitAutoMatchEventIfReady(candidate);
+  }
+}
+
 /** Kandidaten zoeken op naam en/of locatie (full-text search met ILIKE fallback). */
 export async function searchCandidates(opts: SearchCandidatesOptions = {}): Promise<Candidate[]> {
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = Math.max(0, opts.offset ?? 0);
-  const queryTelemetry = getSearchTelemetryMeta(opts.query);
+  const { queryTelemetry, whereClause } = buildCandidateSearchScope(opts);
   let dbSearchMs = 0;
 
-  const conditions = buildCandidateSearchConditions(opts);
   const dbSearchStartedAt = Date.now();
   const result = await db
     .select(candidateReadSelection)
     .from(candidates)
-    .where(and(...conditions))
+    .where(whereClause)
     .orderBy(desc(candidates.createdAt))
     .limit(limit)
     .offset(offset);
@@ -268,16 +298,15 @@ export async function countCandidates(
   opts: Omit<SearchCandidatesOptions, "limit" | "offset"> = {},
 ): Promise<number> {
   const start = Date.now();
-  const queryTelemetry = getSearchTelemetryMeta(opts.query);
+  const { queryTelemetry, whereClause } = buildCandidateSearchScope(opts);
   let dbSearchMs = 0;
 
-  const conditions = buildCandidateSearchConditions(opts);
   const dbSearchStartedAt = Date.now();
 
   const [{ count }] = await db
     .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(candidates)
-    .where(and(...conditions));
+    .where(whereClause);
   dbSearchMs = Date.now() - dbSearchStartedAt;
 
   logSlowQuery("countCandidates", Date.now() - start, LIST_SLO_MS, {
@@ -316,13 +345,7 @@ export async function createCandidate(data: CreateCandidateData): Promise<Candid
     .returning(candidateReadSelection);
 
   const candidate = rows[0];
-  await runCandidateSkillSync(candidate);
-  void queueDeferredEmbeddingSync({
-    entityType: "candidate",
-    entityId: candidate.id,
-    source: "candidate:create",
-  });
-  await emitAutoMatchEventIfReady(candidate);
+  await applyCandidateWriteSideEffects(candidate, "candidate:create");
 
   return withPendingEmbeddingStatus(candidate);
 }
@@ -343,13 +366,7 @@ export async function updateCandidate(
 
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
-  await runCandidateSkillSync(candidate);
-  void queueDeferredEmbeddingSync({
-    entityType: "candidate",
-    entityId: candidate.id,
-    source: "candidate:update",
-  });
-  await emitAutoMatchEventIfReady(candidate);
+  await applyCandidateWriteSideEffects(candidate, "candidate:update");
 
   return withPendingEmbeddingStatus(candidate);
 }
@@ -533,11 +550,8 @@ export async function enrichCandidateFromCV(
   const candidate = rows[0] ?? null;
   if (!candidate) return null;
 
-  await runCandidateSkillSync(candidate);
-  void queueDeferredEmbeddingSync({
-    entityType: "candidate",
-    entityId: candidate.id,
-    source: "candidate:cv-enrichment",
+  await applyCandidateWriteSideEffects(candidate, "candidate:cv-enrichment", {
+    emitAutoMatch: false,
   });
 
   return withPendingEmbeddingStatus(candidate);

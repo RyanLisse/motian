@@ -42,7 +42,7 @@ describe("Candidate deduplication", () => {
 
   it("enrichCandidateFromCV queues deferred candidate indexing after CV updates", () => {
     const source = readFile("src/services/candidates.ts");
-    expect(source).toContain("void queueDeferredEmbeddingSync({");
-    expect(source).toContain('source: "candidate:cv-enrichment"');
+    expect(source).toContain("queueCandidateEmbeddingSync(candidate.id, source);");
+    expect(source).toContain('applyCandidateWriteSideEffects(candidate, "candidate:cv-enrichment"');
   });
 });

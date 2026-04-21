@@ -50,7 +50,6 @@ export const PRIMARY_NAV_ITEMS = [
     url: "/vacatures",
     icon: Briefcase,
     keywords: ["jobs", "opdrachten", "werk"],
-    matchPaths: ["/opdrachten"],
   },
   {
     title: "Kandidaten",

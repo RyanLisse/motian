@@ -187,8 +187,8 @@ De nieuwe eigenaar moet starten met de nu bekende hoge-prioriteitsrisico's in pl
 
 - `motian-n38`: Modal scraping stub blokkeert een complete Vercel-veilige route voor Striive-achtige flows
 - `motian-scy`: scoring is nog te rule-based en heeft sterkere semantic/vector matching nodig
-- `motian-o5g`: pagination ontbreekt op belangrijke oppervlakken, wat performance- en usability-risico verhoogt
-- `motian-uml`: cron scheduling negeert momenteel per-platform `cronExpression` in de database
+- `motian-o5g`: paginationdekking is nog onvolledig op sommige oppervlakken, ook al pagineren de belangrijkste recruiter-views al
+- `motian-uml`: cron due checks respecteren nu per-platform `cronExpression`; het resterende risico zit in schedule-observability en coverage-drift
 - Scraperbetrouwbaarheid blijft een terugkerend operationeel aandachtspunt, vooral waar auth, browserautomatisering of provider-markup wijzigt
 - Platform onboarding blijft een kritieke operator-workflow en is geen eenmalige setup
 
