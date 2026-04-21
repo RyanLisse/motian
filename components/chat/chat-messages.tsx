@@ -76,7 +76,16 @@ type Props = {
   emptyStatePrompts?: ChatSuggestion[];
   followUpPrompts?: ChatSuggestion[];
   conversationLabel?: string;
+  userFirstName?: string | null;
 };
+
+function getDutchGreeting(now: Date = new Date()): string {
+  const hour = now.getHours();
+  if (hour < 6) return "Goedenacht";
+  if (hour < 12) return "Goedemorgen";
+  if (hour < 18) return "Goedemiddag";
+  return "Goedenavond";
+}
 
 const DEFAULT_EMPTY_STATE_PROMPTS: ChatSuggestion[] = [
   {
@@ -493,6 +502,7 @@ export function ChatMessages({
   emptyStatePrompts = DEFAULT_EMPTY_STATE_PROMPTS,
   followUpPrompts = [],
   conversationLabel = "Chatgesprek met Motian AI",
+  userFirstName,
 }: Props) {
   const hasUserMessage = messages.some((message) => message.role === "user");
   const isWidget = layout === "widget";
@@ -597,9 +607,19 @@ export function ChatMessages({
               isWidget ? "max-w-3xl" : "max-w-4xl",
             )}
           >
+            <div className="flex w-full flex-col items-center gap-4 text-center lg:hidden">
+              <h2 className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-foreground">
+                <Sparkles className="h-6 w-6 text-primary" />
+                {userFirstName ? `${getDutchGreeting()}, ${userFirstName}` : getDutchGreeting()}
+              </h2>
+              <p className="max-w-md text-sm leading-6 text-muted-foreground">
+                {emptyStateDescription}
+              </p>
+            </div>
+
             <div
               className={cn(
-                "w-full rounded-[28px] border border-border/70 bg-card/95 p-5 shadow-sm sm:p-8",
+                "hidden w-full rounded-[28px] border border-border/70 bg-card/95 p-5 shadow-sm sm:p-8 lg:block",
                 isWidget && "rounded-3xl p-4 sm:p-5",
               )}
             >
@@ -611,7 +631,7 @@ export function ChatMessages({
                   </div>
                   <div className="space-y-2">
                     <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-2xl">
-                      {emptyStateTitle}
+                      {userFirstName ? `${getDutchGreeting()}, ${userFirstName}` : emptyStateTitle}
                     </h2>
                     <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                       {emptyStateDescription}

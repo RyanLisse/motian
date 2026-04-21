@@ -1,12 +1,4 @@
-import {
-  ArrowRight,
-  BriefcaseBusiness,
-  Building2,
-  Clock,
-  LoaderCircle,
-  MapPin,
-  Users,
-} from "lucide-react";
+import { Bookmark, Clock, LoaderCircle, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { memo } from "react";
 import { CompanyLogo } from "@/components/company-logo";
@@ -45,6 +37,23 @@ const arrangementLabels: Record<string, string> = {
   op_locatie: "Op locatie",
   remote: "Remote",
 };
+
+const arrangementSentence: Record<string, string> = {
+  hybride: "Hybride werken",
+  op_locatie: "Op locatie",
+  remote: "Thuiswerken",
+};
+
+function formatLocationSentence(
+  workArrangement: string | null,
+  location: string | null,
+): string | null {
+  const prefix = workArrangement ? arrangementSentence[workArrangement] : null;
+  if (prefix && location) return `${prefix} in ${location}`;
+  if (prefix) return prefix;
+  if (location) return location;
+  return null;
+}
 
 const contractLabels: Record<string, string> = {
   freelance: "Freelance",
@@ -128,6 +137,7 @@ export const JobListItem = memo(function JobListItem({
     : "Bekijk en koppel";
 
   if (variant === "card") {
+    const locationSentence = formatLocationSentence(job.workArrangement, job.location);
     return (
       <DroppableVacancy jobId={job.id} jobTitle={job.title}>
         <Link href={detailHref} className="block min-w-0">
@@ -137,8 +147,23 @@ export const JobListItem = memo(function JobListItem({
               isActive && "border-primary/70 ring-2 ring-primary/20",
             )}
           >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="flex min-w-0 items-start gap-3">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <Badge
+                variant="outline"
+                className="rounded-md border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+              >
+                Eenvoudig solliciteren
+              </Badge>
+              <span
+                aria-hidden="true"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <Bookmark className="h-4 w-4" />
+              </span>
+            </div>
+
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="hidden sm:block">
                 <CompanyLogo
                   src={job.companyLogoUrl}
                   companyName={job.company}
@@ -147,95 +172,75 @@ export const JobListItem = memo(function JobListItem({
                   priority={priority}
                   blur
                 />
-                <div className="min-w-0">
-                  <h3 className="text-base font-semibold leading-tight text-foreground line-clamp-2 wrap-break-word sm:text-lg">
-                    {job.title}
-                  </h3>
-                  <p className="mt-1 flex min-w-0 items-start gap-1.5 text-sm text-muted-foreground">
-                    <Building2 className="h-3.5 w-3.5 shrink-0" />
-                    <span className="max-w-full whitespace-normal wrap-break-word">
-                      {job.company || "Onbekend"}
-                    </span>
-                  </p>
-                </div>
               </div>
-              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:flex-col sm:items-end">
-                <span className="inline-flex max-w-full whitespace-normal wrap-break-word items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-left text-xs font-medium capitalize text-primary sm:px-3">
-                  {job.platform}
-                </span>
-                {deadlineMeta ? (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "max-w-full whitespace-normal wrap-break-word gap-1 px-2 py-1 text-left text-[10px]",
-                      deadlineMeta.className,
-                    )}
-                  >
-                    <Clock className="h-3 w-3 shrink-0" />
-                    {deadlineMeta.label}
-                  </Badge>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[17px] font-semibold leading-snug text-foreground line-clamp-2 wrap-break-word sm:text-lg">
+                  {job.title}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">{job.company || "Onbekend"}</p>
+                {locationSentence ? (
+                  <p className="mt-0.5 text-sm text-muted-foreground">{locationSentence}</p>
                 ) : null}
               </div>
             </div>
 
-            <div className="mt-2.5 flex flex-wrap items-start gap-2.5 text-sm text-muted-foreground sm:mt-3 sm:gap-3">
-              {job.location && (
-                <span className="inline-flex min-w-0 max-w-full items-start gap-1.5">
-                  <MapPin className="h-3.5 w-3.5 shrink-0" />
-                  <span className="max-w-full whitespace-normal wrap-break-word">
-                    {job.location}
-                  </span>
-                </span>
-              )}
-              {job.workArrangement && (
-                <span className="inline-flex max-w-full items-center gap-1.5 whitespace-normal wrap-break-word">
-                  <BriefcaseBusiness className="h-3.5 w-3.5 shrink-0" />
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {job.contractType ? (
+                <Badge
+                  variant="outline"
+                  className="rounded-md border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground"
+                >
+                  {contractLabels[job.contractType] ?? job.contractType}
+                </Badge>
+              ) : null}
+              {job.workArrangement ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-md border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground",
+                    job.workArrangement === "remote" &&
+                      "border-primary/30 bg-primary/10 text-primary",
+                  )}
+                >
                   {arrangementLabels[job.workArrangement] ?? job.workArrangement}
-                </span>
-              )}
+                </Badge>
+              ) : null}
+              {deadlineMeta ? (
+                <Badge
+                  variant="outline"
+                  className={cn("gap-1 rounded-md px-2 py-0.5 text-[11px]", deadlineMeta.className)}
+                >
+                  <Clock className="h-3 w-3 shrink-0" />
+                  {deadlineMeta.label}
+                </Badge>
+              ) : null}
+              <Badge
+                variant="outline"
+                className="rounded-md border-border bg-background px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground"
+              >
+                {job.platform}
+              </Badge>
+              {hasLinkedWorkflow ? (
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1 rounded-md border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                >
+                  <Users className="h-3 w-3" />
+                  {hasActivePipeline ? `${pipelineCount} in pipeline` : "Workflow gekoppeld"}
+                </Badge>
+              ) : null}
+              {job.isIndexing ? (
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1 rounded-md border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300"
+                >
+                  <LoaderCircle className="h-3 w-3 animate-spin" />
+                  Indexeren…
+                </Badge>
+              ) : null}
             </div>
 
-            <div className="mt-3 flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                {job.isIndexing ? (
-                  <Badge
-                    variant="outline"
-                    className="flex min-h-5 h-auto max-w-full items-center gap-1 whitespace-normal wrap-break-word rounded-md border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300"
-                  >
-                    <LoaderCircle className="h-2.5 w-2.5 animate-spin" />
-                    Indexeren…
-                  </Badge>
-                ) : null}
-                {job.contractType && (
-                  <Badge
-                    variant="outline"
-                    className="min-h-5 h-auto max-w-full whitespace-normal wrap-break-word rounded-md border-border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground"
-                  >
-                    {contractLabels[job.contractType] ?? job.contractType}
-                  </Badge>
-                )}
-                {hasLinkedWorkflow ? (
-                  <Badge
-                    variant="outline"
-                    className="flex min-h-5 h-auto max-w-full items-center gap-0.5 whitespace-normal wrap-break-word rounded-md border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary"
-                  >
-                    <Users className="h-2.5 w-2.5" />
-                    {hasActivePipeline ? `${pipelineCount} in de pipeline` : "Workflow gekoppeld"}
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="outline"
-                    className="min-h-5 h-auto max-w-full whitespace-normal wrap-break-word rounded-md border-dashed border-border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground"
-                  >
-                    Nog te koppelen
-                  </Badge>
-                )}
-              </div>
-              <span className="inline-flex w-full items-center justify-end gap-1 text-xs font-medium text-primary sm:w-auto sm:text-sm">
-                {actionLabel}
-                <ArrowRight className="h-4 w-4" />
-              </span>
-            </div>
+            <span className="sr-only">{actionLabel}</span>
           </article>
         </Link>
       </DroppableVacancy>

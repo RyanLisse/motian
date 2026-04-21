@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChatStatus } from "ai";
-import { ArrowUp, Gauge, Loader2, Mic, Square, Upload, Zap } from "lucide-react";
+import { ArrowUp, Gauge, Loader2, Mic, Plus, Square, Upload, Zap } from "lucide-react";
 import { useCallback, useId } from "react";
 import {
   PromptInput,
@@ -109,7 +109,7 @@ export function ChatPromptComposer({
           variant="page"
         />
 
-        <div className="rounded-[28px] border border-border/70 bg-background shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-ring/20">
+        <div className="rounded-3xl border border-border/70 bg-background shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-ring/20 lg:rounded-[28px]">
           <PromptInput
             accept={CV_UPLOAD_ACCEPT}
             globalDrop
@@ -129,13 +129,14 @@ export function ChatPromptComposer({
               <PromptInputTools className="flex-1 flex-wrap">
                 <PromptInputButton
                   aria-label="CV uploaden (PDF of Word)"
-                  className="gap-1.5 rounded-full px-3 text-xs"
+                  className="gap-1.5 rounded-full px-2 text-xs lg:px-3"
                   disabled={cvUpload.uploadState === "uploading"}
                   onClick={cvUpload.openFileDialog}
                   tooltip="CV uploaden (PDF of Word)"
                 >
-                  <Upload className="h-3.5 w-3.5" />
-                  <span>CV uploaden</span>
+                  <Plus className="h-4 w-4 lg:hidden" />
+                  <Upload className="hidden h-3.5 w-3.5 lg:inline-block" />
+                  <span className="hidden lg:inline">CV uploaden</span>
                 </PromptInputButton>
 
                 <PromptInputSelect onValueChange={onModelIdChange} value={modelId}>
@@ -158,7 +159,7 @@ export function ChatPromptComposer({
                 </PromptInputSelect>
 
                 <PromptInputSelect onValueChange={onSpeedModeChange} value={speedMode}>
-                  <PromptInputSelectTrigger className="h-8 w-auto gap-1 px-2 text-xs">
+                  <PromptInputSelectTrigger className="hidden h-8 w-auto gap-1 px-2 text-xs lg:inline-flex">
                     <Gauge className="h-3.5 w-3.5" />
                     <PromptInputSelectValue />
                   </PromptInputSelectTrigger>

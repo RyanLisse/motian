@@ -3,8 +3,8 @@
 /**
  * Full filter panel used on the overview (/vacatures) page.
  */
-import { ChevronDown, RotateCcw } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { SearchableCombobox } from "@/components/ui/searchable-combobox";
 import {
@@ -16,11 +16,13 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { OPDRACHTEN_PROVINCES } from "@/src/lib/opdrachten-filters";
+import { MobileFilterChips } from "./mobile-filter-chips";
 import {
   CompactMultiSelectFilter,
   FilterChecklist,
   RadiusSliderField,
 } from "./sidebar-filter-controls";
+import { resolveLocationInputToProvince } from "./sidebar-location-input";
 import { SidebarSearchBar } from "./sidebar-search-bar";
 import type { FilterOption, ProvinceAnchor } from "./sidebar-types";
 import { CONTRACT_TYPES } from "./sidebar-types";
@@ -76,7 +78,7 @@ export function OverviewFilterPanel({
   mobileFiltersOpen,
   onToggleMobileFilters,
   activeFilterCount,
-  displayTotal,
+  displayTotal: _displayTotal,
   selectedPlatforms,
   platforms,
   endClient,
@@ -110,9 +112,20 @@ export function OverviewFilterPanel({
   onlyShortlist,
   onOnlyShortlistChange,
 }: OverviewFilterPanelProps) {
+  const [locationInput, setLocationInput] = useState(provincie);
+  useEffect(() => {
+    setLocationInput(provincie);
+  }, [provincie]);
+  const handleLocationInputChange = (value: string) => {
+    setLocationInput(value);
+    const resolved = resolveLocationInputToProvince(value);
+    if (resolved === null && provincie) onProvinceChange("__all__");
+    else if (resolved && resolved !== provincie) onProvinceChange(resolved);
+  };
+
   return (
     <div className="flex min-h-0 flex-col border-b border-border/70 px-3 py-2 sm:px-4 sm:py-5 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:mb-4">
+      <div className="mb-2 hidden flex-wrap items-center justify-between gap-2 sm:mb-4 lg:flex">
         <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-xl lg:text-2xl">
           Zoekfilter
         </h3>
@@ -133,46 +146,45 @@ export function OverviewFilterPanel({
           onChange={onInputChange}
           isFetching={isFetching}
           variant="overview"
+          locationValue={locationInput}
+          onLocationChange={handleLocationInputChange}
         />
 
-        <button
-          type="button"
-          aria-expanded={mobileFiltersOpen}
-          aria-controls="opdrachten-mobile-filters"
-          className="inline-flex min-h-9 w-full items-center justify-between rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground shadow-sm sm:min-h-11 sm:px-3 sm:text-sm lg:hidden"
-          onClick={onToggleMobileFilters}
-        >
-          <span className="min-w-0 truncate">
-            {mobileFiltersOpen ? "Filters sluiten" : "Filters openen"}
-            {activeFilterCount > 0 ? ` (${activeFilterCount} actief)` : ""}
-          </span>
-          <ChevronDown
-            className={cn(
-              "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform sm:h-4 sm:w-4",
-              mobileFiltersOpen && "rotate-180",
-            )}
-          />
-        </button>
-
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground lg:hidden">
-          <span>{displayTotal} resultaten</span>
-          {activeFilterCount > 0 ? (
-            <Badge
-              variant="outline"
-              className="max-w-full whitespace-normal wrap-break-word border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
-            >
-              {activeFilterCount} filters actief
-            </Badge>
-          ) : null}
-        </div>
+        <MobileFilterChips
+          activeFilterCount={activeFilterCount}
+          mobileFiltersOpen={mobileFiltersOpen}
+          onOpenFilters={onToggleMobileFilters}
+          rateMin={rateMinInput}
+          rateMax={rateMaxInput}
+          hoursMin={hoursMinInput}
+          hoursMax={hoursMaxInput}
+          contractType={contractType}
+          onContractTypeChange={(v) => onFilterChange("contractType", v)}
+          inputValue={inputValue}
+          onInputChange={onInputChange}
+        />
 
         <div
           id="opdrachten-mobile-filters"
           className={cn(
             "min-h-0 space-y-2 overflow-y-auto rounded-xl border border-border/70 bg-background/60 p-2.5 sm:space-y-3 sm:p-3 lg:flex-1 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:space-y-4",
-            mobileFiltersOpen ? "max-h-[40vh] lg:max-h-none" : "hidden lg:block",
+            mobileFiltersOpen ? "max-h-[60vh] lg:max-h-none" : "hidden lg:block",
           )}
         >
+          <div className="flex items-center justify-between gap-2 lg:hidden">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Alle filters
+            </span>
+            <button
+              type="button"
+              onClick={onResetFilters}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold uppercase tracking-wide text-primary hover:bg-primary/5"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Wissen
+            </button>
+          </div>
+
           <VacatureFilterExtras
             onlyShortlist={onlyShortlist}
             onOnlyShortlistChange={onOnlyShortlistChange}

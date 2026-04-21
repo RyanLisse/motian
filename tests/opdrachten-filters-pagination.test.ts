@@ -433,10 +433,12 @@ describe("Opdrachten UI/API contracts", () => {
     expect(sidebar).toContain("Filters openen");
     expect(sidebar).toContain("Filters sluiten");
     expect(sidebar).toContain('id="opdrachten-mobile-filters"');
-    expect(listItem).toContain("flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between");
-    expect(listItem).toContain(
-      "flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:justify-between",
-    );
+    // Mobile filter chips row is the new mobile-only filter entry point
+    expect(sidebar).toContain("MobileFilterChips");
+    // Indeed-style job card markers
+    expect(listItem).toContain("Eenvoudig solliciteren");
+    expect(listItem).toContain("Bookmark");
+    expect(listItem).toContain("mb-2 flex items-start justify-between");
     expect(listItem).toContain('<Link href={detailHref} className="block min-w-0">');
     expect(listItem).toContain(
       "w-full min-w-0 overflow-hidden rounded-xl border border-border/80 bg-card",
