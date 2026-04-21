@@ -435,15 +435,15 @@ describe("Werkzoeken scraper", () => {
 
     await adapter.scrape(config);
 
-    // Should have requested:
-    // 1. Initial (pnr=2)
-    // 2. pnr=4 (2 + 2)
-    // 3. pnr=6 (4 + 2) - this returns empty
+    // List pages are fetched in parallel, so all configured pnr jumps are requested
+    // even though processing still stops once the first empty cumulative page is reached.
     expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/");
     expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=2");
     expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=4");
     expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=6");
-    expect(callCount).toBe(6); // bootstrap + 3 listing pages + 2 detail pages
+    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=8");
+    expect(requestedUrls).toContain("https://www.werkzoeken.nl/vacatures-voor/techniek/?pnr=10");
+    expect(callCount).toBe(8); // bootstrap + 5 listing pages + 2 detail pages
   });
 
   it("falls back to sane pagination and concurrency defaults when config numbers are invalid", async () => {

@@ -418,87 +418,121 @@ async function scrapeWerkzoekenInternal(
   // We use sliding window (fetch pnr=10, 20, 30...) to minimize redundant bandwidth.
   const seenIds = new Set<string>();
   const listings: RawScrapedListing[] = [];
+  const pages = Array.from(
+    { length: Math.max(Math.ceil(maxPages / pnrStep), 1) },
+    (_, index) => pnrStep + index * pnrStep,
+  );
+  const pageUrls = pages.map((page) => ({
+    page,
+    url: buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, page),
+  }));
+  const settledPages = await Promise.allSettled(
+    pageUrls.map(async ({ page, url }) => ({
+      page,
+      url,
+      html: await fetchHtml(url, session),
+    })),
+  );
 
-  for (let page = pnrStep; page <= maxPages + pnrStep - 1; page += pnrStep) {
-    const url = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, page);
-    const html = await fetchHtml(url, session);
-    const parsed = parseWerkzoekenListingCards(html, config.baseUrl);
+  const directPages = settledPages.map((result, index) => ({
+    page: pageUrls[index].page,
+    url: pageUrls[index].url,
+    result,
+  }));
+  const allDirectFetchesFailed = directPages.every((page) => page.result.status === "rejected");
 
-    // Filter out listings already seen from previous cumulative pages
-    const newListings = parsed.filter((l) => {
-      const id = String(l.externalId ?? "");
+  const pushNewListings = (parsed: RawScrapedListing[]) => {
+    const newListings = parsed.filter((listing) => {
+      const id = String(listing.externalId ?? "");
       if (!id || seenIds.has(id)) return false;
       seenIds.add(id);
       return true;
     });
+    listings.push(...newListings);
+    return newListings.length;
+  };
 
-    if (newListings.length === 0) {
-      if (page > pnrStep) {
+  if (allDirectFetchesFailed && process.env.BROWSERBASE_API_KEY) {
+    session.cookieHeader = undefined;
+
+    for (const { page, url } of pageUrls) {
+      try {
+        const browserbaseHtml = await fetchViaBrowserbase(url);
+        const parsed = parseWerkzoekenListingCards(browserbaseHtml, config.baseUrl);
+        const added = pushNewListings(parsed);
+
+        if (added === 0) {
+          if (page > pnrStep) {
+            break;
+          }
+
+          return {
+            listings,
+            errors: ["Geen Werkzoeken vacaturekaarten gevonden op de resultatenpagina"],
+            blockerKind: "unexpected_markup",
+            evidence: {
+              pageUrl: url,
+            },
+          };
+        }
+
+        if (options?.smoke || (options?.limit && listings.length >= options.limit)) {
+          break;
+        }
+      } catch {
+        if (page > pnrStep) {
+          break;
+        }
+
+        return {
+          listings,
+          errors: ["Geen Werkzoeken vacaturekaarten gevonden op de resultatenpagina"],
+          blockerKind: "unexpected_markup",
+          evidence: {
+            pageUrl: url,
+          },
+        };
+      }
+    }
+  } else {
+    for (const { page, url, result } of directPages) {
+      if (result.status === "rejected") {
+        continue;
+      }
+
+      const parsed = parseWerkzoekenListingCards(result.value.html, config.baseUrl);
+      const added = pushNewListings(parsed);
+
+      if (added === 0) {
+        if (page > pnrStep) {
+          break;
+        }
+
+        return {
+          listings,
+          errors: ["Geen Werkzoeken vacaturekaarten gevonden op de resultatenpagina"],
+          blockerKind: "unexpected_markup",
+          evidence: {
+            pageUrl: url,
+          },
+        };
+      }
+
+      if (options?.smoke || (options?.limit && listings.length >= options.limit)) {
         break;
       }
-
-      // Content-validation fallback: the site may return HTTP 200 with a captcha/cookie-wall
-      // instead of vacancy cards. Retry via Browserbase (real Chrome) before giving up.
-      if (process.env.BROWSERBASE_API_KEY) {
-        try {
-          const browserbaseHtml = await fetchViaBrowserbase(url);
-          const retryParsed = parseWerkzoekenListingCards(browserbaseHtml, config.baseUrl);
-          const retryNew = retryParsed.filter((l) => {
-            const id = String(l.externalId ?? "");
-            if (!id || seenIds.has(id)) return false;
-            seenIds.add(id);
-            return true;
-          });
-          if (retryNew.length > 0) {
-            // Browserbase succeeded — switch to Browserbase for remaining pages
-            listings.push(...retryNew);
-            session.cookieHeader = undefined; // Clear direct-fetch session
-            // Continue the loop with Browserbase-fetched pages
-            for (
-              let bbPage = page + pnrStep;
-              bbPage <= maxPages + pnrStep - 1;
-              bbPage += pnrStep
-            ) {
-              const bbUrl = buildWerkzoekenListPageUrl(config.baseUrl, sourcePath, bbPage);
-              const bbHtml = await fetchViaBrowserbase(bbUrl);
-              const bbParsed = parseWerkzoekenListingCards(bbHtml, config.baseUrl);
-              const bbNew = bbParsed.filter((l) => {
-                const id = String(l.externalId ?? "");
-                if (!id || seenIds.has(id)) return false;
-                seenIds.add(id);
-                return true;
-              });
-              if (bbNew.length === 0) break;
-              listings.push(...bbNew);
-              if (options?.smoke || (options?.limit && listings.length >= options.limit)) break;
-              await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
-            }
-            break; // Exit the main loop — we've handled remaining pages via Browserbase
-          }
-        } catch {
-          // Browserbase also failed — fall through to error
-        }
-      }
-
-      return {
-        listings,
-        errors: ["Geen Werkzoeken vacaturekaarten gevonden op de resultatenpagina"],
-        blockerKind: "unexpected_markup",
-        evidence: {
-          pageUrl: url,
-        },
-      };
     }
+  }
 
-    listings.push(...newListings);
-    if (options?.smoke || (options?.limit && listings.length >= options.limit)) {
-      break;
-    }
-
-    // Throttle between pages to avoid rate limiting
-    if (page + pnrStep <= maxPages + pnrStep - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
-    }
+  if (listings.length === 0) {
+    return {
+      listings,
+      errors: ["Geen Werkzoeken vacaturekaarten gevonden op de resultatenpagina"],
+      blockerKind: "unexpected_markup",
+      evidence: {
+        pageUrl: pageUrls[0]?.url,
+      },
+    };
   }
 
   // Skip detail enrichment for bulk scrapes (listing cards already have title, company, salary, etc.)
