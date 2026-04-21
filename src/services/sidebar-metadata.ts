@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, db, eq, isNull, sql } from "@/src/db";
+import { and, db, desc, eq, isNull, sql } from "@/src/db";
 import { jobs, sidebarMetadata } from "@/src/db/schema";
 import { cachedQuery } from "@/src/lib/upstash";
 import { countDedupedOpenJobs } from "@/src/services/jobs/deduplication";
@@ -72,6 +72,7 @@ export const refreshSidebarMetadata = cache(
   async function refreshSidebarMetadata(): Promise<SidebarMetadataRow> {
     const activeJobsCondition = and(getJobStatusCondition("open"), isNull(jobs.deletedAt));
     const persistedEndClient = sql<string | null>`coalesce(${jobs.endClient}, ${jobs.company})`;
+    const endClientCount = sql<number>`count(*)::int`;
 
     const skillsCatalogStatusPromise = getSkillsCatalogStatusCached().catch((error) => {
       console.error("[SidebarMetadata] getSkillsCatalogStatusCached failed:", error);
@@ -92,30 +93,44 @@ export const refreshSidebarMetadata = cache(
       return [];
     });
 
-    const [dedupedCount, metaResult, categoryResult, skillsCatalogStatus, skillsRows] =
-      await Promise.all([
-        countDedupedOpenJobs(db),
-        db
-          .select({
-            platforms: sql<string | null>`json_agg(distinct ${jobs.platform})`,
-            endClients: sql<string | null>`json_agg(distinct ${persistedEndClient})`,
-          })
-          .from(jobs)
-          .where(activeJobsCondition),
-        db.execute(sql`
+    const [
+      dedupedCount,
+      platformsResult,
+      endClientsResult,
+      categoryResult,
+      skillsCatalogStatus,
+      skillsRows,
+    ] = await Promise.all([
+      countDedupedOpenJobs(db),
+      db
+        .select({
+          platforms: sql<string | null>`json_agg(distinct ${jobs.platform})`,
+        })
+        .from(jobs)
+        .where(activeJobsCondition),
+      db
+        .select({
+          endClient: persistedEndClient,
+          count: endClientCount,
+        })
+        .from(jobs)
+        .where(activeJobsCondition)
+        .groupBy(persistedEndClient)
+        .orderBy(desc(endClientCount))
+        .limit(100),
+      db.execute(sql`
         SELECT DISTINCT je.value AS category
         FROM ${jobs}, LATERAL jsonb_array_elements_text(coalesce(${jobs.categories}::jsonb, '[]'::jsonb)) AS je(value)
         WHERE ${activeJobsCondition} AND je.value IS NOT NULL
         ORDER BY category ASC
       `),
-        skillsCatalogStatusPromise,
-        skillsRowsPromise,
-      ]);
+      skillsCatalogStatusPromise,
+      skillsRowsPromise,
+    ]);
 
     const totalCount = dedupedCount;
 
-    const platformsRaw = metaResult[0]?.platforms;
-    const endClientsRaw = metaResult[0]?.endClients;
+    const platformsRaw = platformsResult[0]?.platforms;
     const platforms = (
       Array.isArray(platformsRaw)
         ? platformsRaw
@@ -124,13 +139,9 @@ export const refreshSidebarMetadata = cache(
           : []
     ).filter(Boolean) as string[];
 
-    const endClients = (
-      Array.isArray(endClientsRaw)
-        ? endClientsRaw
-        : endClientsRaw
-          ? JSON.parse(endClientsRaw as string)
-          : []
-    ).filter(Boolean) as string[];
+    const endClients = endClientsResult
+      .map((row) => row.endClient?.trim())
+      .filter((value): value is string => Boolean(value && value.length > 0));
 
     const categoryRows = (categoryResult.rows ?? []) as { category: string }[];
     const categories = categoryRows

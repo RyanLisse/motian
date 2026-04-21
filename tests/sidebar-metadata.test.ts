@@ -10,6 +10,7 @@ vi.mock("@/src/db", () => {
   return {
     db: mockDb,
     and: vi.fn((...conditions: unknown[]) => conditions),
+    desc: vi.fn((value: unknown) => ({ direction: "desc", value })),
     eq: vi.fn((_col: unknown, _val: unknown) => "eq-condition"),
     getTableColumns: vi.fn((table: Record<string, unknown>) => table),
     isNull: vi.fn((_col: unknown) => "is-null-condition"),
@@ -70,6 +71,10 @@ vi.mock("@/src/services/skills", () => ({
 
 vi.mock("@/src/services/jobs/filters", () => ({
   getJobStatusCondition: vi.fn(() => "status = 'open'"),
+}));
+
+vi.mock("@/src/services/jobs/deduplication", () => ({
+  countDedupedOpenJobs: vi.fn().mockResolvedValue(500),
 }));
 
 describe("sidebar-metadata", () => {
@@ -177,14 +182,29 @@ describe("sidebar-metadata", () => {
   describe("refreshSidebarMetadata", () => {
     it("should return correct shape with all required fields", async () => {
       const { db } = await import("@/src/db");
-
-      // Mock count query
-      const selectMock = vi.fn().mockReturnValue({
+      const platformQuery = {
         from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ count: 500 }]),
+          where: vi.fn().mockResolvedValue([{ platforms: ["huxley", "yacht"] }]),
         }),
-      });
-      (db.select as ReturnType<typeof vi.fn>).mockImplementation(selectMock);
+      };
+      const endClientsQuery = {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            groupBy: vi.fn().mockReturnValue({
+              orderBy: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([
+                  { endClient: "ING", count: 12 },
+                  { endClient: "ABN AMRO", count: 9 },
+                ]),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      (db.select as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(platformQuery)
+        .mockReturnValueOnce(endClientsQuery);
 
       // Mock execute for categories query
       (db.execute as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -216,6 +236,49 @@ describe("sidebar-metadata", () => {
       expect(Array.isArray(result.skillOptions)).toBe(true);
       expect(typeof result.skillEmptyText).toBe("string");
       expect(result.computedAt).toBeInstanceOf(Date);
+    });
+
+    it("caps endClients to the top 100 values after refresh", async () => {
+      const { db } = await import("@/src/db");
+      const topEndClients = Array.from({ length: 100 }, (_, index) => ({
+        endClient: `Client ${index + 1}`,
+        count: 100 - index,
+      }));
+      const platformQuery = {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ platforms: ["huxley"] }]),
+        }),
+      };
+      const endClientsQuery = {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            groupBy: vi.fn().mockReturnValue({
+              orderBy: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue(topEndClients),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      (db.select as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(platformQuery)
+        .mockReturnValueOnce(endClientsQuery);
+      (db.execute as ReturnType<typeof vi.fn>).mockResolvedValue({
+        rows: [{ category: "IT" }],
+      });
+      (db.insert as ReturnType<typeof vi.fn>).mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+
+      const { refreshSidebarMetadata } = await import("@/src/services/sidebar-metadata");
+      const result = await refreshSidebarMetadata();
+
+      expect(result.endClients).toHaveLength(100);
+      expect(result.endClients[0]).toBe("Client 1");
+      expect(result.endClients.at(-1)).toBe("Client 100");
     });
   });
 });
