@@ -177,7 +177,10 @@ export function parseWerkzoekenListingCards(
   baseUrl = DEFAULT_WERKZOEKEN_ORIGIN,
 ): RawScrapedListing[] {
   const listings: RawScrapedListing[] = [];
-  const linkRegex = /<a\b([\s\S]*?)class="vacancy vac[\s\S]*?href="([^"]+)"[\s\S]*?<h3>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/g;
+  // Match vacancy card <a> blocks. Werkzoeken renders the inner <h3> with attributes
+  // (e.g. `<h3 data-vx="d">`) so the old anchor-to-h3 pattern silently returned zero
+  // listings whenever those attributes appeared. Accept any attribute set on <h3>.
+  const linkRegex = /<a\b([\s\S]*?)class="vacancy vac[\s\S]*?href="([^"]+)"[\s\S]*?<h3\b[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/g;
 
   let match = linkRegex.exec(html);
   while (match !== null) {
