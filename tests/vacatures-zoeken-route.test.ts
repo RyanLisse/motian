@@ -76,6 +76,9 @@ describe("GET /api/vacatures/zoeken", () => {
       perPage: 25,
       totalPages: 1,
     });
+    expect(body.jobs[0]).not.toHaveProperty("embedding");
+    expect(body.jobs[0]).not.toHaveProperty("searchVector");
+    expect(body.jobs[0]).not.toHaveProperty("rawPayload");
   });
 
   it("returns shared runner validation errors unchanged", async () => {

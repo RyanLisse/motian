@@ -16,8 +16,9 @@ describe("opdracht detail archivedAt compatibility", () => {
     const routeSource = readFile("app", "api", "vacatures", "zoeken", "route.ts");
 
     expect(repositorySource).toContain("archivedAt: sql<Date | null>`null`");
+    expect(repositorySource).toContain("export function getJobListReadSelection()");
     expect(listSource).toContain(".select(jobReadSelection)");
-    expect(searchSource).toContain(".select(jobReadSelection)");
+    expect(searchSource).toContain(".select(jobListReadSelection)");
     expect(routeSource).toContain("runJobPageSearch");
   });
 

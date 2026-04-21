@@ -5,6 +5,16 @@ import { type EmbeddingStatus, withPendingEmbeddingStatus } from "../embedding";
 import { scheduleDedupeRanksRefresh } from "./dedupe-ranks";
 
 export type Job = typeof jobs.$inferSelect;
+export type JobListRow = Omit<
+  Job,
+  | "embedding"
+  | "searchVector"
+  | "rawPayload"
+  | "descriptionSummary"
+  | "questions"
+  | "attachments"
+  | "faqAnswers"
+>;
 export type JobMutationResult = Job & { embeddingStatus: EmbeddingStatus };
 
 function getNormalizedCompatibilityExpression(value: SQL) {
@@ -40,7 +50,23 @@ export function getJobReadSelection() {
   };
 }
 
+export function getJobListReadSelection() {
+  const full = getJobReadSelection();
+  const {
+    embedding: _embedding,
+    searchVector: _searchVector,
+    rawPayload: _rawPayload,
+    descriptionSummary: _descriptionSummary,
+    questions: _questions,
+    attachments: _attachments,
+    faqAnswers: _faqAnswers,
+    ...list
+  } = full;
+  return list;
+}
+
 export const jobReadSelection = getJobReadSelection();
+export const jobListReadSelection = getJobListReadSelection();
 
 /** Enkele opdracht ophalen op ID, inclusief gesloten/gearchiveerde retained vacatures. */
 export async function getJobById(id: string): Promise<Job | null> {

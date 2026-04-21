@@ -78,7 +78,12 @@ vi.mock("../src/services/jobs/hybrid-search-policy", () => ({
 
 vi.mock("../src/services/jobs/repository", () => {
   const sel = { id: "jobs.id" };
-  return { jobReadSelection: sel, getJobReadSelection: () => sel };
+  return {
+    jobListReadSelection: sel,
+    jobReadSelection: sel,
+    getJobListReadSelection: () => sel,
+    getJobReadSelection: () => sel,
+  };
 });
 
 vi.mock("../src/services/jobs/deduplication", async () => {

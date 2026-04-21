@@ -20,7 +20,7 @@ import {
   getJobSkillsForJobIds,
   isSkillScoringEnabled,
 } from "./esco";
-import { getJobById, type Job, listActiveJobs } from "./jobs";
+import { getJobById, type Job, type JobListRow, listActiveJobs } from "./jobs";
 import { loadJobsByIds } from "./jobs/deduplication";
 import { type JudgeVerdict, judgeMatch } from "./match-judge";
 import { createMatch, getMatchByJobAndCandidate } from "./matches";
@@ -58,10 +58,21 @@ export type AutoMatchResult = {
 };
 
 type ExtractedRequirements = Awaited<ReturnType<typeof extractRequirements>>;
+type MatchableJob = Pick<
+  Job | JobListRow,
+  | "id"
+  | "title"
+  | "company"
+  | "location"
+  | "description"
+  | "requirements"
+  | "wishes"
+  | "competences"
+>;
 
 // ========== Helpers ==========
 
-function buildRequirementExtractionInput(job: Job) {
+function buildRequirementExtractionInput(job: MatchableJob) {
   return {
     title: job.title,
     description: job.description,
@@ -73,7 +84,7 @@ function buildRequirementExtractionInput(job: Job) {
 
 /** Run deep structured match for a candidate against a job. Returns null on failure. */
 async function deepMatch(
-  job: Job,
+  job: MatchableJob,
   candidate: Candidate,
   requirementsPromise?: Promise<ExtractedRequirements>,
 ): Promise<StructuredMatchOutput | null> {
@@ -134,7 +145,13 @@ async function upsertMatch(
  * Used by both candidate→jobs and job→candidates directions.
  */
 async function runAutoMatchPipeline(
-  pairs: Array<{ job: Job; candidate: Candidate; score: number; reasoning: string; model: string }>,
+  pairs: Array<{
+    job: MatchableJob;
+    candidate: Candidate;
+    score: number;
+    reasoning: string;
+    model: string;
+  }>,
   topN: number = DEFAULT_TOP_N,
   minScore: number = MIN_SCORE,
 ): Promise<AutoMatchResult[]> {

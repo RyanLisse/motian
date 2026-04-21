@@ -15,7 +15,7 @@ import {
 import { getHybridSearchPolicy } from "./hybrid-search-policy";
 import { listJobs } from "./list";
 import { buildJobFilterConditions } from "./query-filters";
-import { type Job, jobReadSelection } from "./repository";
+import { type Job, type JobListRow, jobListReadSelection } from "./repository";
 
 type SearchTextResult = {
   ids: string[];
@@ -75,7 +75,7 @@ export type HybridSearchOptions = {
 };
 
 export type HybridSearchResult = {
-  data: Array<Job & { score: number }>;
+  data: Array<JobListRow & { score: number }>;
   total: number;
 };
 
@@ -245,7 +245,7 @@ export async function searchJobsByTitle(
   query: JobSearchQuery,
   limit?: number,
   status: JobStatus = "open",
-): Promise<Job[]> {
+): Promise<JobListRow[]> {
   const { ids } = await searchJobIdsByTitle(query, {
     limit,
     filterCondition: getJobStatusCondition(status),
@@ -255,7 +255,7 @@ export async function searchJobsByTitle(
 }
 
 /** Opdrachten zoeken, optioneel gefilterd op platform. Soft-deleted rijen worden uitgesloten. */
-export async function searchJobs(opts: SearchJobsOptions = {}): Promise<Job[]> {
+export async function searchJobs(opts: SearchJobsOptions = {}): Promise<JobListRow[]> {
   const { data } = await listJobs({
     limit: Math.min(opts.limit ?? 50, 100),
     platform: opts.platform,
@@ -384,12 +384,12 @@ export async function hybridSearchWithTotal(
   }
 
   let total = 0;
-  let data: Array<Job & { score: number }> = [];
+  let data: Array<JobListRow & { score: number }> = [];
 
   if (policy.hydrationMode === "full-candidates") {
     const hydrateStartedAt = Date.now();
     const fetchedJobs = await db
-      .select(jobReadSelection)
+      .select(jobListReadSelection)
       .from(jobs)
       .where(and(inArray(jobs.id, candidateIds), ...filterConditions))
       .limit(candidateIds.length);
@@ -473,6 +473,6 @@ export async function hybridSearchWithTotal(
 export async function hybridSearch(
   query: JobSearchQuery,
   opts: HybridSearchOptions = {},
-): Promise<Array<Job & { score: number }>> {
+): Promise<Array<JobListRow & { score: number }>> {
   return (await hybridSearchWithTotal(query, opts)).data;
 }

@@ -21,6 +21,7 @@ import {
   deleteJob,
   getJobById as getJobByIdImpl,
   type Job,
+  type JobListRow,
   updateJob,
   updateJobEnrichment,
 } from "./jobs/repository";
@@ -67,7 +68,7 @@ export type UnifiedJobSearchOptions = {
 };
 
 export type UnifiedJobSearchResult = {
-  data: Array<Job & { score?: number }>;
+  data: Array<JobListRow & { score?: number }>;
   total: number;
 };
 
@@ -77,6 +78,7 @@ export type UnifiedJobPageRow = JobPageRow;
 export type {
   HybridSearchOptions,
   Job,
+  JobListRow,
   JobStatus,
   ListJobsOptions,
   ListJobsSortBy,
@@ -210,7 +212,7 @@ export async function searchJobsUnified(
     const knownTotal = await getKnownTotalForDefaultOpenVacaturesList(opts);
     const cacheKey = buildNoQueryListCacheKey(opts, knownTotal, platforms);
     const { data, total } = await getCachedNoQueryVacaturesList(cacheKey);
-    return { data: data as Array<Job & { score?: number }>, total };
+    return { data, total };
   }
 
   const hybridOpts: HybridSearchOptions = {
@@ -294,13 +296,13 @@ export async function getJobById(id: string): Promise<Job | null> {
 
 export async function listJobs(
   opts: ListJobsOptions = {},
-): Promise<{ data: Job[]; total: number }> {
+): Promise<{ data: JobListRow[]; total: number }> {
   return listJobsImpl(opts);
 }
 
 export async function hybridSearch(
   query: JobSearchQuery,
   opts: HybridSearchOptions = {},
-): Promise<Array<Job & { score: number }>> {
+): Promise<Array<JobListRow & { score: number }>> {
   return hybridSearchImpl(query, opts);
 }

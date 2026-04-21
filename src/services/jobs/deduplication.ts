@@ -2,7 +2,7 @@ import { and, db, eq, inArray, isNotNull, isNull, type SQL, sql } from "../../db
 import { applications, jobDedupeRanks, jobs } from "../../db/schema";
 import { getDedupeRanksFreshness } from "./dedupe-ranks";
 import type { ListJobsSortBy } from "./filters";
-import { getJobReadSelection, type Job } from "./repository";
+import { getJobListReadSelection, type Job, type JobListRow } from "./repository";
 
 type DedupableJob = Pick<
   Job,
@@ -303,11 +303,11 @@ export function collapseScoredJobsByVacancy<TJob extends DedupableJob>(
   return [...grouped.values()].map(({ job, score }) => ({ job, score }));
 }
 
-export async function loadJobsByIds(ids: string[]): Promise<Job[]> {
+export async function loadJobsByIds(ids: string[]): Promise<JobListRow[]> {
   if (ids.length === 0) return [];
 
   const rows = await db
-    .select(getJobReadSelection())
+    .select(getJobListReadSelection())
     .from(jobs)
     .where(inArray(jobs.id, ids))
     .limit(ids.length);

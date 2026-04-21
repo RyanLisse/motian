@@ -6,7 +6,7 @@ import { LIST_SLO_MS, logSlowQuery, type QueryPath } from "../../lib/query-obser
 import { fetchDedupedJobsPage, loadJobsByIds } from "./deduplication";
 import { getJobStatusCondition, type JobStatus, type ListJobsSortBy } from "./filters";
 import { buildJobFilterConditions } from "./query-filters";
-import { type Job, jobReadSelection } from "./repository";
+import { type Job, type JobListRow, jobReadSelection } from "./repository";
 
 export type ListJobsOptions = {
   limit?: number;
@@ -46,7 +46,7 @@ export type ListJobsOptions = {
 /** Alle opdrachten ophalen met paginering. */
 export async function listJobs(
   opts: ListJobsOptions = {},
-): Promise<{ data: Job[]; total: number }> {
+): Promise<{ data: JobListRow[]; total: number }> {
   const start = Date.now();
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = Math.max(opts.offset ?? 0, 0);

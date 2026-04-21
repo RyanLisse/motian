@@ -278,6 +278,9 @@ describe("jobs page service", () => {
       },
       60_000,
     );
+    expect(result.data[0]).not.toHaveProperty("embedding");
+    expect(result.data[0]).not.toHaveProperty("searchVector");
+    expect(result.data[0]).not.toHaveProperty("rawPayload");
   }, 15_000);
 
   it("hybridSearchJobsPageWithTotal preserves ranked page order and pipeline counts", async () => {
@@ -298,5 +301,8 @@ describe("jobs page service", () => {
       ],
       total: 2,
     });
+    expect(result.data[0]).not.toHaveProperty("embedding");
+    expect(result.data[0]).not.toHaveProperty("searchVector");
+    expect(result.data[0]).not.toHaveProperty("rawPayload");
   }, 15_000);
 });

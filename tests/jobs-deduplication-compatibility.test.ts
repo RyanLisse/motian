@@ -29,7 +29,11 @@ vi.mock("../src/db", async (importOriginal) => ({
   db: mockDb,
 }));
 vi.mock("../src/db/schema", () => ({ jobs }));
-vi.mock("../src/services/jobs/repository", () => ({ jobReadSelection: {} }));
+vi.mock("../src/services/jobs/repository", () => ({
+  getJobListReadSelection: () => ({}),
+  jobListReadSelection: {},
+  jobReadSelection: {},
+}));
 vi.mock("drizzle-orm", () => {
   const sqlTag = (strings: TemplateStringsArray, ...values: unknown[]) => ({
     type: "sql",

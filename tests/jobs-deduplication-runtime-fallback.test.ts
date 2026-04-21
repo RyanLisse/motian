@@ -48,7 +48,11 @@ async function loadDeduplicationModule(mockExecute: ReturnType<typeof vi.fn>) {
       or: stub,
     };
   });
-  vi.doMock("../src/services/jobs/repository", () => ({ jobReadSelection: {} }));
+  vi.doMock("../src/services/jobs/repository", () => ({
+    getJobListReadSelection: () => ({}),
+    jobListReadSelection: {},
+    jobReadSelection: {},
+  }));
 
   return import("../src/services/jobs/deduplication");
 }

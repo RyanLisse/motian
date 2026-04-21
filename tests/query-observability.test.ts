@@ -65,6 +65,7 @@ async function importListJobsWithTelemetryMocks() {
     getJobStatusCondition: vi.fn(() => ({ type: "status-condition" })),
   }));
   vi.doMock("../src/services/jobs/repository", () => ({
+    jobListReadSelection: { id: "jobs.id" },
     jobReadSelection: { id: "jobs.id" },
   }));
 
@@ -163,6 +164,7 @@ async function importHybridSearchWithTelemetryMocks() {
     })),
   }));
   vi.doMock("../src/services/jobs/repository", () => ({
+    jobListReadSelection: { id: "jobs.id" },
     jobReadSelection: { id: "jobs.id" },
   }));
   vi.doMock("../src/services/jobs/deduplication", () => ({
