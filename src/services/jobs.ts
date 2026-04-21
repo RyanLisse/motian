@@ -99,7 +99,7 @@ export {
   updateJobEnrichment,
 };
 
-const DEFAULT_OPEN_VACATURES_CACHE_VERSION = "v1";
+const DEFAULT_OPEN_VACATURES_CACHE_VERSION = "v2-lite-projection";
 
 function isDefaultOpenVacaturesList(opts: UnifiedJobSearchOptions) {
   return (
