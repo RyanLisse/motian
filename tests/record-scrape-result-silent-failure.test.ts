@@ -1,51 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { dbMock, publishMock } = vi.hoisted(() => {
-  type ScrapeRow = { jobsFound: number; runAt: Date };
-  type ConfigRow = { id: string; consecutiveFailures: number };
-
   const state = {
-    platform: "test-platform",
     configId: "config-1",
     previousFailures: 0,
     // Most-recent-first history returned for the streak query.
-    recentHistory: [] as ScrapeRow[],
+    recentHistory: [] as Array<{ jobsFound: number; runAt: Date }>,
     historicalMax: 0,
     capturedUpdates: [] as Array<Record<string, unknown>>,
-  };
-
-  const selectChain = () => {
-    // Simulate the four select shapes used by recordScrapeResult:
-    //  1. fetch config
-    //  2. fetch recent runs (streak window)
-    //  3. fetch historical max
-    let callKind: "config" | "recent" | "max" = "config";
-    const chain: Record<string, unknown> = {
-      from(_table: unknown) {
-        return chain;
-      },
-      where(_predicate: unknown) {
-        return chain;
-      },
-      limit(_n: number) {
-        const rows: ConfigRow[] = [
-          { id: state.configId, consecutiveFailures: state.previousFailures },
-        ];
-        return Promise.resolve(rows);
-      },
-      orderBy(_o: unknown) {
-        // only the recent-history query uses orderBy
-        return Promise.resolve(state.recentHistory);
-      },
-    };
-    // Detect query shape by the first select() call's column set below.
-    // We pick based on whether the caller immediately awaits (streak query
-    // ends with orderBy, max query returns [{ max: n }]).
-    const switchableFrom = (callType: typeof callKind) => {
-      callKind = callType;
-      return chain;
-    };
-    return { chain, switchableFrom };
   };
 
   const dbMock = {
@@ -119,10 +81,9 @@ vi.mock("../src/db", () => ({
   eq: (a: unknown, b: unknown) => ({ eq: [a, b] }),
   gte: (a: unknown, b: unknown) => ({ gte: [a, b] }),
   desc: (a: unknown) => ({ desc: a }),
-  sql: Object.assign(
-    (strings: TemplateStringsArray, ..._values: unknown[]) => ({ sql: strings }),
-    { raw: (s: string) => ({ raw: s }) },
-  ),
+  sql: Object.assign((strings: TemplateStringsArray, ..._values: unknown[]) => ({ sql: strings }), {
+    raw: (s: string) => ({ raw: s }),
+  }),
 }));
 
 vi.mock("../src/lib/event-bus", () => ({
@@ -190,10 +151,7 @@ describe("recordScrapeResult silent-failure detection", () => {
       errors: [],
     });
 
-    expect(publishMock).not.toHaveBeenCalledWith(
-      "scrape:silent_failure",
-      expect.anything(),
-    );
+    expect(publishMock).not.toHaveBeenCalledWith("scrape:silent_failure", expect.anything());
   });
 
   it("stays silent when the platform has no historical evidence of producing jobs", async () => {
@@ -216,10 +174,7 @@ describe("recordScrapeResult silent-failure detection", () => {
       errors: [],
     });
 
-    expect(publishMock).not.toHaveBeenCalledWith(
-      "scrape:silent_failure",
-      expect.anything(),
-    );
+    expect(publishMock).not.toHaveBeenCalledWith("scrape:silent_failure", expect.anything());
   });
 
   it("does not check silent-failure when jobsFound is non-zero", async () => {
@@ -236,9 +191,6 @@ describe("recordScrapeResult silent-failure detection", () => {
       errors: [],
     });
 
-    expect(publishMock).not.toHaveBeenCalledWith(
-      "scrape:silent_failure",
-      expect.anything(),
-    );
+    expect(publishMock).not.toHaveBeenCalledWith("scrape:silent_failure", expect.anything());
   });
 });

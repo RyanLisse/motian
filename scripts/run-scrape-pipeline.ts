@@ -1,3 +1,6 @@
+// Ops helper: run the real scrape pipeline for one or more platforms.
+// Usage: `SCRAPE_TARGETS="werkzoeken" pnpm tsx scripts/run-scrape-pipeline.ts`.
+// Runs scrape + normalize + recordScrapeResult end-to-end against the DB in .env.local.
 import { db } from "@motian/db";
 import { sql } from "drizzle-orm";
 import { runScrapePipeline } from "@/src/services/scrape-pipeline";
