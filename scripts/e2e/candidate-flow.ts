@@ -156,11 +156,25 @@ interface RunManifest {
 class Recorder {
   private steps: StepRecord[] = [];
   private counter = 0;
+  /**
+   * Slugs that did not pass — failed OR skipped. Both block dependents:
+   * a skipped step is just an upstream failure propagating, so it can't
+   * satisfy a downstream prerequisite either.
+   */
+  private blockedSlugs = new Set<string>();
 
   constructor(private page: Page) {}
 
   get results(): readonly StepRecord[] {
     return this.steps;
+  }
+
+  /** First blocking dependency, if any. */
+  private findBlocker(deps: readonly string[]): string | undefined {
+    for (const dep of deps) {
+      if (this.blockedSlugs.has(dep)) return dep;
+    }
+    return undefined;
   }
 
   private nextFilename(slug: string, ext = "png"): { file: string; path: string } {
@@ -174,7 +188,17 @@ class Recorder {
     slug: string,
     title: string,
     action: () => Promise<{ details?: Record<string, unknown>; result?: T } | undefined>,
+    options: { dependsOn?: readonly string[] } = {},
   ): Promise<T | undefined> {
+    // Skip the step if any prerequisite failed or was itself skipped — produces
+    // honest "skip" records instead of false positives from screenshot-only
+    // assertions, and stops cascading interactions on a closed dialog.
+    const blocker = this.findBlocker(options.dependsOn ?? []);
+    if (blocker) {
+      this.skip(slug, title, `prerequisite step "${blocker}" did not pass`);
+      return undefined;
+    }
+
     const { file, path } = this.nextFilename(slug);
     const started = Date.now();
     logInfo(`[${String(this.counter).padStart(2, "0")}] ${title}`);
@@ -209,6 +233,7 @@ class Recorder {
         error: message,
       };
       this.steps.push(step);
+      this.blockedSlugs.add(slug);
       logErr(`${title}: ${message}`);
       return undefined;
     }
@@ -216,6 +241,7 @@ class Recorder {
 
   skip(slug: string, title: string, reason: string): void {
     this.counter += 1;
+    this.blockedSlugs.add(slug);
     this.steps.push({
       index: this.counter,
       slug,
@@ -242,9 +268,10 @@ class Recorder {
 
 async function waitForServer(url: string, timeoutMs = 30_000): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
-  // Probe a lightweight route that doesn't touch the DB, so the test can start
-  // even if the full app surface is slow to compile on first hit.
-  const probeUrl = `${url}/api/gezondheid`;
+  // Probe the favicon — a static asset that doesn't touch the DB, so the test
+  // can start even when backend services are slow or unavailable. Any HTTP
+  // response (including 404) means Next.js is up and serving traffic.
+  const probeUrl = `${url}/favicon.ico`;
   while (Date.now() < deadline) {
     try {
       const controller = new AbortController();
@@ -313,11 +340,21 @@ async function runCandidateFlow(): Promise<number> {
     page.setDefaultTimeout(NAV_TIMEOUT_MS);
     page.setDefaultNavigationTimeout(NAV_TIMEOUT_MS);
 
-    // Surface browser console errors into our manifest for debugging.
+    // Surface browser console + network failures into our manifest for debugging.
     const consoleErrors: string[] = [];
+    const networkErrors: string[] = [];
     page.on("pageerror", (err) => consoleErrors.push(`[pageerror] ${err.message}`));
     page.on("console", (msg) => {
       if (msg.type() === "error") consoleErrors.push(`[console.error] ${msg.text()}`);
+    });
+    page.on("requestfailed", (req) => {
+      const failure = req.failure()?.errorText ?? "unknown";
+      networkErrors.push(`[requestfailed] ${req.method()} ${req.url()} — ${failure}`);
+    });
+    page.on("response", (res) => {
+      if (res.status() >= 500) {
+        networkErrors.push(`[5xx] ${res.request().method()} ${res.url()} — HTTP ${res.status()}`);
+      }
     });
 
     const recorder = new Recorder(page);
@@ -337,22 +374,44 @@ async function runCandidateFlow(): Promise<number> {
     // --------------------------------------------------------------
     // Step 2 — Open the intake wizard
     // --------------------------------------------------------------
-    await recorder.record("wizard-open", "Open Kandidaat toevoegen wizard", async () => {
-      await page.getByRole("button", { name: /Kandidaat toevoegen/ }).click();
-      await page.getByRole("heading", { name: /Kandidaat intake/i }).waitFor({ state: "visible" });
-    });
+    await recorder.record(
+      "wizard-open",
+      "Open Kandidaat toevoegen wizard",
+      async () => {
+        await page.getByRole("button", { name: /Kandidaat toevoegen/ }).click();
+        await page
+          .getByRole("heading", { name: /Kandidaat intake/i })
+          .waitFor({ state: "visible" });
+      },
+      { dependsOn: ["kandidaten-list"] },
+    );
 
     // --------------------------------------------------------------
     // Step 3 — Switch to CV upload mode
     // --------------------------------------------------------------
-    await recorder.record("wizard-cv-mode", "Select CV upload mode", async () => {
-      // The mode selector buttons are plain <button> elements with a <p>
-      // "CV upload" inside — target via text.
-      await page.locator("button", { hasText: "CV upload" }).first().click();
-      await page
-        .getByText("CV upload als startpunt", { exact: false })
-        .waitFor({ state: "visible" });
-    });
+    await recorder.record(
+      "wizard-cv-mode",
+      "Select CV upload mode",
+      async () => {
+        // The "CV upload" string appears in two places: the mode-toggle
+        // button (a <button> wrapping a <p>) and the section heading
+        // "CV upload als startpunt". The toggle button is the only one
+        // whose direct text equals "CV upload" plus its description, so
+        // scope the selector to the role + leading-text match.
+        const cvModeButton = page
+          .getByRole("button")
+          .filter({ has: page.locator(":scope > p:text-is('CV upload')") });
+        const fallback = page.locator("button:has(> p:text-is('CV upload'))");
+        const target = (await cvModeButton.count()) ? cvModeButton.first() : fallback.first();
+        await target.click();
+        // Confirm the mode actually changed by waiting for the CV-mode
+        // heading copy to appear (it only renders when intakeMode === "cv").
+        await page
+          .getByText("CV upload als startpunt", { exact: false })
+          .waitFor({ state: "visible" });
+      },
+      { dependsOn: ["wizard-open"] },
+    );
 
     // --------------------------------------------------------------
     // Step 4 — Upload the CV and wait for AI parsing
@@ -360,43 +419,48 @@ async function runCandidateFlow(): Promise<number> {
     const parseDetails = await recorder.record<{
       parsedName?: string;
       parsedRole?: string;
-    }>("cv-parse", "Upload CV and wait for AI parsing", async () => {
-      await page.setInputFiles("#wzp-cv", DEFAULT_FIXTURE);
-      // Wait for the preview card that appears after /api/cv-upload returns.
-      await page
-        .getByText("CV-profielpreview gereed")
-        .waitFor({ state: "visible", timeout: PARSE_TIMEOUT_MS });
+    }>(
+      "cv-parse",
+      "Upload CV and wait for AI parsing",
+      async () => {
+        await page.setInputFiles("#wzp-cv", DEFAULT_FIXTURE);
+        // Wait for the preview card that appears after /api/cv-upload returns.
+        await page
+          .getByText("CV-profielpreview gereed")
+          .waitFor({ state: "visible", timeout: PARSE_TIMEOUT_MS });
 
-      const parsedName = await page
-        .locator(
-          'p.text-sm.font-semibold.text-foreground:right-of(:text("CV-profielpreview gereed"))',
-        )
-        .first()
-        .textContent()
-        .catch(() => null);
+        const parsedName = await page
+          .locator(
+            'p.text-sm.font-semibold.text-foreground:right-of(:text("CV-profielpreview gereed"))',
+          )
+          .first()
+          .textContent()
+          .catch(() => null);
 
-      // Fallbacks: read the populated form fields (they get pre-filled from parse).
-      const nameFromField = await page
-        .locator("#wzp-name")
-        .inputValue()
-        .catch(() => "");
-      const roleFromField = await page
-        .locator("#wzp-role")
-        .inputValue()
-        .catch(() => "");
+        // Fallbacks: read the populated form fields (they get pre-filled from parse).
+        const nameFromField = await page
+          .locator("#wzp-name")
+          .inputValue()
+          .catch(() => "");
+        const roleFromField = await page
+          .locator("#wzp-role")
+          .inputValue()
+          .catch(() => "");
 
-      return {
-        details: {
-          parsedName: parsedName?.trim() || nameFromField,
-          parsedRole: roleFromField,
-          fixture: basename(DEFAULT_FIXTURE),
-        },
-        result: {
-          parsedName: nameFromField || parsedName || undefined,
-          parsedRole: roleFromField || undefined,
-        },
-      };
-    });
+        return {
+          details: {
+            parsedName: parsedName?.trim() || nameFromField,
+            parsedRole: roleFromField,
+            fixture: basename(DEFAULT_FIXTURE),
+          },
+          result: {
+            parsedName: nameFromField || parsedName || undefined,
+            parsedRole: roleFromField || undefined,
+          },
+        };
+      },
+      { dependsOn: ["wizard-cv-mode"] },
+    );
 
     candidateName = parseDetails?.parsedName;
 
@@ -452,6 +516,7 @@ async function runCandidateFlow(): Promise<number> {
           result: { candidateId: capturedId },
         };
       },
+      { dependsOn: ["cv-parse"] },
     );
 
     candidateId = submitResult?.candidateId;
@@ -459,54 +524,76 @@ async function runCandidateFlow(): Promise<number> {
     // --------------------------------------------------------------
     // Step 6 — Linking step: topmatches visible
     // --------------------------------------------------------------
-    await recorder.record("linking-matches", "Review top matches", async () => {
-      // The linking step renders MatchSuggestionCard list (zero, one, or many).
-      // We wait a short moment for any async-loaded persisted matches to render.
-      await page.waitForTimeout(500);
-      const matchCount = await page.locator("[data-match-id], [data-slot='match-card']").count();
-
-      return { details: { matchCount } };
-    });
+    await recorder.record(
+      "linking-matches",
+      "Review top matches",
+      async () => {
+        // Confirm we're actually on the linking step before counting matches —
+        // otherwise an empty page would silently report 0 matches as success.
+        await page
+          .getByRole("heading", { name: /Review & koppelen/i })
+          .waitFor({ state: "visible", timeout: 5_000 });
+        await page.waitForTimeout(500);
+        const matchCount = await page.locator("[data-match-id], [data-slot='match-card']").count();
+        return { details: { matchCount } };
+      },
+      { dependsOn: ["profile-submit"] },
+    );
 
     // --------------------------------------------------------------
-    // Step 7 — Close wizard via "sla over" (skip) to keep the flow idempotent
+    // Step 7 — Close wizard via "Later doen" (skip) to keep the flow idempotent
     // --------------------------------------------------------------
-    await recorder.record("linking-close", "Close wizard and return to list", async () => {
-      const skipButton = page.getByRole("button", {
-        name: /Sla over|Overslaan|Later koppelen/i,
-      });
-      const finishButton = page.getByRole("button", { name: /Opslaan|Klaar|Voltooien/i });
-      if (await skipButton.count()) {
-        await skipButton.first().click();
-      } else if (await finishButton.count()) {
-        await finishButton.first().click();
-      } else {
-        // Fall back: close the modal.
-        await page.keyboard.press("Escape");
-      }
-      await page.waitForURL(/\/kandidaten(\?|$)/, { timeout: 10_000 }).catch(() => undefined);
-      await page.getByRole("button", { name: /Kandidaat toevoegen/ }).waitFor({ state: "visible" });
-    });
+    await recorder.record(
+      "linking-close",
+      "Close wizard and return to list",
+      async () => {
+        // Real button labels from wizard-step-linking.tsx:
+        //   skip:    "Later doen"
+        //   confirm: "Selectie koppelen en afronden" / "Afronden zonder koppeling"
+        const skipButton = page.getByRole("button", { name: /^Later doen$/ });
+        const finishButton = page.getByRole("button", {
+          name: /Selectie koppelen en afronden|Afronden zonder koppeling/,
+        });
+        if (await skipButton.count()) {
+          await skipButton.first().click();
+        } else if (await finishButton.count()) {
+          await finishButton.first().click();
+        } else {
+          // Fall back: close the modal.
+          await page.keyboard.press("Escape");
+        }
+        await page.waitForURL(/\/kandidaten(\?|$)/, { timeout: 10_000 }).catch(() => undefined);
+        await page
+          .getByRole("button", { name: /Kandidaat toevoegen/ })
+          .waitFor({ state: "visible" });
+      },
+      { dependsOn: ["linking-matches"] },
+    );
 
     // --------------------------------------------------------------
     // Step 8 — Candidate detail page
     // --------------------------------------------------------------
     if (candidateId) {
-      await recorder.record("candidate-detail", "Open candidate detail page", async () => {
-        const detailUrl = `${BASE_URL}/kandidaten/${candidateId}`;
-        const response = await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
-        if (!response?.ok()) {
-          throw new Error(`HTTP ${response?.status() ?? "?"} for ${detailUrl}`);
-        }
-        await page.waitForLoadState("networkidle").catch(() => undefined);
-        return {
-          details: {
-            url: detailUrl,
-            status: response.status(),
-            title: await page.title(),
-          },
-        };
-      });
+      await recorder.record(
+        "candidate-detail",
+        "Open candidate detail page",
+        async () => {
+          const detailUrl = `${BASE_URL}/kandidaten/${candidateId}`;
+          const response = await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
+          if (!response?.ok()) {
+            throw new Error(`HTTP ${response?.status() ?? "?"} for ${detailUrl}`);
+          }
+          await page.waitForLoadState("networkidle").catch(() => undefined);
+          return {
+            details: {
+              url: detailUrl,
+              status: response.status(),
+              title: await page.title(),
+            },
+          };
+        },
+        { dependsOn: ["profile-submit"] },
+      );
     } else {
       recorder.skip(
         "candidate-detail",
@@ -518,6 +605,9 @@ async function runCandidateFlow(): Promise<number> {
     // --------------------------------------------------------------
     // Step 9 — Pipeline surface reflects the new candidate
     // --------------------------------------------------------------
+    // /pipeline and /vacatures are surface-level checks — they should run
+    // even if upstream pipeline steps fail, so we can see whether the rest
+    // of the app still renders. No `dependsOn`.
     await recorder.record("pipeline", "Verify /pipeline surface renders", async () => {
       const response = await page.goto(`${BASE_URL}/pipeline`, { waitUntil: "domcontentloaded" });
       if (!response?.ok()) {
@@ -583,7 +673,7 @@ async function runCandidateFlow(): Promise<number> {
     writeFileSync(join(RUN_DIR, "manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
     writeFileSync(
       join(RUN_DIR, "README.md"),
-      renderMarkdownReport(manifest, consoleErrors),
+      renderMarkdownReport(manifest, consoleErrors, networkErrors),
       "utf8",
     );
 
@@ -616,7 +706,11 @@ async function runCandidateFlow(): Promise<number> {
 // Markdown report
 // ---------------------------------------------------------------------------
 
-function renderMarkdownReport(manifest: RunManifest, consoleErrors: string[]): string {
+function renderMarkdownReport(
+  manifest: RunManifest,
+  consoleErrors: string[],
+  networkErrors: string[],
+): string {
   const statusIcon: Record<StepStatus, string> = {
     pass: "✅",
     fail: "❌",
@@ -667,8 +761,11 @@ ${
   consoleErrors.length > 0
     ? `## Browser console errors\n\n\`\`\`\n${consoleErrors.slice(0, 50).join("\n")}\n\`\`\`\n`
     : ""
-}
-`;
+}${
+  networkErrors.length > 0
+    ? `\n## Network failures\n\n\`\`\`\n${networkErrors.slice(0, 50).join("\n")}\n\`\`\`\n`
+    : ""
+}`;
 }
 
 // ---------------------------------------------------------------------------
