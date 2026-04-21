@@ -152,6 +152,7 @@ export function OverviewFilterPanel({
 
         <MobileFilterChips
           activeFilterCount={activeFilterCount}
+          mobileFiltersOpen={mobileFiltersOpen}
           onOpenFilters={onToggleMobileFilters}
           rateMin={rateMinInput}
           rateMax={rateMaxInput}

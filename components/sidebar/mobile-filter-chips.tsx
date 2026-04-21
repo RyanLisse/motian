@@ -19,6 +19,7 @@ import { CONTRACT_TYPES } from "./sidebar-types";
 
 interface MobileFilterChipsProps {
   activeFilterCount: number;
+  mobileFiltersOpen: boolean;
   onOpenFilters: () => void;
   rateMin: string;
   rateMax: string;
@@ -34,6 +35,7 @@ const THUISWERKEN_TOKEN = "thuiswerken";
 
 export function MobileFilterChips({
   activeFilterCount,
+  mobileFiltersOpen,
   onOpenFilters,
   rateMin,
   rateMax,
@@ -74,7 +76,9 @@ export function MobileFilterChips({
         <button
           type="button"
           onClick={onOpenFilters}
-          aria-label="Alle filters openen"
+          aria-expanded={mobileFiltersOpen}
+          aria-controls="opdrachten-mobile-filters"
+          aria-label={mobileFiltersOpen ? "Filters sluiten" : "Filters openen"}
           className={cn(
             "inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-border bg-background px-3 text-foreground shadow-sm",
             activeFilterCount > 0 && "border-primary/40 bg-primary/10 text-primary",
