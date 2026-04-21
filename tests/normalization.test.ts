@@ -99,4 +99,50 @@ describe("normalizeAndSaveJobs regression", () => {
       competences: ["TypeScript"],
     });
   });
+
+  it("matches skill sync payloads by externalId even when returned rows are reordered", async () => {
+    mockValues.mockImplementationOnce(() => ({
+      onConflictDoUpdate: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([
+        { id: "uuid-2", externalId: "ext-2", isNew: false },
+        { id: "uuid-1", externalId: "ext-1", isNew: true },
+      ]),
+    }));
+
+    await normalizeAndSaveJobs("test-platform", [
+      {
+        externalId: "ext-1",
+        externalUrl: "https://example.com/1",
+        title: "Software Engineer",
+        description: "This is a very long description that should pass validation.",
+        requirements: [{ description: "React", isKnockout: true }],
+        competences: ["TypeScript"],
+        status: "open",
+      },
+      {
+        externalId: "ext-2",
+        externalUrl: "https://example.com/2",
+        title: "Platform Engineer",
+        description: "This is another very long description that should pass validation.",
+        requirements: [{ description: "Kubernetes", isKnockout: true }],
+        wishes: [{ description: "AWS" }],
+        competences: ["Terraform"],
+        status: "open",
+      },
+    ]);
+
+    expect(mockSyncJobSkills).toHaveBeenCalledTimes(2);
+    expect(mockSyncJobSkills).toHaveBeenNthCalledWith(1, {
+      jobId: "uuid-2",
+      requirements: [{ description: "Kubernetes", isKnockout: true }],
+      wishes: [{ description: "AWS" }],
+      competences: ["Terraform"],
+    });
+    expect(mockSyncJobSkills).toHaveBeenNthCalledWith(2, {
+      jobId: "uuid-1",
+      requirements: [{ description: "React", isKnockout: true }],
+      wishes: [],
+      competences: ["TypeScript"],
+    });
+  });
 });

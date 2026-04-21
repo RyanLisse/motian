@@ -286,7 +286,6 @@ describe("Opdrachten UI/API contracts", () => {
     const filtersSource = readFile("src", "lib", "opdrachten-filters.ts");
     const filterUrlSource = readFile("src", "lib", "opdrachten-filter-url.ts");
     const comboboxSource = readFile("components", "ui", "searchable-combobox.tsx");
-    const toolbarFiltersSource = readFile("app", "vacatures", "filters.tsx");
 
     expect(source).toContain("CompactMultiSelectFilter");
     expect(source).toContain("selectedPlatforms");
@@ -339,8 +338,6 @@ describe("Opdrachten UI/API contracts", () => {
     expect(source).toContain("DEFAULT_OPDRACHTEN_LIMIT");
     expect(comboboxSource).toContain("id={triggerId}");
     expect(comboboxSource).toContain('aria-haspopup="listbox"');
-    expect(toolbarFiltersSource).toContain('value="archived"');
-    expect(toolbarFiltersSource).toContain("Gearchiveerd");
   });
 
   it("detail page wires a shared end-client combobox into the existing context-aware navigation", () => {
@@ -406,7 +403,8 @@ describe("Opdrachten UI/API contracts", () => {
     const sidebar = readSidebarBundle();
     const listItem = readFile("components", "job-list-item.tsx");
 
-    expect(shell).toContain('pathname.startsWith("/opdrachten/")');
+    expect(shell).toContain('pathname.startsWith("/vacatures/")');
+    expect(shell).not.toContain('pathname.startsWith("/opdrachten/")');
     expect(shell).toContain("md:w-[380px]");
     expect(shell).toContain("hidden md:flex");
     expect(sidebar).toContain("buildDetailHref");

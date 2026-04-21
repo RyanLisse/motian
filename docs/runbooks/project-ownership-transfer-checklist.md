@@ -19,8 +19,8 @@
 - [ ] Record current open risks and priority beads:
   - [ ] `motian-n38` Modal scraping stub
   - [ ] `motian-scy` scoring is still too rule-based
-  - [ ] `motian-o5g` pagination gap
-  - [ ] `motian-uml` per-platform cron expression issue
+  - [ ] `motian-o5g` incomplete pagination coverage on remaining non-paginated surfaces
+  - [ ] `motian-uml` schedule observability/coverage follow-up now that per-platform cron due checks exist
 - [ ] Record any additional transfer-specific risks outside the repo if needed
 
 ## 3. Access Migration

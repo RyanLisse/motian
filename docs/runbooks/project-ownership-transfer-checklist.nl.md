@@ -19,8 +19,8 @@
 - [ ] Huidige open risico's en prioriteitsbeads vastgelegd:
   - [ ] `motian-n38` Modal scraping stub
   - [ ] `motian-scy` scoring is nog te rule-based
-  - [ ] `motian-o5g` pagination-gap
-  - [ ] `motian-uml` issue rond per-platform cron expression
+  - [ ] `motian-o5g` onvolledige paginationdekking op de resterende niet-gepagineerde oppervlakken
+  - [ ] `motian-uml` vervolgwerk rond schedule-observability en coverage nu per-platform cron due checks bestaan
 - [ ] Eventuele extra overdrachtsrisico's zo nodig buiten de repo vastgelegd
 
 ## 3. Toegang migreren

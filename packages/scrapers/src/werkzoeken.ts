@@ -1,3 +1,4 @@
+import { clearTimeout as clearNodeTimeout, setTimeout as setNodeTimeout } from "node:timers";
 import type {
   PlatformAdapter,
   PlatformRuntimeConfig,
@@ -564,16 +565,16 @@ export const werkzoekenAdapter: PlatformAdapter = {
     options?: { limit?: number; smoke?: boolean },
   ): Promise<PlatformScrapeResult> {
     const maxDurationMs = resolveWerkzoekenMaxDurationMs(config.parameters.maxDurationMs);
-    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    let timeoutHandle: ReturnType<typeof setNodeTimeout> | undefined;
     const timeoutPromise = new Promise<PlatformScrapeResult>((_, reject) => {
-      timeoutHandle = setTimeout(() => {
+      timeoutHandle = setNodeTimeout(() => {
         reject(new Error(`Werkzoeken scrape overschreed deadline van ${maxDurationMs}ms`));
       }, maxDurationMs);
     });
     try {
       return await Promise.race([scrapeWerkzoekenInternal(config, options), timeoutPromise]);
     } finally {
-      if (timeoutHandle) clearTimeout(timeoutHandle);
+      if (timeoutHandle) clearNodeTimeout(timeoutHandle);
     }
   },
 

@@ -160,8 +160,14 @@ describe("chat widget continuity", () => {
 
     const widgetContext = resolveRouteContext("/kandidaten/42", "42");
     const pinnedContext = resolveRouteContext("/vacatures/123", "123");
+    const legacyJobContext = resolveRouteContext("/opdrachten/123", "123");
 
     expect(resolveActiveContext("/chat", widgetContext, pinnedContext)).toEqual(pinnedContext);
+    expect(legacyJobContext).toEqual({
+      route: "/opdrachten/123",
+      entityType: null,
+      entityId: null,
+    });
 
     const loadedState = buildLoadedSessionState("session-2", {
       messages: [{ id: "1", role: "user", parts: [{ type: "text", text: "Hoi" }] }],

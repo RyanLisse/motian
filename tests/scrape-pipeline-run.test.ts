@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   publish,
-  enrichJobsBatch,
   normalizeAndSaveJobs,
   recordScrapeResult,
   getConfigByPlatform,
@@ -12,7 +11,6 @@ const {
   getDynamicAdapter,
 } = vi.hoisted(() => ({
   publish: vi.fn(),
-  enrichJobsBatch: vi.fn(() => Promise.resolve()),
   normalizeAndSaveJobs: vi.fn(),
   recordScrapeResult: vi.fn(() => Promise.resolve()),
   getConfigByPlatform: vi.fn(),
@@ -23,9 +21,6 @@ const {
 }));
 
 vi.mock("../src/lib/event-bus", () => ({ publish }));
-vi.mock("../src/services/ai-enrichment", () => ({
-  enrichJobsBatch,
-}));
 vi.mock("../src/services/normalize", () => ({
   normalizeAndSaveJobs,
 }));
@@ -49,7 +44,6 @@ import { runScrapePipeline } from "../src/services/scrape-pipeline";
 describe("runScrapePipeline", () => {
   beforeEach(() => {
     publish.mockReset();
-    enrichJobsBatch.mockClear();
     normalizeAndSaveJobs.mockReset();
     recordScrapeResult.mockReset();
     recordScrapeResult.mockResolvedValue(undefined);

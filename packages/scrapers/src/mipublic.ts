@@ -23,6 +23,10 @@ type MipublicOptions = {
   sitemapUrl: string;
 };
 
+type MipublicCaptchaBlocker = {
+  message: string;
+};
+
 function normalizeMipublicOrigin(baseUrl: string): string {
   const value = baseUrl.trim() || DEFAULT_MIPUBLIC_ORIGIN;
   const url = new URL(value);
@@ -187,12 +191,40 @@ function parseMipublicHtmlFallback(html: string, canonicalUrl: string): RawScrap
   };
 }
 
+function detectMipublicCaptchaBlocker(
+  pageUrl: string,
+  page: { status: number; html: string },
+): MipublicCaptchaBlocker | null {
+  const lowerHtml = page.html.toLowerCase();
+  const captchaMarkers = [
+    "/.well-known/sgcaptcha/",
+    "sgcaptcha",
+    'http-equiv="refresh"',
+    "http-equiv='refresh'",
+  ];
+
+  if (page.status === 202 && captchaMarkers.some((marker) => lowerHtml.includes(marker))) {
+    return {
+      message: `MiPublic pagina wordt geblokkeerd door een anti-bot challenge: ${pageUrl}`,
+    };
+  }
+
+  return null;
+}
+
 async function scrapeMipublicListings(
   config: PlatformRuntimeConfig,
   options?: { limit?: number },
 ): Promise<PlatformScrapeResult> {
   const resolved = resolveMipublicOptions(config);
   const sitemapPage = await fetchPublicJobBoardPage(resolved.sitemapUrl);
+  const sitemapCaptchaBlocker = detectMipublicCaptchaBlocker(resolved.sitemapUrl, sitemapPage);
+  if (sitemapCaptchaBlocker) {
+    return {
+      listings: [],
+      errors: [sitemapCaptchaBlocker.message],
+    };
+  }
   const limit = options?.limit ?? resolved.maxListings;
   const detailUrls = extractSitemapUrls(sitemapPage.html).slice(0, limit);
 
@@ -206,6 +238,13 @@ async function scrapeMipublicListings(
   const results = await mapWithConcurrency(detailUrls, resolved.detailConcurrency, async (detailUrl) => {
     try {
       const detailPage = await fetchPublicJobBoardPage(detailUrl);
+      const captchaBlocker = detectMipublicCaptchaBlocker(detailUrl, detailPage);
+      if (captchaBlocker) {
+        return {
+          error: captchaBlocker.message,
+          listings: [] as RawScrapedListing[],
+        };
+      }
       const listings = parsePublicJobBoardJobPostings(detailPage.html, detailPage.url);
 
       if (listings.length === 0) {
@@ -233,13 +272,29 @@ async function scrapeMipublicListings(
   });
 
   const listings = results.flatMap((entry) => entry.listings);
-  const noDataCount = results.filter((entry) => "isNoData" in entry && entry.isNoData).length;
+  const noDataEntries = results.filter(
+    (
+      entry,
+    ): entry is {
+      error: string;
+      listings: RawScrapedListing[];
+      isNoData: true;
+    } => "isNoData" in entry && entry.isNoData === true,
+  );
+  const noDataCount = noDataEntries.length;
   const realErrors = results.flatMap((entry) =>
     entry.error && !("isNoData" in entry && entry.isNoData) ? [entry.error] : [],
   );
   // Summarise missing-data pages into a single line instead of one per URL
   if (noDataCount > 0) {
-    realErrors.push(`${noDataCount} MiPublic detailpagina's bevatten geen JobPosting-data`);
+    const exampleUrls = noDataEntries
+      .map((entry) => entry.error.replace("MiPublic detailpagina bevat geen JobPosting-data: ", ""))
+      .slice(0, 3);
+    const exampleSuffix =
+      exampleUrls.length > 0 ? ` (bijv. ${exampleUrls.join(", ")})` : "";
+    realErrors.push(
+      `${noDataCount} MiPublic detailpagina's bevatten geen JobPosting-data${exampleSuffix}`,
+    );
   }
 
   return {
@@ -252,6 +307,16 @@ export const mipublicAdapter: PlatformAdapter = {
   async validate(config: PlatformRuntimeConfig): Promise<PlatformValidationResult> {
     const resolved = resolveMipublicOptions(config);
     const sitemapPage = await fetchPublicJobBoardPage(resolved.sitemapUrl);
+    const sitemapCaptchaBlocker = detectMipublicCaptchaBlocker(resolved.sitemapUrl, sitemapPage);
+    if (sitemapCaptchaBlocker) {
+      return {
+        ok: false,
+        status: "failed",
+        blockerKind: "anti_bot_challenge",
+        message: sitemapCaptchaBlocker.message,
+        evidence: { sitemapUrl: resolved.sitemapUrl },
+      };
+    }
     const detailUrls = extractSitemapUrls(sitemapPage.html);
 
     if (detailUrls.length === 0) {

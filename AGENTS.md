@@ -159,8 +159,8 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 ### P1 — High Priority
 
 - `motian-scy` — Scoring is rule-based only (needs semantic/vector matching)
-- `motian-o5g` — No pagination anywhere (full table scans)
-- `motian-uml` — Cron ignores per-platform cronExpression in DB
+- `motian-o5g` — Pagination coverage is still incomplete on some surfaces, even though core recruiter views already paginate
+- `motian-uml` — Cron due checks now respect per-platform `cronExpression`; remaining work is to verify and tighten schedule observability/coverage gaps
 
 ### P2 — Medium Priority
 
@@ -175,12 +175,12 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 
 ### P3 — Lower Priority
 
-- `motian-ocy` — Migrate middleware.ts to proxy.ts (Next.js 16)
+- `motian-ocy` — Proxy migration is already in place; remaining cleanup is stale middleware references and compatibility/docs follow-up
 - `motian-u3r` — Hardcoded platform list in 3+ files
 - `motian-clg` — No monitoring/alerting (circuit breaker is silent)
 - `motian-392` — Search is basic (no full-text tsvector/GIN)
 - `motian-nbh` — Test coverage is structural only
-- `motian-55q` — Sidebar nav missing Interviews and Messages
+- `motian-55q` — Interviews and Messages exist in overflow nav; decide whether they should remain overflow-only or be promoted
 - `motian-z9l` — Opdracht detail page sequential DB query waterfall
 
 ### P4 — Backlog

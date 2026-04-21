@@ -46,9 +46,7 @@ function normalizeDeduplicationPart(value: string | null | undefined) {
  *
  * Returns 0 if both paths fail (e.g. execute() unavailable in current driver).
  */
-export async function countDedupedOpenJobs(
-  database: typeof db = db,
-): Promise<number> {
+export async function countDedupedOpenJobs(database: typeof db = db): Promise<number> {
   const openCondition = and(eq(jobs.status, "open"), isNull(jobs.deletedAt));
 
   try {
