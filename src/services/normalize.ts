@@ -1,3 +1,4 @@
+import { and, eq, inArray } from "drizzle-orm";
 import type { z } from "zod";
 import { stripHtml } from "../../packages/scrapers/src/strip-html";
 import { db, jobs, sql } from "../db";
@@ -43,6 +44,7 @@ const MAX_INSERT_BYTES = 8 * 1024 * 1024;
 const HOURS_MAX = 168;
 const MAX_HOURLY_RATE = 500;
 const SKILL_SYNC_CONCURRENCY = 5;
+const EXISTING_JOB_LOOKUP_BATCH_SIZE = 500;
 type JobInsertRow = typeof jobs.$inferInsert;
 
 const JOB_CONFLICT_UPDATE_SET = {
@@ -282,6 +284,67 @@ async function syncBatchSkills(
   }
 }
 
+function chunkValues<T>(values: T[], size: number) {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+
+  return chunks;
+}
+
+async function findExistingExternalIds(
+  platform: string,
+  validItems: NormalizedJobItem[],
+): Promise<Set<string>> {
+  if (platform !== "opdrachtoverheid" || validItems.length === 0) {
+    return new Set();
+  }
+
+  const existingIds = new Set<string>();
+  const externalIds = Array.from(new Set(validItems.map((item) => item.parsed.externalId)));
+
+  for (const batch of chunkValues(externalIds, EXISTING_JOB_LOOKUP_BATCH_SIZE)) {
+    const rows = await db
+      .select({ externalId: jobs.externalId })
+      .from(jobs)
+      .where(and(eq(jobs.platform, platform), inArray(jobs.externalId, batch)));
+
+    for (const row of rows) {
+      existingIds.add(row.externalId);
+    }
+  }
+
+  return existingIds;
+}
+
+async function touchExistingJobs(platform: string, existingItems: NormalizedJobItem[]) {
+  const touchedJobIds: string[] = [];
+  let touchedCount = 0;
+
+  if (platform !== "opdrachtoverheid" || existingItems.length === 0) {
+    return { touchedJobIds, touchedCount };
+  }
+
+  const externalIds = Array.from(new Set(existingItems.map((item) => item.parsed.externalId)));
+
+  for (const batch of chunkValues(externalIds, EXISTING_JOB_LOOKUP_BATCH_SIZE)) {
+    const touchedRows = await db
+      .update(jobs)
+      .set({ scrapedAt: sql`now()` })
+      .where(and(eq(jobs.platform, platform), inArray(jobs.externalId, batch)))
+      .returning({
+        id: jobs.id,
+      });
+
+    touchedCount += touchedRows.length;
+    touchedJobIds.push(...touchedRows.map((row) => row.id));
+  }
+
+  return { touchedJobIds, touchedCount };
+}
+
 export async function normalizeAndSaveJobs(
   platform: string,
   listings: Record<string, unknown>[],
@@ -310,8 +373,34 @@ export async function normalizeAndSaveJobs(
   }
 
   // Stap 2: Batch upsert
-  if (validItems.length > 0) {
-    const batches = chunkJobInsertBatches(validItems, platform);
+  let itemsToInsert = validItems;
+  if (platform === "opdrachtoverheid" && validItems.length > 0) {
+    try {
+      const existingExternalIds = await findExistingExternalIds(platform, validItems);
+      if (existingExternalIds.size > 0) {
+        const existingItems = validItems.filter((item) =>
+          existingExternalIds.has(item.parsed.externalId),
+        );
+        const newItems = validItems.filter(
+          (item) => !existingExternalIds.has(item.parsed.externalId),
+        );
+
+        try {
+          const touched = await touchExistingJobs(platform, existingItems);
+          duplicates += touched.touchedCount;
+          allJobIds.push(...touched.touchedJobIds);
+          itemsToInsert = newItems;
+        } catch {
+          itemsToInsert = validItems;
+        }
+      }
+    } catch {
+      itemsToInsert = validItems;
+    }
+  }
+
+  if (itemsToInsert.length > 0) {
+    const batches = chunkJobInsertBatches(itemsToInsert, platform);
     for (const batch of batches) {
       try {
         const result = await db

@@ -6,6 +6,9 @@ const {
   mockValues,
   mockOnConflictDoUpdate,
   mockReturning,
+  mockSelectWhere,
+  mockUpdate,
+  mockUpdateReturning,
   mockIsSkillsCatalogAvailable,
   mockSyncJobSkills,
 } = vi.hoisted(() => {
@@ -13,6 +16,13 @@ const {
   const mockOnConflictDoUpdate = vi.fn();
   const mockValues = vi.fn();
   const mockInsert = vi.fn();
+  const mockSelectWhere = vi.fn();
+  const mockFrom = vi.fn();
+  const mockSelect = vi.fn();
+  const mockUpdateReturning = vi.fn();
+  const mockUpdateWhere = vi.fn();
+  const mockSet = vi.fn();
+  const mockUpdate = vi.fn();
 
   mockValues.mockImplementation(() => ({
     onConflictDoUpdate: mockOnConflictDoUpdate,
@@ -21,13 +31,35 @@ const {
     returning: mockReturning,
   }));
   mockInsert.mockImplementation(() => ({ values: mockValues }));
+  mockFrom.mockImplementation(() => ({
+    where: mockSelectWhere,
+  }));
+  mockSelect.mockImplementation(() => ({
+    from: mockFrom,
+  }));
+  mockUpdateWhere.mockImplementation(() => ({
+    returning: mockUpdateReturning,
+  }));
+  mockSet.mockImplementation(() => ({
+    where: mockUpdateWhere,
+  }));
+  mockUpdate.mockImplementation(() => ({
+    set: mockSet,
+  }));
 
   return {
-    mockDb: { insert: mockInsert },
+    mockDb: { insert: mockInsert, select: mockSelect, update: mockUpdate },
     mockInsert,
     mockValues,
     mockOnConflictDoUpdate,
     mockReturning,
+    mockSelect,
+    mockFrom,
+    mockSelectWhere,
+    mockUpdate,
+    mockSet,
+    mockUpdateWhere,
+    mockUpdateReturning,
     mockIsSkillsCatalogAvailable: vi.fn().mockResolvedValue(true),
     mockSyncJobSkills: vi.fn(),
   };
@@ -56,6 +88,8 @@ describe("normalizeAndSaveJobs status/endClient storage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsSkillsCatalogAvailable.mockResolvedValue(true);
+    mockSelectWhere.mockResolvedValue([]);
+    mockUpdateReturning.mockResolvedValue([]);
     mockReturning.mockResolvedValue([{ id: "job-1", externalId: "oo-123", isNew: true }]);
     mockSyncJobSkills.mockResolvedValue(undefined);
   });
@@ -104,5 +138,35 @@ describe("normalizeAndSaveJobs status/endClient storage", () => {
         competences: [],
       }),
     );
+  });
+
+  it("skips canonical skill sync for existing opdrachtoverheid jobs and only refreshes scrapedAt", async () => {
+    mockSelectWhere.mockResolvedValue([{ externalId: "oo-123" }]);
+    mockUpdateReturning.mockResolvedValue([{ id: "job-existing-1" }]);
+
+    const listing = {
+      title: "Senior Java Developer",
+      company: "Between",
+      endClient: "Gemeente Utrecht",
+      status: "open" as const,
+      location: "Utrecht - Utrecht",
+      description: "Senior Java developer gezocht voor een gemeentelijke moderniseringsopdracht.",
+      externalId: "oo-123",
+      externalUrl: "https://www.opdrachtoverheid.nl/opdracht/oo-123",
+      requirements: [{ description: "Java", isKnockout: true }],
+      wishes: [{ description: "Spring Boot" }],
+      competences: ["Microservices"],
+      conditions: [],
+    };
+
+    const result = await normalizeAndSaveJobs("opdrachtoverheid", [listing]);
+
+    expect(result.errors).toEqual([]);
+    expect(result.jobsNew).toBe(0);
+    expect(result.duplicates).toBe(1);
+    expect(result.jobIds).toEqual(["job-existing-1"]);
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockSyncJobSkills).not.toHaveBeenCalled();
   });
 });
