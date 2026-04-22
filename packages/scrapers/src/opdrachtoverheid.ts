@@ -11,7 +11,7 @@ import {
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 10;
-const REQUEST_TIMEOUT_MS = 60_000;
+const REQUEST_TIMEOUT_MS = 90_000;
 const MAX_ALLOWED_PAGES = 25;
 
 type ScrapeOpdrachtoverheidOptions = {
@@ -121,7 +121,7 @@ export async function scrapeOpdrachtoverheid(
 ): Promise<RawScrapedListing[]> {
   console.log("Opdrachtoverheid scrapen via API");
 
-  const MAX_RETRIES = 2;
+  const MAX_ATTEMPTS = 2;
   const pageSize = toBoundedPositiveInteger(options.pageSize, PAGE_SIZE, 1, PAGE_SIZE);
   const maxPages = options.smoke
     ? 1
@@ -138,7 +138,7 @@ export async function scrapeOpdrachtoverheid(
       : undefined;
   let attempt = 0;
 
-  while (attempt <= MAX_RETRIES) {
+  while (attempt < MAX_ATTEMPTS) {
     try {
       // Paginate through the API to avoid the 1000-result hard cap
       const allTenders: OpdrachtoverheidTender[] = [];
@@ -199,9 +199,9 @@ export async function scrapeOpdrachtoverheid(
       return validListings;
     } catch (err) {
       attempt++;
-      if (attempt > MAX_RETRIES) {
+      if (attempt >= MAX_ATTEMPTS) {
         throw new Error(
-          `Opdrachtoverheid scrape mislukt na ${MAX_RETRIES + 1} pogingen: ${err instanceof Error ? err.message : String(err)}`,
+          `Opdrachtoverheid scrape mislukt na ${MAX_ATTEMPTS} pogingen: ${err instanceof Error ? err.message : String(err)}`,
         );
       } else {
         const delay = 1200 * 2 ** attempt + Math.floor(Math.random() * 500);
