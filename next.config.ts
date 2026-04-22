@@ -33,6 +33,12 @@ const nextConfig: NextConfig = {
         destination: "/vacatures",
         permanent: true,
       },
+      // /dashboard is the common English default; this app's overview lives at /overzicht.
+      {
+        source: "/dashboard",
+        destination: "/overzicht",
+        permanent: true,
+      },
     ];
   },
   turbopack: {

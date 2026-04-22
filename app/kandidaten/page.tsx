@@ -183,7 +183,9 @@ async function KandidatenContent({ searchParams }: Props) {
 
         {/* Results count */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{totalCount} kandidaten gevonden</p>
+          <p className="text-sm text-muted-foreground">
+            {totalCount} {totalCount === 1 ? "kandidaat" : "kandidaten"} gevonden
+          </p>
           {totalPages > 1 && (
             <p className="text-sm text-muted-foreground">
               Pagina {page} van {totalPages}
