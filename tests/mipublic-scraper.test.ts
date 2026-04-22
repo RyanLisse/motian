@@ -159,16 +159,69 @@ describe("mipublicAdapter.scrape", () => {
     vi.restoreAllMocks();
   });
 
-  it("continues the scrape when some detail pages lack JobPosting data", async () => {
+  it("falls back to /sitemap_index.xml when the flat /vacature-sitemap.xml is stale (RJC-213)", async () => {
+    const primarySitemapUrl = "https://mipublic.nl/vacature-sitemap.xml";
     const indexUrl = "https://mipublic.nl/sitemap_index.xml";
-    const subSitemapUrl = "https://mipublic.nl/vacature-sitemap.xml";
+    const freshChildUrl = "https://mipublic.nl/vacature-sitemap19.xml";
+
+    // Primary sitemap has only stale entries → yields 0 URLs after the 90-day cutoff.
+    const staleUrlsetXml = buildUrlset([
+      { loc: "https://mipublic.nl/vacature/stale/", lastmod: "2022-01-01T00:00:00+00:00" },
+    ]);
+    const indexXml = buildSitemapIndex([{ loc: freshChildUrl, lastmod: todayIso() }]);
+    const freshUrlsetXml = buildUrlset([
+      { loc: "https://mipublic.nl/vacature/verse-vacature/", lastmod: todayIso() },
+    ]);
+
+    const jobPosting = {
+      "@context": "https://schema.org",
+      "@type": "JobPosting",
+      title: "Beleidsmedewerker",
+      description: "<p>Verse MiPublic-vacature</p>",
+      url: "https://mipublic.nl/vacature/verse-vacature/",
+      identifier: { value: "mipublic-rjc213" },
+      hiringOrganization: { name: "Gemeente Motian" },
+    };
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === primarySitemapUrl) return createHtmlResponse({ url, html: staleUrlsetXml });
+      if (url === indexUrl) return createHtmlResponse({ url, html: indexXml });
+      if (url === freshChildUrl) return createHtmlResponse({ url, html: freshUrlsetXml });
+      if (url === "https://mipublic.nl/vacature/verse-vacature/") {
+        return createHtmlResponse({
+          url,
+          html: `<html><head><script type="application/ld+json">${JSON.stringify(jobPosting)}</script></head><body></body></html>`,
+        });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { mipublicAdapter } = await import("../packages/scrapers/src/mipublic");
+    const result = await mipublicAdapter.scrape({
+      baseUrl: "https://mipublic.nl",
+      parameters: {},
+    });
+
+    expect(result.listings).toHaveLength(1);
+    expect(result.listings[0]).toMatchObject({
+      title: "Beleidsmedewerker",
+      externalId: "mipublic-rjc213",
+    });
+    // Primary sitemap was fetched, fallback index + one child sitemap were traversed,
+    // and finally the detail page was fetched — four total network calls.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("continues the scrape when some detail pages lack JobPosting data", async () => {
+    const primarySitemapUrl = "https://mipublic.nl/vacature-sitemap.xml";
     const jobUrls = [
       "https://mipublic.nl/vacature/job-with-jsonld/",
       "https://mipublic.nl/vacature/job-without-jsonld/",
       "https://mipublic.nl/vacature/job-archived/",
     ];
 
-    const indexXml = buildSitemapIndex([{ loc: subSitemapUrl, lastmod: todayIso() }]);
     const urlsetXml = buildUrlset(jobUrls.map((loc) => ({ loc, lastmod: todayIso() })));
 
     const jobPosting = {
@@ -183,8 +236,7 @@ describe("mipublicAdapter.scrape", () => {
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === indexUrl) return createHtmlResponse({ url, html: indexXml });
-      if (url === subSitemapUrl) return createHtmlResponse({ url, html: urlsetXml });
+      if (url === primarySitemapUrl) return createHtmlResponse({ url, html: urlsetXml });
       if (url === jobUrls[0]) {
         return createHtmlResponse({
           url,

@@ -13,7 +13,8 @@ import type {
 } from "./types";
 
 const DEFAULT_MIPUBLIC_ORIGIN = "https://mipublic.nl";
-const DEFAULT_SITEMAP_PATH = "/sitemap_index.xml";
+const DEFAULT_SITEMAP_PATH = "/vacature-sitemap.xml";
+const SITEMAP_INDEX_FALLBACK_PATH = "/sitemap_index.xml";
 const DEFAULT_DETAIL_CONCURRENCY = 4;
 const MAX_DETAIL_CONCURRENCY = 8;
 const MAX_SITEMAP_CHILD_FETCHES = 30;
@@ -121,34 +122,37 @@ export function parseMipublicSitemap(xml: string): ParsedSitemap {
   cutoff.setDate(cutoff.getDate() - SITEMAP_MAX_AGE_DAYS);
 
   const urlBlocks = xml.match(/<url\b[^>]*>[\s\S]*?<\/url>/gi) ?? [];
-  for (const block of urlBlocks) {
-    const locMatch = block.match(/<loc>([^<]+)<\/loc>/i);
-    if (!locMatch) continue;
-    const value = locMatch[1]?.trim();
-    if (!value) continue;
-
-    const lastmod = parseLastmod(block);
-    if (lastmod && lastmod < cutoff) continue;
-
-    try {
-      const parsed = new URL(value);
-      if (isVacatureDetailUrl(parsed)) urls.add(parsed.toString());
-    } catch {
-      continue;
-    }
-  }
-
-  // Fallback for simpler sitemaps that omit <url> wrappers
-  if (urls.size === 0) {
-    for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/gi)) {
-      const value = match[1]?.trim();
+  if (urlBlocks.length > 0) {
+    for (const block of urlBlocks) {
+      const locMatch = block.match(/<loc>([^<]+)<\/loc>/i);
+      if (!locMatch) continue;
+      const value = locMatch[1]?.trim();
       if (!value) continue;
+
+      const lastmod = parseLastmod(block);
+      if (lastmod && lastmod < cutoff) continue;
+
       try {
         const parsed = new URL(value);
         if (isVacatureDetailUrl(parsed)) urls.add(parsed.toString());
       } catch {
         continue;
       }
+    }
+    return { kind: "urlset", urls: [...urls] };
+  }
+
+  // Fallback for simpler sitemaps that omit <url> wrappers. Only applies when
+  // the document genuinely has no <url> blocks — otherwise stale entries that
+  // were correctly filtered above would sneak back in.
+  for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/gi)) {
+    const value = match[1]?.trim();
+    if (!value) continue;
+    try {
+      const parsed = new URL(value);
+      if (isVacatureDetailUrl(parsed)) urls.add(parsed.toString());
+    } catch {
+      continue;
     }
   }
 
@@ -312,27 +316,76 @@ function detectMipublicCaptchaBlocker(
   return null;
 }
 
-async function scrapeMipublicListings(
-  config: PlatformRuntimeConfig,
-  options?: { limit?: number },
-): Promise<PlatformScrapeResult> {
-  const resolved = resolveMipublicOptions(config);
+type SitemapDiscoveryResult =
+  | { kind: "captcha"; message: string }
+  | { kind: "ok"; urls: string[]; errors: string[] };
+
+/**
+ * Fetch the configured sitemap and collect vacancy URLs. Falls back to
+ * `/sitemap_index.xml` when the primary sitemap yields 0 URLs — that is the
+ * RJC-213 regression mode where MiPublic's legacy `/vacature-sitemap.xml` has
+ * been frozen in time and current vacancies are only reachable via the index.
+ */
+async function discoverMipublicDetailUrls(
+  resolved: MipublicOptions,
+): Promise<SitemapDiscoveryResult> {
   const sitemapPage = await fetchPublicJobBoardPage(resolved.sitemapUrl);
-  const sitemapCaptchaBlocker = detectMipublicCaptchaBlocker(resolved.sitemapUrl, sitemapPage);
-  if (sitemapCaptchaBlocker) {
-    return {
-      listings: [],
-      errors: [sitemapCaptchaBlocker.message],
-    };
-  }
-  const limit = options?.limit ?? resolved.maxListings;
+  const blocker = detectMipublicCaptchaBlocker(resolved.sitemapUrl, sitemapPage);
+  if (blocker) return { kind: "captcha", message: blocker.message };
+
   const collected = await collectMipublicVacatureUrls(
     sitemapPage.html,
     resolved.sitemapUrl,
     fetchPublicJobBoardPage,
   );
-  const detailUrls = typeof limit === "number" ? collected.urls.slice(0, limit) : collected.urls;
-  const sitemapErrors = [...collected.errors];
+  const errors = [...collected.errors];
+
+  if (collected.urls.length > 0) {
+    return { kind: "ok", urls: collected.urls, errors };
+  }
+
+  // Fallback: if the configured sitemap is the flat `/vacature-sitemap.xml`
+  // and it came up empty, try the Yoast sitemap index. Skip if the caller
+  // already pointed at the index or at a custom sitemap.
+  const fallbackUrl = new URL(SITEMAP_INDEX_FALLBACK_PATH, resolved.sitemapUrl).toString();
+  if (resolved.sitemapUrl === fallbackUrl) {
+    return { kind: "ok", urls: [], errors };
+  }
+
+  try {
+    const indexPage = await fetchPublicJobBoardPage(fallbackUrl);
+    const indexBlocker = detectMipublicCaptchaBlocker(fallbackUrl, indexPage);
+    if (indexBlocker) return { kind: "captcha", message: indexBlocker.message };
+    if (indexPage.status >= 400) {
+      errors.push(`MiPublic sitemap-index ${fallbackUrl} gaf HTTP ${indexPage.status} terug.`);
+      return { kind: "ok", urls: [], errors };
+    }
+    const fallbackCollected = await collectMipublicVacatureUrls(
+      indexPage.html,
+      fallbackUrl,
+      fetchPublicJobBoardPage,
+    );
+    return { kind: "ok", urls: fallbackCollected.urls, errors: [...errors, ...fallbackCollected.errors] };
+  } catch (error) {
+    errors.push(
+      `MiPublic sitemap-index ${fallbackUrl} kon niet worden opgehaald: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return { kind: "ok", urls: [], errors };
+  }
+}
+
+async function scrapeMipublicListings(
+  config: PlatformRuntimeConfig,
+  options?: { limit?: number },
+): Promise<PlatformScrapeResult> {
+  const resolved = resolveMipublicOptions(config);
+  const discovered = await discoverMipublicDetailUrls(resolved);
+  if (discovered.kind === "captcha") {
+    return { listings: [], errors: [discovered.message] };
+  }
+  const limit = options?.limit ?? resolved.maxListings;
+  const detailUrls = typeof limit === "number" ? discovered.urls.slice(0, limit) : discovered.urls;
+  const sitemapErrors = discovered.errors;
 
   if (detailUrls.length === 0) {
     return {
@@ -419,23 +472,17 @@ async function scrapeMipublicListings(
 export const mipublicAdapter: PlatformAdapter = {
   async validate(config: PlatformRuntimeConfig): Promise<PlatformValidationResult> {
     const resolved = resolveMipublicOptions(config);
-    const sitemapPage = await fetchPublicJobBoardPage(resolved.sitemapUrl);
-    const sitemapCaptchaBlocker = detectMipublicCaptchaBlocker(resolved.sitemapUrl, sitemapPage);
-    if (sitemapCaptchaBlocker) {
+    const discovered = await discoverMipublicDetailUrls(resolved);
+    if (discovered.kind === "captcha") {
       return {
         ok: false,
         status: "failed",
         blockerKind: "anti_bot_challenge",
-        message: sitemapCaptchaBlocker.message,
+        message: discovered.message,
         evidence: { sitemapUrl: resolved.sitemapUrl },
       };
     }
-    const collected = await collectMipublicVacatureUrls(
-      sitemapPage.html,
-      resolved.sitemapUrl,
-      fetchPublicJobBoardPage,
-    );
-    const detailUrls = collected.urls;
+    const detailUrls = discovered.urls;
 
     if (detailUrls.length === 0) {
       return {
@@ -444,7 +491,7 @@ export const mipublicAdapter: PlatformAdapter = {
         message: "MiPublic sitemap bevat geen parseerbare vacaturedetailpagina's.",
         evidence: {
           sitemapUrl: resolved.sitemapUrl,
-          sitemapErrors: collected.errors,
+          sitemapErrors: discovered.errors,
         },
       };
     }
