@@ -318,9 +318,13 @@ export function mapOpdrachtoverheidTenderToListing(t: OpdrachtoverheidTender): R
     latitude: loc.latitude ? parseFloat(loc.latitude) : undefined,
     longitude: loc.longitude ? parseFloat(loc.longitude) : undefined,
     postcode: loc.postcode ?? undefined,
-    companyLogoUrl: loc.avatar
-      ? `https://kbenp-match-api.azurewebsites.net/images/${loc.avatar}`
-      : undefined,
+    // Skip the avatar if it lacks a valid file extension — the upstream API
+    // sometimes returns `blob_XXX.` (trailing dot, no extension) which 404s on
+    // the Azure CDN and shows as a broken image in the UI.
+    companyLogoUrl:
+      loc.avatar && /\.(png|jpe?g|gif|svg|webp)$/i.test(loc.avatar)
+        ? `https://kbenp-match-api.azurewebsites.net/images/${loc.avatar}`
+        : undefined,
     sourceUrl: t.tender_url ?? undefined,
     sourcePlatform: t.tender_source ?? undefined,
     durationMonths: computeDurationMonths(t.tender_start_date, t.tender_end_date),
