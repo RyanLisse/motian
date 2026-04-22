@@ -130,6 +130,10 @@ function createNeonDatabaseClient(): DatabaseClient {
     connectionString: url,
     max: 5,
     connectionTimeoutMillis: 5_000,
+    // Recycle idle sockets before Neon's server-side reaper silently closes
+    // them. Without this, a hot pool connection that has been idle for 60s+
+    // raises "Connection terminated unexpectedly" on the next SSR acquire.
+    idleTimeoutMillis: 30_000,
   });
 
   poolRef = pool;
