@@ -19,7 +19,10 @@ import {
 
 const WERKZOEKEN_FETCH_TIMEOUT_MS = 20_000;
 const WERKZOEKEN_SCRAPE_MAX_DURATION_MS = 240_000;
-const WERKZOEKEN_SCRAPE_MAX_DURATION_MIN_MS = 30_000;
+// Lower bound is intentionally small so tests (and aggressive scheduling)
+// can request short deadlines; the AbortSignal then short-circuits every
+// in-flight fetch instead of waiting for the per-request timeout.
+const WERKZOEKEN_SCRAPE_MAX_DURATION_MIN_MS = 500;
 const WERKZOEKEN_SCRAPE_MAX_DURATION_MAX_MS = 600_000;
 
 function resolveWerkzoekenMaxDurationMs(value: unknown): number {
@@ -60,6 +63,42 @@ type WerkzoekenSession = {
   cookieHeader?: string;
   referer: string;
 };
+
+function combineSignals(
+  perRequestTimeoutMs: number,
+  external?: AbortSignal,
+): AbortSignal {
+  const perRequest = AbortSignal.timeout(perRequestTimeoutMs);
+  if (!external) return perRequest;
+  const anyFn = (AbortSignal as unknown as { any?: (signals: AbortSignal[]) => AbortSignal })
+    .any;
+  if (typeof anyFn === "function") {
+    return anyFn.call(AbortSignal, [perRequest, external]);
+  }
+  // Fallback: manual composition for runtimes without AbortSignal.any
+  const controller = new AbortController();
+  const forwardAbort = (src: AbortSignal) => {
+    if (src.aborted) {
+      controller.abort((src as { reason?: unknown }).reason);
+      return;
+    }
+    src.addEventListener("abort", () => controller.abort((src as { reason?: unknown }).reason), {
+      once: true,
+    });
+  };
+  forwardAbort(perRequest);
+  forwardAbort(external);
+  return controller.signal;
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    const reason = (signal as { reason?: unknown }).reason;
+    throw reason instanceof Error
+      ? reason
+      : new Error(typeof reason === "string" ? reason : "Werkzoeken scrape afgebroken");
+  }
+}
 
 function parseSalaryValue(value: string | undefined): number | undefined {
   if (!value) return undefined;
@@ -122,7 +161,7 @@ function extractWerkzoekenCookieHeader(response: Response): string | undefined {
 
 async function fetchWerkzoekenResponse(
   url: string,
-  options?: Partial<WerkzoekenSession>,
+  options?: Partial<WerkzoekenSession> & { signal?: AbortSignal },
 ): Promise<Response> {
   const headers = new Headers(DEFAULT_REQUEST_HEADERS);
   headers.set("Referer", options?.referer ?? DEFAULT_WERKZOEKEN_ORIGIN);
@@ -131,18 +170,21 @@ async function fetchWerkzoekenResponse(
     headers.set("Cookie", options.cookieHeader);
   }
 
+  throwIfAborted(options?.signal);
+
   return fetch(url, {
     headers,
-    signal: AbortSignal.timeout(WERKZOEKEN_FETCH_TIMEOUT_MS),
+    signal: combineSignals(WERKZOEKEN_FETCH_TIMEOUT_MS, options?.signal),
   });
 }
 
 async function bootstrapWerkzoekenSession(
   baseUrl: string,
   sourcePath: string,
+  signal?: AbortSignal,
 ): Promise<WerkzoekenSession> {
   const sourceUrl = resolveWerkzoekenSourceUrl(baseUrl, sourcePath);
-  const response = await fetchWerkzoekenResponse(sourceUrl.toString());
+  const response = await fetchWerkzoekenResponse(sourceUrl.toString(), { signal });
 
   if (response.ok) {
     return {
@@ -262,12 +304,14 @@ export function parseWerkzoekenDetailPage(
   };
 }
 
-async function fetchViaBrowserbase(url: string): Promise<string> {
+async function fetchViaBrowserbase(url: string, signal?: AbortSignal): Promise<string> {
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
   if (!apiKey || !projectId) {
     throw new Error("BROWSERBASE_API_KEY/PROJECT_ID niet geconfigureerd");
   }
+
+  throwIfAborted(signal);
 
   // Dynamic import to avoid bundling puppeteer-core when not used
   const puppeteer = await import("puppeteer-core");
@@ -275,7 +319,15 @@ async function fetchViaBrowserbase(url: string): Promise<string> {
     browserWSEndpoint: `wss://connect.browserbase.com?apiKey=${apiKey}&projectId=${projectId}`,
   });
 
+  const onAbort = () => {
+    // Close the remote browser as soon as the hard deadline fires so the
+    // puppeteer promises reject and the scrape unwinds promptly.
+    browser.close().catch(() => {});
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+
   try {
+    throwIfAborted(signal);
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
 
@@ -307,15 +359,18 @@ async function fetchViaBrowserbase(url: string): Promise<string> {
 
     return await page.content();
   } finally {
-    await browser.close();
+    signal?.removeEventListener("abort", onAbort);
+    await browser.close().catch(() => {});
   }
 }
 
-async function fetchViaFirecrawl(url: string): Promise<string> {
+async function fetchViaFirecrawl(url: string, signal?: AbortSignal): Promise<string> {
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) {
     throw new Error("FIRECRAWL_API_KEY niet geconfigureerd — kan niet terugvallen op Firecrawl");
   }
+
+  throwIfAborted(signal);
 
   const response = await fetch(FIRECRAWL_API_URL, {
     method: "POST",
@@ -324,7 +379,7 @@ async function fetchViaFirecrawl(url: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ url, formats: ["html"], waitFor: 2000 }),
-    signal: AbortSignal.timeout(30_000),
+    signal: combineSignals(30_000, signal),
   });
 
   if (!response.ok) {
@@ -339,14 +394,21 @@ async function fetchViaFirecrawl(url: string): Promise<string> {
   return body.data.html;
 }
 
-async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Promise<string> {
+async function fetchHtml(
+  url: string,
+  session?: Partial<WerkzoekenSession>,
+  signal?: AbortSignal,
+): Promise<string> {
+  throwIfAborted(signal);
+
   // If Firecrawl is available, try direct fetch once then fallback immediately
   // (avoids wasting 8s on retries that will fail on cloud IPs)
   const maxAttempts = process.env.FIRECRAWL_API_KEY ? 1 : FETCH_RETRY_ATTEMPTS;
   let lastStatus = 0;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const response = await fetchWerkzoekenResponse(url, session);
+    throwIfAborted(signal);
+    const response = await fetchWerkzoekenResponse(url, { ...session, signal });
 
     if (response.ok) {
       return response.text();
@@ -362,13 +424,15 @@ async function fetchHtml(url: string, session?: Partial<WerkzoekenSession>): Pro
     await new Promise((resolve) => setTimeout(resolve, FETCH_RETRY_DELAY_MS * attempt));
   }
 
+  throwIfAborted(signal);
+
   // Fallback chain: Browserbase (real Chrome, residential IP) → Firecrawl (JS rendering proxy)
   if (RETRYABLE_FETCH_STATUSES.has(lastStatus)) {
     if (process.env.BROWSERBASE_API_KEY) {
-      return fetchViaBrowserbase(url);
+      return fetchViaBrowserbase(url, signal);
     }
     if (process.env.FIRECRAWL_API_KEY) {
-      return fetchViaFirecrawl(url);
+      return fetchViaFirecrawl(url, signal);
     }
   }
 
@@ -380,17 +444,19 @@ async function enrichWerkzoekenListings(
   detailConcurrency: number,
   session?: Partial<WerkzoekenSession>,
   limit?: number,
+  signal?: AbortSignal,
 ): Promise<RawScrapedListing[]> {
   const bounded = listings.slice(0, limit ?? listings.length);
   const results: RawScrapedListing[] = [];
 
   for (let index = 0; index < bounded.length; index += detailConcurrency) {
+    throwIfAborted(signal);
     const batch = bounded.slice(index, index + detailConcurrency);
     const enriched = await Promise.all(
       batch.map(async (listing) => {
         const externalUrl = String(listing.externalUrl ?? "");
         try {
-          const detailHtml = await fetchHtml(externalUrl, session);
+          const detailHtml = await fetchHtml(externalUrl, session, signal);
           return {
             ...listing,
             ...parseWerkzoekenDetailPage(detailHtml, externalUrl),
@@ -408,14 +474,16 @@ async function enrichWerkzoekenListings(
 
 async function scrapeWerkzoekenInternal(
   config: PlatformRuntimeConfig,
-  options?: { limit?: number; smoke?: boolean },
+  options?: { limit?: number; smoke?: boolean; signal?: AbortSignal },
 ): Promise<PlatformScrapeResult> {
   const sourcePath = String(config.parameters.sourcePath ?? "/vacatures-voor/techniek/");
   const maxPages = parsePositiveInteger(config.parameters.maxPages, 3);
   const pnrStep = parsePositiveInteger(config.parameters.pnrStep, 10);
   const detailConcurrency = parsePositiveInteger(config.parameters.detailConcurrency, 4);
   const skipDetail = Boolean(config.parameters.skipDetailEnrichment);
-  const session = await bootstrapWerkzoekenSession(config.baseUrl, sourcePath);
+  const signal = options?.signal;
+  throwIfAborted(signal);
+  const session = await bootstrapWerkzoekenSession(config.baseUrl, sourcePath, signal);
 
   // pnr= returns cumulative results (pnr=10 -> 500 results).
   // We use sliding window (fetch pnr=10, 20, 30...) to minimize redundant bandwidth.
@@ -433,9 +501,10 @@ async function scrapeWerkzoekenInternal(
     pageUrls.map(async ({ page, url }) => ({
       page,
       url,
-      html: await fetchHtml(url, session),
+      html: await fetchHtml(url, session, signal),
     })),
   );
+  throwIfAborted(signal);
 
   const directPages = settledPages.map((result, index) => ({
     page: pageUrls[index].page,
@@ -459,8 +528,9 @@ async function scrapeWerkzoekenInternal(
     session.cookieHeader = undefined;
 
     for (const { page, url } of pageUrls) {
+      throwIfAborted(signal);
       try {
-        const browserbaseHtml = await fetchViaBrowserbase(url);
+        const browserbaseHtml = await fetchViaBrowserbase(url, signal);
         const parsed = parseWerkzoekenListingCards(browserbaseHtml, config.baseUrl);
         const added = pushNewListings(parsed);
 
@@ -555,6 +625,7 @@ async function scrapeWerkzoekenInternal(
     detailConcurrency,
     session,
     options?.limit ?? (options?.smoke ? 3 : undefined),
+    signal,
   );
 
   return {
@@ -602,16 +673,29 @@ export const werkzoekenAdapter: PlatformAdapter = {
     options?: { limit?: number; smoke?: boolean },
   ): Promise<PlatformScrapeResult> {
     const maxDurationMs = resolveWerkzoekenMaxDurationMs(config.parameters.maxDurationMs);
+    const controller = new AbortController();
+    const deadlineError = new Error(
+      `Werkzoeken scrape overschreed deadline van ${maxDurationMs}ms`,
+    );
     let timeoutHandle: ReturnType<typeof setNodeTimeout> | undefined;
     const timeoutPromise = new Promise<PlatformScrapeResult>((_, reject) => {
       timeoutHandle = setNodeTimeout(() => {
-        reject(new Error(`Werkzoeken scrape overschreed deadline van ${maxDurationMs}ms`));
+        // Abort all in-flight fetches so the inner scrape actually stops
+        // instead of leaking past the deadline (see RJC-212).
+        controller.abort(deadlineError);
+        reject(deadlineError);
       }, maxDurationMs);
     });
     try {
-      return await Promise.race([scrapeWerkzoekenInternal(config, options), timeoutPromise]);
+      return await Promise.race([
+        scrapeWerkzoekenInternal(config, { ...options, signal: controller.signal }),
+        timeoutPromise,
+      ]);
     } finally {
       if (timeoutHandle) clearNodeTimeout(timeoutHandle);
+      if (!controller.signal.aborted) {
+        controller.abort(new Error("Werkzoeken scrape afgerond"));
+      }
     }
   },
 
