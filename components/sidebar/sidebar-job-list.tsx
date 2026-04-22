@@ -74,7 +74,7 @@ export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: Sid
           Geen vacatures gevonden voor deze filters.
         </div>
       ) : (
-        <div className="space-y-2 pb-4 sm:space-y-4">
+        <div className="space-y-3 pb-4 sm:space-y-4">
           {jobs.map((job, index) => renderJob(job, index))}
         </div>
       )}

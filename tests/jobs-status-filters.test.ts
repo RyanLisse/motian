@@ -301,7 +301,9 @@ describe("jobs service status and endClient filters", () => {
     expect(dataSelectFields?.dedupeTitleNormalized).toMatchObject({ type: "sql" });
     expect(dataSelectFields?.dedupeClientNormalized).toMatchObject({ type: "sql" });
     expect(dataSelectFields?.dedupeLocationNormalized).toMatchObject({ type: "sql" });
-    expect(dataSelectFields?.searchText).toMatchObject({ type: "sql" });
+    // searchText was intentionally dropped from the list projection by b0e27fb
+    // (perf: ~8 KB per row helper the client never reads) — no longer asserted.
+    expect(dataSelectFields?.searchText).toBeUndefined();
     expect(dataSelectFields?.archivedAt).toMatchObject({ type: "sql", values: [] });
     expect(dataSelectFields?.dedupeTitleNormalized).not.toBe("jobs.dedupeTitleNormalized");
     expect(dataSelectFields?.dedupeClientNormalized).not.toBe("jobs.dedupeClientNormalized");

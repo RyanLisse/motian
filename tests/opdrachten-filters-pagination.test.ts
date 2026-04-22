@@ -438,10 +438,10 @@ describe("Opdrachten UI/API contracts", () => {
     // Indeed-style job card markers
     expect(listItem).toContain("Eenvoudig solliciteren");
     expect(listItem).toContain("Bookmark");
-    expect(listItem).toContain("mb-2 flex items-start justify-between");
+    expect(listItem).toContain("flex items-start justify-between");
     expect(listItem).toContain('<Link href={detailHref} className="block min-w-0">');
     expect(listItem).toContain(
-      "w-full min-w-0 overflow-hidden rounded-xl border border-border/80 bg-card",
+      "w-full min-w-0 overflow-hidden rounded-2xl border border-border/80 bg-card",
     );
     expect(listItem).toContain("line-clamp-2");
     expect(listItem).toContain("max-w-full whitespace-normal wrap-break-word");

@@ -55,29 +55,31 @@ export function SidebarPagination({
   }
 
   return (
-    <div className="mt-3 flex flex-col gap-2 border-t border-border/70 pt-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:pt-4">
+    <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3 sm:mt-4 sm:gap-2 sm:pt-4">
       <Button
         variant="outline"
         size="sm"
-        className="h-9 border-border bg-background text-foreground"
+        aria-label="Vorige pagina"
+        className="h-10 w-10 shrink-0 border-border bg-background p-0 text-foreground sm:h-9 sm:w-auto sm:px-3"
         disabled={pageParam <= 1 || isFetching}
         onClick={goToPrev}
       >
-        <ChevronLeft className="mr-1 h-3.5 w-3.5" />
-        Vorige
+        <ChevronLeft className="h-4 w-4 sm:mr-1 sm:h-3.5 sm:w-3.5" />
+        <span className="hidden sm:inline">Vorige</span>
       </Button>
-      <p className="text-center text-xs text-muted-foreground sm:text-sm">
+      <p className="text-center text-sm font-medium text-muted-foreground sm:text-sm">
         {pageParam} / {totalPages}
       </p>
       <Button
         variant="outline"
         size="sm"
-        className="h-9 border-border bg-background text-foreground"
+        aria-label="Volgende pagina"
+        className="h-10 w-10 shrink-0 border-border bg-background p-0 text-foreground sm:h-9 sm:w-auto sm:px-3"
         disabled={pageParam >= totalPages || isFetching}
         onClick={goToNext}
       >
-        Volgende
-        <ChevronRight className="ml-1 h-3.5 w-3.5" />
+        <span className="hidden sm:inline">Volgende</span>
+        <ChevronRight className="h-4 w-4 sm:ml-1 sm:h-3.5 sm:w-3.5" />
       </Button>
     </div>
   );
