@@ -326,32 +326,59 @@ type SitemapDiscoveryResult =
  * RJC-213 regression mode where MiPublic's legacy `/vacature-sitemap.xml` has
  * been frozen in time and current vacancies are only reachable via the index.
  */
+async function createBrowserbaseSession(
+  apiKey: string,
+  projectId: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch("https://api.browserbase.com/v1/sessions", {
+      method: "POST",
+      headers: {
+        "X-BB-API-Key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ projectId }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { connectUrl?: string };
+    return body.connectUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchMipublicSitemapViaBrowserbase(url: string): Promise<string | null> {
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
   if (!apiKey || !projectId) return null;
 
+  const connectUrl = await createBrowserbaseSession(apiKey, projectId);
+  if (!connectUrl) return null;
+
   const puppeteer = await import("puppeteer-core");
-  const browser = await puppeteer.default.connect({
-    browserWSEndpoint: `wss://connect.browserbase.com?apiKey=${apiKey}&projectId=${projectId}`,
-  });
+  const browser = await puppeteer.default.connect({ browserWSEndpoint: connectUrl });
 
   try {
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
 
-    // MiPublic uses SiteGuard anti-bot (202 + meta-refresh). Wait briefly for
-    // the challenge to resolve and the actual XML to render.
-    const maxWaitMs = 15_000;
+    // MiPublic uses SiteGuard anti-bot (HTTP 202 + meta-refresh to
+    // /.well-known/captcha/). Poll until the challenge self-resolves; the
+    // browser then holds the SiteGuard cookie so an in-page fetch() returns
+    // the raw XML (puppeteer's page.content() wraps XML in an HTML document).
+    const maxWaitMs = 25_000;
     const startTime = Date.now();
     while (Date.now() - startTime < maxWaitMs) {
-      const content = await page.content();
-      if (!content.toLowerCase().includes("sgcaptcha") && content.includes("<url")) {
-        return content;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 1_500));
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      const html = await page.content();
+      if (!html.toLowerCase().includes("sgcaptcha")) break;
     }
-    return await page.content();
+
+    return await page.evaluate(async (u) => {
+      const res = await fetch(u);
+      return await res.text();
+    }, url);
   } finally {
     await browser.close().catch(() => {});
   }
