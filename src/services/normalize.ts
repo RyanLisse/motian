@@ -401,6 +401,7 @@ export async function normalizeAndSaveJobs(
 
   if (itemsToInsert.length > 0) {
     const batches = chunkJobInsertBatches(itemsToInsert, platform);
+    // Intentionally serialized to avoid exhausting Neon pool connections on large scrapes.
     for (const batch of batches) {
       try {
         const result = await db
