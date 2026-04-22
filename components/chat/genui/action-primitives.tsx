@@ -51,7 +51,8 @@ export function ActionButton({
   disabled?: boolean;
 }) {
   const base = cn(
-    "inline-flex items-center justify-center gap-2 transition-colors",
+    "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap transition-colors",
+    "[&_svg]:shrink-0",
     genuiTouchTargetClassName,
   );
   const variants = {
@@ -67,7 +68,7 @@ export function ActionButton({
       className={cn(base, variants[variant], "disabled:opacity-50")}
     >
       <Icon className="h-4 w-4" />
-      {label}
+      <span>{label}</span>
     </button>
   );
 }
