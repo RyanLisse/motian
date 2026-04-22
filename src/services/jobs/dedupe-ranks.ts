@@ -3,7 +3,11 @@ import { jobDedupeRanks, jobs } from "../../db/schema";
 import { getVisibleVacancyCondition } from "./filters";
 
 const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
-const FRESHNESS_CACHE_TTL_MS = 5_000;
+// Freshness only needs to be re-checked when it has a real chance of having
+// flipped stale→fresh (that only happens after a refresh runs, which we
+// invalidate the cache for explicitly). One minute is plenty; the previous
+// 5s value caused every parallel SSR render to hit the DB.
+const FRESHNESS_CACHE_TTL_MS = 60_000;
 const DEDUPE_REFRESH_DEBOUNCE_MS = 5_000;
 
 let cachedFreshness: {
@@ -121,10 +125,14 @@ export async function getDedupeRanksFreshness(): Promise<{
     return cachedFreshness.value;
   }
 
+  // `refreshDedupeRanks` writes the same `computedAt` to every row in one
+  // atomic INSERT … ON CONFLICT, so any single row carries the current
+  // snapshot timestamp. Using `ORDER BY computed_at DESC LIMIT 1` forces a
+  // full sort over ~50k rows (no index on `computed_at`) and was the main
+  // source of the 3s listJobsPage slowdown that dropped Neon connections.
   const rows = await db
     .select({ computedAt: jobDedupeRanks.computedAt })
     .from(jobDedupeRanks)
-    .orderBy(sql`${jobDedupeRanks.computedAt} DESC`)
     .limit(1);
 
   const computedAt = rows[0]?.computedAt ?? null;
