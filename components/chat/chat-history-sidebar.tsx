@@ -63,21 +63,16 @@ export function ChatHistorySidebar({
       }
     } catch (err) {
       console.error("[ChatHistorySidebar] Fetch sessions failed:", err);
+    } finally {
+      // Always clear the loading state so the sidebar never gets stuck on
+      // "Laden..." — even if this effect is superseded by a refreshToken bump
+      // mid-fetch (setting state on a stale attempt is harmless here).
+      setLoading(false);
     }
   }, [refreshToken]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    void fetchSessions().finally(() => {
-      if (!cancelled) {
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    void fetchSessions();
   }, [fetchSessions]);
 
   useEffect(() => {
