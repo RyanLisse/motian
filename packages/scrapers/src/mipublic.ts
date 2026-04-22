@@ -326,11 +326,61 @@ type SitemapDiscoveryResult =
  * RJC-213 regression mode where MiPublic's legacy `/vacature-sitemap.xml` has
  * been frozen in time and current vacancies are only reachable via the index.
  */
+async function fetchMipublicSitemapViaBrowserbase(url: string): Promise<string | null> {
+  const apiKey = process.env.BROWSERBASE_API_KEY;
+  const projectId = process.env.BROWSERBASE_PROJECT_ID;
+  if (!apiKey || !projectId) return null;
+
+  const puppeteer = await import("puppeteer-core");
+  const browser = await puppeteer.default.connect({
+    browserWSEndpoint: `wss://connect.browserbase.com?apiKey=${apiKey}&projectId=${projectId}`,
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
+
+    // MiPublic uses SiteGuard anti-bot (202 + meta-refresh). Wait briefly for
+    // the challenge to resolve and the actual XML to render.
+    const maxWaitMs = 15_000;
+    const startTime = Date.now();
+    while (Date.now() - startTime < maxWaitMs) {
+      const content = await page.content();
+      if (!content.toLowerCase().includes("sgcaptcha") && content.includes("<url")) {
+        return content;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1_500));
+    }
+    return await page.content();
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+async function fetchSitemapWithBrowserbaseFallback(
+  url: string,
+): Promise<{ status: number; html: string; via: "direct" | "browserbase" }> {
+  const direct = await fetchPublicJobBoardPage(url);
+  if (!detectMipublicCaptchaBlocker(url, direct)) {
+    return { status: direct.status, html: direct.html, via: "direct" };
+  }
+
+  const browserbaseHtml = await fetchMipublicSitemapViaBrowserbase(url).catch(() => null);
+  if (browserbaseHtml && !browserbaseHtml.toLowerCase().includes("sgcaptcha")) {
+    return { status: 200, html: browserbaseHtml, via: "browserbase" };
+  }
+
+  return { status: direct.status, html: direct.html, via: "direct" };
+}
+
 async function discoverMipublicDetailUrls(
   resolved: MipublicOptions,
 ): Promise<SitemapDiscoveryResult> {
-  const sitemapPage = await fetchPublicJobBoardPage(resolved.sitemapUrl);
-  const blocker = detectMipublicCaptchaBlocker(resolved.sitemapUrl, sitemapPage);
+  const sitemapPage = await fetchSitemapWithBrowserbaseFallback(resolved.sitemapUrl);
+  const blocker =
+    sitemapPage.via === "direct"
+      ? detectMipublicCaptchaBlocker(resolved.sitemapUrl, sitemapPage)
+      : null;
   if (blocker) return { kind: "captcha", message: blocker.message };
 
   const collected = await collectMipublicVacatureUrls(
@@ -353,8 +403,9 @@ async function discoverMipublicDetailUrls(
   }
 
   try {
-    const indexPage = await fetchPublicJobBoardPage(fallbackUrl);
-    const indexBlocker = detectMipublicCaptchaBlocker(fallbackUrl, indexPage);
+    const indexPage = await fetchSitemapWithBrowserbaseFallback(fallbackUrl);
+    const indexBlocker =
+      indexPage.via === "direct" ? detectMipublicCaptchaBlocker(fallbackUrl, indexPage) : null;
     if (indexBlocker) return { kind: "captcha", message: indexBlocker.message };
     if (indexPage.status >= 400) {
       errors.push(`MiPublic sitemap-index ${fallbackUrl} gaf HTTP ${indexPage.status} terug.`);
