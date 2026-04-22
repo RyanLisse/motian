@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildWerkzoekenListPageUrl,
@@ -480,6 +482,84 @@ describe("Werkzoeken scraper", () => {
 
     expect(result.errors).toBeUndefined();
     expect(result.listings).toHaveLength(1);
+  });
+
+  it("enforces the hard deadline by aborting hanging fetches (RJC-212 Bug A)", async () => {
+    // Restore real setTimeout so the hard deadline (setNodeTimeout) fires after maxDurationMs.
+    vi.restoreAllMocks();
+
+    const capturedSignals: AbortSignal[] = [];
+
+    globalThis.fetch = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+      const signal = init?.signal as AbortSignal | undefined;
+      if (signal) capturedSignals.push(signal);
+      // Fetch should reject when the AbortSignal fires — that is how real
+      // undici implements aborts. If the signal is not threaded through, the
+      // promise hangs forever and the hard deadline leaks.
+      return new Promise<Response>((_resolve, reject) => {
+        if (signal) {
+          if (signal.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+          }
+          signal.addEventListener(
+            "abort",
+            () => {
+              reject(new DOMException("Aborted", "AbortError"));
+            },
+            { once: true },
+          );
+        }
+        // Otherwise: never resolve (simulates a hung upstream).
+      });
+    }) as typeof fetch;
+
+    const start = Date.now();
+    let rejected: unknown;
+    await werkzoekenAdapter
+      .scrape(
+        {
+          slug: "werkzoeken",
+          baseUrl: "https://www.werkzoeken.nl",
+          parameters: {
+            sourcePath: "/vacatures-voor/techniek/",
+            maxPages: 10,
+            pnrStep: 10,
+            detailConcurrency: 1,
+            skipDetailEnrichment: true,
+            maxDurationMs: 2000,
+          },
+          auth: {},
+        },
+        { limit: 1 },
+      )
+      .catch((err) => {
+        rejected = err;
+      });
+    const elapsed = Date.now() - start;
+
+    expect(rejected).toBeDefined();
+    expect(elapsed).toBeLessThanOrEqual(3000);
+    expect(capturedSignals.length).toBeGreaterThan(0);
+    // Every fetch must have received a signal that ultimately aborts — proving
+    // the hard deadline's AbortController is threaded through every call.
+    for (const signal of capturedSignals) {
+      expect(signal.aborted).toBe(true);
+    }
+  });
+
+  it("extracts listing cards from deep pnr=10 markup fixture (RJC-212 Bug B)", () => {
+    const fixtureHtml = readFileSync(join(__dirname, "fixtures", "werkzoeken-pnr10.html"), "utf8");
+    const listings = parseWerkzoekenListingCards(fixtureHtml);
+
+    expect(listings.length).toBeGreaterThanOrEqual(1);
+    expect(listings[0]).toMatchObject({
+      externalId: "15653251",
+      title: "Monteur Motoren",
+      company: "Techniflex",
+      location: "Zwolle",
+    });
+    expect(listings.map((l) => l.externalId)).toContain("15666351");
   });
 
   it("deduplicates cumulative pnr responses across pages", async () => {
