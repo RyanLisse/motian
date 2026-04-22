@@ -348,7 +348,19 @@ async function createBrowserbaseSession(
   }
 }
 
-async function fetchMipublicSitemapViaBrowserbase(url: string): Promise<string | null> {
+/**
+ * Handle over a single Browserbase session that can be reused for many fetches.
+ * The first call to `fetchText` navigates the page so SiteGuard's anti-bot
+ * challenge resolves and its cookie is stored in the browser context;
+ * subsequent calls use `page.evaluate(fetch)` which inherits that cookie and
+ * returns raw response bodies (no HTML wrapping).
+ */
+type BrowserbaseHandle = {
+  fetchText: (url: string) => Promise<string>;
+  close: () => Promise<void>;
+};
+
+async function openBrowserbaseSession(): Promise<BrowserbaseHandle | null> {
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
   if (!apiKey || !projectId) return null;
@@ -361,49 +373,92 @@ async function fetchMipublicSitemapViaBrowserbase(url: string): Promise<string |
 
   try {
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
+    let siteGuardResolved = false;
 
-    // MiPublic uses SiteGuard anti-bot (HTTP 202 + meta-refresh to
-    // /.well-known/captcha/). Poll until the challenge self-resolves; the
-    // browser then holds the SiteGuard cookie so an in-page fetch() returns
-    // the raw XML (puppeteer's page.content() wraps XML in an HTML document).
-    const maxWaitMs = 25_000;
-    const startTime = Date.now();
-    while (Date.now() - startTime < maxWaitMs) {
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
-      const html = await page.content();
-      if (!html.toLowerCase().includes("sgcaptcha")) break;
-    }
-
-    return await page.evaluate(async (u) => {
-      const res = await fetch(u);
-      return await res.text();
-    }, url);
-  } finally {
+    return {
+      async fetchText(url: string): Promise<string> {
+        if (!siteGuardResolved) {
+          // MiPublic uses SiteGuard (HTTP 202 + meta-refresh to
+          // /.well-known/captcha/). Navigate via `page.goto` on the first
+          // call so the challenge self-resolves and the cookie is stored
+          // in the browser context. Subsequent `page.evaluate(fetch)` calls
+          // inherit that cookie and return raw response bodies.
+          await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
+          const maxWaitMs = 25_000;
+          const startTime = Date.now();
+          while (Date.now() - startTime < maxWaitMs) {
+            await new Promise((resolve) => setTimeout(resolve, 2_000));
+            const html = await page.content();
+            if (!html.toLowerCase().includes("sgcaptcha")) break;
+          }
+          siteGuardResolved = true;
+          return await page.evaluate(async (u) => {
+            const res = await fetch(u);
+            return await res.text();
+          }, url);
+        }
+        return await page.evaluate(async (u) => {
+          const res = await fetch(u);
+          return await res.text();
+        }, url);
+      },
+      async close(): Promise<void> {
+        await browser.close().catch(() => {});
+      },
+    };
+  } catch (error) {
     await browser.close().catch(() => {});
+    throw error;
   }
 }
 
 async function fetchSitemapWithBrowserbaseFallback(
   url: string,
+  handle?: BrowserbaseHandle | null,
 ): Promise<{ status: number; html: string; via: "direct" | "browserbase" }> {
   const direct = await fetchPublicJobBoardPage(url);
   if (!detectMipublicCaptchaBlocker(url, direct)) {
     return { status: direct.status, html: direct.html, via: "direct" };
   }
 
-  const browserbaseHtml = await fetchMipublicSitemapViaBrowserbase(url).catch(() => null);
-  if (browserbaseHtml && !browserbaseHtml.toLowerCase().includes("sgcaptcha")) {
-    return { status: 200, html: browserbaseHtml, via: "browserbase" };
+  if (handle) {
+    const body = await handle.fetchText(url).catch(() => null);
+    if (body && !body.toLowerCase().includes("sgcaptcha")) {
+      return { status: 200, html: body, via: "browserbase" };
+    }
   }
 
   return { status: direct.status, html: direct.html, via: "direct" };
 }
 
+type FetchedPage = Awaited<ReturnType<typeof fetchPublicJobBoardPage>>;
+
+/**
+ * Fetch a MiPublic detail page, routing through the provided Browserbase
+ * handle when the direct fetch returns an anti-bot blocker. The handle
+ * already holds the SiteGuard cookie from a prior sitemap fetch, so the
+ * browserbase path responds quickly (no new goto/challenge-wait).
+ */
+async function fetchDetailPageWithBrowserbaseFallback(
+  url: string,
+  handle: BrowserbaseHandle | null | undefined,
+): Promise<FetchedPage> {
+  const direct = await fetchPublicJobBoardPage(url);
+  if (!detectMipublicCaptchaBlocker(url, direct) || !handle) {
+    return direct;
+  }
+  const body = await handle.fetchText(url).catch(() => null);
+  if (!body || body.toLowerCase().includes("sgcaptcha")) {
+    return direct;
+  }
+  return { ...direct, status: 200, html: body };
+}
+
 async function discoverMipublicDetailUrls(
   resolved: MipublicOptions,
+  handle?: BrowserbaseHandle | null,
 ): Promise<SitemapDiscoveryResult> {
-  const sitemapPage = await fetchSitemapWithBrowserbaseFallback(resolved.sitemapUrl);
+  const sitemapPage = await fetchSitemapWithBrowserbaseFallback(resolved.sitemapUrl, handle);
   const blocker =
     sitemapPage.via === "direct"
       ? detectMipublicCaptchaBlocker(resolved.sitemapUrl, sitemapPage)
@@ -430,7 +485,7 @@ async function discoverMipublicDetailUrls(
   }
 
   try {
-    const indexPage = await fetchSitemapWithBrowserbaseFallback(fallbackUrl);
+    const indexPage = await fetchSitemapWithBrowserbaseFallback(fallbackUrl, handle);
     const indexBlocker =
       indexPage.via === "direct" ? detectMipublicCaptchaBlocker(fallbackUrl, indexPage) : null;
     if (indexBlocker) return { kind: "captcha", message: indexBlocker.message };
@@ -457,27 +512,35 @@ async function scrapeMipublicListings(
   options?: { limit?: number },
 ): Promise<PlatformScrapeResult> {
   const resolved = resolveMipublicOptions(config);
-  const discovered = await discoverMipublicDetailUrls(resolved);
-  if (discovered.kind === "captcha") {
-    return { listings: [], errors: [discovered.message] };
-  }
-  const limit = options?.limit ?? resolved.maxListings;
-  const detailUrls = typeof limit === "number" ? discovered.urls.slice(0, limit) : discovered.urls;
-  const sitemapErrors = discovered.errors;
 
-  if (detailUrls.length === 0) {
-    return {
-      listings: [],
-      errors: [
-        "MiPublic sitemap bevat geen parseerbare vacature-URLs.",
-        ...sitemapErrors,
-      ],
-    };
-  }
+  // Open ONE Browserbase session for the whole scrape. The session cost
+  // amortizes across sitemap + every detail page, and the SiteGuard cookie
+  // persists across all fetches. Opening up-front means the first detail
+  // page benefits from the cookie the sitemap fetch already earned.
+  const handle = await openBrowserbaseSession().catch(() => null);
 
-  const results = await mapWithConcurrency(detailUrls, resolved.detailConcurrency, async (detailUrl) => {
+  try {
+    const discovered = await discoverMipublicDetailUrls(resolved, handle);
+    if (discovered.kind === "captcha") {
+      return { listings: [], errors: [discovered.message] };
+    }
+    const limit = options?.limit ?? resolved.maxListings;
+    const detailUrls = typeof limit === "number" ? discovered.urls.slice(0, limit) : discovered.urls;
+    const sitemapErrors = discovered.errors;
+
+    if (detailUrls.length === 0) {
+      return {
+        listings: [],
+        errors: [
+          "MiPublic sitemap bevat geen parseerbare vacature-URLs.",
+          ...sitemapErrors,
+        ],
+      };
+    }
+
+    const results = await mapWithConcurrency(detailUrls, resolved.detailConcurrency, async (detailUrl) => {
     try {
-      const detailPage = await fetchPublicJobBoardPage(detailUrl);
+      const detailPage = await fetchDetailPageWithBrowserbaseFallback(detailUrl, handle);
       const captchaBlocker = detectMipublicCaptchaBlocker(detailUrl, detailPage);
       if (captchaBlocker) {
         return {
@@ -541,10 +604,13 @@ async function scrapeMipublicListings(
     );
   }
 
-  return {
-    listings,
-    errors: realErrors.length > 0 ? realErrors : undefined,
-  };
+    return {
+      listings,
+      errors: realErrors.length > 0 ? realErrors : undefined,
+    };
+  } finally {
+    if (handle) await handle.close().catch(() => {});
+  }
 }
 
 export const mipublicAdapter: PlatformAdapter = {
