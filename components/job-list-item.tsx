@@ -143,20 +143,20 @@ export const JobListItem = memo(function JobListItem({
         <Link href={detailHref} className="block min-w-0">
           <article
             className={cn(
-              "w-full min-w-0 overflow-hidden rounded-xl border border-border/80 bg-card px-4 py-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:rounded-2xl sm:px-5 sm:py-4",
+              "w-full min-w-0 overflow-hidden rounded-2xl border border-border/80 bg-card px-5 py-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md sm:px-6 sm:py-5",
               isActive && "border-primary/70 ring-2 ring-primary/20",
             )}
           >
-            <div className="mb-2 flex items-start justify-between gap-3">
+            <div className="mb-3 flex items-start justify-between gap-3">
               <Badge
                 variant="outline"
-                className="rounded-md border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+                className="rounded-md border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary"
               >
                 Eenvoudig solliciteren
               </Badge>
               <span
                 aria-hidden="true"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <Bookmark className="h-4 w-4" />
               </span>
@@ -177,18 +177,18 @@ export const JobListItem = memo(function JobListItem({
                 <h3 className="text-[17px] font-semibold leading-snug text-foreground line-clamp-2 wrap-break-word sm:text-lg">
                   {job.title}
                 </h3>
-                <p className="mt-1 text-sm text-muted-foreground">{job.company || "Onbekend"}</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">{job.company || "Onbekend"}</p>
                 {locationSentence ? (
-                  <p className="mt-0.5 text-sm text-muted-foreground">{locationSentence}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{locationSentence}</p>
                 ) : null}
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               {job.contractType ? (
                 <Badge
                   variant="outline"
-                  className="rounded-md border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground"
+                  className="rounded-md border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground"
                 >
                   {contractLabels[job.contractType] ?? job.contractType}
                 </Badge>
@@ -197,7 +197,7 @@ export const JobListItem = memo(function JobListItem({
                 <Badge
                   variant="outline"
                   className={cn(
-                    "rounded-md border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground",
+                    "rounded-md border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground",
                     job.workArrangement === "remote" &&
                       "border-primary/30 bg-primary/10 text-primary",
                   )}
@@ -208,7 +208,7 @@ export const JobListItem = memo(function JobListItem({
               {deadlineMeta ? (
                 <Badge
                   variant="outline"
-                  className={cn("gap-1 rounded-md px-2 py-0.5 text-[11px]", deadlineMeta.className)}
+                  className={cn("gap-1 rounded-md px-2.5 py-1 text-[11px]", deadlineMeta.className)}
                 >
                   <Clock className="h-3 w-3 shrink-0" />
                   {deadlineMeta.label}
@@ -216,14 +216,14 @@ export const JobListItem = memo(function JobListItem({
               ) : null}
               <Badge
                 variant="outline"
-                className="rounded-md border-border bg-background px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground"
+                className="rounded-md border-border bg-background px-2.5 py-1 text-[11px] font-medium capitalize text-muted-foreground"
               >
                 {job.platform}
               </Badge>
               {hasLinkedWorkflow ? (
                 <Badge
                   variant="outline"
-                  className="flex items-center gap-1 rounded-md border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                  className="flex items-center gap-1 rounded-md border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary"
                 >
                   <Users className="h-3 w-3" />
                   {hasActivePipeline ? `${pipelineCount} in pipeline` : "Workflow gekoppeld"}
@@ -232,7 +232,7 @@ export const JobListItem = memo(function JobListItem({
               {job.isIndexing ? (
                 <Badge
                   variant="outline"
-                  className="flex items-center gap-1 rounded-md border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300"
+                  className="flex items-center gap-1 rounded-md border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-300"
                 >
                   <LoaderCircle className="h-3 w-3 animate-spin" />
                   Indexeren…

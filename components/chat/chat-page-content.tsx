@@ -510,6 +510,8 @@ function ChatSessionSurface({
         />
       </div>
 
+      {!hasUserMessage ? <QuickActionChips onSelect={onSuggestion} /> : null}
+
       <ChatComposer
         cvUpload={cvUpload}
         modelId={modelId}
@@ -524,8 +526,6 @@ function ChatSessionSurface({
         composerHint={surfaceConfig.composerHint}
         composerContextHint={surfaceConfig.composerContextHint}
       />
-
-      {!hasUserMessage ? <QuickActionChips onSelect={onSuggestion} /> : null}
     </div>
   );
 }
