@@ -1,5 +1,5 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { and, db, eq, sql } from "@/src/db";
+import { and, db, eq, inArray } from "@/src/db";
 import { agentEvents } from "@/src/db/schema";
 import { type AgentName, claimEvent, completeEvent, failEvent } from "@/src/services/agent-events";
 import { getCandidateById } from "@/src/services/candidates";
@@ -163,7 +163,11 @@ export const agentOrchestratorTask = schedules.task({
       .where(
         and(
           eq(agentEvents.status, "pending"),
-          sql`${agentEvents.eventType} = ANY(${PROCESSABLE_EVENTS})`,
+          // Drizzle's `inArray` serialises correctly to `= ANY(...)`.
+          // The previous `sql` template passed a JS array as a single text
+          // param, which Postgres rejected with "op ANY/ALL (array) requires
+          // array on right side" — every run crashed on this line for months.
+          inArray(agentEvents.eventType, PROCESSABLE_EVENTS),
         ),
       )
       .orderBy(agentEvents.createdAt)
