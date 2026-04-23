@@ -83,14 +83,21 @@ export const nightlyMaintenanceTask = schedules.task({
         ) as integer)`,
       })
       .from(jobs)
-      .where(and(getVisibleVacancyCondition(), isNotNull(jobs.embedding)))
-      .having(
-        sql`coalesce(
-          (select count(*) from job_matches jm
-           where jm.job_id = ${jobs.id}
-           and jm.status in ('pending', 'accepted')),
-          0
-        ) < 3`,
+      .where(
+        and(
+          getVisibleVacancyCondition(),
+          isNotNull(jobs.embedding),
+          // "Underserved" = fewer than 3 active matches. Correlated subquery
+          // goes in WHERE (not HAVING) because this query has no GROUP BY —
+          // HAVING here produced "column jobs.id must appear in the GROUP BY
+          // clause" and crashed every nightly run since April 2.
+          sql`coalesce(
+            (select count(*) from job_matches jm
+             where jm.job_id = ${jobs.id}
+             and jm.status in ('pending', 'accepted')),
+            0
+          ) < 3`,
+        ),
       )
       .limit(10);
 
