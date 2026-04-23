@@ -465,13 +465,17 @@ gantt
     axisFormat %H:%M
 
     section Maintenance
-    Data Retention Cleanup    :02:00, 30min
-    Vacancy Expiry Check      :03:00, 15min
+    Nightly Maintenance (retention + vacancy expiry + sourcing)  :02:00, 45min
+    Scraper Health (circuit-breaker reset)                        :06:00, 5min
+    Trigger Health (cron failure detector → Sentry)               :07:00, 10min
 
     section Scraping (every 4 hours)
     Platform Scrape Pipeline  :00:00, 45min
     Platform Scrape Pipeline  :04:00, 45min
     Platform Scrape Pipeline  :08:00, 45min
+
+    section Agents (event-driven with 12h fallback)
+    Agent Orchestrator (fallback)                                 :12:00, 10min
 ```
 
 ---
@@ -553,11 +557,7 @@ motian/
 │   │   ├── schema.ts             # 9 tables with pgvector
 │   │   └── index.ts              # Neon serverless connection
 │   ├── services/
-│   │   ├── scrapers/             # Platform-specific scrapers
-│   │   │   ├── flextender.ts     # AJAX + CSRF token scraping
-│   │   │   ├── striive.ts        # Playwright browser automation
-│   │   │   └── opdrachtoverheid.ts # Public JSON API
-│   │   ├── scrape-pipeline.ts    # Orchestration
+│   │   ├── scrape-pipeline.ts    # Orchestration (platform adapters in packages/scrapers)
 │   │   ├── normalize.ts          # Zod validation + upsert
 │   │   ├── ai-enrichment.ts      # Gemini-powered enrichment
 │   │   ├── embedding.ts          # OpenAI vector generation
@@ -586,11 +586,17 @@ motian/
 
 ## Scrapers
 
-| Platform             | Method                                                             | Auth              | Source                                      |
-| -------------------- | ------------------------------------------------------------------ | ----------------- | ------------------------------------------- |
-| **Flextender**       | AJAX POST with `widget_config` CSRF token + detail page enrichment | None (public)     | `src/services/scrapers/flextender.ts`       |
-| **Striive**          | Playwright browser automation                                      | Login credentials | `src/services/scrapers/striive.ts`          |
-| **Opdrachtoverheid** | Public JSON API with pagination                                    | None (public)     | `src/services/scrapers/opdrachtoverheid.ts` |
+| Platform                   | Method                                                                              | Auth              | Source                                            |
+| -------------------------- | ----------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------- |
+| **Striive**                | Playwright browser automation                                                       | Login credentials | `packages/scrapers/src/striive.ts`                |
+| **Flextender**             | AJAX POST with `widget_config` CSRF token + detail page enrichment                  | None (public)     | `packages/scrapers/src/flextender.ts`             |
+| **Nationale Vacaturebank** | Consent bootstrap (browser) → cheap HTTP harvest                                    | Session cookie    | `packages/scrapers/src/nationalevacaturebank.ts`  |
+| **Opdrachtoverheid**       | Public JSON API with pagination (90s timeout, 2 retries)                            | None (public)     | `packages/scrapers/src/opdrachtoverheid.ts`       |
+| **Werkzoeken**             | SSR vacancy cards + parallel list-page fetches (AbortSignal-plumbed, pnr-paginated) | None (public)     | `packages/scrapers/src/werkzoeken.ts`             |
+| **MiPublic**               | Yoast sitemap + JSON-LD JobPosting, Browserbase session for SiteGuard anti-bot      | None (public)     | `packages/scrapers/src/mipublic.ts`               |
+| **Starapple**              | Yoast `/vacancy-sitemap.xml` + HTML detail extraction (h1 + h3 sections)            | None (public)     | `packages/scrapers/src/starapple.ts`              |
+
+All adapters implement the `PlatformAdapter` interface (`packages/scrapers/src/types.ts`) with `validate`, `scrape`, and `testImport`. Registration lives in `packages/scrapers/src/platform-registry.ts`; a scheduled `scrape-pipeline` task in `trigger/scrape-pipeline.ts` runs all active configs every 4 hours.
 
 ### Scrape Pipeline
 

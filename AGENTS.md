@@ -193,24 +193,27 @@ pnpm exec tsc --noEmit # MUST verify no new TypeScript errors were introduced
 
 | Area            | File                               | Notes                                                                   |
 | --------------- | ---------------------------------- | ----------------------------------------------------------------------- |
-| DB Schema       | `src/db/schema.ts`                 | 8 tables, pgvector, dual unique indexes on jobs                         |
+| DB Schema       | `packages/db/src/schema.ts` (re-exported via `src/db/schema.ts`) | Jobs, candidates, scrape_results, scraper_configs, chat_sessions, agent_events, autopilot_runs, autopilot_findings, platform_catalog, ai_usage, + more. pgvector, dual unique on jobs |
 | DB Connection   | `src/db/index.ts`                  | Neon serverless driver                                                  |
-| Normalize       | `src/services/normalize.ts`        | Upsert on (platform, externalId), 2nd unique on (platform, externalUrl) |
+| Normalize       | `src/services/normalize.ts`        | Upsert on (platform, externalId), 2nd unique on (platform, externalUrl). Serialised batch inserts — Promise.all caused Neon pool exhaustion (see docs/solutions/best-practices/neon-serverless-driver-vercel-2026-04-10.md) |
 | AI Enrichment   | `src/services/ai-enrichment.ts`    | Gemini 2.5 flash-lite, no retry, 100ms delay                            |
 | Embeddings      | `src/services/embedding.ts`        | text-embedding-3-small, 512 dims, jobs only                             |
 | Scoring         | `src/services/scoring.ts`          | Keyword matching, extracted weight constants                            |
 | GDPR            | `src/services/gdpr.ts`             | Art 15/17 for candidates only                                           |
 | Jobs Service    | `src/services/jobs.ts`             | ILIKE unescaped, hybridSearch with RRF                                  |
 | Candidates      | `src/services/candidates.ts`       | ILIKE unescaped                                                         |
-| Scrape Pipeline | `src/services/scrape-pipeline.ts`  | Hardcoded switch on platform names                                      |
-| Striive Scraper | `src/services/scrapers/striive.ts` | scrapeViaModal is a stub                                                |
+| Scrape Pipeline | `src/services/scrape-pipeline.ts`  | Orchestrator; adapters live in `packages/scrapers/src/`                  |
+| Platform adapters | `packages/scrapers/src/*.ts`     | 7 active adapters: striive, flextender, nationalevacaturebank, opdrachtoverheid, werkzoeken, mipublic, starapple. Registered in `platform-registry.ts`, typed via `PlatformAdapter` in `types.ts` |
+| AI models / tracing | `src/lib/ai-models.ts`         | `tracedGenerateText/Object/StreamText/Embed/EmbedMany` — all auto-record to `ai_usage` (see `src/services/ai-usage.ts`, `src/lib/ai-pricing.ts`) |
 | AI Agent        | `src/ai/agent.ts`                  | System prompt builder, tool registry                                    |
-| AI Tools        | `src/ai/tools/*.ts`                | 7 tools (query, create, trigger, etc.)                                  |
+| AI Tools        | `src/ai/tools/*.ts`                | ~40 tools (query, create, trigger, etc.)                                |
 | Rate Limit      | `src/lib/rate-limit.ts`            | In-memory sliding window                                                |
-| Middleware      | `middleware.ts`                    | Bearer token auth (deprecated in Next.js 16)                            |
+| Routing / Auth  | `proxy.ts`                         | Next.js 16 proxy layer (replaces legacy `middleware.ts`)                |
 | Sidebar         | `components/app-sidebar.tsx`       | Missing Interviews/Messages nav items                                   |
 | Filter UI       | `components/opdrachten-sidebar.tsx`, `components/shared/standard-filter-sidebar.tsx` | Standaard filter-UI voor alle lijstpagina's (zoek, dropdowns, uren, straal, sort, paginatie) |
-| Vercel Config   | `vercel.json`                      | Cron: scrape 6AM, vacancy-expiry 3AM                                    |
+| Trigger tasks   | `trigger/*.ts`                     | All scheduled cron jobs. `trigger-health-check.ts` (07:00 Amsterdam) alerts via Sentry when any task fails ≥3/5 runs or goes silent — added after the agent-orchestrator / nightly-maintenance silent-failure incidents |
+| Solutions KB    | `docs/solutions/`                  | Documented solutions to past problems (bugs, best practices, workflow patterns), organised by category with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant when implementing or debugging in documented areas |
+| Vercel Config   | `vercel.json`                      | Cron offloaded to Trigger.dev; see `trigger/*.ts` for the authoritative schedule |
 
 ---
 

@@ -494,13 +494,17 @@ gantt
     axisFormat %H:%M
 
     section Onderhoud
-    Data Retentie Opschoning      :02:00, 30min
-    Vacature Verloopcontrole      :03:00, 15min
+    Nightly Maintenance (retentie + vacature-verloop + sourcing)  :02:00, 45min
+    Scraper Health (circuit-breaker reset)                         :06:00, 5min
+    Trigger Health (cron failure detector → Sentry)                :07:00, 10min
 
     section Scraping (elke 4 uur)
     Platform Scrape Pipeline      :00:00, 45min
     Platform Scrape Pipeline      :04:00, 45min
     Platform Scrape Pipeline      :08:00, 45min
+
+    section Agents (event-driven met 12h fallback)
+    Agent Orchestrator (fallback)                                  :12:00, 10min
 ```
 
 ---
@@ -584,11 +588,7 @@ motian/
 │   │   ├── schema.ts             # 9 tabellen met pgvector
 │   │   └── index.ts              # Neon serverless verbinding
 │   ├── services/
-│   │   ├── scrapers/             # Platform-specifieke scrapers
-│   │   │   ├── flextender.ts     # AJAX + CSRF token scraping
-│   │   │   ├── striive.ts        # Playwright browser automatisering
-│   │   │   └── opdrachtoverheid.ts # Publieke JSON API
-│   │   ├── scrape-pipeline.ts    # Orkestratie
+│   │   ├── scrape-pipeline.ts    # Orkestratie (platform-adapters in packages/scrapers)
 │   │   ├── normalize.ts          # Zod validatie + upsert
 │   │   ├── ai-enrichment.ts      # Gemini-aangedreven verrijking
 │   │   ├── embedding.ts          # OpenAI vector generatie
@@ -617,11 +617,17 @@ motian/
 
 ## Scrapers
 
-| Platform             | Methode                                                            | Authenticatie   | Bron                                        |
-| -------------------- | ------------------------------------------------------------------ | --------------- | ------------------------------------------- |
-| **Flextender**       | AJAX POST met `widget_config` CSRF token + detailpagina verrijking | Geen (openbaar) | `src/services/scrapers/flextender.ts`       |
-| **Striive**          | Playwright browser automatisering                                  | Inloggegevens   | `src/services/scrapers/striive.ts`          |
-| **Opdrachtoverheid** | Publieke JSON API met paginering                                   | Geen (openbaar) | `src/services/scrapers/opdrachtoverheid.ts` |
+| Platform                  | Methode                                                                                 | Authenticatie   | Bron                                                |
+| ------------------------- | --------------------------------------------------------------------------------------- | --------------- | --------------------------------------------------- |
+| **Striive**               | Playwright browser automatisering                                                       | Inloggegevens   | `packages/scrapers/src/striive.ts`                  |
+| **Flextender**            | AJAX POST met `widget_config` CSRF token + detailpagina verrijking                      | Geen (openbaar) | `packages/scrapers/src/flextender.ts`               |
+| **Nationale Vacaturebank**| Consent bootstrap (browser) → goedkope HTTP harvest                                     | Sessie-cookie   | `packages/scrapers/src/nationalevacaturebank.ts`    |
+| **Opdrachtoverheid**      | Publieke JSON API met paginering (90s timeout, 2 retries)                               | Geen (openbaar) | `packages/scrapers/src/opdrachtoverheid.ts`         |
+| **Werkzoeken**            | SSR vacaturekaartjes + parallel list-page fetches (AbortSignal geborgd, pnr-pagination) | Geen (openbaar) | `packages/scrapers/src/werkzoeken.ts`               |
+| **MiPublic**              | Yoast sitemap + JSON-LD JobPosting, Browserbase-sessie voor SiteGuard anti-bot          | Geen (openbaar) | `packages/scrapers/src/mipublic.ts`                 |
+| **Starapple**             | Yoast `/vacancy-sitemap.xml` + HTML detail-extractie (h1 + h3 secties)                  | Geen (openbaar) | `packages/scrapers/src/starapple.ts`                |
+
+Alle adapters implementeren de `PlatformAdapter` interface (`packages/scrapers/src/types.ts`) met `validate`, `scrape`, `testImport`. Registratie gebeurt in `packages/scrapers/src/platform-registry.ts`; een scheduled `scrape-pipeline` task in `trigger/scrape-pipeline.ts` draait alle actieve configuraties elke 4 uur.
 
 ### Scrape Pipeline
 
