@@ -1,19 +1,26 @@
 name: Lighthouse CI
 
 on:
-  # Run after Vercel deploys the preview (deployment_status gives us the URL)
-  deployment_status:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 permissions: {}
 
+env:
+  PNPM_VERSION: "9.15.0"
+  NODE_VERSION: "22"
+  PORT: "3001"
+  LOCAL_LIGHTHOUSE_URL: "http://127.0.0.1:3001"
+
 jobs:
   lighthouse:
-    # Only run on successful Vercel preview deployments for PRs
-    if: >-
-      github.event.deployment_status.state == 'success' &&
-      github.event.deployment_status.environment == 'Preview'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
       statuses: write
     steps:
@@ -21,18 +28,74 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build app for Lighthouse
+        run: pnpm build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SKIP_ENV_VALIDATION: "1"
+          NEXT_URL: ${{ env.LOCAL_LIGHTHOUSE_URL }}
+          PUBLIC_API_BASE_URL: ${{ env.LOCAL_LIGHTHOUSE_URL }}
+          ALLOWED_ORIGINS: ${{ env.LOCAL_LIGHTHOUSE_URL }}
+
+      - name: Start app
+        # The local Lighthouse server renders DB-backed shell routes such as
+        # /overzicht, so this step requires DATABASE_URL to be available in CI.
+        run: pnpm start > /tmp/lighthouse-next-start.log 2>&1 &
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SKIP_ENV_VALIDATION: "1"
+          NEXT_URL: ${{ env.LOCAL_LIGHTHOUSE_URL }}
+          PUBLIC_API_BASE_URL: ${{ env.LOCAL_LIGHTHOUSE_URL }}
+          ALLOWED_ORIGINS: ${{ env.LOCAL_LIGHTHOUSE_URL }}
+
+      - name: Wait for local app
+        run: npx wait-on "${{ env.LOCAL_LIGHTHOUSE_URL }}/overzicht" --timeout 180000
+
       - name: Run Lighthouse CI
         id: lhci
         uses: treosh/lighthouse-ci-action@v12
         with:
           urls: |
-            ${{ github.event.deployment_status.target_url }}/
-            ${{ github.event.deployment_status.target_url }}/kandidaten
-            ${{ github.event.deployment_status.target_url }}/vacatures
-            ${{ github.event.deployment_status.target_url }}/chat
+            ${{ env.LOCAL_LIGHTHOUSE_URL }}/overzicht
+            ${{ env.LOCAL_LIGHTHOUSE_URL }}/kandidaten
+            ${{ env.LOCAL_LIGHTHOUSE_URL }}/vacatures
+            ${{ env.LOCAL_LIGHTHOUSE_URL }}/chat
           uploadArtifacts: true
           temporaryPublicStorage: true
           configPath: ./lighthouserc.cjs
+
+      - name: Assert Lighthouse route budgets
+        run: pnpm tsx scripts/assert-lighthouse-routes.ts
+
+      - name: Upload Lighthouse server log
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: lighthouse-next-start-log
+          path: /tmp/lighthouse-next-start.log
+          retention-days: 14
 
       - name: Post results as PR comment
         if: always()
@@ -41,36 +104,29 @@ jobs:
           script: |
             const fs = require('fs');
             const marker = '<!-- lighthouse-ci-results -->';
+            const summaryPath = '.lighthouseci/route-budget-summary.json';
 
-            // Find the PR associated with this deployment
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head: `${context.repo.owner}:${context.payload.deployment.ref}`,
-              state: 'open',
-            });
-            if (prs.length === 0) return;
-            const prNumber = prs[0].number;
+            if (!context.issue.number) return;
+            const prNumber = context.issue.number;
 
             let summary = '### Lighthouse CI Results\n\n';
             try {
-              const manifest = JSON.parse(fs.readFileSync('.lighthouseci/manifest.json', 'utf8'));
-              summary += '| Route | Perf | LCP | CLS |\n|-------|------|-----|-----|\n';
-              for (const entry of manifest) {
-                const result = JSON.parse(fs.readFileSync(entry.jsonPath, 'utf8'));
-                const perf = Math.round((result.categories?.performance?.score || 0) * 100);
-                const lcp = Math.round(result.audits?.['largest-contentful-paint']?.numericValue || 0);
-                const cls = (result.audits?.['cumulative-layout-shift']?.numericValue || 0).toFixed(3);
-                const url = new URL(entry.url).pathname;
-                const emoji = perf >= 90 ? '🟢' : perf >= 75 ? '🟡' : '🔴';
-                summary += `| ${url} | ${emoji} ${perf} | ${lcp}ms | ${cls} |\n`;
+              const budgetSummary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+              summary += '| Route | Perf | LCP | TBT | Verdict |\n|-------|------|-----|-----|---------|\n';
+              for (const route of budgetSummary.routes) {
+                const perf = Math.round(route.perfMedian * 100);
+                const verdict = route.failures.length > 0
+                  ? `🔴 ${route.failures.join('; ')}`
+                  : route.warnings.length > 0
+                    ? `🟡 ${route.warnings.join('; ')}`
+                    : '🟢 Within budget';
+                summary += `| ${route.route} | ${perf} | ${route.lcpMedian}ms | ${route.tbtMedian}ms | ${verdict} |\n`;
               }
             } catch (e) {
               summary += '_Results not available_\n';
             }
 
-            const previewUrl = context.payload.deployment_status.target_url;
-            const body = `${marker}\n${summary}\n_Tested against: ${previewUrl}_\n_Mobile profile: 4x CPU throttle, slow 4G_`;
+            const body = `${marker}\n${summary}\n_Tested against: local CI production build at ${process.env.LOCAL_LIGHTHOUSE_URL}_\n_Mobile profile: 4x CPU throttle, slow 4G_`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
