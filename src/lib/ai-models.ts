@@ -148,33 +148,84 @@ function getTraced(): WrappedAI {
   return _traced;
 }
 
+// Lazy import of the usage recorder so this module stays importable in
+// environments without DB bindings (tests, edge runtime experiments, etc.).
+function lazyRecord(flow: string, resultPromise: Promise<unknown>): void {
+  void import("../services/ai-usage")
+    .then(({ recordFromResult }) => {
+      recordFromResult(flow, resultPromise);
+    })
+    .catch(() => {});
+}
+
 /** LangSmith-traced `generateText` — falls back to raw `ai.generateText` */
 export function tracedGenerateText(
   ...args: Parameters<typeof ai.generateText>
 ): ReturnType<typeof ai.generateText> {
-  return getTraced().generateText(...args);
+  const p = getTraced().generateText(...args);
+  lazyRecord("generateText", p);
+  return p;
 }
 
 /** LangSmith-traced `generateObject` — falls back to raw `ai.generateObject` */
 export const tracedGenerateObject: typeof ai.generateObject = (...args) => {
-  return getTraced().generateObject(...args);
+  const p = getTraced().generateObject(...args);
+  lazyRecord("generateObject", p);
+  return p;
 };
 
 /** LangSmith-traced `streamText` — falls back to raw `ai.streamText` */
 export function tracedStreamText(
   ...args: Parameters<typeof ai.streamText>
 ): ReturnType<typeof ai.streamText> {
-  return getTraced().streamText(...args);
+  const result = getTraced().streamText(...args);
+  // streamText is synchronous-returning; usage is resolved on `result.usage`
+  // (Promise) after the stream finishes. Forward that to the recorder.
+  const bag = result as unknown as {
+    usage?: Promise<unknown>;
+    response?: Promise<{ modelId?: string }>;
+    modelId?: string;
+  };
+  const usagePromise = bag.usage;
+  if (usagePromise && typeof usagePromise.then === "function") {
+    void import("../services/ai-usage")
+      .then(async ({ recordAiUsage }) => {
+        const u = (await usagePromise) as {
+          inputTokens?: number;
+          outputTokens?: number;
+          totalTokens?: number;
+          promptTokens?: number;
+          completionTokens?: number;
+        };
+        let modelId: string | undefined = bag.modelId;
+        if (!modelId && bag.response && typeof bag.response.then === "function") {
+          modelId = await bag.response.then((r) => r?.modelId).catch(() => undefined);
+        }
+        await recordAiUsage({
+          flow: "streamText",
+          model: modelId ?? "unknown",
+          inputTokens: u.inputTokens ?? u.promptTokens ?? 0,
+          outputTokens: u.outputTokens ?? u.completionTokens ?? 0,
+          totalTokens: u.totalTokens,
+        });
+      })
+      .catch(() => {});
+  }
+  return result;
 }
 
 /** LangSmith-traced `embed` — falls back to raw `ai.embed` */
 export function tracedEmbed(...args: Parameters<typeof ai.embed>): ReturnType<typeof ai.embed> {
-  return getTraced().embed(...args);
+  const p = getTraced().embed(...args);
+  lazyRecord("embed", p);
+  return p;
 }
 
 /** LangSmith-traced `embedMany` — falls back to raw `ai.embedMany` */
 export function tracedEmbedMany(
   ...args: Parameters<typeof ai.embedMany>
 ): ReturnType<typeof ai.embedMany> {
-  return getTraced().embedMany(...args);
+  const p = getTraced().embedMany(...args);
+  lazyRecord("embedMany", p);
+  return p;
 }
