@@ -592,16 +592,31 @@ async function scrapeMipublicListings(
       entry.error && !("isNoData" in entry && entry.isNoData) ? [entry.error] : [],
     ),
   ];
-  // Summarise missing-data pages into a single line instead of one per URL
+  // Missing-JSON-LD pages are expected at a small rate — MiPublic sometimes
+  // serves legacy/expired vacancies without structured data. Treat them as
+  // benign skips (don't bump the run to "partial") unless the rate exceeds
+  // 5% of total URLs, which would signal a real parser regression.
+  const totalFetched = detailUrls.length;
+  const noDataRatio = totalFetched > 0 ? noDataCount / totalFetched : 0;
+  const NO_DATA_REGRESSION_THRESHOLD = 0.05;
+
   if (noDataCount > 0) {
     const exampleUrls = noDataEntries
       .map((entry) => entry.error.replace("MiPublic detailpagina bevat geen JobPosting-data: ", ""))
       .slice(0, 3);
-    const exampleSuffix =
-      exampleUrls.length > 0 ? ` (bijv. ${exampleUrls.join(", ")})` : "";
-    realErrors.push(
-      `${noDataCount} MiPublic detailpagina's bevatten geen JobPosting-data${exampleSuffix}`,
-    );
+    const exampleSuffix = exampleUrls.length > 0 ? ` (bijv. ${exampleUrls.join(", ")})` : "";
+    const summary = `${noDataCount} MiPublic detailpagina's bevatten geen JobPosting-data${exampleSuffix}`;
+
+    if (noDataRatio > NO_DATA_REGRESSION_THRESHOLD) {
+      // >5% missing JSON-LD is a real signal — surface it as an error so the
+      // run status becomes "partial" and the observability layer alerts.
+      realErrors.push(
+        `${summary} — rate ${(noDataRatio * 100).toFixed(1)}% exceeds ${(NO_DATA_REGRESSION_THRESHOLD * 100).toFixed(0)}% threshold`,
+      );
+    } else {
+      // Low-rate misses are expected for legacy content. Log but don't fail.
+      console.log(`[mipublic] ${summary} — within tolerance, not bumping to partial`);
+    }
   }
 
     return {
