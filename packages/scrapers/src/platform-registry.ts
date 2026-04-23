@@ -5,6 +5,7 @@ import { monsterboardAdapter } from "./monsterboard";
 import { scrapeOpdrachtoverheid } from "./opdrachtoverheid";
 import { platformDefinitions } from "./platform-definitions";
 import { nationaleVacaturebankAdapter } from "./nationalevacaturebank";
+import { starappleAdapter } from "./starapple";
 import { scrapeStriive } from "./striive";
 import type {
   ImplementedPlatformDefinition,
@@ -146,6 +147,11 @@ const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefiniti
       return {
         ...definition,
         adapter: werkzoekenAdapter,
+      };
+    case "starapple-nl":
+      return {
+        ...definition,
+        adapter: starappleAdapter,
       };
     default:
       throw new Error(`Geen adapter geregistreerd voor platform ${definition.slug}`);
