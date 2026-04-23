@@ -14,6 +14,19 @@ tags: [performance, trigger-dev, search, database, react, audit, optimization]
 
 # Full-Stack Performance Audit — Motian Recruitment Platform
 
+## See also (implementation docs)
+
+This audit is the diagnostic layer. The concrete fixes it informs live in
+dedicated docs — prefer those for the "how" and use this one for the "why":
+
+- `docs/solutions/performance-issues/scraper-dashboard-cold-start-17s-to-1s-2026-04-16.md`
+  — implementation of the dashboard cold-start fix (PR #196 / RJC-153).
+- `docs/solutions/best-practices/neon-serverless-driver-vercel-2026-04-10.md`
+  — the Neon pool config (`max: 1`, `DATABASE_URL_UNPOOLED`) referenced
+  throughout this audit.
+- `docs/solutions/performance-issues/vercel-fluid-compute-spike-Pipeline-20260329.md`
+  — rate-limiting and ISR tuning called out in sections 3 and 8 below.
+
 ## Executive Summary
 
 Comprehensive audit of the Motian recruitment platform across four layers: Trigger.dev

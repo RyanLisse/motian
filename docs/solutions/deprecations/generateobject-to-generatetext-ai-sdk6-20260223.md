@@ -82,6 +82,25 @@ Biome's `noNonNullAssertion` rule disallows `output!`. Use `output as Type` inst
 | `tests/requirement-extraction.test.ts` | Updated string assertions |
 | `tests/structured-matching.test.ts` | Updated string assertions |
 
+## Current migration status (2026-04-23)
+
+Codebase-wide scan shows the migration is ~78% complete. Services using
+the v6 `Output.object({ schema })` pattern now include
+`ai-enrichment`, `analyze-evidence`, `requirement-extraction`,
+`platform-analyzer`, `structured-matching`, `match-judge`, and
+`platform-strategy-verifier`.
+
+Two call sites still use the legacy `tracedGenerateObject` wrapper
+(which forwards to v5 `ai.generateObject`):
+
+- `src/services/trend-insights.ts:448`
+- `src/services/interview-prep-generator.ts:217`
+
+`src/lib/ai-models.ts` still exports `tracedGenerateObject` as a
+convenience wrapper, which is fine while those two call sites remain.
+When both are migrated, the wrapper can be removed along with this
+deprecation doc.
+
 ## Prevention
 
 Pin AI SDK major version in `package.json` and review migration guides before upgrading. The SDK provides Codemod transformations for automated migration.

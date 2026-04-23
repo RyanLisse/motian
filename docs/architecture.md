@@ -31,9 +31,13 @@ CV Upload (SSE)      | slack-notification (on-demand)|    | scraper_configs   |
 
 | Platform | Method | File | Status |
 |----------|--------|------|--------|
-| Striive | Playwright browser automation with login | `src/services/scrapers/striive.ts` | Active |
-| Flextender | AJAX POST with `widget_config` CSRF token | `src/services/scrapers/flextender.ts` | Active |
-| Opdrachtoverheid | Public JSON API with paginated fetch | `src/services/scrapers/opdrachtoverheid.ts` | Active |
+| Striive | Playwright browser automation with login | `packages/scrapers/src/striive.ts` | Active |
+| Flextender | AJAX POST with `widget_config` CSRF token | `packages/scrapers/src/flextender.ts` | Active |
+| Nationale Vacaturebank | Consent bootstrap (browser) → cheap HTTP harvest | `packages/scrapers/src/nationalevacaturebank.ts` | Active |
+| Opdrachtoverheid | Public JSON API with paginated fetch (90s timeout, 2 retries) | `packages/scrapers/src/opdrachtoverheid.ts` | Active |
+| Werkzoeken | SSR cards + parallel page fetches with plumbed AbortSignal | `packages/scrapers/src/werkzoeken.ts` | Active |
+| MiPublic | Yoast sitemap + JSON-LD, Browserbase session for SiteGuard anti-bot | `packages/scrapers/src/mipublic.ts` | Active |
+| Starapple | Yoast `/vacancy-sitemap.xml` + HTML detail extraction | `packages/scrapers/src/starapple.ts` | Active |
 | Indeed | — | — | Planned |
 | LinkedIn | — | — | Planned |
 
