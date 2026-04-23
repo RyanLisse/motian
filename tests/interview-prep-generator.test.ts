@@ -2,13 +2,16 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  tracedGenerateObject,
+  tracedGenerateText,
   getJobById,
   getCandidateById,
   getMatchById,
   generateScreeningQuestions,
 } = vi.hoisted(() => ({
-  tracedGenerateObject: vi.fn(),
+  // Migrated from tracedGenerateObject to tracedGenerateText in the AI SDK v6
+  // migration — the source now calls tracedGenerateText with
+  // `output: Output.object({ schema })` and returns `.output` instead of `.object`.
+  tracedGenerateText: vi.fn(),
   getJobById: vi.fn(),
   getCandidateById: vi.fn(),
   getMatchById: vi.fn(),
@@ -17,7 +20,7 @@ const {
 
 vi.mock("../src/lib/ai-models", () => ({
   gemini31FlashLite: "gemini-3.1-flash-lite",
-  tracedGenerateObject,
+  tracedGenerateText,
   embeddingModel: "openai-embedding-model",
 }));
 
@@ -97,7 +100,7 @@ describe("generateInterviewPrep", () => {
       expect(result.recommendedQuestions.length).toBeGreaterThanOrEqual(3);
       expect(result.nextStep).toContain("3-5 verduidelijkende vragen");
     }
-    expect(tracedGenerateObject).not.toHaveBeenCalled();
+    expect(tracedGenerateText).not.toHaveBeenCalled();
   });
 
   it("uses live recruitment context and screening questions when enough detail is available", async () => {
@@ -130,8 +133,8 @@ describe("generateInterviewPrep", () => {
         priority: 0,
       },
     ]);
-    tracedGenerateObject.mockResolvedValue({
-      object: {
+    tracedGenerateText.mockResolvedValue({
+      output: {
         prepSummary: {
           interviewType: "screening",
           interviewGoal: "Toets sourcingdiepgang en stakeholderfit",
@@ -206,7 +209,7 @@ describe("generateInterviewPrep", () => {
     expect(result.status).toBe("ready");
     if (result.status !== "ready") throw new Error("Expected ready status");
     expect(generateScreeningQuestions).toHaveBeenCalledTimes(1);
-    expect(tracedGenerateObject).toHaveBeenCalledTimes(1);
+    expect(tracedGenerateText).toHaveBeenCalledTimes(1);
     expect(result.artifact.writebackPayload.linkedJobId).toBe(
       "11111111-1111-4111-8111-111111111111",
     );
