@@ -135,10 +135,64 @@ export function parseStarappleDetail(html: string, url: string): StarappleDetail
   }
   const description = sections.length > 0 ? sections.join("\n\n").slice(0, 8000) : rawTitle;
 
-  // Location hints — Starapple puts "Locatie" near the top, sometimes inside a
-  // meta tag, sometimes as a bare label. Best-effort lightweight match.
-  const locMatch = html.match(/Locatie[^<]{0,40}<[^>]+>\s*([^<]{2,60})\s*</i);
-  const location = locMatch ? locMatch[1].trim() : undefined;
+  // Location extraction — Starapple's WordPress theme places location in a
+  // `<!-- Location -->` section that conditionally renders a `.meta-item` div
+  // with an SVG icon followed by the location text. When the WordPress custom
+  // field is not set the block renders empty (common on current listings).
+  //
+  // Strategy (in priority order):
+  // 1. Structured meta-item: anchor on the <!-- Location --> HTML comment, then
+  //    skip the optional meta-item+SVG wrapper and capture the trailing text.
+  // 2. Prose label fallback: "Standplaats: Amsterdam" or "Locatie: Utrecht"
+  //    patterns that sometimes appear in the job-description body.
+  let location: string | undefined;
+
+  // 1. Structured meta-item — matches when WordPress field is populated.
+  //    Pattern: <!-- Location -->[whitespace]<div class="meta-item ...">
+  //      <svg ...>...</svg>[whitespace]CITY TEXT[whitespace]</div>
+  const metaItemMatch = html.match(
+    /<!--\s*Location\s*-->[\s\S]{0,200}?<\/svg>\s*([^\s<][^<]{1,59}?)\s*<\/div>/i,
+  );
+  if (metaItemMatch) {
+    const candidate = metaItemMatch[1].trim();
+    // Reject obvious non-locations (empty, just dashes, placeholder text)
+    if (candidate.length >= 2 && candidate !== "-" && !/^[\s\-–—]+$/.test(candidate)) {
+      location = candidate;
+    }
+  }
+
+  // 2. Inline tag fallback — "Locatie<strong>Amsterdam</strong>" or
+  //    "Standplaats<span>Utrecht</span>" without a colon separator.
+  if (!location) {
+    const inlineTagMatch = html.match(
+      /(?:Standplaats|Werklocatie|Locatie)\s*<[^>]+>\s*([^<]{2,60}?)\s*</i,
+    );
+    if (inlineTagMatch) {
+      const candidate = inlineTagMatch[1].trim().replace(/[;,.]$/, "");
+      if (candidate.length >= 2 && candidate !== "-" && !/^[\s\-–—]+$/.test(candidate)) {
+        location = candidate;
+      }
+    }
+  }
+
+  // 3. Prose label fallback — "Standplaats: Utrecht" or "Locatie: Amsterdam"
+  //    anywhere in the page text, bounded to 60 chars after the colon.
+  if (!location) {
+    const proseMatch = html.match(
+      /(?:Standplaats|Werklocatie|Locatie)\s*:\s*([A-ZÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝ][^<\n\r]{1,59}?)(?:\s*<|\s*\n)/i,
+    );
+    if (proseMatch) {
+      const candidate = proseMatch[1].trim().replace(/[;,.]$/, "");
+      // Reject generic prose uses like "locatie bij de klant" (lowercase start after colon)
+      if (
+        candidate.length >= 2 &&
+        candidate !== "-" &&
+        !/^(om|bij|van|in|op|het|een|de|dit|dat)\b/i.test(candidate)
+      ) {
+        location = candidate;
+      }
+    }
+  }
 
   return {
     title: rawTitle.slice(0, 300),
