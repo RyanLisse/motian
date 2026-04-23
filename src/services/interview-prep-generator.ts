@@ -1,5 +1,6 @@
+import { Output } from "ai";
 import { z } from "zod";
-import { gemini31FlashLite, tracedGenerateObject as generateObject } from "../lib/ai-models";
+import { gemini31FlashLite, tracedGenerateText } from "../lib/ai-models";
 import { getCandidateById } from "./candidates";
 import { getJobById } from "./jobs";
 import { getMatchById } from "./matches";
@@ -214,9 +215,9 @@ export async function generateInterviewPrep(
 
   const seedQuestions = screeningQuestions.map((question) => question.question).slice(0, 5);
 
-  const result = await generateObject({
+  const result = await tracedGenerateText({
     model: gemini31FlashLite,
-    schema: readyArtifactSchema,
+    output: Output.object({ schema: readyArtifactSchema }),
     system: SYSTEM_PROMPT,
     prompt: `Maak een recruiter-ready interviewvoorbereiding voor Motian.
 
@@ -247,12 +248,14 @@ Vereisten:
     abortSignal: AbortSignal.timeout(30_000),
   });
 
+  const artifact = result.output as z.infer<typeof readyArtifactSchema>;
+
   return {
     status: "ready",
     artifact: {
-      ...result.object,
+      ...artifact,
       writebackPayload: {
-        ...result.object.writebackPayload,
+        ...artifact.writebackPayload,
         linkedJobId: derivedJob?.id ?? parsed.jobId ?? null,
         linkedCandidateId: derivedCandidate?.id ?? parsed.candidateId ?? null,
         linkedMatchId: match?.id ?? parsed.matchId ?? null,

@@ -1,3 +1,4 @@
+import { Output } from "ai";
 import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import { and, db, desc, eq, gte, isNull, lt, ne, sql } from "../db";
@@ -9,7 +10,7 @@ import {
   jobs,
   scrapeResults,
 } from "../db/schema";
-import { gemini31FlashLite, tracedGenerateObject as generateObject } from "../lib/ai-models";
+import { gemini31FlashLite, tracedGenerateText } from "../lib/ai-models";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -445,9 +446,9 @@ export async function generateTrendInsights(metrics: TrendMetrics): Promise<Tren
   }
 
   try {
-    const result = await generateObject({
+    const result = await tracedGenerateText({
       model: gemini31FlashLite,
-      schema: trendInsightsOutputSchema,
+      output: Output.object({ schema: trendInsightsOutputSchema }),
       system: SYSTEM_PROMPT,
       prompt: `Analyseer onderstaande trenddata en genereer 3-6 inzichten voor de recruiter.
 
@@ -465,8 +466,8 @@ Focus op concrete opportunities die vandaag actie vragen. Noem in elke descripti
     return {
       generatedAt,
       source: "ai",
-      summary: result.object.summary,
-      insights: result.object.insights,
+      summary: (result.output as z.infer<typeof trendInsightsOutputSchema>).summary,
+      insights: (result.output as z.infer<typeof trendInsightsOutputSchema>).insights,
     };
   } catch (error) {
     console.warn("[trend-insights] AI generation failed, using fallback", error);
