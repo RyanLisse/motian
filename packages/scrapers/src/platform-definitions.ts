@@ -193,6 +193,26 @@ export const platformDefinitions: PlatformDefinition[] = [
     configSchema: werkzoekenConfigSchema,
     authSchema: emptyAuthSchema,
   },
+  {
+    slug: "starapple-nl",
+    displayName: "Starapple",
+    adapterKind: "http_html_list_detail",
+    authMode: "none",
+    attributionLabel: "Starapple",
+    badgeClassName:
+      "border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    capabilities: ["detail_enrichment", "smoke_import", "validation"],
+    description:
+      "Werving- en selectiebureau gericht op IT-vacatures (development, data science, infrastructure, security). Yoast sitemap + HTML detail-extractie.",
+    defaultBaseUrl: "https://www.starapple.nl",
+    defaultParameters: {
+      sitemapUrl: "https://www.starapple.nl/vacancy-sitemap.xml",
+      detailConcurrency: 4,
+    },
+    docsUrl: "https://www.starapple.nl/vacancy-sitemap.xml",
+    configSchema: basicPlatformConfigSchema,
+    authSchema: emptyAuthSchema,
+  },
 ];
 
 const platformDefinitionMap = new Map(platformDefinitions.map((entry) => [entry.slug, entry]));
