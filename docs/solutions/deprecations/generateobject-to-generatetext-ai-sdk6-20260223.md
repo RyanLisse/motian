@@ -82,24 +82,18 @@ Biome's `noNonNullAssertion` rule disallows `output!`. Use `output as Type` inst
 | `tests/requirement-extraction.test.ts` | Updated string assertions |
 | `tests/structured-matching.test.ts` | Updated string assertions |
 
-## Current migration status (2026-04-23)
+## Current migration status (2026-04-22)
 
-Codebase-wide scan shows the migration is ~78% complete. Services using
-the v6 `Output.object({ schema })` pattern now include
+Migration is **100% complete**. All call sites now use the v6
+`Output.object({ schema })` pattern. Migrated services:
+
 `ai-enrichment`, `analyze-evidence`, `requirement-extraction`,
-`platform-analyzer`, `structured-matching`, `match-judge`, and
-`platform-strategy-verifier`.
+`platform-analyzer`, `structured-matching`, `match-judge`,
+`platform-strategy-verifier`, `trend-insights`, `interview-prep-generator`.
 
-Two call sites still use the legacy `tracedGenerateObject` wrapper
-(which forwards to v5 `ai.generateObject`):
-
-- `src/services/trend-insights.ts:448`
-- `src/services/interview-prep-generator.ts:217`
-
-`src/lib/ai-models.ts` still exports `tracedGenerateObject` as a
-convenience wrapper, which is fine while those two call sites remain.
-When both are migrated, the wrapper can be removed along with this
-deprecation doc.
+`src/lib/ai-models.ts` still exports `tracedGenerateObject` for backward
+compatibility, but it has **zero callers** in the codebase. It can be
+removed in a follow-up PR (separate concern from this migration).
 
 ## Prevention
 

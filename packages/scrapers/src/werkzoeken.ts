@@ -574,7 +574,24 @@ async function scrapeWerkzoekenInternal(
       }
 
       const parsed = parseWerkzoekenListingCards(result.value.html, config.baseUrl);
-      const added = pushNewListings(parsed);
+      let added = pushNewListings(parsed);
+
+      // Intermittent failure mode (RJC-219): the direct fetch returns 200 but
+      // the markup has degraded (stripped data-* attributes or no vacancy
+      // anchors at all). The page usually renders fine seconds later — so
+      // before surfacing `unexpected_markup`, retry the same URL once via
+      // Browserbase (real Chrome) when configured. If Browserbase also
+      // returns zero cards, fall through to the existing error path.
+      if (added === 0 && page === pnrStep && process.env.BROWSERBASE_API_KEY) {
+        try {
+          throwIfAborted(signal);
+          const browserbaseHtml = await fetchViaBrowserbase(url, signal);
+          const reparsed = parseWerkzoekenListingCards(browserbaseHtml, config.baseUrl);
+          added = pushNewListings(reparsed);
+        } catch {
+          // Swallow — we fall through to the unexpected_markup branch below.
+        }
+      }
 
       if (added === 0) {
         if (page > pnrStep) {
