@@ -890,3 +890,37 @@ export const agentEvents = pgTable(
     pendingByTypeIdx: index("idx_agent_events_pending_type").on(table.status, table.eventType),
   }),
 );
+
+// ========== AI Usage (token + cost tracking) ==========
+//
+// One row per AI SDK call. Captures tokens reported by the provider + a derived
+// cost in USD micros (integer, 1/1_000_000 USD) using the pricing table in
+// src/lib/ai-pricing.ts. `flow` is a short string tag so callers can roll up
+// cost per surface (chat, autopilot, embeddings, scraper-dynamic-adapter, ...).
+// Pricing is a point-in-time snapshot; older rows do not re-price when the
+// provider's rate card changes.
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    flow: text("flow").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    // Cost in micro-dollars (USD × 1_000_000). Integer storage avoids FP drift.
+    costUsdMicros: integer("cost_usd_micros").notNull().default(0),
+    // Optional trace context — session id, trigger run id, adapter name, etc.
+    metadata: jsonb("metadata").default({}),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    flowIdx: index("idx_ai_usage_flow").on(table.flow),
+    modelIdx: index("idx_ai_usage_model").on(table.model),
+    createdAtIdx: index("idx_ai_usage_created_at").on(table.createdAt),
+    flowCreatedAtIdx: index("idx_ai_usage_flow_created_at").on(table.flow, table.createdAt),
+  }),
+);

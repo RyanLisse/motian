@@ -181,25 +181,37 @@ export async function generateSessionTitle(
 export function trackTokenUsage(resultPromise: Promise<unknown>, sessionId: string): void {
   void Promise.resolve(resultPromise)
     .then(async (final) => {
-      const usage = (final as { usage?: { promptTokens?: number; completionTokens?: number } })
-        ?.usage;
+      // AI SDK v6 uses inputTokens/outputTokens/totalTokens. v4 and earlier
+      // used promptTokens/completionTokens. Read both so a future SDK bump
+      // doesn't silently zero-out tracking again.
+      const usage = (
+        final as {
+          usage?: {
+            inputTokens?: number;
+            outputTokens?: number;
+            totalTokens?: number;
+            promptTokens?: number;
+            completionTokens?: number;
+          };
+        }
+      )?.usage;
       if (!usage) return;
-      const prompt = usage.promptTokens ?? 0;
-      const completion = usage.completionTokens ?? 0;
-      const delta = prompt + completion;
-      if (delta <= 0) return;
+      const prompt = usage.inputTokens ?? usage.promptTokens ?? 0;
+      const completion = usage.outputTokens ?? usage.completionTokens ?? 0;
+      const total = usage.totalTokens ?? prompt + completion;
+      if (total <= 0) return;
       console.log(
         JSON.stringify({
           flow: "chat",
           promptTokens: prompt,
           completionTokens: completion,
-          totalTokens: delta,
+          totalTokens: total,
           sessionId,
         }),
       );
 
       try {
-        await incrementSessionTokens(sessionId, delta);
+        await incrementSessionTokens(sessionId, total);
       } catch (err) {
         console.error("[chat] Token usage update failed:", err);
       }
