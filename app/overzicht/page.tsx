@@ -58,6 +58,7 @@ const PRIORITY_TONE_STYLES = {
 async function DashboardContent() {
   const {
     dedupedTotal,
+    kpiTrend,
     platformCounts,
     recentJobs,
     activeScrapers,
@@ -163,7 +164,7 @@ async function DashboardContent() {
       </DashboardCard>
 
       <DashboardCard title="Trend (30 dagen)" icon={<TrendingUp className="h-4 w-4" />}>
-        <KpiTrendChart data={[]} />
+        <KpiTrendChart data={kpiTrend} />
       </DashboardCard>
 
       <DashboardCard title="Wat vraagt nu aandacht?" icon={<Clock className="h-4 w-4" />}>

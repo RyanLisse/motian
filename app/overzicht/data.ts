@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { and, asc, db, desc, eq, gte, isNull, ne, sql } from "@/src/db";
+import { kpiSnapshots } from "@/src/db/kpi-snapshots-schema";
 import {
   applications,
   candidates,
@@ -198,6 +199,9 @@ async function getOverviewDataUncached(database: typeof db = db) {
     }
   })();
 
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
   const [
     platformCounts,
     dedupedTotal,
@@ -211,6 +215,7 @@ async function getOverviewDataUncached(database: typeof db = db) {
     jobsMissingEmbeddingResult,
     candidatesMissingEmbeddingResult,
     matchesMissingStructuredReviewResult,
+    kpiTrendRows,
   ] = await Promise.all([
     database
       .select({
@@ -301,7 +306,42 @@ async function getOverviewDataUncached(database: typeof db = db) {
       .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(jobMatches)
       .where(sql`${jobMatches.criteriaBreakdown} is null`),
+
+    database
+      .select({
+        date: kpiSnapshots.date,
+        openVacatures: kpiSnapshots.openVacatures,
+        pipelineTotal: kpiSnapshots.pipelineTotal,
+      })
+      .from(kpiSnapshots)
+      .where(gte(kpiSnapshots.date, thirtyDaysAgo.toISOString().slice(0, 10)))
+      .orderBy(asc(kpiSnapshots.date)),
   ]);
+
+  // Fallback: if the daily cron hasn't populated enough snapshots yet (new
+  // table, deploy gap, cron regression), synthesize today's point from live
+  // counts so the chart always has something to render. Prevents the page
+  // from silently showing "geen trend data" while we wait for the 23:00
+  // Amsterdam cron.
+  const kpiTrend: Array<{ date: string; openVacatures: number; pipelineTotal: number }> = (
+    kpiTrendRows as Array<{ date: string; openVacatures: number; pipelineTotal: number }>
+  ).map((row) => ({
+    date: typeof row.date === "string" ? row.date : String(row.date),
+    openVacatures: row.openVacatures,
+    pipelineTotal: row.pipelineTotal,
+  }));
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const hasToday = kpiTrend.some((row) => row.date === todayIso);
+  if (!hasToday) {
+    const openToday = platformCounts.reduce((sum, row) => sum + Number(row.count ?? 0), 0);
+    const pipelineToday = pipelineStageCounts.reduce((sum, row) => sum + Number(row.count ?? 0), 0);
+    kpiTrend.push({
+      date: todayIso,
+      openVacatures: openToday,
+      pipelineTotal: pipelineToday,
+    });
+  }
 
   const pipelineHealth = buildPipelineHealthSnapshot({
     activeScrapers,
@@ -315,6 +355,7 @@ async function getOverviewDataUncached(database: typeof db = db) {
   return {
     activeScrapers,
     dedupedTotal,
+    kpiTrend,
     pipelineHealth,
     pipelineStageCounts,
     platformCounts,

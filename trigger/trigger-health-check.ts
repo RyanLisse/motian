@@ -25,25 +25,34 @@ import { logger, runs, schedules } from "@trigger.dev/sdk";
 
 // Every scheduled task id that is supposed to be running in prod.
 // Keep this list in sync with trigger/*.ts `schedules.task({ id: ... })`.
-const MONITORED_TASKS: Array<{ id: string; expectedMaxGapHours: number }> = [
+// `criticalFailureThreshold` = how many of the last 5 runs must be failed
+// before we Sentry-alert. Default 3 (tolerant of transient flakes). For
+// critical data pipelines where a single failure is already actionable
+// (scrape-pipeline: a scraper going dark means stale vacature data), drop
+// to 1 so the first regression pages on the 07:00 health-check.
+const MONITORED_TASKS: Array<{
+  id: string;
+  expectedMaxGapHours: number;
+  criticalFailureThreshold?: number;
+}> = [
   { id: "agent-communicator", expectedMaxGapHours: 24 },
   { id: "agent-matcher", expectedMaxGapHours: 24 },
-  { id: "agent-orchestrator", expectedMaxGapHours: 14 },
+  { id: "agent-orchestrator", expectedMaxGapHours: 14, criticalFailureThreshold: 1 },
   { id: "agent-intake", expectedMaxGapHours: 24 },
   { id: "agent-scheduler", expectedMaxGapHours: 24 },
   { id: "ai-enrichment-batch", expectedMaxGapHours: 48 },
   { id: "cache-refresh", expectedMaxGapHours: 1 },
   { id: "agent-sourcing", expectedMaxGapHours: 48 },
   { id: "candidate-dedup", expectedMaxGapHours: 48 },
-  { id: "daily-kpi-snapshot", expectedMaxGapHours: 26 },
+  { id: "daily-kpi-snapshot", expectedMaxGapHours: 26, criticalFailureThreshold: 1 },
   { id: "cv-analysis-pipeline", expectedMaxGapHours: 24 },
   { id: "daily-platform-sync", expectedMaxGapHours: 26 },
   { id: "defer-embedding-sync", expectedMaxGapHours: 24 },
   { id: "match-staleness-purge", expectedMaxGapHours: 48 },
   { id: "embeddings-batch", expectedMaxGapHours: 24 },
-  { id: "nightly-maintenance", expectedMaxGapHours: 26 },
+  { id: "nightly-maintenance", expectedMaxGapHours: 26, criticalFailureThreshold: 1 },
   { id: "platform-onboard", expectedMaxGapHours: 72 },
-  { id: "scrape-pipeline", expectedMaxGapHours: 6 },
+  { id: "scrape-pipeline", expectedMaxGapHours: 6, criticalFailureThreshold: 1 },
   { id: "scraper-health-check", expectedMaxGapHours: 26 },
   { id: "scraper-overlap-precompute", expectedMaxGapHours: 2 },
 ];
@@ -108,10 +117,13 @@ export const triggerHealthCheckTask = schedules.task({
 
       const ageHours = lastRunAt ? (Date.now() - lastRunAt.getTime()) / (60 * 60 * 1000) : null;
 
-      // Alert 1 — consistent failure (≥3 of last 5)
-      if (failed >= 3) {
+      // Alert 1 — consistent failure (≥N of last 5, default 3, per-task override).
+      const failureThreshold = task.criticalFailureThreshold ?? 3;
+      if (failed >= failureThreshold) {
         alerts.push(
-          `${failed}/${total} recent runs failed (last reason: ${lastFailureReason ?? "unknown"})`,
+          `${failed}/${total} recent runs failed (threshold=${failureThreshold}, last reason: ${
+            lastFailureReason ?? "unknown"
+          })`,
         );
       }
       // Alert 2 — task missing entirely
