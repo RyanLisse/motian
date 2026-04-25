@@ -20,17 +20,13 @@ describe("t3-env schema coverage", () => {
     const triggerSource = readSource("trigger.config.ts");
     const envSource = readSource("src/env.ts");
 
-    // Extract the syncEnvVars block first, then parse env var names from it
-    const syncBlockMatch = triggerSource.match(
-      /syncEnvVars\([\s\S]*?const keys\s*=\s*\[([\s\S]*?)\]/,
-    );
-    expect(
-      syncBlockMatch,
-      "Could not find syncEnvVars keys array in trigger.config.ts",
-    ).toBeTruthy();
-    const keysBlock = syncBlockMatch?.[1];
-    if (!keysBlock) throw new Error("Expected syncEnvVars keys capture group");
-    const syncedVars = [...keysBlock.matchAll(/"([A-Z_]+)"/g)].map((m) => m[1]);
+    // Extract the entire syncEnvVars(...) block, then parse all uppercase
+    // string literals inside it. Tolerant of refactors that split the keys
+    // into multiple arrays (e.g., criticalKeys + optionalKeys).
+    const syncBlockMatch = triggerSource.match(/syncEnvVars\(([\s\S]*?)\}\),/);
+    expect(syncBlockMatch, "Could not find syncEnvVars block in trigger.config.ts").toBeTruthy();
+    const syncBlock = syncBlockMatch?.[1] ?? "";
+    const syncedVars = [...syncBlock.matchAll(/"([A-Z][A-Z0-9_]+)"/g)].map((m) => m[1]);
     const triggerEnvVars = syncedVars.filter((v) => v !== "DATABASE_URL" && v.length > 3);
 
     for (const varName of triggerEnvVars) {
