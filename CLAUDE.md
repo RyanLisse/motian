@@ -43,10 +43,9 @@ pnpm voice-agent:dev      # LiveKit voice agent (dev)
 pnpm harness:pre-pr       # lint + tsc + test + risk policy gate
 ```
 
-`pnpm lint` currently passes cleanly. `pnpm test` still has known pre-existing failures in
-`tests/autopilot-run-detail-evidence.test.ts`, `tests/opdrachten-filters-pagination.test.ts`,
-and `tests/harness/integration.test.ts`. Do not assume your changes caused them without
-reproducing, and do not "fix" them by reverting unrelated abstractions.
+`pnpm lint` and `pnpm test` should both pass cleanly. If you see failures, reproduce
+them on a clean checkout before assuming your changes caused them, and do not "fix"
+them by reverting unrelated abstractions.
 
 ## Architecture (big picture)
 
