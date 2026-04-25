@@ -38,8 +38,18 @@ export const getKandidatenStats = cache(getCachedKandidatenStats);
 // Skills catalog status + skills list — rarely changes
 // ---------------------------------------------------------------------------
 
+// Skill `name` values can be very long free-text strings (entire motivatie sentences).
+// We truncate the visible label to keep the SSR HTML payload small for /kandidaten,
+// while preserving the original text for the browser tooltip via `fullName`.
+const SKILL_LABEL_MAX_LENGTH = 80;
+
+function truncateSkillLabel(name: string): string {
+  if (name.length <= SKILL_LABEL_MAX_LENGTH) return name;
+  return `${name.slice(0, SKILL_LABEL_MAX_LENGTH - 1).trimEnd()}…`;
+}
+
 async function getSkillsFilterDataUncached() {
-  const [catalogStatus, skillOptions] = await Promise.all([
+  const [catalogStatus, rawSkillOptions] = await Promise.all([
     getSkillsCatalogStatusCached(),
     listSkillsForFilterOptions(),
   ]);
@@ -48,6 +58,13 @@ async function getSkillsFilterDataUncached() {
   if (catalogStatus.issue === "missing_catalog") {
     escoCatalogMessage = "Skills-catalogus ontbreekt; genereer eerst canonical skills.";
   }
+
+  // Preserve `slug` (the filter value) untouched; truncate the `name` used as label.
+  const skillOptions = rawSkillOptions.map((option) => ({
+    slug: option.slug,
+    name: truncateSkillLabel(option.name),
+    fullName: option.name,
+  }));
 
   return {
     escoCatalogAvailable: catalogStatus.available,
@@ -58,7 +75,7 @@ async function getSkillsFilterDataUncached() {
 
 const getCachedSkillsFilterData = unstable_cache(
   getSkillsFilterDataUncached,
-  ["kandidaten-skills-filter", "v1"],
+  ["kandidaten-skills-filter", "v2"],
   { revalidate: 300 },
 );
 
