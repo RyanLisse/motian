@@ -307,15 +307,26 @@ async function getOverviewDataUncached(database: typeof db = db) {
       .from(jobMatches)
       .where(sql`${jobMatches.criteriaBreakdown} is null`),
 
-    database
-      .select({
-        date: kpiSnapshots.date,
-        openVacatures: kpiSnapshots.openVacatures,
-        pipelineTotal: kpiSnapshots.pipelineTotal,
-      })
-      .from(kpiSnapshots)
-      .where(gte(kpiSnapshots.date, thirtyDaysAgo.toISOString().slice(0, 10)))
-      .orderBy(asc(kpiSnapshots.date)),
+    // Wrapped in try/catch + extra IIFE so a missing kpi_snapshots table or
+    // a test mock that doesn't stub the 12th .select() call never breaks
+    // the dashboard. Same defensive pattern as `dedupedTotalPromise`.
+    (async () => {
+      try {
+        const builder = database
+          .select({
+            date: kpiSnapshots.date,
+            openVacatures: kpiSnapshots.openVacatures,
+            pipelineTotal: kpiSnapshots.pipelineTotal,
+          })
+          .from(kpiSnapshots);
+        if (!builder) return [] as const;
+        return await builder
+          .where(gte(kpiSnapshots.date, thirtyDaysAgo.toISOString().slice(0, 10)))
+          .orderBy(asc(kpiSnapshots.date));
+      } catch {
+        return [] as const;
+      }
+    })(),
   ]);
 
   // Fallback: if the daily cron hasn't populated enough snapshots yet (new

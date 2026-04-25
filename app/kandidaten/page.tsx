@@ -59,7 +59,7 @@ async function KandidatenContent({ searchParams }: Props) {
   const skillSlug = params.vaardigheid ?? "";
 
   let skillsData = {
-    skillOptions: [] as { slug: string; name: string }[],
+    skillOptions: [] as { slug: string; name: string; fullName: string }[],
     escoCatalogAvailable: false,
     escoCatalogMessage: "Vaardigheden-filter is tijdelijk niet beschikbaar.",
   };
@@ -165,7 +165,7 @@ async function KandidatenContent({ searchParams }: Props) {
                 : "Vaardigheden-filter tijdelijk niet beschikbaar"}
             </option>
             {skillOptions.map((s) => (
-              <option key={s.slug} value={s.slug}>
+              <option key={s.slug} value={s.slug} title={s.fullName}>
                 {s.name}
               </option>
             ))}
