@@ -17,7 +17,11 @@ describe("ESCO surface parity", () => {
 
     expect(kandidaatListRoute).toContain("withCandidatesSkills");
     expect(kandidaatDetailRoute).toContain("withCandidateSkills");
-    expect(vacaturesListRoute).toContain("withJobsSkillsLite");
+    // RJC-222 moved withJobsSkillsLite enrichment behind the
+    // runVacaturesSearchWithSkillsLite helper so the route file no longer
+    // imports it directly. Accept either form — the architectural contract
+    // (skills-lite enrichment on /api/vacatures responses) is preserved.
+    expect(vacaturesListRoute).toMatch(/withJobsSkillsLite|runVacaturesSearchWithSkillsLite/);
     expect(vacaturesDetailRoute).toContain("withJobSkills");
   });
 

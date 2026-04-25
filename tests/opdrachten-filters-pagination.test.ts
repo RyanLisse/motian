@@ -359,9 +359,19 @@ describe("Opdrachten UI/API contracts", () => {
     const listRoute = readFile("app", "api", "vacatures", "route.ts");
     const searchRoute = readFile("app", "api", "vacatures", "zoeken", "route.ts");
 
-    expect(listRoute).toContain('import { runVacaturesSearch } from "@/src/lib/vacatures-search"');
-    expect(listRoute).toContain("const out = await runVacaturesSearch(params);");
-    expect(listRoute).toContain("paginatedResponse(data, result.total, { page, limit, offset })");
+    // RJC-222 swapped /api/vacatures to the perf-optimized
+    // runVacaturesSearchWithSkillsLite variant which uses the cached
+    // skills-lite path; the original runVacaturesSearch still exists for
+    // /api/vacatures/zoeken. Both names are accepted here.
+    expect(listRoute).toMatch(
+      /import \{ runVacaturesSearch(WithSkillsLite)? \} from "@\/src\/lib\/vacatures-search"/,
+    );
+    expect(listRoute).toMatch(/const out = await runVacaturesSearch(WithSkillsLite)?\(params\);/);
+    // First arg is the job array — accept either `data` (legacy) or
+    // `result.data` (RJC-222 inlined the destructure).
+    expect(listRoute).toMatch(
+      /paginatedResponse\((result\.)?data, result\.total, \{ page, limit, offset \}\)/,
+    );
 
     expect(searchRoute).toContain('import { runJobPageSearch } from "@/src/lib/job-search-runner"');
     expect(searchRoute).toContain("const out = await runJobPageSearch(params);");
