@@ -383,7 +383,7 @@ async function openBrowserbaseSession(): Promise<BrowserbaseHandle | null> {
           // call so the challenge self-resolves and the cookie is stored
           // in the browser context. Subsequent `page.evaluate(fetch)` calls
           // inherit that cookie and return raw response bodies.
-          await page.goto(url, { waitUntil: "networkidle2", timeout: 30_000 });
+          await page.goto(url, { waitUntil: "networkidle2", timeout: 45_000 });
           const maxWaitMs = 25_000;
           const startTime = Date.now();
           while (Date.now() - startTime < maxWaitMs) {

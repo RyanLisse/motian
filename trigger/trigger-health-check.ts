@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { logger, runs, schedules } from "@trigger.dev/sdk";
+import { MONITORED_TASKS } from "../src/lib/cron-slo-thresholds";
 
 /**
  * Trigger.dev health check — runs daily and detects scheduled tasks that
@@ -21,41 +22,11 @@ import { logger, runs, schedules } from "@trigger.dev/sdk";
  *        - 3 or more of the last 5 runs failed (consistent failure), OR
  *        - the task hasn't produced any runs in its expected window
  *          (missing entirely, possibly a deploy gap).
+ *
+ * The monitored task list itself lives in `src/lib/cron-slo-thresholds.ts`
+ * because the /scraper-dashboard SLO badge needs to consume the same
+ * thresholds. Edit it there, not here.
  */
-
-// Every scheduled task id that is supposed to be running in prod.
-// Keep this list in sync with trigger/*.ts `schedules.task({ id: ... })`.
-// `criticalFailureThreshold` = how many of the last 5 runs must be failed
-// before we Sentry-alert. Default 3 (tolerant of transient flakes). For
-// critical data pipelines where a single failure is already actionable
-// (scrape-pipeline: a scraper going dark means stale vacature data), drop
-// to 1 so the first regression pages on the 07:00 health-check.
-const MONITORED_TASKS: Array<{
-  id: string;
-  expectedMaxGapHours: number;
-  criticalFailureThreshold?: number;
-}> = [
-  { id: "agent-communicator", expectedMaxGapHours: 24 },
-  { id: "agent-matcher", expectedMaxGapHours: 24 },
-  { id: "agent-orchestrator", expectedMaxGapHours: 14, criticalFailureThreshold: 1 },
-  { id: "agent-intake", expectedMaxGapHours: 24 },
-  { id: "agent-scheduler", expectedMaxGapHours: 24 },
-  { id: "ai-enrichment-batch", expectedMaxGapHours: 48 },
-  { id: "cache-refresh", expectedMaxGapHours: 1 },
-  { id: "agent-sourcing", expectedMaxGapHours: 48 },
-  { id: "candidate-dedup", expectedMaxGapHours: 48 },
-  { id: "daily-kpi-snapshot", expectedMaxGapHours: 26, criticalFailureThreshold: 1 },
-  { id: "cv-analysis-pipeline", expectedMaxGapHours: 24 },
-  { id: "daily-platform-sync", expectedMaxGapHours: 26 },
-  { id: "defer-embedding-sync", expectedMaxGapHours: 24 },
-  { id: "match-staleness-purge", expectedMaxGapHours: 48 },
-  { id: "embeddings-batch", expectedMaxGapHours: 24 },
-  { id: "nightly-maintenance", expectedMaxGapHours: 26, criticalFailureThreshold: 1 },
-  { id: "platform-onboard", expectedMaxGapHours: 72 },
-  { id: "scrape-pipeline", expectedMaxGapHours: 6, criticalFailureThreshold: 1 },
-  { id: "scraper-health-check", expectedMaxGapHours: 26 },
-  { id: "scraper-overlap-precompute", expectedMaxGapHours: 2 },
-];
 
 type TaskHealth = {
   id: string;

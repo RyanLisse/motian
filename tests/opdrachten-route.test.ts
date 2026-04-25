@@ -7,6 +7,11 @@ const { mockRunVacaturesSearch, mockWithJobsSkillsLite } = vi.hoisted(() => ({
 
 vi.mock("../src/lib/vacatures-search", () => ({
   runVacaturesSearch: mockRunVacaturesSearch,
+  // RJC-222: /api/vacatures (which /api/opdrachten re-exports) was switched
+  // to the perf-optimized SkillsLite variant. Use the same mock spy for both
+  // so existing assertions on `mockRunVacaturesSearch.toHaveBeenCalledWith`
+  // keep working regardless of which entry point the route picks.
+  runVacaturesSearchWithSkillsLite: mockRunVacaturesSearch,
 }));
 
 vi.mock("../src/services/esco", () => ({
@@ -67,7 +72,14 @@ describe("GET /api/opdrachten", () => {
     const request = new Request("http://localhost/api/opdrachten?q=manager&pagina=2&perPage=25");
     await GET(request);
 
-    expect(mockWithJobsSkillsLite).toHaveBeenCalledWith([{ id: "job-1", title: "Manager Inhuur" }]);
+    // RJC-222 moved the withJobsSkillsLite call inside
+    // runVacaturesSearchWithSkillsLite (mocked above), so the route no longer
+    // calls it directly. Assert the runner ran with the right query instead.
+    expect(mockRunVacaturesSearch).toHaveBeenCalledTimes(1);
+    const runnerArg = mockRunVacaturesSearch.mock.calls[0][0] as URLSearchParams;
+    expect(runnerArg.get("q")).toBe("manager");
+    expect(runnerArg.get("pagina")).toBe("2");
+    expect(runnerArg.get("perPage")).toBe("25");
   });
 
   it("returns runner validation errors unchanged", async () => {

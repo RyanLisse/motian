@@ -1,4 +1,5 @@
 import { runs } from "@trigger.dev/sdk";
+import { getMonitoredTask, getSloStatus, type SloStatus } from "@/src/lib/cron-slo-thresholds";
 import { parseCronNext } from "@/src/lib/cron-utils";
 import { cachedQuery } from "@/src/lib/upstash";
 import { and, db, desc, eq, gte, isNull, sql } from "../db";
@@ -213,6 +214,12 @@ export type TriggerRunSummary = {
   error: string | null;
 };
 
+export type TriggerSloStatus = {
+  status: SloStatus;
+  expectedMaxGapHours: number;
+  ageHours: number | null;
+};
+
 export type TriggerTaskVisibility = {
   taskIdentifier: string;
   label: string;
@@ -220,6 +227,7 @@ export type TriggerTaskVisibility = {
   timezone: string;
   latestRun: TriggerRunSummary | null;
   recentRuns: TriggerRunSummary[];
+  slo: TriggerSloStatus | null;
 };
 
 export type TriggerVisibility = {
@@ -811,10 +819,34 @@ function normalizeTriggerRun(run: unknown): TriggerRunSummary {
   };
 }
 
+function deriveTriggerSlo(
+  taskIdentifier: string,
+  latestRun: TriggerRunSummary | null,
+  now: Date = new Date(),
+): TriggerSloStatus | null {
+  const monitored = getMonitoredTask(taskIdentifier);
+  if (!monitored) return null;
+
+  const lastRunAt =
+    latestRun?.startedAt != null
+      ? toDateOrNull(latestRun.startedAt)
+      : toDateOrNull(latestRun?.createdAt ?? null);
+
+  const ageHours = lastRunAt ? (now.getTime() - lastRunAt.getTime()) / (60 * 60 * 1000) : null;
+
+  return {
+    status: getSloStatus(lastRunAt, monitored.expectedMaxGapHours, now),
+    expectedMaxGapHours: monitored.expectedMaxGapHours,
+    ageHours,
+  };
+}
+
 function createTriggerVisibilityFallback(
   checkedAt: string,
   reason: string | null,
 ): TriggerVisibility {
+  const now = new Date(checkedAt);
+  const fallbackNow = Number.isNaN(now.getTime()) ? new Date() : now;
   return {
     available: false,
     checkedAt,
@@ -826,6 +858,7 @@ function createTriggerVisibilityFallback(
       timezone: task.timezone,
       latestRun: null,
       recentRuns: [],
+      slo: deriveTriggerSlo(task.taskIdentifier, null, fallbackNow),
     })),
   };
 }
@@ -877,13 +910,15 @@ async function getTriggerVisibility(limit = 8): Promise<TriggerVisibility> {
       reason: null,
       tasks: TRIGGER_TASKS.map((task) => {
         const recentRuns = runList.filter((run) => run.taskIdentifier === task.taskIdentifier);
+        const latestRun = recentRuns[0] ?? null;
         return {
           taskIdentifier: task.taskIdentifier,
           label: task.label,
           cronExpression: task.cronExpression,
           timezone: task.timezone,
-          latestRun: recentRuns[0] ?? null,
+          latestRun,
           recentRuns,
+          slo: deriveTriggerSlo(task.taskIdentifier, latestRun),
         };
       }),
     };
@@ -1004,6 +1039,7 @@ async function getScraperDashboardDataUncached(
           timezone: task.timezone,
           latestRun: null,
           recentRuns: [],
+          slo: deriveTriggerSlo(task.taskIdentifier, null, now),
         })),
       });
   // These are independent read queries (NOT inside a transaction), so they can
