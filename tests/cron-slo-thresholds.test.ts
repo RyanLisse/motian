@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getMonitoredTask, getSloStatus, MONITORED_TASKS } from "../src/lib/cron-slo-thresholds";
+import {
+  getMonitoredTask,
+  getSloStatus,
+  MONITORED_TASKS,
+} from "../src/lib/cron-slo-thresholds";
 
 describe("MONITORED_TASKS", () => {
   it("includes the scrape pipeline with the historical 6h gap and aggressive failure threshold", () => {

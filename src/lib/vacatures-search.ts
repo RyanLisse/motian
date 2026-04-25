@@ -9,10 +9,17 @@ import {
 } from "@/src/lib/opdrachten-filters";
 import { parsePagination } from "@/src/lib/pagination";
 import type { UnifiedJobSearchResult } from "@/src/services/jobs";
-import { searchJobsUnified } from "@/src/services/jobs";
+import { searchJobsUnified, searchJobsUnifiedListWithSkillsLite } from "@/src/services/jobs";
 
 export type VacaturesSearchResult = {
   result: UnifiedJobSearchResult;
+  page: number;
+  limit: number;
+  offset: number;
+};
+
+export type VacaturesSearchWithSkillsLiteResult = {
+  result: Awaited<ReturnType<typeof searchJobsUnifiedListWithSkillsLite>>;
   page: number;
   limit: number;
   offset: number;
@@ -55,6 +62,66 @@ export async function runVacaturesSearch(
   );
 
   const result = await searchJobsUnified({
+    q: hasQuery ? q : undefined,
+    platform: filters.platform,
+    platforms: filters.platforms,
+    endClient: filters.endClient,
+    categories: filters.categories,
+    escoUri: filters.escoUri,
+    status: filters.status,
+    province: filters.province,
+    regions: filters.regions,
+    rateMin: filters.rateMin,
+    rateMax: filters.rateMax,
+    contractType: filters.contractType,
+    hoursPerWeekBucket: filters.hoursPerWeek,
+    minHoursPerWeek: filters.hoursPerWeekMin,
+    maxHoursPerWeek: filters.hoursPerWeekMax,
+    radiusKm: filters.radiusKm,
+    sortBy,
+    limit,
+    offset,
+    onlyWithActivePipeline: filters.onlyShortlist ? true : undefined,
+  });
+
+  return { ok: true, data: { result, page, limit, offset } };
+}
+
+/**
+ * Same as runVacaturesSearch, but uses the skills-enriched cached path so the
+ * /api/vacatures cold tail no longer pays a per-request job_skills join.
+ */
+export async function runVacaturesSearchWithSkillsLite(
+  params: URLSearchParams,
+): Promise<
+  | { ok: true; data: VacaturesSearchWithSkillsLiteResult }
+  | { ok: false; error: VacaturesSearchError }
+> {
+  const validatedQuery = validateOpdrachtenQueryParams(params);
+  if (!validatedQuery.success) {
+    return {
+      ok: false,
+      error: {
+        status: 400,
+        body: { error: "Ongeldige parameters", details: validatedQuery.error.flatten() },
+      },
+    };
+  }
+
+  const filters = parseOpdrachtenFilters(params);
+  const q = parseSearchTerms(filters.q);
+  const hasQuery = q.length > 0;
+  const { page, limit, offset } = parsePagination(params, {
+    limit: DEFAULT_OPDRACHTEN_LIMIT,
+    maxLimit: MAX_OPDRACHTEN_LIMIT,
+  });
+  const sortBy = getOpdrachtenServiceSort(
+    filters.sort,
+    hasQuery,
+    hasExplicitOpdrachtenSort(params),
+  );
+
+  const result = await searchJobsUnifiedListWithSkillsLite({
     q: hasQuery ? q : undefined,
     platform: filters.platform,
     platforms: filters.platforms,

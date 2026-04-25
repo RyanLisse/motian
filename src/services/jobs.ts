@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../lib/opdrachten-filters";
+import { getJobSkillsForJobIds, withJobsSkillsLite } from "./esco";
 import {
   deriveJobStatus,
   type JobStatus,
@@ -99,7 +100,7 @@ export {
   updateJobEnrichment,
 };
 
-const DEFAULT_OPEN_VACATURES_CACHE_VERSION = "v2-lite-projection";
+const DEFAULT_OPEN_VACATURES_CACHE_VERSION = "v3-skills-lite";
 
 function isDefaultOpenVacaturesList(opts: UnifiedJobSearchOptions) {
   return (
@@ -194,6 +195,27 @@ const getCachedNoQueryVacaturesList = unstable_cache(
   { revalidate: 300, tags: ["jobs"] },
 );
 
+// Skills-enriched cache for the no-query default vacatures list. The previous
+// cold-tail (~2s) on `/api/vacatures?limit=20` was caused by the route running
+// `withJobsSkillsLite` — a join over the returned IDs to job_skills — *outside*
+// the unstable_cache. Even on a TTL hit, every request paid that round-trip.
+// Baking skills enrichment into the cached payload eliminates the post-cache
+// fan-out: a TTL hit becomes pure in-memory deserialize. Tagged "jobs" so any
+// mutation invalidates rows + skills together.
+const getCachedNoQueryVacaturesListWithSkillsLite = unstable_cache(
+  async (cacheKey: string) => {
+    const { data, total } = await listJobsImpl(JSON.parse(cacheKey) as ListJobsOptions);
+    const grouped = await getJobSkillsForJobIds(data.map((j) => j.id));
+    const dataWithSkills = data.map((j) => ({
+      ...j,
+      canonicalSkills: (grouped.get(j.id) ?? []).map((s) => ({ slug: s.slug, label: s.label })),
+    }));
+    return { data: dataWithSkills, total };
+  },
+  ["no-query-vacatures-list-skills-lite", DEFAULT_OPEN_VACATURES_CACHE_VERSION],
+  { revalidate: 300, tags: ["jobs"] },
+);
+
 const getCachedNoQueryVacaturesPage = unstable_cache(
   async (cacheKey: string) => listJobsPageImpl(JSON.parse(cacheKey) as ListJobsPageOptions),
   ["no-query-vacatures-page", DEFAULT_OPEN_VACATURES_CACHE_VERSION],
@@ -250,6 +272,33 @@ export async function searchJobsUnified(
   };
   const result = await hybridSearchWithTotalImpl(query, hybridOpts);
   return { data: result.data, total: result.total };
+}
+
+/**
+ * Same shape as searchJobsUnified, but rows are enriched with `canonicalSkills`
+ * (lite: `{ slug, label }[]`). On the no-query default path the enrichment is
+ * cached together with the row data, so a TTL hit avoids the per-request
+ * job_skills join that previously ran outside the cache and caused the
+ * `/api/vacatures` cold tail.
+ */
+export async function searchJobsUnifiedListWithSkillsLite(
+  opts: UnifiedJobSearchOptions = {},
+): Promise<{
+  data: Array<JobListRow & { canonicalSkills: Array<{ slug: string; label: string }> }>;
+  total: number;
+}> {
+  const query = normalizeUnifiedSearchTerms(opts.q);
+  const platforms = normalizeJobPlatforms(opts.platform, opts.platforms);
+
+  if (query.length === 0) {
+    const knownTotal = await getKnownTotalForDefaultOpenVacaturesList(opts);
+    const cacheKey = buildNoQueryListCacheKey(opts, knownTotal, platforms);
+    return getCachedNoQueryVacaturesListWithSkillsLite(cacheKey);
+  }
+
+  const result = await searchJobsUnified(opts);
+  const data = await withJobsSkillsLite(result.data);
+  return { data, total: result.total };
 }
 
 export async function searchJobsPageUnified(
