@@ -42,11 +42,20 @@ export default defineConfig({
     extensions: [
       additionalPackages({ packages: ["puppeteer-core"] }),
       syncEnvVars(async () => {
-        const keys = [
+        // Critical keys MUST be present in the deploy-time shell or the
+        // build fails loud. We learned this the hard way on 2026-04-24/25:
+        // when BROWSERBASE_API_KEY was missing from the shell at deploy
+        // time, the silent .filter dropped it and the deployed scrapers
+        // fast-failed (0.8–2s) every cron tick because Browserbase
+        // fallback returned null on the missing-env check. Failing the
+        // build is much better than shipping a silently-broken task.
+        const criticalKeys = [
           "DATABASE_URL",
-          "FIRECRAWL_API_KEY",
           "BROWSERBASE_API_KEY",
           "BROWSERBASE_PROJECT_ID",
+          "FIRECRAWL_API_KEY",
+        ];
+        const optionalKeys = [
           "STRIIVE_USERNAME",
           "STRIIVE_PASSWORD",
           "MODAL_TOKEN_ID",
@@ -61,7 +70,14 @@ export default defineConfig({
           "VERCEL_GIT_COMMIT_SHA",
           "VERCEL_URL",
         ];
-        return keys
+        const missingCritical = criticalKeys.filter((key) => !process.env[key]);
+        if (missingCritical.length > 0) {
+          throw new Error(
+            `[trigger.config] Missing critical env vars at deploy time: ${missingCritical.join(", ")}. ` +
+              `Run \`set -a && source .env.local && set +a\` before \`pnpm dlx trigger.dev deploy\`.`,
+          );
+        }
+        return [...criticalKeys, ...optionalKeys]
           .filter((key) => process.env[key])
           .map((key) => {
             let value = process.env[key]!;

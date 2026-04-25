@@ -313,10 +313,28 @@ async function fetchViaBrowserbase(url: string, signal?: AbortSignal): Promise<s
 
   throwIfAborted(signal);
 
+  // Browserbase deprecated the bare `wss://connect.browserbase.com?apiKey=`
+  // endpoint (returns 400). Current API: POST /v1/sessions → use the
+  // returned signed `connectUrl` for the puppeteer WebSocket. This was
+  // already migrated in `mipublic.ts`; this branch is the parity fix.
+  const sessionRes = await fetch("https://api.browserbase.com/v1/sessions", {
+    method: "POST",
+    headers: { "x-bb-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId }),
+    signal: combineSignals(15_000, signal),
+  });
+  if (!sessionRes.ok) {
+    throw new Error(`Browserbase session-create faalde: ${sessionRes.status}`);
+  }
+  const sessionBody = (await sessionRes.json()) as { connectUrl?: string };
+  if (!sessionBody.connectUrl) {
+    throw new Error("Browserbase session-create gaf geen connectUrl terug");
+  }
+
   // Dynamic import to avoid bundling puppeteer-core when not used
   const puppeteer = await import("puppeteer-core");
   const browser = await puppeteer.default.connect({
-    browserWSEndpoint: `wss://connect.browserbase.com?apiKey=${apiKey}&projectId=${projectId}`,
+    browserWSEndpoint: sessionBody.connectUrl,
   });
 
   const onAbort = () => {

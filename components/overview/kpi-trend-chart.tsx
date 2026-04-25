@@ -66,19 +66,21 @@ export function KpiTrendChart({ data }: KpiTrendChartProps) {
             type="monotone"
             dataKey="openVacatures"
             name="Open vacatures"
-            stroke="hsl(var(--primary))"
+            stroke="#10b981"
             strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 3 }}
+            dot={{ r: 3, fill: "#10b981" }}
+            activeDot={{ r: 5 }}
+            isAnimationActive={false}
           />
           <Line
             type="monotone"
             dataKey="pipelineTotal"
             name="Pipeline totaal"
-            stroke="hsl(var(--chart-2, 220 70% 50%))"
+            stroke="#3b82f6"
             strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 3 }}
+            dot={{ r: 3, fill: "#3b82f6" }}
+            activeDot={{ r: 5 }}
+            isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>
