@@ -19,6 +19,20 @@ import type { FilterOption, ProvinceAnchor } from "./sidebar-types";
 import { DARK_FILTER_SECTION_LABEL_CLASS } from "./sidebar-types";
 import { summarizeSelection } from "./sidebar-utils";
 
+/**
+ * Renders every option as an inline `<input>` + `<label>` checkbox in the SSR HTML.
+ *
+ * **Only use for static lists with N <= 10 items** (e.g., status, contractType).
+ * For unbounded user-data lists (categories, regions, end-clients) prefer
+ * {@link CompactMultiSelectFilter} — its `DropdownMenu` only renders rows on
+ * open, so a 150-item list adds zero bytes to the initial SSR payload.
+ *
+ * Background: the /vacatures Vakgebied filter rendered ~150 categories inline
+ * via this component and shipped a single 57KB chunk (≈22% of the 263KB SSR
+ * HTML), causing a 1.2s avg / 2.2s tail cold load. See commit 4ae7f108
+ * ("perf(vacatures): collapse Vakgebied/Regio filter SSR + bump cache TTL")
+ * and Linear RJC-227 for the codified rule.
+ */
 export function FilterChecklist({
   idPrefix,
   options,
