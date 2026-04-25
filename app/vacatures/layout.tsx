@@ -20,7 +20,7 @@ const getCachedSidebarInitialJobs = unstable_cache(
       knownTotal,
     }),
   ["vacatures-sidebar-initial-jobs", "v1"],
-  { revalidate: 60 },
+  { revalidate: 300, tags: ["jobs"] },
 );
 
 const EMPTY_SIDEBAR_METADATA: Omit<OpdrachtenSidebarProps, "jobs"> = {

@@ -183,16 +183,21 @@ function buildNoQueryListCacheKey(
   return JSON.stringify(buildCachedNoQueryListOptions(opts, knownTotal, platforms));
 }
 
+// revalidate=300s (was 60s). All job mutations (create/update/delete + scrape
+// pipeline writes) call `revalidateTag("jobs")` which invalidates these
+// caches immediately, so a longer TTL doesn't reduce freshness — it only
+// stretches the gap between background refreshes when nothing has changed.
+// 60s caused the 2s cold-load tail every minute; 300s reduces it 5x.
 const getCachedNoQueryVacaturesList = unstable_cache(
   async (cacheKey: string) => listJobsImpl(JSON.parse(cacheKey) as ListJobsOptions),
   ["no-query-vacatures-list", DEFAULT_OPEN_VACATURES_CACHE_VERSION],
-  { revalidate: 60, tags: ["jobs"] },
+  { revalidate: 300, tags: ["jobs"] },
 );
 
 const getCachedNoQueryVacaturesPage = unstable_cache(
   async (cacheKey: string) => listJobsPageImpl(JSON.parse(cacheKey) as ListJobsPageOptions),
   ["no-query-vacatures-page", DEFAULT_OPEN_VACATURES_CACHE_VERSION],
-  { revalidate: 60, tags: ["jobs"] },
+  { revalidate: 300, tags: ["jobs"] },
 );
 
 function normalizeUnifiedSearchTerms(query: JobSearchQuery | undefined) {

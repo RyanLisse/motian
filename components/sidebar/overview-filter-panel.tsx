@@ -17,11 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { OPDRACHTEN_PROVINCES } from "@/src/lib/opdrachten-filters";
 import { MobileFilterChips } from "./mobile-filter-chips";
-import {
-  CompactMultiSelectFilter,
-  FilterChecklist,
-  RadiusSliderField,
-} from "./sidebar-filter-controls";
+import { CompactMultiSelectFilter, RadiusSliderField } from "./sidebar-filter-controls";
 import { resolveLocationInputToProvince } from "./sidebar-location-input";
 import { SidebarSearchBar } from "./sidebar-search-bar";
 import type { FilterOption, ProvinceAnchor } from "./sidebar-types";
@@ -291,11 +287,13 @@ export function OverviewFilterPanel({
             <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
               Regio
             </p>
-            <FilterChecklist
-              idPrefix="opdrachten-regio"
+            <CompactMultiSelectFilter
+              label="Alle regio's"
               options={regionOptions}
               selectedValues={regios}
               onToggle={onToggleRegio}
+              buttonClassName="h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:h-11 sm:text-sm"
+              contentClassName="bg-card border-border"
             />
           </div>
 
@@ -332,12 +330,13 @@ export function OverviewFilterPanel({
             <p className="mb-1 block text-xs font-medium text-foreground sm:mb-2 sm:text-sm">
               Vakgebied
             </p>
-            <FilterChecklist
-              idPrefix="opdrachten-vakgebied"
+            <CompactMultiSelectFilter
+              label="Alle vakgebieden"
               options={categoryOptions}
               selectedValues={vakgebieden}
               onToggle={onToggleVakgebied}
-              className="max-h-64 overflow-y-auto"
+              buttonClassName="h-10 w-full rounded-lg border-border bg-background text-left text-xs sm:h-11 sm:text-sm"
+              contentClassName="bg-card border-border max-h-80 overflow-y-auto"
             />
           </div>
 

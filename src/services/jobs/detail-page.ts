@@ -151,11 +151,14 @@ async function getJobDetailPageDataUncached(
   };
 }
 
+// Tag with "jobs" so revalidateTag("jobs") on mutations invalidates this
+// detail page cache. With the tag in place, the longer revalidate window
+// (300s) doesn't reduce freshness — edits still invalidate immediately.
 const getCachedJobDetailPageData = unstable_cache(
   async (id: string, gradedLimit: number, relatedLimit: number, cockpitLimit: number) =>
     getJobDetailPageDataUncached(id, { gradedLimit, relatedLimit, cockpitLimit }),
   ["job-detail-page-data", JOB_DETAIL_CACHE_VERSION],
-  { revalidate: 60 },
+  { revalidate: 300, tags: ["jobs"] },
 );
 
 export async function getJobDetailPageData(
