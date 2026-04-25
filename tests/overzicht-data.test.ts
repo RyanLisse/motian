@@ -86,7 +86,10 @@ describe("getOverviewData", () => {
 
     const result = await getOverviewData({ select } as unknown as typeof db);
 
-    expect(select).toHaveBeenCalledTimes(11);
+    // 12 = original 11 + the kpi_snapshots query for the 30-day trend chart
+    // (the kpi query is wrapped in try/catch so an unmocked select returns
+    // []; the call still counts toward the spy invocation total).
+    expect(select).toHaveBeenCalledTimes(12);
     expect(result.platformCounts).toEqual([{ platform: "linkedin", count: 3, weeklyNew: 1 }]);
     expect(result.recentJobs).toEqual([
       {
