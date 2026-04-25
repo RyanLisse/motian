@@ -39,6 +39,7 @@ import { formatDateTime } from "@/src/lib/helpers";
 import {
   getScraperDashboardData,
   type PlatformOperationalMetrics,
+  type TriggerTaskVisibility,
 } from "@/src/services/scraper-dashboard";
 import { listPlatformCatalog } from "@/src/services/scrapers";
 import { ScraperActions } from "./actions";
@@ -53,6 +54,25 @@ function signalToneClass(level: "info" | "warning" | "critical") {
   }
 
   return "border-border bg-muted text-muted-foreground";
+}
+
+function sloBadgeConfig(slo: NonNullable<TriggerTaskVisibility["slo"]>) {
+  if (slo.status === "green") {
+    return {
+      label: "Vers",
+      className: "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400",
+    };
+  }
+  if (slo.status === "amber") {
+    return {
+      label: "Verouderd",
+      className: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    };
+  }
+  return {
+    label: "Stil",
+    className: "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
+  };
 }
 
 function triggerStatusConfig(status: string | null) {
@@ -484,6 +504,14 @@ async function ScraperDashboardContent({
 
             {trigger.tasks.map((task) => {
               const status = triggerStatusConfig(task.latestRun?.status ?? null);
+              const slo = task.slo ? sloBadgeConfig(task.slo) : null;
+              const sloTitle = task.slo
+                ? `SLO: ${task.slo.expectedMaxGapHours}u maximale tussenpoos · ${
+                    task.slo.ageHours == null
+                      ? "nog geen run waargenomen"
+                      : `laatste run ${task.slo.ageHours.toFixed(1)}u geleden`
+                  }`
+                : undefined;
 
               return (
                 <div
@@ -497,15 +525,30 @@ async function ScraperDashboardContent({
                         {task.cronExpression} · {task.timezone}
                       </p>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "max-w-full whitespace-normal wrap-break-word text-center",
-                        status.className,
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {slo && task.slo && (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "max-w-full whitespace-normal wrap-break-word text-center",
+                            slo.className,
+                          )}
+                          title={sloTitle}
+                          data-slo-status={task.slo.status}
+                        >
+                          {slo.label}
+                        </Badge>
                       )}
-                    >
-                      {status.label}
-                    </Badge>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "max-w-full whitespace-normal wrap-break-word text-center",
+                          status.className,
+                        )}
+                      >
+                        {status.label}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                     <p>
