@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { getMonitoredTask, getSloStatus, MONITORED_TASKS } from "../src/lib/cron-slo-thresholds";
 
 describe("MONITORED_TASKS", () => {
-  it("includes the scrape pipeline with the historical 6h gap and aggressive failure threshold", () => {
+  it("includes the scrape pipeline with an hourly-cadence SLO and aggressive failure threshold", () => {
     const scrapePipeline = getMonitoredTask("scrape-pipeline");
     expect(scrapePipeline).toBeDefined();
-    expect(scrapePipeline?.expectedMaxGapHours).toBe(6);
+    expect(scrapePipeline?.expectedMaxGapHours).toBe(2);
     // Critical pipelines must page on the very first regression — RJC-226 must
     // not silently soften this back to the default of 3.
     expect(scrapePipeline?.criticalFailureThreshold).toBe(1);

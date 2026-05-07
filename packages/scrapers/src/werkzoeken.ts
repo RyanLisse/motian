@@ -324,6 +324,14 @@ async function fetchViaBrowserbase(url: string, signal?: AbortSignal): Promise<s
     signal: combineSignals(15_000, signal),
   });
   if (!sessionRes.ok) {
+    // 402 = "Free plan browser minutes limit reached" — surface it explicitly
+    // so the dashboard error message reflects the actual root cause instead
+    // of the downstream "unexpected_markup" symptom.
+    if (sessionRes.status === 402) {
+      throw new Error(
+        "Browserbase plan-quota uitgeput (HTTP 402): upgrade plan op browserbase.com/plans of pauzeer Werkzoeken-cron",
+      );
+    }
     throw new Error(`Browserbase session-create faalde: ${sessionRes.status}`);
   }
   const sessionBody = (await sessionRes.json()) as { connectUrl?: string };

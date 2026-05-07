@@ -39,7 +39,7 @@ describe("runtime cost reduction cleanup", () => {
     const matcher = readFile("trigger", "agent-matcher.ts");
     const sourcing = readFile("trigger", "agent-sourcing.ts");
 
-    expect(scrapePipeline).toContain('pattern: "0 6,10,14,18 * * *"');
+    expect(scrapePipeline).toContain('pattern: "0 * * * *"');
     expect(embeddingsBatch).toContain('pattern: "15 6,10,14,18 * * *"');
     expect(cacheRefresh).toContain('pattern: "20 6,10,14,18 * * *"');
     expect(orchestrator).toContain('pattern: "0 */12 * * *"');

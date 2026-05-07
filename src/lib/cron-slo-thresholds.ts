@@ -44,7 +44,7 @@ export const MONITORED_TASKS: readonly MonitoredTask[] = [
   { id: "embeddings-batch", expectedMaxGapHours: 24 },
   { id: "nightly-maintenance", expectedMaxGapHours: 26, criticalFailureThreshold: 1 },
   { id: "platform-onboard", expectedMaxGapHours: 72 },
-  { id: "scrape-pipeline", expectedMaxGapHours: 6, criticalFailureThreshold: 1 },
+  { id: "scrape-pipeline", expectedMaxGapHours: 2, criticalFailureThreshold: 1 },
   { id: "scraper-health-check", expectedMaxGapHours: 26 },
   { id: "scraper-overlap-precompute", expectedMaxGapHours: 2 },
 ] as const;

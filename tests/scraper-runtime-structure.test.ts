@@ -45,6 +45,6 @@ describe("scraper runtime structure", () => {
   it("runs the scrape pipeline on an hourly cadence so DB cron expressions can decide which platform is due", () => {
     const source = readFile(resolveFromRoot("trigger", "scrape-pipeline.ts"));
 
-    expect(source).toContain('pattern: "0 6,10,14,18 * * *"');
+    expect(source).toContain('pattern: "0 * * * *"');
   });
 });
