@@ -861,9 +861,8 @@ Voeg `INSTALL_QLTY=1` toe als je tijdens bootstrap ook de Qlty CLI wilt installe
 # Database
 DATABASE_URL=postgres://user:pass@host.neon.tech/dbname?sslmode=verify-full
 
-# AI — Chat & Embeddings
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
+# AI — Chat, verrijking & embeddings via OpenRouter
+OPENROUTER_API_KEY=sk-or-v1-...
 
 # Scraping — Geauthenticeerde Platforms
 STRIIVE_USERNAME=...
@@ -873,12 +872,6 @@ STRIIVE_PASSWORD=...
 ENCRYPTION_KEY=...   # openssl rand -base64 32
 API_SECRET=...       # Bearer token voor externe API clients
 ALLOWED_ORIGINS=http://localhost:3002,http://127.0.0.1:3002
-
-# Google AI (Gemini — CV parsing & verrijking)
-GOOGLE_GENERATIVE_AI_API_KEY=AIza...
-
-# xAI Grok (Judge — onafhankelijke match beoordeling)
-X_AI_API_KEY=xai-...
 
 # Sentry (foutopsporing)
 SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx

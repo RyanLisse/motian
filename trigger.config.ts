@@ -56,6 +56,7 @@ export default defineConfig({
           "FIRECRAWL_API_KEY",
         ];
         const optionalKeys = [
+          "OPENROUTER_API_KEY",
           "STRIIVE_USERNAME",
           "STRIIVE_PASSWORD",
           "MODAL_TOKEN_ID",

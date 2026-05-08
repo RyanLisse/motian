@@ -46,16 +46,9 @@ export function validateRuntimeEnv(env: EnvMap = process.env): {
   const hasAnyLiveKitEnv = LIVEKIT_ENV_VARS.some((name) => hasEnv(name, env));
   if (hasAnyLiveKitEnv) {
     const missingLiveKitVars = LIVEKIT_ENV_VARS.filter((name) => !hasEnv(name, env));
-    const hasGoogleVoiceKey =
-      hasEnv("GOOGLE_API_KEY", env) || hasEnv("GOOGLE_GENERATIVE_AI_API_KEY", env);
 
-    if (missingLiveKitVars.length > 0 || !hasGoogleVoiceKey) {
-      const missing: string[] = [...missingLiveKitVars];
-      if (!hasGoogleVoiceKey) {
-        missing.push("GOOGLE_API_KEY of GOOGLE_GENERATIVE_AI_API_KEY");
-      }
-
-      errors.push(`Voice-configuratie is onvolledig: ${missing.join(", ")}.`);
+    if (missingLiveKitVars.length > 0) {
+      errors.push(`Voice-configuratie is onvolledig: ${missingLiveKitVars.join(", ")}.`);
     }
   }
 

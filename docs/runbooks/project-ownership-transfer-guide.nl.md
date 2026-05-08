@@ -165,7 +165,7 @@ Secrets mogen niet in repo-documentatie worden gekopieerd.
 | Search | `TYPESENSE_*` | Hosted env wanneer ingeschakeld | Optionele versneller, PostgreSQL blijft bron van waarheid |
 | Encryptie | `ENCRYPTION_KEY` | Hosted env en veilige lokale development storage | Nodig voor versleutelde scraper-authconfiguratie |
 | Scraping providers | `BROWSERBASE_*`, `FIRECRAWL_API_KEY`, `MODAL_*`, platformcredentials | Veilige provider secret store | Hoog-risico ownership-domein |
-| AI-providers | `OPENAI_API_KEY`, `GOOGLE_*`, `X_AI_API_KEY`, `ANTHROPIC_API_KEY` | Provider-managed secrets in hosted env | Billing-zichtbaarheid is vereist |
+| AI-providergateway | `OPENROUTER_API_KEY` | OpenRouter projectsecret in hosted env | Één billing/key-oppervlak voor app-chat, verrijking, embeddings en voice-LLM-routing |
 | Monitoring | `SENTRY_*`, `LANGSMITH_*`, `OTEL_ENABLED`, `NEXT_PUBLIC_POSTHOG_*` | Hosted env | Controleer dat deze aansluiten op de actieve dashboards |
 | Voice | `LIVEKIT_*`, `NEXT_PUBLIC_LIVEKIT_URL` | Hosted env | Alleen nodig als voice-oppervlak actief is |
 | Notificaties | `SLACK_*` | Hosted env | Optioneel, maar operationeel belangrijk wanneer ingeschakeld |

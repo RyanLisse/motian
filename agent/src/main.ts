@@ -5,9 +5,9 @@ import {
   ServerOptions,
   cli,
   defineAgent,
+  inference,
   voice,
 } from "@livekit/agents";
-import * as google from "@livekit/agents-plugin-google";
 import * as silero from "@livekit/agents-plugin-silero";
 import { fileURLToPath } from "node:url";
 import { MotianAgent } from "./agent";
@@ -18,10 +18,16 @@ export default defineAgent({
   },
   entry: async (ctx: JobContext) => {
     const session = new voice.AgentSession({
-      llm: new google.beta.realtime.RealtimeModel({
-        model: "gemini-2.5-flash-native-audio-preview-12-2025",
-        voice: "Puck",
-        temperature: 0.7,
+      stt: new inference.STT({ model: "deepgram/nova-3", language: "nl" }),
+      llm: new inference.LLM({
+        model: "openai/gpt-5-nano",
+        provider: "openrouter",
+        modelOptions: { temperature: 0.7 },
+      }),
+      tts: new inference.TTS({
+        model: "cartesia/sonic-3",
+        voice: "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
+        language: "nl",
       }),
       vad: ctx.proc.userData.vad as silero.VAD,
     });

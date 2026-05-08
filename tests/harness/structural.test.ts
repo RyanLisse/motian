@@ -572,7 +572,7 @@ describe("AI SDK import discipline", () => {
    *   - src/lib/ai-models.ts itself (the wrapper)
    *   - Type-only imports (import type { ... } from '@ai-sdk/...')
    *   - Test files
-   *   - The voice agent (uses @livekit/agents-plugin-google, not raw @ai-sdk)
+   *   - The voice agent (uses LiveKit inference, not raw @ai-sdk provider packages)
    */
   const AI_SDK_IMPORT_PATTERN = /from\s+['"]@ai-sdk\/[^'"]+['"]/;
   const TYPE_ONLY_IMPORT_PATTERN = /import\s+type\s+.*from\s+['"]@ai-sdk\/[^'"]+['"]/;

@@ -28,12 +28,8 @@ export const env = createEnv({
     AUTOPILOT_EVIDENCE_DIR: z.string().optional(),
     AUTOPILOT_RICH_EVIDENCE: z.enum(["failures", "always"]).optional(),
 
-    // AI model keys
-    ANTHROPIC_API_KEY: z.string().min(1).optional(),
-    GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
-    GOOGLE_API_KEY: z.string().min(1).optional(),
-    OPENAI_API_KEY: z.string().min(1).optional(),
-    X_AI_API_KEY: z.string().min(1).optional(),
+    // AI model key: all app chat, enrichment, and embedding calls use OpenRouter.
+    OPENROUTER_API_KEY: z.string().min(1).optional(),
 
     // Sentry (server) — accepts any non-empty string because DSN format
     // includes protocol+host but may use non-standard schemes
@@ -155,11 +151,7 @@ export const env = createEnv({
     AUTOPILOT_GITHUB_TOKEN: process.env.AUTOPILOT_GITHUB_TOKEN,
     AUTOPILOT_EVIDENCE_DIR: process.env.AUTOPILOT_EVIDENCE_DIR,
     AUTOPILOT_RICH_EVIDENCE: process.env.AUTOPILOT_RICH_EVIDENCE,
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-    GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    X_AI_API_KEY: process.env.X_AI_API_KEY,
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     SENTRY_DSN: process.env.SENTRY_DSN,
     SENTRY_ORG: process.env.SENTRY_ORG,
     SENTRY_PROJECT: process.env.SENTRY_PROJECT,

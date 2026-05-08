@@ -28,8 +28,7 @@ import { buildCommercialCvDraft } from "../src/services/commercial-cv-generation
 describe("buildCommercialCvDraft", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    delete process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    delete process.env.GOOGLE_API_KEY;
+    delete process.env.OPENROUTER_API_KEY;
   });
 
   it("builds a deterministic recruiter-ready draft from candidate and vacancy data", async () => {
@@ -94,7 +93,7 @@ describe("buildCommercialCvDraft", () => {
   });
 
   it("uses AI rewriting when configured and falls back to deterministic facts otherwise", async () => {
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY = "test-key";
+    process.env.OPENROUTER_API_KEY = "test-key";
 
     mockGetCandidateById.mockResolvedValue({
       id: "cand-2",
