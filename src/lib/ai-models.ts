@@ -1,8 +1,15 @@
 import { createRequire } from "node:module";
-import { google } from "@ai-sdk/google";
-import { openai } from "@ai-sdk/openai";
-import { xai } from "@ai-sdk/xai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import * as ai from "ai";
+
+// ── OpenRouter provider ─────────────────────────────────────────────
+// All LLM calls (chat + embeddings) flow through OpenRouter so we have a
+// single key, single billing surface, and easy per-call model swapping.
+// `apiKey` is read lazily from env so test mocks can stub the module
+// without `OPENROUTER_API_KEY` being set.
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY ?? "",
+});
 
 type EnvMap = Record<string, string | undefined>;
 
@@ -60,12 +67,22 @@ export function isLangSmithTracingEnabled(env: EnvMap = process.env): boolean {
 }
 
 // ── Centralized model instances ─────────────────────────────────────
-export const gemini31FlashLite = google("gemini-3.1-flash-lite-preview");
-export const geminiFlashLite = google("gemini-2.5-flash-lite");
-export const geminiFlash = google("gemini-3-flash-preview");
-export const grok = xai("grok-4-1-fast-reasoning");
-export const gpt5Nano = openai("gpt-5-nano-2025-08-07");
-export const embeddingModel = openai.textEmbeddingModel("text-embedding-3-small");
+// Model IDs use OpenRouter's `<vendor>/<model>` slug format.
+// See https://openrouter.ai/models for the live catalog.
+export const gemini31FlashLite = openrouter("google/gemini-3.1-flash-lite-preview");
+export const geminiFlashLite = openrouter("google/gemini-2.5-flash-lite");
+export const geminiFlash = openrouter("google/gemini-3-flash-preview");
+export const grok = openrouter("x-ai/grok-4");
+export const gpt5Nano = openrouter("openai/gpt-5-nano");
+// Pgvector columns are 512-dim (see packages/db/src/schema.ts vector("embedding",
+// { dimensions: 512 })). text-embedding-3-small defaults to 1536, so we must
+// request the 512-dim Matryoshka projection at the embeddings endpoint.
+// OpenRouter's typed settings don't expose `extraBody` publicly, but the
+// runtime spreads `settings.extraBody` into the POST body — see
+// node_modules/@openrouter/ai-sdk-provider/dist/index.js doEmbed.
+export const embeddingModel = openrouter.textEmbeddingModel("openai/text-embedding-3-small", {
+  extraBody: { dimensions: 512 },
+} as Parameters<typeof openrouter.textEmbeddingModel>[1]);
 
 // ── Chat model registry (for model picker) ─────────────────────────
 export const CHAT_MODELS = {

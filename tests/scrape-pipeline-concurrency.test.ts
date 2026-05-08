@@ -22,7 +22,7 @@ import {
   runScrapePipelinesWithConcurrency,
 } from "../src/services/scrape-pipeline";
 
-const BATCH_INSERT_SIZE = 50;
+const BATCH_INSERT_SIZE = 10;
 
 describe("getScrapePipelineConcurrency", () => {
   it("uses the default and clamps env overrides", () => {
@@ -137,10 +137,10 @@ describe("normalizeAndSaveJobs batch inserts", () => {
     const result = await normalizeAndSaveJobs("flextender", listings);
 
     expect(result.errors).toEqual([]);
-    expect(mockDbInsert).toHaveBeenCalledTimes(3);
+    expect(mockDbInsert).toHaveBeenCalledTimes(12);
     expect(mockSyncJobSkills).toHaveBeenCalledTimes(120);
     expect(maxActiveInsertCalls).toBe(1);
-    expect(insertWindows).toHaveLength(3);
+    expect(insertWindows).toHaveLength(12);
 
     for (let index = 1; index < insertWindows.length; index += 1) {
       expect(insertWindows[index].start).toBeGreaterThanOrEqual(insertWindows[index - 1].end);

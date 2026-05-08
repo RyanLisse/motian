@@ -4,7 +4,7 @@ import { SettingsForm } from "@/components/settings-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAllSettings } from "@/src/services/settings";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 function SettingsSkeleton() {
   return (

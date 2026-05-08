@@ -39,11 +39,13 @@ export type PreparedJobBatch = {
  * = 2600 usable / 3 columns = 866. We use 700 for safety margin.
  */
 const DEDUPE_MAX_BYTES = 700;
-const MAX_INSERT_ROWS = 50;
-const MAX_INSERT_BYTES = 8 * 1024 * 1024;
+const MAX_INSERT_ROWS = 10;
+// Keep each INSERT payload comfortably below Neon/serverless client upload limits.
+const MAX_INSERT_BYTES = 1 * 1024 * 1024;
 const HOURS_MAX = 168;
 const MAX_HOURLY_RATE = 500;
 const SKILL_SYNC_CONCURRENCY = 5;
+const SKILL_SYNC_TIMEOUT_MS = 5_000;
 const EXISTING_JOB_LOOKUP_BATCH_SIZE = 500;
 type JobInsertRow = typeof jobs.$inferInsert;
 
@@ -254,6 +256,25 @@ export function deriveJobSearchFields(job: JobDerivedFieldSource) {
   };
 }
 
+async function withSkillSyncTimeout(operation: Promise<void>): Promise<void> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    await Promise.race([
+      operation,
+      new Promise<void>((_, reject) => {
+        timeoutHandle = setTimeout(
+          () =>
+            reject(new Error(`Canonical skill sync timed out after ${SKILL_SYNC_TIMEOUT_MS}ms`)),
+          SKILL_SYNC_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
+}
+
 async function syncBatchSkills(
   result: { id: string; externalId: string }[],
   batch: PreparedJobBatch,
@@ -269,12 +290,14 @@ async function syncBatchSkills(
         const item = batchItemsByExternalId.get(row.externalId);
         if (!item) return;
 
-        await syncJobSkills({
-          jobId: row.id,
-          requirements: item.parsed.requirements,
-          wishes: item.parsed.wishes,
-          competences: item.parsed.competences,
-        });
+        await withSkillSyncTimeout(
+          syncJobSkills({
+            jobId: row.id,
+            requirements: item.parsed.requirements,
+            wishes: item.parsed.wishes,
+            competences: item.parsed.competences,
+          }),
+        );
       }),
     );
     const failed = settled.filter((entry) => entry.status === "rejected").length;

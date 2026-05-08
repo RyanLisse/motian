@@ -102,10 +102,7 @@ vercel env ls production
 # Required variables (must exist):
 # - DATABASE_URL (Neon connection string)
 # - SENTRY_DSN
-# - ANTHROPIC_API_KEY
-# - GOOGLE_GENERATIVE_AI_API_KEY
-# - OPENAI_API_KEY
-# - X_AI_API_KEY
+# - OPENROUTER_API_KEY
 # - LIVEKIT_API_KEY
 # - LIVEKIT_API_SECRET
 

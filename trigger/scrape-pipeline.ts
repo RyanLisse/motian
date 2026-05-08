@@ -27,7 +27,7 @@ function isDue(
 export const scrapePipelineTask = schedules.task({
   id: "scrape-pipeline",
   cron: {
-    pattern: "0 6,10,14,18 * * *", // Vier scrape-windows per dag; DB cronExpression bepaalt wat echt due is
+    pattern: "0 * * * *", // Uurlijkse due-check; DB cronExpression bepaalt welke platforms echt draaien
     timezone: "Europe/Amsterdam",
   },
   maxDuration: 1800, // 30 minutes — NVB province sharding + werkzoeken Firecrawl fallback need headroom

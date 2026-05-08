@@ -34,6 +34,8 @@ vi.mock("../src/services/esco", () => ({
 describe("normalizeAndSaveJobs regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSyncJobSkills.mockReset();
+    mockSyncJobSkills.mockResolvedValue(undefined);
   });
 
   it("should verify HTML stripping and range clamping", async () => {
@@ -98,6 +100,41 @@ describe("normalizeAndSaveJobs regression", () => {
       wishes: [],
       competences: ["TypeScript"],
     });
+  });
+
+  it("does not let a hung canonical skill sync block scrape normalization", async () => {
+    vi.useFakeTimers();
+
+    try {
+      mockValues.mockImplementationOnce(() => ({
+        onConflictDoUpdate: vi.fn().mockReturnThis(),
+        returning: vi
+          .fn()
+          .mockResolvedValue([{ id: "uuid-timeout", externalId: "ext-timeout", isNew: true }]),
+      }));
+      mockSyncJobSkills.mockImplementationOnce(() => new Promise(() => {}));
+
+      const promise = normalizeAndSaveJobs("test-platform", [
+        {
+          externalId: "ext-timeout",
+          externalUrl: "https://example.com/timeout",
+          title: "Timeout Engineer",
+          description: "This is a very long description that should pass validation.",
+          requirements: [{ description: "React", isKnockout: true }],
+          status: "open",
+        },
+      ]);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      await expect(promise).resolves.toMatchObject({
+        errors: [],
+        jobsNew: 1,
+      });
+      expect(mockSyncJobSkills).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("matches skill sync payloads by externalId even when returned rows are reordered", async () => {

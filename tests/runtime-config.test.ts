@@ -42,18 +42,17 @@ describe("runtime-config validation", () => {
     });
 
     expect(result.errors).toEqual([
-      "Voice-configuratie is onvolledig: LIVEKIT_URL, LIVEKIT_API_SECRET, GOOGLE_API_KEY of GOOGLE_GENERATIVE_AI_API_KEY.",
+      "Voice-configuratie is onvolledig: LIVEKIT_URL, LIVEKIT_API_SECRET.",
     ]);
   });
 
-  it("accepts a complete voice env set with GOOGLE_GENERATIVE_AI_API_KEY", () => {
+  it("accepts a complete LiveKit env set without direct provider keys", () => {
     const result = validateRuntimeEnv({
       DATABASE_URL: "postgres://example",
       NEXT_PUBLIC_LIVEKIT_URL: "wss://public.livekit.cloud",
       LIVEKIT_URL: "wss://internal.livekit.cloud",
       LIVEKIT_API_KEY: "key",
       LIVEKIT_API_SECRET: "secret",
-      GOOGLE_GENERATIVE_AI_API_KEY: "AIza-example",
     });
 
     expect(result.errors).toEqual([]);

@@ -4,15 +4,31 @@ import { type SQL, type SQLWrapper, sql } from "drizzle-orm";
 
 type DateTimeStyle = "compact" | "full" | "weekday";
 
+const DISPLAY_TIME_ZONE = "Europe/Amsterdam";
+
 const DATE_TIME_OPTIONS: Record<string, Intl.DateTimeFormatOptions> = {
-  compact: { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" },
-  full: { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" },
+  compact: {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: DISPLAY_TIME_ZONE,
+  },
+  full: {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: DISPLAY_TIME_ZONE,
+  },
   weekday: {
     weekday: "short",
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: DISPLAY_TIME_ZONE,
   },
 };
 

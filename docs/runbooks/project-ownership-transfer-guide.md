@@ -165,7 +165,7 @@ Secrets must not be copied into repo documentation.
 | Search | `TYPESENSE_*` | Hosted env when enabled | Optional accelerator, PostgreSQL remains source of truth |
 | Encryption | `ENCRYPTION_KEY` | Hosted env and secure local development storage | Needed for encrypted scraper auth config |
 | Scraping providers | `BROWSERBASE_*`, `FIRECRAWL_API_KEY`, `MODAL_*`, platform credentials | Secure provider secrets store | High-risk ownership area |
-| AI providers | `OPENAI_API_KEY`, `GOOGLE_*`, `X_AI_API_KEY`, `ANTHROPIC_API_KEY` | Provider-managed secrets in hosted env | Billing visibility required |
+| AI provider gateway | `OPENROUTER_API_KEY` | OpenRouter project secret in hosted env | Single billing/key surface for app chat, enrichment, embeddings, and voice LLM routing |
 | Monitoring | `SENTRY_*`, `LANGSMITH_*`, `OTEL_ENABLED`, `NEXT_PUBLIC_POSTHOG_*` | Hosted env | Confirm these match the active dashboards |
 | Voice | `LIVEKIT_*`, `NEXT_PUBLIC_LIVEKIT_URL` | Hosted env | Required only if voice surface is active |
 | Notifications | `SLACK_*` | Hosted env | Optional, but operationally important when enabled |

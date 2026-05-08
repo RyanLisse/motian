@@ -74,7 +74,7 @@ const TRIGGER_TASKS = [
   {
     taskIdentifier: "scrape-pipeline",
     label: "Scrape pipeline",
-    cronExpression: "0 6,10,14,18 * * *",
+    cronExpression: "0 * * * *",
     timezone: "Europe/Amsterdam",
   },
   {

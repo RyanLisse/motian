@@ -217,14 +217,29 @@ async function run() {
 
   try {
     console.log("[striive-modal] Navigating to login...");
-    await page.goto("https://login.striive.com", { waitUntil: "domcontentloaded", timeout: 30000 });
-    await new Promise(r => setTimeout(r, 3000));
-    await page.locator("#email").fill(username);
+    await page.goto("https://login.striive.com", { waitUntil: "networkidle", timeout: 45000 }).catch(() => {});
+    // Some recent Striive deploys gate the login form behind a cookie consent
+    // banner; dismiss it before locating inputs so the field actually receives
+    // focus rather than the overlay button.
+    await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button, a'));
+      const accept = buttons.find((b) => /accept|akkoord|toestaan/i.test(b.textContent || ''));
+      if (accept) (accept).click();
+    }).catch(() => {});
+    // Wait for any of the email selectors that Striive has shipped over time.
+    // The legacy '#email' ID is no longer always present — newer builds use
+    // input[name="username"] or input[type="email"]. Polling all three keeps
+    // us forward-compatible without hard-coding a single selector.
+    const EMAIL_SELECTOR = '#email, input[name="email"], input[name="username"], input[type="email"]';
+    const PASSWORD_SELECTOR = '#password, input[name="password"], input[type="password"]';
+    await page.waitForSelector(EMAIL_SELECTOR, { timeout: 60000, state: 'visible' });
+    await page.locator(EMAIL_SELECTOR).first().fill(username, { timeout: 30000 });
     await new Promise(r => setTimeout(r, 300));
-    await page.locator("#password").fill(password);
+    await page.waitForSelector(PASSWORD_SELECTOR, { timeout: 30000, state: 'visible' });
+    await page.locator(PASSWORD_SELECTOR).first().fill(password, { timeout: 30000 });
     await new Promise(r => setTimeout(r, 300));
-    const loginBtn = page.locator('[data-testid="login"]');
-    await loginBtn.click({ timeout: 10000 });
+    const loginBtn = page.locator('[data-testid="login"], button[type="submit"]');
+    await loginBtn.first().click({ timeout: 15000 });
     await page.waitForURL("**/supplier.striive.com/**", { timeout: 30000 }).catch(() => {});
     await new Promise(r => setTimeout(r, 3000));
     console.log("[striive-modal] Login complete. URL:", page.url());

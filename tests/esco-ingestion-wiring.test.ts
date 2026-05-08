@@ -20,6 +20,7 @@ describe("Skills ingestion wiring", () => {
     const source = readFile("src", "services", "normalize.ts");
 
     expect(source).toContain("syncJobSkills");
-    expect(source).toContain("await syncJobSkills({");
+    expect(source).toContain("await withSkillSyncTimeout(");
+    expect(source).toContain("syncJobSkills({");
   });
 });

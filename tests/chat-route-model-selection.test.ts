@@ -1,16 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Provider mocks (must be before ai-models import) ────────────────
-vi.mock("@ai-sdk/google", () => ({ google: vi.fn((id: string) => `google:${id}`) }));
-vi.mock("@ai-sdk/openai", () => ({
-  openai: Object.assign(
-    vi.fn((id: string) => `openai:${id}`),
-    {
-      textEmbeddingModel: vi.fn((id: string) => `openai-embed:${id}`),
-    },
+vi.mock("@openrouter/ai-sdk-provider", () => ({
+  createOpenRouter: vi.fn(() =>
+    Object.assign(
+      vi.fn((id: string) => `openrouter:${id}`),
+      {
+        textEmbeddingModel: vi.fn((id: string) => `openrouter-embed:${id}`),
+      },
+    ),
   ),
 }));
-vi.mock("@ai-sdk/xai", () => ({ xai: vi.fn((id: string) => `xai:${id}`) }));
 vi.mock("langsmith/experimental/vercel", () => ({ wrapAISDK: vi.fn((mod: unknown) => mod) }));
 
 // ── Route-level mocks ───────────────────────────────────────────────
@@ -93,11 +93,11 @@ describe("resolveChatModel", () => {
   });
 
   it.each([
-    ["gemini-3.1-flash-lite", "google:gemini-3.1-flash-lite-preview"],
-    ["gemini-3-flash", "google:gemini-3-flash-preview"],
-    ["gemini-2.5-flash-lite", "google:gemini-2.5-flash-lite"],
-    ["gpt-5-nano", "openai:gpt-5-nano-2025-08-07"],
-    ["grok-4", "xai:grok-4-1-fast-reasoning"],
+    ["gemini-3.1-flash-lite", "openrouter:google/gemini-3.1-flash-lite-preview"],
+    ["gemini-3-flash", "openrouter:google/gemini-3-flash-preview"],
+    ["gemini-2.5-flash-lite", "openrouter:google/gemini-2.5-flash-lite"],
+    ["gpt-5-nano", "openrouter:openai/gpt-5-nano"],
+    ["grok-4", "openrouter:x-ai/grok-4"],
   ] as [ChatModelId, string][])("returns correct model for id '%s'", (id, expectedModel) => {
     const result = resolveChatModel(id);
     expect(result).toBe(expectedModel);
@@ -139,16 +139,16 @@ describe("Chat route POST", () => {
     vi.resetModules();
 
     // Re-apply provider mocks after resetModules
-    vi.doMock("@ai-sdk/google", () => ({ google: vi.fn((id: string) => `google:${id}`) }));
-    vi.doMock("@ai-sdk/openai", () => ({
-      openai: Object.assign(
-        vi.fn((id: string) => `openai:${id}`),
-        {
-          textEmbeddingModel: vi.fn((id: string) => `openai-embed:${id}`),
-        },
+    vi.doMock("@openrouter/ai-sdk-provider", () => ({
+      createOpenRouter: vi.fn(() =>
+        Object.assign(
+          vi.fn((id: string) => `openrouter:${id}`),
+          {
+            textEmbeddingModel: vi.fn((id: string) => `openrouter-embed:${id}`),
+          },
+        ),
       ),
     }));
-    vi.doMock("@ai-sdk/xai", () => ({ xai: vi.fn((id: string) => `xai:${id}`) }));
     vi.doMock("langsmith/experimental/vercel", () => ({
       wrapAISDK: vi.fn((mod: unknown) => mod),
     }));

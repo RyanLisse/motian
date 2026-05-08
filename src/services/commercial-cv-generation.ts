@@ -38,7 +38,7 @@ type StructuredSkill = {
 };
 
 function hasAiRewriteConfig() {
-  return Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY);
+  return Boolean(process.env.OPENROUTER_API_KEY);
 }
 
 function parseStringArray(input: unknown): string[] {

@@ -412,10 +412,28 @@ async function openBrowserbaseSession(): Promise<BrowserbaseHandle | null> {
   }
 }
 
+async function fetchViaFirecrawl(url: string): Promise<string | null> {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url, formats: ["html"], waitFor: 2000 }),
+      signal: AbortSignal.timeout(45_000),
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { success?: boolean; data?: { html?: string } };
+    return body.success && body.data?.html ? body.data.html : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchSitemapWithBrowserbaseFallback(
   url: string,
   handle?: BrowserbaseHandle | null,
-): Promise<{ status: number; html: string; via: "direct" | "browserbase" }> {
+): Promise<{ status: number; html: string; via: "direct" | "browserbase" | "firecrawl" }> {
   const direct = await fetchPublicJobBoardPage(url);
   if (!detectMipublicCaptchaBlocker(url, direct)) {
     return { status: direct.status, html: direct.html, via: "direct" };
@@ -426,6 +444,14 @@ async function fetchSitemapWithBrowserbaseFallback(
     if (body && !body.toLowerCase().includes("sgcaptcha")) {
       return { status: 200, html: body, via: "browserbase" };
     }
+  }
+
+  // Final fallback: Firecrawl (paid, default proxy bypasses MiPublic SiteGuard
+  // for sitemap and most detail pages). Only kicks in when direct returns the
+  // captcha challenge AND Browserbase is unavailable (e.g. 402 plan limit).
+  const firecrawlHtml = await fetchViaFirecrawl(url);
+  if (firecrawlHtml && !firecrawlHtml.toLowerCase().includes("sgcaptcha")) {
+    return { status: 200, html: firecrawlHtml, via: "firecrawl" };
   }
 
   return { status: direct.status, html: direct.html, via: "direct" };
@@ -444,14 +470,23 @@ async function fetchDetailPageWithBrowserbaseFallback(
   handle: BrowserbaseHandle | null | undefined,
 ): Promise<FetchedPage> {
   const direct = await fetchPublicJobBoardPage(url);
-  if (!detectMipublicCaptchaBlocker(url, direct) || !handle) {
+  if (!detectMipublicCaptchaBlocker(url, direct)) {
     return direct;
   }
-  const body = await handle.fetchText(url).catch(() => null);
-  if (!body || body.toLowerCase().includes("sgcaptcha")) {
-    return direct;
+  if (handle) {
+    const body = await handle.fetchText(url).catch(() => null);
+    if (body && !body.toLowerCase().includes("sgcaptcha")) {
+      return { ...direct, status: 200, html: body };
+    }
   }
-  return { ...direct, status: 200, html: body };
+  // Firecrawl fallback when Browserbase is unavailable (402 plan limit or no
+  // session). MiPublic detail pages are public WordPress, so Firecrawl's
+  // default proxy bypasses SiteGuard reliably.
+  const firecrawlHtml = await fetchViaFirecrawl(url);
+  if (firecrawlHtml && !firecrawlHtml.toLowerCase().includes("sgcaptcha")) {
+    return { ...direct, status: 200, html: firecrawlHtml };
+  }
+  return direct;
 }
 
 async function discoverMipublicDetailUrls(

@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@livekit/agents": "^1.0.46",
-    "@livekit/agents-plugin-google": "^1.0.0",
     "@livekit/agents-plugin-silero": "^1.0.46",
     "dotenv": "^17.0.0",
     "zod": "^3.25.0"

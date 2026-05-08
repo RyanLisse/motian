@@ -39,8 +39,16 @@ describe("runtime config hardening regressions", () => {
   it("documents the voice envs required by the current runtime", () => {
     const envExample = readFile(".env.example");
 
-    expect(envExample).toContain("GOOGLE_GENERATIVE_AI_API_KEY=");
-    expect(envExample).toContain("GOOGLE_API_KEY=");
+    expect(envExample).toContain("OPENROUTER_API_KEY=");
+    const formerDirectProviderKeys = [
+      ["GOOGLE", "GENERATIVE", "AI", "API", "KEY"].join("_"),
+      ["GOOGLE", "API", "KEY"].join("_"),
+      ["OPENAI", "API", "KEY"].join("_"),
+      ["ANTHROPIC", "API", "KEY"].join("_"),
+    ];
+    for (const key of formerDirectProviderKeys) {
+      expect(envExample).not.toContain(`${key}=`);
+    }
     expect(envExample).toContain("NEXT_PUBLIC_LIVEKIT_URL=");
     expect(envExample).toContain("LIVEKIT_URL=");
     expect(envExample).toContain("LIVEKIT_API_KEY=");
