@@ -420,6 +420,28 @@ async function fetchViaFirecrawl(url: string, signal?: AbortSignal): Promise<str
   return body.data.html;
 }
 
+async function fetchRenderFallbackHtml(url: string, signal?: AbortSignal): Promise<string> {
+  let browserbaseError: unknown;
+
+  if (process.env.BROWSERBASE_API_KEY) {
+    try {
+      return await fetchViaBrowserbase(url, signal);
+    } catch (error) {
+      browserbaseError = error;
+    }
+  }
+
+  if (process.env.FIRECRAWL_API_KEY) {
+    return fetchViaFirecrawl(url, signal);
+  }
+
+  if (browserbaseError) {
+    throw browserbaseError;
+  }
+
+  throw new Error("Geen Werkzoeken render-fallback geconfigureerd");
+}
+
 async function fetchHtml(
   url: string,
   session?: Partial<WerkzoekenSession>,
@@ -453,13 +475,11 @@ async function fetchHtml(
   throwIfAborted(signal);
 
   // Fallback chain: Browserbase (real Chrome, residential IP) → Firecrawl (JS rendering proxy)
-  if (RETRYABLE_FETCH_STATUSES.has(lastStatus)) {
-    if (process.env.BROWSERBASE_API_KEY) {
-      return fetchViaBrowserbase(url, signal);
-    }
-    if (process.env.FIRECRAWL_API_KEY) {
-      return fetchViaFirecrawl(url, signal);
-    }
+  if (
+    RETRYABLE_FETCH_STATUSES.has(lastStatus) &&
+    (process.env.BROWSERBASE_API_KEY || process.env.FIRECRAWL_API_KEY)
+  ) {
+    return fetchRenderFallbackHtml(url, signal);
   }
 
   throw new Error(`Werkzoeken fetch mislukt voor ${url}: ${lastStatus}`);
@@ -550,14 +570,14 @@ async function scrapeWerkzoekenInternal(
     return newListings.length;
   };
 
-  if (allDirectFetchesFailed && process.env.BROWSERBASE_API_KEY) {
+  if (allDirectFetchesFailed && (process.env.BROWSERBASE_API_KEY || process.env.FIRECRAWL_API_KEY)) {
     session.cookieHeader = undefined;
 
     for (const { page, url } of pageUrls) {
       throwIfAborted(signal);
       try {
-        const browserbaseHtml = await fetchViaBrowserbase(url, signal);
-        const parsed = parseWerkzoekenListingCards(browserbaseHtml, config.baseUrl);
+        const fallbackHtml = await fetchRenderFallbackHtml(url, signal);
+        const parsed = parseWerkzoekenListingCards(fallbackHtml, config.baseUrl);
         const added = pushNewListings(parsed);
 
         if (added === 0) {
@@ -605,14 +625,19 @@ async function scrapeWerkzoekenInternal(
       // Intermittent failure mode (RJC-219): the direct fetch returns 200 but
       // the markup has degraded (stripped data-* attributes or no vacancy
       // anchors at all). The page usually renders fine seconds later — so
-      // before surfacing `unexpected_markup`, retry the same URL once via
-      // Browserbase (real Chrome) when configured. If Browserbase also
-      // returns zero cards, fall through to the existing error path.
-      if (added === 0 && page === pnrStep && process.env.BROWSERBASE_API_KEY) {
+      // before surfacing `unexpected_markup`, retry the same URL through the
+      // render fallback chain. Browserbase is preferred, but production logs
+      // showed it can also return zero usable cards; Firecrawl is the second
+      // chance before we trip the circuit breaker.
+      if (
+        added === 0 &&
+        page === pnrStep &&
+        (process.env.BROWSERBASE_API_KEY || process.env.FIRECRAWL_API_KEY)
+      ) {
         try {
           throwIfAborted(signal);
-          const browserbaseHtml = await fetchViaBrowserbase(url, signal);
-          const reparsed = parseWerkzoekenListingCards(browserbaseHtml, config.baseUrl);
+          const fallbackHtml = await fetchRenderFallbackHtml(url, signal);
+          const reparsed = parseWerkzoekenListingCards(fallbackHtml, config.baseUrl);
           added = pushNewListings(reparsed);
         } catch {
           // Swallow — we fall through to the unexpected_markup branch below.

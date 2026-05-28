@@ -350,6 +350,56 @@ describe("Werkzoeken scraper", () => {
     expect(requestedHeaders[1]?.referer).toBe("https://www.werkzoeken.nl/vacatures-voor/techniek/");
   });
 
+  it("uses Firecrawl as second chance when direct HTML has no vacancy cards", async () => {
+    process.env.FIRECRAWL_API_KEY = "test-firecrawl-key";
+    delete process.env.BROWSERBASE_API_KEY;
+
+    const requestedUrls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      requestedUrls.push(url);
+
+      if (url === "https://api.firecrawl.dev/v1/scrape") {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: { html: LISTING_HTML },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response("<html><title>Just a moment...</title></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    }) as typeof fetch;
+
+    const result = await werkzoekenAdapter.scrape(
+      {
+        slug: "werkzoeken",
+        baseUrl: "https://www.werkzoeken.nl",
+        parameters: {
+          sourcePath: "/vacatures-voor/techniek/",
+          maxPages: 10,
+          pnrStep: 10,
+          detailConcurrency: 1,
+          skipDetailEnrichment: true,
+        },
+        auth: {},
+      },
+      { limit: 1 },
+    );
+
+    expect(requestedUrls).toContain("https://api.firecrawl.dev/v1/scrape");
+    expect(result.blockerKind).toBeUndefined();
+    expect(result.errors).toBeUndefined();
+    expect(result.listings).toHaveLength(1);
+  });
+
   it("jumps pages correctly with variable pnrStep values (e.g., pnrStep: 2)", {
     timeout: 15_000,
   }, async () => {

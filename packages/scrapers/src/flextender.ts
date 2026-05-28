@@ -358,10 +358,9 @@ function parseDetailHtml(html: string): FlextenderDetail {
   }
 
   // === Extract positionsAvailable from "Benodigd aantal professionals" ===
-  const profText = findSection("benodigd aantal");
-  if (profText) {
-    const numMatch = profText.match(/(\d+)/);
-    if (numMatch) result.positionsAvailable = parseInt(numMatch[1], 10);
+  const positionsAvailable = parsePositionsAvailable(findSection("benodigd aantal"));
+  if (positionsAvailable) {
+    result.positionsAvailable = positionsAvailable;
   }
 
   // === Parse summary fields for structured data + conditions ===
@@ -596,6 +595,14 @@ export function parseHoursPerWeek(raw: string | undefined): {
     return sanitizedHours ? { hoursPerWeek: sanitizedHours } : {};
   }
   return {};
+}
+
+export function parsePositionsAvailable(raw: string | undefined): number | undefined {
+  const numMatch = raw?.match(/(\d+)/);
+  if (!numMatch) return undefined;
+
+  const value = parseInt(numMatch[1], 10);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 /** Map Dutch government functieschaal to indicative hourly rate range (EUR, excl BTW).

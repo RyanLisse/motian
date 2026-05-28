@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseHoursPerWeek } from "../packages/scrapers/src/flextender";
+import { parseHoursPerWeek, parsePositionsAvailable } from "../packages/scrapers/src/flextender";
 
 describe("Flextender hours parsing", () => {
   it("keeps valid single and ranged weekly hours", () => {
@@ -14,5 +14,10 @@ describe("Flextender hours parsing", () => {
     expect(parseHoursPerWeek("220 uur")).toEqual({});
     expect(parseHoursPerWeek("24 tot 220 uur")).toEqual({});
     expect(parseHoursPerWeek("0 tot 36 uur")).toEqual({});
+  });
+
+  it("drops zero positions instead of failing downstream validation", () => {
+    expect(parsePositionsAvailable("Benodigd aantal professionals: 0")).toBeUndefined();
+    expect(parsePositionsAvailable("Benodigd aantal professionals: 2")).toBe(2);
   });
 });
