@@ -654,7 +654,7 @@ open https://motian.vercel.app  # Or your production domain
 
 ```bash
 # Test critical API endpoints
-curl https://motian.vercel.app/api/health
+curl https://motian.vercel.app/api/gezondheid
 # Expected: 200 OK
 
 # Test database connection via API
@@ -869,7 +869,7 @@ git push origin main
 vercel logs --follow
 
 # Verify rollback successful
-curl https://motian.vercel.app/api/health
+curl https://motian.vercel.app/api/gezondheid
 # Expected: 200 OK
 ```
 

@@ -115,7 +115,7 @@ diff baseline.txt post-deploy.txt
 # ✅ PASS: No differences (row counts identical)
 
 # 3. Application Health
-curl https://motian.vercel.app/api/health
+curl https://motian.vercel.app/api/gezondheid
 curl https://motian.vercel.app/api/jobs/stats
 # ✅ PASS: Both return 200 OK
 
