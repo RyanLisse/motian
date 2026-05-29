@@ -7,7 +7,7 @@ import {
 } from "../src/services/embedding.js";
 
 import type { Job } from "../src/services/jobs";
-import { computeMatchScore } from "../src/services/scoring.js";
+import { computeMatchScore, computeVectorSimilarityScore } from "../src/services/scoring.js";
 
 // ── Hybrid Scoring Integration Tests ─────────────────────────────
 
@@ -59,6 +59,45 @@ describe("Hybrid scoring — rule + vector blend", () => {
     );
     expect(result.model).toBe("hybrid-v1");
     expect(result.reasoning).toContain("Semantische match");
+  });
+
+  it("clamps negative vector similarity instead of subtracting from semantic scoring", () => {
+    expect(computeVectorSimilarityScore([1, 0], [-1, 0])).toBe(0);
+  });
+
+  it("falls back to rule scoring when embedding dimensions do not match", () => {
+    const result = computeMatchScore(
+      { ...job, embedding: [1, 0, 0] } as unknown as Job,
+      { ...candidate, embedding: [1, 0] } as unknown as Candidate,
+    );
+
+    expect(result.model).toBe("rule-based-v1");
+    expect(result.reasoning).not.toContain("Semantische match");
+  });
+
+  it("lets a strong vector signal rescue low lexical overlap", () => {
+    const result = computeMatchScore(
+      {
+        ...job,
+        requirements: [{ description: "SAP migratie architectuur" }],
+        competences: ["SAP"],
+        embedding: [1, 0],
+      } as unknown as Job,
+      {
+        ...candidate,
+        skills: ["Kubernetes"],
+        role: "Cloud consultant",
+        province: "Utrecht",
+        location: "Utrecht",
+        hourlyRate: 150,
+        embedding: [1, 0],
+      } as unknown as Candidate,
+      { weights: { ruleWeight: 0.2, vectorWeight: 0.8 } },
+    );
+
+    expect(result.model).toBe("hybrid-v1");
+    expect(result.score).toBeGreaterThanOrEqual(80);
+    expect(result.reasoning).toContain("Semantische match: 100%");
   });
 
   it("falls back to rule-based when only job has embedding", () => {

@@ -18,13 +18,16 @@ import type {
 import { werkzoekenAdapter } from "./werkzoeken";
 
 function createDirectScrapeAdapter(
-  scrape: (baseUrl?: string) => Promise<Record<string, unknown>[]>,
-  options: {
+  scrape: (
+    baseUrl?: string,
+    options?: { limit?: number; smoke?: boolean },
+  ) => Promise<Record<string, unknown>[]>,
+  adapterOptions: {
     requiresRuntimeBaseUrl?: boolean;
     validationMessage?: string;
   } = {},
 ): PlatformAdapter {
-  const requiresRuntimeBaseUrl = options.requiresRuntimeBaseUrl ?? true;
+  const requiresRuntimeBaseUrl = adapterOptions.requiresRuntimeBaseUrl ?? true;
 
   return {
     async validate(config: PlatformRuntimeConfig): Promise<PlatformValidationResult> {
@@ -39,13 +42,17 @@ function createDirectScrapeAdapter(
       return {
         ok: true,
         status: "validated",
-        message: options.validationMessage ?? "Configuratie is geldig en klaar voor import.",
+        message:
+          adapterOptions.validationMessage ?? "Configuratie is geldig en klaar voor import.",
       };
     },
 
-    async scrape(config: PlatformRuntimeConfig): Promise<PlatformScrapeResult> {
+    async scrape(
+      config: PlatformRuntimeConfig,
+      options?: { limit?: number; smoke?: boolean },
+    ): Promise<PlatformScrapeResult> {
       return {
-        listings: await scrape(requiresRuntimeBaseUrl ? config.baseUrl : undefined),
+        listings: await scrape(requiresRuntimeBaseUrl ? config.baseUrl : undefined, options),
       };
     },
 
@@ -53,7 +60,10 @@ function createDirectScrapeAdapter(
       config: PlatformRuntimeConfig,
       options?: { limit?: number },
     ): Promise<PlatformTestImportResult> {
-      const listings = await scrape(requiresRuntimeBaseUrl ? config.baseUrl : undefined);
+      const listings = await scrape(requiresRuntimeBaseUrl ? config.baseUrl : undefined, {
+        limit: options?.limit,
+        smoke: true,
+      });
       return {
         status: listings.length > 0 ? "success" : "failed",
         jobsFound: Math.min(listings.length, options?.limit ?? listings.length),
@@ -127,7 +137,7 @@ const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefiniti
       return {
         ...definition,
         adapter: createDirectScrapeAdapter(
-          (baseUrl) => scrapeStriive(baseUrl ?? definition.defaultBaseUrl),
+          (baseUrl, options) => scrapeStriive(baseUrl ?? definition.defaultBaseUrl, options),
           {
             requiresRuntimeBaseUrl: true,
           },

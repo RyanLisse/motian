@@ -833,9 +833,33 @@ export async function updatePlatformCatalogEntry(
   return updated;
 }
 
+export type ScraperConfigPageOptions = {
+  limit: number;
+  offset: number;
+};
+
+export type ScraperConfigPage = {
+  data: ScraperConfig[];
+  total: number;
+};
+
 /** Alle scraper configuraties ophalen, gesorteerd op platform */
 export async function getAllConfigs(): Promise<ScraperConfig[]> {
   return db.select().from(scraperConfigs).orderBy(asc(scraperConfigs.platform));
+}
+
+export async function listScraperConfigsPage(
+  options: ScraperConfigPageOptions,
+): Promise<ScraperConfigPage> {
+  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(scraperConfigs);
+  const data = await db
+    .select()
+    .from(scraperConfigs)
+    .orderBy(asc(scraperConfigs.platform))
+    .limit(options.limit)
+    .offset(options.offset);
+
+  return { data, total: total ?? 0 };
 }
 
 export async function getConfigByPlatform(platform: string): Promise<ScraperConfig | null> {

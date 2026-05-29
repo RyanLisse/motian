@@ -10,6 +10,7 @@
  */
 import {
   type CandidateSkillRecord,
+  countSkillsForFilter,
   findOrCreateSkill,
   getCandidateSkillsV2,
   getCandidateSkillsV2ForCandidateIds,
@@ -18,6 +19,7 @@ import {
   getSkillsCatalogStatus,
   type JobSkillRecord,
   listSkillsForFilter,
+  type SkillFilterPageOptions,
   syncCandidateSkillsV2,
   syncJobSkillsV2,
   toSkillSlug,
@@ -232,9 +234,16 @@ export async function withJobsSkillsLite<T extends { id: string }>(
 
 // ========== Filter ==========
 
-export async function listSkillsForFilterOptions(query?: string): Promise<SkillFilterOption[]> {
-  const rows = await listSkillsForFilter(query);
+export async function listSkillsForFilterOptions(
+  query?: string,
+  options: SkillFilterPageOptions = {},
+): Promise<SkillFilterOption[]> {
+  const rows = await listSkillsForFilter(query, options);
   return rows.map((row) => ({ slug: row.slug, name: row.name }));
+}
+
+export async function countSkillFilterOptions(query?: string): Promise<number> {
+  return countSkillsForFilter(query);
 }
 
 export async function getSkillsMappingStats(): Promise<SkillsMappingStats> {

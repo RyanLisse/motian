@@ -200,6 +200,74 @@ function mapContractType(type) {
 const STRIIVE_API_LIST = "https://supplier.striive.com/api/v2/job-requests";
 const STRIIVE_API_DETAIL = "https://supplier.striive.com/api/job-requests";
 
+export type StriiveScrapeOptions = {
+  /** Maximum number of listings to fetch. Used by smoke/test-import paths. */
+  limit?: number;
+  /** Maximum API list pages to fetch inside Modal. Defaults to the historical 21-page cap. */
+  maxPages?: number;
+  /** Marks a bounded smoke import; currently used for observability and safe defaults. */
+  smoke?: boolean;
+};
+
+export type StriiveResolvedModalOptions = {
+  limit: number | null;
+  maxPages: number;
+  smoke: boolean;
+};
+
+const DEFAULT_MODAL_MAX_PAGES = 21;
+const MAX_MODAL_PAGES = 50;
+
+function toPositiveInteger(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.floor(parsed);
+}
+
+export function resolveStriiveModalOptions(
+  options: StriiveScrapeOptions = {},
+): StriiveResolvedModalOptions {
+  const requestedLimit = toPositiveInteger(options.limit);
+  const requestedMaxPages = toPositiveInteger(options.maxPages);
+  const smokeMaxPages = options.smoke ? 1 : DEFAULT_MODAL_MAX_PAGES;
+
+  return {
+    limit: requestedLimit,
+    maxPages: Math.min(requestedMaxPages ?? smokeMaxPages, MAX_MODAL_PAGES),
+    smoke: options.smoke ?? false,
+  };
+}
+
+export function validateStriiveModalEnvironment(
+  env: NodeJS.ProcessEnv = process.env,
+): { tokenId: string; tokenSecret: string } {
+  const tokenId = env.MODAL_TOKEN_ID;
+  const tokenSecret = env.MODAL_TOKEN_SECRET;
+
+  if (!tokenId || !tokenSecret) {
+    throw new Error(
+      "Modal credentials ontbreken voor Striive: stel MODAL_TOKEN_ID en MODAL_TOKEN_SECRET in.",
+    );
+  }
+
+  return { tokenId, tokenSecret };
+}
+
+export function buildStriiveModalEnv(
+  username: string,
+  password: string,
+  options: StriiveResolvedModalOptions,
+): Record<string, string> {
+  return {
+    STRIIVE_USERNAME: username,
+    STRIIVE_PASSWORD: password,
+    STRIIVE_LIMIT: options.limit ? String(options.limit) : "",
+    STRIIVE_MAX_PAGES: String(options.maxPages),
+    STRIIVE_SMOKE: options.smoke ? "1" : "0",
+  };
+}
+
 const MODAL_SCRAPE_SCRIPT = `
 const API_LIST = "${STRIIVE_API_LIST}";
 const API_DETAIL = "${STRIIVE_API_DETAIL}";
@@ -210,6 +278,10 @@ async function run() {
   const { chromium } = require("playwright-core");
   const username = process.env.STRIIVE_USERNAME;
   const password = process.env.STRIIVE_PASSWORD;
+  const requestedLimit = Number.parseInt(process.env.STRIIVE_LIMIT || "", 10);
+  const listingLimit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : null;
+  const requestedMaxPages = Number.parseInt(process.env.STRIIVE_MAX_PAGES || "21", 10);
+  const maxPages = Number.isFinite(requestedMaxPages) && requestedMaxPages > 0 ? requestedMaxPages : 21;
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
@@ -294,11 +366,15 @@ async function run() {
       if (!Array.isArray(jobs) || jobs.length === 0) break;
 
       allJobs.push(...jobs);
+      if (listingLimit && allJobs.length >= listingLimit) {
+        allJobs.length = listingLimit;
+      }
       console.log(\`[striive-modal] Page \${pageNum}: \${jobs.length} jobs (total: \${allJobs.length})\`);
 
+      if (listingLimit && allJobs.length >= listingLimit) break;
       if (jobs.length < PAGE_SIZE) break;
+      if (pageNum + 1 >= maxPages) break;
       pageNum++;
-      if (pageNum > 20) break;
     }
     console.log(\`[striive-modal] Total listings: \${allJobs.length}\`);
 
@@ -350,7 +426,10 @@ run();
  * Main entry point — scrapes Striive listings via Modal sandbox.
  * Validates auth result by checking for empty listings (silent auth failure).
  */
-export async function scrapeStriive(_url: string): Promise<RawScrapedListing[]> {
+export async function scrapeStriive(
+  _url: string,
+  options: StriiveScrapeOptions = {},
+): Promise<RawScrapedListing[]> {
   const username = process.env.STRIIVE_USERNAME;
   const password = process.env.STRIIVE_PASSWORD;
 
@@ -358,7 +437,9 @@ export async function scrapeStriive(_url: string): Promise<RawScrapedListing[]> 
     throw new Error("STRIIVE_USERNAME en STRIIVE_PASSWORD moeten ingesteld zijn");
   }
 
-  const results = await scrapeViaModal(username, password);
+  validateStriiveModalEnvironment();
+  const modalOptions = resolveStriiveModalOptions(options);
+  const results = await scrapeViaModal(username, password, modalOptions);
 
   // Auth validation: if the API returns 0 listings, the session likely expired
   // Striive always has active jobs — 0 results indicates auth failure
@@ -371,7 +452,11 @@ export async function scrapeStriive(_url: string): Promise<RawScrapedListing[]> 
   return results;
 }
 
-async function scrapeViaModal(username: string, password: string): Promise<RawScrapedListing[]> {
+async function scrapeViaModal(
+  username: string,
+  password: string,
+  options: StriiveResolvedModalOptions,
+): Promise<RawScrapedListing[]> {
   const { ModalClient } = await import("modal");
   console.log("[striive] Starting Modal sandbox scrape...");
 
@@ -388,10 +473,7 @@ async function scrapeViaModal(username: string, password: string): Promise<RawSc
       ]);
 
     const sandbox = await modal.sandboxes.create(app, image, {
-      env: {
-        STRIIVE_USERNAME: username,
-        STRIIVE_PASSWORD: password,
-      },
+      env: buildStriiveModalEnv(username, password, options),
       timeoutMs: 10 * 60 * 1000,
       workdir: "/root",
     });

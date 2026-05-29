@@ -2,25 +2,12 @@ import { logger, schedules } from "@trigger.dev/sdk";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scraperConfigs } from "@/src/db/schema";
-import { parseCronNext } from "@/src/lib/cron-utils";
 import { publish } from "@/src/lib/event-bus";
 import { CIRCUIT_BREAKER_THRESHOLD } from "@/src/lib/helpers";
 import { notifySlack } from "@/src/lib/notify-slack";
 import { trackServerEvent } from "@/src/lib/posthog";
+import { getScrapeScheduleDecision } from "@/src/lib/scrape-schedule";
 import { runScrapePipelinesWithConcurrency } from "@/src/services/scrape-pipeline";
-
-// ========== Helpers ==========
-
-function isDue(
-  cronExpression: string | null | undefined,
-  lastRunAt: Date | null | undefined,
-): boolean {
-  if (!lastRunAt) return true;
-  const nextRun = parseCronNext(cronExpression, lastRunAt);
-  if (!nextRun) return true; // unknown schedule → always consider due
-  const grace = 5 * 60_000;
-  return Date.now() >= nextRun.getTime() - grace;
-}
 
 // ========== Scheduled Task ==========
 
@@ -53,6 +40,7 @@ export const scrapePipelineTask = schedules.task({
     let tripped = 0;
     let skippedSchedule = 0;
     const results: Record<string, unknown>[] = [];
+    const scheduleDecisions = new Map<string, ReturnType<typeof getScrapeScheduleDecision>>();
 
     // Filter: circuit breaker + schedule check
     const eligible = activeConfigs.filter((cfg) => {
@@ -76,12 +64,24 @@ export const scrapePipelineTask = schedules.task({
         return false;
       }
 
-      if (!isDue(cfg.cronExpression, cfg.lastRunAt)) {
+      const schedule = getScrapeScheduleDecision(cfg.cronExpression, cfg.lastRunAt);
+      scheduleDecisions.set(cfg.platform, schedule);
+
+      if (!schedule.due) {
         skippedSchedule++;
-        results.push({ platform: cfg.platform, status: "not_due" });
+        logger.info("Scrape schedule overgeslagen", {
+          platform: cfg.platform,
+          schedule,
+        });
+        trackServerEvent("system", "scrape_schedule_skipped", {
+          platform: cfg.platform,
+          ...schedule,
+        });
+        results.push({ platform: cfg.platform, status: "not_due", schedule });
         return false;
       }
 
+      logger.info("Scrape schedule is due", { platform: cfg.platform, schedule });
       return true;
     });
 
@@ -92,7 +92,12 @@ export const scrapePipelineTask = schedules.task({
       dispatched++;
       const platform = eligible[i].platform;
       if (r.status === "fulfilled") {
-        const scrapeData = { platform, status: "success", ...r.value };
+        const scrapeData = {
+          platform,
+          status: "success",
+          schedule: scheduleDecisions.get(platform),
+          ...r.value,
+        };
         results.push(scrapeData);
         notifySlack("scrape:complete", scrapeData);
         trackServerEvent("system", "scrape_completed", {
@@ -100,7 +105,12 @@ export const scrapePipelineTask = schedules.task({
           ...r.value,
         });
       } else {
-        results.push({ platform, status: "failed", error: String(r.reason) });
+        results.push({
+          platform,
+          status: "failed",
+          schedule: scheduleDecisions.get(platform),
+          error: String(r.reason),
+        });
         notifySlack("scrape:complete", {
           platform,
           status: "failed",
@@ -136,11 +146,13 @@ export const scrapePipelineTask = schedules.task({
       dispatched,
       tripped,
       skippedSchedule,
+      scheduleDecisions: Object.fromEntries(scheduleDecisions),
     });
     trackServerEvent("system", "scrape_pipeline_completed", {
       dispatched,
       tripped,
       skippedSchedule,
+      schedulesEvaluated: scheduleDecisions.size,
     });
 
     return { dispatched, tripped, skippedSchedule, results };

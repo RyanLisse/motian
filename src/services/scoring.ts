@@ -194,8 +194,8 @@ export function computeQualityScore(
   };
 }
 
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length || a.length === 0) return 0;
+function cosineSimilarity(a: number[], b: number[]): number | null {
+  if (a.length !== b.length || a.length === 0) return null;
 
   let dot = 0;
   let magA = 0;
@@ -208,6 +208,18 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
   const denom = Math.sqrt(magA) * Math.sqrt(magB);
   return denom === 0 ? 0 : dot / denom;
+}
+
+export function computeVectorSimilarityScore(
+  jobEmbedding: number[] | null | undefined,
+  candidateEmbedding: number[] | null | undefined,
+): number | null {
+  if (!jobEmbedding?.length || !candidateEmbedding?.length) return null;
+
+  const similarity = cosineSimilarity(jobEmbedding, candidateEmbedding);
+  if (similarity === null) return null;
+
+  return Math.round(Math.max(0, Math.min(1, similarity)) * 100);
 }
 
 function isSkillScoringPathEnabled(options?: SkillMatchOptions): boolean {
@@ -516,9 +528,9 @@ export function computeMatchScore(
   let baseScore: number;
   const reasoningParts: string[] = [ruleResult.reasoning];
 
-  if (jobEmbedding?.length && candidateEmbedding?.length) {
-    const similarity = cosineSimilarity(jobEmbedding, candidateEmbedding);
-    const vectorScore = Math.round(similarity * 100);
+  const vectorScore = computeVectorSimilarityScore(jobEmbedding, candidateEmbedding);
+
+  if (vectorScore !== null) {
     baseScore = Math.round(
       effectiveHybridBlend.ruleWeight * ruleResult.score +
         effectiveHybridBlend.vectorWeight * vectorScore,
@@ -545,10 +557,9 @@ export function computeMatchScore(
   // Determine model label
   let modelLabel: string;
   if (skillDimension.usedCanonicalSkills) {
-    modelLabel =
-      jobEmbedding?.length && candidateEmbedding?.length ? "skills-hybrid-v1" : "skills-rule-v1";
+    modelLabel = vectorScore !== null ? "skills-hybrid-v1" : "skills-rule-v1";
   } else {
-    modelLabel = jobEmbedding?.length && candidateEmbedding?.length ? "hybrid-v1" : "rule-based-v1";
+    modelLabel = vectorScore !== null ? "hybrid-v1" : "rule-based-v1";
   }
 
   return {

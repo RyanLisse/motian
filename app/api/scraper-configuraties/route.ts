@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { withApiHandler } from "@/src/lib/api-handler";
 import { jsonObjectSchema } from "@/src/lib/json-value-schema";
-import { createConfig, getAllConfigs } from "@/src/services/scrapers";
+import { paginatedResponse, parsePagination } from "@/src/lib/pagination";
+import { createConfig, listScraperConfigsPage } from "@/src/services/scrapers";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +18,14 @@ const postSchema = z.object({
 });
 
 export const GET = withApiHandler(
-  async (_request: NextRequest) => {
-    const configs = await getAllConfigs();
-    return Response.json(
-      { data: configs, total: configs.length },
-      {
-        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
-      },
-    );
+  async (request: NextRequest) => {
+    const { searchParams } = new URL(request.url);
+    const { page, limit, offset } = parsePagination(searchParams, { limit: 50, maxLimit: 100 });
+    const { data, total } = await listScraperConfigsPage({ limit, offset });
+
+    return Response.json(paginatedResponse(data, total, { page, limit, offset }), {
+      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+    });
   },
   {
     logPrefix: "Fout bij ophalen scraper configuraties",

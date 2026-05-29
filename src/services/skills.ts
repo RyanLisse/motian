@@ -321,8 +321,31 @@ export async function getJobSkillsV2ForJobIds(
   return grouped;
 }
 
-export async function listSkillsForFilter(query?: string) {
+export type SkillFilterPageOptions = {
+  limit?: number;
+  offset?: number;
+};
+
+function getSkillFilterCondition(query?: string) {
   const normalizedQuery = query ? normalizeSkillName(query).toLocaleLowerCase("nl-NL") : null;
+  if (!normalizedQuery) return undefined;
+
+  return or(
+    sql`lower(${skills.name}) like ${`%${normalizedQuery}%`}`,
+    sql`lower(${skills.slug}) like ${`%${normalizedQuery.replace(/\s+/g, "-")}%`}`,
+  );
+}
+
+function resolveSkillFilterPagination(query?: string, options: SkillFilterPageOptions = {}) {
+  return {
+    limit: Math.max(1, Math.min(options.limit ?? (query ? 25 : 100), 100)),
+    offset: Math.max(0, options.offset ?? 0),
+  };
+}
+
+export async function listSkillsForFilter(query?: string, options: SkillFilterPageOptions = {}) {
+  const condition = getSkillFilterCondition(query);
+  const { limit, offset } = resolveSkillFilterPagination(query, options);
   const baseQuery = db
     .select({
       id: skills.id,
@@ -331,16 +354,17 @@ export async function listSkillsForFilter(query?: string) {
     })
     .from(skills);
 
-  const filteredQuery = normalizedQuery
-    ? baseQuery.where(
-        or(
-          sql`lower(${skills.name}) like ${`%${normalizedQuery}%`}`,
-          sql`lower(${skills.slug}) like ${`%${normalizedQuery.replace(/\s+/g, "-")}%`}`,
-        ),
-      )
-    : baseQuery;
+  const filteredQuery = condition ? baseQuery.where(condition) : baseQuery;
 
-  return filteredQuery.orderBy(skills.name).limit(query ? 25 : 100);
+  return filteredQuery.orderBy(skills.name).limit(limit).offset(offset);
+}
+
+export async function countSkillsForFilter(query?: string): Promise<number> {
+  const condition = getSkillFilterCondition(query);
+  const baseQuery = db.select({ count: sql<number>`count(*)::int` }).from(skills);
+  const filteredQuery = condition ? baseQuery.where(condition) : baseQuery;
+  const [row] = await filteredQuery;
+  return row?.count ?? 0;
 }
 
 export async function getSkillsCatalogStatus(): Promise<SkillsCatalogStatus> {
