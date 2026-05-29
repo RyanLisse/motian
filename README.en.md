@@ -629,9 +629,9 @@ Each scraper implements a common interface and is orchestrated by `runScrapePipe
 | Route              | Page           | Description                                                        |
 | ------------------ | -------------- | ------------------------------------------------------------------ |
 | `/overzicht`       | Dashboard      | KPI overview with aggregate statistics                             |
-| `/opdrachten`      | Vacancies      | Filterable job listing with platform, province, and rate filters   |
-| `/opdrachten/[id]` | Vacancy Detail | Full job details with formatted descriptions and competence badges |
-| `/professionals`   | Candidates     | Candidate directory and profiles                                   |
+| `/vacatures`      | Vacancies      | Filterable job listing with platform, province, and rate filters   |
+| `/vacatures/[id]` | Vacancy Detail | Full job details with formatted descriptions and competence badges |
+| `/kandidaten`     | Candidates     | Candidate directory and profiles                                   |
 | `/matching`        | AI Matching    | CV Analyse (drag-and-drop SSE) + Koppelen tab with 3-layer matching |
 | `/pipeline`        | Pipeline       | Scrape run history and status monitoring                           |
 | `/scraper`         | Configuration  | Platform scraper settings and manual triggers                      |
@@ -896,7 +896,7 @@ just health
 
 # Open pages in browser
 just dashboard            # Overview
-just opdrachten           # Vacancies
+just vacatures           # Vacancies
 just chat                 # AI Chat
 
 # Lint and typecheck
@@ -907,7 +907,7 @@ just typecheck            # TypeScript check
 # Browser verification (optional; requires agent-browser CLI)
 # agent-browser open http://localhost:3002/ && agent-browser snapshot -i
 
-# Metrics and benchmarks (see docs/metrics/README.md)
+# Metrics and benchmarks (generated output is local in docs/metrics/)
 just baseline-metrics     # Record baseline (build time, env)
 just benchmark-hybrid-search   # hybridSearch benchmark (requires DATABASE_URL)
 
@@ -926,7 +926,7 @@ For a list of all Just tasks: `just --list`.
 
 ## API Routes
 
-All API routes use **Dutch path naming** convention.
+All API routes use **Dutch path naming** convention. New vacancy integrations should use the canonical `/api/vacatures` routes; `/api/opdrachten` remains only as a compatibility layer.
 
 - OpenAPI JSON: `/api/openapi`
 - Interactive Scalar docs: `/api-docs`
@@ -937,8 +937,8 @@ All API routes use **Dutch path naming** convention.
 | ---------------------------- | --------- | -------------------------------------- |
 | `/api/openapi`               | GET       | OpenAPI JSON document                  |
 | `/api/chat`                  | POST      | AI chat streaming (Vercel AI SDK)      |
-| `/api/opdrachten`            | GET/POST  | List/create vacancies                  |
-| `/api/opdrachten/[id]`       | GET/PATCH | Get/update vacancy                     |
+| `/api/vacatures`             | GET/POST  | List/create vacancies                  |
+| `/api/vacatures/[id]`        | GET/PATCH/DELETE | Get/update/archive vacancy             |
 | `/api/kandidaten`            | GET/POST  | List/create candidates                 |
 | `/api/matches`               | GET/POST  | AI match operations                    |
 | `/api/sollicitaties`         | GET/POST  | Application pipeline                   |

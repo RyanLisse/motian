@@ -4,7 +4,7 @@
  * Run: pnpm tsx scripts/baseline-metrics.ts
  *
  * API latency, DB query duration, Trigger job duration and AI costs
- * require a running app and are documented in docs/metrics/README.md.
+ * require a running app; generated metrics stay local in docs/metrics/.
  */
 import { execSync } from "node:child_process";
 import * as fs from "node:fs";

@@ -60,3 +60,15 @@ storybook-static/
 Untitled
 .omx/
 .worktrees/
+
+# Generated local benchmark/metrics artefacts
+/docs/metrics/
+
+# Local Beads/Dolt runtime state should never be handed over as source
+/dolt/
+dolt-server.*
+.serena/
+
+# Local screenshots and browser QA captures
+qa-*.png
+vacatures-*.png

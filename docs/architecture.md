@@ -82,7 +82,7 @@ Unified job search lives in `src/services/jobs/` (modules: `repository`, `filter
 1. **Text search** (`searchJobsByTitle`): ILIKE with multi-word OR splitting
 2. **Vector search** (`findSimilarJobs`): 512d embeddings with pgvector cosine distance
 
-RRF formula: `score = sum(1 / (k + rank))` with k=60. Benchmark: `just benchmark-hybrid-search` (writes `docs/metrics/hybrid-search-benchmark-latest.json`).
+RRF formula: `score = sum(1 / (k + rank))` with k=60. Benchmark: `just benchmark-hybrid-search` (writes a generated local `docs/metrics/hybrid-search-benchmark-latest.json`).
 
 ## Canonical Skills Runtime
 
@@ -242,9 +242,9 @@ Next.js 16 App Router with Tailwind CSS v4, Radix UI (shadcn/ui), React 19.
 
 | Route | Purpose |
 |-------|---------|
-| `/opdrachten` | Filterable job listing with platform/province/rate filters |
-| `/opdrachten/[id]` | Job detail with formatted descriptions and competence badges |
-| `/professionals` | Candidate directory with CV upload/delete |
+| `/vacatures` | Filterable job listing with platform/province/rate filters |
+| `/vacatures/[id]` | Job detail with formatted descriptions and competence badges |
+| `/kandidaten` | Candidate directory with CV upload/delete |
 | `/matching` | AI matching: CV Analyse tab (drag-and-drop) + Koppelen tab |
 | `/pipeline` | Scrape history and status |
 | `/scraper` | Scraper configuration and manual triggers |

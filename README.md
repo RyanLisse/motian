@@ -45,7 +45,6 @@ pnpm search:reindex
 
 - Gebruikshandleiding: [`docs/autopilot-usage.md`](docs/autopilot-usage.md)
 - Configuratie en opslaginstellingen: [`docs/autopilot-configuration.md`](docs/autopilot-configuration.md)
-- Roadmap vanaf Phase 5: [`docs/autopilot-phase4-roadmap.md`](docs/autopilot-phase4-roadmap.md)
 
 ---
 
@@ -660,9 +659,9 @@ Elke scraper implementeert een gemeenschappelijke interface en wordt georkestree
 | Route              | Pagina          | Beschrijving                                                                      |
 | ------------------ | --------------- | --------------------------------------------------------------------------------- |
 | `/overzicht`       | Dashboard       | KPI overzicht met geaggregeerde statistieken                                      |
-| `/opdrachten`      | Vacatures       | Filterbare vacaturelijst met platform, provincie en tarief filters                |
-| `/opdrachten/[id]` | Vacature Detail | Volledige vacaturedetails met geformatteerde beschrijvingen en competentie badges |
-| `/professionals`   | Kandidaten      | Kandidaten directory en profielen                                                 |
+| `/vacatures`      | Vacatures       | Filterbare vacaturelijst met platform, provincie en tarief filters                |
+| `/vacatures/[id]` | Vacature Detail | Volledige vacaturedetails met geformatteerde beschrijvingen en competentie badges |
+| `/kandidaten`     | Kandidaten      | Kandidaten directory en profielen                                                 |
 | `/matching`        | AI Matching     | CV Analyse (drag-and-drop SSE) + Koppelen tab met 3-laags matching               |
 | `/pipeline`        | Pipeline        | Scrape run geschiedenis en statusmonitoring                                       |
 | `/scraper`         | Configuratie    | Platform scraper instellingen en handmatige triggers                              |
@@ -957,7 +956,7 @@ just health
 
 # Pagina's in browser openen
 just dashboard            # Overzicht
-just opdrachten          # Vacatures
+just vacatures          # Vacatures
 just chat                # AI Chat
 
 # Lint en typecheck
@@ -968,7 +967,7 @@ just typecheck           # TypeScript controle
 # Browserverificatie (optioneel; vereist agent-browser CLI)
 # agent-browser open http://localhost:3002/ && agent-browser snapshot -i
 
-# Metrics en benchmarks (zie docs/metrics/README.md)
+# Metrics en benchmarks (gegenereerde output staat lokaal in docs/metrics/)
 just baseline-metrics    # Baseline vastleggen (buildtijd, env)
 just benchmark-hybrid-search   # hybridSearch benchmark (vereist DATABASE_URL)
 
@@ -987,7 +986,7 @@ Voor een overzicht van alle Just-taken: `just --list`.
 
 ## API Routes
 
-Alle API routes gebruiken **Nederlandse padnamen**.
+Alle API routes gebruiken **Nederlandse padnamen**. Gebruik voor nieuwe vacature-integraties de canonieke `/api/vacatures` routes; `/api/opdrachten` blijft alleen als compatibiliteitslaag bestaan.
 
 - OpenAPI JSON: `/api/openapi`
 - Interactieve Scalar docs: `/api-docs`
@@ -998,8 +997,8 @@ Alle API routes gebruiken **Nederlandse padnamen**.
 | ---------------------------- | --------- | ------------------------------------------ |
 | `/api/openapi`               | GET       | OpenAPI JSON documentatie                  |
 | `/api/chat`                  | POST      | AI chat streaming (Vercel AI SDK)          |
-| `/api/opdrachten`            | GET/POST  | Vacatures ophalen/aanmaken                 |
-| `/api/opdrachten/[id]`       | GET/PATCH | Vacature ophalen/bijwerken                 |
+| `/api/vacatures`             | GET/POST  | Vacatures ophalen/aanmaken                 |
+| `/api/vacatures/[id]`        | GET/PATCH/DELETE | Vacature ophalen/bijwerken/archiveren      |
 | `/api/kandidaten`            | GET/POST  | Kandidaten ophalen/aanmaken                |
 | `/api/matches`               | GET/POST  | AI match operaties                         |
 | `/api/sollicitaties`         | GET/POST  | Sollicitatie pipeline                      |

@@ -155,9 +155,13 @@ health:
 dashboard:
 	open http://localhost:3002/overzicht
 
-# Open opdrachten in browser
+# Open vacatures in browser
+vacatures:
+	open http://localhost:3002/vacatures
+
+# Legacy alias for older local workflows
 opdrachten:
-	open http://localhost:3002/opdrachten
+	open http://localhost:3002/vacatures
 
 # Open chat in browser
 chat:

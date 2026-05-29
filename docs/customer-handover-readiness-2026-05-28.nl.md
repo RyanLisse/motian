@@ -1,42 +1,29 @@
-# Klant-handover readiness — 28 mei 2026
+# Klant-handover readiness — bijgewerkt 29 mei 2026
 
 Deze notitie is de actuele overdrachtssnapshot voor de klant. De structurele ownership-gidsen blijven:
 
 - `docs/runbooks/project-ownership-transfer-guide.nl.md`
 - `docs/runbooks/project-ownership-transfer-checklist.nl.md`
+- `docs/deployment-verification-summary.md`
 
 ## Huidige staat
 
 - **Branch:** `main`
-- **Laatste gecontroleerde commit:** `a56b93a9` (`chore: update workspace metadata`)
 - **Productie-app:** `https://motian.vercel.app`
 - **Gezondheidscheck:** `GET /api/gezondheid`
 - **Salesforce XML-feed:** `GET /api/salesforce-feed`
 - **Trigger.dev project:** `proj_nqihauooanbnqnbpoybp`
-- **Vercel project:** `motian` (`.vercel/project.json`)
+- **Vercel project:** `motian`
+- **Canonieke frontendroutes:** `/vacatures`, `/kandidaten`, `/chat`, `/scraper`, `/overzicht`
 
-## Uitgevoerde technische voorbereiding
+## Uitgevoerde voorbereiding
 
-- Scraper pipeline-herstel is geland op `main`:
-  - Werkzoeken gebruikt nu bij retrybare failures of lege HTML-resultaten een Browserbase/Firecrawl render-fallbackketen.
-  - Flextender laat `positionsAvailable` weg wanneer de bronwaarde `0` of ongeldig is, zodat normalisatie niet meer faalt op de positieve integer-validatie.
-- Lokale orchestration-runtimebestanden (`.omx/`, `.omc/`) zijn uit de Git-index gehaald. Ze blijven lokaal genegeerd via `.gitignore` en horen niet in klant-handover/bronbeheer.
-- Stale documentatieverwijzingen naar `/api/health` zijn vervangen door de canonieke Nederlandse route `/api/gezondheid`.
-- Repo-worktrees zijn opgeschoond. Twee worktrees zijn bewust behouden omdat daar nog niet-geïntegreerd of lokaal gewijzigd werk staat:
-  - `/Users/cortex-air/.codex/worktrees/2a64/motian` (`codex/sidebar-menu-direct-nav`)
-  - `/Users/cortex-air/.cursor/worktrees/motian/scraper-pages-loading-dxp` (`fix/scraper-pages-loading-dxp`)
+- Scraper pipeline-herstel is geland op `main` en blijft te monitoren via Trigger.dev en `scrape_results`.
+- Lokale orchestration/runtimebestanden zijn uit Git gehaald of genegeerd: `.omx/`, `.omc/`, `.serena/`, root `dolt/`, Beads/Dolt runtime en lokale screenshots.
+- Historische plans, brainstorms, reviews, demo artefacten en oude metrics snapshots zijn verwijderd om documentatiedrift te voorkomen.
+- README's, architectuurdoc, ESCO runbook en deployment-verificatie zijn bijgewerkt naar de canonieke routes `/vacatures`, `/kandidaten` en `/api/gezondheid`.
 
-## Validatiebewijs
-
-Laatst succesvol uitgevoerd tijdens deze voorbereiding:
-
-```bash
-pnpm exec biome check packages/scrapers/src/werkzoeken.ts packages/scrapers/src/flextender.ts tests/werkzoeken-scraper.test.ts tests/flextender-hours.test.ts
-pnpm vitest run tests/werkzoeken-scraper.test.ts tests/flextender-hours.test.ts
-pnpm lint
-pnpm exec tsc --noEmit
-pnpm test
-```
+## Validatie voor overdracht
 
 Voor finale overdracht opnieuw uitvoeren:
 
@@ -44,20 +31,17 @@ Voor finale overdracht opnieuw uitvoeren:
 pnpm lint
 pnpm exec tsc --noEmit
 pnpm test
-pnpm build
-SKIP_ENV_VALIDATION=1 pnpm build  # alleen als lokale secrets bewust ontbreken
+pnpm tsx scripts/harness/entropy-check.ts
+SKIP_ENV_VALIDATION=1 pnpm build
 ```
 
-Build-notitie: deze checkout bevat bewust geen `.env.local`. `pnpm build` faalt dan vroeg op de verplichte `DATABASE_URL` env-validatie. De overdrachtsbuild is daarom lokaal aanvullend met `SKIP_ENV_VALIDATION=1 pnpm build` gevalideerd; in Vercel/CI moet de echte `DATABASE_URL` uit de hosted secrets komen.
-
-Bekende nuance: `pnpm harness:entropy`/`pnpm tsx scripts/harness/entropy-check.ts` faalt nog op bestaande baseline-issues rond unused exports, ontbrekende servicetests en stale plans. Dit is geen regressie van de scraper-handoverfix, maar wel een open kwaliteitsitem voor de nieuwe eigenaar.
+Build-notitie: deze checkout bevat bewust geen `.env.local`. `pnpm build` faalt dan vroeg op verplichte env-validatie. Gebruik lokaal alleen `SKIP_ENV_VALIDATION=1 pnpm build` wanneer secrets bewust ontbreken; in Vercel/CI moeten echte hosted secrets aanwezig zijn.
 
 ## Deploy- en runtime-afspraken
 
 ### Vercel
 
-- Push naar `main` triggert de normale Vercel-productiedeploy.
-- Controleer na deploy:
+Push naar `main` triggert de normale Vercel-productiedeploy. Controleer na deploy:
 
 ```bash
 curl -fsS https://motian.vercel.app/api/gezondheid
@@ -83,7 +67,7 @@ Kritieke deploy-time env vars voor Trigger.dev staan in `trigger.config.ts` en m
 Aanbevolen na Trigger.dev deploy:
 
 1. Start handmatig `scraper-health-check` of `scrape-pipeline` vanuit Trigger.dev.
-2. Controleer dat Werkzoeken niet meer vastzit op `circuit_breaker_open`.
+2. Controleer dat geen platform vastzit op `circuit_breaker_open` zonder eigenaar.
 3. Controleer dat `scrape_results` nieuwe succesvolle resultaten toont.
 4. Monitor de eerstvolgende geplande run.
 
@@ -109,4 +93,3 @@ Voor sign-off moet de nieuwe eigenaar minimaal bevestigen:
 - `motian-uml`: schedule observability/coverage verder aanscherpen.
 - `motian-scy`: scoring is nog deels rule-based en heeft semantische/vectorverbetering nodig.
 - `motian-o5g`: resterende pagination coverage afronden.
-- Entropy baseline is nog niet groen; plan aparte cleanup-sprint in.
