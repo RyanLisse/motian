@@ -2,6 +2,7 @@ import { and, db, inArray, type SQL, sql } from "../../db";
 import { jobs } from "../../db/schema";
 import { caseInsensitiveContains } from "../../lib/helpers";
 import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observability";
+import { QUERY_EMBEDDING_TIMEOUT_MS, withTimeout } from "../../lib/retry";
 import * as embeddingService from "../embedding";
 import { getAllSettings } from "../settings";
 import { fetchDedupedJobsPage, loadJobPageRowsByIds } from "./deduplication";
@@ -185,7 +186,11 @@ export async function hybridSearchPageWithTotal(
         }
 
         const embeddingStartedAt = Date.now();
-        const queryEmbedding = await embeddingService.generateQueryEmbedding(queryText);
+        const queryEmbedding = await withTimeout(
+          () => embeddingService.generateQueryEmbedding(queryText),
+          QUERY_EMBEDDING_TIMEOUT_MS,
+          "Query embedding",
+        );
         embeddingMs = Date.now() - embeddingStartedAt;
 
         const vectorSearchStartedAt = Date.now();
