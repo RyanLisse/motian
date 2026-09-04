@@ -55,7 +55,7 @@ export function KpiTrendChart({ data }: KpiTrendChartProps) {
               backgroundColor: "hsl(var(--card))",
             }}
             labelFormatter={(label) => {
-              const d = new Date(label);
+              const d = new Date(String(label));
               return d.toLocaleDateString("nl-NL", {
                 day: "numeric",
                 month: "short",

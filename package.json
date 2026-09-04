@@ -44,7 +44,7 @@
     "cmdk": "^1.1.1",
     "critters": "^0.0.25",
     "croner": "^10.0.1",
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "^0.38.4",
     "jimp": "^1.6.0",
     "just-bash": "^2.14.1",
     "langsmith": "^0.6.0",
@@ -160,6 +160,7 @@
       ]
     },
     "overrides": {
+      "@neondatabase/serverless": "0.10.4",
       "systeminformation": ">=5.31.7",
       "cookie": ">=0.7.0",
       "minimatch": ">=10.2.3",

@@ -18,6 +18,13 @@ export function toBffPath(path: string): string {
  * Drop-in `fetch` wrapper for first-party product calls. Prefer this over raw
  * `fetch("/api/...")` whenever `API_SECRET` may be set in the environment.
  */
-export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
-  return fetch(toBffPath(input), init);
+export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  if (typeof input === "string") {
+    return fetch(toBffPath(input), init);
+  }
+  if (input instanceof URL) {
+    return fetch(toBffPath(`${input.pathname}${input.search}`), init);
+  }
+  const rewritten = new Request(toBffPath(new URL(input.url).pathname + new URL(input.url).search), input);
+  return fetch(rewritten, init);
 }
