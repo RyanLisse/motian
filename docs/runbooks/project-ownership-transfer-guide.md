@@ -163,7 +163,7 @@ Secrets must not be copied into repo documentation.
 | Database | `DATABASE_URL` | Hosted env plus local `.env.local` | Required for app and Trigger.dev |
 | App auth and API exposure | `API_SECRET`, `ALLOWED_ORIGINS` | Hosted env | Shared `/api/*` bearer behavior matters operationally |
 | Search | `TYPESENSE_*` | Hosted env when enabled | Optional accelerator, PostgreSQL remains source of truth |
-| Encryption | `ENCRYPTION_KEY` | Hosted env and secure local development storage | Needed for encrypted scraper auth config |
+| Encryption | `ENCRYPTION_SECRET` | Hosted env and secure local development storage | Needed for encrypted scraper auth config; rename legacy `ENCRYPTION_KEY` if present |
 | Scraping providers | `BROWSERBASE_*`, `FIRECRAWL_API_KEY`, `MODAL_*`, platform credentials | Secure provider secrets store | High-risk ownership area |
 | AI provider gateway | `OPENROUTER_API_KEY` | OpenRouter project secret in hosted env | Single billing/key surface for app chat, enrichment, embeddings, and voice LLM routing |
 | Monitoring | `SENTRY_*`, `LANGSMITH_*`, `OTEL_ENABLED`, `NEXT_PUBLIC_POSTHOG_*` | Hosted env | Confirm these match the active dashboards |
