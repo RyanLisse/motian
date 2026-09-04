@@ -80,7 +80,16 @@ function rateLimitPipeline(request: NextRequest): NextResponse | null {
 }
 
 /** Routes that bypass authentication completely (health, cron, docs, public feeds). */
-const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi", "/api/feed"];
+// /api/health is the container liveness probe: Docker and Coolify call it
+// with no credentials, so gating it behind auth would keep the container
+// permanently unhealthy.
+const PUBLIC_PATHS = [
+  "/api/health",
+  "/api/gezondheid",
+  "/api/cron",
+  "/api/openapi",
+  "/api/feed",
+];
 
 const PUBLIC_GET_PATHS = ["/api/vacatures/zoeken", "/api/opdrachten/zoeken"];
 

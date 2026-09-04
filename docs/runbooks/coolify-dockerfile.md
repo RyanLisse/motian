@@ -56,13 +56,25 @@ HOSTNAME=0.0.0.0
 
 ## Health check
 
+Two endpoints, deliberately different:
+
+| Endpoint | Used by | Touches the database |
+|---|---|---|
+| `/api/gezondheid/leeft` | Docker `HEALTHCHECK`, Coolify | no |
+| `/api/gezondheid` | operators, dashboards | yes |
+
+The container probe must not depend on Neon. If it did, a transient database
+blip would fail the healthcheck and Coolify would restart a container whose
+process is fine. Liveness answers "is this process serving?"; readiness and data
+health are `/api/gezondheid`'s job, where failing loudly is correct.
+
 The image defines a Docker `HEALTHCHECK` that curls:
 
 ```text
-http://127.0.0.1:${PORT}/api/gezondheid
+http://127.0.0.1:${PORT}/api/gezondheid/leeft
 ```
 
-Ensure `/api/gezondheid` remains available without auth so orchestrators can mark the service healthy.
+Ensure `/api/gezondheid/leeft` remains public and database-free so orchestrators can mark the service healthy.
 
 ## Troubleshooting
 

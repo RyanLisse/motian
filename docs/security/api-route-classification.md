@@ -48,6 +48,7 @@ Origin / Sec-Fetch-Site remain CSRF isolation only, never admission.
 | `/api/gdpr/export/{kandidaatId}` | service-bearer | compliance | `withApiHandler` → `requirePrincipal` | GDPR candidate export; `API_SECRET` bearer (BFF/server-side). |
 | `/api/gdpr/verwijder/{kandidaatId}` | service-bearer | compliance | `withApiHandler` → `requirePrincipal` | GDPR candidate delete; `API_SECRET` bearer (BFF/server-side). |
 | `/api/gezondheid` | public | platform | `withApiHandler` `auth: "public"` | Listed in `PUBLIC_PATHS`; no bearer token required. |
+| `/api/gezondheid/leeft` | public | platform | none needed | Container liveness probe. Covered by the `/api/gezondheid` prefix in `PUBLIC_PATHS`; returns no data and touches no database. |
 | `/api/instellingen` | first-party-browser | platform | `withApiHandler` → `requirePrincipal` | Settings; `API_SECRET` bearer via BFF/server. |
 | `/api/interviews/{id}` | first-party-browser | recruiting | `withApiHandler` → `requirePrincipal` | Interviews; `API_SECRET` bearer via BFF/server. |
 | `/api/interviews` | first-party-browser | recruiting | `withApiHandler` → `requirePrincipal` | Interviews; `API_SECRET` bearer via BFF/server. |

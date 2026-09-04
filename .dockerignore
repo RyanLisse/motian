@@ -1,5 +1,10 @@
 node_modules
+# A bare pattern matches only the root; without this the workspaces'
+# node_modules ride along in the context and overwrite the pnpm links
+# the builder stage copied, breaking module resolution for packages/db.
+**/node_modules
 .next
+**/.next
 .git
 .gitignore
 tests
