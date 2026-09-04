@@ -5,7 +5,12 @@ import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdracht
 import { logSlowQuery, type QueryPath, SEARCH_SLO_MS } from "../../lib/query-observability";
 import * as embeddingService from "../embedding";
 import { getAllSettings } from "../settings";
-import { collapseScoredJobsByVacancy, fetchDedupedJobIds, loadJobsByIds } from "./deduplication";
+import {
+  collapseScoredJobsByVacancy,
+  countDedupedJobs,
+  fetchDedupedJobIds,
+  loadJobsByIds,
+} from "./deduplication";
 import {
   getJobStatusCondition,
   getSortComparator,
@@ -383,6 +388,18 @@ export async function hybridSearchWithTotal(
     return { data: [], total: 0 };
   }
 
+  // `filtered` holds only what the retrieval window fetched, so its length is
+  // the window size, not the number of matching jobs. When neither branch
+  // filled its window we have already seen every match and can count locally;
+  // when one did, an unknown number was truncated and only the database knows
+  // the real total.
+  //
+  // Counted after retrieval rather than alongside it: the Neon pool runs with
+  // `max: 1`, and adding a third concurrent query here is exactly the burst
+  // documented in
+  // docs/solutions/performance-issues/scraper-dashboard-cold-start-17s-to-1s-2026-04-16.md.
+  const retrievalWindowFilled = candidateIds.length >= policy.fetchSize;
+
   let total = 0;
   let data: Array<JobListRow & { score: number }> = [];
 
@@ -408,7 +425,9 @@ export async function hybridSearchWithTotal(
     );
     dedupeMs = Date.now() - dedupeStartedAt;
 
-    total = filtered.length;
+    total = retrievalWindowFilled
+      ? await countDedupedJobs(retrievalFilterCondition)
+      : filtered.length;
     data = filtered.slice(offset, offset + limit).map(({ job, score }) => ({
       ...job,
       score: Math.round(score * 10000) / 10000,
@@ -434,7 +453,9 @@ export async function hybridSearchWithTotal(
     );
     dedupeMs = Date.now() - dedupeStartedAt;
 
-    total = filtered.length;
+    total = retrievalWindowFilled
+      ? await countDedupedJobs(retrievalFilterCondition)
+      : filtered.length;
     const pageEntries = filtered.slice(offset, offset + limit);
     const pageHydrateStartedAt = Date.now();
     const pageJobs = await loadJobsByIds(pageEntries.map(({ job }) => job.id));
