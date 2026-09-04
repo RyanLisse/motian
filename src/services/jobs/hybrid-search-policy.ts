@@ -127,3 +127,39 @@ export function collapseHydrationCandidatesByVacancy(
 
   return [...grouped.values()];
 }
+
+/**
+ * Upper bound for the query-embedding call inside the search request path.
+ *
+ * `embed()` from the AI SDK performs its own retries and accepts no
+ * `AbortSignal`, and `withRetry` wraps it in three further attempts, so a slow
+ * upstream compounds instead of failing fast. Measured against production on
+ * 2026-09-04, the multi-word query "senior java developer" took 232s for this
+ * reason while single-word queries (which skip the vector branch entirely)
+ * returned in ~1.5s.
+ *
+ * Rejecting here lets the caller's existing catch fall back to text-only
+ * retrieval within a bounded budget. The in-flight HTTP request is not
+ * cancelled — the SDK exposes no handle for that — but it no longer holds the
+ * response open. Same constraint, and same workaround, as the Trigger.dev
+ * `runs.list()` case in
+ * docs/solutions/performance-issues/scraper-dashboard-cold-start-17s-to-1s-2026-04-16.md.
+ */
+export const HYBRID_SEARCH_EMBEDDING_TIMEOUT_MS = 2500;
+
+export function withQueryEmbeddingTimeout<T>(
+  run: () => Promise<T>,
+  timeoutMs: number = HYBRID_SEARCH_EMBEDDING_TIMEOUT_MS,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const budget = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`Query embedding exceeded ${timeoutMs}ms budget`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([run(), budget]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
+  }) as Promise<T>;
+}

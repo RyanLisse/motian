@@ -6,7 +6,7 @@ import * as embeddingService from "../embedding";
 import { getAllSettings } from "../settings";
 import { fetchDedupedJobsPage, loadJobPageRowsByIds } from "./deduplication";
 import type { JobStatus } from "./filters";
-import { getHybridSearchPolicy } from "./hybrid-search-policy";
+import { getHybridSearchPolicy, withQueryEmbeddingTimeout } from "./hybrid-search-policy";
 import { buildJobFilterConditions } from "./query-filters";
 import {
   type HybridSearchOptions,
@@ -185,7 +185,9 @@ export async function hybridSearchPageWithTotal(
         }
 
         const embeddingStartedAt = Date.now();
-        const queryEmbedding = await embeddingService.generateQueryEmbedding(queryText);
+        const queryEmbedding = await withQueryEmbeddingTimeout(() =>
+          embeddingService.generateQueryEmbedding(queryText),
+        );
         embeddingMs = Date.now() - embeddingStartedAt;
 
         const vectorSearchStartedAt = Date.now();

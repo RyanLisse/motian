@@ -12,7 +12,7 @@ import {
   type JobStatus,
   type ListJobsSortBy,
 } from "./filters";
-import { getHybridSearchPolicy } from "./hybrid-search-policy";
+import { getHybridSearchPolicy, withQueryEmbeddingTimeout } from "./hybrid-search-policy";
 import { listJobs } from "./list";
 import { buildJobFilterConditions } from "./query-filters";
 import { type Job, type JobListRow, jobListReadSelection } from "./repository";
@@ -321,7 +321,9 @@ export async function hybridSearchWithTotal(
         }
 
         const embeddingStartedAt = Date.now();
-        const queryEmbedding = await embeddingService.generateQueryEmbedding(queryText);
+        const queryEmbedding = await withQueryEmbeddingTimeout(() =>
+          embeddingService.generateQueryEmbedding(queryText),
+        );
         embeddingMs = Date.now() - embeddingStartedAt;
 
         const vectorSearchStartedAt = Date.now();
