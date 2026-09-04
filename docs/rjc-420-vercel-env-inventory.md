@@ -277,6 +277,23 @@ These variables are automatically injected by the Vercel deployment pipeline and
 
 ---
 
+### 3.9b Vercel-only — Deployment Protection
+
+| Variable | Sources | Notes |
+|---|---|---|
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel Dashboard (Deployment Protection) | **Vercel-only.** Use for CI/curl smoke tests when Deployment Protection is enabled. Never commit the value. Not present in `.env.example`. |
+| `NEXT_PUBLIC_VERCEL_ENV` | Code (occasional) | Client-visible env tier if referenced |
+| `NEXT_RUNTIME` | Next.js | Runtime marker |
+
+Public app / Motia URL names (also see `.env.example`): `NEXT_URL`, `PUBLIC_API_BASE_URL`, `MOTIA_API_URL`, `HOSTNAME`, `PORT`, `BASE_URL`.
+
+Scraper platform extras from `.env.example`: `LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD`.
+
+Name drift: `.env.example` documents `ENCRYPTION_KEY` while `src/env.ts` validates `ENCRYPTION_SECRET` — reconcile before rotating secrets.
+
+**Live `vercel env ls`:** not pulled on `motian.exe.xyz` at inventory time (`vercel` CLI missing/unauthenticated). Re-run names-only listing when authenticated and diff against this matrix.
+
+
 ### 3.10 Build & Verification Switches
 
 | Variable | Allowed Values | Usage |
@@ -319,4 +336,18 @@ The following variables appeared in earlier iterations of Motian but have been d
    - [ ] `DATABASE_URL` points to staging/preview Neon database branch.
    - [ ] `API_SECRET` set (preview environment allows relaxed checks, but BFF requires token).
    - [ ] `OPENROUTER_API_KEY` present.
+
+3. **Workers / scrapers / Trigger.dev:**
+   - [ ] `TRIGGER_SECRET_KEY` present for Trigger deploy/runtime.
+   - [ ] Browserbase + Firecrawl keys present when scrapers enabled.
+   - [ ] After Trigger task changes, deploy Trigger with local env sourced (see deployment verification summary).
+
+4. **Vercel-only — Deployment Protection:**
+   - [ ] If Protection is on, configure `VERCEL_AUTOMATION_BYPASS_SECRET` (or dashboard bypass) for CI/curl.
+   - [ ] Smoke `GET https://motian.vercel.app/api/gezondheid` (may require bypass header).
+
+5. **Hygiene (names only in tickets):**
+   - [ ] Prefer `vercel env ls` over printing values.
+   - [ ] Never commit `.env`, `.env.local`, or `vercel env pull` output.
+   - [ ] Diff live Vercel names against this inventory when CLI is authenticated.
 
