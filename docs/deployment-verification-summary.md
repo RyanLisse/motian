@@ -53,14 +53,15 @@ The exact secret values must live outside the repository. Minimum production set
 
 - `DATABASE_URL`
 - `DATABASE_URL_UNPOOLED` when used by database tooling
-- `OPENAI_API_KEY`
-- `GOOGLE_GENERATIVE_AI_API_KEY`
+- `OPENROUTER_API_KEY` (unified AI gateway key)
 - `TRIGGER_SECRET_KEY`
 - `BROWSERBASE_API_KEY`
 - `BROWSERBASE_PROJECT_ID`
 - `FIRECRAWL_API_KEY`
 - `SENTRY_AUTH_TOKEN` when sourcemaps are uploaded
 - `API_SECRET` for protected external API routes
+
+See [Vercel Environment Variable Inventory](rjc-420-vercel-env-inventory.md) for the complete production, preview, and build-time variable matrix.
 
 ## Handoff sign-off criteria
 
