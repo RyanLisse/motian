@@ -87,6 +87,10 @@ describe("container build", () => {
     expect(dockerfile).toContain("USER nextjs");
   });
 
+  it("exposes /api/health as a public proxy path for HEALTHCHECK", () => {
+    expect(read("proxy.ts")).toContain('"/api/health"');
+  });
+
   it("probes liveness, not the database", () => {
     const healthcheck = instructions
       .split("\n")
