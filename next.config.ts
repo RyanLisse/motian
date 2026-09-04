@@ -19,6 +19,8 @@ if (process.env.NODE_ENV === "production" && hasSentryRuntimeConfig && !process.
 
 // CORS for /api is handled per-request in proxy.ts (all ALLOWED_ORIGINS supported)
 const nextConfig: NextConfig = {
+  // RJC-419: standalone output for Coolify/Docker (see Dockerfile + docs/runbooks/coolify-dockerfile.md)
+  output: "standalone",
   // Server components can import DB directly
   serverExternalPackages: ["pg"],
   async redirects() {

@@ -79,6 +79,7 @@ export const env = createEnv({
 
     // App config
     MOTIA_API_URL: z.string().url().optional(),
+    INTERNAL_SERVER_URL: z.string().url().optional(),
     NEXT_URL: z.string().url().optional(),
     PUBLIC_API_BASE_URL: z.string().url().optional(),
     ALLOWED_ORIGINS: z.string().optional(),
@@ -178,6 +179,7 @@ export const env = createEnv({
     ESCO_CRITICAL_REVIEW_THRESHOLD: process.env.ESCO_CRITICAL_REVIEW_THRESHOLD,
     ESCO_SCORING_ENABLED: process.env.ESCO_SCORING_ENABLED,
     MOTIA_API_URL: process.env.MOTIA_API_URL,
+    INTERNAL_SERVER_URL: process.env.INTERNAL_SERVER_URL,
     NEXT_URL: process.env.NEXT_URL,
     PUBLIC_API_BASE_URL: process.env.PUBLIC_API_BASE_URL,
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
