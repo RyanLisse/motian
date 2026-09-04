@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  HYBRID_SEARCH_EMBEDDING_TIMEOUT_MS,
-  withQueryEmbeddingTimeout,
-} from "@/src/services/jobs/hybrid-search-policy";
+import { QUERY_EMBEDDING_TIMEOUT_MS, withTimeout } from "@/src/lib/retry";
 
 /**
  * Regression guard for the 2026-09-04 production incident: the multi-word query
@@ -10,20 +7,20 @@ import {
  * because the query-embedding call has no timeout and no AbortSignal, while
  * single-word queries (which skip the vector branch) returned in ~1.5s.
  */
-describe("withQueryEmbeddingTimeout", () => {
+describe("withTimeout (query embedding budget)", () => {
   it("resolves with the embedding when the call finishes inside the budget", async () => {
     const embedding = [0.1, 0.2, 0.3];
 
-    await expect(withQueryEmbeddingTimeout(() => Promise.resolve(embedding), 50)).resolves.toBe(
-      embedding,
-    );
+    await expect(
+      withTimeout(() => Promise.resolve(embedding), 50, "Query embedding"),
+    ).resolves.toBe(embedding);
   });
 
   it("rejects once the budget elapses instead of waiting for a hanging call", async () => {
     vi.useFakeTimers();
     try {
       // A call that never settles — the shape of the 232s production hang.
-      const pending = withQueryEmbeddingTimeout(() => new Promise<number[]>(() => {}), 2500);
+      const pending = withTimeout(() => new Promise<number[]>(() => {}), 2500, "Query embedding");
       const assertion = expect(pending).rejects.toThrow(/exceeded 2500ms budget/);
 
       await vi.advanceTimersByTimeAsync(2500);
@@ -36,7 +33,7 @@ describe("withQueryEmbeddingTimeout", () => {
   it("propagates the original failure rather than masking it as a timeout", async () => {
     const upstream = new Error("OpenAI 429");
 
-    await expect(withQueryEmbeddingTimeout(() => Promise.reject(upstream), 50)).rejects.toBe(
+    await expect(withTimeout(() => Promise.reject(upstream), 50, "Query embedding")).rejects.toBe(
       upstream,
     );
   });
@@ -45,7 +42,7 @@ describe("withQueryEmbeddingTimeout", () => {
     vi.useFakeTimers();
     try {
       const clearSpy = vi.spyOn(globalThis, "clearTimeout");
-      await withQueryEmbeddingTimeout(() => Promise.resolve([1]), 5000);
+      await withTimeout(() => Promise.resolve([1]), 5000, "Query embedding");
       expect(clearSpy).toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
@@ -53,6 +50,6 @@ describe("withQueryEmbeddingTimeout", () => {
   });
 
   it("defaults to a budget well under the observed 232s hang", () => {
-    expect(HYBRID_SEARCH_EMBEDDING_TIMEOUT_MS).toBeLessThanOrEqual(3000);
+    expect(QUERY_EMBEDDING_TIMEOUT_MS).toBeLessThanOrEqual(3000);
   });
 });

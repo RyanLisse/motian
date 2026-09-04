@@ -3,6 +3,7 @@ import { jobs } from "../../db/schema";
 import { caseInsensitiveContains, toTsQueryInput } from "../../lib/helpers";
 import type { OpdrachtenHoursBucket, OpdrachtenRegion } from "../../lib/opdrachten-filters";
 import { logSlowQuery, type QueryPath, SEARCH_SLO_MS } from "../../lib/query-observability";
+import { QUERY_EMBEDDING_TIMEOUT_MS, withTimeout } from "../../lib/retry";
 import * as embeddingService from "../embedding";
 import { getAllSettings } from "../settings";
 import { collapseScoredJobsByVacancy, fetchDedupedJobIds, loadJobsByIds } from "./deduplication";
@@ -12,7 +13,7 @@ import {
   type JobStatus,
   type ListJobsSortBy,
 } from "./filters";
-import { getHybridSearchPolicy, withQueryEmbeddingTimeout } from "./hybrid-search-policy";
+import { getHybridSearchPolicy } from "./hybrid-search-policy";
 import { listJobs } from "./list";
 import { buildJobFilterConditions } from "./query-filters";
 import { type Job, type JobListRow, jobListReadSelection } from "./repository";
@@ -321,8 +322,10 @@ export async function hybridSearchWithTotal(
         }
 
         const embeddingStartedAt = Date.now();
-        const queryEmbedding = await withQueryEmbeddingTimeout(() =>
-          embeddingService.generateQueryEmbedding(queryText),
+        const queryEmbedding = await withTimeout(
+          () => embeddingService.generateQueryEmbedding(queryText),
+          QUERY_EMBEDDING_TIMEOUT_MS,
+          "Query embedding",
         );
         embeddingMs = Date.now() - embeddingStartedAt;
 

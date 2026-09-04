@@ -30,3 +30,46 @@ export async function withRetry<T>(
   }
   throw new Error("Unreachable");
 }
+
+/**
+ * Upper bound for the query-embedding call inside the job search request path.
+ *
+ * `embed()` from the AI SDK performs its own retries and accepts no
+ * `AbortSignal`, and `withRetry` above wraps it in three further attempts, so a
+ * slow upstream compounds instead of failing fast. Measured against production
+ * on 2026-09-04, the multi-word query "senior java developer" took 232s for
+ * this reason, while single-word queries — which skip the vector branch — came
+ * back in ~1.5s.
+ */
+export const QUERY_EMBEDDING_TIMEOUT_MS = 2500;
+
+/**
+ * Rejects if `run()` has not settled within `timeoutMs`.
+ *
+ * The in-flight request is not cancelled — the AI SDK exposes no handle for
+ * that — but it stops holding the response open. Same constraint, and same
+ * workaround, as the Trigger.dev `runs.list()` case in
+ * docs/solutions/performance-issues/scraper-dashboard-cold-start-17s-to-1s-2026-04-16.md.
+ *
+ * Deliberately lives here rather than beside the search policy: several suites
+ * replace `hybrid-search-policy` wholesale with `vi.doMock`, and a helper that
+ * is `undefined` under mock would throw into the caller's catch and silently
+ * drop the vector branch instead of timing it out.
+ */
+export function withTimeout<T>(
+  run: () => Promise<T>,
+  timeoutMs: number,
+  label = "Operation",
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const budget = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`${label} exceeded ${timeoutMs}ms budget`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([run(), budget]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
+  }) as Promise<T>;
+}
