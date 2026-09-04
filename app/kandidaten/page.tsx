@@ -29,6 +29,12 @@ interface Props {
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 50;
 
+const SKILLS_FILTER_FALLBACK = {
+  skillOptions: [] as { slug: string; name: string; fullName: string }[],
+  escoCatalogAvailable: false,
+  escoCatalogMessage: "Vaardigheden-filter is tijdelijk niet beschikbaar.",
+};
+
 function KandidatenSkeleton() {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -58,17 +64,20 @@ async function KandidatenContent({ searchParams }: Props) {
   const availability = params.beschikbaarheid ?? "";
   const skillSlug = params.vaardigheid ?? "";
 
-  let skillsData = {
-    skillOptions: [] as { slug: string; name: string; fullName: string }[],
-    escoCatalogAvailable: false,
-    escoCatalogMessage: "Vaardigheden-filter is tijdelijk niet beschikbaar.",
-  };
-  try {
-    skillsData = await getSkillsFilterData();
-  } catch (err) {
+  // The ESCO catalog only feeds the skill dropdown. Awaiting it here put two
+  // queries in front of every candidate query on a cold cache, and with the
+  // Neon pool at `max: 1` that is strictly serial: /kandidaten measured ~3.2s
+  // for a single candidate on 2026-09-04. Start it now, await it with the rest.
+  const skillsPromise = getSkillsFilterData().catch((err) => {
     console.error("[Kandidaten] getSkillsFilterData failed:", err);
-  }
-  const { skillOptions, escoCatalogAvailable, escoCatalogMessage } = skillsData;
+    return SKILLS_FILTER_FALLBACK;
+  });
+
+  // Selecting a skill is the one case where the catalog decides which query we
+  // run, so that case still has to wait. Every other visit does not.
+  const escoCatalogAvailableForQuery = skillSlug
+    ? (await skillsPromise).escoCatalogAvailable
+    : false;
 
   const urlParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -82,16 +91,16 @@ async function KandidatenContent({ searchParams }: Props) {
   });
 
   // Fetch candidates, cached stats, and total count in parallel
-  const useSearch = Boolean(query || availability || (skillSlug && escoCatalogAvailable));
+  const useSearch = Boolean(query || availability || (skillSlug && escoCatalogAvailableForQuery));
   const searchOptions = {
     query: query || undefined,
     availability: availability || undefined,
-    escoUri: escoCatalogAvailable ? skillSlug || undefined : undefined,
+    escoUri: escoCatalogAvailableForQuery ? skillSlug || undefined : undefined,
     limit,
     offset,
   };
 
-  const [candidateRows, stats, totalCount] = await Promise.all([
+  const [candidateRows, stats, totalCount, skillsData] = await Promise.all([
     useSearch ? searchCandidates(searchOptions) : listCandidates({ limit, offset }),
     getKandidatenStats(),
     useSearch
@@ -101,7 +110,10 @@ async function KandidatenContent({ searchParams }: Props) {
           escoUri: searchOptions.escoUri,
         })
       : countCandidates(),
+    skillsPromise,
   ]);
+
+  const { skillOptions, escoCatalogAvailable, escoCatalogMessage } = skillsData;
 
   const totalPages = Math.ceil(totalCount / limit) || 1;
   const { directCount, weekCount } = stats;
