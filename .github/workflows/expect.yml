@@ -16,6 +16,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      deployments: read
+      statuses: read
     env:
       # Authenticate the Claude Code CLI via the OAuth token exclusively.
       # Setting ANTHROPIC_API_KEY alongside it causes the ACP provider to
