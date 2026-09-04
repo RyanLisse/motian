@@ -163,7 +163,7 @@ Secrets mogen niet in repo-documentatie worden gekopieerd.
 | Database | `DATABASE_URL` | Hosted env plus lokale `.env.local` | Verplicht voor app en Trigger.dev |
 | App-auth en API-exposure | `API_SECRET`, `ALLOWED_ORIGINS` | Hosted env | Gedeeld `/api/*` bearer-gedrag is operationeel relevant |
 | Search | `TYPESENSE_*` | Hosted env wanneer ingeschakeld | Optionele versneller, PostgreSQL blijft bron van waarheid |
-| Encryptie | `ENCRYPTION_KEY` | Hosted env en veilige lokale development storage | Nodig voor versleutelde scraper-authconfiguratie |
+| Encryptie | `ENCRYPTION_SECRET` | Hosted env en veilige lokale development storage | Nodig voor versleutelde scraper-authconfiguratie; hernoem legacy `ENCRYPTION_KEY` indien aanwezig |
 | Scraping providers | `BROWSERBASE_*`, `FIRECRAWL_API_KEY`, `MODAL_*`, platformcredentials | Veilige provider secret store | Hoog-risico ownership-domein |
 | AI-providergateway | `OPENROUTER_API_KEY` | OpenRouter projectsecret in hosted env | Één billing/key-oppervlak voor app-chat, verrijking, embeddings en voice-LLM-routing |
 | Monitoring | `SENTRY_*`, `LANGSMITH_*`, `OTEL_ENABLED`, `NEXT_PUBLIC_POSTHOG_*` | Hosted env | Controleer dat deze aansluiten op de actieve dashboards |

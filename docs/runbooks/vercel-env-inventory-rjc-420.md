@@ -105,8 +105,7 @@ Legend: **E** `.env.example`, **S** `src/env.ts`, **C** code/docs/trigger, **V**
 | `API_SECRET` | E S | Bearer for protected /api |
 | `ALLOWED_ORIGINS` | E S |  |
 | `CRON_SECRET` | S C |  |
-| `ENCRYPTION_SECRET` | S | Canonical in src/env.ts |
-| `ENCRYPTION_KEY` | E | Name drift vs ENCRYPTION_SECRET |
+| `ENCRYPTION_SECRET` | E S | Canonical in src/env.ts |
 | `SKIP_ENV_VALIDATION` | S C | Build/CI only |
 
 ### Sentry / observability / analytics
@@ -199,13 +198,13 @@ E2E/local harness (usually not production Vercel): `E2E_*`, `PLAYWRIGHT_CHROMIUM
 
 ## Name-count summary (no values)
 
-**Total unique names inventoried: 106**
+**Total unique names inventoried: 105**
 
 - Neon / database: 3
 - Trigger.dev: 1
 - AI / embeddings: 15
 - Scrapers / platforms / sandbox: 19
-- Auth / API boundary: 6
+- Auth / API boundary: 5
 - Sentry / observability / analytics: 7
 - Public URLs / host: 8
 - Vercel-only / Deployment Protection: 6
@@ -213,11 +212,10 @@ E2E/local harness (usually not production Vercel): `E2E_*`, `PLAYWRIGHT_CHROMIUM
 
 ### Known drifts (follow-ups, no secrets)
 
-1. `.env.example` has `ENCRYPTION_KEY`; schema uses `ENCRYPTION_SECRET`.
-2. Deployment summary still lists `OPENAI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` while app emphasizes OpenRouter.
-3. `TRIGGER_SECRET_KEY` and `DATABASE_URL_UNPOOLED` missing from `.env.example`.
-4. Audit `NEXT_PUBLIC_DATABASE_URL` (should not expose DB to client).
-5. Live Vercel name list pending CLI auth on build host.
+1. Deployment summary still lists `OPENAI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` while app emphasizes OpenRouter.
+2. `TRIGGER_SECRET_KEY` and `DATABASE_URL_UNPOOLED` missing from `.env.example`.
+3. Audit `NEXT_PUBLIC_DATABASE_URL` (should not expose DB to client).
+4. Live Vercel name list pending CLI auth on build host.
 
 ---
 

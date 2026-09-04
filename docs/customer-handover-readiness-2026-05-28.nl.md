@@ -101,7 +101,7 @@ Sla echte secrets nooit in Git of docs op. Gebruik Vercel Environment Variables 
 | --- | --- | --- | --- |
 | `DATABASE_URL` | Vercel + Trigger.dev + lokaal | Verplicht | Gebruik de pooled Neon URL voor serverless runtime; unpooled alleen voor migraties/schema push. |
 | `DATABASE_URL_UNPOOLED` | Lokaal/CI migraties | Aanbevolen | Nodig voor `pnpm db:push`/Drizzle workflows wanneer direct DB nodig is. |
-| `ENCRYPTION_SECRET` of `ENCRYPTION_KEY` | Vercel + lokaal | Verplicht voor encrypted auth/config | Moet stabiel blijven voor decryptie van bestaande scraper auth-config. |
+| `ENCRYPTION_SECRET` | Vercel + lokaal | Verplicht voor encrypted auth/config | Canonical in `src/env.ts`; hernoem legacy `ENCRYPTION_KEY` indien aanwezig. Waarde moet stabiel blijven voor decryptie van bestaande scraper auth-config. |
 | `API_SECRET`, `ALLOWED_ORIGINS` | Vercel | Verplicht voor productie-API hardening | Cross-origin API routes falen gesloten wanneer dit ontbreekt. |
 | `OPENROUTER_API_KEY` | Vercel + Trigger.dev | Verplicht voor AI-functies | App gebruikt OpenRouter als app-side providergateway. |
 | `STRIIVE_USERNAME`, `STRIIVE_PASSWORD` | Trigger.dev runtime | Verplicht als Striive actief is | Supplier portal account; huidige integratie leest vacatures/opdrachten, schrijft niet terug naar Striive. |

@@ -858,7 +858,7 @@ STRIIVE_USERNAME=...
 STRIIVE_PASSWORD=...
 
 # Beveiliging
-ENCRYPTION_KEY=...   # openssl rand -base64 32
+ENCRYPTION_SECRET=...   # openssl rand -base64 32 (canonical; hernoem ENCRYPTION_KEY indien aanwezig)
 API_SECRET=...       # Bearer token voor externe API clients
 ALLOWED_ORIGINS=http://localhost:3002,http://127.0.0.1:3002
 

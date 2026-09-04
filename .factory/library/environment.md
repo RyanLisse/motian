@@ -14,6 +14,7 @@ Environment variables, external dependencies, and setup notes for the performanc
 - At least one of the following must be present in `.env.local`:
   - `DATABASE_URL`
   - `DATABASE_URL_UNPOOLED`
+- `ENCRYPTION_SECRET` (min 32 chars) is required when encrypted scraper auth config is in use; canonical name in `src/env.ts`. Rename legacy `ENCRYPTION_KEY` if your host still uses that name.
 
 ## Validation-related dependencies
 

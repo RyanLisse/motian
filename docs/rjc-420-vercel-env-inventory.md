@@ -289,7 +289,7 @@ Public app / Motia URL names (also see `.env.example`): `NEXT_URL`, `PUBLIC_API_
 
 Scraper platform extras from `.env.example`: `LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD`.
 
-Name drift: `.env.example` documents `ENCRYPTION_KEY` while `src/env.ts` validates `ENCRYPTION_SECRET` — reconcile before rotating secrets.
+Encryption env name is aligned: `.env.example` and `src/env.ts` both use `ENCRYPTION_SECRET`. Hosts still on legacy `ENCRYPTION_KEY` must rename (value unchanged).
 
 **Live `vercel env ls`:** not pulled on `motian.exe.xyz` at inventory time (`vercel` CLI missing/unauthenticated). Re-run names-only listing when authenticated and diff against this matrix.
 
