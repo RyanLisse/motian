@@ -12,7 +12,9 @@ COPY packages/db/package.json ./packages/db/
 COPY packages/esco/package.json ./packages/esco/
 COPY packages/scrapers/package.json ./packages/scrapers/
 COPY extension/package.json ./extension/
-RUN pnpm install --frozen-lockfile
+# Coolify web image does not ship the browser extension; skip lifecycle scripts
+# so extension postinstall (wxt prepare) never runs (needs entrypoints/).
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
