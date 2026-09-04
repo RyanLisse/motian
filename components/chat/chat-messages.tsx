@@ -21,22 +21,23 @@ import {
   Users,
 } from "lucide-react";
 import { memo, Suspense, useCallback, useId, useState } from "react";
-import { VirtualList } from "@/components/shared/virtual-list";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from "@/src/components/ai-elements/conversation";
+} from "@/components/ai-elements/conversation";
 import {
   Message,
   MessageAction,
   MessageActions,
   MessageContent,
   MessageResponse,
-} from "@/src/components/ai-elements/message";
-import { Suggestion, Suggestions } from "@/src/components/ai-elements/suggestion";
+} from "@/components/ai-elements/message";
+import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import { VirtualList } from "@/components/shared/virtual-list";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { apiFetch } from "@/src/lib/client-api";
 import { isA2UIEnvelope } from "@/src/schemas/a2ui";
 import {
   CHAT_MESSAGE_ALLOWED_TAGS,
@@ -252,7 +253,7 @@ function extractMessageText(message: UIMessage): string {
 
 async function submitFeedback(messageId: string, score: "positive" | "negative") {
   try {
-    await fetch("/api/chat/feedback", {
+    await apiFetch("/api/chat/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messageId, score }),

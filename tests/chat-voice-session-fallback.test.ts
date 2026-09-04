@@ -12,7 +12,8 @@ describe("voice session graceful fallback", () => {
   it("checks voice availability before starting a LiveKit session", () => {
     const source = readFile("components", "chat", "voice-session.tsx");
 
-    expect(source).toContain('fetch("/api/livekit-token", {');
+    expect(source).toContain('apiFetch("/api/livekit-token", {');
+    expect(source).toContain('from "@/src/lib/client-api"');
     expect(source).toContain('method: "GET"');
     expect(source).toContain('cache: "no-store"');
     expect(source).toContain("signal: controller.signal");

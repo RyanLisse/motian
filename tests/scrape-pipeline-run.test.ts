@@ -7,6 +7,7 @@ const {
   getConfigByPlatform,
   getPlatformCatalogEntry,
   toRuntimeConfig,
+  validateExternalUrl,
   getPlatformAdapter,
   getDynamicAdapter,
 } = vi.hoisted(() => ({
@@ -16,6 +17,7 @@ const {
   getConfigByPlatform: vi.fn(),
   getPlatformCatalogEntry: vi.fn(),
   toRuntimeConfig: vi.fn(),
+  validateExternalUrl: vi.fn(() => Promise.resolve()),
   getPlatformAdapter: vi.fn(),
   getDynamicAdapter: vi.fn(),
 }));
@@ -31,6 +33,7 @@ vi.mock("../src/services/scrapers", () => ({
   getConfigByPlatform,
   getPlatformCatalogEntry,
   toRuntimeConfig,
+  validateExternalUrl,
 }));
 vi.mock("../src/services/scrapers/index", () => ({
   getPlatformAdapter,
@@ -51,6 +54,8 @@ describe("runScrapePipeline", () => {
     getPlatformCatalogEntry.mockReset();
     getPlatformCatalogEntry.mockResolvedValue(null);
     toRuntimeConfig.mockReset();
+    validateExternalUrl.mockReset();
+    validateExternalUrl.mockResolvedValue(undefined);
     getPlatformAdapter.mockReset();
     getDynamicAdapter.mockReset();
   });
@@ -113,6 +118,7 @@ describe("runScrapePipeline", () => {
       duplicates: 1,
       errors: ["scraper warning", "normalize warning"],
     });
+    expect(validateExternalUrl).toHaveBeenCalledWith("https://www.werkzoeken.nl");
     expect(recordScrapeResult).toHaveBeenCalledWith(
       expect.objectContaining({
         platform: "werkzoeken",

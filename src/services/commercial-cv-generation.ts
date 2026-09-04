@@ -3,6 +3,7 @@ import { withRetry } from "../lib/retry";
 import { structuredSkillsSchema } from "../schemas/candidate-intelligence";
 import { getCandidateById } from "./candidates";
 import { getJobById } from "./jobs/repository";
+import { normalizeText } from "./normalize";
 
 export type CommercialCvRequest = {
   candidateId: string;
@@ -118,16 +119,6 @@ function parseStructuredSkills(input: unknown): {
 } {
   const parsed = structuredSkillsSchema.safeParse(input);
   return parsed.success ? parsed.data : { hard: [], soft: [] };
-}
-
-function normalizeText(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9+.#/ -]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function unique<T>(items: T[]): T[] {

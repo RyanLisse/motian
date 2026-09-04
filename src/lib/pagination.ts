@@ -24,20 +24,18 @@ export function parsePagination(
 ): PaginationParams {
   const maxLimit = defaults?.maxLimit ?? 100;
   const defaultLimit = defaults?.limit ?? 50;
-  const page = Math.max(
-    1,
-    parseInt(searchParams.get("pagina") ?? searchParams.get("page") ?? "1", 10),
+  const requestedPage = Number.parseInt(
+    searchParams.get("pagina") ?? searchParams.get("page") ?? "1",
+    10,
   );
-  const limit = Math.min(
-    maxLimit,
-    Math.max(
-      1,
-      parseInt(
-        searchParams.get("limit") ?? searchParams.get("perPage") ?? String(defaultLimit),
-        10,
-      ),
-    ),
+  const requestedLimit = Number.parseInt(
+    searchParams.get("limit") ?? searchParams.get("perPage") ?? String(defaultLimit),
+    10,
   );
+  const page = Number.isNaN(requestedPage) ? 1 : Math.max(1, requestedPage);
+  const limit = Number.isNaN(requestedLimit)
+    ? defaultLimit
+    : Math.min(maxLimit, Math.max(1, requestedLimit));
   const offset = (page - 1) * limit;
   return { page, limit, offset };
 }

@@ -2,6 +2,14 @@
  * Shared helpers for CV API routes (cv-analyse, cv-file, cv-upload).
  */
 
+/** R9: fixed Dutch client message — no provider, blob, or exception detail. */
+export const CV_PROCESSING_FAILED_MESSAGE =
+  "CV verwerking mislukt. Probeer het opnieuw of neem contact op met support.";
+
+/** R9: fixed Dutch client message for the analyse surface. */
+export const CV_ANALYSE_FAILED_MESSAGE =
+  "CV analyse mislukt. Probeer het opnieuw of neem contact op met support.";
+
 /**
  * Returns a 503 Response if BLOB_READ_WRITE_TOKEN is missing, null if OK.
  */

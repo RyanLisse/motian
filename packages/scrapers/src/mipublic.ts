@@ -1,8 +1,5 @@
 import { stripHtml } from "./lib/utils";
-import {
-  fetchPublicJobBoardPage,
-  parsePublicJobBoardJobPostings,
-} from "./public-job-board";
+import { fetchPublicJobBoardPage, parsePublicJobBoardJobPostings } from "./public-job-board";
 import type {
   PlatformAdapter,
   PlatformRuntimeConfig,
@@ -52,7 +49,10 @@ function resolveMipublicOptions(config: PlatformRuntimeConfig): MipublicOptions 
     typeof parameters.detailConcurrency === "number"
       ? parameters.detailConcurrency
       : DEFAULT_DETAIL_CONCURRENCY;
-  const detailConcurrency = Math.max(1, Math.min(MAX_DETAIL_CONCURRENCY, Math.trunc(rawConcurrency)));
+  const detailConcurrency = Math.max(
+    1,
+    Math.min(MAX_DETAIL_CONCURRENCY, Math.trunc(rawConcurrency)),
+  );
   const maxListings =
     typeof parameters.maxListings === "number" && parameters.maxListings > 0
       ? Math.trunc(parameters.maxListings)
@@ -110,9 +110,7 @@ export function parseMipublicSitemap(xml: string): ParsedSitemap {
         const parsed = new URL(value);
         if (parsed.hostname !== "mipublic.nl") continue;
         children.push({ url: parsed.toString(), lastmod: parseLastmod(block) });
-      } catch {
-        continue;
-      }
+      } catch {}
     }
     return { kind: "index", children };
   }
@@ -135,9 +133,7 @@ export function parseMipublicSitemap(xml: string): ParsedSitemap {
       try {
         const parsed = new URL(value);
         if (isVacatureDetailUrl(parsed)) urls.add(parsed.toString());
-      } catch {
-        continue;
-      }
+      } catch {}
     }
     return { kind: "urlset", urls: [...urls] };
   }
@@ -151,9 +147,7 @@ export function parseMipublicSitemap(xml: string): ParsedSitemap {
     try {
       const parsed = new URL(value);
       if (isVacatureDetailUrl(parsed)) urls.add(parsed.toString());
-    } catch {
-      continue;
-    }
+    } catch {}
   }
 
   return { kind: "urlset", urls: [...urls] };
@@ -214,9 +208,8 @@ export async function collectMipublicVacatureUrls(
   }
 
   await Promise.all(
-    Array.from(
-      { length: Math.min(SITEMAP_CHILD_FETCH_CONCURRENCY, selected.length) },
-      () => worker(),
+    Array.from({ length: Math.min(SITEMAP_CHILD_FETCH_CONCURRENCY, selected.length) }, () =>
+      worker(),
     ),
   );
 
@@ -243,9 +236,7 @@ async function mapWithConcurrency<TInput, TOutput>(
     }
   }
 
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
 
   return results;
 }
@@ -326,10 +317,7 @@ type SitemapDiscoveryResult =
  * RJC-213 regression mode where MiPublic's legacy `/vacature-sitemap.xml` has
  * been frozen in time and current vacancies are only reachable via the index.
  */
-async function createBrowserbaseSession(
-  apiKey: string,
-  projectId: string,
-): Promise<string | null> {
+async function createBrowserbaseSession(apiKey: string, projectId: string): Promise<string | null> {
   try {
     const response = await fetch("https://api.browserbase.com/v1/sessions", {
       method: "POST",
@@ -533,7 +521,11 @@ async function discoverMipublicDetailUrls(
       fallbackUrl,
       fetchPublicJobBoardPage,
     );
-    return { kind: "ok", urls: fallbackCollected.urls, errors: [...errors, ...fallbackCollected.errors] };
+    return {
+      kind: "ok",
+      urls: fallbackCollected.urls,
+      errors: [...errors, ...fallbackCollected.errors],
+    };
   } catch (error) {
     errors.push(
       `MiPublic sitemap-index ${fallbackUrl} kon niet worden opgehaald: ${error instanceof Error ? error.message : String(error)}`,
@@ -560,99 +552,103 @@ async function scrapeMipublicListings(
       return { listings: [], errors: [discovered.message] };
     }
     const limit = options?.limit ?? resolved.maxListings;
-    const detailUrls = typeof limit === "number" ? discovered.urls.slice(0, limit) : discovered.urls;
+    const detailUrls =
+      typeof limit === "number" ? discovered.urls.slice(0, limit) : discovered.urls;
     const sitemapErrors = discovered.errors;
 
     if (detailUrls.length === 0) {
       return {
         listings: [],
-        errors: [
-          "MiPublic sitemap bevat geen parseerbare vacature-URLs.",
-          ...sitemapErrors,
-        ],
+        errors: ["MiPublic sitemap bevat geen parseerbare vacature-URLs.", ...sitemapErrors],
       };
     }
 
-    const results = await mapWithConcurrency(detailUrls, resolved.detailConcurrency, async (detailUrl) => {
-    try {
-      const detailPage = await fetchDetailPageWithBrowserbaseFallback(detailUrl, handle);
-      const captchaBlocker = detectMipublicCaptchaBlocker(detailUrl, detailPage);
-      if (captchaBlocker) {
-        return {
-          error: captchaBlocker.message,
-          listings: [] as RawScrapedListing[],
-        };
-      }
-      const listings = parsePublicJobBoardJobPostings(detailPage.html, detailPage.url);
+    const results = await mapWithConcurrency(
+      detailUrls,
+      resolved.detailConcurrency,
+      async (detailUrl) => {
+        try {
+          const detailPage = await fetchDetailPageWithBrowserbaseFallback(detailUrl, handle);
+          const captchaBlocker = detectMipublicCaptchaBlocker(detailUrl, detailPage);
+          if (captchaBlocker) {
+            return {
+              error: captchaBlocker.message,
+              listings: [] as RawScrapedListing[],
+            };
+          }
+          const listings = parsePublicJobBoardJobPostings(detailPage.html, detailPage.url);
 
-      if (listings.length === 0) {
-        const canFallback = detailPage.status < 400;
-        const fallback = canFallback
-          ? parseMipublicHtmlFallback(detailPage.html, detailPage.url)
-          : null;
-        if (fallback) {
-          return { listings: [fallback] };
+          if (listings.length === 0) {
+            const canFallback = detailPage.status < 400;
+            const fallback = canFallback
+              ? parseMipublicHtmlFallback(detailPage.html, detailPage.url)
+              : null;
+            if (fallback) {
+              return { listings: [fallback] };
+            }
+            return {
+              error: `MiPublic detailpagina bevat geen JobPosting-data: ${detailUrl}`,
+              listings: [] as RawScrapedListing[],
+              isNoData: true,
+            };
+          }
+
+          return { listings };
+        } catch (error) {
+          return {
+            error: error instanceof Error ? error.message : String(error),
+            listings: [] as RawScrapedListing[],
+          };
         }
-        return {
-          error: `MiPublic detailpagina bevat geen JobPosting-data: ${detailUrl}`,
-          listings: [] as RawScrapedListing[],
-          isNoData: true,
-        };
+      },
+    );
+
+    const listings = results.flatMap((entry) => entry.listings);
+    const realErrorsFromSitemap = sitemapErrors;
+    const noDataEntries = results.filter(
+      (
+        entry,
+      ): entry is {
+        error: string;
+        listings: RawScrapedListing[];
+        isNoData: true;
+      } => "isNoData" in entry && entry.isNoData === true,
+    );
+    const noDataCount = noDataEntries.length;
+    const realErrors = [
+      ...realErrorsFromSitemap,
+      ...results.flatMap((entry) =>
+        entry.error && !("isNoData" in entry && entry.isNoData) ? [entry.error] : [],
+      ),
+    ];
+    // Missing-JSON-LD pages are expected at a small rate — MiPublic sometimes
+    // serves legacy/expired vacancies without structured data. Treat them as
+    // benign skips (don't bump the run to "partial") unless the rate exceeds
+    // 5% of total URLs, which would signal a real parser regression.
+    const totalFetched = detailUrls.length;
+    const noDataRatio = totalFetched > 0 ? noDataCount / totalFetched : 0;
+    const NO_DATA_REGRESSION_THRESHOLD = 0.05;
+
+    if (noDataCount > 0) {
+      const exampleUrls = noDataEntries
+        .map((entry) =>
+          entry.error.replace("MiPublic detailpagina bevat geen JobPosting-data: ", ""),
+        )
+        .slice(0, 3);
+      const exampleSuffix = exampleUrls.length > 0 ? ` (bijv. ${exampleUrls.join(", ")})` : "";
+      const summary = `${noDataCount} MiPublic detailpagina's bevatten geen JobPosting-data${exampleSuffix}`;
+
+      if (noDataRatio > NO_DATA_REGRESSION_THRESHOLD) {
+        // >5% missing JSON-LD is a real signal — surface it as an error so the
+        // run status becomes "partial" and the observability layer alerts.
+        realErrors.push(
+          `${summary} — rate ${(noDataRatio * 100).toFixed(1)}% exceeds ${(NO_DATA_REGRESSION_THRESHOLD * 100).toFixed(0)}% threshold`,
+        );
+      } else {
+        // Low-rate misses are expected for legacy content. Log but don't fail.
+        console.log(`[mipublic] ${summary} — within tolerance, not bumping to partial`);
       }
-
-      return { listings };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : String(error),
-        listings: [] as RawScrapedListing[],
-      };
     }
-  });
-
-  const listings = results.flatMap((entry) => entry.listings);
-  const realErrorsFromSitemap = sitemapErrors;
-  const noDataEntries = results.filter(
-    (
-      entry,
-    ): entry is {
-      error: string;
-      listings: RawScrapedListing[];
-      isNoData: true;
-    } => "isNoData" in entry && entry.isNoData === true,
-  );
-  const noDataCount = noDataEntries.length;
-  const realErrors = [
-    ...realErrorsFromSitemap,
-    ...results.flatMap((entry) =>
-      entry.error && !("isNoData" in entry && entry.isNoData) ? [entry.error] : [],
-    ),
-  ];
-  // Missing-JSON-LD pages are expected at a small rate — MiPublic sometimes
-  // serves legacy/expired vacancies without structured data. Treat them as
-  // benign skips (don't bump the run to "partial") unless the rate exceeds
-  // 5% of total URLs, which would signal a real parser regression.
-  const totalFetched = detailUrls.length;
-  const noDataRatio = totalFetched > 0 ? noDataCount / totalFetched : 0;
-  const NO_DATA_REGRESSION_THRESHOLD = 0.05;
-
-  if (noDataCount > 0) {
-    const exampleUrls = noDataEntries
-      .map((entry) => entry.error.replace("MiPublic detailpagina bevat geen JobPosting-data: ", ""))
-      .slice(0, 3);
-    const exampleSuffix = exampleUrls.length > 0 ? ` (bijv. ${exampleUrls.join(", ")})` : "";
-    const summary = `${noDataCount} MiPublic detailpagina's bevatten geen JobPosting-data${exampleSuffix}`;
-
-    if (noDataRatio > NO_DATA_REGRESSION_THRESHOLD) {
-      // >5% missing JSON-LD is a real signal — surface it as an error so the
-      // run status becomes "partial" and the observability layer alerts.
-      realErrors.push(
-        `${summary} — rate ${(noDataRatio * 100).toFixed(1)}% exceeds ${(NO_DATA_REGRESSION_THRESHOLD * 100).toFixed(0)}% threshold`,
-      );
-    } else {
-      // Low-rate misses are expected for legacy content. Log but don't fail.
-      console.log(`[mipublic] ${summary} — within tolerance, not bumping to partial`);
-    }
-  }
 
     return {
       listings,

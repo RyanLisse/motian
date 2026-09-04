@@ -4,6 +4,7 @@ import { Download, Target, User } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/src/lib/client-api";
 import {
   genuiDesktopClampClassName,
   genuiDisclosureSummaryClassName,
@@ -92,7 +93,7 @@ export function CvIntakeCard({ output }: { output: unknown }) {
     e.stopPropagation();
     setDownloading(true);
     try {
-      const res = await fetch("/api/commercieel-cv/html", {
+      const res = await apiFetch("/api/commercieel-cv/html", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ candidateId }),

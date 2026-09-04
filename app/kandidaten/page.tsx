@@ -8,8 +8,7 @@ import { KPICard } from "@/components/shared/kpi-card";
 import { Pagination } from "@/components/shared/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parsePagination } from "@/src/lib/pagination";
-import { countCandidates, listCandidates, searchCandidates } from "@/src/services/candidates";
-import { getKandidatenStats, getSkillsFilterData } from "./data";
+import { loadKandidatenPageData } from "./data";
 
 export const revalidate = 120;
 
@@ -28,12 +27,6 @@ interface Props {
 
 const DEFAULT_PER_PAGE = 20;
 const MAX_PER_PAGE = 50;
-
-const SKILLS_FILTER_FALLBACK = {
-  skillOptions: [] as { slug: string; name: string; fullName: string }[],
-  escoCatalogAvailable: false,
-  escoCatalogMessage: "Vaardigheden-filter is tijdelijk niet beschikbaar.",
-};
 
 function KandidatenSkeleton() {
   return (
@@ -64,21 +57,6 @@ async function KandidatenContent({ searchParams }: Props) {
   const availability = params.beschikbaarheid ?? "";
   const skillSlug = params.vaardigheid ?? "";
 
-  // The ESCO catalog only feeds the skill dropdown. Awaiting it here put two
-  // queries in front of every candidate query on a cold cache, and with the
-  // Neon pool at `max: 1` that is strictly serial: /kandidaten measured ~3.2s
-  // for a single candidate on 2026-09-04. Start it now, await it with the rest.
-  const skillsPromise = getSkillsFilterData().catch((err) => {
-    console.error("[Kandidaten] getSkillsFilterData failed:", err);
-    return SKILLS_FILTER_FALLBACK;
-  });
-
-  // Selecting a skill is the one case where the catalog decides which query we
-  // run, so that case still has to wait. Every other visit does not.
-  const escoCatalogAvailableForQuery = skillSlug
-    ? (await skillsPromise).escoCatalogAvailable
-    : false;
-
   const urlParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === "") continue;
@@ -90,29 +68,13 @@ async function KandidatenContent({ searchParams }: Props) {
     maxLimit: MAX_PER_PAGE,
   });
 
-  // Fetch candidates, cached stats, and total count in parallel
-  const useSearch = Boolean(query || availability || (skillSlug && escoCatalogAvailableForQuery));
-  const searchOptions = {
-    query: query || undefined,
-    availability: availability || undefined,
-    escoUri: escoCatalogAvailableForQuery ? skillSlug || undefined : undefined,
+  const { skillsData, stats, candidateRows, totalCount } = await loadKandidatenPageData({
+    query,
+    availability,
+    skillSlug,
     limit,
     offset,
-  };
-
-  const [candidateRows, stats, totalCount, skillsData] = await Promise.all([
-    useSearch ? searchCandidates(searchOptions) : listCandidates({ limit, offset }),
-    getKandidatenStats(),
-    useSearch
-      ? countCandidates({
-          query: searchOptions.query,
-          availability: searchOptions.availability,
-          escoUri: searchOptions.escoUri,
-        })
-      : countCandidates(),
-    skillsPromise,
-  ]);
-
+  });
   const { skillOptions, escoCatalogAvailable, escoCatalogMessage } = skillsData;
 
   const totalPages = Math.ceil(totalCount / limit) || 1;

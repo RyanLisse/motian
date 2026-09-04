@@ -26,6 +26,7 @@
       "app/**/*.tsx",
       "components/**/*.ts",
       "components/**/*.tsx",
+      "packages/*/src/**/*.ts",
       "trigger/**/*.ts",
       "scripts/**/*.ts",
       "tests/**/*.ts",

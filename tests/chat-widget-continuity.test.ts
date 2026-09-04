@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-vi.mock("../src/components/ai-elements/prompt-input", () => ({
+vi.mock("../components/ai-elements/prompt-input", () => ({
   PromptInput: ({ children }: { children: unknown }) => createElement("form", null, children),
   PromptInputActionAddAttachments: ({ label }: { label: string }) =>
     createElement("button", { type: "button" }, label),
@@ -83,7 +83,7 @@ vi.mock("../components/chat/voice-session", () => ({
   VoiceSession: () => createElement("div", null, "voice"),
 }));
 
-vi.mock("../src/components/ai-elements/conversation", () => ({
+vi.mock("../components/ai-elements/conversation", () => ({
   Conversation: ({ children, className }: { children: unknown; className?: string }) =>
     createElement("section", { className }, children),
   ConversationContent: ({ children, className }: { children: unknown; className?: string }) =>
@@ -91,7 +91,7 @@ vi.mock("../src/components/ai-elements/conversation", () => ({
   ConversationScrollButton: () => createElement("button", { type: "button" }, "scroll"),
 }));
 
-vi.mock("../src/components/ai-elements/message", () => ({
+vi.mock("../components/ai-elements/message", () => ({
   Message: ({ children }: { children: unknown }) => createElement("article", null, children),
   MessageContent: ({ children }: { children: unknown }) => createElement("div", null, children),
   MessageResponse: ({ children }: { children: unknown }) => createElement("p", null, children),

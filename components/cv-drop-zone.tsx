@@ -4,6 +4,7 @@ import { Check, Loader2, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/src/lib/client-api";
 import { AutoMatchResults } from "./auto-match-results";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -64,7 +65,7 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
         // Phase 1: Upload & parse
         const formData = new FormData();
         formData.append("cv", file);
-        const uploadRes = await fetch("/api/cv-upload", {
+        const uploadRes = await apiFetch("/api/cv-upload", {
           method: "POST",
           body: formData,
         });
@@ -76,7 +77,7 @@ export function CvDropZone({ candidateId, children }: CvDropZoneProps) {
 
         // Phase 2: Save candidate
         setMessage("Profiel wordt bijgewerkt...");
-        const saveRes = await fetch("/api/cv-upload/save", {
+        const saveRes = await apiFetch("/api/cv-upload/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ parsed, fileUrl, existingCandidateId: candidateId }),

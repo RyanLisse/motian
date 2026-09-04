@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { publish } from "@/src/lib/event-bus";
 import { rateLimit } from "@/src/lib/rate-limit";
 import { generateMatchesForJob } from "@/src/services/match-generation";
@@ -17,6 +18,11 @@ const generateSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   const ip =
     request.headers.get("x-real-ip") ??
     request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??

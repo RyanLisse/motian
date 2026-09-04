@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { db, eq } from "@/src/db";
 import { autopilotFindings } from "@/src/db/schema";
+import { requirePrincipal } from "@/src/lib/api-auth";
 
 const VALID_STATUSES = ["detected", "validated", "reported", "dismissed"] as const;
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   const { id } = await params;
 
   try {

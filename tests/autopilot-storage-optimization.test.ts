@@ -146,13 +146,19 @@ describe("autopilot storage optimization", () => {
     expect(traceUpload?.[3]).toMatchObject({ cacheControlMaxAge: 2_592_000 });
     expect(harUpload?.[3]).toMatchObject({ cacheControlMaxAge: 2_592_000 });
     expect(summaryUpload?.[3]).toMatchObject({ cacheControlMaxAge: 2_592_000 });
-    expect((traceUpload?.[0] as Buffer).byteLength).toBeLessThan(
-      readFileSync(tracePath).byteLength,
-    );
-    expect((harUpload?.[0] as Buffer).byteLength).toBeLessThan(readFileSync(harPath).byteLength);
+
+    const traceBytes = traceUpload?.[0];
+    const harBytes = harUpload?.[0];
+    const summaryBytes = summaryUpload?.[0];
+    expect(traceBytes).toBeInstanceOf(Buffer);
+    expect(harBytes).toBeInstanceOf(Buffer);
+    expect(summaryBytes).toBeInstanceOf(Buffer);
+
+    expect((traceBytes as Buffer).byteLength).toBeLessThan(readFileSync(tracePath).byteLength);
+    expect((harBytes as Buffer).byteLength).toBeLessThan(readFileSync(harPath).byteLength);
 
     const uploadedSummary = JSON.parse(
-      (summaryUpload?.[0] as Buffer).toString("utf8"),
+      (summaryBytes as Buffer).toString("utf8"),
     ) as AutopilotRunSummary;
     const uploadedTrace = uploadedSummary.evidenceManifests[0]?.artifacts.find(
       (artifact) => artifact.id === "chat-trace",

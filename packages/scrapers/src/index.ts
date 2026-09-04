@@ -1,24 +1,31 @@
+export {
+  dynamicAdapter,
+  extractBySelector,
+  extractFieldValue,
+  extractText,
+} from "./dynamic-adapter";
 export { scrapeFlextender } from "./flextender";
 export { mipublicAdapter } from "./mipublic";
 export { monsterboardAdapter } from "./monsterboard";
+export {
+  detectNationaleVacaturebankBlocker,
+  nationaleVacaturebankAdapter,
+} from "./nationalevacaturebank";
 export {
   mapOpdrachtoverheidTenderToListing,
   mapTenderActiveToStatus,
   scrapeOpdrachtoverheid,
 } from "./opdrachtoverheid";
-export { dynamicAdapter, extractBySelector, extractFieldValue, extractText } from "./dynamic-adapter";
 export {
   getDynamicAdapter,
   getImplementedPlatformDefinition,
+  getImplementedPlatformSlugs,
   getPlatformAdapter,
   getPlatformDefinition,
-  getImplementedPlatformSlugs,
   listPlatformCatalogEntries,
   listPlatformDefinitions,
 } from "./platform-registry";
-export { detectNationaleVacaturebankBlocker, nationaleVacaturebankAdapter } from "./nationalevacaturebank";
 export { scrapeStriive } from "./striive";
-export { werkzoekenAdapter } from "./werkzoeken";
 export type {
   ImplementedPlatformDefinition,
   PlatformAdapter,
@@ -34,3 +41,4 @@ export type {
   PlatformValidationResult,
   RawScrapedListing,
 } from "./types";
+export { werkzoekenAdapter } from "./werkzoeken";

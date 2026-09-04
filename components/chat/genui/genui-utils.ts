@@ -1,5 +1,8 @@
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/src/lib/helpers";
+
+export { formatDateTime };
 
 /** Check if tool output is an error response. */
 export function isToolError(o: unknown): o is { error: unknown } {
@@ -17,19 +20,6 @@ export function toDate(v: string | Date | null | undefined): Date | null {
   if (v instanceof Date) return v;
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
-}
-
-/** Format a date string for display in Dutch locale. */
-export function formatDateTime(v: string | Date | null | undefined): string | null {
-  const d = toDate(v);
-  if (!d) return null;
-  return d.toLocaleDateString("nl-NL", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 /** Shared Dutch labels for match statuses. */

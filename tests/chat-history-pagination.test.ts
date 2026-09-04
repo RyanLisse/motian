@@ -34,10 +34,10 @@ describe("chat history pagination architecture", () => {
     const service = readFile("src", "services", "chat-sessions.ts");
 
     expect(listRoute).toContain("cursor: z.string().min(1).optional()");
-    expect(listRoute).toContain(
-      "listSessions({ limit: params.limit, cursor: params.cursor ?? null })",
-    );
+    expect(listRoute).toContain("listSessions({ limit, cursor: params.cursor ?? null })");
+    expect(listRoute).toContain("parsePagination(url.searchParams, { limit: 20, maxLimit: 50 })");
     expect(detailRoute).toContain("cursor: z.string().min(1).optional()");
+    expect(detailRoute).toContain("parsePagination(url.searchParams, { limit: 20, maxLimit: 50 })");
     expect(detailRoute).toContain("cursor: result.data.cursor ?? null,");
     expect(service).toContain("nextCursor");
   });

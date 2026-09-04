@@ -4,6 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/src/lib/client-api";
 
 const SCRAPER_POLL_INTERVAL_MS = 15_000;
 const SCRAPER_POLL_TIMEOUT_MS = 2 * 60_000;
@@ -58,7 +59,7 @@ export function ScraperActions() {
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch("/api/scrape/starten", {
+      const res = await apiFetch("/api/scrape/starten", {
         method: "POST",
       });
       if (res.ok) {

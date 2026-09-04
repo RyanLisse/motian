@@ -8,8 +8,8 @@ import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from "@/src/components/ai-elements/conversation";
-import { Message, MessageContent, MessageResponse } from "@/src/components/ai-elements/message";
+} from "@/components/ai-elements/conversation";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 
 /**
  * Props for the AgentChatTranscript component.

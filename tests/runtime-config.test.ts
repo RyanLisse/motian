@@ -16,6 +16,12 @@ describe("runtime-config validation", () => {
     expect(result.errors).toContain(
       "API_SECRET is verplicht in productie om beschermde /api-routes af te schermen.",
     );
+    expect(result.errors).not.toContain(
+      "SESSION_SECRET is verplicht in productie om de operator-sessiecookie te ondertekenen.",
+    );
+    expect(result.errors).not.toContain(
+      "OPERATOR_PASSWORD_HASH is verplicht in productie; zonder deze waarde kan niemand inloggen.",
+    );
     expect(shouldAllowMissingApiSecret({ NODE_ENV: "production", VERCEL_ENV: "production" })).toBe(
       false,
     );

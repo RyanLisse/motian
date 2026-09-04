@@ -16,7 +16,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
-} from "@/src/components/ai-elements/prompt-input";
+} from "@/components/ai-elements/prompt-input";
 import { CV_UPLOAD_ACCEPT, CV_UPLOAD_MAX_SIZE_BYTES } from "@/src/lib/cv-upload";
 import { type ChatCvUploadController, ChatCvUploadStatusBanner } from "./use-chat-cv-upload";
 

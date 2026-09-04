@@ -50,10 +50,9 @@ describe("OpenRouter provider boundary", () => {
     }
   });
 
-  it("keeps both voice-agent entrypoints off direct Google realtime keys", () => {
+  it("keeps the voice-agent entrypoint off direct Google realtime keys", () => {
     const rootVoice = readFile("src", "voice-agent", "main.ts");
-    const standaloneVoice = readFile("agent", "src", "main.ts");
-    const standaloneDeps = packageJson("agent").dependencies ?? {};
+    const rootDeps = packageJson().dependencies ?? {};
     const directGoogleKeys = [
       ["GOOGLE", "API", "KEY"].join("_"),
       ["GOOGLE", "GENERATIVE", "AI", "API", "KEY"].join("_"),
@@ -61,11 +60,9 @@ describe("OpenRouter provider boundary", () => {
     const googleRealtimePlugin = ["@livekit", "agents-plugin-google"].join("/");
 
     expect(rootVoice).toContain("new inference.LLM");
-    expect(standaloneVoice).toContain("new inference.LLM");
     for (const key of directGoogleKeys) {
       expect(rootVoice).not.toContain(key);
-      expect(standaloneVoice).not.toContain(key);
     }
-    expect(standaloneDeps).not.toHaveProperty(googleRealtimePlugin);
+    expect(rootDeps).not.toHaveProperty(googleRealtimePlugin);
   });
 });

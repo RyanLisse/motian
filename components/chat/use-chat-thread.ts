@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch, toBffPath } from "@/src/lib/client-api";
 import {
   clearPersistedChatSession,
   hasPersistedChatSession,
@@ -57,7 +58,7 @@ export function useChatThread({
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: "/api/chat",
+        api: toBffPath("/api/chat"),
         prepareSendMessagesRequest: ({ id, messages }) => ({
           body: {
             id,
@@ -86,7 +87,7 @@ export function useChatThread({
       const params = new URLSearchParams({ limit: String(HISTORY_PAGE_SIZE) });
       if (cursor) params.set("cursor", cursor);
 
-      const res = await fetch(`/api/chat-sessies/${sessionId}?${params.toString()}`);
+      const res = await apiFetch(`/api/chat-sessies/${sessionId}?${params.toString()}`);
       if (res.status === 404) {
         clearPersistedChatSession(sessionId);
         setHistoryCursor(null);

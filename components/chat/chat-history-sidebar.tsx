@@ -3,6 +3,7 @@
 import { Clock, MessageSquare, Plus, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/src/lib/client-api";
 
 const TITLE_REFRESH_DELAY_MS = 1200;
 const MAX_TITLE_REFRESH_ATTEMPTS = 3;
@@ -56,7 +57,7 @@ export function ChatHistorySidebar({
         params.set("refresh", String(refreshToken));
       }
 
-      const res = await fetch(`/api/chat-sessies?${params.toString()}`);
+      const res = await apiFetch(`/api/chat-sessies?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setSessions(data.sessions ?? []);
@@ -108,7 +109,7 @@ export function ChatHistorySidebar({
     if (!confirm("Dit gesprek verwijderen?")) return;
 
     try {
-      const res = await fetch(`/api/chat-sessies/${sessionId}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/chat-sessies/${sessionId}`, { method: "DELETE" });
       if (res.ok) {
         setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId));
       }

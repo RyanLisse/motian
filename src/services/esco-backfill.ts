@@ -1,3 +1,5 @@
+import { normalizeSkillName } from "./skills";
+
 type SkillSeedSource =
   | "candidate.skills"
   | "candidate.skillsStructured.hard"
@@ -47,10 +49,6 @@ type JobSkillSource = {
   wishes?: WishLike[] | null;
   competences?: string[] | null;
 };
-
-function normalizeSkillName(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
 
 function upsertSeed(seeds: SkillSeed[], nextSeed: SkillSeed): SkillSeed[] {
   const normalizedName = nextSeed.rawSkill.toLocaleLowerCase("nl-NL");

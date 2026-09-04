@@ -45,9 +45,11 @@ describe("Report view page", () => {
     expect(source).toContain("Beoordelingsrapport");
   });
 
-  it("reports/[id]/page.tsx uses getReport", () => {
+  it("reports/[id]/page.tsx regenerates via fetchMatchReport (not getReport Map)", () => {
     const source = readFile("app/reports/[id]/page.tsx");
-    expect(source).toContain("getReport");
+    expect(source).toContain("fetchMatchReport");
+    expect(source).not.toContain("getReport");
+    expect(source).toContain("escapeHtml");
   });
 });
 

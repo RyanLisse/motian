@@ -7,7 +7,7 @@ import {
   markPersistedChatSession,
   writeSessionStorage,
 } from "../components/chat/chat-session-storage";
-import { getPostHogPersistence } from "../src/components/posthog-provider";
+import { getPostHogPersistence } from "../components/providers/posthog-provider";
 import { normalizeChatMessage } from "../src/services/chat-sessions";
 
 function createStorage() {

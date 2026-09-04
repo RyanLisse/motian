@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { ChatContextProvider } from "@/components/chat/chat-context-provider";
-import { WebVitalsReporter } from "@/src/components/web-vitals-reporter";
+import { WebVitalsReporter } from "@/components/web-vitals-reporter";
 
 const ChatWidget = dynamic(
   () => import("@/components/chat/chat-widget").then((mod) => mod.ChatWidget),

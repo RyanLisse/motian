@@ -1,4 +1,13 @@
 import { clearTimeout as clearNodeTimeout, setTimeout as setNodeTimeout } from "node:timers";
+import {
+  decodeText,
+  ensureMinLength,
+  firstMatch,
+  parsePositiveInteger,
+  sanitizeHours,
+  stripHtml,
+  toAbsoluteUrl,
+} from "./lib/utils";
 import type {
   PlatformAdapter,
   PlatformRuntimeConfig,
@@ -7,15 +16,6 @@ import type {
   PlatformValidationResult,
   RawScrapedListing,
 } from "./types";
-import {
-  decodeText,
-  firstMatch,
-  parsePositiveInteger,
-  toAbsoluteUrl,
-  ensureMinLength,
-  stripHtml,
-  sanitizeHours,
-} from "./lib/utils";
 
 const WERKZOEKEN_FETCH_TIMEOUT_MS = 20_000;
 const WERKZOEKEN_SCRAPE_MAX_DURATION_MS = 240_000;
@@ -64,14 +64,10 @@ type WerkzoekenSession = {
   referer: string;
 };
 
-function combineSignals(
-  perRequestTimeoutMs: number,
-  external?: AbortSignal,
-): AbortSignal {
+function combineSignals(perRequestTimeoutMs: number, external?: AbortSignal): AbortSignal {
   const perRequest = AbortSignal.timeout(perRequestTimeoutMs);
   if (!external) return perRequest;
-  const anyFn = (AbortSignal as unknown as { any?: (signals: AbortSignal[]) => AbortSignal })
-    .any;
+  const anyFn = (AbortSignal as unknown as { any?: (signals: AbortSignal[]) => AbortSignal }).any;
   if (typeof anyFn === "function") {
     return anyFn.call(AbortSignal, [perRequest, external]);
   }
@@ -222,7 +218,8 @@ export function parseWerkzoekenListingCards(
   // Match vacancy card <a> blocks. Werkzoeken renders the inner <h3> with attributes
   // (e.g. `<h3 data-vx="d">`) so the old anchor-to-h3 pattern silently returned zero
   // listings whenever those attributes appeared. Accept any attribute set on <h3>.
-  const linkRegex = /<a\b([\s\S]*?)class="vacancy vac[\s\S]*?href="([^"]+)"[\s\S]*?<h3\b[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/g;
+  const linkRegex =
+    /<a\b([\s\S]*?)class="vacancy vac[\s\S]*?href="([^"]+)"[\s\S]*?<h3\b[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>/g;
 
   let match = linkRegex.exec(html);
   while (match !== null) {
@@ -279,20 +276,10 @@ export function parseWerkzoekenDetailPage(
     ),
   );
   const location = stripHtml(
-    decodeText(
-      firstMatch(
-        /<div class="job-overview">[\s\S]*?<div>([\s\S]*?)<\/div>/,
-        html,
-      ),
-    ),
+    decodeText(firstMatch(/<div class="job-overview">[\s\S]*?<div>([\s\S]*?)<\/div>/, html)),
   );
   const rawDescription = stripHtml(
-    decodeText(
-      firstMatch(
-        /<section class="job-description">([\s\S]*?)<\/section>/,
-        html,
-      ),
-    ),
+    decodeText(firstMatch(/<section class="job-description">([\s\S]*?)<\/section>/, html)),
   );
 
   return {
@@ -300,7 +287,10 @@ export function parseWerkzoekenDetailPage(
     title: title?.slice(0, 500),
     company: company?.slice(0, 300),
     location,
-    description: ensureMinLength(rawDescription?.slice(0, 8000), stripHtml(title) || "Werkzoeken vacature"),
+    description: ensureMinLength(
+      rawDescription?.slice(0, 8000),
+      stripHtml(title) || "Werkzoeken vacature",
+    ),
   };
 }
 
@@ -463,8 +453,7 @@ async function fetchHtml(
     }
 
     lastStatus = response.status;
-    const shouldRetry =
-      RETRYABLE_FETCH_STATUSES.has(response.status) && attempt < maxAttempts;
+    const shouldRetry = RETRYABLE_FETCH_STATUSES.has(response.status) && attempt < maxAttempts;
     if (!shouldRetry) {
       break;
     }
@@ -570,7 +559,10 @@ async function scrapeWerkzoekenInternal(
     return newListings.length;
   };
 
-  if (allDirectFetchesFailed && (process.env.BROWSERBASE_API_KEY || process.env.FIRECRAWL_API_KEY)) {
+  if (
+    allDirectFetchesFailed &&
+    (process.env.BROWSERBASE_API_KEY || process.env.FIRECRAWL_API_KEY)
+  ) {
     session.cookieHeader = undefined;
 
     for (const { page, url } of pageUrls) {

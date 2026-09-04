@@ -4,14 +4,15 @@ import { Check, Loader2, Maximize2, MessageSquare, Paperclip, RotateCcw, X } fro
 import { nanoid } from "nanoid";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
 import {
   PromptInput,
   PromptInputFooter,
   type PromptInputMessage,
   PromptInputSubmit,
   PromptInputTextarea,
-} from "@/src/components/ai-elements/prompt-input";
+} from "@/components/ai-elements/prompt-input";
+import { cn } from "@/lib/utils";
+import { apiFetch } from "@/src/lib/client-api";
 import { useChatContext } from "./chat-context-provider";
 import { ChatMessages } from "./chat-messages";
 import { readSessionStorage, writeSessionStorage } from "./chat-session-storage";
@@ -98,14 +99,14 @@ function ChatWidgetInner({
       try {
         const formData = new FormData();
         formData.append("cv", file);
-        const uploadRes = await fetch("/api/cv-upload", { method: "POST", body: formData });
+        const uploadRes = await apiFetch("/api/cv-upload", { method: "POST", body: formData });
         if (!uploadRes.ok) {
           const json = await uploadRes.json();
           throw new Error(json.error ?? "Upload mislukt");
         }
         const { parsed, fileUrl, duplicates } = await uploadRes.json();
 
-        const saveRes = await fetch("/api/cv-upload/save", {
+        const saveRes = await apiFetch("/api/cv-upload/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ parsed, fileUrl, existingCandidateId: duplicates?.exact?.id }),

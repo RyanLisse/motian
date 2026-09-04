@@ -22,14 +22,14 @@ import { nanoid } from "nanoid";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ChatPromptComposer } from "@/src/components/ai-elements/chat-prompt-composer";
-import { PromptInputProvider } from "@/src/components/ai-elements/prompt-input";
-import { QuickActionChips } from "@/src/components/ai-elements/quick-action-chips";
+import { ChatPromptComposer } from "@/components/ai-elements/chat-prompt-composer";
+import { PromptInputProvider } from "@/components/ai-elements/prompt-input";
+import { QuickActionChips } from "@/components/ai-elements/quick-action-chips";
 import {
   ChatCvDropOverlay,
   type ChatCvUploadController,
   useChatCvUpload,
-} from "@/src/components/ai-elements/use-chat-cv-upload";
+} from "@/components/ai-elements/use-chat-cv-upload";
 import { useChatContext } from "./chat-context-provider";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { ChatMessages, type ChatSuggestion } from "./chat-messages";

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { buildCorsHeaders, getAllowedCorsOrigin, shouldRejectCorsPreflight } from "@/src/lib/api-cors";
+import { buildCorsHeaders, shouldRejectCorsPreflight } from "@/src/lib/api-cors";
 import { shouldAllowMissingApiSecret } from "@/src/lib/runtime-config";
+import { timingSafeEqualStrings } from "@/src/lib/session";
 
 // ---------------------------------------------------------------------------
 // Rate limiting for /pipeline — in-memory, IP-based, Edge Runtime compatible
@@ -10,12 +11,20 @@ const RL_WINDOW_MS = 10_000;
 const RL_MAX_REQUESTS = 10;
 
 const BOT_SIGNATURES = [
-  "crawler", "spider", "scraper", "phantomjs",
-  "python-requests", "go-http-client", "curl/", "wget/",
+  "crawler",
+  "spider",
+  "scraper",
+  "phantomjs",
+  "python-requests",
+  "go-http-client",
+  "curl/",
+  "wget/",
   "apache-httpclient",
 ];
 
-interface RateBucket { timestamps: number[] }
+interface RateBucket {
+  timestamps: number[];
+}
 const ipBuckets = new Map<string, RateBucket>();
 let lastCleanup = Date.now();
 
@@ -32,7 +41,10 @@ function rlCleanup(now: number) {
 function isRateLimited(ip: string, now: number): boolean {
   const cutoff = now - RL_WINDOW_MS;
   let bucket = ipBuckets.get(ip);
-  if (!bucket) { bucket = { timestamps: [] }; ipBuckets.set(ip, bucket); }
+  if (!bucket) {
+    bucket = { timestamps: [] };
+    ipBuckets.set(ip, bucket);
+  }
   bucket.timestamps = bucket.timestamps.filter((t) => t > cutoff);
   if (bucket.timestamps.length >= RL_MAX_REQUESTS) return true;
   bucket.timestamps.push(now);
@@ -47,47 +59,28 @@ function isBotUA(ua: string | null): boolean {
 
 function rateLimitPipeline(request: NextRequest): NextResponse | null {
   if (isBotUA(request.headers.get("user-agent"))) {
-    return new NextResponse("Too Many Requests", { status: 429, headers: { "Retry-After": "60" } });
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": "60" },
+    });
   }
   const now = Date.now();
   rlCleanup(now);
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || request.headers.get("x-real-ip") || "unknown";
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
   if (isRateLimited(ip, now)) {
-    return new NextResponse("Too Many Requests", { status: 429, headers: { "Retry-After": "10" } });
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: { "Retry-After": "10" },
+    });
   }
   return null;
 }
 
-/** Routes that bypass bearer token authentication completely (health, cron, docs) */
-const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi", "/api/debug-error", "/api/feed"];
-
-/**
- * First-party browser routes: accessible without bearer token ONLY for
- * same-origin requests (no Origin header) or requests from an allowed CORS
- * origin.  External / cross-origin callers without a valid bearer token are
- * still rejected.
- */
-const FIRST_PARTY_PATHS = [
-  "/api/chat",
-  "/api/chat-sessies",
-  "/api/cv-upload",
-  "/api/cv-analyse",
-  "/api/cv-file",
-  "/api/kandidaten",
-  "/api/matches",
-  "/api/vacatures",
-  "/api/interviews",
-  "/api/sollicitaties",
-  "/api/berichten",
-  "/api/instellingen",
-  "/api/platforms",
-  "/api/salesforce-feed",
-  "/api/commercieel-cv",
-  "/api/zoekfilters",
-  "/api/scrape/starten",
-  "/api/scraper-configuraties",
-];
+/** Routes that bypass authentication completely (health, cron, docs, public feeds). */
+const PUBLIC_PATHS = ["/api/gezondheid", "/api/cron", "/api/openapi", "/api/feed"];
 
 const PUBLIC_GET_PATHS = ["/api/vacatures/zoeken", "/api/opdrachten/zoeken"];
 
@@ -109,22 +102,16 @@ function isPublicRoute(request: NextRequest): boolean {
 }
 
 /**
- * Returns true when the request targets a first-party browser route AND
- * originates from the same origin (no Origin header) or from a CORS-allowed
- * origin.  This prevents unauthenticated access from arbitrary external
- * callers while letting the Next.js frontend work without a bearer token.
+ * Origin / Sec-Fetch-Site isolation helper for CSRF on cookie-bound writes.
+ * These headers NEVER grant admission — they only reject cross-site writes
+ * when a future cookie-light path needs isolation. Bearer admission does not
+ * depend on this check.
  */
-function isFirstPartyBrowserRoute(request: NextRequest): boolean {
-  const { pathname } = request.nextUrl;
-
-  if (!FIRST_PARTY_PATHS.some((p) => matchesPublicPath(pathname, p))) {
-    return false;
-  }
-
+export function isOriginIsolationOk(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
+  const secFetchSite = request.headers.get("sec-fetch-site");
 
-  // Same-origin fetch calls from the Next.js app do not include an Origin header.
-  if (!origin) {
+  if (!origin && secFetchSite === "same-origin") {
     return true;
   }
 
@@ -132,19 +119,14 @@ function isFirstPartyBrowserRoute(request: NextRequest): boolean {
     return true;
   }
 
-  // Fallback: compare against the Host request header. In Next.js 16 dev mode,
-  // request.nextUrl.origin may normalize to "localhost" even when the app is
-  // accessed via a LAN IP. The Host header always reflects the address the
-  // request actually arrived on, so it matches the browser's Origin header.
+  // Fallback: Host-derived origin for Next.js 16 LAN/dev where nextUrl.origin
+  // may normalize to "localhost" while the browser sends the LAN Origin.
   const host = request.headers.get("host");
   if (host && origin === `${request.nextUrl.protocol}//${host}`) {
     return true;
   }
 
-  // If the caller provides an Origin, it must be explicitly on the CORS allowlist.
-  // getAllowedCorsOrigin returns the origin only when it appears in the allowlist,
-  // so unknown origins (including when no allowlist is configured) are rejected.
-  return getAllowedCorsOrigin(origin) !== null;
+  return false;
 }
 
 function corsHeaders(request: NextRequest): HeadersInit {
@@ -159,62 +141,72 @@ function withCorsHeaders(response: NextResponse, request: NextRequest): NextResp
   return response;
 }
 
-export function proxy(request: NextRequest) {
-  // Rate-limit /pipeline to block bot traffic (2+ req/s observed)
-  if (request.nextUrl.pathname.startsWith("/pipeline")) {
-    const blocked = rateLimitPipeline(request);
-    if (blocked) return blocked;
-    return NextResponse.next();
+function handlePipelineRateLimit(request: NextRequest): NextResponse | null {
+  if (!request.nextUrl.pathname.startsWith("/pipeline")) return null;
+  return rateLimitPipeline(request);
+}
+
+function handleCorsPreflight(request: NextRequest): NextResponse | null {
+  if (request.method !== "OPTIONS") return null;
+
+  const origin = request.headers.get("origin");
+  if (shouldRejectCorsPreflight(origin)) {
+    return NextResponse.json(
+      { error: "Origin niet toegestaan" },
+      { status: 403, headers: corsHeaders(request) },
+    );
   }
 
-  // Handle CORS preflight
-  if (request.method === "OPTIONS") {
-    const origin = request.headers.get("origin");
-    if (shouldRejectCorsPreflight(origin)) {
-      return NextResponse.json(
-        { error: "Origin niet toegestaan" },
-        { status: 403, headers: corsHeaders(request) },
-      );
-    }
+  return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
+}
 
-    return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
-  }
+function hasValidBearer(request: NextRequest, apiSecret: string): boolean {
+  const authHeader = request.headers.get("authorization");
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  if (!token) return false;
+  return timingSafeEqualStrings(token, apiSecret);
+}
 
-  // Skip auth for public routes
+/**
+ * Proxy admission for non-public `/api` and `/pipeline`: `Authorization: Bearer`
+ * with `API_SECRET` only. Origin / Sec-Fetch-Site never admit. Pages are not gated
+ * (internal app — no login UI). Browser product traffic should reach sensitive APIs
+ * via server-side BFF (RSC / Route Handlers / Server Actions) that attach the secret.
+ */
+export async function proxy(request: NextRequest) {
+  const pipelineLimited = handlePipelineRateLimit(request);
+  if (pipelineLimited) return pipelineLimited;
+
+  const preflightResponse = handleCorsPreflight(request);
+  if (preflightResponse) return preflightResponse;
+
   if (isPublicRoute(request)) {
     return withCorsHeaders(NextResponse.next(), request);
   }
 
-  // Allow first-party browser routes from same-origin or allowed CORS origins
-  if (isFirstPartyBrowserRoute(request)) {
+  const apiSecret = process.env.API_SECRET?.trim() || null;
+
+  if (apiSecret && hasValidBearer(request, apiSecret)) {
     return withCorsHeaders(NextResponse.next(), request);
   }
 
-  // Local/test mode may omit API_SECRET, but deployed production must fail closed.
-  const apiSecret = process.env.API_SECRET;
-  if (!apiSecret) {
-    if (!shouldAllowMissingApiSecret()) {
-      return NextResponse.json(
-        { error: "API authenticatie niet geconfigureerd" },
-        { status: 503, headers: corsHeaders(request) },
-      );
-    }
-
+  // Local/test: secret unset → keep surfaces reachable for developers.
+  if (!apiSecret && shouldAllowMissingApiSecret()) {
     return withCorsHeaders(NextResponse.next(), request);
   }
 
-  // Validate bearer token
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-
-  if (token !== apiSecret) {
+  // Production with secret unset → fail closed (503).
+  if (!apiSecret && !shouldAllowMissingApiSecret()) {
     return NextResponse.json(
-      { error: "Niet geautoriseerd" },
-      { status: 401, headers: corsHeaders(request) },
+      { error: "API authenticatie niet geconfigureerd" },
+      { status: 503, headers: corsHeaders(request) },
     );
   }
 
-  return withCorsHeaders(NextResponse.next(), request);
+  return NextResponse.json(
+    { error: "Niet geautoriseerd" },
+    { status: 401, headers: corsHeaders(request) },
+  );
 }
 
 export const config = {

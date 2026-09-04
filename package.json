@@ -7,8 +7,8 @@
   "dependencies": {
     "@ai-sdk/react": "^3.0.151",
     "@hapi/boom": "^10.0.1",
-    "@livekit/agents": "^1.2.3",
-    "@livekit/agents-plugin-silero": "^1.2.3",
+    "@livekit/agents": "1.2.3",
+    "@livekit/agents-plugin-silero": "1.2.3",
     "@livekit/components-react": "^2.9.20",
     "@livekit/protocol": "^1.45.1",
     "@mcp-b/global": "^2.2.0",
@@ -36,7 +36,7 @@
     "@vercel/speed-insights": "^2.0.0",
     "@visual-json/core": "^0.1.1",
     "@visual-json/react": "^0.1.1",
-    "@whiskeysockets/baileys": "7.0.0-rc.9",
+    "@whiskeysockets/baileys": "7.0.0-rc12",
     "@xyflow/react": "^12.10.2",
     "ai": "^6.0.149",
     "class-variance-authority": "^0.7.1",
@@ -47,7 +47,7 @@
     "drizzle-orm": "^0.38.4",
     "jimp": "^1.6.0",
     "just-bash": "^2.14.1",
-    "langsmith": "^0.5.16",
+    "langsmith": "^0.6.0",
     "livekit-client": "^2.18.1",
     "livekit-server-sdk": "^2.15.0",
     "lucide-react": "^0.575.0",
@@ -56,7 +56,7 @@
     "modal": "^0.6.3",
     "motion": "^12.38.0",
     "nanoid": "^5.1.7",
-    "next": "^16.2.2",
+    "next": "^16.2.12",
     "next-themes": "^0.4.6",
     "pino": "^10.3.1",
     "posthog-js": "^1.365.0",
@@ -87,10 +87,10 @@
     "db:push:force": "drizzle-kit push",
     "lint": "biome check .",
     "lint:app": "biome check \"app/**/*.ts\" \"app/**/*.tsx\" \"components/**/*.ts\" \"components/**/*.tsx\" \"src/**/*.ts\" \"src/**/*.tsx\" \"hooks/**/*.ts\" \"lib/**/*.ts\" \"next.config.ts\" \"proxy.ts\"",
-    "lint:shell": "biome check \"app/layout.tsx\" \"app/globals.css\" \"components/sidebar-layout.tsx\" \"components/mobile-bottom-nav.tsx\" \"components/route-shell-overlays.tsx\" \"components/chat/chat-widget.tsx\" \"components/sidebar/sidebar-job-list.tsx\" \"src/components/web-vitals-reporter.tsx\" \"scripts/check-shell-performance-budget.ts\"",
+    "lint:shell": "biome check \"app/layout.tsx\" \"app/globals.css\" \"components/sidebar-layout.tsx\" \"components/mobile-bottom-nav.tsx\" \"components/route-shell-overlays.tsx\" \"components/chat/chat-widget.tsx\" \"components/sidebar/sidebar-job-list.tsx\" \"components/web-vitals-reporter.tsx\" \"scripts/check-shell-performance-budget.ts\"",
     "lint:fix": "biome check --write .",
     "test:app": "vitest run tests/chat-origin-boundary.test.ts tests/app-layout-command-palette.test.ts tests/chat-widget-continuity.test.ts tests/detail-surface-workflow.test.ts tests/recruiter-dashboard-navigation.test.ts",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "NODE_OPTIONS=--max-old-space-size=8192 vitest run --coverage",
     "test:cv": "tsx scripts/test-cv-upload.ts",
     "test:cv:all": "tsx scripts/test-cv-upload.ts --all",
     "test:cv:generate": "tsx scripts/generate-test-cv.ts",
@@ -142,7 +142,6 @@
     "vitest": "^3.2.4",
     "yaml": "^2.8.3"
   },
-  "packageManager": "pnpm@9.15.0",
   "pnpm": {
     "packageExtensions": {
       "mcp-handler@*": {
@@ -161,16 +160,36 @@
       ]
     },
     "overrides": {
-      "systeminformation": ">=5.31.0",
+      "@neondatabase/serverless": "0.10.4",
+      "systeminformation": ">=5.31.7",
       "cookie": ">=0.7.0",
       "minimatch": ">=10.2.3",
+      "brace-expansion": ">=5.0.8",
       "rollup@<4.59.0": ">=4.59.0",
       "serialize-javascript@<7.0.3": ">=7.0.3",
-      "esbuild@<0.25.0": ">=0.25.0",
-      "hono": "4.12.4",
-      "@hono/node-server": "1.19.10",
+      "esbuild": ">=0.28.1",
+      "hono": ">=4.12.25",
+      "@hono/node-server": ">=1.19.10",
       "express-rate-limit": "8.2.2",
-      "dompurify": "3.3.2"
+      "dompurify": "3.3.2",
+      "protobufjs@<8": ">=7.6.1",
+      "protobufjs@>=8": ">=8.4.1",
+      "protobufjs@8.0.0": "8.4.2",
+      "basic-ftp": ">=5.3.1",
+      "axios": ">=1.16.0",
+      "fast-uri": ">=3.1.4",
+      "@xmldom/xmldom": ">=0.8.13",
+      "fast-xml-builder": ">=1.1.7",
+      "@grpc/grpc-js": ">=1.14.4",
+      "shell-quote": ">=1.9.0",
+      "tar": ">=7.5.19",
+      "postcss": ">=8.5.18",
+      "form-data": ">=4.0.6",
+      "undici": ">=7.28.0",
+      "ws": ">=8.21.0",
+      "engine.io": ">=6.6.7",
+      "adm-zip": ">=0.6.0"
     }
-  }
+  },
+  "packageManager": "pnpm@9.15.0"
 }

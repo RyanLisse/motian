@@ -1,6 +1,6 @@
-import type { RawScrapedListing } from "./types";
+import { sanitizeHours } from "./lib/utils";
 import { stripHtml } from "./strip-html";
-import { toAbsoluteUrl, ensureMinLength, sanitizeHours } from "./lib/utils";
+import type { RawScrapedListing } from "./types";
 
 const PAGE_URL = "https://www.flextender.nl/opdrachten/";
 const AJAX_URL = "https://www.flextender.nl/wp-admin/admin-ajax.php";
@@ -126,8 +126,12 @@ function parseFlextenderHtml(html: string): FlextenderListing[] {
 
     // Parse "Uren per week": "36 uur" → 36, "24 tot 32 uur" → min=24, max=32 (cap op 168)
     const parsed = parseHoursPerWeek(fields["Uren per week"]);
-    const hoursPerWeek = parsed.hoursPerWeek != null ? Math.min(MAX_HOURS_PER_WEEK, parsed.hoursPerWeek) : undefined;
-    const minHoursPerWeek = parsed.minHoursPerWeek != null ? Math.min(MAX_HOURS_PER_WEEK, parsed.minHoursPerWeek) : undefined;
+    const hoursPerWeek =
+      parsed.hoursPerWeek != null ? Math.min(MAX_HOURS_PER_WEEK, parsed.hoursPerWeek) : undefined;
+    const minHoursPerWeek =
+      parsed.minHoursPerWeek != null
+        ? Math.min(MAX_HOURS_PER_WEEK, parsed.minHoursPerWeek)
+        : undefined;
     // Extract company logo URL
     const logoMatch =
       cardHtml.match(/class="flx-client-logo"[^>]*src="([^"]+)"/i) ??
@@ -142,8 +146,7 @@ function parseFlextenderHtml(html: string): FlextenderListing[] {
 
     const applicationDeadline = parseDutchDate(fields["Einde inschrijfdatum"]);
     // Mark listings with past deadlines as closed
-    const status =
-      applicationDeadline && applicationDeadline < new Date() ? "closed" : "open";
+    const status = applicationDeadline && applicationDeadline < new Date() ? "closed" : "open";
 
     listings.push({
       title,

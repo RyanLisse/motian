@@ -135,6 +135,24 @@ export async function getCandidateById(id: string): Promise<Candidate | null> {
   return rows[0] ?? null;
 }
 
+/**
+ * Resolve a candidate by persisted resume storage URL (non-soft-deleted only).
+ * Used by `/api/cv-file` so caller-supplied blob URLs must map to a record
+ * before any upstream fetch.
+ */
+export async function findCandidateByResumeUrl(resumeUrl: string): Promise<Candidate | null> {
+  const trimmed = resumeUrl.trim();
+  if (!trimmed) return null;
+
+  const rows = await db
+    .select(candidateReadSelection)
+    .from(candidates)
+    .where(and(eq(candidates.resumeUrl, trimmed), isNull(candidates.deletedAt)))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
 /** Build FTS or ILIKE condition for candidate name search. */
 function candidateNameCondition(query: string) {
   const tsInput = toTsQueryInput(query);

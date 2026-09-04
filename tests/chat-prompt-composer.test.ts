@@ -6,10 +6,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ChatPromptComposer,
   normalizeChatPromptMessage,
-} from "@/src/components/ai-elements/chat-prompt-composer";
+} from "@/components/ai-elements/chat-prompt-composer";
 import { buildCvSummaryMessage, validateCvUploadFile } from "@/src/lib/cv-upload";
 
-vi.mock("@/src/components/ai-elements/prompt-input", () => ({
+vi.mock("@/components/ai-elements/prompt-input", () => ({
   PromptInput: ({ children }: { children: unknown }) => createElement("form", null, children),
   PromptInputButton: ({ children, ...props }: Record<string, unknown>) =>
     createElement("button", { type: "button", ...props }, children),
@@ -31,7 +31,7 @@ vi.mock("@/src/components/ai-elements/prompt-input", () => ({
     createElement("div", { className }, children),
 }));
 
-vi.mock("@/src/components/ai-elements/use-chat-cv-upload", () => ({
+vi.mock("@/components/ai-elements/use-chat-cv-upload", () => ({
   ChatCvUploadStatusBanner: () => null,
 }));
 
@@ -110,7 +110,7 @@ describe("chat prompt composer preset", () => {
   });
 
   it("packages the local prompt-input primitives into a chat-ready wrapper", () => {
-    const source = readFile("src", "components", "ai-elements", "chat-prompt-composer.tsx");
+    const source = readFile("components", "ai-elements", "chat-prompt-composer.tsx");
 
     expect(source).toContain("export function ChatPromptComposer");
     expect(source).toContain("PromptInputSubmit");
@@ -127,7 +127,7 @@ describe("chat prompt composer preset", () => {
   it("lets the full-page chat swap to the wrapper without changing submit flow", () => {
     const source = readFile("components", "chat", "chat-page-content.tsx");
 
-    expect(source).toContain('from "@/src/components/ai-elements/chat-prompt-composer"');
+    expect(source).toContain('from "@/components/ai-elements/chat-prompt-composer"');
     expect(source).toContain("PromptInputProvider");
     expect(source).toContain("useChatCvUpload");
     expect(source).toContain("cvUpload={cvUpload}");

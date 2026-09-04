@@ -183,8 +183,32 @@ export function buildOpenApiDocument(request: Request): Record<string, unknown> 
       "/api/cv-file": {
         get: {
           tags: ["Files"],
-          summary: "Geüpload CV-bestand ophalen",
-          responses: { "200": { description: "CV-bestandsstream of metadata" } },
+          summary:
+            "Geüpload CV-bestand ophalen (record-gebonden via kandidaatId; url= alleen als het matcht op een opgeslagen resumeUrl)",
+          parameters: [
+            {
+              name: "kandidaatId",
+              in: "query",
+              required: false,
+              schema: { type: "string", format: "uuid" },
+              description: "Voorkeursparameter: kandidaat waarvan het CV wordt gestreamd",
+            },
+            {
+              name: "url",
+              in: "query",
+              required: false,
+              schema: { type: "string", format: "uri" },
+              description:
+                "Tijdelijke compatibiliteit: alleen toegestaan als de URL exact matcht op een niet-verwijderde kandidaat.resumeUrl",
+            },
+          ],
+          responses: {
+            "200": { description: "CV-bestandsstream" },
+            "400": { description: "Ontbrekende identificatie" },
+            "401": { description: "Niet geautoriseerd" },
+            "403": { description: "URL niet gebonden aan een leesbaar record" },
+            "404": { description: "Kandidaat of bestand niet gevonden" },
+          },
         },
       },
       "/api/scraper-configuraties": {

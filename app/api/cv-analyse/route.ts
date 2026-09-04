@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { tasks } from "@trigger.dev/sdk";
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { uploadFile } from "@/src/lib/file-storage";
 import {
   type AllowedMimeType,
@@ -10,7 +11,11 @@ import {
   processStoredCV,
 } from "@/src/services/cv-analysis-pipeline";
 import type { cvAnalysisPipelineTask } from "@/trigger/cv-analysis-pipeline";
-import { requireBlobToken, validateFileFromForm } from "../_shared/cv-helpers";
+import {
+  CV_ANALYSE_FAILED_MESSAGE,
+  requireBlobToken,
+  validateFileFromForm,
+} from "../_shared/cv-helpers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -29,6 +34,11 @@ function enqueuePipelineEvent(
 }
 
 export async function POST(request: NextRequest) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   const blobError = requireBlobToken();
   if (blobError) {
     console.error("[CV Analyse] BLOB_READ_WRITE_TOKEN is not configured");
@@ -122,7 +132,7 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         const message = error instanceof Error ? error.message : "Onbekende fout";
         console.error("[CV Analyse] Error:", message, error);
-        controller.enqueue(sseEvent({ step: "error", label: `CV analyse mislukt: ${message}` }));
+        controller.enqueue(sseEvent({ step: "error", label: CV_ANALYSE_FAILED_MESSAGE }));
       } finally {
         controller.close();
       }

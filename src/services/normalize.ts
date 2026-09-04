@@ -29,6 +29,36 @@ export type PreparedJobBatch = {
   endIndex: number;
 };
 
+export type NormalizeTextOptions = {
+  preserveTechnicalPunctuation?: boolean;
+  nullWhenEmpty?: boolean;
+};
+
+export function normalizeText(value: string, options?: NormalizeTextOptions): string;
+export function normalizeText(
+  value: string | null | undefined,
+  options: NormalizeTextOptions & { nullWhenEmpty: true },
+): string | null;
+export function normalizeText(
+  value: string | null | undefined,
+  options: NormalizeTextOptions = {},
+): string | null {
+  if (!value) return options.nullWhenEmpty ? null : "";
+
+  const normalized = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(
+      options.preserveTechnicalPunctuation === false ? /[^a-z0-9]+/g : /[^a-z0-9+.#/ -]/g,
+      " ",
+    )
+    .trim()
+    .replace(/\s+/g, " ");
+
+  return normalized.length > 0 || !options.nullWhenEmpty ? normalized : null;
+}
+
 /**
  * Max **byte** budget per dedupe column for the B-tree index.
  * Index row limit = 2704 bytes. Index has 3 text cols + scraped_at (8B) + id (16B) + ~80B tuple overhead.

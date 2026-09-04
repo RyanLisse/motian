@@ -34,6 +34,6 @@ Workspace package for ESCO data import, backfill, normalization, and related sco
 - Consumed by ESCO-related service code and tests in the root app.
 
 ### External
-- `drizzle-orm`.
+- None directly. Database access goes through `@motian/db` (which provides `drizzle-orm`).
 
 <!-- MANUAL: Any manually added notes below this line are preserved on regeneration -->

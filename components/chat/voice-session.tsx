@@ -16,6 +16,7 @@ import { AgentAudioVisualizerAura } from "@/components/agents-ui/agent-audio-vis
 import { AgentChatTranscript } from "@/components/agents-ui/agent-chat-transcript";
 import { AgentControlBar } from "@/components/agents-ui/agent-control-bar";
 import { StartAudioButton } from "@/components/agents-ui/start-audio-button";
+import { apiFetch, toBffPath } from "@/src/lib/client-api";
 import { LIVEKIT_UNCONFIGURED_ERROR } from "@/src/lib/livekit";
 
 // ---------- State label (Dutch UI) ----------
@@ -135,7 +136,7 @@ function VoiceViewController({ onClose }: { onClose: () => void }) {
 
     const checkVoiceAvailability = async () => {
       try {
-        const response = await fetch("/api/livekit-token", {
+        const response = await apiFetch("/api/livekit-token", {
           method: "GET",
           cache: "no-store",
           signal: controller.signal,
@@ -276,7 +277,7 @@ function VoiceViewController({ onClose }: { onClose: () => void }) {
 
 export function VoiceSession({ onClose }: { onClose: () => void }) {
   const tokenSource = useMemo(
-    () => TokenSource.endpoint("/api/livekit-token", { method: "POST" }),
+    () => TokenSource.endpoint(toBffPath("/api/livekit-token"), { method: "POST" }),
     [],
   );
 

@@ -265,6 +265,9 @@ function comparableAuthConfig(encoded: string | null): unknown {
   }
 }
 
+function toPublicScraperConfig(config: ScraperConfig): PublicScraperConfig;
+function toPublicScraperConfig(config: null): null;
+function toPublicScraperConfig(config: ScraperConfig | null): PublicScraperConfig | null;
 function toPublicScraperConfig(config: ScraperConfig | null): PublicScraperConfig | null {
   if (!config) {
     return null;
@@ -839,7 +842,7 @@ export type ScraperConfigPageOptions = {
 };
 
 export type ScraperConfigPage = {
-  data: ScraperConfig[];
+  data: PublicScraperConfig[];
   total: number;
 };
 
@@ -852,14 +855,17 @@ export async function listScraperConfigsPage(
   options: ScraperConfigPageOptions,
 ): Promise<ScraperConfigPage> {
   const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(scraperConfigs);
-  const data = await db
+  const rows = await db
     .select()
     .from(scraperConfigs)
     .orderBy(asc(scraperConfigs.platform))
     .limit(options.limit)
     .offset(options.offset);
 
-  return { data, total: total ?? 0 };
+  return {
+    data: rows.map((row) => toPublicScraperConfig(row)),
+    total: total ?? 0,
+  };
 }
 
 export async function getConfigByPlatform(platform: string): Promise<ScraperConfig | null> {
@@ -888,7 +894,7 @@ export async function updateConfigParameters(
     .where(eq(scraperConfigs.id, config.id));
 }
 
-export async function createConfig(data: CreatePlatformConfigData): Promise<ScraperConfig> {
+export async function createConfig(data: CreatePlatformConfigData): Promise<PublicScraperConfig> {
   await ensurePlatformCatalogExists(data.platform);
 
   const catalog = await getPlatformCatalogEntry(data.platform);
@@ -907,6 +913,8 @@ export async function createConfig(data: CreatePlatformConfigData): Promise<Scra
   if (!baseUrl) {
     throw new Error(`Geen baseUrl beschikbaar voor platform ${data.platform}`);
   }
+
+  await validateExternalUrl(baseUrl);
 
   const connectionChanged = didConnectionSettingsChange(existing, {
     authConfigEncrypted,
@@ -989,14 +997,14 @@ export async function createConfig(data: CreatePlatformConfigData): Promise<Scra
           },
   });
 
-  return config;
+  return toPublicScraperConfig(config);
 }
 
 /** Eén scraper configuratie bijwerken op ID. Geeft de bijgewerkte rij terug, of null als niet gevonden. */
 export async function updateConfig(
   id: string,
   data: UpdateConfigData,
-): Promise<ScraperConfig | null> {
+): Promise<PublicScraperConfig | null> {
   const [existing] = await db
     .select()
     .from(scraperConfigs)
@@ -1016,6 +1024,7 @@ export async function updateConfig(
       ? (data.credentialsRef ?? null)
       : (existing.credentialsRef ?? null);
   const baseUrl = data.baseUrl ?? existing.baseUrl;
+  await validateExternalUrl(baseUrl);
   const connectionChanged = didConnectionSettingsChange(existing, {
     authConfigEncrypted,
     baseUrl,
@@ -1067,7 +1076,7 @@ export async function updateConfig(
     });
   }
 
-  return updated;
+  return toPublicScraperConfig(updated);
 }
 
 export async function getLatestOnboardingRun(
@@ -1370,7 +1379,7 @@ export async function runPlatformOnboardingWorkflow(input: {
   config: CreatePlatformConfigData;
   activate?: boolean;
 }): Promise<{
-  config: ScraperConfig;
+  config: PublicScraperConfig;
   validation: PlatformValidationResponse;
   testImport: PlatformTestImportResponse;
   activated: boolean;

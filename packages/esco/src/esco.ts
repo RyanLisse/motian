@@ -4,9 +4,9 @@ import {
   db,
   eq,
   escoSkills,
-  like,
   inArray,
   jobSkills,
+  like,
   or,
   skillAliases,
   skillMappings,
@@ -70,12 +70,10 @@ export type WithCanonicalSkills<T, TCanonicalSkill> = T & {
 type CachedSkillResolution = Pick<MapSkillResult, "escoUri" | "confidence" | "strategy">;
 
 const skillResolutionCache = new Map<string, CachedSkillResolution>();
-let escoCatalogStatusCache:
-  | {
-      expiresAt: number;
-      promise: Promise<EscoCatalogStatus>;
-    }
-  | null = null;
+let escoCatalogStatusCache: {
+  expiresAt: number;
+  promise: Promise<EscoCatalogStatus>;
+} | null = null;
 
 export type EscoCatalogIssue = "missing_catalog" | "missing_skills" | "missing_aliases" | null;
 
@@ -160,7 +158,9 @@ async function loadEscoCatalogStatus(): Promise<EscoCatalogStatus> {
   }
 }
 
-export async function getEscoCatalogStatus(opts?: { refresh?: boolean }): Promise<EscoCatalogStatus> {
+export async function getEscoCatalogStatus(opts?: {
+  refresh?: boolean;
+}): Promise<EscoCatalogStatus> {
   const refresh = opts?.refresh ?? false;
   const now = Date.now();
 

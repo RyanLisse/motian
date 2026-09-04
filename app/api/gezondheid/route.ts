@@ -12,6 +12,7 @@ export const GET = withApiHandler(
     });
   },
   {
+    auth: "public",
     logPrefix: "Fout bij ophalen gezondheidsstatus",
     errorMessage: "Kan gezondheidsstatus niet ophalen",
   },

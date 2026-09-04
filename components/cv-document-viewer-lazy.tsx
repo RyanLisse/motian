@@ -7,6 +7,10 @@ const CvDocumentViewer = dynamic(
   { ssr: false },
 );
 
-export function CvDocumentViewerLazy(props: { url: string; candidateName: string }) {
+export function CvDocumentViewerLazy(props: {
+  kandidaatId: string;
+  url: string;
+  candidateName: string;
+}) {
   return <CvDocumentViewer {...props} />;
 }

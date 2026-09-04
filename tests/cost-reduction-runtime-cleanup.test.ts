@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { createTestAuthHeaders, TEST_API_SECRET } from "./helpers/session";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -9,6 +10,10 @@ function readFile(...segments: string[]) {
 }
 
 describe("runtime cost reduction cleanup", () => {
+  afterEach(() => {
+    delete process.env.API_SECRET;
+  });
+
   it("removes the unused Trigger tasks and generic SSE route", () => {
     expect(fs.existsSync(path.join(ROOT, "trigger", "whatsapp-gateway.ts"))).toBe(false);
     expect(fs.existsSync(path.join(ROOT, "trigger", "autopilot-nightly.ts"))).toBe(false);
@@ -17,13 +22,19 @@ describe("runtime cost reduction cleanup", () => {
     expect(fs.existsSync(path.join(ROOT, "src", "hooks", "use-event-source.ts"))).toBe(false);
   });
 
-  it("returns a static disabled WhatsApp status payload", async () => {
+  it("returns a disabled WhatsApp status payload behind auth", async () => {
+    process.env.API_SECRET = TEST_API_SECRET;
     const mod = await import("../app/api/whatsapp/status/route");
-    const response = await mod.GET();
+    const response = await mod.GET(
+      new Request("http://localhost/api/whatsapp/status", {
+        headers: createTestAuthHeaders(),
+      }),
+    );
 
-    expect(mod.dynamic).toBe("force-static");
-    expect(mod.revalidate).toBe(300);
+    // Auth-dependent: must stay dynamic / private (see whatsapp-status-cache.test.ts).
+    expect(mod.dynamic).toBe("force-dynamic");
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     await expect(response.json()).resolves.toEqual({
       enabled: false,
       status: "disabled",

@@ -1,6 +1,7 @@
 /**
  * Markdown.fast integration — publish, retrieve, and revoke match reports.
- * Falls back to local storage when markdown.fast is unavailable.
+ * Local fallback returns `/reports/<matchId>`; the page regenerates from the match record
+ * (no in-process store — survives serverless instance boundaries).
  */
 
 const MARKDOWN_FAST_BASE = process.env.MARKDOWN_FAST_URL ?? "https://api.markdown.fast";
@@ -13,9 +14,14 @@ interface PublishResult {
 }
 
 /**
- * Publish a markdown report to markdown.fast or fall back to local storage.
+ * Publish a markdown report to markdown.fast or fall back to a durable local URL.
+ * Local fallback uses `matchId` so any instance can regenerate via `/reports/<matchId>`.
  */
-export async function publishReport(markdown: string, title: string): Promise<PublishResult> {
+export async function publishReport(
+  markdown: string,
+  title: string,
+  matchId: string,
+): Promise<PublishResult> {
   // Try markdown.fast first if configured
   if (MARKDOWN_FAST_TOKEN) {
     try {
@@ -43,88 +49,59 @@ export async function publishReport(markdown: string, title: string): Promise<Pu
     }
   }
 
-  // Fallback: generate a local report ID and serve from /api/reports/[id]
-  const id = generateReportId();
-  // Store in-memory (in production, use a database or KV store)
-  reportStore.set(id, { markdown, title, createdAt: new Date() });
-
+  // Durable local URL: page regenerates from matchId (no in-process Map)
   return {
-    url: `/api/reports/${id}`,
-    id,
+    url: `/reports/${matchId}`,
+    id: matchId,
     source: "local",
   };
 }
 
 /**
- * Retrieve a report by ID (from markdown.fast or local store).
+ * Retrieve a report by ID from markdown.fast (external publishes only).
+ * Local reports are not stored — resolve via `/reports/<matchId>` + generateReport.
  */
 export async function getReport(id: string): Promise<string | null> {
-  // Try markdown.fast first
-  if (MARKDOWN_FAST_TOKEN) {
-    try {
-      const res = await fetch(`${MARKDOWN_FAST_BASE}/api/reports/${id}`, {
-        headers: { Authorization: `Bearer ${MARKDOWN_FAST_TOKEN}` },
-        signal: AbortSignal.timeout(5000),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.content ?? null;
-      }
-    } catch {
-      // Fall through to local
-    }
+  if (!MARKDOWN_FAST_TOKEN) {
+    return null;
   }
 
-  // Local fallback
-  const local = reportStore.get(id);
-  return local?.markdown ?? null;
+  try {
+    const res = await fetch(`${MARKDOWN_FAST_BASE}/api/reports/${id}`, {
+      headers: { Authorization: `Bearer ${MARKDOWN_FAST_TOKEN}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.content ?? null;
+    }
+  } catch {
+    // External lookup failed
+  }
+
+  return null;
 }
 
 /**
- * Revoke (delete) a published report.
+ * Revoke (delete) a published report on markdown.fast.
+ *
+ * RESIDUAL (WP5): no production callers. External DELETE only when MARKDOWN_FAST_TOKEN
+ * is set. Local reports regenerate from matchId — candidate/match erasure removes the
+ * source. Wiring into GDPR Art.17 eraseCandidateData is a product decision (owner:
+ * recruiting). Do not delete this export until that decision lands.
  */
 export async function revokeReport(id: string): Promise<void> {
-  if (MARKDOWN_FAST_TOKEN) {
-    try {
-      await fetch(`${MARKDOWN_FAST_BASE}/api/reports/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${MARKDOWN_FAST_TOKEN}` },
-        signal: AbortSignal.timeout(5000),
-      });
-    } catch {
-      // Best-effort
-    }
+  if (!MARKDOWN_FAST_TOKEN) {
+    return;
   }
 
-  // Always clean local store
-  reportStore.delete(id);
-}
-
-// ── Local fallback store ──
-
-interface StoredReport {
-  markdown: string;
-  title: string;
-  createdAt: Date;
-}
-
-const reportStore = new Map<string, StoredReport>();
-
-function generateReportId(): string {
-  return `rpt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-/**
- * Get all locally stored reports (for listing/admin purposes).
- */
-export function listLocalReports(): Array<{
-  id: string;
-  title: string;
-  createdAt: Date;
-}> {
-  return Array.from(reportStore.entries()).map(([id, r]) => ({
-    id,
-    title: r.title,
-    createdAt: r.createdAt,
-  }));
+  try {
+    await fetch(`${MARKDOWN_FAST_BASE}/api/reports/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${MARKDOWN_FAST_TOKEN}` },
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // Best-effort
+  }
 }

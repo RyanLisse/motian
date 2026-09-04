@@ -8,6 +8,7 @@ import type { CandidateMatchItem } from "@/components/candidate-wizard/candidate
 import { CandidateMatchCard } from "@/components/candidate-wizard/candidate-match-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiFetch } from "@/src/lib/client-api";
 
 interface LinkCandidatesDialogProps {
   jobId: string;
@@ -157,7 +158,7 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
     error: triggerError,
   } = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/vacatures/${jobId}/match-kandidaten`, { method: "POST" });
+      const res = await apiFetch(`/api/vacatures/${jobId}/match-kandidaten`, { method: "POST" });
       if (!res.ok) throw new Error("Matchen mislukt");
       return res.json() as Promise<{ runId: string; alreadyLinked: string[] }>;
     },
@@ -184,7 +185,7 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
       return status === "running" ? 2000 : false;
     },
     queryFn: async () => {
-      const res = await fetch(`/api/vacatures/${jobId}/match-kandidaten?runId=${runId}`);
+      const res = await apiFetch(`/api/vacatures/${jobId}/match-kandidaten?runId=${runId}`);
       if (!res.ok) throw new Error("Status ophalen mislukt");
       const data = await res.json();
 
@@ -246,7 +247,7 @@ export function LinkCandidatesDialog({ jobId, jobTitle }: LinkCandidatesDialogPr
     setSubmitting(true);
     setSubmitError("");
     try {
-      const res = await fetch(`/api/vacatures/${jobId}/koppel`, {
+      const res = await apiFetch(`/api/vacatures/${jobId}/koppel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ matchIds }),

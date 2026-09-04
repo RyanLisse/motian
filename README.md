@@ -27,17 +27,9 @@ Motian is een **Nederlands recruitment operations platform** dat vacatures autom
 
 Gebouwd voor recruiters en detacheringsbureaus die actief zijn in de Nederlandse publieke sector.
 
-## Externe zoekindex
+## Zoeken
 
-Motian kan optioneel een **Typesense** index gebruiken voor snelle tekst-retrieval op vacatures en kandidaten, terwijl PostgreSQL de bron van waarheid blijft.
-
-- Zonder `TYPESENSE_URL` en `TYPESENSE_API_KEY` blijft de applicatie volledig op de bestaande PostgreSQL zoekpaden draaien.
-- Met Typesense ingeschakeld gebruikt de app externe tekstzoekresultaten waar dat veilig kan, met fallback naar PostgreSQL bij fouten of niet-ondersteunde filters.
-- Na het activeren van Typesense kun je de index vullen met:
-
-```bash
-pnpm search:reindex
-```
+Vacature- en kandidaatzoeken draait op **PostgreSQL** (tekst + pgvector hybrid search). Er is geen externe Typesense-reindexstap meer in de shipped surface (`pnpm search:reindex` bestaat niet).
 
 ## Autopilot
 
@@ -538,7 +530,6 @@ gantt
 
 ```
 motian/
-├── agent/                        # Standalone LiveKit voice agent package
 ├── app/                          # Next.js App Router
 │   ├── api/                      # 22 API route groepen (Nederlandse paden)
 │   │   ├── chat/                 # AI chat streaming endpoint
@@ -849,8 +840,7 @@ Voeg `INSTALL_QLTY=1` toe als je tijdens bootstrap ook de Qlty CLI wilt installe
 
 ### Standalone subprojecten
 
-- `pnpm install` vanaf de repo-root bootstrap nu ook `agent/` en `extension/` via `pnpm-workspace.yaml`.
-- `agent/` behoudt zijn eigen `pnpm-lock.yaml` voor volledig standalone installs.
+- `pnpm install` vanaf de repo-root bootstrap `extension/` via `pnpm-workspace.yaml`.
 - `extension/` gebruikt bewust de root `pnpm-lock.yaml` als gepinde dependency-bron.
 - Zie de README in elke submap voor build/typecheck commando's en install-afhankelijke gegenereerde artifacts zoals `extension/.wxt/tsconfig.json`.
 

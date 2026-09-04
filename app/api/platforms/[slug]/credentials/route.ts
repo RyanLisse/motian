@@ -1,6 +1,7 @@
 import { tasks } from "@trigger.dev/sdk";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { createConfig, recordPlatformOnboardingEvent } from "@/src/services/scrapers";
 import type { platformOnboardTask } from "@/trigger/platform-onboard";
 
@@ -15,6 +16,11 @@ const credentialsSchema = z
   .refine((obj) => JSON.stringify(obj).length <= 4096, { message: "Payload te groot (max 4KB)" });
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const principalOrResponse = await requirePrincipal(req);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   const { slug: rawSlug } = await params;
 
   // Validate slug format

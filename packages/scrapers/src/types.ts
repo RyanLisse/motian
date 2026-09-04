@@ -19,12 +19,7 @@ export type PlatformAdapterKind =
   | "api_json"
   | "ai_dynamic";
 
-export type PlatformAuthMode =
-  | "none"
-  | "api_key"
-  | "oauth"
-  | "session"
-  | "username_password";
+export type PlatformAuthMode = "none" | "api_key" | "oauth" | "session" | "username_password";
 
 export type PlatformCapability =
   | "activation"

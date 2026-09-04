@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import type { NextRequest } from "next/server";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { activatePlatform } from "@/src/services/scrapers";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,11 @@ export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const principalOrResponse = await requirePrincipal(_request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   try {
     const { slug } = await params;
     const data = await activatePlatform(slug, "ui");

@@ -6,16 +6,20 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { Button } from "@/components/ui/button";
+import { toBffPath } from "@/src/lib/client-api";
 
 // Use CDN worker to avoid Next.js bundling issues
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface CvDocumentViewerProps {
+  /** Persisted candidate id — preferred authorization key for /api/cv-file. */
+  kandidaatId: string;
+  /** Stored resume URL — used only for client-side PDF/DOCX type detection. */
   url: string;
   candidateName: string;
 }
 
-export function CvDocumentViewer({ url, candidateName }: CvDocumentViewerProps) {
+export function CvDocumentViewer({ kandidaatId, url, candidateName }: CvDocumentViewerProps) {
   const [open, setOpen] = useState(false);
   const [numPages, setNumPages] = useState<number>(0);
 
@@ -24,8 +28,8 @@ export function CvDocumentViewer({ url, candidateName }: CvDocumentViewerProps) 
     url.toLowerCase().endsWith(".docx") ||
     url.includes("application/vnd.openxmlformats-officedocument");
 
-  // Proxy private Vercel Blob URLs through our API route
-  const proxyUrl = `/api/cv-file?url=${encodeURIComponent(url)}`;
+  // Record-bound proxy via BFF (attaches bearer server-side).
+  const proxyUrl = toBffPath(`/api/cv-file?kandidaatId=${encodeURIComponent(kandidaatId)}`);
 
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages);

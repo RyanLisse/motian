@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { apiFetch } from "@/src/lib/client-api";
 import {
   markPersistedChatSession,
   readSessionStorage,
@@ -114,7 +115,7 @@ export function buildLoadedSessionState(
 
 export async function fetchChatSession(
   nextSessionId: string,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: typeof fetch = apiFetch,
 ): Promise<LoadedSessionState> {
   const response = await fetchImpl(`/api/chat-sessies/${nextSessionId}`);
 

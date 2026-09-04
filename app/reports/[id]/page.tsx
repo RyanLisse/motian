@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getReport } from "@/src/lib/markdown-fast";
+import { fetchMatchReport } from "@/src/services/report-helpers";
 
 export const metadata: Metadata = {
   title: "Beoordelingsrapport",
@@ -37,15 +37,27 @@ em { color: #6b7280; font-size: 0.85rem; }
 strong { color: #111827; }
 `;
 
-/** Simple markdown-to-HTML: headings, bold, italic, tables, lists, hr. */
-function markdownToHtml(md: string): string {
+/** Escape text fragments before HTML assembly — DB/AI fields are untrusted. */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Simple markdown-to-HTML: headings, bold, italic, tables, lists, hr.
+ * Escapes every text fragment before tags; applies `**`/`*` after escaping.
+ */
+export function markdownToHtml(md: string): string {
   return (
     md
       .split("\n")
       .map((line) => {
         // Headings
-        if (line.startsWith("## ")) return `<h2>${line.slice(3)}</h2>`;
-        if (line.startsWith("# ")) return `<h1>${line.slice(2)}</h1>`;
+        if (line.startsWith("## ")) return `<h2>${escapeHtml(line.slice(3))}</h2>`;
+        if (line.startsWith("# ")) return `<h1>${escapeHtml(line.slice(2))}</h1>`;
 
         // Horizontal rule
         if (line.trim() === "---") return "<hr />";
@@ -57,26 +69,26 @@ function markdownToHtml(md: string): string {
           const cells = line
             .split("|")
             .filter(Boolean)
-            .map((c) => c.trim());
+            .map((c) => escapeHtml(c.trim()));
           const tag = "td";
           return `<tr>${cells.map((c) => `<${tag}>${c}</${tag}>`).join("")}</tr>`;
         }
 
         // Ordered list
         const olMatch = line.match(/^(\d+)\.\s+(.+)$/);
-        if (olMatch) return `<li>${olMatch[2]}</li>`;
+        if (olMatch) return `<li>${escapeHtml(olMatch[2] ?? "")}</li>`;
 
         // Unordered list
-        if (line.startsWith("- ")) return `<li>${line.slice(2)}</li>`;
+        if (line.startsWith("- ")) return `<li>${escapeHtml(line.slice(2))}</li>`;
 
         // Blank line
         if (line.trim() === "") return "";
 
         // Paragraph
-        return `<p>${line}</p>`;
+        return `<p>${escapeHtml(line)}</p>`;
       })
       .join("\n")
-      // Inline formatting
+      // Inline formatting after escape so emphasis still works
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.+?)\*/g, "<em>$1</em>")
       // Wrap table rows in table
@@ -88,13 +100,14 @@ function markdownToHtml(md: string): string {
 
 export default async function ReportPage({ params }: Props) {
   const { id } = await params;
-  const markdown = await getReport(id);
+  // Local publish URLs are matchIds — regenerate deterministically (R14)
+  const result = await fetchMatchReport(id);
 
-  if (!markdown) {
+  if (!result.ok) {
     notFound();
   }
 
-  const html = markdownToHtml(markdown);
+  const html = markdownToHtml(result.markdown);
 
   return (
     <html lang="nl">
@@ -102,7 +115,7 @@ export default async function ReportPage({ params }: Props) {
         <style>{REPORT_CSS}</style>
       </head>
       <body>
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: server-generated markdown from report-generator, not user input */}
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: fragments escaped via escapeHtml before assembly */}
         <div dangerouslySetInnerHTML={{ __html: html }} />
       </body>
     </html>

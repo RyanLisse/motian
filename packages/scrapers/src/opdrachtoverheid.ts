@@ -1,12 +1,5 @@
+import { ensureMinLength, sanitizeHours, stripHtml, validDate } from "./lib/utils";
 import type { RawScrapedListing } from "./types";
-import {
-  stripHtml,
-  toAbsoluteUrl,
-  decodeText,
-  sanitizeHours,
-  ensureMinLength,
-  validDate,
-} from "./lib/utils";
 
 const API_BASE = "https://kbenp-match-api.azurewebsites.net";
 const PAGE_SIZE = 1000;
@@ -175,7 +168,9 @@ export async function scrapeOpdrachtoverheid(
         const tenders = data.negometrix_tenders ?? [];
         allTenders.push(...tenders);
 
-        console.log(`Opdrachtoverheid page ${page}: ${tenders.length} (total: ${allTenders.length})`);
+        console.log(
+          `Opdrachtoverheid page ${page}: ${tenders.length} (total: ${allTenders.length})`,
+        );
 
         if (limit && allTenders.length >= limit) {
           break;

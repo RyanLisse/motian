@@ -4,6 +4,7 @@ import {
   getLiveKitServerConfig,
   LIVEKIT_UNCONFIGURED_ERROR,
 } from "../src/lib/livekit";
+import { createTestAuthHeaders, TEST_API_SECRET } from "./helpers/session";
 
 describe("LiveKit config helpers", () => {
   it("prefers LIVEKIT_URL when both url env vars are present", () => {
@@ -46,11 +47,13 @@ describe("LiveKit config helpers", () => {
 describe("/api/livekit-token route", () => {
   beforeEach(() => {
     vi.resetModules();
+    process.env.API_SECRET = TEST_API_SECRET;
   });
 
   afterEach(() => {
     vi.resetModules();
     vi.unstubAllEnvs();
+    delete process.env.API_SECRET;
     delete process.env.NEXT_PUBLIC_LIVEKIT_URL;
     delete process.env.LIVEKIT_URL;
   });
@@ -59,9 +62,14 @@ describe("/api/livekit-token route", () => {
     vi.stubEnv("LIVEKIT_API_KEY", "test-livekit-key");
     vi.stubEnv("LIVEKIT_API_SECRET", "test-livekit-secret");
     vi.stubEnv("LIVEKIT_URL", "wss://motian.livekit.cloud");
+    vi.stubEnv("API_SECRET", TEST_API_SECRET);
 
     const { GET } = await import("../app/api/livekit-token/route");
-    const response = await GET();
+    const response = await GET(
+      new Request("http://localhost/api/livekit-token", {
+        headers: createTestAuthHeaders(),
+      }),
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
@@ -73,11 +81,13 @@ describe("/api/livekit-token route", () => {
     vi.stubEnv("LIVEKIT_API_SECRET", "test-livekit-secret");
     vi.stubEnv("LIVEKIT_URL", "wss://motian.livekit.cloud");
     vi.stubEnv("NEXT_PUBLIC_LIVEKIT_URL", "wss://public.livekit.cloud");
+    vi.stubEnv("API_SECRET", TEST_API_SECRET);
 
     const { POST } = await import("../app/api/livekit-token/route");
     const response = await POST(
       new Request("http://localhost/api/livekit-token", {
         method: "POST",
+        headers: createTestAuthHeaders(),
         body: JSON.stringify({
           room_name: "motian-audio-room",
           participant_name: "Recruiter",
@@ -101,11 +111,13 @@ describe("/api/livekit-token route", () => {
     vi.stubEnv("LIVEKIT_API_KEY", "test-livekit-key");
     vi.stubEnv("LIVEKIT_API_SECRET", "test-livekit-secret");
     vi.stubEnv("LIVEKIT_URL", "wss://motian.livekit.cloud");
+    vi.stubEnv("API_SECRET", TEST_API_SECRET);
 
     const { POST } = await import("../app/api/livekit-token/route");
     const response = await POST(
       new Request("http://localhost/api/livekit-token", {
         method: "POST",
+        headers: createTestAuthHeaders(),
         body: JSON.stringify({}),
       }),
     );
@@ -118,9 +130,14 @@ describe("/api/livekit-token route", () => {
   });
 
   it("returns 503 when LiveKit is unavailable", async () => {
+    vi.stubEnv("API_SECRET", TEST_API_SECRET);
     const { GET, POST } = await import("../app/api/livekit-token/route");
 
-    const availabilityResponse = await GET();
+    const availabilityResponse = await GET(
+      new Request("http://localhost/api/livekit-token", {
+        headers: createTestAuthHeaders(),
+      }),
+    );
     expect(availabilityResponse.status).toBe(503);
     await expect(availabilityResponse.json()).resolves.toEqual({
       enabled: false,
@@ -128,7 +145,10 @@ describe("/api/livekit-token route", () => {
     });
 
     const tokenResponse = await POST(
-      new Request("http://localhost/api/livekit-token", { method: "POST" }),
+      new Request("http://localhost/api/livekit-token", {
+        method: "POST",
+        headers: createTestAuthHeaders(),
+      }),
     );
     expect(tokenResponse.status).toBe(503);
     await expect(tokenResponse.json()).resolves.toEqual({

@@ -46,7 +46,9 @@ export const platformCatalog = pgTable("platform_catalog", {
 export const scraperConfigs = pgTable(
   "scraper_configs",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     platform: text("platform").notNull(),
     baseUrl: text("base_url").notNull(),
     isActive: boolean("is_active").notNull().default(true),
@@ -74,7 +76,9 @@ export const scraperConfigs = pgTable(
 export const scrapeResults = pgTable(
   "scrape_results",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     configId: text("config_id").references(() => scraperConfigs.id, {
       onDelete: "set null",
     }),
@@ -99,7 +103,9 @@ export const scrapeResults = pgTable(
 export const platformOnboardingRuns = pgTable(
   "platform_onboarding_runs",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     platformSlug: text("platform_slug")
       .notNull()
       .references(() => platformCatalog.slug, { onDelete: "cascade" }),
@@ -133,7 +139,9 @@ export const platformOnboardingRuns = pgTable(
 export const jobs = pgTable(
   "jobs",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     platform: text("platform").notNull(),
     externalId: text("external_id").notNull(),
     externalUrl: text("external_url"),
@@ -228,9 +236,15 @@ export const jobs = pgTable(
     statusProvinceIdx: index("idx_jobs_status_province").on(table.status, table.province),
     statusScrapedAtIdx: index("idx_jobs_status_scraped_at").on(table.status, table.scrapedAt),
     statusDeletedAtIdx: index("idx_jobs_status_deleted_at").on(table.status, table.deletedAt),
-    openActiveIdx: index("idx_jobs_open_active").on(table.status, table.scrapedAt).where(sql`deleted_at IS NULL AND status = 'open'`),
-    platformActiveIdx: index("idx_jobs_platform_active").on(table.platform, table.scrapedAt).where(sql`deleted_at IS NULL`),
-    visibleEndClientIdx: index("idx_jobs_visible_end_client").on(table.status, table.endClient, table.company).where(sql`deleted_at IS NULL AND status <> 'archived'`),
+    openActiveIdx: index("idx_jobs_open_active")
+      .on(table.status, table.scrapedAt)
+      .where(sql`deleted_at IS NULL AND status = 'open'`),
+    platformActiveIdx: index("idx_jobs_platform_active")
+      .on(table.platform, table.scrapedAt)
+      .where(sql`deleted_at IS NULL`),
+    visibleEndClientIdx: index("idx_jobs_visible_end_client")
+      .on(table.status, table.endClient, table.company)
+      .where(sql`deleted_at IS NULL AND status <> 'archived'`),
     // GIN indexes managed via SQL (Drizzle lacks native GIN/tsvector support):
     // - idx_jobs_search_vector: GIN on search_vector tsvector column (full-text search)
     // - idx_jobs_title_trgm: GIN with gin_trgm_ops on title (fuzzy matching)
@@ -243,7 +257,9 @@ export const jobs = pgTable(
 export const candidates = pgTable(
   "candidates",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
     email: text("email"),
     phone: text("phone"),
@@ -318,7 +334,9 @@ export const escoSkills = pgTable(
 export const skillAliases = pgTable(
   "skill_aliases",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     alias: text("alias").notNull(),
     normalizedAlias: text("normalized_alias").notNull(),
     language: text("language"),
@@ -343,7 +361,9 @@ export const skillAliases = pgTable(
 export const candidateSkills = pgTable(
   "candidate_skills",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     candidateId: text("candidate_id")
       .notNull()
       .references(() => candidates.id, { onDelete: "cascade" }),
@@ -374,7 +394,9 @@ export const candidateSkills = pgTable(
 export const jobSkills = pgTable(
   "job_skills",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     jobId: text("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
@@ -409,7 +431,9 @@ export const jobSkills = pgTable(
 export const skills = pgTable(
   "skills",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     createdAt: timestamp("created_at").$defaultFn(() => new Date()),
@@ -424,7 +448,9 @@ export const skills = pgTable(
 export const candidateSkillsV2 = pgTable(
   "candidate_skills_v2",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     candidateId: text("candidate_id")
       .notNull()
       .references(() => candidates.id, { onDelete: "cascade" }),
@@ -451,7 +477,9 @@ export const candidateSkillsV2 = pgTable(
 export const jobSkillsV2 = pgTable(
   "job_skills_v2",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     jobId: text("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
@@ -480,7 +508,9 @@ export const jobSkillsV2 = pgTable(
 export const skillMappings = pgTable(
   "skill_mappings",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     rawSkill: text("raw_skill").notNull(),
     normalizedSkill: text("normalized_skill").notNull(),
     escoUri: text("esco_uri").references(() => escoSkills.uri, { onDelete: "set null" }),
@@ -511,7 +541,9 @@ export const skillMappings = pgTable(
 export const jobMatches = pgTable(
   "job_matches",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
     candidateId: text("candidate_id").references(() => candidates.id, {
       onDelete: "set null",
@@ -552,7 +584,9 @@ export const jobMatches = pgTable(
 export const applications = pgTable(
   "applications",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
     candidateId: text("candidate_id").references(() => candidates.id, { onDelete: "set null" }),
     matchId: text("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
@@ -570,7 +604,9 @@ export const applications = pgTable(
     jobCandidateUniqueIdx: uniqueIndex("uq_applications_job_candidate_active")
       .on(table.jobId, table.candidateId)
       .where(sql`deleted_at IS NULL`),
-    jobActiveIdx: index("idx_applications_job_active").on(table.jobId).where(sql`deleted_at IS NULL`),
+    jobActiveIdx: index("idx_applications_job_active")
+      .on(table.jobId)
+      .where(sql`deleted_at IS NULL`),
     candidateActiveIdx: index("idx_applications_candidate_active").on(
       table.candidateId,
       table.deletedAt,
@@ -583,7 +619,9 @@ export const applications = pgTable(
 export const interviews = pgTable(
   "interviews",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     applicationId: text("application_id")
       .references(() => applications.id, { onDelete: "cascade" })
       .notNull(),
@@ -641,7 +679,9 @@ export const overlapGroups = pgTable("overlap_groups", {
 export const gdprAuditLog = pgTable(
   "gdpr_audit_log",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     action: text("action").notNull(),
     subjectType: text("subject_type").notNull(),
     subjectId: text("subject_id").notNull(),
@@ -661,7 +701,9 @@ export const gdprAuditLog = pgTable(
 export const chatSessions = pgTable(
   "chat_sessions",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     sessionId: text("session_id").notNull(),
     messages: jsonb("messages").notNull().default([]),
     context: jsonb("context").default({}),
@@ -681,7 +723,9 @@ export const chatSessions = pgTable(
 export const chatSessionMessages = pgTable(
   "chat_session_messages",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     sessionId: text("session_id").notNull(),
     messageId: text("message_id").notNull(),
     role: text("role").notNull(),
@@ -709,7 +753,9 @@ export const chatSessionMessages = pgTable(
 export const messages = pgTable(
   "messages",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     applicationId: text("application_id")
       .references(() => applications.id, { onDelete: "cascade" })
       .notNull(),
@@ -731,13 +777,17 @@ export const messages = pgTable(
 export const screeningCalls = pgTable(
   "screening_calls",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     candidateId: text("candidate_id")
       .notNull()
       .references(() => candidates.id, { onDelete: "cascade" }),
     jobId: text("job_id").references(() => jobs.id, { onDelete: "set null" }),
     matchId: text("match_id").references(() => jobMatches.id, { onDelete: "set null" }),
-    applicationId: text("application_id").references(() => applications.id, { onDelete: "set null" }),
+    applicationId: text("application_id").references(() => applications.id, {
+      onDelete: "set null",
+    }),
     // LiveKit room details
     roomName: text("room_name").notNull(),
     roomToken: text("room_token"),
@@ -775,7 +825,9 @@ export const screeningCalls = pgTable(
 export const platformSettings = pgTable(
   "platform_settings",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     category: text("category").notNull(),
     key: text("key").notNull(),
     value: jsonb("value").notNull(),
@@ -795,7 +847,9 @@ export const platformSettings = pgTable(
 export const autopilotRuns = pgTable(
   "autopilot_runs",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     runId: text("run_id").notNull().unique(),
     status: text("status").notNull(),
     startedAt: timestamp("started_at").notNull(),
@@ -823,9 +877,13 @@ export const autopilotRuns = pgTable(
 export const autopilotFindings = pgTable(
   "autopilot_findings",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     findingId: text("finding_id").notNull(),
-    runId: text("run_id").notNull().references(() => autopilotRuns.runId, { onDelete: "cascade" }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => autopilotRuns.runId, { onDelete: "cascade" }),
     category: text("category").notNull(),
     surface: text("surface").notNull(),
     title: text("title").notNull(),
@@ -855,7 +913,9 @@ export const autopilotFindings = pgTable(
 export const agentEvents = pgTable(
   "agent_events",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     // Which agent emitted this event
     sourceAgent: text("source_agent").notNull(), // intake, matcher, screener, scheduler, sourcing, communicator
     // What happened

@@ -1,54 +1,49 @@
 import { db, sql } from "@/src/db";
+import { requirePrincipal } from "@/src/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const diagnostics: Record<string, unknown> = {
-    timestamp: new Date().toISOString(),
-    nodeVersion: process.version,
-    env: {
-      DATABASE_URL: process.env.DATABASE_URL ? "SET" : "MISSING",
-      NODE_ENV: process.env.NODE_ENV,
-    },
-  };
-
-  // Test DB connection
-  try {
-    const result = await db.execute(sql`SELECT 1 as ok`);
-    diagnostics.db = { connected: true, result: result.rows[0] };
-  } catch (e) {
-    diagnostics.db = {
-      connected: false,
-      error: e instanceof Error ? e.message : String(e),
-      stack: e instanceof Error ? e.stack?.split("\n").slice(0, 5) : undefined,
-    };
+/**
+ * Non-production diagnostics only. Payload is booleans / coarse enums — never
+ * exception messages, stack fragments, schema inventory, or env values.
+ */
+export async function GET(request: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return Response.json({ error: "Niet gevonden" }, { status: 404 });
   }
 
-  // Test importing sidebar-metadata (the function used in root layout)
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
+  // Past the production early-return: NODE_ENV is narrowed away from "production".
+  const diagnostics: Record<string, unknown> = {
+    timestamp: new Date().toISOString(),
+    nodeEnv: "non-production",
+    databaseConfigured: Boolean(process.env.DATABASE_URL),
+  };
+
+  try {
+    await db.execute(sql`SELECT 1 as ok`);
+    diagnostics.db = { connected: true };
+  } catch {
+    diagnostics.db = { connected: false };
+  }
+
   try {
     const { getSidebarMetadata } = await import("@/src/services/sidebar-metadata");
     const meta = await getSidebarMetadata();
-    diagnostics.sidebar = { ok: true, hasData: !!meta };
-  } catch (e) {
-    diagnostics.sidebar = {
-      ok: false,
-      error: e instanceof Error ? e.message : String(e),
-      stack: e instanceof Error ? e.stack?.split("\n").slice(0, 5) : undefined,
-    };
+    diagnostics.sidebar = { ok: true, hasData: Boolean(meta) };
+  } catch {
+    diagnostics.sidebar = { ok: false };
   }
 
-  // Test importing the schema
   try {
-    const schema = await import("@/src/db/schema");
-    diagnostics.schema = {
-      ok: true,
-      tables: Object.keys(schema).filter((k) => !k.startsWith("_")),
-    };
-  } catch (e) {
-    diagnostics.schema = {
-      ok: false,
-      error: e instanceof Error ? e.message : String(e),
-    };
+    await import("@/src/db/schema");
+    diagnostics.schema = { ok: true };
+  } catch {
+    diagnostics.schema = { ok: false };
   }
 
   return Response.json(diagnostics, {

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/src/lib/client-api";
 import { validateCvUploadFile } from "@/src/lib/cv-upload";
 
 type UploadState = "idle" | "dragging" | "uploading" | "success" | "error";
@@ -95,7 +96,7 @@ export function SidebarCvDropZone({
         const formData = new FormData();
         formData.append("cv", file);
 
-        const uploadRes = await fetch("/api/cv-upload", {
+        const uploadRes = await apiFetch("/api/cv-upload", {
           method: "POST",
           body: formData,
         });
@@ -120,7 +121,7 @@ export function SidebarCvDropZone({
           };
         };
 
-        const saveRes = await fetch("/api/cv-upload/save", {
+        const saveRes = await apiFetch("/api/cv-upload/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

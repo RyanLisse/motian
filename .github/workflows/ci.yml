@@ -305,11 +305,8 @@ jobs:
       - name: Test with coverage
         run: |
           start=$(date +%s)
-          pnpm test:coverage -- \
-            --coverage.thresholds.statements 1 \
-            --coverage.thresholds.branches 1 \
-            --coverage.thresholds.functions 1 \
-            --coverage.thresholds.lines 1
+          # Enforce committed floors from vitest.config.ts — no per-run overrides (R18 / PD3).
+          pnpm test:coverage
           echo "::notice:: Test run completed in $(($(date +%s) - start))s"
 
       - name: Upload coverage artifact

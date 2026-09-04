@@ -5,10 +5,13 @@ import { defineConfig } from "vitest/config";
 // without a real database connection.
 process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/motian_test";
 
-const coverageThreshold = Number(process.env.COVERAGE_THRESHOLD ?? "24");
-const normalizedCoverageThreshold = Number.isFinite(coverageThreshold)
-  ? Math.min(Math.max(Math.trunc(coverageThreshold), 1), 100)
-  : 25;
+/** Committed coverage floor (PD3). Independent metrics — do not derive one from another. */
+export const COVERAGE_FLOORS = {
+  statements: 30,
+  lines: 30,
+  functions: 50,
+  branches: 60,
+} as const;
 
 export default defineConfig({
   test: {
@@ -23,6 +26,9 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "text-summary", "json-summary"],
       reportsDirectory: "./coverage",
+      // Scoped to first-party source so the v8 provider doesn't instrument the
+      // whole dependency graph — without this, `pnpm test:coverage` OOMs.
+      include: ["app/**", "components/**", "src/**", "packages/*/src/**", "trigger/**"],
       exclude: [
         "node_modules/",
         "tests/",
@@ -32,13 +38,8 @@ export default defineConfig({
         ".next/",
         "**/.next/**",
       ],
-      // Gate: fail if coverage drops below minimum (raise over time)
-      thresholds: {
-        statements: normalizedCoverageThreshold,
-        branches: Math.max(1, Math.min(100, Math.floor(normalizedCoverageThreshold * 0.8))),
-        functions: normalizedCoverageThreshold,
-        lines: normalizedCoverageThreshold,
-      },
+      // Gate: fail if coverage drops below committed floor (raise over time)
+      thresholds: { ...COVERAGE_FLOORS },
     },
   },
   resolve: {
