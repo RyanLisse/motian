@@ -1,3 +1,8 @@
+import {
+  hasExplicitInternalServerUrl,
+  resolveInternalServerUrl,
+} from "@/src/lib/internal-server-url";
+
 export const OPENAPI_ROUTE = "/api/openapi";
 
 function trimTrailingSlash(value: string): string {
@@ -5,9 +10,8 @@ function trimTrailingSlash(value: string): string {
 }
 
 export function getApiBaseUrl(request: Request): string {
-  const configuredUrl = process.env.PUBLIC_API_BASE_URL ?? process.env.NEXT_URL;
-  if (configuredUrl) {
-    return trimTrailingSlash(configuredUrl);
+  if (hasExplicitInternalServerUrl()) {
+    return resolveInternalServerUrl();
   }
 
   return trimTrailingSlash(new URL(request.url).origin);

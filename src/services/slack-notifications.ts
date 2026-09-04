@@ -1,5 +1,6 @@
 import type { KnownBlock } from "@slack/web-api";
 import { WebClient } from "@slack/web-api";
+import { resolveInternalServerUrl } from "@/src/lib/internal-server-url";
 
 // ========== Types ==========
 
@@ -48,7 +49,7 @@ function matchBlocks(data: Record<string, unknown>): SlackBlock[] {
   const score = Number(data.matchScore ?? 0);
   const recommendation = String(data.recommendation ?? "");
   const matchId = String(data.matchId ?? "");
-  const baseUrl = process.env.NEXT_URL ?? "http://localhost:3001";
+  const baseUrl = resolveInternalServerUrl();
 
   const scoreEmoji = score >= 80 ? "🟢" : score >= 60 ? "🟡" : "🟠";
 
