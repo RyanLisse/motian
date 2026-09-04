@@ -1,13 +1,13 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { MessageResponse } from "@/components/ai-elements/message";
 import {
   CHAT_MESSAGE_ALLOWED_TAGS,
   CHAT_MESSAGE_COMPONENTS,
   normalizeChatJobHref,
   rewriteChatJobLinks,
 } from "@/components/chat/chat-message-links";
-import { MessageResponse } from "@/src/components/ai-elements/message";
 
 const JOB_ID = "123e4567-e89b-42d3-a456-426614174000";
 

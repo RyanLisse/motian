@@ -2,9 +2,9 @@ import { dynamicAdapter } from "./dynamic-adapter";
 import { scrapeFlextender } from "./flextender";
 import { mipublicAdapter } from "./mipublic";
 import { monsterboardAdapter } from "./monsterboard";
+import { nationaleVacaturebankAdapter } from "./nationalevacaturebank";
 import { scrapeOpdrachtoverheid } from "./opdrachtoverheid";
 import { platformDefinitions } from "./platform-definitions";
-import { nationaleVacaturebankAdapter } from "./nationalevacaturebank";
 import { starappleAdapter } from "./starapple";
 import { scrapeStriive } from "./striive";
 import type {
@@ -42,8 +42,7 @@ function createDirectScrapeAdapter(
       return {
         ok: true,
         status: "validated",
-        message:
-          adapterOptions.validationMessage ?? "Configuratie is geldig en klaar voor import.",
+        message: adapterOptions.validationMessage ?? "Configuratie is geldig en klaar voor import.",
       };
     },
 
@@ -73,106 +72,112 @@ function createDirectScrapeAdapter(
   };
 }
 
-const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefinitions.map((definition) => {
-  switch (definition.slug) {
-    case "flextender":
-      return {
-        ...definition,
-        adapter: createDirectScrapeAdapter(() => scrapeFlextender(), {
-          requiresRuntimeBaseUrl: false,
-          validationMessage:
-            "Configuratie is geldig. Flextender gebruikt een vaste bron-URL tijdens runtime.",
-        }),
-      };
-    case "opdrachtoverheid":
-      return {
-        ...definition,
-        adapter: {
-          async validate(): Promise<PlatformValidationResult> {
-            return {
-              ok: true,
-              status: "validated",
-              message:
-                "Configuratie is geldig. Opdrachtoverheid gebruikt een vaste API-bron tijdens runtime.",
-            };
-          },
+const implementedDefinitions: ImplementedPlatformDefinition[] = platformDefinitions.map(
+  (definition) => {
+    switch (definition.slug) {
+      case "flextender":
+        return {
+          ...definition,
+          adapter: createDirectScrapeAdapter(() => scrapeFlextender(), {
+            requiresRuntimeBaseUrl: false,
+            validationMessage:
+              "Configuratie is geldig. Flextender gebruikt een vaste bron-URL tijdens runtime.",
+          }),
+        };
+      case "opdrachtoverheid":
+        return {
+          ...definition,
+          adapter: {
+            async validate(): Promise<PlatformValidationResult> {
+              return {
+                ok: true,
+                status: "validated",
+                message:
+                  "Configuratie is geldig. Opdrachtoverheid gebruikt een vaste API-bron tijdens runtime.",
+              };
+            },
 
-          async scrape(
-            config: PlatformRuntimeConfig,
-            options?: { limit?: number; smoke?: boolean },
-          ): Promise<PlatformScrapeResult> {
-            return {
-              listings: await scrapeOpdrachtoverheid({
+            async scrape(
+              config: PlatformRuntimeConfig,
+              options?: { limit?: number; smoke?: boolean },
+            ): Promise<PlatformScrapeResult> {
+              return {
+                listings: await scrapeOpdrachtoverheid({
+                  limit: options?.limit,
+                  maxPages: config.parameters.maxPages,
+                  smoke: options?.smoke,
+                }),
+              };
+            },
+
+            async testImport(
+              config: PlatformRuntimeConfig,
+              options?: { limit?: number },
+            ): Promise<PlatformTestImportResult> {
+              const listings = await scrapeOpdrachtoverheid({
                 limit: options?.limit,
                 maxPages: config.parameters.maxPages,
-                smoke: options?.smoke,
-              }),
-            };
-          },
+                smoke: true,
+              });
 
-          async testImport(
-            config: PlatformRuntimeConfig,
-            options?: { limit?: number },
-          ): Promise<PlatformTestImportResult> {
-            const listings = await scrapeOpdrachtoverheid({
-              limit: options?.limit,
-              maxPages: config.parameters.maxPages,
-              smoke: true,
-            });
-
-            return {
-              status: listings.length > 0 ? "success" : "failed",
-              jobsFound: Math.min(listings.length, options?.limit ?? listings.length),
-              listings: listings.slice(0, options?.limit ?? listings.length),
-            };
+              return {
+                status: listings.length > 0 ? "success" : "failed",
+                jobsFound: Math.min(listings.length, options?.limit ?? listings.length),
+                listings: listings.slice(0, options?.limit ?? listings.length),
+              };
+            },
           },
-        },
-      };
-    case "mipublic":
-      return {
-        ...definition,
-        adapter: mipublicAdapter,
-      };
-    case "striive":
-      return {
-        ...definition,
-        adapter: createDirectScrapeAdapter(
-          (baseUrl, options) => scrapeStriive(baseUrl ?? definition.defaultBaseUrl, options),
-          {
-            requiresRuntimeBaseUrl: true,
-          },
-        ),
-      };
-    case "nationalevacaturebank":
-      return {
-        ...definition,
-        adapter: nationaleVacaturebankAdapter,
-      };
-    case "monsterboard":
-      return {
-        ...definition,
-        adapter: monsterboardAdapter,
-      };
-    case "werkzoeken":
-      return {
-        ...definition,
-        adapter: werkzoekenAdapter,
-      };
-    case "starapple-nl":
-      return {
-        ...definition,
-        adapter: starappleAdapter,
-      };
-    default:
-      throw new Error(`Geen adapter geregistreerd voor platform ${definition.slug}`);
-  }
-});
+        };
+      case "mipublic":
+        return {
+          ...definition,
+          adapter: mipublicAdapter,
+        };
+      case "striive":
+        return {
+          ...definition,
+          adapter: createDirectScrapeAdapter(
+            (baseUrl, options) => scrapeStriive(baseUrl ?? definition.defaultBaseUrl, options),
+            {
+              requiresRuntimeBaseUrl: true,
+            },
+          ),
+        };
+      case "nationalevacaturebank":
+        return {
+          ...definition,
+          adapter: nationaleVacaturebankAdapter,
+        };
+      case "monsterboard":
+        return {
+          ...definition,
+          adapter: monsterboardAdapter,
+        };
+      case "werkzoeken":
+        return {
+          ...definition,
+          adapter: werkzoekenAdapter,
+        };
+      case "starapple-nl":
+        return {
+          ...definition,
+          adapter: starappleAdapter,
+        };
+      default:
+        throw new Error(`Geen adapter geregistreerd voor platform ${definition.slug}`);
+    }
+  },
+);
 
 const implementedDefinitionMap = new Map(
   implementedDefinitions.map((definition) => [definition.slug, definition]),
 );
 
-export { getImplementedPlatformSlugs, getPlatformDefinition, listPlatformDefinitions } from "./platform-definitions";
+export {
+  getImplementedPlatformSlugs,
+  getPlatformDefinition,
+  listPlatformDefinitions,
+} from "./platform-definitions";
 
 export function listPlatformCatalogEntries(): ImplementedPlatformDefinition[] {
   return [...implementedDefinitions];

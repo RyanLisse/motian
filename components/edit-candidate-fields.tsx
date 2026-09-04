@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { apiFetch } from "@/src/lib/client-api";
 
 type FieldDef = {
   key: string;
@@ -65,7 +66,7 @@ export function EditCandidateFields({
 
     setSaving(key);
     try {
-      const res = await fetch(`/api/kandidaten/${candidateId}`, {
+      const res = await apiFetch(`/api/kandidaten/${candidateId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [key]: value }),

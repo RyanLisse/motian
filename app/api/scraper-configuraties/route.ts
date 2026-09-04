@@ -24,7 +24,7 @@ export const GET = withApiHandler(
     const { data, total } = await listScraperConfigsPage({ limit, offset });
 
     return Response.json(paginatedResponse(data, total, { page, limit, offset }), {
-      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+      headers: { "Cache-Control": "private, no-store" },
     });
   },
   {

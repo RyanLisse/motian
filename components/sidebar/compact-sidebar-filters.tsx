@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/src/lib/client-api";
 import { getOpdrachtenBasePath } from "@/src/lib/opdrachten-filter-url";
 import { OPDRACHTEN_PROVINCES } from "@/src/lib/opdrachten-filters";
 import { CompactMultiSelectFilter, RadiusSliderField } from "./sidebar-filter-controls";
@@ -71,7 +72,7 @@ function useSavedFilters() {
   const fetchFilters = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/zoekfilters");
+      const res = await apiFetch("/api/zoekfilters");
       if (res.ok) {
         const json = (await res.json()) as { data: SavedFilter[] };
         setItems(json.data);
@@ -87,7 +88,7 @@ function useSavedFilters() {
 
   const createFilter = useCallback(
     async (name: string, filters: SavedFilterPayload) => {
-      const res = await fetch("/api/zoekfilters", {
+      const res = await apiFetch("/api/zoekfilters", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, filters }),
@@ -100,7 +101,7 @@ function useSavedFilters() {
   );
 
   const deleteFilter = useCallback(async (id: string) => {
-    const res = await fetch(`/api/zoekfilters/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/zoekfilters/${id}`, { method: "DELETE" });
     if (res.ok) {
       setItems((prev) => prev.filter((f) => f.id !== id));
     }

@@ -179,15 +179,15 @@ export {
   eq,
   getTableColumns,
   gte,
-  like,
   inArray,
   isNotNull,
   isNull,
+  like,
   lt,
   lte,
   ne,
   or,
-  sql,
   type SQL,
+  sql,
 } from "drizzle-orm";
 export * from "./schema";

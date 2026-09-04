@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { MatchSuggestionCard } from "@/components/candidate-wizard/match-suggestion-card";
 import type { MatchSuggestionItem } from "@/components/candidate-wizard/types";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/src/lib/client-api";
 
 interface CandidateRecommendationPanelProps {
   candidateId: string;
@@ -101,7 +102,7 @@ export function CandidateRecommendationPanel({
     setError(null);
 
     try {
-      const response = await fetch(`/api/kandidaten/${candidateId}/match`, {
+      const response = await apiFetch(`/api/kandidaten/${candidateId}/match`, {
         method: "POST",
       });
       const body = await response.json().catch(() => null);
@@ -132,7 +133,7 @@ export function CandidateRecommendationPanel({
     setError(null);
 
     try {
-      const response = await fetch(`/api/kandidaten/${candidateId}/koppel`, {
+      const response = await apiFetch(`/api/kandidaten/${candidateId}/koppel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ matchIds: [recommendedMatch.matchId] }),

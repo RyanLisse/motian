@@ -9,11 +9,6 @@
  */
 
 import type { RawScrapedListing } from "./types";
-import {
-  toAbsoluteUrl,
-  decodeText,
-  sanitizeHours,
-} from "./lib/utils";
 
 const MAPPING_FUNCTIONS_AS_STRING = `
 function mapBoolean(val) {
@@ -239,9 +234,10 @@ export function resolveStriiveModalOptions(
   };
 }
 
-export function validateStriiveModalEnvironment(
-  env: NodeJS.ProcessEnv = process.env,
-): { tokenId: string; tokenSecret: string } {
+export function validateStriiveModalEnvironment(env: NodeJS.ProcessEnv = process.env): {
+  tokenId: string;
+  tokenSecret: string;
+} {
   const tokenId = env.MODAL_TOKEN_ID;
   const tokenSecret = env.MODAL_TOKEN_SECRET;
 

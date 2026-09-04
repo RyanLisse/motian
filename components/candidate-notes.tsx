@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { apiFetch } from "@/src/lib/client-api";
 
 export function CandidateNotes({
   candidateId,
@@ -23,7 +24,7 @@ export function CandidateNotes({
 
     setSaving(true);
     try {
-      const res = await fetch(`/api/kandidaten/${candidateId}/notities`, {
+      const res = await apiFetch(`/api/kandidaten/${candidateId}/notities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note: draft.trim() }),

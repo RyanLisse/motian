@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { createTestAuthHeaders, TEST_API_SECRET } from "./helpers/session";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -9,6 +10,10 @@ function readFile(...segments: string[]) {
 }
 
 describe("runtime cost reduction cleanup", () => {
+  afterEach(() => {
+    delete process.env.API_SECRET;
+  });
+
   it("removes the unused Trigger tasks and generic SSE route", () => {
     expect(fs.existsSync(path.join(ROOT, "trigger", "whatsapp-gateway.ts"))).toBe(false);
     expect(fs.existsSync(path.join(ROOT, "trigger", "autopilot-nightly.ts"))).toBe(false);
@@ -18,8 +23,13 @@ describe("runtime cost reduction cleanup", () => {
   });
 
   it("returns a static disabled WhatsApp status payload", async () => {
+    process.env.API_SECRET = TEST_API_SECRET;
     const mod = await import("../app/api/whatsapp/status/route");
-    const response = await mod.GET();
+    const response = await mod.GET(
+      new Request("http://localhost/api/whatsapp/status", {
+        headers: createTestAuthHeaders(),
+      }),
+    );
 
     expect(mod.dynamic).toBe("force-static");
     expect(mod.revalidate).toBe(300);

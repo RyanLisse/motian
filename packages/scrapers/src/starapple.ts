@@ -26,8 +26,7 @@ const DEFAULT_SITEMAP_URL = "https://www.starapple.nl/vacancy-sitemap.xml";
 const DETAIL_URL_PREFIX = "https://www.starapple.nl/vacatures/";
 const DEFAULT_DETAIL_CONCURRENCY = 4;
 const FETCH_TIMEOUT_MS = 30_000;
-const USER_AGENT =
-  "MotianScraper/1.0 (+https://motian.vercel.app) - contact: ryan@ryanlisse.com";
+const USER_AGENT = "MotianScraper/1.0 (+https://motian.vercel.app) - contact: ryan@ryanlisse.com";
 
 type StarappleOptions = {
   sitemapUrl: string;
@@ -54,7 +53,10 @@ function resolveStarappleOptions(config: PlatformRuntimeConfig): StarappleOption
   return { sitemapUrl, detailConcurrency, maxListings };
 }
 
-async function fetchText(url: string, signal?: AbortSignal): Promise<{ status: number; body: string }> {
+async function fetchText(
+  url: string,
+  signal?: AbortSignal,
+): Promise<{ status: number; body: string }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   const onAbort = () => controller.abort();

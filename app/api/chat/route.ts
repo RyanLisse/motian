@@ -9,6 +9,7 @@ import { nanoid } from "nanoid";
 import { after } from "next/server";
 import { buildSystemPrompt, getRecruitmentTools } from "@/src/ai/agent";
 import { resolveChatModel, tracedStreamText as streamText } from "@/src/lib/ai-models";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import {
   type ChatSessionContext,
   getRecentMessagesForContext,
@@ -81,6 +82,11 @@ async function loadSessionSnapshotOrFallback(sessionId: string): Promise<Session
 // ---------------------------------------------------------------------------
 
 export async function POST(req: Request) {
+  const principalOrResponse = await requirePrincipal(req);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   // 1. Rate limiting
   const ip = extractClientIp(req);
   const rateLimitResponse = checkRateLimit(ip);

@@ -510,7 +510,6 @@ gantt
 
 ```
 motian/
-├── agent/                        # Standalone LiveKit voice agent package
 ├── app/                          # Next.js App Router
 │   ├── api/                      # 22 API route groups (Dutch paths)
 │   │   ├── chat/                 # AI chat streaming endpoint
@@ -804,8 +803,7 @@ Add `INSTALL_QLTY=1` if you also want bootstrap to install the Qlty CLI when it 
 
 ### Standalone subprojects
 
-- `pnpm install` from the repo root now bootstraps `agent/` and `extension/` through `pnpm-workspace.yaml`.
-- `agent/` keeps its own `pnpm-lock.yaml` file for fully standalone installs.
+- `pnpm install` from the repo root bootstraps `extension/` through `pnpm-workspace.yaml`.
 - `extension/` intentionally uses the root `pnpm-lock.yaml` as its pinned dependency source.
 - See each subproject README for build/typecheck commands and install-generated artifacts such as `extension/.wxt/tsconfig.json`.
 

@@ -130,7 +130,8 @@ export const platformDefinitions: PlatformDefinition[] = [
     adapterKind: "http_html_list_detail",
     authMode: "none",
     attributionLabel: "Monsterboard",
-    badgeClassName: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
+    badgeClassName:
+      "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
     capabilities: ["detail_enrichment", "smoke_import", "validation"],
     description:
       "Publiek job board met JSON-LD detailpagina's en expliciete anti-bot blokkadeherkenning.",
@@ -172,7 +173,8 @@ export const platformDefinitions: PlatformDefinition[] = [
     adapterKind: "http_html_list_detail",
     authMode: "none",
     attributionLabel: "Werkzoeken.nl",
-    badgeClassName: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    badgeClassName:
+      "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     capabilities: [
       "configurable_path",
       "detail_enrichment",
@@ -199,8 +201,7 @@ export const platformDefinitions: PlatformDefinition[] = [
     adapterKind: "http_html_list_detail",
     authMode: "none",
     attributionLabel: "Starapple",
-    badgeClassName:
-      "border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    badgeClassName: "border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400",
     capabilities: ["detail_enrichment", "smoke_import", "validation"],
     description:
       "Werving- en selectiebureau gericht op IT-vacatures (development, data science, infrastructure, security). Yoast sitemap + HTML detail-extractie.",

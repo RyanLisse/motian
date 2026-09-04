@@ -7,6 +7,7 @@ import { jobs, overlapGroups, scrapeResults, scraperConfigs } from "../db/schema
 import { CIRCUIT_BREAKER_THRESHOLD } from "../lib/helpers";
 import { fetchDedupedJobsPage } from "./jobs/deduplication";
 import { buildJobFilterConditions } from "./jobs/query-filters";
+import { normalizeText } from "./normalize";
 import { getAnalytics, type PlatformStats, type ScrapeAnalytics } from "./scrape-results";
 import { getSidebarMetadata } from "./sidebar-metadata";
 
@@ -16,6 +17,10 @@ const DEFAULT_OVERLAP_LIMIT = 8;
 const OVERLAP_GROUPS_ROW_ID = "default";
 const TRIGGER_VISIBILITY_CACHE_TTL_SECONDS = 300;
 const TRIGGER_VISIBILITY_TIMEOUT_MS = 1_000;
+const OVERLAP_TEXT_NORMALIZATION = {
+  preserveTechnicalPunctuation: false,
+  nullWhenEmpty: true,
+} as const;
 
 // 5 min TTL — overlap groups are expensive to compute on 5000 candidates.
 // Trigger.dev refreshes dashboard cron every 15 min, and user activity is low.
@@ -324,18 +329,6 @@ async function getActiveVacancyCount(database: TransactionDb = db): Promise<numb
   return page.total;
 }
 
-function normalizeText(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const normalized = value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-  return normalized.length > 0 ? normalized : null;
-}
-
 function normalizeDateKey(value: Date | null): string | null {
   if (!value) return null;
   return value.toISOString().slice(0, 10);
@@ -507,12 +500,15 @@ export function buildListingOverlapGroups(input: OverlapReference[]): ListingOve
   for (const job of input) {
     jobsById.set(job.id, {
       ...job,
-      normalizedTitle: normalizeText(job.title) ?? "",
-      normalizedCompany: normalizeText(job.company),
-      normalizedEndClient: normalizeText(job.endClient),
-      normalizedProvince: normalizeText(job.province),
-      normalizedLocation: normalizeText(job.location),
-      normalizedClientReferenceCode: normalizeText(job.clientReferenceCode),
+      normalizedTitle: normalizeText(job.title, OVERLAP_TEXT_NORMALIZATION) ?? "",
+      normalizedCompany: normalizeText(job.company, OVERLAP_TEXT_NORMALIZATION),
+      normalizedEndClient: normalizeText(job.endClient, OVERLAP_TEXT_NORMALIZATION),
+      normalizedProvince: normalizeText(job.province, OVERLAP_TEXT_NORMALIZATION),
+      normalizedLocation: normalizeText(job.location, OVERLAP_TEXT_NORMALIZATION),
+      normalizedClientReferenceCode: normalizeText(
+        job.clientReferenceCode,
+        OVERLAP_TEXT_NORMALIZATION,
+      ),
       normalizedDeadlineDay: normalizeDateKey(job.applicationDeadline),
       normalizedStartDateDay: normalizeDateKey(job.startDate),
     });

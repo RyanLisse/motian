@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
+import { requirePrincipal } from "@/src/lib/api-auth";
 
-export const dynamic = "force-static";
-export const revalidate = 300;
+// Auth-dependent response — must not be statically cached across callers.
+export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   const start = Date.now();
   console.log(
     JSON.stringify({
@@ -20,7 +26,7 @@ export async function GET() {
       message: "WhatsApp integratie is uitgeschakeld",
     },
     {
-      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+      headers: { "Cache-Control": "private, no-store" },
     },
   );
 

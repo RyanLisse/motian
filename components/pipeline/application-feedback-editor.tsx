@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { apiFetch } from "@/src/lib/client-api";
 
 export function ApplicationFeedbackEditor({
   applicationId,
@@ -35,7 +36,7 @@ export function ApplicationFeedbackEditor({
     setError(null);
 
     try {
-      const response = await fetch(`/api/sollicitaties/${applicationId}`, {
+      const response = await apiFetch(`/api/sollicitaties/${applicationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes }),

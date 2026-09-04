@@ -94,8 +94,7 @@ export function extractBySelector(html: string, selector: string): string[] {
   // Handle simple tag selectors
   if (/^[a-z]+$/i.test(selector)) {
     const tagRegex = new RegExp(`<${selector}[^>]*>([\\s\\S]*?)</${selector}>`, "gi");
-    let match: RegExpExecArray | null;
-    while ((match = tagRegex.exec(html)) !== null) {
+    for (const match of html.matchAll(tagRegex)) {
       results.push(match[0]);
     }
     return results;
@@ -109,8 +108,7 @@ export function extractBySelector(html: string, selector: string): string[] {
       `<([a-z][a-z0-9]*)\\s[^>]*class="[^"]*\\b${escapeRegex(className)}\\b[^"]*"[^>]*>([\\s\\S]*?)(?=<\\1[^>]*class=|$)`,
       "gi",
     );
-    let match: RegExpExecArray | null;
-    while ((match = classRegex.exec(html)) !== null) {
+    for (const match of html.matchAll(classRegex)) {
       results.push(match[0]);
     }
     return results;
@@ -124,8 +122,7 @@ export function extractBySelector(html: string, selector: string): string[] {
       `<[a-z][a-z0-9]*\\s[^>]*${escapeRegex(attrName)}[^>]*>[\\s\\S]*?(?=<[a-z][a-z0-9]*\\s[^>]*${escapeRegex(attrName)}|$)`,
       "gi",
     );
-    let match: RegExpExecArray | null;
-    while ((match = attrRegex.exec(html)) !== null) {
+    for (const match of html.matchAll(attrRegex)) {
       results.push(match[0]);
     }
     return results;
@@ -156,8 +153,7 @@ export function extractText(html: string): string {
 function extractLinks(html: string, baseUrl: string): string[] {
   const links: string[] = [];
   const linkRegex = /href="([^"]*?)"/gi;
-  let match: RegExpExecArray | null;
-  while ((match = linkRegex.exec(html)) !== null) {
+  for (const match of html.matchAll(linkRegex)) {
     try {
       const href = match[1];
       if (href.startsWith("http")) {
@@ -178,11 +174,7 @@ export function extractFieldValue(html: string, selector: string): string {
   return extractText(elements[0]);
 }
 
-function buildPageUrl(
-  baseUrl: string,
-  page: number,
-  strategy: DynamicScrapingStrategy,
-): string {
+function buildPageUrl(baseUrl: string, page: number, strategy: DynamicScrapingStrategy): string {
   if (strategy.paginationType === "url_parameter" && strategy.paginationSelector) {
     const pattern = strategy.paginationSelector;
     if (pattern.includes("{n}")) {
@@ -249,11 +241,13 @@ async function scrapeListings(
             const links = extractLinks(element, config.baseUrl);
             return { element, detailUrl: links[0] };
           })
-          .filter((plan) => plan.detailUrl);
+          .filter((plan): plan is { element: string; detailUrl: string } =>
+            Boolean(plan.detailUrl),
+          );
         const processedElements = new Set(detailFetchPlan.map((plan) => plan.element));
 
         const detailResults = await fetchHtmlSettledInBatches(
-          detailFetchPlan.map((plan) => plan.detailUrl!),
+          detailFetchPlan.map((plan) => plan.detailUrl),
         );
 
         // Map results back to listings
@@ -263,9 +257,7 @@ async function scrapeListings(
 
           const listing: RawScrapedListing = {
             externalUrl: detailUrl ?? "",
-            externalId: detailUrl
-              ? (detailUrl.split("/").filter(Boolean).pop() ?? detailUrl)
-              : "",
+            externalId: detailUrl ? (detailUrl.split("/").filter(Boolean).pop() ?? detailUrl) : "",
           };
 
           if (detailResult.status === "fulfilled") {
@@ -329,9 +321,7 @@ async function scrapeListings(
 
           const listing: RawScrapedListing = {
             externalUrl: detailUrl ?? "",
-            externalId: detailUrl
-              ? (detailUrl.split("/").filter(Boolean).pop() ?? detailUrl)
-              : "",
+            externalId: detailUrl ? (detailUrl.split("/").filter(Boolean).pop() ?? detailUrl) : "",
           };
 
           for (const [field, selector] of Object.entries(strategy.fieldMapping)) {

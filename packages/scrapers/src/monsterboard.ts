@@ -1,3 +1,9 @@
+import {
+  detectPublicJobBoardBlocker,
+  fetchPublicJobBoardPage,
+  type PublicJobBoardPage,
+  scrapePublicJobBoard,
+} from "./public-job-board";
 import type {
   PlatformAdapter,
   PlatformRuntimeConfig,
@@ -6,11 +12,6 @@ import type {
   PlatformValidationResult,
   RawScrapedListing,
 } from "./types";
-import {
-  detectPublicJobBoardBlocker,
-  fetchPublicJobBoardPage,
-  scrapePublicJobBoard,
-} from "./public-job-board";
 
 const DEFAULT_MONSTERBOARD_URL = "https://www.monsterboard.nl/vacatures/";
 
@@ -39,7 +40,7 @@ export const monsterboardAdapter: PlatformAdapter = {
   async validate(config: PlatformRuntimeConfig): Promise<PlatformValidationResult> {
     const sourceUrl = normalizeMonsterboardSourceUrl(config.baseUrl);
 
-    let page;
+    let page: PublicJobBoardPage;
     try {
       page = await fetchPublicJobBoardPage(sourceUrl);
     } catch (error) {

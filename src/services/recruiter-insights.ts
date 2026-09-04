@@ -1,4 +1,5 @@
 import { structuredSkillsSchema } from "../schemas/candidate-intelligence";
+import { normalizeText } from "./normalize";
 
 export type RecruiterRecommendationLabel = "Go" | "Twijfel" | "No-go";
 export type RecruiterScoreTone = "goed" | "let-op" | "actie";
@@ -152,16 +153,6 @@ export type PipelineHealthInput = {
   matchesMissingStructuredReview: number;
 };
 
-function normalizeText(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9+.#/ -]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function parseStringArray(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
 
@@ -289,12 +280,12 @@ function getRawSkillOverlap(candidate: CandidateLike, job: JobLike) {
   const candidateSkills = [
     ...parseStringArray(candidate.skills),
     ...getStructuredHardSkills(candidate),
-  ].map(normalizeText);
+  ].map((value) => normalizeText(value));
   const jobSkills = [
     ...parseStringArray(job.requirements),
     ...parseStringArray(job.wishes),
     ...parseStringArray(job.competences),
-  ].map(normalizeText);
+  ].map((value) => normalizeText(value));
 
   const shared = Array.from(new Set(candidateSkills)).filter(
     (candidateSkill) =>

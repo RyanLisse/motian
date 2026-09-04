@@ -5,16 +5,35 @@ import { describe, expect, it } from "vitest";
 const ROOT = path.resolve(__dirname, "..");
 
 describe("proxy autopilot allowlist", () => {
-  it("does not expose /api/autopilot as a first-party browser route", () => {
+  it("does not list /api/autopilot as a public route", () => {
     const source = readFileSync(path.join(ROOT, "proxy.ts"), "utf8");
 
-    // Autopilot routes are internal — they must NOT appear in FIRST_PARTY_PATHS
-    // to ensure they remain auth-gated.
-    const firstPartyBlock = source.match(/FIRST_PARTY_PATHS\s*=\s*\[([\s\S]*?)\]/);
-    expect(firstPartyBlock).not.toBeNull();
-    if (!firstPartyBlock) {
-      throw new Error("Expected FIRST_PARTY_PATHS block");
+    const publicBlock = source.match(/PUBLIC_PATHS\s*=\s*\[([\s\S]*?)\]/);
+    expect(publicBlock).not.toBeNull();
+    if (!publicBlock) {
+      throw new Error("Expected PUBLIC_PATHS block");
     }
-    expect(firstPartyBlock[1]).not.toContain("/api/autopilot");
+    expect(publicBlock[1]).not.toContain("/api/autopilot");
+  });
+
+  it("admits via API_SECRET bearer, not header signals or login session", () => {
+    const source = readFileSync(path.join(ROOT, "proxy.ts"), "utf8");
+
+    expect(source).toContain("hasValidBearer");
+    expect(source).toContain("isOriginIsolationOk");
+    expect(source).not.toContain("isFirstPartyBrowserRoute");
+    expect(source).not.toContain("FIRST_PARTY_PATHS");
+    expect(source).not.toContain("hasVerifiablePrincipal");
+    expect(source).not.toContain("redirectToLogin");
+    expect(source).not.toContain("/inloggen");
+    expect(source).not.toContain("/api/sessie");
+  });
+
+  it("scopes the matcher to /api and /pipeline only (no page login gate)", () => {
+    const source = readFileSync(path.join(ROOT, "proxy.ts"), "utf8");
+
+    expect(source).toContain('"/api/:path*"');
+    expect(source).toContain('"/pipeline/:path*"');
+    expect(source).not.toContain("_next/static");
   });
 });

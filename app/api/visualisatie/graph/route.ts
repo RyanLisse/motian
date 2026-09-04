@@ -20,6 +20,7 @@ import {
   filterEdgesByNodes,
   filterNodesByType,
 } from "@/src/lib/graph-data";
+import { parsePagination } from "@/src/lib/pagination";
 import type { GraphNodeType, GraphResponse } from "@/src/types/graph";
 
 export const dynamic = "force-dynamic";
@@ -37,13 +38,6 @@ const graphQuerySchema = z.object({
         .split(",")
         .filter((t): t is GraphNodeType => ["job", "candidate", "skill"].includes(t));
     }),
-  limit: z
-    .string()
-    .optional()
-    .transform((val) => {
-      const n = val ? Number.parseInt(val, 10) : DEFAULT_LIMIT;
-      return Number.isNaN(n) || n < 1 ? DEFAULT_LIMIT : Math.min(n, 500);
-    }),
 });
 
 export const GET = withApiHandler(
@@ -51,7 +45,6 @@ export const GET = withApiHandler(
     const { searchParams } = new URL(req.url);
     const params = graphQuerySchema.safeParse({
       types: searchParams.get("types") ?? undefined,
-      limit: searchParams.get("limit") ?? undefined,
     });
 
     if (!params.success) {
@@ -61,7 +54,11 @@ export const GET = withApiHandler(
       );
     }
 
-    const { types, limit } = params.data;
+    const { types } = params.data;
+    const { limit } = parsePagination(searchParams, {
+      limit: DEFAULT_LIMIT,
+      maxLimit: 500,
+    });
 
     // Fetch top N+1 matches to determine hasMore
     const fetchLimit = limit + 1;

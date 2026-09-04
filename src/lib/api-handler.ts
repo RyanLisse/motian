@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { requirePrincipal, UNAUTHORIZED_MESSAGE } from "./api-auth";
 import { rateLimit } from "./rate-limit";
 
 type ApiHandler<TArgs extends unknown[]> = (...args: TArgs) => Response | Promise<Response>;
@@ -9,6 +10,12 @@ type ApiHandlerOptions = {
   logPrefix?: string;
   /** Rate limit config — omit to skip rate limiting */
   rateLimit?: { interval: number; limit: number };
+  /**
+   * Route-local principal check. Defaults to `"required"` so non-public
+   * handlers fail closed on missing `API_SECRET` bearer. Truly public routes
+   * (health, OpenAPI, feeds, public GET search) must pass `"public"`.
+   */
+  auth?: "required" | "public";
 };
 
 // Pre-built rate limiters per tier to avoid creating new instances per request
@@ -43,6 +50,22 @@ export function withApiHandler<TArgs extends unknown[]>(
   const limiterKey = logPrefix; // Use log prefix as limiter identity
 
   return async (...args: TArgs): Promise<Response> => {
+    const authMode = options.auth ?? "required";
+    if (authMode === "required") {
+      const maybeRequest = args[0];
+      // Fail closed: never skip the principal check when Request is absent.
+      if (!(maybeRequest instanceof Request)) {
+        return Response.json(
+          { error: UNAUTHORIZED_MESSAGE },
+          { status: 401, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+      const principalOrResponse = await requirePrincipal(maybeRequest);
+      if (principalOrResponse instanceof Response) {
+        return principalOrResponse;
+      }
+    }
+
     // Rate limiting check (if configured)
     if (options.rateLimit) {
       const limiter = getLimiter(limiterKey, options.rateLimit.interval, options.rateLimit.limit);

@@ -146,9 +146,11 @@ describe("Integration assertions — import paths", () => {
     expect(source).toContain("publishReport");
   });
 
-  it("reports/[id]/page.tsx imports getReport from @/src/lib/markdown-fast", () => {
+  it("reports/[id]/page.tsx regenerates via fetchMatchReport with HTML escaping", () => {
     const source = readFile("app/reports/[id]/page.tsx");
-    expect(source).toContain("@/src/lib/markdown-fast");
-    expect(source).toContain("getReport");
+    expect(source).toContain("@/src/services/report-helpers");
+    expect(source).toContain("fetchMatchReport");
+    expect(source).toContain("escapeHtml");
+    expect(source).not.toContain("getReport");
   });
 });

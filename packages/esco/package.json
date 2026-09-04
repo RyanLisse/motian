@@ -11,7 +11,6 @@
     "./esco-import": "./src/esco-import.ts"
   },
   "dependencies": {
-    "@motian/db": "workspace:*",
-    "drizzle-orm": "^0.38.4"
+    "@motian/db": "workspace:*"
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { paginatedResponse, parsePagination } from "@/src/lib/pagination";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,11 @@ function hasPaginationQuery(searchParams: URLSearchParams): boolean {
  * Query: ?q= optional search on canonical skill labels.
  */
 export async function GET(req: Request) {
+  const principalOrResponse = await requirePrincipal(req);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   const { countSkillFilterOptions, listSkillsForFilterOptions } = await import(
     "@/src/services/esco"
   );

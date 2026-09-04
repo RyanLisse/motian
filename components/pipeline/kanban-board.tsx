@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useOptimistic, useTransition } from "react";
+import { apiFetch } from "@/src/lib/client-api";
 import type { KanbanCardData } from "./kanban-card";
 import { KanbanColumn } from "./kanban-column";
 
@@ -55,7 +56,7 @@ export function KanbanBoard({ byStage }: KanbanBoardProps) {
         addOptimisticMove({ applicationId, fromStage, toStage: targetStage });
 
         try {
-          const res = await fetch(`/api/sollicitaties/${applicationId}`, {
+          const res = await apiFetch(`/api/sollicitaties/${applicationId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ stage: targetStage }),

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const ROOT = path.resolve(__dirname, "..");
 function readFile(...segments: string[]): string {
@@ -8,31 +8,63 @@ function readFile(...segments: string[]): string {
 }
 
 describe("Markdown.fast integration", () => {
-  it("exports publishReport function", () => {
-    const source = readFile("src/lib/markdown-fast.ts");
-    expect(source).toContain("export async function publishReport");
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.resetModules();
   });
 
-  it("exports getReport function", () => {
-    const source = readFile("src/lib/markdown-fast.ts");
-    expect(source).toContain("export async function getReport");
+  it("publishReport returns a durable /reports/<matchId> URL when markdown.fast is unset", async () => {
+    vi.stubEnv("MARKDOWN_FAST_TOKEN", "");
+    vi.resetModules();
+    const { publishReport } = await import("../src/lib/markdown-fast");
+    const matchId = "22222222-2222-4222-8222-222222222222";
+    const result = await publishReport("# md", "title", matchId);
+    expect(result.source).toBe("local");
+    expect(result.url).toBe(`/reports/${matchId}`);
   });
 
-  it("exports revokeReport function", () => {
+  it("exports getReport and revokeReport", async () => {
+    vi.resetModules();
+    const mod = await import("../src/lib/markdown-fast");
+    expect(typeof mod.getReport).toBe("function");
+    expect(typeof mod.revokeReport).toBe("function");
+  });
+
+  it("records revokeReport as an unused residual (no production callers)", () => {
+    // Behavioral residual gate: revokeReport must remain exported, but nothing may call it yet.
     const source = readFile("src/lib/markdown-fast.ts");
     expect(source).toContain("export async function revokeReport");
+    expect(source).toContain("RESIDUAL");
+
+    const callers = [
+      readFile("src/services/gdpr.ts"),
+      readFile("app/api/reports/route.ts"),
+      readFile("app/reports/[id]/page.tsx"),
+    ];
+    for (const file of callers) {
+      expect(file).not.toMatch(/\brevokeReport\s*\(/);
+    }
   });
 
-  it("has local fallback when markdown.fast is unavailable", () => {
-    const source = readFile("src/lib/markdown-fast.ts");
-    expect(source).toContain("local");
-    expect(source).toContain("reportStore");
-  });
+  it("uses MARKDOWN_FAST_TOKEN for auth on external publish", async () => {
+    vi.stubEnv("MARKDOWN_FAST_TOKEN", "test-token");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ url: "https://markdown.fast/r/abc", id: "abc" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.resetModules();
 
-  it("uses MARKDOWN_FAST_TOKEN for auth", () => {
-    const source = readFile("src/lib/markdown-fast.ts");
-    expect(source).toContain("MARKDOWN_FAST_TOKEN");
-    expect(source).toContain("Authorization");
+    const { publishReport } = await import("../src/lib/markdown-fast");
+    const result = await publishReport("# md", "title", "33333333-3333-4333-8333-333333333333");
+
+    expect(result.source).toBe("markdown.fast");
+    expect(fetchMock).toHaveBeenCalled();
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.headers).toMatchObject({
+      Authorization: "Bearer test-token",
+    });
   });
 
   it("has timeout protection on external calls", () => {
@@ -40,8 +72,9 @@ describe("Markdown.fast integration", () => {
     expect(source).toContain("AbortSignal.timeout");
   });
 
-  it("generates local report IDs with rpt- prefix", () => {
+  it("does not keep an in-process reportStore Map", () => {
     const source = readFile("src/lib/markdown-fast.ts");
-    expect(source).toContain("rpt-");
+    expect(source).not.toContain("reportStore");
+    expect(source).not.toContain("listLocalReports");
   });
 });

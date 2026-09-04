@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { ScreeningCallButton } from "@/components/screening-call/screening-call-button";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/src/lib/client-api";
 import type { StructuredMatchOutput } from "@/src/schemas/matching";
 
 type JudgeVerdict = {
@@ -49,7 +50,7 @@ export function AutoMatchResults({ candidateId, candidateName }: AutoMatchResult
   const { data, status, error } = useQuery<AutoMatchResult[]>({
     queryKey: ["auto-match", candidateId],
     queryFn: async () => {
-      const res = await fetch("/api/matches/auto", {
+      const res = await apiFetch("/api/matches/auto", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ candidateId }),
@@ -140,7 +141,7 @@ function MatchCard({
   const handleLink = useCallback(async () => {
     setLinkState("linking");
     try {
-      const res = await fetch(`/api/kandidaten/${candidateId}/koppel`, {
+      const res = await apiFetch(`/api/kandidaten/${candidateId}/koppel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
@@ -170,7 +171,7 @@ function MatchCard({
         const searchData = await searchRes.json();
         const app = searchData.data?.[0];
         if (app?.id) {
-          await fetch(`/api/sollicitaties/${app.id}`, { method: "DELETE" });
+          await apiFetch(`/api/sollicitaties/${app.id}`, { method: "DELETE" });
         }
       }
       setLinkState("idle");

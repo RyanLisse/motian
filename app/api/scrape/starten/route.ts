@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { rateLimit } from "@/src/lib/rate-limit";
 import { importJobsFromActiveScrapers } from "@/src/services/operations-console";
 
@@ -14,6 +15,11 @@ const triggerSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   // Bearer token auth bypasses the IP rate limiter (for automated/cron callers)
   const authHeader = request.headers.get("authorization");
   const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}`;

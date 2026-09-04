@@ -3,6 +3,7 @@
 import { Check, Loader2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/src/lib/client-api";
 import {
   buildCvSummaryMessage,
   CV_UPLOAD_MAX_SIZE_MB,
@@ -284,7 +285,7 @@ export function useChatCvUpload({
         const formData = new FormData();
         formData.append("cv", file);
 
-        const uploadRes = await fetch("/api/cv-upload", {
+        const uploadRes = await apiFetch("/api/cv-upload", {
           method: "POST",
           body: formData,
           signal: controller.signal,
@@ -316,7 +317,7 @@ export function useChatCvUpload({
           return;
         }
 
-        const saveRes = await fetch("/api/cv-upload/save", {
+        const saveRes = await apiFetch("/api/cv-upload/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

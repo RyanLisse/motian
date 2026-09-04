@@ -70,5 +70,6 @@ dolt-server.*
 .serena/
 
 # Local screenshots and browser QA captures
+artifacts/
 qa-*.png
 vacatures-*.png

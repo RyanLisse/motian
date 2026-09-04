@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { apiFetch } from "@/src/lib/client-api";
 
 type CommercialCvResponse = {
   data: {
@@ -90,7 +91,7 @@ export function CandidateOfferActions({
     setCvError(null);
 
     try {
-      const response = await fetch("/api/commercieel-cv", {
+      const response = await apiFetch("/api/commercieel-cv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -125,7 +126,7 @@ export function CandidateOfferActions({
     setHandoffError(null);
 
     try {
-      const response = await fetch(`/api/kandidaten/${candidateId}/kanaal-aanbod`, {
+      const response = await apiFetch(`/api/kandidaten/${candidateId}/kanaal-aanbod`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

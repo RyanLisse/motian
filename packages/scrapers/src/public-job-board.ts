@@ -1,4 +1,4 @@
-import { stripHtml, ensureMinLength, readString, readNumber } from "./lib/utils";
+import { ensureMinLength, readNumber, readString } from "./lib/utils";
 import type { PlatformBlockerKind, RawScrapedListing } from "./types";
 
 const DEFAULT_HEADERS = {
@@ -76,7 +76,9 @@ export async function scrapePublicJobBoard({
   for (const detailUrl of detailUrls.slice(0, MAX_DETAIL_PAGES)) {
     const detailPage = await fetchPublicJobBoardPage(detailUrl, requestHeaders);
     assertPageAccessible(detailPage, displayName, isAllowedListingUrl);
-    listings.push(...mapJobPostingObjects(extractJobPostingObjects(detailPage.html), detailPage.url));
+    listings.push(
+      ...mapJobPostingObjects(extractJobPostingObjects(detailPage.html), detailPage.url),
+    );
   }
 
   if (listings.length === 0) {
@@ -130,9 +132,7 @@ export function detectPublicJobBoardBlocker(
       lowerHtml.includes(marker) ? [`body:${marker}`] : [],
     ),
     ...CONSENT_URL_MARKER_STRINGS.flatMap((marker) =>
-      lowerFinalUrl.includes(marker) || lowerRequestedUrl.includes(marker)
-        ? [`url:${marker}`]
-        : [],
+      lowerFinalUrl.includes(marker) || lowerRequestedUrl.includes(marker) ? [`url:${marker}`] : [],
     ),
   ];
 
@@ -217,7 +217,10 @@ function detectMonsterboardBlocker(
   }
 
   for (const [label, marker] of [
-    ["body:please enable js and disable any ad blocker", "please enable js and disable any ad blocker"],
+    [
+      "body:please enable js and disable any ad blocker",
+      "please enable js and disable any ad blocker",
+    ],
     ["body:captcha-delivery.com", "captcha-delivery.com"],
     ["body:var dd={", "var dd={"],
     ["body:geo.captcha-delivery.com/captcha", "geo.captcha-delivery.com/captcha"],
@@ -275,7 +278,11 @@ function isMonsterboardUrl(url: string): boolean {
   }
 }
 
-function isMonsterboardRedirect(requestedUrl: string, finalUrl: string, lowerHtml: string): boolean {
+function isMonsterboardRedirect(
+  requestedUrl: string,
+  finalUrl: string,
+  lowerHtml: string,
+): boolean {
   try {
     const requested = new URL(requestedUrl);
     const final = new URL(finalUrl);
@@ -304,8 +311,7 @@ function isMonsterboardRedirect(requestedUrl: string, finalUrl: string, lowerHtm
 }
 
 function extractJobPostingObjects(html: string): Record<string, unknown>[] {
-  const scriptRegex =
-    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const scriptRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   const jobPostings: Record<string, unknown>[] = [];
 
   for (const match of html.matchAll(scriptRegex)) {
@@ -319,9 +325,7 @@ function extractJobPostingObjects(html: string): Record<string, unknown>[] {
           jobPostings.push(node);
         }
       }
-    } catch {
-      continue;
-    }
+    } catch {}
   }
 
   return jobPostings;
@@ -338,9 +342,7 @@ function collectJsonObjects(value: unknown): Record<string, unknown>[] {
 function isJobPostingNode(node: Record<string, unknown>): boolean {
   const type = node["@type"];
 
-  return Array.isArray(type)
-    ? type.some((entry) => entry === "JobPosting")
-    : type === "JobPosting";
+  return Array.isArray(type) ? type.some((entry) => entry === "JobPosting") : type === "JobPosting";
 }
 
 function mapJobPostingObjects(
@@ -474,7 +476,10 @@ function mapEmploymentType(employmentType: unknown): string | undefined {
 }
 
 function slugifyIdentifier(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
 
 function readIdentifier(identifier: unknown): string | null {

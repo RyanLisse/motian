@@ -1,3 +1,10 @@
+import {
+  decodeText,
+  firstMatch,
+  parsePositiveInteger,
+  sanitizeHours,
+  toAbsoluteUrl,
+} from "./lib/utils";
 import type {
   PlatformAdapter,
   PlatformBlockerKind,
@@ -7,14 +14,6 @@ import type {
   PlatformValidationResult,
   RawScrapedListing,
 } from "./types";
-import {
-  decodeText,
-  firstMatch,
-  toAbsoluteUrl,
-  sanitizeHours,
-  parsePositiveInteger,
-  readString,
-} from "./lib/utils";
 
 export type NationaleVacaturebankBlockerDetection = {
   blockerKind: PlatformBlockerKind | null;
@@ -67,7 +66,9 @@ type NextDataParseResult = {
  * Returns listings + total page count. Falls back to empty if not found.
  */
 export function parseNextDataJobs(html: string): NextDataParseResult | null {
-  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  const match = html.match(
+    /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/,
+  );
   if (!match) return null;
 
   let data: any;
@@ -93,9 +94,7 @@ export function parseNextDataJobs(html: string): NextDataParseResult | null {
 
     // workLocation.displayName is the primary city field
     const locationStr =
-      typeof workLocation === "string"
-        ? workLocation
-        : workLocation.displayName || undefined;
+      typeof workLocation === "string" ? workLocation : workLocation.displayName || undefined;
 
     // workingHours is {min, max} object
     const hoursRaw = job.workingHours;
@@ -110,9 +109,7 @@ export function parseNextDataJobs(html: string): NextDataParseResult | null {
 
     // url is already a path like /vacature/{uuid}/slug
     const jobUrl = job.url;
-    const externalUrl = jobUrl
-      ? toAbsoluteUrl(jobUrl, NVB_ORIGIN)
-      : undefined;
+    const externalUrl = jobUrl ? toAbsoluteUrl(jobUrl, NVB_ORIGIN) : undefined;
 
     return compactListingFields({
       externalId: String(job.id ?? ""),
@@ -180,9 +177,7 @@ function ensureDescription(value: string | undefined, title: string): string | u
   return title.length > 0 ? `${title} via Nationale Vacaturebank` : undefined;
 }
 
-function compactListingFields(
-  detail: Partial<RawScrapedListing>,
-): Partial<RawScrapedListing> {
+function compactListingFields(detail: Partial<RawScrapedListing>): Partial<RawScrapedListing> {
   return Object.fromEntries(
     Object.entries(detail).filter(([, value]) => {
       if (value === undefined || value === null) {
@@ -278,8 +273,14 @@ export function parseNationaleVacaturebankListings(html: string): RawScrapedList
     }
 
     const rawTitle = firstMatch(/<h2>([\s\S]*?)<\/h2>/, body);
-    const rawCompany = firstMatch(/<strong class="nvb_companyName__[^"]*">([\s\S]*?)<\/strong>/, body);
-    const rawLocation = firstMatch(/<strong class="nvb_companyName__[^"]*">[\s\S]*?<\/strong>\s*<span>([\s\S]*?)<\/span>/, body);
+    const rawCompany = firstMatch(
+      /<strong class="nvb_companyName__[^"]*">([\s\S]*?)<\/strong>/,
+      body,
+    );
+    const rawLocation = firstMatch(
+      /<strong class="nvb_companyName__[^"]*">[\s\S]*?<\/strong>\s*<span>([\s\S]*?)<\/span>/,
+      body,
+    );
     const rawAttributes =
       firstMatch(/<div class="nvb_attributes__IP60d">([\s\S]*?)<\/div>/, body) ?? "";
     const attributeMatches = [
@@ -303,10 +304,7 @@ export function parseNationaleVacaturebankListings(html: string): RawScrapedList
       educationLevel: attributeMatches.find((attribute) =>
         ["MBO", "HBO", "WO", "VMBO", "HAVO"].some((level) => attribute.includes(level)),
       ),
-      companyLogoUrl: firstMatch(
-        /<img class="" src="([^"]+)" alt="[^"]*">/,
-        match[0],
-      ) ?? "",
+      companyLogoUrl: firstMatch(/<img class="" src="([^"]+)" alt="[^"]*">/, match[0]) ?? "",
       sourceUrl: toAbsoluteUrl(href, NVB_ORIGIN),
       categories: extractCategoriesFromPage(html),
     });
@@ -365,18 +363,10 @@ export function parseNationaleVacaturebankDetailPage(html: string): Partial<RawS
     location,
     description: ensureDescription(descriptionHtml, title),
     contractType: mapContractType(
-      decodeText(
-        firstMatch(
-          /<span>dienstverband<\/span><strong>([\s\S]*?)<\/strong>/,
-          html,
-        ),
-      ),
+      decodeText(firstMatch(/<span>dienstverband<\/span><strong>([\s\S]*?)<\/strong>/, html)),
     ),
     educationLevel: decodeText(
-      firstMatch(
-        /<span>opleidingsniveau<\/span><strong>([\s\S]*?)<\/strong>/,
-        html,
-      ),
+      firstMatch(/<span>opleidingsniveau<\/span><strong>([\s\S]*?)<\/strong>/, html),
     ),
   };
 }
@@ -411,9 +401,7 @@ async function fetchHtml(url: string, init?: RequestInit): Promise<UrlFetchResul
   };
 }
 
-function buildCookieHeader(
-  cookies: Array<{ name: string; value: string }>,
-): string | undefined {
+function buildCookieHeader(cookies: Array<{ name: string; value: string }>): string | undefined {
   if (cookies.length === 0) {
     return undefined;
   }
@@ -463,9 +451,7 @@ async function bootstrapConsentSession(
       await instellingenButton.click();
       actions.push("instellen");
 
-      const saveButton = page
-        .getByRole("button", { name: /voorkeuren opslaan/i })
-        .first();
+      const saveButton = page.getByRole("button", { name: /voorkeuren opslaan/i }).first();
       await saveButton.waitFor({ state: "visible", timeout: 10_000 });
       await saveButton.click();
       actions.push("voorkeuren_opslaan");
@@ -542,10 +528,7 @@ async function initializeConsentAwareSession(
   };
 }
 
-async function fetchPageWithSession(
-  url: string,
-  cookieHeader?: string,
-): Promise<UrlFetchResult> {
+async function fetchPageWithSession(url: string, cookieHeader?: string): Promise<UrlFetchResult> {
   if (!cookieHeader) {
     return fetchHtml(url);
   }
@@ -586,9 +569,7 @@ async function enrichNationaleVacaturebankListings(
           const blocker = detectNationaleVacaturebankBlocker(response);
 
           if (blocker.blockerKind) {
-            errors.push(
-              `NVB detailpagina geblokkeerd voor ${externalUrl}: ${blocker.blockerKind}`,
-            );
+            errors.push(`NVB detailpagina geblokkeerd voor ${externalUrl}: ${blocker.blockerKind}`);
             return listing;
           }
 

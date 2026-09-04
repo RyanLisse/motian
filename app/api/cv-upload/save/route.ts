@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { assertCanReadCandidate, requirePrincipal } from "@/src/lib/api-auth";
 import { parsedCVSchema } from "@/src/schemas/candidate-intelligence";
 import { intakeCandidate } from "@/src/services/candidate-intake";
 import { getCandidateById } from "@/src/services/candidates";
@@ -15,6 +16,12 @@ const saveSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+  const principal = principalOrResponse;
+
   try {
     const body = await request.json();
     const result = saveSchema.safeParse(body);
@@ -30,6 +37,11 @@ export async function POST(request: NextRequest) {
       const existingCandidate = await getCandidateById(existingCandidateId);
       if (!existingCandidate) {
         return Response.json({ error: "Kandidaat niet gevonden" }, { status: 404 });
+      }
+
+      const access = await assertCanReadCandidate(principal, existingCandidateId);
+      if (access === "deny") {
+        return Response.json({ error: "Geen toegang tot deze kandidaat" }, { status: 403 });
       }
     }
 

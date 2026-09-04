@@ -1,4 +1,5 @@
 import { createMcpHandler } from "mcp-handler";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { initializeMotianTools } from "@/src/mcp/create-server";
 
 const handler = createMcpHandler(
@@ -18,4 +19,15 @@ const handler = createMcpHandler(
   },
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+async function withPrincipal(...args: Parameters<typeof handler>): Promise<Response> {
+  const [request] = args;
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+  return handler(...args);
+}
+
+export const GET = withPrincipal;
+export const POST = withPrincipal;
+export const DELETE = withPrincipal;

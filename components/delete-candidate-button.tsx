@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/src/lib/client-api";
 
 export function DeleteCandidateButton({
   candidateId,
@@ -23,7 +24,7 @@ export function DeleteCandidateButton({
 
     setDeleting(true);
     try {
-      const res = await fetch(`/api/kandidaten/${candidateId}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/kandidaten/${candidateId}`, { method: "DELETE" });
       if (res.ok) {
         router.push("/kandidaten");
         router.refresh();

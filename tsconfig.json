@@ -26,7 +26,6 @@
     "extension",
     "scripts",
     "opentui-demo",
-    "tui",
-    "agent"
+    "tui"
   ]
 }

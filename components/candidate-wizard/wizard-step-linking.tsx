@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/src/lib/client-api";
 import { MatchSuggestionCard } from "./match-suggestion-card";
 import type { CandidateSkillPreview, ManualJobSuggestion, WizardIntakeResult } from "./types";
 
@@ -116,7 +117,7 @@ export function WizardStepLinking({ intake, onComplete, onSkip }: WizardStepLink
     setError("");
 
     try {
-      const response = await fetch(`/api/vacatures?q=${encodeURIComponent(query)}&limit=5`);
+      const response = await apiFetch(`/api/vacatures?q=${encodeURIComponent(query)}&limit=5`);
       const body = await response.json().catch(() => null);
       if (!response.ok) {
         const message = isRecord(body) && typeof body.error === "string" ? body.error : null;
@@ -148,7 +149,7 @@ export function WizardStepLinking({ intake, onComplete, onSkip }: WizardStepLink
   };
 
   const submitLinkBatch = async (payload: { matchIds?: string[]; jobIds?: string[] }) => {
-    const response = await fetch(`/api/kandidaten/${intake.candidateId}/koppel`, {
+    const response = await apiFetch(`/api/kandidaten/${intake.candidateId}/koppel`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -162,7 +163,7 @@ export function WizardStepLinking({ intake, onComplete, onSkip }: WizardStepLink
   };
 
   const markNoMatch = async () => {
-    const response = await fetch(`/api/kandidaten/${intake.candidateId}/geen-match`, {
+    const response = await apiFetch(`/api/kandidaten/${intake.candidateId}/geen-match`, {
       method: "POST",
     });
 

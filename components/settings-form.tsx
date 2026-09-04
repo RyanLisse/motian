@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { apiFetch } from "@/src/lib/client-api";
 import type { SettingsPayload } from "@/src/schemas/settings";
 
 type Props = { initial: SettingsPayload };
@@ -36,7 +37,7 @@ export function SettingsForm({ initial }: Props) {
 
     startTransition(async () => {
       try {
-        const res = await fetch("/api/instellingen", {
+        const res = await apiFetch("/api/instellingen", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(values),

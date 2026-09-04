@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { db, eq } from "@/src/db";
 import { candidates, jobMatches, jobs } from "@/src/db/schema";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { publishReport } from "@/src/lib/markdown-fast";
 import type { CriterionResult } from "@/src/schemas/matching";
 import { generateReport } from "@/src/services/report-generator";
@@ -14,6 +15,11 @@ const postSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   try {
     const body = await request.json();
     const parsed = postSchema.safeParse(body);
@@ -94,6 +100,7 @@ export async function POST(request: NextRequest) {
       const result = await publishReport(
         markdown,
         `Matchrapport: ${row.candidate.name} — ${row.job.title}`,
+        matchId,
       );
       url = result.url;
       reportId = result.id;
@@ -112,6 +119,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const matchId = searchParams.get("matchId");

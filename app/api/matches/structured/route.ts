@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { publish } from "@/src/lib/event-bus";
 import {
   revalidateStructuredMatchViews,
@@ -17,6 +18,11 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   try {
     const body = await request.json();
     const parsed = requestSchema.safeParse(body);

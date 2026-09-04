@@ -19,7 +19,7 @@ describe("chat surface review regressions", () => {
   });
 
   it("keeps only the explicit CV upload path in the full-page chat composer", () => {
-    const source = readFile("src", "components", "ai-elements", "chat-prompt-composer.tsx");
+    const source = readFile("components", "ai-elements", "chat-prompt-composer.tsx");
 
     expect(source).toContain("globalDrop");
     expect(source).toContain("onError={cvUpload.handlePromptInputError}");
@@ -31,7 +31,7 @@ describe("chat surface review regressions", () => {
   });
 
   it("lets prompt-input consumers disable attachment intake", () => {
-    const source = readFile("src", "components", "ai-elements", "prompt-input.tsx");
+    const source = readFile("components", "ai-elements", "prompt-input.tsx");
 
     expect(source).toContain("allowAttachments?: boolean");
     expect(source).toContain("allowAttachments = true");
@@ -51,7 +51,7 @@ describe("chat surface review regressions", () => {
   });
 
   it("guards the shared CV upload flow against stale timers and unmounted uploads", () => {
-    const source = readFile("src", "components", "ai-elements", "use-chat-cv-upload.tsx");
+    const source = readFile("components", "ai-elements", "use-chat-cv-upload.tsx");
 
     expect(source).toContain("const clearResetTimer = useCallback(() => {");
     expect(source).toContain(

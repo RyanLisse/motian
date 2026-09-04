@@ -295,7 +295,7 @@ describe("Detail surfaces recruiter workflow context", () => {
     await flushPromises();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/vacatures/job-1/koppel",
+      "/bff/vacatures/job-1/koppel",
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },

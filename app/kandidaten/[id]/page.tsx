@@ -843,7 +843,11 @@ async function KandidaatDetailContent({ params }: Props) {
               />
 
               {candidate.resumeUrl && (
-                <CvDocumentViewerLazy url={candidate.resumeUrl} candidateName={candidate.name} />
+                <CvDocumentViewerLazy
+                  kandidaatId={candidate.id}
+                  url={candidate.resumeUrl}
+                  candidateName={candidate.name}
+                />
               )}
 
               <CandidateNotes candidateId={candidate.id} initialNotes={candidate.notes} />

@@ -8,6 +8,7 @@ import {
 } from "@/src/autopilot/run-detail";
 import { db, eq } from "@/src/db";
 import { autopilotRuns } from "@/src/db/schema";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { downloadFile } from "@/src/lib/file-storage";
 
 export async function GET(
@@ -16,6 +17,11 @@ export async function GET(
     params: Promise<{ runId: string; journeyId: string; artifactId: string }>;
   },
 ) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   const { runId, journeyId, artifactId } = await context.params;
 
   const [run] = await db

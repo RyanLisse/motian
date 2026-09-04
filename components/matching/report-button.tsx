@@ -2,6 +2,7 @@
 
 import { FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { apiFetch } from "@/src/lib/client-api";
 
 interface ReportButtonProps {
   matchId: string;
@@ -13,7 +14,7 @@ export function ReportButton({ matchId }: ReportButtonProps) {
   const handleClick = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/reports", {
+      const res = await apiFetch("/api/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ matchId, publish: true }),

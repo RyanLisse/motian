@@ -1,6 +1,7 @@
 import { RoomAgentDispatch, RoomConfiguration } from "@livekit/protocol";
 import { AccessToken } from "livekit-server-sdk";
 import { nanoid } from "nanoid";
+import { requirePrincipal } from "@/src/lib/api-auth";
 import { getLiveKitConfigStatus } from "@/src/lib/livekit";
 
 function json(body: unknown, status = 200) {
@@ -10,7 +11,12 @@ function json(body: unknown, status = 200) {
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const principalOrResponse = await requirePrincipal(request);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   const configStatus = getLiveKitConfigStatus();
 
   if (!configStatus.enabled) {
@@ -32,6 +38,11 @@ function getLiveKitClientUrl(fallbackUrl: string) {
  * { server_url, participant_token } (TokenSourceResponse format).
  */
 export async function POST(req: Request) {
+  const principalOrResponse = await requirePrincipal(req);
+  if (principalOrResponse instanceof Response) {
+    return principalOrResponse;
+  }
+
   const configStatus = getLiveKitConfigStatus();
 
   if (!configStatus.enabled) {

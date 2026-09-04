@@ -2,7 +2,12 @@ import { getDynamicAdapter } from "@motian/scrapers";
 import { publish } from "../lib/event-bus";
 import { normalizeAndSaveJobs } from "./normalize";
 import { recordScrapeResult } from "./record-scrape-result";
-import { getConfigByPlatform, getPlatformCatalogEntry, toRuntimeConfig } from "./scrapers";
+import {
+  getConfigByPlatform,
+  getPlatformCatalogEntry,
+  toRuntimeConfig,
+  validateExternalUrl,
+} from "./scrapers";
 import { getPlatformAdapter } from "./scrapers/index";
 
 type ScrapeStatus = "success" | "partial" | "failed";
@@ -92,6 +97,8 @@ export async function runScrapePipeline(
           parameters: {},
           auth: {},
         };
+    // Re-validate immediately before outbound fetch (DNS may have changed since save)
+    await validateExternalUrl(runtimeConfig.baseUrl);
     const result = await adapter.scrape(runtimeConfig);
     listings = result.listings;
     scrapeErrors = result.errors ?? [];

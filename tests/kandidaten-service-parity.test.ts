@@ -10,16 +10,17 @@ function readFile(...segments: string[]) {
 
 describe("kandidaten shared service wiring", () => {
   it("routes the kandidaten page through shared candidate services", () => {
-    const source = readFile("app", "kandidaten", "page.tsx");
+    const pageSource = readFile("app", "kandidaten", "page.tsx");
+    const dataSource = readFile("app", "kandidaten", "data.ts");
 
-    expect(source).toContain(
-      'import { countCandidates, listCandidates, searchCandidates } from "@/src/services/candidates";',
+    expect(pageSource).toContain('import { loadKandidatenPageData } from "./data"');
+    expect(pageSource).toContain("await loadKandidatenPageData({");
+    expect(dataSource).toContain(
+      'import {\n  type Candidate,\n  countCandidates,\n  listCandidates,\n  searchCandidates,\n} from "@/src/services/candidates"',
     );
-    expect(source).toContain(
-      "useSearch ? searchCandidates(searchOptions) : listCandidates({ limit, offset })",
-    );
-    expect(source).toContain("useSearch");
-    expect(source).toContain("countCandidates({");
+    expect(dataSource).toContain("deps.searchCandidates(searchOptions)");
+    expect(dataSource).toContain("deps.listCandidates({ limit, offset })");
+    expect(dataSource).toContain("deps.countCandidates({");
   });
 
   it("queues candidate embedding sync instead of awaiting it inline", () => {

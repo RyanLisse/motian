@@ -21,4 +21,14 @@ describe("parsePagination", () => {
       offset: 50,
     });
   });
+
+  it("falls back to defaults for invalid values", () => {
+    const params = new URLSearchParams("pagina=invalid&perPage=invalid");
+
+    expect(parsePagination(params, { limit: 20 })).toEqual({
+      page: 1,
+      limit: 20,
+      offset: 0,
+    });
+  });
 });
