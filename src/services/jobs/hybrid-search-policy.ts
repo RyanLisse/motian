@@ -7,7 +7,20 @@ export const HYBRID_SEARCH_FORCE_VECTOR_ENV = "HYBRID_SEARCH_FORCE_VECTOR";
 const HYBRID_SEARCH_RRF_K = 60;
 export const HYBRID_SEARCH_VECTOR_MIN_SCORE_DEFAULT = 0.3;
 const HYBRID_SEARCH_FETCH_MULTIPLIER = 3;
-const HYBRID_SEARCH_FETCH_CAP = 100;
+// Retrieval window. RRF ranks only what these two branches fetched, so this
+// is also the deepest result a caller can page to. 100 capped every keyword
+// search at two pages of 50; 500 matches the pre-fetch budget recorded in
+// docs/solutions/performance-issues/full-stack-performance-audit-20260414.md
+// and only grows for callers that actually page that deep, because fetchSize
+// scales with `offset + limit`.
+const HYBRID_SEARCH_FETCH_CAP = 500;
+
+/**
+ * Deepest result reachable through hybrid search, and therefore the cap on the
+ * page count a caller may advertise. `total` reports every match; pagination
+ * must stop here, because RRF has nothing ranked beyond the retrieval window.
+ */
+export const HYBRID_SEARCH_MAX_REACHABLE_RESULTS = HYBRID_SEARCH_FETCH_CAP;
 // Single-word queries only — "project manager" (2 words) benefits from
 // semantic matching because Dutch equivalents like "projectleider" wouldn't
 // be found by keyword search alone.

@@ -5,7 +5,7 @@ import { LIST_SLO_MS, logSlowQuery, SEARCH_SLO_MS } from "../../lib/query-observ
 import { QUERY_EMBEDDING_TIMEOUT_MS, withTimeout } from "../../lib/retry";
 import * as embeddingService from "../embedding";
 import { getAllSettings } from "../settings";
-import { fetchDedupedJobsPage, loadJobPageRowsByIds } from "./deduplication";
+import { countDedupedJobs, fetchDedupedJobsPage, loadJobPageRowsByIds } from "./deduplication";
 import type { JobStatus } from "./filters";
 import { getHybridSearchPolicy } from "./hybrid-search-policy";
 import { buildJobFilterConditions } from "./query-filters";
@@ -262,7 +262,18 @@ export async function hybridSearchPageWithTotal(
   const filtered = rankHybridCandidates(scoreMap, opts.sortBy);
   dedupeMs = Date.now() - dedupeStartedAt;
 
-  const total = filtered.length;
+  // `filtered` holds only what the retrieval window fetched, so its length is
+  // the window size, not the number of matching jobs. When neither branch
+  // filled its window we have already seen every match; when one did, an
+  // unknown number was truncated and only the database knows the real total.
+  //
+  // Counted after retrieval rather than alongside it: the Neon pool runs with
+  // `max: 1`, and a third concurrent query here is exactly the burst documented
+  // in docs/solutions/performance-issues/scraper-dashboard-cold-start-17s-to-1s-2026-04-16.md.
+  const total =
+    candidateIds.length >= policy.fetchSize
+      ? await countDedupedJobs(retrievalFilterCondition)
+      : filtered.length;
   const pageEntries = filtered.slice(offset, offset + limit);
   const pageHydrateStartedAt = Date.now();
   const data = await loadJobPageRowsByIds(pageEntries.map(({ job }) => job.id));

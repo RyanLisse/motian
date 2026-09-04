@@ -484,6 +484,22 @@ export async function fetchDedupedJobsPageFast({
   };
 }
 
+/**
+ * Deduplicated count of every job matching `whereClause`.
+ *
+ * Used by hybrid search to report a real result count. Search retrieves a
+ * bounded candidate window and ranks it, so the size of that window says
+ * nothing about how many jobs actually match — before this, a keyword search
+ * reported the window size itself as the total.
+ *
+ * Reuses `fetchDedupedJobsPage` so the precomputed-ranks fast path, the
+ * staleness refresh and the CTE fallback all behave identically to listing.
+ */
+export async function countDedupedJobs(whereClause: SQL): Promise<number> {
+  const { total } = await fetchDedupedJobsPage({ whereClause, limit: 1, offset: 0 });
+  return total;
+}
+
 export async function fetchDedupedJobsPage({
   whereClause,
   limit,
