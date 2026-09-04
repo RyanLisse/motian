@@ -13,14 +13,26 @@ interface SidebarJobListProps {
   activeId: string | null;
   buildDetailHref: (jobId: string) => string;
   variant: "compact" | "overview";
+  /** These rows belong to the previous query; a newer one is still in flight. */
+  isStale?: boolean;
 }
 
 const VIRTUALIZATION_THRESHOLD = 18;
 const COMPACT_ITEM_ESTIMATE = 112;
 const OVERVIEW_ITEM_ESTIMATE = 252;
 
-export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: SidebarJobListProps) {
+export function SidebarJobList({
+  jobs,
+  activeId,
+  buildDetailHref,
+  variant,
+  isStale = false,
+}: SidebarJobListProps) {
   const shouldVirtualize = jobs.length > VIRTUALIZATION_THRESHOLD;
+  // Dim rather than blank: keeping the rows avoids the layout collapse the
+  // placeholder exists to prevent, while no longer presenting them as answers
+  // to the query the user just typed.
+  const staleClass = isStale ? " opacity-50 transition-opacity duration-150" : "";
 
   const renderJob = (job: SidebarJob, index?: number) => (
     <JobListItem
@@ -47,7 +59,7 @@ export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: Sid
         // Compact (detail-page) sidebar scrolls as one column → virtualize against
         // the parent aside. Overview keeps its own bounded scroll inside the list column.
         scrollMode={variant === "compact" ? "parent" : "self"}
-        className={variant === "compact" ? "bg-[#050506]" : "min-w-0"}
+        className={`${variant === "compact" ? "bg-[#050506]" : "min-w-0"}${staleClass}`}
         renderItem={(job, index) => renderJob(job, index)}
       />
     );
@@ -57,7 +69,7 @@ export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: Sid
     // Compact sidebar already scrolls at the aside level — render a plain
     // container so we don't introduce a nested scroll region inside it.
     return (
-      <div className="bg-[#050506]">
+      <div aria-busy={isStale} className={`bg-[#050506]${staleClass}`}>
         {jobs.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-white/45">Geen vacatures gevonden</div>
         ) : (
@@ -68,7 +80,7 @@ export function SidebarJobList({ jobs, activeId, buildDetailHref, variant }: Sid
   }
 
   return (
-    <ScrollArea className="min-h-0 min-w-0 flex-1">
+    <ScrollArea aria-busy={isStale} className={`min-h-0 min-w-0 flex-1${staleClass}`}>
       {jobs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-background px-5 py-10 text-center text-sm text-muted-foreground">
           Geen vacatures gevonden voor deze filters.

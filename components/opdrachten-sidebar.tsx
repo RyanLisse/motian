@@ -72,6 +72,7 @@ export function OpdrachtenSidebar({
     pageParam,
     searchErrorMessage,
     isFetching,
+    isShowingStaleResults,
     shortlistCount,
     urgentDeadlineCount,
     activeFilterCount,
@@ -155,6 +156,7 @@ export function OpdrachtenSidebar({
 
           <SidebarJobList
             jobs={displayJobs}
+            isStale={isShowingStaleResults}
             activeId={activeId}
             buildDetailHref={buildDetailHref}
             variant="compact"
@@ -273,6 +275,7 @@ export function OpdrachtenSidebar({
 
           <SidebarJobList
             jobs={displayJobs}
+            isStale={isShowingStaleResults}
             activeId={activeId}
             buildDetailHref={buildDetailHref}
             variant="overview"

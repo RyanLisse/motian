@@ -256,7 +256,7 @@ export function useSidebarFilters({
     pushCtx,
   );
 
-  const { data, error, isFetching } = useQuery({
+  const { data, error, isFetching, isPlaceholderData } = useQuery({
     queryKey: ["opdrachten-search", searchQueryKey],
     queryFn: ({ signal }) =>
       searchJobs({
@@ -518,6 +518,11 @@ export function useSidebarFilters({
     pageParam: localPage,
     searchErrorMessage,
     isFetching,
+    // `placeholderData: (prev) => prev` deliberately keeps the previous page's
+    // rows on screen so the list does not collapse between queries. The cost is
+    // that those rows look like results for the query you just typed. Surface
+    // the distinction so the UI can mark them instead of asserting them.
+    isShowingStaleResults: isFetching && isPlaceholderData,
     shortlistCount,
     urgentDeadlineCount,
     activeFilterCount,
