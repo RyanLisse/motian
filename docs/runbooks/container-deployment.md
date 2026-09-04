@@ -49,7 +49,7 @@ by service, is in `docs/rjc-420-vercel-env-inventory.md`.
 | Variable | Required | Purpose |
 |---|---|---|
 | `DATABASE_URL` | **yes** | Neon connection string. |
-| `INTERNAL_SERVER_URL` | **yes, in a container** | See below. |
+| `INTERNAL_SERVER_URL` | defaulted in the image | `http://127.0.0.1:3000`. Override only if `PORT` differs. See below. |
 | `API_SECRET` | yes | Bearer the BFF attaches when forwarding to `/api/**`. |
 | `TRIGGER_SECRET_KEY` | yes | Trigger.dev; must be a `tr_prod_…` key in production. |
 | `OPENROUTER_API_KEY` | yes for AI paths | Chat, enrichment and embeddings. |
@@ -73,11 +73,16 @@ the container, through the proxy, and in again. That costs a full round trip on
 every BFF call, and fails outright when the container cannot resolve or reach
 its own public name — the normal case on a Docker network.
 
-Set it to the loopback the server itself listens on:
+The image already sets it to the loopback it listens on, so a stock Coolify
+deployment needs no configuration:
 
 ```
 INTERNAL_SERVER_URL=http://127.0.0.1:3000
 ```
+
+Override it only when `PORT` is changed. It is registered in `src/env.ts` as an
+optional URL, so a bad value fails validation at boot rather than silently
+mis-routing every BFF call.
 
 `resolveBffUpstreamOrigin` falls back to the inbound origin when the variable is
 unset *or unparseable*, so a malformed value degrades to the Vercel behaviour

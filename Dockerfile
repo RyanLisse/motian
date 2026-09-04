@@ -68,7 +68,8 @@ WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    INTERNAL_SERVER_URL=http://127.0.0.1:3000
 
 # wget is busybox's, already present in alpine; used only by HEALTHCHECK.
 RUN addgroup --system --gid 1001 nodejs \

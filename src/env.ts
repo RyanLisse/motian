@@ -80,6 +80,8 @@ export const env = createEnv({
     // App config
     MOTIA_API_URL: z.string().url().optional(),
     NEXT_URL: z.string().url().optional(),
+    // SSR/BFF self-fetch base (loopback in containers). Never a NEXT_PUBLIC_* URL.
+    INTERNAL_SERVER_URL: z.string().url().optional(),
     PUBLIC_API_BASE_URL: z.string().url().optional(),
     ALLOWED_ORIGINS: z.string().optional(),
     API_SECRET: z.string().min(1).optional(),
@@ -179,6 +181,7 @@ export const env = createEnv({
     ESCO_SCORING_ENABLED: process.env.ESCO_SCORING_ENABLED,
     MOTIA_API_URL: process.env.MOTIA_API_URL,
     NEXT_URL: process.env.NEXT_URL,
+    INTERNAL_SERVER_URL: process.env.INTERNAL_SERVER_URL,
     PUBLIC_API_BASE_URL: process.env.PUBLIC_API_BASE_URL,
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
     API_SECRET: process.env.API_SECRET,
