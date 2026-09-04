@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "modal": "^0.6.3",
-    "playwright": "^1.58.2",
+    "playwright": "^1.59.1",
     "zod": "^3.25.76"
   }
 }
