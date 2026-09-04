@@ -19,6 +19,10 @@ if (process.env.NODE_ENV === "production" && hasSentryRuntimeConfig && !process.
 
 // CORS for /api is handled per-request in proxy.ts (all ALLOWED_ORIGINS supported)
 const nextConfig: NextConfig = {
+  // Emits .next/standalone with a self-contained server.js and only the
+  // node_modules actually imported, so the runtime image carries no pnpm store
+  // and no dev dependencies (RJC-419).
+  output: "standalone",
   // Server components can import DB directly
   serverExternalPackages: ["pg"],
   async redirects() {

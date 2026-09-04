@@ -1,0 +1,42 @@
+# Keep the build context small and free of anything secret or machine-local.
+.git
+.github
+node_modules
+**/node_modules
+.next
+**/.next
+out
+dist
+build
+
+# Secrets and local env — never into a build context.
+.env
+.env.*
+!.env.example
+
+# Test, tooling and evidence output.
+coverage
+playwright-report
+test-results
+.artifacts
+artifacts
+storybook-static
+.vercel
+.turbo
+
+# Editor and agent scratch.
+.vscode
+.idea
+.claude
+.codex
+.cursor
+.factory
+.agents
+.beads
+.intent
+openwiki
+
+# Docs and long-form markdown do not affect the image.
+docs
+*.md
+!README.md

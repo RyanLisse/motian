@@ -79,12 +79,42 @@ export function buildBffUpstreamHeaders(request: Request): Headers {
 }
 
 /**
+ * Base URL the BFF should forward to.
+ *
+ * On Vercel the inbound origin is also the server's own origin, so forwarding
+ * there is a local hop and `INTERNAL_SERVER_URL` stays unset.
+ *
+ * Behind a reverse proxy it is not. `request.url` carries the public hostname,
+ * so forwarding to it sends the request back out of the container, through the
+ * proxy and in again — a round trip that costs latency, and that fails outright
+ * when the container cannot resolve or reach its own public name, which is the
+ * common case on a Docker network. `INTERNAL_SERVER_URL` (for example
+ * `http://127.0.0.1:3000`) keeps the hop on the loopback.
+ *
+ * An unparseable value is ignored rather than thrown on: a malformed
+ * deployment variable should not take the whole BFF down when the inbound
+ * origin still works.
+ */
+export function resolveBffUpstreamOrigin(requestOrigin: string): string {
+  const configured = process.env.INTERNAL_SERVER_URL?.trim();
+  if (!configured) {
+    return requestOrigin;
+  }
+
+  try {
+    return new URL(configured).origin;
+  } catch {
+    return requestOrigin;
+  }
+}
+
+/**
  * Forwards a first-party BFF request to the matching `/api/**` route with a
  * server-attached bearer. Caller must already have verified same-origin.
  */
 export async function forwardBffToApi(request: Request, apiPath: string): Promise<Response> {
   const url = new URL(request.url);
-  const upstreamUrl = new URL(apiPath, url.origin);
+  const upstreamUrl = new URL(apiPath, resolveBffUpstreamOrigin(url.origin));
   upstreamUrl.search = url.search;
 
   const method = request.method.toUpperCase();
