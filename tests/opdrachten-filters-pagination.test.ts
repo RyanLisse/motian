@@ -438,7 +438,12 @@ describe("Opdrachten UI/API contracts", () => {
       "data-[size=default]:h-10 w-full rounded-lg border-border bg-background",
     );
     expect(sidebar).toContain("min-h-11 cursor-pointer items-center gap-3");
-    expect(sidebar).toContain('<ScrollArea className="min-h-0 min-w-0 flex-1">');
+    // The overview list stays a bounded scroll region so cards reflow on narrow
+    // widths. The class list became a template literal when stale results
+    // started dimming, so assert the classes and the element separately rather
+    // than one exact JSX string.
+    expect(sidebar).toContain("<ScrollArea aria-busy={isStale}");
+    expect(sidebar).toContain("min-h-0 min-w-0 flex-1");
     expect(sidebar).toContain("border-t border-border/70");
     expect(sidebar).toContain("Filters openen");
     expect(sidebar).toContain("Filters sluiten");
