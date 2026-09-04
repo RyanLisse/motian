@@ -61,8 +61,11 @@ describe("workspace config hygiene (WP8a)", () => {
       dependencies?: Record<string, string>;
     };
 
-    expect(root.dependencies?.["drizzle-orm"]).toBe("^0.45.2");
-    expect(db.dependencies?.["drizzle-orm"]).toBe("^0.45.2");
+    const rootDrizzle = root.dependencies?.["drizzle-orm"];
+    const dbDrizzle = db.dependencies?.["drizzle-orm"];
+    expect(rootDrizzle).toBe(dbDrizzle);
+    // Pin the 0.38 line so Neon serverless stays on a single drizzle-orm copy.
+    expect(rootDrizzle).toMatch(/^\^0\.38\./);
   });
 
   it("biome.json includes packages/*/src for lint gates (R19)", () => {

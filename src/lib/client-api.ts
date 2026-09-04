@@ -25,6 +25,9 @@ export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   if (input instanceof URL) {
     return fetch(toBffPath(`${input.pathname}${input.search}`), init);
   }
-  const rewritten = new Request(toBffPath(new URL(input.url).pathname + new URL(input.url).search), input);
+  const rewritten = new Request(
+    toBffPath(new URL(input.url).pathname + new URL(input.url).search),
+    input,
+  );
   return fetch(rewritten, init);
 }

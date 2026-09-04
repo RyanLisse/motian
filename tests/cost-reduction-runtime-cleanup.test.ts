@@ -22,7 +22,7 @@ describe("runtime cost reduction cleanup", () => {
     expect(fs.existsSync(path.join(ROOT, "src", "hooks", "use-event-source.ts"))).toBe(false);
   });
 
-  it("returns a static disabled WhatsApp status payload", async () => {
+  it("returns a disabled WhatsApp status payload behind auth", async () => {
     process.env.API_SECRET = TEST_API_SECRET;
     const mod = await import("../app/api/whatsapp/status/route");
     const response = await mod.GET(
@@ -31,9 +31,10 @@ describe("runtime cost reduction cleanup", () => {
       }),
     );
 
-    expect(mod.dynamic).toBe("force-static");
-    expect(mod.revalidate).toBe(300);
+    // Auth-dependent: must stay dynamic / private (see whatsapp-status-cache.test.ts).
+    expect(mod.dynamic).toBe("force-dynamic");
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     await expect(response.json()).resolves.toEqual({
       enabled: false,
       status: "disabled",
