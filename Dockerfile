@@ -17,8 +17,12 @@ COPY extension/package.json ./extension/
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# COPY . . replaces packages/ and drops pnpm workspace node_modules links from deps.
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=deps /app/packages/esco/node_modules ./packages/esco/node_modules
+COPY --from=deps /app/packages/scrapers/node_modules ./packages/scrapers/node_modules
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN SKIP_ENV_VALIDATION=1 pnpm build
 
