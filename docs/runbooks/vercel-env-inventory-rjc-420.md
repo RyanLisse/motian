@@ -46,7 +46,7 @@ Legend: **E** `.env.example`, **S** `src/env.ts`, **C** code/docs/trigger, **V**
 |------|---------|-------|
 | `DATABASE_URL` | E S C | Primary Neon Postgres URL |
 | `DATABASE_URL_UNPOOLED` | C | Docs/tooling; not in src/env.ts schema |
-| `NEXT_PUBLIC_DATABASE_URL` | C | Audit anti-pattern; prefer server-only DB URL |
+| `NEXT_PUBLIC_DATABASE_URL` | C | **Forbidden** — deploy audit: [`next-public-database-url-deploy-audit.md`](next-public-database-url-deploy-audit.md) |
 
 ### Trigger.dev
 
@@ -214,13 +214,14 @@ E2E/local harness (usually not production Vercel): `E2E_*`, `PLAYWRIGHT_CHROMIUM
 
 1. Deployment summary still lists `OPENAI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` while app emphasizes OpenRouter.
 2. `TRIGGER_SECRET_KEY` and `DATABASE_URL_UNPOOLED` missing from `.env.example`.
-3. Audit `NEXT_PUBLIC_DATABASE_URL` (should not expose DB to client).
+3. Audit `NEXT_PUBLIC_DATABASE_URL` absent on Vercel, Coolify, Trigger.dev — [`next-public-database-url-deploy-audit.md`](next-public-database-url-deploy-audit.md).
 4. Live Vercel name list pending CLI auth on build host.
 
 ---
 
 ## Related
 
+- [`docs/runbooks/next-public-database-url-deploy-audit.md`](next-public-database-url-deploy-audit.md) — verify `NEXT_PUBLIC_DATABASE_URL` absent (Vercel, Coolify, Trigger.dev)
 - `docs/deployment-verification-summary.md`
 - `src/env.ts`
 - `trigger.config.ts`
