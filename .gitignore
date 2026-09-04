@@ -34,7 +34,6 @@ tmp/
 !.agents/skills/
 .claude/
 .codex/
-.cursor/
 .ruler/
 .windsurf/
 .entire/
@@ -48,6 +47,15 @@ GEMINI.md
 !.codex/skills/platform-onboarding/SKILL.md
 !.codex/skills/public-board-triage/
 !.codex/skills/public-board-triage/SKILL.md
+
+# Cursor: ignore tool state; track only the Motian verification skill
+.cursor/*
+!.cursor/skills/
+.cursor/skills/*
+!.cursor/skills/verify-motian/
+!.cursor/skills/verify-motian/**
+.cursor/skills/verify-motian/evidence/
+.cursor/skills/verify-motian/state/
 storybook-static/
 .gstack/
 
