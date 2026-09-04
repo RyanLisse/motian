@@ -88,7 +88,8 @@
 
 #### `NEXT_PUBLIC_DATABASE_URL`
 - **Scope:** Forbidden / Security Anti-pattern
-- **Status:** **FORBIDDEN**. Guarded by `packages/db/src/index.ts:35` and tested in `tests/db-env-guard.test.ts`. Setting this variable will deliberately throw to prevent leaking database credentials into client bundles.
+- **Status:** **FORBIDDEN**. Guarded by `packages/db/src/index.ts` (`assertNoPublicDatabaseUrl`) and tested in `tests/db-env-guard.test.ts`. Setting this variable will deliberately throw to prevent leaking database credentials into client bundles.
+- **Deploy audit:** [`docs/runbooks/next-public-database-url-deploy-audit.md`](runbooks/next-public-database-url-deploy-audit.md) — verify the name is **absent** on Vercel Motian, Coolify Motian, and Trigger.dev Motian (names only, never values).
 
 #### `BLOB_READ_WRITE_TOKEN`
 - **Scope:** Server-only
@@ -318,7 +319,8 @@ The following variables appeared in earlier iterations of Motian but have been d
    - **Status:** Removed in trust-boundary hardening (PR #249). Authentication is enforced via server-side BFF with `API_SECRET`.
 
 4. **Public Database URL** (`NEXT_PUBLIC_DATABASE_URL`):
-   - **Status:** Strictly forbidden. Guarded by build/test assertions to prevent credential leakage.
+   - **Status:** Strictly forbidden. Guarded by runtime/test assertions to prevent credential leakage.
+   - **Ops:** Run [`docs/runbooks/next-public-database-url-deploy-audit.md`](runbooks/next-public-database-url-deploy-audit.md) after deploys or env drift reviews.
 
 ---
 
@@ -350,4 +352,5 @@ The following variables appeared in earlier iterations of Motian but have been d
    - [ ] Prefer `vercel env ls` over printing values.
    - [ ] Never commit `.env`, `.env.local`, or `vercel env pull` output.
    - [ ] Diff live Vercel names against this inventory when CLI is authenticated.
+   - [ ] Confirm `NEXT_PUBLIC_DATABASE_URL` is **absent** on Vercel, Coolify, and Trigger.dev — [`next-public-database-url-deploy-audit.md`](runbooks/next-public-database-url-deploy-audit.md).
 
