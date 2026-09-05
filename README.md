@@ -893,8 +893,7 @@ PORT=3002
 
 #### LangSmith observability
 
-- Motian ondersteunt **officiële** `LANGSMITH_*` variabelen voor AI tracing.
-- **Legacy compatibiliteit blijft behouden**: `LANGCHAIN_TRACING_V2`, `LANGCHAIN_API_KEY` en `LANGCHAIN_PROJECT` worden nog geaccepteerd als `LANGSMITH_*` niet gezet is.
+- Motian gebruikt `LANGSMITH_TRACING`, `LANGSMITH_API_KEY` en `LANGSMITH_PROJECT` voor AI tracing.
 - Zet `LANGSMITH_TRACING=false` om tracing expliciet uit te schakelen, ook als er wel een API key aanwezig is.
 - Zet `OTEL_ENABLED=true` wanneer je Vercel AI SDK traces naar LangSmith wilt doorzetten op Vercel/server runtimes.
 - Belangrijkste AI-oppervlakken die nu tracebaar zijn: chat streaming, automatische chat-titelgeneratie, AI enrichment, CV parsing, requirement extraction, structured matching, judge verdicts en embeddings.

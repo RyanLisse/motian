@@ -42,7 +42,6 @@ export const env = createEnv({
     LANGSMITH_TRACING: z.string().optional(),
     LANGSMITH_API_KEY: z.string().optional(),
     LANGSMITH_PROJECT: z.string().optional(),
-    LANGCHAIN_API_KEY: z.string().optional(),
 
     // Observability
     OTEL_ENABLED: z.string().optional(),
@@ -160,7 +159,6 @@ export const env = createEnv({
     LANGSMITH_TRACING: process.env.LANGSMITH_TRACING,
     LANGSMITH_API_KEY: process.env.LANGSMITH_API_KEY,
     LANGSMITH_PROJECT: process.env.LANGSMITH_PROJECT,
-    LANGCHAIN_API_KEY: process.env.LANGCHAIN_API_KEY,
     OTEL_ENABLED: process.env.OTEL_ENABLED,
     LIVEKIT_URL: process.env.LIVEKIT_URL,
     LIVEKIT_API_KEY: process.env.LIVEKIT_API_KEY,

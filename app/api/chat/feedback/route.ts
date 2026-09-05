@@ -24,7 +24,7 @@ export const POST = withApiHandler(
     const { messageId, score, comment } = parsed.data;
 
     // Send feedback to LangSmith if configured
-    const apiKey = process.env.LANGSMITH_API_KEY ?? process.env.LANGCHAIN_API_KEY;
+    const apiKey = process.env.LANGSMITH_API_KEY;
 
     if (apiKey) {
       try {
