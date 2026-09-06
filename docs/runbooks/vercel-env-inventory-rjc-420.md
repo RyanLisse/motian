@@ -64,9 +64,6 @@ Legend: **E** `.env.example`, **S** `src/env.ts`, **C** code/docs/trigger, **V**
 | `LANGSMITH_TRACING` | E S | Optional tracing |
 | `LANGSMITH_API_KEY` | E S |  |
 | `LANGSMITH_PROJECT` | E S |  |
-| `LANGCHAIN_API_KEY` | S C | Legacy alias |
-| `LANGCHAIN_TRACING_V2` | E comment | Legacy commented |
-| `LANGCHAIN_PROJECT` | E comment | Legacy commented |
 | `OTEL_ENABLED` | E S | Vercel AI SDK / OTEL |
 | `CHAT_MAX_TOKENS_PER_SESSION` | S C |  |
 | `HYBRID_BLEND_RULE` | E S |  |

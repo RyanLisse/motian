@@ -40,24 +40,16 @@ function parseBooleanEnv(value: string | undefined): boolean | undefined {
   }
 }
 
-export function applyLangSmithEnvFallbacks(env: EnvMap = process.env): EnvMap {
-  env.LANGSMITH_TRACING ??= env.LANGCHAIN_TRACING_V2;
-  env.LANGSMITH_API_KEY ??= env.LANGCHAIN_API_KEY;
-  env.LANGSMITH_PROJECT ??= env.LANGCHAIN_PROJECT;
-  return env;
-}
-
 export function getLangSmithApiKey(env: EnvMap = process.env): string | undefined {
-  return pickFirstNonEmpty(env.LANGSMITH_API_KEY, env.LANGCHAIN_API_KEY);
+  return pickFirstNonEmpty(env.LANGSMITH_API_KEY);
 }
 
 export function getLangSmithProject(env: EnvMap = process.env): string | undefined {
-  return pickFirstNonEmpty(env.LANGSMITH_PROJECT, env.LANGCHAIN_PROJECT);
+  return pickFirstNonEmpty(env.LANGSMITH_PROJECT);
 }
 
 export function isLangSmithTracingEnabled(env: EnvMap = process.env): boolean {
-  const tracingPreference =
-    parseBooleanEnv(env.LANGSMITH_TRACING) ?? parseBooleanEnv(env.LANGCHAIN_TRACING_V2);
+  const tracingPreference = parseBooleanEnv(env.LANGSMITH_TRACING);
 
   if (!getLangSmithApiKey(env)) {
     return false;
@@ -112,7 +104,7 @@ export function resolveChatModel(id?: string) {
 // ── LangSmith-traced AI SDK functions ───────────────────────────────
 // Uses `wrapAISDK` from `langsmith/experimental/vercel` to instrument
 // generateText, generateObject, streamText, embed, embedMany with OpenTelemetry traces.
-// Prefers official LANGSMITH_* env vars while preserving legacy LANGCHAIN_* compatibility.
+// Reads LANGSMITH_* env vars for tracing configuration.
 // Gracefully falls back to raw `ai` functions when tracing is disabled or unavailable.
 
 type WrappedAI = {
@@ -138,8 +130,6 @@ function getRawAI(): WrappedAI {
 
 function getTraced(): WrappedAI {
   if (_traced) return _traced;
-
-  applyLangSmithEnvFallbacks();
 
   if (!isLangSmithTracingEnabled()) {
     _traced = getRawAI();

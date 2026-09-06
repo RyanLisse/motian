@@ -56,7 +56,6 @@
 | `LANGSMITH_TRACING` | Server | Optional | AI Pipeline Tracing Flag | `src/env.ts` |
 | `LANGSMITH_API_KEY` | Server | Optional | LangSmith Tracing API Key | `src/env.ts` |
 | `LANGSMITH_PROJECT` | Server | Optional | LangSmith Project Name | `src/env.ts` |
-| `LANGCHAIN_API_KEY` | Server | Optional (Legacy) | LangSmith Fallback API Key | `src/env.ts` |
 | `OTEL_ENABLED` | Server | Optional | OpenTelemetry AI Tracing | `src/env.ts` |
 | `SLACK_BOT_TOKEN` | Server | Optional | Recruiter Slack Bot | `src/env.ts` |
 | `SLACK_CHANNEL_ID` | Server | Optional | Recruiter Alerts Channel | `src/env.ts` |
@@ -164,7 +163,7 @@
 #### `LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`
 - **Scope:** Server-only
 - **Requirement:** Optional
-- **Description:** AI pipeline tracing configuration for LangChain / LangSmith. `LANGCHAIN_API_KEY` is supported as a fallback.
+- **Description:** AI pipeline tracing configuration via LangSmith (`LANGSMITH_TRACING`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`).
 
 #### `OTEL_ENABLED`
 - **Scope:** Server-only
